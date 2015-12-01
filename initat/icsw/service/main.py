@@ -113,12 +113,20 @@ def version_command(opt_ns):
         "sys": settings.ICSW_VERSION_DICT,
     }
     for _key in sorted(_vers.keys()):
-        for _vn in VERSION_NAME_LIST:
+        if _vers[_key]:
+            for _vn in VERSION_NAME_LIST:
+                print(
+                    "  {:<3} {:<10}: {}".format(
+                        _key,
+                        _vn,
+                        _vers[_key][_vn],
+                    )
+                )
+        else:
             print(
-                "  {:<3} {:<10}: {}".format(
+                "* {:<3} {:<10}: missing".format(
                     _key,
-                    _vn,
-                    _vers[_key][_vn],
+                    "",
                 )
             )
 

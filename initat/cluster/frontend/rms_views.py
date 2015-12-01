@@ -62,7 +62,7 @@ RMS_ADDONS = [
 logger = logging.getLogger("cluster.rms")
 
 if sge_tools:
-    class tl_sge_info(sge_tools.sge_info):
+    class ThreadLockedSGEInfo(sge_tools.sge_info):
         # sge_info object with thread lock layer
         def __init__(self):
             _srv_type = "rms-server"
@@ -98,7 +98,7 @@ else:
         def update(self):
             pass
 
-my_sge_info = tl_sge_info()
+my_sge_info = ThreadLockedSGEInfo()
 
 
 def get_job_options(request):

@@ -31,7 +31,7 @@ from initat.tools import logging_tools, process_tools, config_store
 try:
     from initat.cluster.backbone.models.version_functions import get_database_version, \
         get_models_version, is_debug_run
-except ImportError:
+except:
     # not present
     get_database_version = None
     get_models_version = None
@@ -125,7 +125,8 @@ class ServiceContainer(object):
             if not hasattr(self, "model_version"):
                 self.model_version = "0"
                 self.model_version_changed = False
-                self.log("cannot get model version, file missing ... ?", logging_tools.LOG_LEVEL_WARN)
+                # do not log, always true on client
+                # self.log("cannot get model version, file missing ... ?", logging_tools.LOG_LEVEL_WARN)
         else:
             _database_v = get_database_version()
             _model_v = get_models_version()
