@@ -23,13 +23,12 @@
 
 import os
 
-import psutil
 from django.db import connection
 
 from initat.logcheck_server.config import global_config
 from initat.logcheck_server.logcheck_struct import Machine
-from initat.tools import cluster_location, server_mixins, configfile, logging_tools, \
-    process_tools, threading_tools
+from initat.tools import server_mixins, configfile, logging_tools, \
+    process_tools, threading_tools, service_tools
 
 
 class server_process(server_mixins.ICSWBasePool):
@@ -41,11 +40,12 @@ class server_process(server_mixins.ICSWBasePool):
         # close connection (daemonizing)
         connection.close()
         self.__msi_block = self._init_msi_block()
-        self._re_insert_config()
+        self.srv_helper = service_tools.ServiceHelper(self.log)
+        self.CC.re_insert_config()
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         # log config
-        self._log_config()
+        self.CC.log_config()
         # prepare directories
         self._prepare_directories()
         # enable syslog_config
@@ -74,19 +74,6 @@ class server_process(server_mixins.ICSWBasePool):
                         ),
                         logging_tools.LOG_LEVEL_ERROR
                     )
-
-    def _log_config(self):
-        self.log("Config info:")
-        for line, log_level in global_config.get_log(clear=True):
-            self.log(" - clf: [%d] %s" % (log_level, line))
-        conf_info = global_config.get_config_info()
-        self.log("Found %d valid config-lines:" % (len(conf_info)))
-        for conf in conf_info:
-            self.log("Config : %s" % (conf))
-
-    def _re_insert_config(self):
-        self.log("re-insert config")
-        cluster_location.write_config("syslog_server", global_config)
 
     def _sync_machines(self):
         connection.close()
@@ -125,27 +112,24 @@ class server_process(server_mixins.ICSWBasePool):
 
     # syslog stuff
     def _enable_syslog_config(self):
-        syslog_exe_dict = {
-            value.pid: value.exe() for value in psutil.process_iter() if value.is_running() and value.exe().count("syslog")
-        }
-        syslog_type = None
-        for key, value in syslog_exe_dict.iteritems():
-            self.log("syslog process found: {}".format(key))
-            if value.endswith("rsyslogd"):
-                syslog_type = "rsyslogd"
-            elif value.endswith("syslog-ng"):
-                syslog_type = "syslog-ng"
-        self.log("syslog type found: {}".format(syslog_type or "none"))
-        self.__syslog_type = syslog_type
-        if self.__syslog_type == "rsyslogd":
-            self._enable_rsyslog()
-        elif self.__syslog_type == "syslog-ng":
-            self._enable_syslog_ng()
+        syslog_srvcs = self.srv_helper.find_services(".*syslog", active=True)
+        if syslog_srvcs:
+            self.__syslog_type = syslog_srvcs[0]
+            self.log("syslog type found: {}".format(self.__syslog_type))
+            if self.__syslog_type.count("rsys"):
+                self._enable_rsyslog()
+            elif self.__syslog_type.count("-ng"):
+                self._enable_syslog_ng()
+            else:
+                self.log("dont know how to handle syslog_type '{}'".format(self.__syslog_type), logging_tools.LOG_LEVEL_ERROR)
+        else:
+            self.__syslog_type = None
+            self.log("found no valid syslog service", logging_tools.LOG_LEVEL_ERROR)
 
     def _disable_syslog_config(self):
-        if self.__syslog_type == "rsyslogd":
+        if self.__syslog_type.count("rsys"):
             self._disable_rsyslog()
-        elif self.__syslog_type == "syslog-ng":
+        elif self.__syslog_type.count("-ng"):
             self._disable_syslog_ng()
 
     def _enable_syslog_ng(self):
@@ -160,8 +144,12 @@ class server_process(server_mixins.ICSWBasePool):
             '# UDP Syslog Server:',
             '$ModLoad imudp.so         # provides UDP syslog reception',
             '',
-            '$template prog_log,"%s/%%FROMHOST-IP%%/%%$YEAR%%/%%$MONTH%%/%%$DAY%%/%%programname%%"' % (global_config["SYSLOG_DIR"]),
-            '$template full_log,"%s/%%FROMHOST-IP%%/%%$YEAR%%/%%$MONTH%%/%%$DAY%%/log"' % (global_config["SYSLOG_DIR"]),
+            '$template prog_log,"{}/%FROMHOST-IP%/%$YEAR%/%$MONTH%/%$DAY%/%programname%"'.format(
+                global_config["SYSLOG_DIR"],
+            ),
+            '$template full_log,"{}/%FROMHOST-IP%/%$YEAR%/%$MONTH%/%$DAY%/log"'.format(
+                global_config["SYSLOG_DIR"],
+            ),
             '',
             '$RuleSet remote',
             '$DirCreateMode 0755',
@@ -177,26 +165,15 @@ class server_process(server_mixins.ICSWBasePool):
             '',
             '$RuleSet RSYSLOG_DefaultRuleset',
         ]
-        slcn = "/etc/rsyslog.d/logcheck_server.conf"
-        file(slcn, "w").write("\n".join(rsyslog_lines))
+        self._slcn = "/etc/rsyslog.d/logcheck_server.conf"
+        self.log("writing rsyslog-config to {}".format(self._slcn))
+        file(self._slcn, "w").write("\n".join(rsyslog_lines))
         self._restart_syslog()
 
     def _disable_rsyslog(self):
-        slcn = "/etc/rsyslog.d/logcheck_server.conf"
-        if os.path.isfile(slcn):
-            os.unlink(slcn)
+        if os.path.isfile(self._slcn):
+            os.unlink(self._slcn)
         self._restart_syslog()
 
     def _restart_syslog(self):
-        syslog_found = False
-        for syslog_rc in ["/etc/init.d/syslog", "/etc/init.d/syslog-ng", "/etc/init.d/rsyslog"]:
-            if os.path.isfile(syslog_rc):
-                syslog_found = True
-                break
-        if syslog_found:
-            c_stat, out_f = process_tools.submit_at_command("{} restart".format(syslog_rc), 0)
-            self.log(u"restarting {} gave {:d}:".format(syslog_rc, c_stat))
-            for line in out_f:
-                self.log(line)
-        else:
-            self.log("no syslog rc-script found", logging_tools.LOG_LEVEL_ERROR)
+        self.srv_helper.service_command(self.__syslog_type, "restart")

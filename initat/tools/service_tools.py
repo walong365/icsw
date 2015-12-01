@@ -20,6 +20,7 @@
 """ handle service reload / restarts """
 
 import re
+
 from initat.tools import logging_tools, process_tools
 
 
@@ -55,6 +56,12 @@ class ServiceHelper(object):
             else:
                 self.__services[_key] = _value
 
+    def service_is_active(self, key):
+        if self._method == "i":
+            return True if self.__services[key].count(":on") else False
+        else:
+            return True if self.__services[key].count(" active ") else False
+
     def _get_init_services(self):
         _stat, _out, _err = self._call_command("{} -A".format(self._chkconfig))
         if _err:
@@ -64,7 +71,7 @@ class ServiceHelper(object):
                 if not _line.strip():
                     break
                 _key, _rest = _line.strip().split(None, 1)
-                self.__services[_key] = None
+                self.__services[_key] = _rest
         else:
             for _line in _out.strip().split("\n")[1:-1]:
                 try:
@@ -96,15 +103,32 @@ class ServiceHelper(object):
                 self.log("service {} not known to systemd".format(name), logging_tools.LOG_LEVEL_ERROR)
                 return None
 
-    def find_services(self, name_re_str):
+    def find_services(self, name_re_str, **kwargs):
+        active = kwargs.get("active", None)
         name_re = re.compile(name_re_str)
         _result = [_key for _key in self.__services.iterkeys() if name_re.match(_key)]
+        _act_str = {
+            None: "ignore",
+            True: "active",
+            False: "inactive",
+        }[active]
+        if active is True:
+            _result = [_key for _key in _result if self.service_is_active(_key)]
+        elif active is False:
+            _result = [_key for _key in _result if not self.service_is_active(_key)]
         if not _result:
-            self.log("found no services with name_re '{}'".format(name_re_str), logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "found no services with name_re '{}' (active={})".format(
+                    name_re_str,
+                    _act_str,
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
         else:
             self.log(
-                "search for {} gave {}: {}".format(
+                "search for {} (active={}) gave {}: {}".format(
                     name_re_str,
+                    _act_str,
                     logging_tools.get_plural("result", len(_result)),
                     ", ".join(_result),
                 )

@@ -27,7 +27,7 @@ import zmq
 from enum import IntEnum
 
 from initat.tools import logging_tools, process_tools, threading_tools, server_command, \
-    configfile, config_store, uuid_tools
+    configfile, config_store, uuid_tools, cluster_location
 from initat.icsw.service.instance import InstanceXML
 
 
@@ -139,6 +139,31 @@ class ConfigCheckObject(object):
 
     def close(self):
         self.__process.log_template.close()
+
+    def log_config(self):
+        _log = self.global_config.get_log(clear=True)
+        if len(_log):
+            self.log(
+                "Config log ({}):".format(
+                    logging_tools.get_plural("line", len(_log)),
+                )
+            )
+            for line, log_level in _log:
+                self.log(" - clf: [{:d}] {}".format(log_level, line))
+        else:
+            self.log("no Config log")
+        conf_info = self.global_config.get_config_info()
+        self.log(
+            "Found {}:".format(
+                logging_tools.get_plural("valid config-line", len(conf_info))
+            )
+        )
+        for conf in conf_info:
+            self.log("Config : {}".format(conf))
+
+    def re_insert_config(self):
+        self.log("re-inserting config for srv_type {}".format(self.srv_type))
+        cluster_location.write_config(self.srv_type, self.global_config)
 
 
 class ConfigCheckMixin(threading_tools.ICSWAutoInit):

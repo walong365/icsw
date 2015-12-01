@@ -59,8 +59,8 @@ class server_process(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixi
         self.srv_helper = service_tools.ServiceHelper(self.log)
         self.__hs_port = InstanceXML(quiet=True).get_port_dict("hoststatus", command=True)
         # log config
-        self._log_config()
-        self._re_insert_config()
+        self.CC.log_config()
+        self.CC.re_insert_config()
         # prepare directories
         self._prepare_directories()
         # check netboot functionality
@@ -120,19 +120,6 @@ class server_process(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixi
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
             self["exit_requested"] = True
-
-    def _re_insert_config(self):
-        self.log("re-insert config")
-        cluster_location.write_config("mother_server", global_config)
-
-    def _log_config(self):
-        self.log("Config info:")
-        for line, log_level in global_config.get_log(clear=True):
-            self.log(" - clf: [{:d}] {}".format(log_level, line))
-        conf_info = global_config.get_config_info()
-        self.log("Found {:d} valid config-lines:".format(len(conf_info)))
-        for conf in conf_info:
-            self.log("Config : {}".format(conf))
 
     def loop_end(self):
         # config_control.close_clients()
