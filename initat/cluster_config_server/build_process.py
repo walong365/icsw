@@ -434,7 +434,7 @@ class build_process(threading_tools.process_obj):
                 cur_bc = BuildContainer(cur_c, config_dict, conf_dict, new_tree, self.router_obj)
                 for pk in config_pks:
                     cur_bc.process_scripts(pk)
-                new_tree.write_config(cur_c, cur_bc)
+                new_tree.write_node_config(cur_c, cur_bc)
                 if False in conf_dict["called"]:
                     cur_c.log(
                         "error in scripts for {}: {}".format(

@@ -188,7 +188,7 @@ class GeneratedTree(GeneralTreeNode):
     def __init__(self):
         GeneralTreeNode.__init__(self, "")
 
-    def write_config(self, cur_c, cur_bc):
+    def write_node_config(self, cur_c, cur_bc):
         cur_c.log("creating tree")
         ConfigTreeNode.objects.filter(Q(device=cur_bc.conf_dict["device"])).delete()
         write_list = self.write_node(cur_c, cur_bc)

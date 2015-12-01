@@ -102,10 +102,12 @@ class ConfigCheckObject(object):
                 ),
             )
         if not client:
+            self.__sql_info = None
             sql_info = None
             for _conf_name in conf_names:
                 sql_info = config_tools.server_check(server_type=_conf_name)
                 if sql_info is not None and sql_info.effective_device:
+                    self.__sql_info = sql_info
                     break
             if sql_info is None or not sql_info.effective_device:
                 self.log("Not a valid {}".format(self.srv_type), logging_tools.LOG_LEVEL_ERROR)
@@ -162,8 +164,26 @@ class ConfigCheckObject(object):
             self.log("Config : {}".format(conf))
 
     def re_insert_config(self):
-        self.log("re-inserting config for srv_type {}".format(self.srv_type))
-        cluster_location.write_config(self.srv_type, self.global_config)
+        if self.__sql_info:
+            self.log(
+                "re-inserting config for srv_type {} (config_name is {})".format(
+                    self.srv_type,
+                    self.__sql_info.config_name,
+                )
+            )
+            cluster_location.write_config(
+                self.__sql_info.config_name,
+                self.global_config,
+                srv_info=self.__sql_info,
+                log_com=self.log,
+            )
+        else:
+            self.log(
+                "refuse to re-insert config because sql_info is None (srv_type={})".format(
+                    self.srv_type,
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
 
 
 class ConfigCheckMixin(threading_tools.ICSWAutoInit):

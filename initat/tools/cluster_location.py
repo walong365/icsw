@@ -209,7 +209,10 @@ def write_config(server_type, g_config, **kwargs):
     log_lines = []
     full_host_name = socket.gethostname()
     host_name = full_host_name.split(".")[0]
-    srv_info = config_tools.server_check(server_type=server_type, short_host_name=host_name)
+    srv_info = kwargs.get("srv_info", None)
+    log_com = kwargs.get("log_com", None)
+    if srv_info is None:
+        srv_info = config_tools.server_check(server_type=server_type, short_host_name=host_name)
     type_dict = {
         "i": config_int,
         "s": config_str,
@@ -229,7 +232,7 @@ def write_config(server_type, g_config, **kwargs):
                 # var global / local
                 var_range_name = g_config.is_global(key) and "global" or "local"
                 # build real var name
-                real_k_name = g_config.is_global(key) and key or "%s:%s" % (host_name, key)
+                real_k_name = g_config.is_global(key) and key or "{}:{}".format(host_name, key)
                 try:
                     cur_var = var_obj.objects.get(
                         Q(name=real_k_name) &
