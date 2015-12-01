@@ -117,6 +117,10 @@ class io_struct
             return "waiting for data"
         else
             return "nothing found"
+    file_read_error: (xml) =>
+        @waiting = false
+        @update = false
+
     feed : (xml) => 
         @waiting = false
         found_xml = $(xml).find("response file_info[id='" + @get_id() + "']")
@@ -452,6 +456,10 @@ rms_module = angular.module(
                                     xml = $(xml)
                                     for _id in $scope.io_list
                                         $scope.io_dict[_id].feed(xml)
+                                (error) ->
+                                    # mark all io_structs with an update stop
+                                    for _id in $scope.io_list
+                                        $scope.io_dict[_id].file_read_error()
                             )
             )
         $scope.get_io_link_class = (job, io_type) ->

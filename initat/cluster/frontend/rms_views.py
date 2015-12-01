@@ -378,7 +378,9 @@ class get_file_content(View):
             srv_com = server_command.srv_command(command="get_file_content")
             srv_com["file_list"] = srv_com.builder(
                 "file_list",
-                *[srv_com.builder("file", name=_file_name, encoding="utf-8") for _file_name in fetch_lut.iterkeys()]
+                *[
+                    srv_com.builder("file", name=_file_name, encoding="utf-8") for _file_name in fetch_lut.iterkeys()
+                ]
             )
             result = contact_server(request, "server", srv_com, timeout=60, connection_id="file_fetch_{}".format(str(job_id)))
             if result is not None:
@@ -399,7 +401,7 @@ class get_file_content(View):
                         else:
                             # ie freezes if it displays too much text
                             text = cur_file.text
-                            magic_limit = 350000
+                            magic_limit = 350 * 1024
                             if int(_post.get("is_ie", "0")) and text and len(text) > magic_limit:
                                 request.xml_response.info("file is too large, truncating beginning")
                                 # return some first lines and mostly last lines such that in total,
@@ -415,7 +417,10 @@ class get_file_content(View):
                                 while len(new_text) < magic_limit and last_lines:
                                     new_text = last_lines.pop() + u"\n" + new_text
 
-                                cut_marker = u"\n\n[cut off output since file is too large]\n\n"
+                                cut_marker = u"\n\n[cut off output since file is too large ({} > {})]\n\n".format(
+                                    logging_tools.get_size_str(len(text)),
+                                    logging_tools.get_size_str(magic_limit),
+                                )
                                 text = u"\n".join(first_lines) + cut_marker + new_text
 
                             _resp_list.append(
@@ -446,7 +451,7 @@ class set_user_setting(View):
         user_vars = request.session["user_vars"]
         _post = request.POST
         data = json.loads(_post["data"])
-        var_name = "_rms_wf_%s" % (data["table"])
+        var_name = "_rms_wf_{}".format(data["table"])
         if var_name in user_vars:
             cur_dis = user_vars[var_name].value.split(",")
         else:
