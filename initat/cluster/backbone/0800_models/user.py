@@ -387,7 +387,8 @@ class user_scan_result(models.Model):
     user_scan_run = models.ForeignKey("backbone.user_scan_run")
     # parent dir (or empty if top level dir)
     parent_dir = models.ForeignKey("self", null=True)
-    full_name = models.CharField(max_length=2048, default="")
+    # changed size
+    full_name = models.CharField(max_length=1900, default="")
     # name of dir (relative to parent dir)
     name = models.CharField(max_length=384, default="")
     # size of current dir

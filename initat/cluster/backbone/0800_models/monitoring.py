@@ -359,7 +359,8 @@ class mon_notification(models.Model):
         verbose_name="Notification type"
     )
     subject = models.CharField(max_length=140, blank=True)
-    content = models.CharField(max_length=4096, blank=False)
+    # changed to 255 for MySQL / Oracle initial setup
+    content = models.CharField(max_length=512, blank=False)
     enabled = models.BooleanField(default=True)
     created = models.DateTimeField(auto_now_add=True)
 

@@ -1669,7 +1669,8 @@ class Migration(migrations.Migration):
                 ('channel', models.CharField(max_length=8, choices=[(b'mail', b'E-Mail'), (b'sms', b'SMS')])),
                 ('not_type', models.CharField(max_length=8, verbose_name=b'Notification type', choices=[(b'host', b'Host'), (b'service', b'Service')])),
                 ('subject', models.CharField(max_length=140, blank=True)),
-                ('content', models.CharField(max_length=4096)),
+                # manual change for initial DB setup (Oracle)
+                ('content', models.CharField(max_length=255)),
                 ('enabled', models.BooleanField(default=True)),
                 ('created', models.DateTimeField(auto_now_add=True)),
             ],
@@ -2526,7 +2527,8 @@ class Migration(migrations.Migration):
             name='user_scan_result',
             fields=[
                 ('idx', models.AutoField(serialize=False, primary_key=True)),
-                ('full_name', models.CharField(default=b'', max_length=2048)),
+                # changed temporarily for Oracle initial insert
+                ('full_name', models.CharField(default=b'', max_length=1900)),
                 ('name', models.CharField(default=b'', max_length=384)),
                 ('size', models.BigIntegerField(default=0)),
                 ('size_total', models.BigIntegerField(default=0)),
