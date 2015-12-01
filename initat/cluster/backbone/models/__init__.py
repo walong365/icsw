@@ -1220,14 +1220,17 @@ class WrittenConfigFile(models.Model):
     uid = models.IntegerField(default=0, blank=True)
     gid = models.IntegerField(default=0, blank=True)
     mode = models.IntegerField(default=0755, blank=True)
-    dest_type = models.CharField(max_length=8, choices=(
-        ("f", "file"),
-        ("l", "link"),
-        ("d", "directory"),
-        ("e", "erase"),
-        ("c", "copy"),
-        ("i", "internal"),
-    ))
+    dest_type = models.CharField(
+        max_length=8,
+        choices=(
+            ("f", "file"),
+            ("l", "link"),
+            ("d", "directory"),
+            ("e", "erase"),
+            ("c", "copy"),
+            ("i", "internal"),
+        )
+    )
     # source path
     source = models.TextField(default="")
     # destination path, relative to tree_node
