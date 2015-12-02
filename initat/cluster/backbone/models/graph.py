@@ -378,7 +378,9 @@ class GraphSettingSize(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = [("width", "height")]
+        if not db_limit_1():
+            # not present in oracle DBs
+            unique_together = [("width", "height")]
         ordering = ("width", "height",)
 
 
@@ -459,9 +461,7 @@ class GraphSetting(models.Model):
             ][0]
 
     class Meta:
-        if db_limit_1():
-            pass
-        else:
+        if not db_limit_1():
             unique_together = [("user", "name")]
 
     def __unicode__(self):
