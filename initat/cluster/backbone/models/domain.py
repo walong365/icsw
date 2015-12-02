@@ -278,7 +278,7 @@ def domain_tree_node_pre_save(sender, **kwargs):
                 Q(depth=cur_inst.depth) & Q(parent=cur_inst.parent)
             ).values_list("name", flat=True)
             if cur_inst.name in used_names:
-                raise ValidationError("name '{}' already used here".format(cur_inst.name))
+                raise ValidationError("DTN-name '{}' already used here".format(cur_inst.name))
         else:
             check_non_empty_string(cur_inst, "name")
             check_non_empty_string(cur_inst, "node_postfix")
@@ -397,7 +397,13 @@ class category_tree(object):
             if check_name not in self.__category_lut:
                 self.add_category(check_name)
         for cur_node in self.__node_dict.itervalues():
-            is_immutable = cur_node.full_name in ["", TOP_CONFIG_CATEGORY, TOP_MONITORING_CATEGORY, TOP_DEVICE_CATEGORY, TOP_LOCATION_CATEGORY]
+            is_immutable = cur_node.full_name in [
+                "",
+                TOP_CONFIG_CATEGORY,
+                TOP_MONITORING_CATEGORY,
+                TOP_DEVICE_CATEGORY,
+                TOP_LOCATION_CATEGORY
+            ]
             if cur_node.immutable != is_immutable:
                 cur_node.immutable = is_immutable
                 cur_node.save()
@@ -547,6 +553,7 @@ class category(models.Model):
 
     class Meta:
         verbose_name = "Category"
+        unique_together = [("name", "parent"), ]
 
 
 @receiver(signals.pre_save, sender=category)
@@ -599,9 +606,13 @@ def category_pre_save(sender, **kwargs):
                 cur_inst.full_name = new_full_name
                 cur_inst.full_name_changed = True
             # check for used named
-            used_names = category.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(depth=cur_inst.depth) & Q(parent=cur_inst.parent)).values_list("name", flat=True)
+            used_names = category.objects.exclude(
+                Q(pk=cur_inst.pk)
+            ).filter(
+                Q(depth=cur_inst.depth) & Q(parent=cur_inst.parent)
+            ).values_list("name", flat=True)
             if cur_inst.name in used_names:
-                raise ValidationError("name '{}' already used here".format(cur_inst.name))
+                raise ValidationError("category name '{}' already used here".format(cur_inst.name))
         else:
             check_non_empty_string(cur_inst, "name")
 

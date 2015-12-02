@@ -204,6 +204,7 @@ class mon_icinga_log_raw_service_alert_data(mon_icinga_log_raw_base):
     if db_limit_1():
         service_info = models.TextField(blank=True, null=True)
     else:
+        print "*"
         service_info = models.TextField(blank=True, null=True, db_index=True)
 
     state_type = models.CharField(max_length=2, choices=mon_icinga_log_raw_base.STATE_TYPES)
