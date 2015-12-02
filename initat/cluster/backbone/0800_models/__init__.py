@@ -69,6 +69,11 @@ from initat.cluster.backbone.models.license import *  # @UnusedWildImport
 logger = logging.getLogger(__name__)
 
 
+def db_limit_1():
+    # return True if databases do not support some unique_together combinations
+    return True if settings.DATABASES["default"]["ENGINE"].lower().count("oracle") else False
+
+
 class DeviceVariableManager(models.Manager):
 
     def get_cluster_id(self):
@@ -543,4 +548,5 @@ class DeleteRequest(models.Model):
 
     class Meta:
         app_label = "backbone"
-        unique_together = ("obj_pk", "model")
+        if not db_limit_1():
+            unique_together = ("obj_pk", "model")

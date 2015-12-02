@@ -37,7 +37,8 @@ from initat.constants import GEN_CS_NAME
 from initat.cluster.backbone.models.functions import check_empty_string, \
     check_float, check_integer, check_non_empty_string, to_system_tz, \
     get_change_reset_list, get_related_models, cluster_timezone, duration, \
-    system_timezone
+    system_timezone, db_limit_1
+from django.conf import settings
 from lxml.builder import E
 import crypt
 import datetime
@@ -1266,7 +1267,10 @@ class DeleteRequest(models.Model):
     delete_strategies = models.TextField(null=True, blank=True)
 
     class Meta:
-        unique_together = ("obj_pk", "model")
+        if db_limit_1():
+            pass
+        else:
+            unique_together = ("obj_pk", "model")
 
 
 # register models in history

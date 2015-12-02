@@ -24,6 +24,7 @@ class DirSave(object):
         self.__dir_name = dir_name
         self.__tmp_dir = tempfile.mkdtemp()
         self.__min_idx = min_idx
+        print("Init DirSave for {} (min_idx={:d})".format(self.__dir_name, self.__min_idx))
         self.save()
 
     def _match(self, f_name):

@@ -7,6 +7,11 @@ import django.db.models.deletion
 from django.conf import settings
 
 
+def db_limit_1():
+    # return True if databases do not support some unique_together combinations
+    return True if settings.DATABASES["default"]["ENGINE"].lower().count("oracle") else False
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -3193,10 +3198,15 @@ class Migration(migrations.Migration):
             name='device',
             unique_together=set([('name', 'domain_tree_node')]),
         ),
-        migrations.AlterUniqueTogether(
-            name='deleterequest',
-            unique_together=set([('obj_pk', 'model')]),
-        ),
+    ]
+    if not db_limit_1():
+        operations.append(
+            migrations.AlterUniqueTogether(
+                name='deleterequest',
+                unique_together=set([('obj_pk', 'model')]),
+            )
+        )
+    operations.extend([
         migrations.AlterUniqueTogether(
             name='csw_permission',
             unique_together=set([('content_type', 'codename')]),
@@ -3355,4 +3365,4 @@ class Migration(migrations.Migration):
             field=models.ManyToManyField(related_name='secondary', to='backbone.group', blank=True),
             preserve_default=True,
         ),
-    ]
+    ])

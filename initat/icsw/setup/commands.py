@@ -439,14 +439,14 @@ def check_for_0800(opts):
         # rename models dir
         os.rename(MODELS_DIR, MODELS_DIR_SAVE)
         os.rename(Z800_MODELS_DIR, MODELS_DIR)
-        # migrate
+        # migrate (to 0800_models version)
         migrate_app("backbone")
         # move back
         os.rename(MODELS_DIR, Z800_MODELS_DIR)
         os.rename(MODELS_DIR_SAVE, MODELS_DIR)
         # move all files back
         ds1.restore(800)
-        # fake migration
+        # fake migration (to 0800)
         call_manage(["makemigrations", "backbone", "--merge", "--noinput"])
         call_manage(["migrate", "backbone", "--noinput", "--fake"])
         ds1.restore()
@@ -458,6 +458,8 @@ def migrate_app(_app, **kwargs):
         print("")
         print("migrating everything...")
         print("")
+    else:
+        print("calling makemigrations / migrate for app {}".format(_app))
     call_manage(["makemigrations", _app.split(".")[-1], "--noinput"] + kwargs.get("make_args", []))
     call_manage(["migrate", _app.split(".")[-1], "--noinput"] + kwargs.get("migrate_args", []))
 

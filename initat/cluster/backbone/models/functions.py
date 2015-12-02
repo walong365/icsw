@@ -43,6 +43,11 @@ cluster_timezone = pytz.timezone(settings.TIME_ZONE)
 system_timezone = pytz.timezone(time.tzname[0])
 
 
+def db_limit_1():
+    # return True if databases do not support some unique_together combinations
+    return True if settings.DATABASES["default"]["ENGINE"].lower().count("oracle") else False
+
+
 # helper functions
 def check_integer(inst, attr_name, **kwargs):
     cur_val = getattr(inst, attr_name)

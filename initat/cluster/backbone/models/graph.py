@@ -27,6 +27,8 @@ from django.dispatch import receiver
 from enum import Enum
 
 from initat.cluster.backbone.signals import SensorThresholdChanged
+from initat.cluster.backbone.models.functions import db_limit_1
+
 
 __all__ = [
     "MachineVector",
@@ -457,7 +459,10 @@ class GraphSetting(models.Model):
             ][0]
 
     class Meta:
-        unique_together = [("user", "name")]
+        if db_limit_1():
+            pass
+        else:
+            unique_together = [("user", "name")]
 
     def __unicode__(self):
         return "GraphSetting '{}'".format(self.name)
