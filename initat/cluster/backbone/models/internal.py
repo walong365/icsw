@@ -23,7 +23,7 @@
 
 from django.db import models
 from django.db.models import Q
-from django.db.utils import ProgrammingError
+from django.db.utils import ProgrammingError, DatabaseError
 
 
 __all__ = [
@@ -62,6 +62,6 @@ class ICSWVersion(models.Model):
                 }
             else:
                 return {}
-        except ProgrammingError:
+        except (ProgrammingError, DatabaseError):
             # model not defined
             return {}
