@@ -23,10 +23,7 @@
 
 import django
 
-if django.VERSION > (1, 9):
-    from reversion import revisions
-else:
-    import reversion as revisions
+from reversion import revisions as reversion
 
 from django.contrib.contenttypes.models import ContentType
 from django.core import serializers
@@ -89,15 +86,15 @@ def icsw_register(model):
     """Registers model with reversion plus additional deletion log.
     Also makes sure that a revision is created if save() is called manually outside of a revision contact
     """
-    revisions.register(model)
+    reversion.register(model)
     icsw_deletion_record.register(model)
 
     icsw_register.REGISTERED_MODELS.append(model)
 
     def create_save_with_reversion(original_save):
         def save_with_reversion(*args, **kwargs):
-            if not revisions.revisions.revision_context_manager.is_active():
-                with revisions.create_revision():
+            if not reversion.revisions.revision_context_manager.is_active():
+                with reversion.create_revision():
                     original_save(*args, **kwargs)
             else:
                 original_save(*args, **kwargs)
