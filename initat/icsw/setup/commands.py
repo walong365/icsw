@@ -35,10 +35,11 @@ import time
 from initat.constants import GEN_CS_NAME, DB_ACCESS_CS_NAME
 from initat.tools import logging_tools, process_tools, config_store
 from .connection_tests import test_psql, test_mysql, test_sqlite
-from .utils import generate_password, DirSave, get_icsw_root
+from .utils import generate_password, DirSave, get_icsw_root, remove_pyco
 
 ICSW_ROOT = get_icsw_root()
-CMIG_DIR = os.path.join(ICSW_ROOT, "initat", "cluster", "backbone", "migrations")
+BACKBONE_DIR = os.path.join(ICSW_ROOT, "initat", "cluster", "backbone")
+CMIG_DIR = os.path.join(BACKBONE_DIR, "migrations")
 MIGRATION_DIRS = [
     "reversion",
     "django/contrib/auth",
@@ -515,6 +516,7 @@ def create_db(opts):
 
 
 def migrate_db(opts):
+    remove_pyco(BACKBONE_DIR)
     if os.path.isdir(CMIG_DIR):
         check_for_pre17(opts)
         check_for_0800(opts)
