@@ -1,7 +1,13 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+from django.conf import settings
 from django.db import migrations, models
+
+
+def db_limit_1():
+    # return True if databases do not support some unique_together combinations
+    return True if settings.DATABASES["default"]["ENGINE"].lower().count("oracle") else False
 
 
 def add_graph_setting_size(apps, schema_editor):
@@ -45,18 +51,25 @@ class Migration(migrations.Migration):
                 ('height', models.IntegerField(default=0)),
                 ('date', models.DateTimeField(auto_now_add=True)),
             ],
-        ),
-        migrations.AlterUniqueTogether(
-            name='graphsettingsize',
-            unique_together=set([('width', 'height')]),
-        ),
-        migrations.AddField(
-            model_name='graphsetting',
-            name='graph_setting_size',
-            field=models.ForeignKey(to='backbone.GraphSettingSize', null=True),
-        ),
-        migrations.RunPython(
-            add_graph_setting_size,
-            dummy_call,
-        ),
+        )
     ]
+    if not db_limit_1():
+        options.append(
+            migrations.AlterUniqueTogether(
+                name='graphsettingsize',
+                unique_together=set([('width', 'height')]),
+            )
+        )
+    options.extend(
+        [
+            migrations.AddField(
+                model_name='graphsetting',
+                name='graph_setting_size',
+                field=models.ForeignKey(to='backbone.GraphSettingSize', null=True),
+            ),
+            migrations.RunPython(
+                add_graph_setting_size,
+                dummy_call,
+            ),
+        ]
+    )
