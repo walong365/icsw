@@ -19,17 +19,18 @@
 #
 """ database definitions for monitoring """
 
+import datetime
+import json
+import operator
+import re
+from collections import defaultdict
+
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q, signals, Max, Min
 from django.dispatch import receiver
-import datetime
-from collections import defaultdict
-import json
 from initat.tools import logging_tools
-import re
-import operator
 
 __all__ = [
     "mon_host_cluster",
@@ -67,6 +68,11 @@ __all__ = [
     "mon_icinga_log_file",
     "mon_icinga_log_last_read",
 ]
+
+
+def db_limit_1():
+    # return True if databases do not support some unique_together combinations
+    return True if settings.DATABASES["default"]["ENGINE"].lower().count("oracle") else False
 
 
 class snmp_scheme_vendor(models.Model):
@@ -896,7 +902,11 @@ class mon_icinga_log_raw_service_alert_data(mon_icinga_log_raw_base):
     # the layout of this table probably has to change in order to accommodate for further services
     # I however can't do that now as I don't know how what to change it to
     service = models.ForeignKey(mon_check_command, null=True, db_index=True)  # null for device_independent events
-    service_info = models.TextField(blank=True, null=True, db_index=True)
+
+    if db_limit_1():
+        service_info = models.TextField(blank=True, null=True)
+    else:
+        service_info = models.TextField(blank=True, null=True, db_index=True)
 
     state_type = models.CharField(max_length=2, choices=mon_icinga_log_raw_base.STATE_TYPES)
     state = models.CharField(max_length=2, choices=STATE_CHOICES)
