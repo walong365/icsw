@@ -54,13 +54,13 @@ class Migration(migrations.Migration):
         )
     ]
     if not db_limit_1():
-        options.append(
+        operations.append(
             migrations.AlterUniqueTogether(
                 name='graphsettingsize',
                 unique_together=set([('width', 'height')]),
             )
         )
-    options.extend(
+    operations.extend(
         [
             migrations.AddField(
                 model_name='graphsetting',
