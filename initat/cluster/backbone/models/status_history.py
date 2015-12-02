@@ -31,6 +31,7 @@ from django.db.models import Max, Min, Prefetch, Q
 from initat.cluster.backbone.available_licenses import LicenseParameterTypeEnum
 from initat.cluster.backbone.models import mon_check_command
 from initat.cluster.backbone.models.license import LicenseLockListDeviceService, LicenseUsage
+from initat.cluster.backbone.models.functions import db_limit_1
 
 
 ########################################
@@ -106,12 +107,14 @@ class mon_icinga_log_raw_host_alert_data(mon_icinga_log_raw_base):
     STATE_UP = "UP"
     STATE_DOWN = "D"
     STATE_UNREACHABLE = "UR"
-    STATE_CHOICES = [(STATE_UP, "UP"),
-                     (STATE_DOWN, "DOWN"),
-                     (STATE_UNREACHABLE, "UNREACHABLE"),
-                     (mon_icinga_log_raw_base.STATE_UNKNOWN, mon_icinga_log_raw_base.STATE_UNKNOWN_LONG),
-                     (mon_icinga_log_raw_base.STATE_PLANNED_DOWN, mon_icinga_log_raw_base.STATE_PLANNED_DOWN_LONG),
-                     (mon_icinga_log_raw_base.STATE_UNDETERMINED, mon_icinga_log_raw_base.STATE_UNDETERMINED_LONG)]
+    STATE_CHOICES = [
+        (STATE_UP, "UP"),
+        (STATE_DOWN, "DOWN"),
+        (STATE_UNREACHABLE, "UNREACHABLE"),
+        (mon_icinga_log_raw_base.STATE_UNKNOWN, mon_icinga_log_raw_base.STATE_UNKNOWN_LONG),
+        (mon_icinga_log_raw_base.STATE_PLANNED_DOWN, mon_icinga_log_raw_base.STATE_PLANNED_DOWN_LONG),
+        (mon_icinga_log_raw_base.STATE_UNDETERMINED, mon_icinga_log_raw_base.STATE_UNDETERMINED_LONG)
+    ]
     STATE_CHOICES_REVERSE_MAP = {val: key for (key, val) in STATE_CHOICES}
 
     objects = raw_host_alert_manager()
@@ -198,7 +201,10 @@ class mon_icinga_log_raw_service_alert_data(mon_icinga_log_raw_base):
     # the layout of this table probably has to change in order to accommodate for further services
     # I however can't do that now as I don't know how what to change it to
     service = models.ForeignKey(mon_check_command, null=True, db_index=True)  # null for device_independent events
-    service_info = models.TextField(blank=True, null=True, db_index=True)
+    if db_limit_1():
+        service_info = models.TextField(blank=True, null=True)
+    else:
+        service_info = models.TextField(blank=True, null=True, db_index=True)
 
     state_type = models.CharField(max_length=2, choices=mon_icinga_log_raw_base.STATE_TYPES)
     state = models.CharField(max_length=2, choices=STATE_CHOICES)

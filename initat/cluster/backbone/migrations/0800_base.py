@@ -1606,28 +1606,57 @@ class Migration(migrations.Migration):
                 'abstract': False,
             },
             bases=(models.Model,),
-        ),
-        migrations.CreateModel(
-            name='mon_icinga_log_raw_service_alert_data',
-            fields=[
-                ('idx', models.AutoField(serialize=False, primary_key=True)),
-                ('date', models.DateTimeField(db_index=True)),
-                ('device_independent', models.BooleanField(default=False, db_index=True)),
-                ('msg', models.TextField()),
-                ('service_info', models.TextField(db_index=True, null=True, blank=True)),
-                ('state_type', models.CharField(max_length=2, choices=[(b'H', b'HARD'), (b'S', b'SOFT'), (b'UD', b'UD')])),
-                ('state', models.CharField(max_length=2, choices=[(b'O', b'OK'), (b'W', b'WARNING'), (b'U', b'UNKNOWN'), (b'C', b'CRITICAL'), (b'UD', b'UNDETERMINED')])),
-                ('log_rotation_state', models.BooleanField(default=False)),
-                ('initial_state', models.BooleanField(default=False)),
-                ('device', models.ForeignKey(to='backbone.device', null=True)),
-                ('logfile', models.ForeignKey(blank=True, to='backbone.mon_icinga_log_file', null=True)),
-                ('service', models.ForeignKey(to='backbone.mon_check_command', null=True)),
-            ],
-            options={
-                'abstract': False,
-            },
-            bases=(models.Model,),
-        ),
+        )
+    ]
+    if db_limit_1():
+        operations.append(
+            migrations.CreateModel(
+                name='mon_icinga_log_raw_service_alert_data',
+                fields=[
+                    ('idx', models.AutoField(serialize=False, primary_key=True)),
+                    ('date', models.DateTimeField(db_index=True)),
+                    ('device_independent', models.BooleanField(default=False, db_index=True)),
+                    ('msg', models.TextField()),
+                    ('service_info', models.TextField(db_index=True, null=True, blank=True)),
+                    ('state_type', models.CharField(max_length=2, choices=[(b'H', b'HARD'), (b'S', b'SOFT'), (b'UD', b'UD')])),
+                    ('state', models.CharField(max_length=2, choices=[(b'O', b'OK'), (b'W', b'WARNING'), (b'U', b'UNKNOWN'), (b'C', b'CRITICAL'), (b'UD', b'UNDETERMINED')])),
+                    ('log_rotation_state', models.BooleanField(default=False)),
+                    ('initial_state', models.BooleanField(default=False)),
+                    ('device', models.ForeignKey(to='backbone.device', null=True)),
+                    ('logfile', models.ForeignKey(blank=True, to='backbone.mon_icinga_log_file', null=True)),
+                    ('service', models.ForeignKey(to='backbone.mon_check_command', null=True)),
+                ],
+                options={
+                    'abstract': False,
+                },
+                bases=(models.Model,),
+            )
+        )
+    else:
+        operations.append(
+            migrations.CreateModel(
+                name='mon_icinga_log_raw_service_alert_data',
+                fields=[
+                    ('idx', models.AutoField(serialize=False, primary_key=True)),
+                    ('date', models.DateTimeField(db_index=True)),
+                    ('device_independent', models.BooleanField(default=False, db_index=True)),
+                    ('msg', models.TextField()),
+                    ('service_info', models.TextField(null=True, blank=True)),
+                    ('state_type', models.CharField(max_length=2, choices=[(b'H', b'HARD'), (b'S', b'SOFT'), (b'UD', b'UD')])),
+                    ('state', models.CharField(max_length=2, choices=[(b'O', b'OK'), (b'W', b'WARNING'), (b'U', b'UNKNOWN'), (b'C', b'CRITICAL'), (b'UD', b'UNDETERMINED')])),
+                    ('log_rotation_state', models.BooleanField(default=False)),
+                    ('initial_state', models.BooleanField(default=False)),
+                    ('device', models.ForeignKey(to='backbone.device', null=True)),
+                    ('logfile', models.ForeignKey(blank=True, to='backbone.mon_icinga_log_file', null=True)),
+                    ('service', models.ForeignKey(to='backbone.mon_check_command', null=True)),
+                ],
+                options={
+                    'abstract': False,
+                },
+                bases=(models.Model,),
+            )
+        )
+    operations.extend([
         migrations.CreateModel(
             name='mon_icinga_log_raw_service_flapping_data',
             fields=[
@@ -3198,7 +3227,7 @@ class Migration(migrations.Migration):
             name='device',
             unique_together=set([('name', 'domain_tree_node')]),
         ),
-    ]
+    ])
     if not db_limit_1():
         operations.append(
             migrations.AlterUniqueTogether(
