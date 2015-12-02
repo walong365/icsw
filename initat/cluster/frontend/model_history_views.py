@@ -19,25 +19,26 @@
 #
 # -*- coding: utf-8 -*-
 #
-import json
 import itertools
+import json
 
 from django.contrib.auth.decorators import login_required
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import ForeignKey
 from django.utils.decorators import method_decorator
 from django.views.generic import View
+from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.response import Response
-import reversion
+from reversion import revisions as reversion
+
 import initat
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models import device
 from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListDeviceService
 from initat.cluster.backbone.models.model_history import icsw_deletion_record, icsw_register
-from rest_framework.generics import ListAPIView, RetrieveAPIView
-from initat.cluster.frontend.rest_views import rest_logging
-from initat.cluster.frontend.ext.diff_match_patch import diff_match_patch
 from initat.cluster.backbone.render import render_me
+from initat.cluster.frontend.ext.diff_match_patch import diff_match_patch
+from initat.cluster.frontend.rest_views import rest_logging
 
 
 class history_overview(View):
@@ -113,7 +114,7 @@ class get_historical_data(ListAPIView):
 
         # get data for deletion and version (they mostly have the same fields)
         deletion_queryset = icsw_deletion_record.objects.filter(**filter_dict)
-        version_queryset = reversion.models.Version.objects.filter(**filter_dict).select_related('revision')
+        version_queryset = reversion.Version.objects.filter(**filter_dict).select_related('revision')
 
         formatted = itertools.chain(
             (format_version(ver) for ver in version_queryset),
