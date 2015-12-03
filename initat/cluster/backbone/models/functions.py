@@ -48,6 +48,11 @@ def db_limit_1():
     return True if settings.DATABASES["default"]["ENGINE"].lower().count("oracle") else False
 
 
+def db_t2000_limit():
+    # return True if databases has a problem with textfields longer than 2000 chars
+    return True if settings.DATABASES["default"]["ENGINE"].lower().count("oracle") else False
+
+
 # helper functions
 def check_integer(inst, attr_name, **kwargs):
     cur_val = getattr(inst, attr_name)

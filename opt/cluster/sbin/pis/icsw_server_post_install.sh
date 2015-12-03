@@ -127,7 +127,7 @@ else
             ${ICSW_BASE}/sbin/icsw setup --migrate
             DB_VALID=1
         else
-            echo "to update the current database schema via django please use ${ICSW_BASE}/sbin/setup_cluster.py --migrate"
+            echo "to update the current database schema via django please use ${ICSW_BASE}/sbin/icsw setup --migrate"
             DB_VALID=0
         fi
     else

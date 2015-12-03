@@ -41,6 +41,7 @@ from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.backbone import routing
 from initat.cluster.backbone.license_file_reader import LicenseFileReader
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
+from initat.cluster.backbone.models.functions import db_t2000_limit
 from lxml.builder import E  # @UnresolvedImport
 from initat.cluster.frontend.license_views import login_required_rest
 from initat.server_version import VERSION_STRING, VERSION_MAJOR, BUILD_MACHINE
@@ -143,9 +144,13 @@ class get_user_var(View):
         user_vars = [request.session["user_vars"][key] for key in found_uv]
         request.xml_response["result"] = E.user_variables(
             *[
-                E.user_variable(unicode(cur_var.value), name=cur_var.name, type=cur_var.var_type) for cur_var in user_vars
-                ]
-            )
+                E.user_variable(
+                    unicode(cur_var.value),
+                    name=cur_var.name,
+                    type=cur_var.var_type
+                ) for cur_var in user_vars
+            ]
+        )
 
 
 class change_object_permission(View):
@@ -168,13 +173,13 @@ class change_object_permission(View):
                     csw_objp = csw_object_permission.objects.get(
                         csw_permission=set_perm,
                         object_pk=perm_model.pk,
-                        )
+                    )
                 except csw_object_permission.DoesNotExist:
                     csw_objp = csw_object_permission.objects.create(
                         csw_permission=set_perm,
                         object_pk=perm_model.pk,
-                        )
-                    logger.info("created new csw_object_permission %s" % (unicode(csw_objp)))
+                    )
+                    logger.info("created new csw_object_permission {}".format(unicode(csw_objp)))
                 if auth_obj._meta.model_name == "user":
                     new_obj = user_object_permission.objects.create(user=auth_obj, csw_object_permission=csw_objp, level=level)
                     new_obj.date = 0
@@ -190,14 +195,16 @@ class change_object_permission(View):
                     )
                 )
             else:
-                logger.info("permission '%s' for '%s' already set" % (unicode(set_perm), unicode(perm_model)))
+                logger.info("permission '{}' for '{}' already set".format(unicode(set_perm), unicode(perm_model)))
         else:
             if auth_obj.has_object_perm(set_perm, perm_model, ask_parent=False):
                 try:
-                    csw_objp = csw_object_permission.objects.get(Q(
-                        csw_permission=set_perm,
-                        object_pk=perm_model.pk
-                        ))
+                    csw_objp = csw_object_permission.objects.get(
+                        Q(
+                            csw_permission=set_perm,
+                            object_pk=perm_model.pk
+                        )
+                    )
                 except csw_object_permission.MultipleObjectsReturned:
                     logger.critical(
                         "multiple objects returned for csw_object_permission (perm=%s, pk=%d, auth_obj=%s)" % (
@@ -228,7 +235,7 @@ class change_object_permission(View):
                     logger.info("removed csw_object_permission %s from %s" % (
                         unicode(csw_objp),
                         unicode(auth_obj),
-                        ))
+                    ))
             else:
                 # print "not there"
                 pass
@@ -264,8 +271,16 @@ class upload_license_file(View):
             request.xml_response.error(unicode(e), logger=logger)
         else:
             try:
-                # check based on content, not filename
-                License.objects.get(license_file=lic_file_content)
+                if db_t2000_limit():
+                    # lic file content is encoded bz2, so we are safe ...
+                    if len(lic_file_content) > 2000:
+                        License.objects.get(Q(license_file__startswith=lic_file_content[:2000]))
+                    else:
+                        License.objects.get(license_file=lic_file_content)
+                else:
+                    # sane database
+                    # check based on content, not filename
+                    License.objects.get(license_file=lic_file_content)
             except License.DoesNotExist:
 
                 local_cluster_id = device_variable.objects.get_cluster_id()

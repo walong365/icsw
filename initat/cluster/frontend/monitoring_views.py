@@ -21,42 +21,41 @@
 #
 
 """ monitoring views """
+import StringIO
+import base64
 import collections
 import datetime
-from lxml import etree
-import base64
 import json
 import logging
 import socket
-import StringIO
 import uuid
 from collections import defaultdict
 
+import cairosvg
 from django.contrib.auth.decorators import login_required
+from django.core.cache import cache
 from django.db.models import Q
 from django.http import HttpResponseRedirect, HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
+from lxml import etree
+from lxml.builder import E
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.response import Response
-from django.core.cache import cache
-
-from lxml.builder import E
-import cairosvg
 
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models import device, domain_name_tree, netdevice, \
     net_ip, peer_information, mon_ext_host, get_related_models, monitoring_hint, mon_check_command, \
     parse_commandline, mon_check_command_special, device_group
+from initat.cluster.backbone.models.functions import duration
 from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListDeviceService
-from initat.cluster.frontend.common import duration_utils
-from initat.cluster.frontend.rest_views import rest_logging
 from initat.cluster.backbone.models.status_history import mon_icinga_log_aggregated_host_data, \
     mon_icinga_log_aggregated_timespan, mon_icinga_log_aggregated_service_data, \
     mon_icinga_log_raw_base, mon_icinga_log_raw_service_alert_data, mon_icinga_log_raw_host_alert_data, AlertList
-from initat.cluster.backbone.models.functions import duration
 from initat.cluster.backbone.render import permission_required_mixin, render_me
+from initat.cluster.frontend.common import duration_utils
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
+from initat.cluster.frontend.rest_views import rest_logging
 from initat.md_config_server.icinga_log_reader.log_reader_utils import host_service_id_util
 from initat.tools import logging_tools, process_tools, server_command
 
