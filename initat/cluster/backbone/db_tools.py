@@ -30,7 +30,7 @@ def is_oracle():
     return True if settings.DATABASES["default"]["ENGINE"].lower().count("oracle") else False
 
 
-class close_connection():
+def close_connection():
     from django.db import connection
     if is_oracle():
         try:
