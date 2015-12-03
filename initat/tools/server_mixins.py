@@ -28,7 +28,7 @@ from enum import IntEnum
 
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import logging_tools, process_tools, threading_tools, server_command, \
-    configfile, config_store, uuid_tools, cluster_location
+    configfile, config_store, uuid_tools
 
 
 class ConfigCheckObject(object):
@@ -165,6 +165,7 @@ class ConfigCheckObject(object):
 
     def re_insert_config(self):
         if self.__sql_info:
+            from initat.tools import cluster_location
             self.log(
                 "re-inserting config for srv_type {} (config_name is {})".format(
                     self.srv_type,
