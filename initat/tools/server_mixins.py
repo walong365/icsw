@@ -19,16 +19,16 @@
 #
 """ usefull server mixins """
 
-import time
 import re
 import sys
+import time
 
 import zmq
 from enum import IntEnum
 
+from initat.icsw.service.instance import InstanceXML
 from initat.tools import logging_tools, process_tools, threading_tools, server_command, \
     configfile, config_store, uuid_tools, cluster_location
-from initat.icsw.service.instance import InstanceXML
 
 
 class ConfigCheckObject(object):

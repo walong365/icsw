@@ -23,16 +23,17 @@
 """ create image """
 
 import os
-from lxml import etree
+import shutil
 import stat
 import statvfs
 import subprocess
 import tempfile
 import time
-import shutil
 
-from django.db import connection
 from django.db.models import Q
+from lxml import etree
+
+from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import image
 from initat.tools import logging_tools, process_tools, threading_tools, configfile, config_tools
 
@@ -124,7 +125,7 @@ class build_process(threading_tools.process_obj):
             context=self.zmq_context,
             init_logger=True
         )
-        connection.close()
+        db_tools.close_connection()
         self.register_func("compress", self._compress)
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -236,7 +237,7 @@ class server_process(threading_tools.process_pool):
                 builder_name = "builder_{:d}".format(cur_num)
                 self.__builder_names.append(builder_name)
                 self.add_process(build_process(builder_name), start=True)
-        connection.close()
+        db_tools.close_connection()
         self.__build_lock = False
         if not self["exit_requested"]:
             self.init_build()

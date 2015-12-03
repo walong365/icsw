@@ -23,13 +23,14 @@ import time
 
 from django.db import connection
 from django.db.models import Q
+
+from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device, network, config, log_level_lookup, LogSource, \
     net_ip
 from initat.cluster.backbone.routing import get_server_uuid, get_type_from_config
 from initat.cluster_config_server.build_client import build_client
 from initat.cluster_config_server.build_container import GeneratedTree, BuildContainer
 from initat.cluster_config_server.config import global_config
-
 from initat.tools import config_tools, logging_tools, threading_tools
 
 
@@ -92,7 +93,7 @@ class build_process(threading_tools.process_obj):
             context=self.zmq_context,
             init_logger=True)
         # close database connection
-        connection.close()
+        db_tools.close_connection()
         self.router_obj = config_tools.router_object(self.log)
         self.config_src = LogSource.objects.get(Q(pk=global_config["LOG_SOURCE_IDX"]))
         self.register_func("generate_config", self._generate_config)

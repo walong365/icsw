@@ -853,8 +853,8 @@ class device_with_config(dict):
 
 
 def close_db_connection():
-    from django.db import connection
-    connection.close()
+    from initat.cluster.backbone import db_tools
+    db_tools.close_connection()
 
 
 def _log_com(what, log_level=logging_tools.LOG_LEVEL_OK):

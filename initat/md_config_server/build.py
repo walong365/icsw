@@ -21,33 +21,35 @@
 
 import codecs
 import commands
-import operator
 import json
+import operator
 import os
 import os.path
 import signal
 import time
 
+import networkx
 from django.core.urlresolvers import reverse
 from django.db import connection
 from django.db.models import Q
+from lxml.builder import E  # @UnresolvedImport
+
+from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device, device_group, device_variable, mon_ext_host, \
     mon_contactgroup, netdevice, network_type, user, config, config_catalog, \
     mon_host_dependency_templ, mon_host_dependency, mon_service_dependency, net_ip, \
     mon_check_command_special, mon_check_command
+from initat.icsw.service.instance import InstanceXML
 from initat.md_config_server import special_commands, constants
 from initat.md_config_server.config import global_config, main_config, all_commands, \
     all_service_groups, time_periods, all_contacts, all_contact_groups, all_host_groups, all_hosts, \
     all_services, config_dir, device_templates, service_templates, mon_config, \
     all_host_dependencies, build_cache, build_safe_name, SimpleCounter
 from initat.md_config_server.constants import CACHE_MODES, DEFAULT_CACHE_MODE
-from initat.md_config_server.mixins import version_check_mixin
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
-from lxml.builder import E  # @UnresolvedImport
-import networkx
+from initat.md_config_server.mixins import version_check_mixin
 from initat.tools import config_tools, configfile, logging_tools, net_tools, process_tools, \
     server_command, threading_tools
-from initat.icsw.service.instance import InstanceXML
 
 
 class build_process(threading_tools.process_obj, version_check_mixin):
@@ -61,7 +63,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         )
         self.__hosts_pending, self.__hosts_waiting = (set(), set())
         self.__icinga_lock_file_name = os.path.join(global_config["MD_BASEDIR"], "var", global_config["MD_LOCK_FILE"])
-        connection.close()
+        db_tools.close_connection()
         self.__mach_loggers = {}
         self.__num_mach_logs = {}
         self.__hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)

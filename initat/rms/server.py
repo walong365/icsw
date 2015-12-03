@@ -20,11 +20,11 @@
 
 """ rms-server, process definitions """
 
+from initat.cluster.backbone import db_tools
 from initat.rms.accounting import AccountingProcess
 from initat.rms.config import global_config
 from initat.rms.license import LicenseProcess
 from initat.rms.rmsmon import RMSMonProcess
-from django.db import connection
 from initat.tools import cluster_location, configfile, logging_tools, process_tools, \
     threading_tools, server_mixins
 
@@ -44,7 +44,7 @@ class ServerProcess(
         self.CC.check_config()
         self.__pid_name = global_config["PID_NAME"]
         self.__msi_block = self._init_msi_block()
-        connection.close()
+        db_tools.close_connection()
         # re-insert config
         self._re_insert_config()
         self.register_exception("int_error", self._int_error)

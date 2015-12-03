@@ -22,12 +22,12 @@
 import json
 import time
 
-from django.db import connection
 from django.db.models import Q
-from initat.md_config_server.common import LiveSocket
-from initat.cluster.backbone.models import device
-from initat.md_config_server.config import global_config
 
+from initat.cluster.backbone import db_tools
+from initat.cluster.backbone.models import device
+from initat.md_config_server.common import LiveSocket
+from initat.md_config_server.config import global_config
 from initat.tools import logging_tools, process_tools, server_command, \
     threading_tools
 
@@ -41,7 +41,7 @@ class StatusProcess(threading_tools.process_obj):
             context=self.zmq_context,
             init_logger=True,
         )
-        connection.close()
+        db_tools.close_connection()
         self.register_func("get_node_status", self._get_node_status)
         self.__socket = None
 

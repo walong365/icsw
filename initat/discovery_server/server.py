@@ -19,16 +19,16 @@
 #
 """ discovery-server, server part """
 
-from django.db import connection
-from django.db.models import Q
 import zmq
-from initat.cluster.backbone.models import device
-from initat.snmp.process import snmp_process_container
-from initat.tools.server_mixins import RemoteCall
-from initat.discovery_server.event_log.event_log_poller import EventLogPollerProcess
+from django.db.models import Q
 
+from initat.cluster.backbone import db_tools
+from initat.cluster.backbone.models import device
+from initat.discovery_server.event_log.event_log_poller import EventLogPollerProcess
+from initat.snmp.process import snmp_process_container
 from initat.tools import cluster_location, configfile, logging_tools, process_tools, \
     server_command, server_mixins, threading_tools
+from initat.tools.server_mixins import RemoteCall
 from .config import global_config, IPC_SOCK_SNMP
 from .discovery import DiscoveryProcess
 
@@ -43,7 +43,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         self.CC.check_config()
         self.__pid_name = global_config["PID_NAME"]
         # close connection (daemonize)
-        connection.close()
+        db_tools.close_connection()
         self._re_insert_config()
         self._log_config()
         self.__msi_block = self._init_msi_block()
@@ -52,7 +52,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         self._init_network_sockets()
         self.register_func("snmp_run", self._snmp_run)
         # self.add_process(build_process("build"), start=True)
-        connection.close()
+        db_tools.close_connection()
         self.__max_calls = global_config["MAX_CALLS"] if not global_config["DEBUG"] else 5
         self.__snmp_running = True
         self._init_processes()

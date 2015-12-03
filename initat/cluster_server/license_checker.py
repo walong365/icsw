@@ -18,18 +18,17 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 import time
-from lxml import etree
-from lxml.builder import E
 
 import django.utils.timezone
-from django.db import connection
 import zmq
+
+from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.available_licenses import LicenseEnum
 from initat.cluster.backbone.models import LicenseUsage, License
 from initat.cluster.backbone.models.license import LicenseViolation
-from initat.tools import threading_tools, logging_tools, uuid_tools, process_tools, server_command
-from initat.md_config_server.config import global_config
 from initat.host_monitoring import hm_classes
+from initat.md_config_server.config import global_config
+from initat.tools import threading_tools, logging_tools, process_tools, server_command
 
 
 class LicenseChecker(threading_tools.process_obj):
@@ -41,7 +40,7 @@ class LicenseChecker(threading_tools.process_obj):
             context=self.zmq_context,
             init_logger=True
         )
-        connection.close()
+        db_tools.close_connection()
 
         # can be triggered
         # self.register_func("check_license_violations", self._check_from_command)

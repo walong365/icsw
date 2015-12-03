@@ -24,11 +24,10 @@
 import os
 import time
 
-from django.db import connection
+from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import kernel
 from initat.tools import config_tools, logging_tools, process_tools, server_command, threading_tools
 from initat.tools.kernel_sync_tools import KernelHelper
-
 from .config import global_config
 
 
@@ -42,7 +41,7 @@ class kernel_sync_process(threading_tools.process_obj):
             init_logger=True
         )
         # close database connection
-        connection.close()
+        db_tools.close_connection()
         self.register_func("rescan_kernels", self._rescan_kernels)
         self.kernel_dev = config_tools.server_check(server_type="kernel_server")
 

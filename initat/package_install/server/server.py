@@ -24,8 +24,8 @@
 import os
 
 import zmq
-from django.db import connection
 
+from initat.cluster.backbone import db_tools
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import cluster_location, configfile, logging_tools, \
     config_tools, process_tools, server_command, server_mixins, threading_tools
@@ -60,7 +60,7 @@ class server_process(
         self._init_network_sockets()
         self.add_process(RepoProcess("repo"), start=True)
         # close DB connection
-        connection.close()
+        db_tools.close_connection()
         # not needed, 0MQ is smart enough to keep the connections alive
         # self.reconnect_to_clients()
         self.send_to_process("repo", "rescan_repos")

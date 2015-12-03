@@ -22,8 +22,8 @@ import json
 # noinspection PyUnresolvedReferences
 import pprint
 import traceback
-from django.db import connection
 import django.utils.timezone
+from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.available_licenses import LicenseEnum
 from initat.cluster.backbone.models import Kpi, License
 from initat.md_config_server.kpi.kpi_data import KpiData
@@ -49,7 +49,7 @@ class KpiProcess(threading_tools.process_obj):
             context=self.zmq_context,
             init_logger=True
         )
-        connection.close()
+        db_tools.close_connection()
 
         self.register_timer(self.periodic_update, 60 if global_config["DEBUG"] else 300, instant=True)
 

@@ -20,22 +20,23 @@
 #
 """ collectd, server part """
 
-from lxml import etree
 import os
 import re
 import socket
 import time
 
+import zmq
 from django.conf import settings
-from django.db import connection
 from django.db.models import Q
+from lxml import etree
+from lxml.builder import E  # @UnresolvedImports
+
+from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device, snmp_scheme
 from initat.cluster.backbone.routing import get_server_uuid
 from initat.snmp.process import snmp_process_container
-from lxml.builder import E  # @UnresolvedImports
 from initat.tools import cluster_location, config_tools, configfile, logging_tools, process_tools, \
     server_command, server_mixins, threading_tools, uuid_tools
-import zmq
 # from initat.tools.bgnotify.process import ServerBackgroundNotifyMixin
 
 from .sensor_threshold import ThresholdContainer
@@ -50,7 +51,7 @@ from .rsync import RSyncMixin
 RRD_CACHED_PID = "/var/run/rrdcached/rrdcached.pid"
 
 
-class server_process(server_mixins.ICSWBasePool, RSyncMixin):  # , ServerBackgroundNotifyMixin):
+class server_process(server_mixins.ICSWBasePool, RSyncMixin):
     def __init__(self):
         self.__verbose = global_config["VERBOSE"]
         threading_tools.process_pool.__init__(self, "main", zmq=True)
@@ -63,7 +64,7 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin):  # , ServerBackgro
             ]
         )
         # close connection (daemonizing)
-        connection.close()
+        db_tools.close_connection()
         self.__msi_block = self._init_msi_block()
         # re-insert config
         self._re_insert_config()
@@ -97,7 +98,7 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin):  # , ServerBackgro
         self.add_process(resize_process("resize", priority=20), start=True)
         self.add_process(aggregate_process("aggregate"), start=True)
         self.add_process(SyncProcess("dbsync"), start=True)
-        connection.close()
+        db_tools.close_connection()
         # self.init_notify_framework(global_config)
 
     def _init_perfdata(self):

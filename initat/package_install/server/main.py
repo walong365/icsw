@@ -26,8 +26,8 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 import django
 django.setup()
 
-from django.db import connection
 from .config import global_config
+from initat.cluster.backbone import db_tools
 from initat.tools import configfile, process_tools
 
 from initat.server_version import VERSION_STRING
@@ -57,7 +57,7 @@ def main():
         positional_arguments=False,
     )
     # close DB connection
-    connection.close()
+    db_tools.close_connection()
     run_code()
     configfile.terminate_manager()
     os._exit(0)

@@ -19,13 +19,12 @@
 #
 """ db-syncer for the NESTOR / CORVUS / NOCTUA graphing solution """
 
+from django.db.models import Q
 from lxml import etree
 
-from django.db import connection
-from django.db.models import Q
+from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device, MachineVector, MVStructEntry, MVValueEntry
 from initat.tools import logging_tools, server_mixins, threading_tools, process_tools
-
 from .config import global_config
 
 
@@ -183,7 +182,7 @@ class SyncProcess(threading_tools.process_obj, server_mixins.OperationalErrorMix
             context=self.zmq_context,
             init_logger=True
         )
-        connection.close()
+        db_tools.close_connection()
         self.__debug = global_config["DEBUG"]
         self.register_func("mvector", self._mvector)
         self.register_func("perfdata", self._perfdata)

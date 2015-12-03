@@ -31,8 +31,9 @@ import datetime
 import os
 import time
 
-from django.db import connection
 from django.db.models import Q
+
+from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import rms_job, rms_job_run, rms_pe_info, \
     rms_project, rms_department, rms_pe, rms_queue, user, device, cluster_timezone, \
     RMSJobVariable
@@ -57,7 +58,7 @@ class AccountingProcess(threading_tools.process_obj):
             context=self.zmq_context,
             init_logger=True
         )
-        connection.close()
+        db_tools.close_connection()
         self._init_environ()
         # job stop/start info
         self.register_func("job_ss_info", self._job_ss_info)

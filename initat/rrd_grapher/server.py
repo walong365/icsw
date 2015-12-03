@@ -21,10 +21,10 @@
 
 import json
 
-from django.db import connection
+from initat.cluster.backbone import db_tools
 from initat.rrd_grapher.config import global_config
-from initat.rrd_grapher.rrd_grapher_struct import DataStore
 from initat.rrd_grapher.graph import GraphProcess
+from initat.rrd_grapher.rrd_grapher_struct import DataStore
 from initat.rrd_grapher.stale import GraphStaleProcess
 from initat.tools import cluster_location, configfile, logging_tools, \
     process_tools, server_mixins, threading_tools
@@ -42,7 +42,7 @@ class server_process(
         self.__pid_name = global_config["PID_NAME"]
         self.__verbose = global_config["VERBOSE"]
         # close connection (daemonizing)
-        connection.close()
+        db_tools.close_connection()
         self.__msi_block = self._init_msi_block()
         # re-insert config
         self._re_insert_config()
@@ -52,7 +52,7 @@ class server_process(
         self._log_config()
         self.add_process(GraphProcess("graph"), start=True)
         self.add_process(GraphStaleProcess("stale"), start=True)
-        connection.close()
+        db_tools.close_connection()
         self._init_network_sockets()
         DataStore.setup(self)
         # self.test("x")

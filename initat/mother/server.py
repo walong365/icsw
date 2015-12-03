@@ -25,7 +25,6 @@ import os
 
 import psutil
 import zmq
-from django.db import connection
 from django.db.models import Q
 
 import initat.mother
@@ -33,13 +32,14 @@ import initat.mother.command
 import initat.mother.control
 import initat.mother.kernel
 import initat.tools.server_mixins
+from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import network, status
+from initat.icsw.service.instance import InstanceXML
 from initat.snmp.process import snmp_process
-from initat.tools import cluster_location, server_mixins, server_command, \
+from initat.tools import server_mixins, server_command, \
     threading_tools, uuid_tools, logging_tools, process_tools, service_tools, \
     configfile
 from initat.tools.server_mixins import RemoteCall, RemoteCallProcess, RemoteCallMixin
-from initat.icsw.service.instance import InstanceXML
 from .config import global_config
 from .dhcp_config import DHCPConfigMixin
 
@@ -54,7 +54,7 @@ class server_process(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixi
         self.CC.check_config()
         self.__pid_name = global_config["PID_NAME"]
         # close db connection (for daemonizing)
-        connection.close()
+        db_tools.close_connection()
         self.debug = global_config["DEBUG"]
         self.srv_helper = service_tools.ServiceHelper(self.log)
         self.__hs_port = InstanceXML(quiet=True).get_port_dict("hoststatus", command=True)
@@ -82,7 +82,7 @@ class server_process(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixi
             self.add_process(initat.mother.command.ExternalCommandProcess("command"), start=True)
             self.add_process(initat.mother.control.NodeControlProcess("control"), start=True)
             self.add_process(initat.mother.control.ICMPProcess("icmp"), start=True)
-            connection.close()
+            db_tools.close_connection()
             conf_dict = {key: global_config[key] for key in ["LOG_NAME", "LOG_DESTINATION", "VERBOSE"]}
             self.add_process(snmp_process("snmp_process", conf_dict=conf_dict), start=True)
             # send initial commands

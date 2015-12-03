@@ -23,8 +23,7 @@
 
 import os
 
-from django.db import connection
-
+from initat.cluster.backbone import db_tools
 from initat.logcheck_server.config import global_config
 from initat.logcheck_server.logcheck_struct import Machine
 from initat.tools import server_mixins, configfile, logging_tools, \
@@ -38,7 +37,7 @@ class server_process(server_mixins.ICSWBasePool):
         self.CC.check_config()
         self.__pid_name = global_config["PID_NAME"]
         # close connection (daemonizing)
-        connection.close()
+        db_tools.close_connection()
         self.__msi_block = self._init_msi_block()
         self.srv_helper = service_tools.ServiceHelper(self.log)
         self.CC.re_insert_config()
@@ -76,11 +75,11 @@ class server_process(server_mixins.ICSWBasePool):
                     )
 
     def _sync_machines(self):
-        connection.close()
+        db_tools.close_connection()
         Machine.db_sync()
 
     def _rotate_logs(self):
-        connection.close()
+        db_tools.close_connection()
         Machine.rotate_logs()
 
     def process_start(self, src_process, src_pid):

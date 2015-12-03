@@ -19,14 +19,14 @@
 
 import datetime
 import time
-import zmq
 
-from django.db import connection
+import zmq
 from django.db.models import Q
+
+from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import background_job, background_job_run, cluster_timezone
 from initat.cluster.backbone.routing import srv_type_routing, get_server_uuid
 from initat.tools import logging_tools, process_tools, server_command
-
 from .tasks import BG_TASKS
 
 
@@ -80,7 +80,7 @@ class ServerBackgroundNotifyMixin(object):
                 logging_tools.LOG_LEVEL_CRITICAL
             )
             # close connection
-            connection.close()
+            db_tools.close_connection()
         else:
             if _pc:
                 self.log("pending background jobs: {:d}".format(_pc))

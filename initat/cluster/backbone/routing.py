@@ -22,17 +22,17 @@
 
 """ helper functions for cluster routing """
 
-from lxml import etree  # @UnresolvedImports
 import json
 import logging
 
-from initat.tools.config_tools import server_check, device_with_config, router_object
 from django.core.cache import cache
 from django.db.models import Q
-from initat.cluster.backbone.models import device
-from initat.tools import uuid_tools, logging_tools, server_command
-from initat.icsw.service.instance import InstanceXML
+from lxml import etree
 
+from initat.cluster.backbone.models import device
+from initat.icsw.service.instance import InstanceXML
+from initat.tools import uuid_tools, logging_tools, server_command
+from initat.tools.config_tools import server_check, device_with_config, router_object
 
 logger = logging.getLogger("cluster.routing")
 

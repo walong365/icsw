@@ -19,23 +19,23 @@
 #
 """ grapher part of rrd-grapher service """
 
-import select
 import json
+import select
 import socket
 import time
 
-from django.db import connection
-from django.db.models import Q
 import dateutil.parser
+from django.db.models import Q
 
+from initat.cluster.backbone import db_tools
+from initat.cluster.backbone.available_licenses import LicenseEnum
+from initat.cluster.backbone.models import device, GraphSetting
 from initat.cluster.backbone.models.license import LicenseLockListDeviceService, LicenseUsage, \
     LicenseParameterTypeEnum
-from initat.cluster.backbone.models import device, GraphSetting
-from initat.cluster.backbone.available_licenses import LicenseEnum
 from initat.tools import logging_tools, process_tools, server_mixins, server_command, threading_tools
-from ..config import global_config
-from .graph_graph import RRDGraph
 from .graph_color import Colorizer
+from .graph_graph import RRDGraph
+from ..config import global_config
 
 FLOAT_FMT = "{:.6f}"
 
@@ -49,7 +49,7 @@ class GraphProcess(threading_tools.process_obj, server_mixins.OperationalErrorMi
             context=self.zmq_context,
             init_logger=True,
         )
-        connection.close()
+        db_tools.close_connection()
         self.register_func("graph_rrd", self._graph_rrd)
         self.graph_root = global_config["GRAPH_ROOT"]
         self.graph_root_debug = global_config["GRAPH_ROOT_DEBUG"]

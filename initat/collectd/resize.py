@@ -23,8 +23,7 @@ import os
 import stat
 import time
 
-from django.db import connection
-
+from initat.cluster.backbone import db_tools
 from initat.collectd.config import global_config, MAX_FOUND
 from initat.tools import logging_tools, process_tools, rrd_tools, server_mixins, threading_tools
 from .rsync import RSyncMixin
@@ -39,7 +38,7 @@ class resize_process(threading_tools.process_obj, server_mixins.OperationalError
             context=self.zmq_context,
             init_logger=True
         )
-        connection.close()
+        db_tools.close_connection()
         self.rrd_cache_socket = global_config["RRD_CACHED_SOCKET"]
         self.rrd_root = global_config["RRD_DIR"]
         cov_keys = [_key for _key in global_config.keys() if _key.startswith("RRD_COVERAGE")]

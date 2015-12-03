@@ -17,18 +17,19 @@
 #
 """ cluster-server, backup process """
 
-from optparse import OptionParser
 import bz2
 import datetime
 import os
 import stat
 import subprocess
 import time
+from optparse import OptionParser
 
 from django.conf import settings
-from django.db import connection
-from initat.cluster_server.config import global_config
+
+from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.management.commands import dumpdataslow
+from initat.cluster_server.config import global_config
 from initat.tools import logging_tools, process_tools, threading_tools
 
 
@@ -44,7 +45,7 @@ class backup_process(threading_tools.process_obj):
             zmq=True,
             context=self.zmq_context
         )
-        connection.close()
+        db_tools.close_connection()
         self.register_func("start_backup", self._start_backup)
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):

@@ -26,12 +26,12 @@ software and performance
 
 """
 
-from django.db import connection
 from django.db.models import Q
+
+from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device
 from initat.md_config_server import constants
 from initat.md_config_server.config import global_config, sync_config
-
 from initat.tools import config_tools, logging_tools, server_command, threading_tools
 
 
@@ -55,7 +55,7 @@ class SyncerProcess(threading_tools.process_obj):
             context=self.zmq_context,
             init_logger=True
         )
-        connection.close()
+        db_tools.close_connection()
         self.router_obj = config_tools.router_object(self.log)
         self.__register_timer = False
         self.register_func("send_register_msg", self._send_register_msg)

@@ -19,13 +19,14 @@
 #
 """ server process for md-config-server """
 
-import os
 import codecs
+import os
 import time
 
-from initat.tools.server_mixins import RemoteCall
-from django.db import connection
+import zmq
 from django.db.models import Q
+
+from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import mon_notification, config_str, config_int, \
     mon_check_command_special, mon_check_command
 from initat.cluster.backbone.models.functions import get_related_models
@@ -33,15 +34,15 @@ from initat.host_monitoring.hm_classes import mvect_entry
 from initat.md_config_server import constants
 from initat.md_config_server.build import build_process
 from initat.md_config_server.config import global_config
+from initat.md_config_server.dynconfig import DynConfigProcess
+from initat.md_config_server.icinga_log_reader.log_reader import icinga_log_reader
+from initat.md_config_server.kpi import KpiProcess
 from initat.md_config_server.mixins import version_check_mixin
 from initat.md_config_server.status import StatusProcess, LiveSocket
 from initat.md_config_server.syncer import SyncerProcess, RemoteSlave
-from initat.md_config_server.dynconfig import DynConfigProcess
-from initat.md_config_server.kpi import KpiProcess
-from initat.md_config_server.icinga_log_reader.log_reader import icinga_log_reader
 from initat.tools import cluster_location, configfile, logging_tools, process_tools, server_command, \
     threading_tools, server_mixins
-import zmq
+from initat.tools.server_mixins import RemoteCall
 
 
 @server_mixins.RemoteCallProcess
@@ -58,7 +59,7 @@ class server_process(
         self.__pid_name = global_config["PID_NAME"]
         self.__verbose = global_config["VERBOSE"]
         self._init_msi_block()
-        connection.close()
+        db_tools.close_connection()
         # re-insert config
         self._re_insert_config()
         self.register_exception("int_error", self._int_error)

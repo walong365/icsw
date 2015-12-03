@@ -22,6 +22,7 @@ import time
 
 from django.db import connection
 
+from initat.cluster.backbone import db_tools
 from initat.cluster_server.config import global_config
 from initat.tools import process_tools, server_command, threading_tools, config_tools, io_stream_helper, logging_tools
 
@@ -41,7 +42,7 @@ class BackgroundProcess(threading_tools.process_obj):
         self.register_func("set_option_dict", self._set_option_dict)
         self.register_func("set_srv_com", self._set_srv_com)
         self.register_func("start_command", self._start_command)
-        connection.close()
+        db_tools.close_connection()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
@@ -126,7 +127,7 @@ class com_instance(object):
                     "start_command",
                     self.sc_obj.name,
                 )
-                connection.close()
+                db_tools.close_connection()
                 self.srv_com.set_result(
                     "sent to background"
                 )

@@ -17,18 +17,19 @@
 #
 """ cluster-server, capability process """
 
-import time
-import os
 import importlib
 import inspect
+import os
+import time
+
+import zmq
 from lxml import etree
 
+from initat.cluster.backbone import db_tools
 from initat.cluster.backbone import factories
-from django.db import connection
 from initat.cluster_server.capabilities import base
 from initat.cluster_server.config import global_config
 from initat.tools import config_tools, logging_tools, process_tools, server_command, threading_tools
-import zmq
 
 
 class capability_process(threading_tools.process_obj):
@@ -39,7 +40,7 @@ class capability_process(threading_tools.process_obj):
             zmq=True,
             context=self.zmq_context
         )
-        connection.close()
+        db_tools.close_connection()
         self._init_network()
         self._init_capabilities()
         self.__last_user_scan = None

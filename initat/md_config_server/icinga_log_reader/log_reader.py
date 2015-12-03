@@ -18,20 +18,20 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from collections import namedtuple, defaultdict
+import bz2
+import codecs
 import collections
 import datetime
 import glob
 import os
-import bz2
 import tempfile
 import time
-import codecs
+from collections import namedtuple, defaultdict
 
-import pytz
 import psutil
-from initat.tools import threading_tools, logging_tools
-from django.db import connection
+import pytz
+
+from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device, mon_check_command, \
     mon_icinga_log_raw_host_alert_data, mon_icinga_log_raw_service_alert_data, mon_icinga_log_file, \
     mon_icinga_log_last_read, mon_icinga_log_raw_service_flapping_data, \
@@ -41,8 +41,7 @@ from initat.cluster.backbone.models import device, mon_check_command, \
     mon_icinga_log_raw_host_downtime_data, mon_icinga_log_raw_service_downtime_data
 from initat.md_config_server.config import global_config
 from initat.md_config_server.icinga_log_reader.log_aggregation import icinga_log_aggregator
-
-
+from initat.tools import threading_tools, logging_tools
 # separated to enable flawless import from webfrontend
 
 from initat.md_config_server.icinga_log_reader.log_reader_utils import host_service_id_util
@@ -99,7 +98,7 @@ class icinga_log_reader(threading_tools.process_obj):
             context=self.zmq_context,
             init_logger=True
         )
-        connection.close()
+        db_tools.close_connection()
 
         self.register_timer(self.update, 30 if global_config["DEBUG"] else 300, instant=False)
 

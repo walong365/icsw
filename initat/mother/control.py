@@ -28,17 +28,17 @@ import shutil
 import stat
 import time
 
-from django.db import connection
 from django.db.models import Q
+
+from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device, macbootlog, mac_ignore, \
     log_source_lookup, LogSource, DeviceLogEntry, user
 from initat.tools import config_tools, configfile, icmp_class, ipvx_tools, logging_tools, \
     process_tools, server_command, threading_tools
-
 from .command_tools import simple_command
 from .config import global_config
-from .dhcp import DHCPCommand, DHCPSyncer
 from .devicestate import DeviceState
+from .dhcp import DHCPCommand, DHCPSyncer
 
 
 class Host(object):
@@ -1263,7 +1263,7 @@ class NodeControlProcess(threading_tools.process_obj):
             context=self.zmq_context,
             init_logger=True
         )
-        connection.close()
+        db_tools.close_connection()
         self.node_src = log_source_lookup("node", None)
         self.mother_src = LogSource.objects.get(Q(pk=global_config["LOG_SOURCE_IDX"]))
         # close database connection

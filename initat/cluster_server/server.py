@@ -21,20 +21,20 @@ import datetime
 import os
 import time
 
-from django.db import connection
+import zmq
 from django.db.models import Q
+
+import initat.cluster_server.modules
+from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device
 from initat.cluster.backbone.routing import get_server_uuid
 from initat.tools import cluster_location, logging_tools, process_tools, server_command, \
     server_mixins, threading_tools, uuid_tools, configfile
-import initat.cluster_server.modules
-import zmq
 from initat.tools.bgnotify.process import ServerBackgroundNotifyMixin
-
-from .capabilities import capability_process
 from .backup_process import backup_process
-from .license_checker import LicenseChecker
+from .capabilities import capability_process
 from .config import global_config
+from .license_checker import LicenseChecker
 
 
 class server_process(server_mixins.ICSWBasePool, ServerBackgroundNotifyMixin):
@@ -57,7 +57,7 @@ class server_process(server_mixins.ICSWBasePool, ServerBackgroundNotifyMixin):
             )
         self.__pid_name = global_config["PID_NAME"]
         self.__msi_block = self._init_msi_block()
-        connection.close()
+        db_tools.close_connection()
         self._re_insert_config()
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
@@ -75,7 +75,7 @@ class server_process(server_mixins.ICSWBasePool, ServerBackgroundNotifyMixin):
                 self.init_notify_framework(global_config)
                 self.add_process(capability_process("capability_process"), start=True)
                 self.add_process(LicenseChecker("license_checker"), start=True)
-                connection.close()
+                db_tools.close_connection()
                 self.register_timer(
                     self._update,
                     2 if global_config["DEBUG"] else 30,
@@ -370,7 +370,7 @@ class server_process(server_mixins.ICSWBasePool, ServerBackgroundNotifyMixin):
                 "backup_process",
                 "start_backup",
             )
-            connection.close()
+            db_tools.close_connection()
 
     def _recv_discovery(self, sock):
         result = server_command.srv_command(source=sock.recv_unicode())

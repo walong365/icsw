@@ -25,19 +25,19 @@ dynamically creates config entries for devices (for devices queried via IPMI or 
 
 """
 
-import bz2
-import time
 import base64
+import bz2
 import json
+import time
 
-from django.db import connection
 from django.db.models import Q
 
+from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device, monitoring_hint, mon_check_command_special, \
     mon_check_command
-from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
 from initat.host_monitoring import limits
 from initat.md_config_server.config import global_config
+from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
 from initat.tools import logging_tools, server_command, process_tools, threading_tools
 
 
@@ -50,7 +50,7 @@ class DynConfigProcess(threading_tools.process_obj):
             context=self.zmq_context,
             init_logger=True
         )
-        connection.close()
+        db_tools.close_connection()
         self.register_func("monitoring_info", self._monitoring_info)
         self.register_func("passive_check_result", self._pcr)
         self.register_func("passive_check_results_as_chunk", self._pcrs_as_chunk)

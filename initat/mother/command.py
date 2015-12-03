@@ -21,9 +21,9 @@
 #
 """ external commands (dhcp, ipmi, SNMP) parts of mother """
 
-from django.db import connection
 from django.db.models import Q
 
+from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import cd_connection, device_variable, \
     netdevice, DeviceLogEntry, user
 from initat.mother.command_tools import simple_command
@@ -282,7 +282,7 @@ class ExternalCommandProcess(threading_tools.process_obj):
             init_logger=True
         )
         # close database connection
-        connection.close()
+        db_tools.close_connection()
         simple_command.setup(self)
         self.router_obj = config_tools.router_object(self.log)
         self.snmp_sink = SNMPSink(self.log)

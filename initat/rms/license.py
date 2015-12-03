@@ -22,23 +22,23 @@
 
 # from initat.cluster.backbone.models.functions import cluster_timezone
 import datetime
+import itertools
 import os
 import time
-import itertools
 
-from django.db import connection
+import zmq
 from django.db.models import Max, Min, Avg, Count
+from lxml.builder import E  # @UnresolvedImport @UnusedImport
+
+from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import ext_license_site, ext_license, ext_license_check, \
     ext_license_version, ext_license_state, ext_license_version_state, ext_license_vendor, \
     ext_license_usage, ext_license_client_version, ext_license_client, ext_license_user, \
     ext_license_check_coarse, ext_license_version_state_coarse, ext_license_state_coarse, \
     ext_license_usage_coarse, duration
 from initat.host_monitoring import hm_classes
-from lxml.builder import E  # @UnresolvedImport @UnusedImport
-import zmq
 from initat.tools import logging_tools, process_tools, server_command, sge_license_tools, \
     threading_tools
-
 from .config import global_config
 
 EL_LUT = {
@@ -69,7 +69,7 @@ class LicenseProcess(threading_tools.process_obj):
             context=self.zmq_context,
             init_logger=True
         )
-        connection.close()
+        db_tools.close_connection()
         self._init_sge_info()
         self._init_network()
         # job stop/start info

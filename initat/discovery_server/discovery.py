@@ -21,25 +21,25 @@
 
 import time
 
-from django.db import connection
 from django.db.models import Q
-from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListDeviceService
+
+from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models import device, ComCapability, net_ip
+from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListDeviceService
 from initat.snmp.snmp_struct import ResultNode
 from initat.tools import logging_tools, process_tools, server_command, config_tools, threading_tools
-
 from .config import global_config
+from .ext_com_scan import BaseScanMixin, ScanBatch, WmiScanMixin
 from .hm_functions import HostMonitoringMixin
 from .snmp_functions import SNMPBatch
-from .ext_com_scan import BaseScanMixin, ScanBatch, WmiScanMixin
 
 
 class DiscoveryProcess(threading_tools.process_obj, HostMonitoringMixin, BaseScanMixin, WmiScanMixin):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         # self.add_process(build_process("build"), start=True)
-        connection.close()
+        db_tools.close_connection()
         self.register_func("fetch_partition_info", self._fetch_partition_info)
         self.register_func("scan_network_info", self._scan_network_info)
         self.register_func("scan_system_info", self._scan_system_info)

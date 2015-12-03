@@ -19,17 +19,16 @@
 #
 """ cluster-config-server, server part """
 
-from lxml import etree  # @UnresolvedImport
-
-from django.db import connection
+import zmq
 from django.db.models import Q
+from lxml import etree  # @UnresolvedImport
+from lxml.builder import E  # @UnresolvedImport
+
+from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device
 from initat.cluster.backbone.routing import get_server_uuid
-from lxml.builder import E  # @UnresolvedImport
 from initat.tools import cluster_location, configfile, logging_tools, process_tools, server_command, \
     threading_tools, server_mixins
-import zmq
-
 from .build_process import build_process
 from .config import global_config
 from .config_control import config_control
@@ -44,14 +43,14 @@ class server_process(server_mixins.ICSWBasePool):
         self.CC.check_config()
         self.__pid_name = global_config["PID_NAME"]
         # close DB connection (daemonize)
-        connection.close()
+        db_tools.close_connection()
         self._re_insert_config()
         self._log_config()
         self.__msi_block = self._init_msi_block()
         self._init_subsys()
         self._init_network_sockets()
         self.add_process(build_process("build"), start=True)
-        connection.close()
+        db_tools.close_connection()
         self.register_func("client_update", self._client_update)
         self.register_func("complex_result", self._complex_result)
         self.__run_idx = 0

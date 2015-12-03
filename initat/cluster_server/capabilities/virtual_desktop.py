@@ -17,29 +17,31 @@
 #
 """ virtual desktop capability """
 
-import os
-import shutil
-import subprocess
-import glob
-import pwd
 import datetime
-import sys
+import glob
 import multiprocessing
-import socket
+import os
+import pwd
 import random
+import shutil
+import socket
 import string
+import subprocess
+import sys
 import tempfile
 
+import daemon
+import psutil
 from django.db.models import Q
 from django.utils import timezone
+
+from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device
+from initat.cluster.backbone.models import virtual_desktop_protocol, window_manager, \
+    virtual_desktop_user_setting
 from initat.cluster_server.capabilities.base import bg_stuff
 from initat.cluster_server.config import global_config
 from initat.tools import process_tools
-import psutil
-import daemon
-from initat.cluster.backbone.models import virtual_desktop_protocol, window_manager, \
-    virtual_desktop_user_setting
 
 
 # utility classes for virtual desktop handling. They are located here but don't have any dependency here.
@@ -191,8 +193,7 @@ class vncserver(virtual_desktop_server):
 
         def vnc_start_fun():
             # make sure not to interfere with db (db should actually be already closed at this point but be really sure)
-            from django.db import connection
-            connection.close()
+            db_tools.close_connection()
 
             # turn process into daemon
             with daemon.DaemonContext(detach_process=True, stdout=sys.stdout, stderr=sys.stderr):
@@ -211,8 +212,7 @@ class vncserver(virtual_desktop_server):
                 # pids are read in _call below such that we don't have to wait now
 
         # make sure not to interfere with db
-        from django.db import connection
-        connection.close()
+        db_tools.close_connection()
 
         proc = multiprocessing.Process(target=vnc_start_fun)
         proc.start()

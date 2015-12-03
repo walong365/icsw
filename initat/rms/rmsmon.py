@@ -20,21 +20,21 @@
 
 """ rms-server, monitoring process """
 
-from lxml import etree
 import os
 import time
 import uuid
 
+import zmq
 from django.core.cache import cache
-from django.db import connection
 from django.db.models import Q
+from lxml import etree
+from lxml.builder import E  # @UnresolvedImport
+
+from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device
 from initat.host_monitoring import hm_classes
-from lxml.builder import E  # @UnresolvedImport
-import zmq
 from initat.tools import logging_tools, process_tools, server_command, \
     sge_tools, threading_tools
-
 from .config import global_config
 from .functions import call_command
 
@@ -84,7 +84,7 @@ class RMSMonProcess(threading_tools.process_obj):
             context=self.zmq_context,
             init_logger=True
         )
-        connection.close()
+        db_tools.close_connection()
         self._init_cache()
         self.__node_options = sge_tools.get_empty_node_options()
         self._init_network()

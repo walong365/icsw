@@ -23,13 +23,13 @@ import json
 import os
 import re
 import time
-from lxml import etree
 
 import memcache
 import zmq
-from django.db import connection
+from lxml import etree
 from lxml.builder import E
 
+from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device_group
 from initat.collectd.config import global_config
 from initat.tools import logging_tools, process_tools, server_mixins, threading_tools
@@ -446,7 +446,7 @@ class aggregate_process(threading_tools.process_obj, server_mixins.OperationalEr
             context=self.zmq_context,
             init_logger=True
         )
-        connection.close()
+        db_tools.close_connection()
         self.__debug = global_config["DEBUG"]
         # cache address
         self.__memcache_address = [

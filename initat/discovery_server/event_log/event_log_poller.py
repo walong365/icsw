@@ -18,22 +18,21 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 import collections
 import datetime
-import django.utils.timezone
 import traceback
 
-from django.db import connection
+import django.utils.timezone
 import pymongo
 from pymongo.errors import PyMongoError
 
-from initat.cluster.backbone.models.functions import memoize_with_expiry
+from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device, ComCapability, net_ip
+from initat.cluster.backbone.models.functions import memoize_with_expiry
 from initat.cluster.backbone.routing import srv_type_routing
 from initat.cluster.frontend.discovery_views import MongoDbInterface
+from initat.discovery_server.config import global_config
 from initat.discovery_server.event_log.ipmi_event_log_scanner import IpmiLogJob
 from initat.discovery_server.event_log.wmi_event_log_scanner import WmiLogEntryJob, WmiLogFileJob
 from initat.tools import logging_tools, threading_tools, config_tools, process_tools
-
-from initat.discovery_server.config import global_config
 
 
 class EventLogPollerProcess(threading_tools.process_obj):
@@ -45,7 +44,7 @@ class EventLogPollerProcess(threading_tools.process_obj):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"],
                                                        zmq=True, context=self.zmq_context)
-        connection.close()
+        db_tools.close_connection()
 
         self.register_timer(self.periodic_update, 60 * 1 if global_config["DEBUG"] else 60 * 15, instant=True)
         self.register_timer(self.job_control, 1 if global_config["DEBUG"] else 3, instant=True)

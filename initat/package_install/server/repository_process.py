@@ -24,9 +24,9 @@
 import os
 import time
 
-from django.db import connection
 from django.db.models import Q
 
+from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import package_search
 from initat.tools import logging_tools, server_command, threading_tools
 from .config import global_config
@@ -43,7 +43,7 @@ class RepoProcess(threading_tools.process_obj):
             init_logger=True
         )
         # close database connection
-        connection.close()
+        db_tools.close_connection()
         self.register_func("rescan_repos", self._rescan_repos)
         self.register_func("reload_searches", self._reload_searches)
         self.register_func("clear_cache", self._clear_cache)
