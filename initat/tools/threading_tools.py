@@ -26,6 +26,7 @@ import multiprocessing
 import os
 import setproctitle
 import signal
+import socket
 import sys
 import threading
 import time
@@ -449,12 +450,16 @@ class poller_obj(object):
                                 self.log("re-raising exception")
                                 raise
                         else:
+                            _wait = True
                             try:
                                 _fd_info = "{:d}".format(sock.fileno())
+                            except socket.error as e:
+                                _fd_info = "socket error: {}".format(str(e))
+                                _wait = False
                             except:
-                                _fd_info = process_tools.get_except_info()
+                                _fd_info = "EXC: {}".format(process_tools.get_except_info())
                             self.log(
-                                "r_type {:d} ({}) not found for socket '{}' (fd_info: {})".format(
+                                "polled event {:d} ({}) not found for socket '{}' (fd_info: {}{})".format(
                                     r_type,
                                     {
                                         zmq.POLLIN: "POLLIN",  # @UndefinedVariable
@@ -463,10 +468,12 @@ class poller_obj(object):
                                     }[r_type],
                                     str(sock),
                                     _fd_info,
+                                    ", sleeping" if _wait else "",
                                 ),
                                 logging_tools.LOG_LEVEL_CRITICAL
                             )
-                            time.sleep(0.5)
+                            if _wait:
+                                time.sleep(0.5)
             else:
                 self.log("socket {} not found in handler_dict".format(str(sock)), logging_tools.LOG_LEVEL_CRITICAL)
                 time.sleep(0.5)

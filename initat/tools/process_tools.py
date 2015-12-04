@@ -1255,8 +1255,11 @@ def get_proc_list(**kwargs):
     else:
         if proc_name_list:
             for cur_proc in psutil.process_iter():
-                if cur_proc.name() in proc_name_list:
-                    p_dict[cur_proc.pid] = cur_proc
+                try:
+                    if cur_proc.name() in proc_name_list:
+                        p_dict[cur_proc.pid] = cur_proc
+                except psutil.NoSuchProcess:
+                    pass
         else:
             for cur_proc in psutil.process_iter():
                 p_dict[cur_proc.pid] = cur_proc

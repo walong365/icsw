@@ -310,9 +310,9 @@ class TCPCon(object):
         try:
             self.socket.send(self._send_str(self.srv_com))
         except:
-            _err_str = "error sending: {}".format(process_tools.get_except_info())
+            _err_str = "error sending TCP: {}".format(process_tools.get_except_info())
             self.log(_err_str, logging_tools.LOG_LEVEL_ERROR)
-            self.__process.send_result(self.src_id, unicode(self.srv_com), _err_str, False)
+            self.__process.send_result(self.src_id, unicode(self.srv_com), _err_str, True)
             self.close()
         else:
             self.__process.unregister_socket(self.socket)
@@ -363,7 +363,12 @@ class TCPCon(object):
 
 class SocketProcess(threading_tools.process_obj):
     def process_init(self):
-        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
+        self.__log_template = logging_tools.get_logger(
+            global_config["LOG_NAME"],
+            global_config["LOG_DESTINATION"],
+            zmq=True,
+            context=self.zmq_context
+        )
         # log.startLoggingWithObserver(my_observer, setStdout=False)
         self.register_func("connection", self._connection)
         # clear flag for extra twisted thread
