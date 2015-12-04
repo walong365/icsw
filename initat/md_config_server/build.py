@@ -68,7 +68,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         self.__num_mach_logs = {}
         self.__hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
         self.version = int(time.time())
-        self.log("initial config_version is %d" % (self.version))
+        self.log("initial config_version is {:d}".format(self.version))
         self.router_obj = config_tools.router_object(self.log)
         self.register_func("check_for_slaves", self._check_for_slaves)
 
@@ -478,6 +478,8 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             gc_list = [self.__gen_config]
             if not single_build:
                 gc_list.extend(self.__slave_configs.values())
+            # for debugging
+            # time.sleep(60)
             for cur_gc in gc_list:
                 cur_gc.cache_mode = cache_mode
                 if cur_gc.master and not single_build:

@@ -192,7 +192,7 @@ class all_commands(host_type_config):
         )
         for cur_not in mon_notification.objects.filter(Q(enabled=True)):
             if cur_not.channel == "mail":
-                command_line = r"{} -f '{}' -s '{}' -t $CONTACTEMAIL$ -- '{}'".format(
+                command_line = r"{} -f '{}' -s '{}' -t $CONTACTEMAIL$ --message '{}'".format(
                     send_mail_prog,
                     from_addr,
                     self._expand_str(cur_not.subject),

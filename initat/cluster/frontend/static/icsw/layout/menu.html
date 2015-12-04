@@ -1,14 +1,9 @@
 <script type="text/ng-template" id="icsw.layout.menubar">
     <nav icsw-element-size="navbar_size" class="navbar navbar-default navbar-fixed-top" role="navigation" ng-controller="menu_base" ng-cloak ng-show="is_authenticated" ng-cloack>
+
+        <icsw-menu-progress-bars user="CURRENT_USER"></icsw-menu-progress-bars>
+
         <ul class="nav navbar-nav">
-            <li class="active" ng-if="num_gauges" ng-mouseover="device_quicksel(true)" ng-mouseleave="device_quicksel(false)" >
-                <div ng-repeat="(key, obj) in cur_gauges" class="progress" style="width:200px; margin-top:10px;">
-                    <uib-progressbar animate="true" value="obj.value" type="success"><span>{{ obj.value }} %</span></uib-progressbar>
-                </div>
-            </li>
-            <li class="active" ng-if="num_gauges == 0" ng-mouseover="device_quicksel(true)" ng-mouseleave="device_quicksel(false)" >
-                <img height="42px" ng-attr-src="{{ initProduct.menu_gfx_url }}" ng-click="redirect_to_init()" style="cursor: pointer" title="{{ initProduct.name }}" alt="{{ initProduct.name }}"/>
-            </li>
             <li>
                 <a href="{{ ICSW_URLS.MAIN_INDEX }}"><span class="fa fa-home fa-lg" title="Dashboard"></span></a>
             </li>
@@ -45,4 +40,18 @@
             </li>
         </ul>
     </nav>
+</script>
+
+<script type="text/ng-template" id="icsw.layout.menubar.progress">
+    <ul class="nav navbar-nav">
+        <li class="active" ng-if="num_gauges" ng-mouseover="device_quicksel(true)" ng-mouseleave="device_quicksel(false)" >
+            <div ng-repeat="(key, obj) in cur_gauges" class="progress" style="width:200px; margin-top:10px;">
+                <uib-progressbar animate="true" value="obj.value" type="success"><span>{{ obj.value }} %</span></uib-progressbar>
+            </div>
+        </li>
+        <li class="active" ng-if="num_gauges == 0" ng-mouseover="device_quicksel(true)" ng-mouseleave="device_quicksel(false)" >
+            <img height="42px" ng-attr-src="{{ initProduct.menu_gfx_url }}" ng-click="redirect_to_init()" style="cursor: pointer" title="{{ initProduct.name }}" alt="{{ initProduct.name }}"/>
+        </li>
+    </ul>
+
 </script>

@@ -125,7 +125,7 @@ class icinga_log_reader(threading_tools.process_obj):
 
             parse_start_time = time.time()
             self._update_raw_data()
-            self.log("parsing took {} seconds".format(time.time() - parse_start_time))
+            self.log("parsing took {}".format(logging_tools.get_diff_time_str(time.time() - parse_start_time)))
 
             aggr_start_time = time.time()
             # prof_file_name = "/tmp/prof.out.{}".format(time.time())
@@ -133,7 +133,7 @@ class icinga_log_reader(threading_tools.process_obj):
             # import cProfile
             # cProfile.runctx("self._icinga_log_aggregator.update()", globals(), locals(), prof_file_name)
             icinga_log_aggregator(self).update()
-            self.log("aggregation took {} seconds".format(time.time() - aggr_start_time))
+            self.log("aggregation took {}".format(logging_tools.get_diff_time_str(time.time() - aggr_start_time)))
 
     def _update_raw_data(self):
         self.log("checking icinga log")

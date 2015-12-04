@@ -94,7 +94,7 @@ angular.module(
                 }
             ).then(
                 (xml) ->
-                    blockUI.stop()
+                    # blockUI.stop()
                     if $(xml).find("value[name='redirect']").length
                         _val = $(xml).find("value[name='redirect']").text()
                         $window.location = _val

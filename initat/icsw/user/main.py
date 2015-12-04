@@ -324,6 +324,11 @@ def do_info(cur_opts, log_com):
             _res = sb_exc.output
             # print("error calling '{}': {}".format(_cmd, process_tools.get_except_info()))
             _ret_state = 1
+        except OSError as sb_exc:
+            # quota command not founda
+            _res = "denied: {}".format(sb_exc)
+            # print("error calling '{}': {}".format(_cmd, process_tools.get_except_info()))
+            _ret_state = 1
         else:
             _ret_state = 0
         if _res.lower().count("denied"):

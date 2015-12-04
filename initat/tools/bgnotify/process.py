@@ -130,7 +130,11 @@ class ServerBackgroundNotifyMixin(object):
 
     def bg_notify_check_for_bgj_finish(self, cur_bg):
         if not cur_bg.background_job_run_set.filter(Q(result="")).count():
-            cur_bg.set_state("done", result=max(cur_bg.background_job_run_set.all().values_list("state", flat=True)))
+            _states = cur_bg.background_job_run_set.all().values_list("state", flat=True)
+            if len(_states):
+                cur_bg.set_state("done", result=max(_states))
+            else:
+                cur_bg.set_state("done", result=server_command.SRV_REPLY_STATE_UNSET)
             self.log("{} finished".format(unicode(cur_bg)))
 
     def _run_bg_jobs(self, cur_bg, to_run):

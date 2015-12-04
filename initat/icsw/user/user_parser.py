@@ -21,7 +21,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" small tool for sending mails via commandline """
+
+"""
+
+small tool for sending mails via commandline
+
+Attention: the 'icsw user --mode mail' command is also used by the md-config-server
+
+"""
 
 import pwd
 import os

@@ -23,8 +23,8 @@ menu_module = angular.module(
     [
         "ngSanitize", "ui.bootstrap", "icsw.layout.selection", "icsw.user",
     ]
-).controller("menu_base", ["$scope", "$timeout", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswParseXMLResponseService", "icswAcessLevelService", "initProduct", "icswLayoutSelectionDialogService", "icswActiveSelectionService", "$q", "icswUserService",
-    ($scope, $timeout, $window, ICSW_URLS, icswSimpleAjaxCall, icswParseXMLResponseService, icswAcessLevelService, initProduct, icswLayoutSelectionDialogService, icswActiveSelectionService, $q, icswUserService) ->
+).controller("menu_base", ["$scope", "$timeout", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswAcessLevelService", "initProduct", "icswLayoutSelectionDialogService", "icswActiveSelectionService", "$q", "icswUserService",
+    ($scope, $timeout, $window, ICSW_URLS, icswSimpleAjaxCall, icswAcessLevelService, initProduct, icswLayoutSelectionDialogService, icswActiveSelectionService, $q, icswUserService) ->
         $scope.is_authenticated = false
         # init background jobs
         $scope.NUM_BACKGROUND_JOBS = 0
@@ -37,9 +37,6 @@ menu_module = angular.module(
         $scope.HANDBOOK_CHUNKS_PRESENT = false
         $scope.HANDBOOK_PAGE = "---"
         icswAcessLevelService.install($scope)
-        $scope.progress_iters = 0
-        $scope.cur_gauges = {}
-        $scope.num_gauges = 0
         $q.all(
             [
                 icswSimpleAjaxCall(
@@ -59,35 +56,6 @@ menu_module = angular.module(
         )
         $scope.get_progress_style = (obj) ->
             return {"width" : "#{obj.value}%"}
-        $scope.update_progress_bar = () ->
-            icswSimpleAjaxCall(
-                {
-                    url: ICSW_URLS.BASE_GET_GAUGE_INFO
-                    hidden: true
-                }
-            ).then(
-                (xml) =>
-                    cur_pb = []
-                    if icswParseXMLResponseService(xml)
-                        $(xml).find("gauge_info gauge_element").each (idx, cur_g) ->
-                            cur_g = $(cur_g)
-                            idx = cur_g.attr("idx")
-                            if idx of $scope.cur_gauges
-                                $scope.cur_gauges[idx].info = cur_g.text()
-                                $scope.cur_gauges[idx].value = parseInt(cur_g.attr("value"))
-                            else
-                                $scope.cur_gauges[idx] = {info : cur_g.text(), value : parseInt(cur_g.attr("value"))}
-                            cur_pb.push(idx)
-                    del_pbs = (cur_idx for cur_idx of $scope.cur_gauges when cur_idx not in cur_pb)
-                    for del_pb in del_pbs
-                        delete $scope.cur_gauges[del_pb]
-                    #for cur_idx, value of $scope.cur_gauges
-                    $scope.num_gauges = cur_pb.length
-                    if cur_pb.length or $scope.progress_iters
-                        if $scope.progress_iters
-                            $scope.progress_iters--
-                        $timeout($scope.update_progress_bar, 1000)
-            )
         $scope.redirect_to_init = () ->
             window.location = "http://www.initat.org"
             return false
@@ -136,6 +104,60 @@ menu_module = angular.module(
 
                 el.replaceWith(new_elems)
     }
+]).factory("icswMenuProgressService", [() ->
+    return {
+        "start_reload": 0
+        "rebuilding": 0
+    }
+]).directive("icswMenuProgressBars", ["$templateCache", "ICSW_URLS", "$timeout", "icswSimpleAjaxCall", "initProduct", "icswMenuProgressService", ($templateCache, ICSW_URLS, $timeout, icswSimpleAjaxCall, initProduct, icswMenuProgressService) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.layout.menubar.progress")
+        scope: {}
+        link: (scope, el, attrs) ->
+            scope.initProduct = initProduct
+            scope.num_gauges = 0
+            scope.progress_iters = 0
+            scope.cur_gauges = {}
+            scope.$watch(
+                () ->
+                    return icswMenuProgressService.start_reload
+                (new_data) ->
+                    if new_data
+                        scope.update_progress_bar()
+                    icswMenuProgressService.start_reload = 0
+            )
+            scope.update_progress_bar = () ->
+                icswSimpleAjaxCall(
+                    {
+                        url: ICSW_URLS.BASE_GET_GAUGE_INFO
+                        hidden: true
+                    }
+                ).then(
+                    (xml) =>
+                        cur_pb = []
+                        $(xml).find("gauge_info gauge_element").each (idx, cur_g) ->
+                            cur_g = $(cur_g)
+                            idx = cur_g.attr("idx")
+                            if idx of scope.cur_gauges
+                                scope.cur_gauges[idx].info = cur_g.text()
+                                scope.cur_gauges[idx].value = parseInt(cur_g.attr("value"))
+                            else
+                                scope.cur_gauges[idx] = {info : cur_g.text(), value : parseInt(cur_g.attr("value"))}
+                            cur_pb.push(idx)
+                        del_pbs = (cur_idx for cur_idx of scope.cur_gauges when cur_idx not in cur_pb)
+                        for del_pb in del_pbs
+                            delete scope.cur_gauges[del_pb]
+                        #for cur_idx, value of $scope.cur_gauges
+                        scope.num_gauges = cur_pb.length
+                        if cur_pb.length or scope.progress_iters
+                            if scope.progress_iters
+                                scope.progress_iters--
+                            $timeout(scope.update_progress_bar, 1000)
+                        if not cur_pb.length
+                            icswMenuProgressService.rebuilding = 0
+                )
+    }
 ]).directive("icswBackgroundJobInfo", ["$templateCache", "ICSW_URLS", "icswSimpleAjaxCall", "$timeout", ($templateCache, ICSW_URLS, icswSimpleAjaxCall, $timeout) ->
     return {
         restrict: "EA"
@@ -161,25 +183,27 @@ menu_module = angular.module(
                         url: ICSW_URLS.MAIN_GET_NUMBER_OF_BACKGROUND_JOBS
                         dataType: "json"
                     }
-                ).then((data) ->
-                    scope.background_jobs = data["background_jobs"]
-                    if scope.background_jobs
-                        el.show()
-                        el.removeClass()
-                        el.addClass(get_background_job_class())
-                        el.text(scope.background_jobs)
-                    else
-                        el.hide()
+                ).then(
+                    (data) ->
+                        scope.background_jobs = data["background_jobs"]
+                        if scope.background_jobs
+                            el.show()
+                            el.removeClass()
+                            el.addClass(get_background_job_class())
+                            el.text(scope.background_jobs)
+                        else
+                            el.hide()
                 )
                 # reload every 30 seconds
                 $timeout(reload, 30000)
             reload()
     }
 ]).factory("icswReactMenuFactory",
-    ["icswAcessLevelService", "ICSW_URLS", "icswSimpleAjaxCall", (icswAcessLevelService, ICSW_URLS, icswSimpleAjaxCall) ->
+    ["icswAcessLevelService", "ICSW_URLS", "icswSimpleAjaxCall", "blockUI", "icswMenuProgressService", (icswAcessLevelService, ICSW_URLS, icswSimpleAjaxCall, blockUI, icswMenuProgressService) ->
         # console.log icswAcessLevelService
         {input, ul, li, a, span} = React.DOM
         rebuild_config = (cache_mode) ->
+            blockUI.start()
             icswSimpleAjaxCall(
                 {
                     url: ICSW_URLS.MON_CREATE_CONFIG
@@ -190,12 +214,19 @@ menu_module = angular.module(
                 }
             ).then(
                 (xml) ->
+                    blockUI.stop()
+                    icswMenuProgressService.rebuilding = 1
+                    icswMenuProgressService.start_reload = 1
                     # make at least five iterations to catch slow startup of md-config-server
                     # $scope.progress_iters = 5
                     # $scope.update_progress_bar()
+                (xml) ->
+                    blockUI.stop()
+                    icswMenuProgressService.start_reload = 1
             )
         menu_rebuild_mon_config = React.createClass(
             render: () ->
+                _disabled = if icswMenuProgressService.rebuilding then true else false
                 return li(
                     {className: "text-left", key: "bmc"}
                     ul(
@@ -209,6 +240,7 @@ menu_module = angular.module(
                                         type: "button",
                                         value: "\uf021 rebuild config (cached, RC)"
                                         title: "fully cached (using also the routing cache)"
+                                        disabled: _disabled
                                         onClick: () ->
                                             rebuild_config("ALWAYS")
                                     }
@@ -222,6 +254,7 @@ menu_module = angular.module(
                                         type: "button",
                                         value: "\uf021 rebuild config (dynamic)"
                                         title: "refresh depends on timeout settings"
+                                        disabled: _disabled
                                         onClick: () ->
                                             rebuild_config("DYNAMIC")
                                     }
@@ -235,6 +268,7 @@ menu_module = angular.module(
                                         type: "button",
                                         value: "\uf021 rebuild config (refresh)"
                                         title: "rebuild network and contact devices"
+                                        disabled: _disabled
                                         onClick: () ->
                                             rebuild_config("REFRESH")
                                     }
@@ -637,7 +671,7 @@ menu_module = angular.module(
         )
         return menu_comp
     ]
-).directive("icswMenuDirective", ["icswReactMenuFactory", "icswAcessLevelService", (icswReactMenuFactory, icswAcessLevelService) ->
+).directive("icswMenuDirective", ["icswReactMenuFactory", "icswAcessLevelService", "icswMenuProgressService", (icswReactMenuFactory, icswAcessLevelService, icswMenuProgressService) ->
     return {
         restrict: "EA"
         replace: true
@@ -661,5 +695,13 @@ menu_module = angular.module(
                 (new_val) ->
                     _render()
             )
+            scope.$watch(
+                () ->
+                    return icswMenuProgressService
+                (new_val) ->
+                    _render()
+                true
+            )
+
     }
 ])

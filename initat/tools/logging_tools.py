@@ -184,8 +184,10 @@ def get_diff_time_str(diff_secs):
         diff_secs = diff_secs.total_seconds()
     abs_diffs = abs(diff_secs)
     is_int = type(abs_diffs) in [int, long]
-    if abs_diffs < 0.1:
-        diff_str = "{:.2f} mseconds".format(abs_diffs * 1000)
+    if abs_diffs < 0.0001:
+        diff_str = "{:.3f} useconds".format(abs_diffs * 1000000)
+    elif abs_diffs < 0.1:
+        diff_str = "{:.3f} mseconds".format(abs_diffs * 1000)
     else:
         abs_mins, abs_hours = (0, 0)
         if abs_diffs > 60:
