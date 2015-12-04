@@ -203,7 +203,19 @@ class ConfigStore(object):
                 if _valid:
                     self.tree_valid = True
                     self.name = _tree.get("name", "")
-                    self.prefix = _tree.get("prefix", "")
+                    _xml_prefix = _tree.get("prefix", "")
+                    _rewrite = False
+                    if (_xml_prefix or None) != self.prefix:
+                        self.log(
+                            "prefix differs (self='{}', XML='{}'), rewriting file".format(
+                                self.prefix,
+                                _xml_prefix or None,
+                            ),
+                            logging_tools.LOG_LEVEL_ERROR,
+                        )
+                        _rewrite = True
+                    else:
+                        self.prefix = _xml_prefix
                     _found, _parsed = (0, 0)
                     for _key in _tree.xpath(".//key", smart_strings=False):
                         _found += 1
@@ -226,6 +238,9 @@ class ConfigStore(object):
                             logging_tools.get_plural("key", _found),
                         )
                     )
+                    if _rewrite:
+                        self.log("rewriting file", logging_tools.LOG_LEVEL_WARN)
+                        self.write()
                 else:
                     self.log(
                         "XML-tree from '{}' is invalid: {}".format(

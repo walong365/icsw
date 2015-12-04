@@ -390,8 +390,6 @@ class server_code(ICSWBasePool, HMHRMixin):
         else:
             # read from cs
             _cs = config_store.ConfigStore(ZMQ_ID_MAP_STORE, log_com=self.log, prefix="bind")
-            # set prefix, needed for migrating from non-prefix based cstores to prefix based
-            _cs.prefix = "bind"
             create_0mq_cs = False
 
         if "0" not in _cs:
