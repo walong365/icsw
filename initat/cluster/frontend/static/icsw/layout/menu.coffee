@@ -31,7 +31,6 @@ menu_module = angular.module(
         # init service types
         $scope.ICSW_URLS = ICSW_URLS
         $scope.initProduct = initProduct
-        $scope.quicksel = false
         $scope.CURRENT_USER = {}
         $scope.HANDBOOK_PDF_PRESENT = false
         $scope.HANDBOOK_CHUNKS_PRESENT = false
@@ -76,11 +75,6 @@ menu_module = angular.module(
         )
         $scope.device_selection = () ->
             icswLayoutSelectionDialogService.show_dialog($scope)
-        $scope.device_quicksel = (onoff) ->
-            if onoff != $scope.quicksel
-                $scope.quicksel = onoff
-                if $scope.quicksel
-                    icswLayoutSelectionDialogService.quick_dialog($scope)
 ]).directive("icswLayoutMenubar", ["$templateCache", ($templateCache) ->
     return {
         restrict: "EA"
@@ -109,7 +103,7 @@ menu_module = angular.module(
         "start_reload": 0
         "rebuilding": 0
     }
-]).directive("icswMenuProgressBars", ["$templateCache", "ICSW_URLS", "$timeout", "icswSimpleAjaxCall", "initProduct", "icswMenuProgressService", ($templateCache, ICSW_URLS, $timeout, icswSimpleAjaxCall, initProduct, icswMenuProgressService) ->
+]).directive("icswMenuProgressBars", ["$templateCache", "ICSW_URLS", "$timeout", "icswSimpleAjaxCall", "initProduct", "icswMenuProgressService", "icswLayoutSelectionDialogService", ($templateCache, ICSW_URLS, $timeout, icswSimpleAjaxCall, initProduct, icswMenuProgressService, icswLayoutSelectionDialogService) ->
     return {
         restrict: "EA"
         template: $templateCache.get("icsw.layout.menubar.progress")
@@ -117,8 +111,14 @@ menu_module = angular.module(
         link: (scope, el, attrs) ->
             scope.initProduct = initProduct
             scope.num_gauges = 0
+            scope.quicksel = false
             scope.progress_iters = 0
             scope.cur_gauges = {}
+            scope.device_quicksel = (onoff) ->
+                if onoff != scope.quicksel
+                    scope.quicksel = onoff
+                    if scope.quicksel
+                        icswLayoutSelectionDialogService.quick_dialog(scope)
             scope.$watch(
                 () ->
                     return icswMenuProgressService.start_reload
