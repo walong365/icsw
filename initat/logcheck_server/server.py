@@ -102,6 +102,7 @@ class server_process(server_mixins.ICSWBasePool):
 
     def loop_end(self):
         self._disable_syslog_config()
+        Machine.shutdown()
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()

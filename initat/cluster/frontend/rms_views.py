@@ -435,7 +435,7 @@ class get_file_content(View):
             if len(_resp_list):
                 request.xml_response["response"] = _resp_list
         else:
-            request.xml_response.error(
+            request.xml_response.warn(
                 "nothing found for {}".format(
                     logging_tools.get_plural("job", len(file_id_list))
                 ),

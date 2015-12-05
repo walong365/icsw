@@ -28,8 +28,8 @@ import subprocess
 import time
 
 from initat.cluster.backbone.models import device
-from initat.logcheck_server.config import global_config
 from initat.tools import logging_tools, process_tools
+from .config import global_config
 
 
 class Machine(object):
@@ -44,6 +44,12 @@ class Machine(object):
         Machine.srv_proc = srv_proc
         Machine.g_log("init, compression binary to use: {}".format(Machine.c_binary))
         Machine.dev_dict = {}
+
+    @staticmethod
+    def shutdown():
+        Machine.g_log("shutting down")
+        for dev in Machine.dev_dict.itervalues():
+            dev.close()
 
     @staticmethod
     def rotate_logs():
@@ -93,18 +99,28 @@ class Machine(object):
         Machine.g_log("synced in {}".format(logging_tools.get_diff_time_str(time.time() - s_time)))
 
     def __init__(self, cur_dev):
+        self.__log_template = logging_tools.get_logger(
+            "{}.{}".format(
+                global_config["LOG_NAME"],
+                cur_dev.full_name.replace(".", r"\.")
+            ),
+            global_config["LOG_DESTINATION"],
+            zmq=True,
+            context=Machine.srv_proc.zmq_context,
+            init_logger=True,
+        )
         self.device = cur_dev
         self.name = cur_dev.name
         Machine.dev_dict[self.name] = self
         self.log("Added to dict")
         self.__ip_dict = {}
 
+    def close(self):
+        self.__log_template.close()
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        Machine.srv_proc.log(
-            "[{}] {}".format(
-                self.name,
-                what
-            ),
+        self.__log_template.log(
+            what,
             log_level
         )
 

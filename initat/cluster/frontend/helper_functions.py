@@ -22,11 +22,11 @@
 
 """ helper functions for the init.at clustersoftware """
 
-from lxml import etree  # @UnresolvedImports
-
 from django.http import HttpResponse
+from lxml import etree
+from lxml.builder import E
+
 from initat.cluster.backbone import routing
-from lxml.builder import E  # @UnresolvedImports
 from initat.tools import logging_tools, net_tools
 
 
