@@ -22,6 +22,7 @@
 """ logcheck-server (to be run on a syslog_server), server process """
 
 import os
+import zmq
 
 from initat.cluster.backbone import db_tools
 from initat.logcheck_server.config import global_config
@@ -51,8 +52,9 @@ class server_process(server_mixins.ICSWBasePool):
         self._enable_syslog_config()
         self.__options = options
         Machine.setup(self)
-        self.register_timer(self._sync_machines, 3600, instant=True)
-        self.register_timer(self._rotate_logs, 3600 * 12, instant=True)
+        self.register_poller(Machine.get_watcher()._fd, zmq.POLLIN, Machine.inotify_event)
+        self.register_timer(self.sync_machines, 3600, instant=True)
+        self.register_timer(self.rotate_logs, 3600 * 12, instant=True)
 
     def _int_error(self, err_cause):
         if self["exit_requested"]:
@@ -74,13 +76,13 @@ class server_process(server_mixins.ICSWBasePool):
                         logging_tools.LOG_LEVEL_ERROR
                     )
 
-    def _sync_machines(self):
+    def sync_machines(self):
         db_tools.close_connection()
         Machine.db_sync()
 
-    def _rotate_logs(self):
+    def rotate_logs(self):
         db_tools.close_connection()
-        Machine.rotate_logs()
+        Machine.g_rotate_logs()
 
     def process_start(self, src_process, src_pid):
         mult = 2

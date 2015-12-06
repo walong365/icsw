@@ -58,8 +58,10 @@ def main():
             ("SYSLOG_DIR", configfile.str_c_var("/var/log/hosts")),
             ("KEEP_LOGS_UNCOMPRESSED", configfile.int_c_var(2)),
             ("KEEP_LOGS_TOTAL", configfile.int_c_var(30)),
-            ("INITIAL_LOGCHECK", configfile.bool_c_var(False)),
-            ("LOGSCAN_TIME", configfile.int_c_var(60, info="time in minutes between two logscan iterations"))
+            # maximum time in days to track logs
+            ("LOGS_TRACKING_DAYS", configfile.int_c_var(2, info="time to track logs in days")),
+            # cachesize for lineinfo (per file)
+            ("LINECACHE_ENTRIES_PER_FILE", configfile.int_c_var(50, info="line cache per file")),
         ]
     )
     server_process(options).loop()

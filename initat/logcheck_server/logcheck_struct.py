@@ -26,14 +26,222 @@ import os
 import shutil
 import subprocess
 import time
+import stat
 
 from initat.cluster.backbone.models import device
-from initat.tools import logging_tools, process_tools
+from initat.tools import logging_tools, process_tools, inotify_tools
 from .config import global_config
 
 
+class LogRotateResult(object):
+    def __init__(self):
+        self.info_dict = {
+            key: 0 for key in[
+                "dirs_found",
+                "dirs_proc",
+                "dirs_del",
+                "files_proc",
+                "files_del",
+                "files_error",
+            ]
+        }
+        self.compress_list = []
+        self.start_time = time.time()
+
+    def stop(self):
+        self.end_time = time.time()
+
+    def __setitem__(self, key, value):
+        self.info_dict[key] = value
+
+    def __getitem__(self, key):
+        return self.info_dict[key]
+
+    def keys(self):
+        return self.info_dict.keys()
+
+    def feed(self, other):
+        for _key in self.info_dict.keys():
+            self[_key] += other[_key]
+        self.compress_list.extend(other.compress_list)
+
+    def info_str(self):
+        return "finished walk for rotate_logs(), dirs: {} in {} (files: {})".format(
+            ", ".join(
+                [
+                    "{}: {:d}".format(
+                        _key.split("_")[1],
+                        self[_key]
+                    ) for _key in sorted(self.keys()) if _key.startswith("dirs") and self[_key]
+                ]
+            ) or "no info",
+            logging_tools.get_diff_time_str(self.end_time - self.start_time),
+            ", ".join(
+                [
+                    "{}: {:d}".format(
+                        _key.split("_")[1],
+                        self[_key]
+                    ) for _key in sorted(self.keys()) if _key.startswith("files") and self[_key]
+                ]
+            ) or "no info",
+        )
+
+
+class InotifyFile(object):
+    # simple cache for os.stat info
+    def __init__(self, f_name, in_root):
+        self.in_root = in_root
+        self.f_name = f_name
+        # record last sizes with timestamps
+        self.sizes = []
+        self.stat = None
+        self.modify()
+
+    def modify(self):
+        if self.stat is not None:
+            prev_size = self.stat[stat.ST_SIZE]
+            _handle = file(self.f_name, "r")
+            # _handle.seek(prev_size)
+            # print _handle.read()
+        self.stat = os.stat(self.f_name)
+        # each size tuple
+        self.sizes.append((self.stat[stat.ST_MTIME], self.stat[stat.ST_SIZE]))
+        if len(self.sizes) > self.in_root.linecache_size:
+            self.sizes.pop(0)
+
+    def is_stale(self, cur_time):
+        return abs(cur_time - self.stat[stat.ST_MTIME]) > self.in_root.track_seconds
+
+    def close(self):
+        pass
+
+
+class InotifyRoot(object):
+    watch_id = 0
+    FILES_TO_SCAN = {"log"}
+
+    def __init__(self, root_dir, fw_obj):
+        InotifyRoot.watch_id += 1
+        self.track_seconds = 24 * 3600 * global_config["LOGS_TRACKING_DAYS"]
+        self.linecache_size = global_config["LINECACHE_ENTRIES_PER_FILE"]
+        self.watch_name = "irw_{:04d}".format(InotifyRoot.watch_id)
+        self.root_dir = root_dir
+        self.fw_obj = fw_obj
+        self.log(
+            "init IR at {} ({}), tracking names {} for {}".format(
+                self.root_dir,
+                self.watch_name,
+                ", ".join(InotifyRoot.FILES_TO_SCAN),
+                logging_tools.get_diff_time_str(self.track_seconds),
+            )
+        )
+        self._dir_dict = {}
+        self._file_dict = {}
+        self.register_dir(self.root_dir)
+
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.fw_obj.log("[IR] {}".format(what), log_level)
+
+    def register_dir(self, in_dir, recursive=True):
+        if in_dir not in self._dir_dict:
+            self._dir_dict[in_dir] = True
+            reg_mask = inotify_tools.IN_MODIFY | inotify_tools.IN_CLOSE_WRITE | \
+                inotify_tools.IN_DELETE | inotify_tools.IN_DELETE_SELF | inotify_tools.IN_CREATE
+            Machine.inotify_watcher.add_watcher(
+                self.watch_name,
+                in_dir,
+                reg_mask,
+                self.process_event,
+            )
+            self.log("added dir {} (watching: {:d})".format(in_dir, len(self._dir_dict.keys())))
+            if recursive:
+                for sub_dir, _dirs, _files in os.walk(in_dir):
+                    if sub_dir != in_dir:
+                        self.register_dir(sub_dir, recursive=False)
+                    _found_files = InotifyRoot.FILES_TO_SCAN & set(_files)
+                    if _found_files:
+                        [
+                            self.register_file(os.path.join(sub_dir, _file)) for _file in _found_files
+                        ]
+        else:
+            self.log("dir {} already in watch_dict".format(in_dir), logging_tools.LOG_LEVEL_ERROR)
+
+    def remove_dir(self, in_path):
+        if in_path in self._dir_dict:
+            del self._dir_dict[in_path]
+            Machine.inotify_watcher.remove_watcher(
+                self.watch_name,
+                in_path,
+            )
+            self.log("removed dir {} (watching: {:d})".format(in_path, len(self._dir_dict.keys())))
+        else:
+            self.log(
+                "trying to remove non-watched dir '{}' from watcher_dict".format(
+                    in_path,
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
+
+    def update_file(self, f_name):
+        if f_name not in self._file_dict:
+            self.register_file(f_name)
+        self._file_dict[f_name].modify()
+
+    def register_file(self, f_name):
+        cur_time = time.time()
+        _stat = os.stat(f_name)
+        if f_name not in self._file_dict:
+            if abs(max(_stat[stat.ST_MTIME], _stat[stat.ST_CTIME]) - cur_time) < self.track_seconds:
+                self._file_dict[f_name] = InotifyFile(f_name, self)
+                self.log_file_info()
+
+    def remove_file(self, f_name):
+        if f_name in self._file_dict:
+            self._file_dict[f_name].close()
+            del self._file_dict[f_name]
+            self.log_file_info()
+        else:
+            self.log("trying to remove non-tracked file {}".format(f_name), logging_tools.LOG_LEVEL_ERROR)
+
+    def log_file_info(self):
+        self.log("tracking {}".format(logging_tools.get_plural("file", len(self._file_dict.keys()))))
+
+    def check_for_stale_files(self):
+        self.log("checking for stale files")
+        cur_time = time.time()
+        _cur_num = len(self._file_dict)
+        _stale = [f_name for f_name, f_obj in self._file_dict.iteritems() if f_obj.is_stale(cur_time)]
+        if _stale:
+            self.log(
+                "{} stale: {}".format(logging_tools.get_plural("file")),
+                ", ".join(sorted(_stale))
+            )
+            for _df in _stale:
+                self.remove_file(_df)
+
+    def process_event(self, event):
+        if event.dir:
+            if event.mask & inotify_tools.IN_DELETE:
+                self.remove_dir(os.path.join(event.path, event.name))
+            elif event.mask & inotify_tools.IN_CREATE:
+                self.register_dir(os.path.join(event.path, event.name))
+            else:
+                pass
+        else:
+            if event.name in InotifyRoot.FILES_TO_SCAN:
+                _path = os.path.join(event.path, event.name)
+                if event.mask & inotify_tools.IN_CREATE:
+                    self.register_file(_path)
+                    self.check_for_stale_files()
+                elif event.mask & inotify_tools.IN_MODIFY:
+                    self.update_file(_path)
+                elif event.mask & inotify_tools.IN_CLOSE_WRITE:
+                    self.update_file(_path)
+                if event.mask & inotify_tools.IN_DELETE:
+                    self.remove_file(_path)
+
+
 class Machine(object):
-    # def __init__(self, name, idx, ips={}, log_queue=None):
     @staticmethod
     def g_log(what, log_level=logging_tools.LOG_LEVEL_OK):
         Machine.srv_proc.log("[m] {}".format(what), log_level)
@@ -44,6 +252,27 @@ class Machine(object):
         Machine.srv_proc = srv_proc
         Machine.g_log("init, compression binary to use: {}".format(Machine.c_binary))
         Machine.dev_dict = {}
+        # Inotify root dict
+        Machine.in_root_dict = {}
+        Machine.inotify_watcher = inotify_tools.InotifyWatcher()
+
+    @staticmethod
+    def get_watcher():
+        return Machine.inotify_watcher
+
+    @staticmethod
+    def inotify_event(*args, **kgwargs):
+        try:
+            Machine.inotify_watcher.process()
+        except:
+            Machine.g_log(
+                "exception occured in Machine.inotify_event(): {}".format(
+                    process_tools.get_except_info()
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
+        else:
+            pass
 
     @staticmethod
     def shutdown():
@@ -52,21 +281,32 @@ class Machine(object):
             dev.close()
 
     @staticmethod
-    def rotate_logs():
+    def register_root(root_dir, fw_obj):
+        #
+        if root_dir in Machine.in_root_dict:
+            Machine.g_log("root_dir '{}' already registered".format(root_dir), logging_tools.LOG_LEVEL_ERROR)
+        else:
+            Machine.in_root_dict[root_dir] = InotifyRoot(root_dir, fw_obj)
+        return Machine.in_root_dict[root_dir]
+
+    @staticmethod
+    def g_rotate_logs():
         Machine.g_log("starting log rotation")
         s_time = time.time()
-        compress_list = []
+        g_res = LogRotateResult()
         for dev in Machine.dev_dict.itervalues():
-            compress_list.extend(dev._rotate_logs())
+            g_res.feed(dev.rotate_logs())
         Machine.g_log(
             "rotated in {}, {} to compress".format(
                 logging_tools.get_diff_time_str(time.time() - s_time),
-                logging_tools.get_plural("file", len(compress_list)),
+                logging_tools.get_plural("file", len(g_res.compress_list)),
             )
         )
-        if compress_list and Machine.c_binary:
+        g_res.stop()
+        Machine.g_log(g_res.info_str())
+        if g_res.compress_list and Machine.c_binary:
             start_time = time.time()
-            for _c_file in compress_list:
+            for _c_file in g_res.compress_list:
                 _bin = "{} {}".format(Machine.c_binary, _c_file)
                 retcode = subprocess.call(_bin, shell=True)
                 if retcode:
@@ -113,7 +353,10 @@ class Machine(object):
         self.name = cur_dev.name
         Machine.dev_dict[self.name] = self
         self.log("Added to dict")
+        self.__fw = None
         self.__ip_dict = {}
+        if self.device.name == "firewall":
+            self.__fw = FileWatcher(self)
 
     def close(self):
         self.__log_template.close()
@@ -234,18 +477,16 @@ class Machine(object):
                             logging_tools.LOG_LEVEL_ERROR
                         )
 
-    def _rotate_logs(self):
-        compress_list = []
-        dirs_found, dirs_proc, files_proc, files_error, files_del, dirs_del = (0, 0, 0, 0, 0, 0)
+    def rotate_logs(self):
+        _res = LogRotateResult()
         start_time = time.time()
         log_start_dir = os.path.join(global_config["SYSLOG_DIR"], self.name)
         if os.path.isdir(log_start_dir):
             lsd_len = len(log_start_dir)
             self.log("starting walk for rotate_logs() in {}".format(log_start_dir))
-            # directories processeds
-            start_time = time.time()
+            # directories processed
             for root_dir, sub_dirs, files in os.walk(log_start_dir):
-                dirs_found += 1
+                _res["dirs_found"] += 1
                 if root_dir.startswith(log_start_dir):
                     root_dir_p = [int(entry) for entry in root_dir[lsd_len:].split("/") if entry.isdigit()]
                     if len(root_dir_p) in [1, 2]:
@@ -277,7 +518,7 @@ class Machine(object):
                                         ", ".join(err_files)
                                     )
                                 )
-                                files_error += len(err_files)
+                                _res["files_error"] += len(err_files)
                             else:
                                 # try to delete directory
                                 try:
@@ -285,7 +526,7 @@ class Machine(object):
                                 except:
                                     pass
                                 else:
-                                    dirs_del += 1
+                                    _res["dirs_del"] += 1
                             if ok_files:
                                 self.log(
                                     "Deleted {} {}: {}".format(
@@ -294,7 +535,7 @@ class Machine(object):
                                         ", ".join(ok_files)
                                     )
                                 )
-                                files_del += len(ok_files)
+                                _res["files_del"] += len(ok_files)
                     elif len(root_dir_p) == 3:
                         dir_time = time.mktime(
                             [
@@ -336,7 +577,7 @@ class Machine(object):
                                         ", ".join(err_files)
                                     )
                                 )
-                                files_error += len(err_files)
+                                _res["files_error"] += len(err_files)
                             else:
                                 # try to delete directory
                                 try:
@@ -344,7 +585,7 @@ class Machine(object):
                                 except:
                                     pass
                                 else:
-                                    dirs_del += 1
+                                    _res["dirs_del"] += 1
                             if ok_files:
                                 self.log(
                                     "Deleted {} {}: {}".format(
@@ -353,43 +594,31 @@ class Machine(object):
                                         ", ".join(ok_files)
                                     )
                                 )
-                                files_del += len(ok_files)
+                                _res["files_del"] += len(ok_files)
                         elif day_diff > max(1, global_config["KEEP_LOGS_UNCOMPRESSED"]):
-                            dirs_proc += 1
+                            _res["dirs_proc"] += 1
                             err_files, ok_files = ([], [])
                             old_size, new_size = (0, 0)
                             for file_name in [entry for entry in files if entry.split(".")[-1] not in ["gz", "bz2", "xz"]]:
                                 old_file = os.path.join(root_dir, file_name)
-                                compress_list.append(old_file)
-            _info_dict = {
-                "dirs_found": dirs_found,
-                "dirs_proc": dirs_proc,
-                "dirs_del": dirs_del,
-                "files_proc": files_proc,
-                "files_del": files_del,
-                "files_error": files_error,
-            }
-            self.log(
-                "finished walk for rotate_logs(), dirs: {} in {:.2f} seconds (files: {})".format(
-                    ", ".join(
-                        [
-                            "{}: {:d}".format(
-                                _key.split("_")[1],
-                                _info_dict[_key]
-                            ) for _key in sorted(_info_dict.keys()) if _key.startswith("dirs") and _info_dict[_key]
-                        ]
-                    ) or "no info",
-                    time.time() - start_time,
-                    ", ".join(
-                        [
-                            "{}: {:d}".format(
-                                _key.split("_")[1],
-                                _info_dict[_key]
-                            ) for _key in sorted(_info_dict.keys()) if _key.startswith("files") and _info_dict[_key]
-                        ]
-                    ) or "no info",
-                )
-            )
+                                _res.compress_list.append(old_file)
+            _res.stop()
+            self.log(_res.info_str())
         else:
+            _res.stop()
             self.log("log_start_dir {} not found, no log-rotate ...".format(log_start_dir))
-        return compress_list
+        return _res
+
+
+class FileWatcher(object):
+    def __init__(self, machine):
+        self.machine = machine
+        self.__root_dir = os.path.join(
+            global_config["SYSLOG_DIR"],
+            format(self.machine.device.name),
+        )
+        self.log("init filewatcher at {}".format(self.__root_dir))
+        self.__inotify_root = Machine.register_root(self.__root_dir, self)
+
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.machine.log("[fw] {}".format(what), log_level)
