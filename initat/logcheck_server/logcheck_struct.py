@@ -24,9 +24,9 @@
 
 import os
 import shutil
+import stat
 import subprocess
 import time
-import stat
 
 from initat.cluster.backbone.models import device
 from initat.tools import logging_tools, process_tools, inotify_tools
@@ -204,7 +204,21 @@ class InotifyRoot(object):
             self.log("trying to remove non-tracked file {}".format(f_name), logging_tools.LOG_LEVEL_ERROR)
 
     def log_file_info(self):
-        self.log("tracking {}".format(logging_tools.get_plural("file", len(self._file_dict.keys()))))
+        if self._file_dict:
+            _latest = sorted(
+                [
+                    (_f_obj.stat[stat.ST_MTIME], _f_obj) for _f_obj in self._file_dict.itervalues()
+                ],
+                reverse=True
+            )[0][1].f_name
+        else:
+            _latest = None
+        self.log(
+            "tracking {}{}".format(
+                logging_tools.get_plural("file", len(self._file_dict.keys())),
+                ", latest: {}".format(_latest) if _latest else "",
+            )
+        )
 
     def check_for_stale_files(self):
         self.log("checking for stale files")
@@ -355,8 +369,8 @@ class Machine(object):
         self.log("Added to dict")
         self.__fw = None
         self.__ip_dict = {}
-        if self.device.name == "firewall":
-            self.__fw = FileWatcher(self)
+        # if self.device.name == "a":
+        self.__fw = FileWatcher(self)
 
     def close(self):
         self.__log_template.close()
