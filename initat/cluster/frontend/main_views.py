@@ -94,9 +94,9 @@ class get_docu_info(View):
 
 class get_routing_info(View):
     def post(self, request):
-        cur_routing = routing.srv_type_routing(force="force" in request.POST)
+        cur_routing = routing.SrvTypeRouting(force="force" in request.POST)
         _return = {
-            "service_types": {key: True for key in routing.srv_type_routing().service_types},
+            "service_types": {key: True for key in routing.SrvTypeRouting().service_types},
             "routing": cur_routing.resolv_dict,
             "local_device": unicode(cur_routing.local_device.full_name if cur_routing.local_device is not None else "UNKNOWN"),
         }
@@ -113,7 +113,7 @@ class get_server_info(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
-        cur_routing = routing.srv_type_routing(force=True)
+        cur_routing = routing.SrvTypeRouting(force=True)
         _server_list = []
         for _server in cur_routing.resolv_dict.get("cluster-server", []):
             srv_com = server_command.srv_command(command="server_status")
@@ -153,7 +153,7 @@ class server_control(View):
             control=_cmd["type"],
             services=_cmd["instance"]
         )
-        # cur_routing = routing.srv_type_routing()
+        # cur_routing = routing.SrvTypeRouting()
         request.xml_response["result"] = contact_server(
             request,
             "server",

@@ -27,7 +27,7 @@ from pymongo.errors import PyMongoError
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device, ComCapability, net_ip
 from initat.cluster.backbone.models.functions import memoize_with_expiry
-from initat.cluster.backbone.routing import srv_type_routing
+from initat.cluster.backbone.routing import SrvTypeRouting
 from initat.cluster.frontend.discovery_views import MongoDbInterface
 from initat.discovery_server.config import global_config
 from initat.discovery_server.event_log.ipmi_event_log_scanner import IpmiLogJob
@@ -251,7 +251,7 @@ class EventLogPollerProcess(threading_tools.process_obj):
         return ret
 
     def _get_ip_to_host(self, to_dev):
-        from_server_check = config_tools.server_check(device=srv_type_routing().local_device, config=None,
+        from_server_check = config_tools.server_check(device=SrvTypeRouting().local_device, config=None,
                                                       server_type="node")
         to_server_check = config_tools.server_check(device=to_dev, config=None, server_type="node")
 

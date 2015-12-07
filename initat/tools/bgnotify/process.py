@@ -25,7 +25,7 @@ from django.db.models import Q
 
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import background_job, background_job_run, cluster_timezone
-from initat.cluster.backbone.routing import srv_type_routing, get_server_uuid
+from initat.cluster.backbone.routing import SrvTypeRouting, get_server_uuid
 from initat.tools import logging_tools, process_tools, server_command
 from .tasks import BG_TASKS
 
@@ -38,7 +38,7 @@ class ServerBackgroundNotifyMixin(object):
         self.__tasks = {_task.Meta.name: _task(self) for _task in BG_TASKS}
         # connections to other servers
         self.__other_server_dict = {}
-        self.srv_routing = srv_type_routing(force=True, logger=self.log_template)
+        self.srv_routing = SrvTypeRouting(force=True, logger=self.log_template)
         if self.srv_routing.local_device.pk != self.__server_idx:
             self.log(
                 u"local_device from srv_routing '{}' ({:d}) differs from SERVER_IDX '{:d}'".format(

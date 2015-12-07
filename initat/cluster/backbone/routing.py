@@ -64,14 +64,15 @@ def get_server_uuid(srv_type, uuid=None):
     )
 
 
-class srv_type_routing(object):
+class SrvTypeRouting(object):
     ROUTING_KEY = "_WF_ROUTING"
 
-    def __init__(self, force=False, logger=None):
+    def __init__(self, force=False, logger=None, ignore_errors=False):
         if logger is None:
             self.logger = logging.getLogger("cluster.routing")
         else:
             self.logger = logger
+        self.ignore_errors = ignore_errors
         _resolv_dict = cache.get(self.ROUTING_KEY)
         # if _resolv_dict is None or True:
         if _resolv_dict is None or force:
@@ -91,7 +92,7 @@ class srv_type_routing(object):
 
     def update(self, force=False):
         if not cache.get(self.ROUTING_KEY) or force:
-            self.logger.info("update srv_type_routing")
+            self.logger.info("update SrvTypeRouting")
             self._resolv_dict = self._build_resolv_dict()
             if "_local_device" in self._resolv_dict:
                 self._local_device = device.objects.get(Q(pk=self._resolv_dict["_local_device"][0]))
@@ -250,13 +251,14 @@ class srv_type_routing(object):
                                         )
                                     )
                         else:
-                            self.logger.error(
-                                "no route to device '{}' found (srv_type_list {}, config {})".format(
-                                    _dev.effective_device.full_name,
-                                    self._srv_type_to_string(_srv_type_list),
-                                    _conf_name,
+                            if not self.ignore_errors:
+                                self.logger.error(
+                                    "no route to device '{}' found (srv_type_list {}, config {})".format(
+                                        _dev.effective_device.full_name,
+                                        self._srv_type_to_string(_srv_type_list),
+                                        _conf_name,
+                                    )
                                 )
-                            )
         # missing routes
         _missing_srv = _INSTANCES_WITH_NAMES - set(_resolv_dict.keys())
         if _missing_srv:

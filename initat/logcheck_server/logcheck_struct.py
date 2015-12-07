@@ -25,7 +25,10 @@
 import os
 import shutil
 import stat
+import datetime
+import fileinput
 import subprocess
+import marshal
 import time
 
 from initat.cluster.backbone.models import device
@@ -87,33 +90,100 @@ class LogRotateResult(object):
         )
 
 
+class FileBatch(object):
+    def __init__(self, offset, diff, tot):
+        self.offset = offset
+        self.diff_lines = diff
+        self.tot_lines = tot
+
+
+class FileSize(object):
+    def __init__(self, in_file):
+        self.in_file = in_file
+        # offset / diff_lines / tot_lines
+        self.slices = [FileBatch(0, 0, 0)]
+
+    def feed(self, size):
+        _file = file(self.in_file.f_name, "r")
+        _num_slices = len(self.slices)
+        _size = self.slices[_num_slices - 1].offset
+        _file.seek(_size)
+        _num = 0
+        for _line in _file:
+            _size += len(_line)
+            _num += 1
+            if _size == size:
+                break
+        self.slices.append(
+            FileBatch(size, _num, _num + self.slices[_num_slices - 1].tot_lines)
+        )
+
+
 class InotifyFile(object):
     # simple cache for os.stat info
     def __init__(self, f_name, in_root):
         self.in_root = in_root
         self.f_name = f_name
+        _parts = self.f_name.split(os.sep)
+        _year, _month, _day = _parts[5:8]
+        self.year = int(_year)
+        self.month = int(_month)
+        self.day = int(_day)
         # record last sizes with timestamps
-        self.sizes = []
+        self.sizes = FileSize(self)
         self.stat = None
         self.modify()
 
     def modify(self):
-        if self.stat is not None:
-            prev_size = self.stat[stat.ST_SIZE]
-            _handle = file(self.f_name, "r")
-            # _handle.seek(prev_size)
-            # print _handle.read()
+        # invalidate cache
+        # self.cache_valid = False
+        #if self.stat is not None:
+        #    prev_size = self.stat[stat.ST_SIZE]
+        #    _handle = file(self.f_name, "r")
+        #    # _handle.seek(prev_size)
+        #    # print _handle.read()
         self.stat = os.stat(self.f_name)
         # each size tuple
-        self.sizes.append((self.stat[stat.ST_MTIME], self.stat[stat.ST_SIZE]))
-        if len(self.sizes) > self.in_root.linecache_size:
-            self.sizes.pop(0)
+        self.sizes.feed(self.stat[stat.ST_SIZE])
+        # if len(self.sizes) > self.in_root.linecache_size:
+        #    todo: shorten list of batches
+        #    self.sizes.remove(0)
 
     def is_stale(self, cur_time):
         return abs(cur_time - self.stat[stat.ST_MTIME]) > self.in_root.track_seconds
 
     def close(self):
         pass
+
+    def read_chunks(self, lines, lines_to_read):
+        DT_FORMAT = "%Y-%m-%dT%H:%M:%S"
+        _file = open(self.f_name, "r")
+        _tot_lines = self.sizes.slices[-1].tot_lines
+        if lines_to_read < _tot_lines:
+            _to_skip = _tot_lines - lines_to_read
+        else:
+            _to_skip = 0
+        _read, _skipped = (0, 0)
+        cur_ls = len(lines)
+        for line in _file:
+            if _to_skip > _skipped:
+                _skipped += 1
+            else:
+                _read += 1
+                _datetime, _rest = line.strip().split(None, 1)
+                _pd = datetime.datetime.strptime(
+                    _datetime.split("+")[0],
+                    DT_FORMAT,
+                )
+                lines.insert(
+                    cur_ls, (
+                        (
+                            _pd.year, _pd.month, _pd.day, _pd.hour, _pd.minute, _pd.second
+                        ),
+                        _rest
+                    )
+                )
+        return _read
 
 
 class InotifyRoot(object):
@@ -192,8 +262,17 @@ class InotifyRoot(object):
         _stat = os.stat(f_name)
         if f_name not in self._file_dict:
             if abs(max(_stat[stat.ST_MTIME], _stat[stat.ST_CTIME]) - cur_time) < self.track_seconds:
-                self._file_dict[f_name] = InotifyFile(f_name, self)
-                self.log_file_info()
+                try:
+                    self._file_dict[f_name] = InotifyFile(f_name, self)
+                    self.log_file_info()
+                except:
+                    self.log(
+                        "unable to add file {}: {}".format(
+                            f_name,
+                            process_tools.get_except_info(),
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
 
     def remove_file(self, f_name):
         if f_name in self._file_dict:
@@ -254,6 +333,16 @@ class InotifyRoot(object):
                 if event.mask & inotify_tools.IN_DELETE:
                     self.remove_file(_path)
 
+    def get_logs(self):
+        return [
+            _v[1] for _v in sorted(
+                [
+                    (_f_obj.stat[stat.ST_MTIME], _f_obj) for _f_obj in self._file_dict.itervalues()
+                ],
+                reverse=True
+            )
+        ]
+
 
 class Machine(object):
     @staticmethod
@@ -265,7 +354,8 @@ class Machine(object):
         Machine.c_binary = "/opt/cluster/bin/lbzip2"
         Machine.srv_proc = srv_proc
         Machine.g_log("init, compression binary to use: {}".format(Machine.c_binary))
-        Machine.dev_dict = {}
+        Machine.devname_dict = {}
+        Machine.devpk_dict = {}
         # Inotify root dict
         Machine.in_root_dict = {}
         Machine.inotify_watcher = inotify_tools.InotifyWatcher()
@@ -291,7 +381,7 @@ class Machine(object):
     @staticmethod
     def shutdown():
         Machine.g_log("shutting down")
-        for dev in Machine.dev_dict.itervalues():
+        for dev in Machine.devname_dict.itervalues():
             dev.close()
 
     @staticmethod
@@ -308,7 +398,7 @@ class Machine(object):
         Machine.g_log("starting log rotation")
         s_time = time.time()
         g_res = LogRotateResult()
-        for dev in Machine.dev_dict.itervalues():
+        for dev in Machine.devname_dict.itervalues():
             g_res.feed(dev.rotate_logs())
         Machine.g_log(
             "rotated in {}, {} to compress".format(
@@ -335,6 +425,39 @@ class Machine(object):
             )
 
     @staticmethod
+    def get_syslog(srv_com):
+        print srv_com.pretty_print()
+        for _dev in srv_com.xpath(".//ns:devices/ns:device"):
+            _dev.attrib.update(
+                {
+                    "state": "{:d}".format(logging_tools.LOG_LEVEL_ERROR),
+                    "result": "Device not found",
+                }
+            )
+            _pk = int(_dev.attrib["pk"])
+            if Machine.has_device(_pk):
+                dev = Machine.get_device(_pk)
+                _to_read = int(_dev.attrib["lines"])
+                lines = dev.filewatcher.get_logs(_to_read)
+                dev.log(
+                    "lines found: {:d} (of {:d})".format(
+                        len(lines),
+                        _to_read,
+                    )
+                )
+                _dev.attrib.update(
+                    {
+                        "read": "{:d}".format(len(lines)),
+                    }
+                )
+                _dev.append(
+                    srv_com.builder(
+                        "lines",
+                        process_tools.compress_struct(lines)
+                    )
+                )
+
+    @staticmethod
     def db_sync():
         Machine.g_log("start sync")
         s_time = time.time()
@@ -345,8 +468,8 @@ class Machine(object):
             "netdevice_set__net_ip_set__network__network_type",
         )
         for cur_dev in all_devs:
-            if cur_dev.name in Machine.dev_dict:
-                cur_mach = Machine.dev_dict[cur_dev.name]
+            if cur_dev.name in Machine.devname_dict:
+                cur_mach = Machine.devname_dict[cur_dev.name]
             else:
                 cur_mach = Machine(cur_dev)
             cur_mach.add_ips(cur_dev)
@@ -365,12 +488,32 @@ class Machine(object):
         )
         self.device = cur_dev
         self.name = cur_dev.name
-        Machine.dev_dict[self.name] = self
+        self.pk = cur_dev.pk
+        Machine.devname_dict[self.name] = self
+        Machine.devpk_dict[self.pk] = self
         self.log("Added to dict")
         self.__fw = None
         self.__ip_dict = {}
         # if self.device.name == "a":
         self.__fw = FileWatcher(self)
+
+    @property
+    def filewatcher(self):
+        return self.__fw
+
+    @staticmethod
+    def has_device(key):
+        if type(key) in [int, long]:
+            return key in Machine.devpk_dict
+        else:
+            return key in Machine.devname_dict
+
+    @staticmethod
+    def get_device(key):
+        if type(key) in [int, long]:
+            return Machine.devpk_dict[key]
+        else:
+            return Machine.devname_dict[key]
 
     def close(self):
         self.__log_template.close()
@@ -400,12 +543,15 @@ class Machine(object):
             self.log("IP information:")
             for ip in sorted(self.__ip_dict.keys()):
                 nw_postfix, net_type = self.__ip_dict[ip]
-                self.log(" IP %15s, postfix %-5s (type %-5s), full name is %s%s" % (
-                    ip,
-                    nw_postfix and "'%s'" % (nw_postfix) or "''",
-                    net_type == "p" and "%s [*]" % (net_type) or net_type,
-                    self.name,
-                    nw_postfix))
+                self.log(
+                    " IP {:<15s}, postfix {:<5s} (type {:<5s}), full name is {}{}".format(
+                        ip,
+                        nw_postfix and "'{}'".format(nw_postfix) or "''",
+                        net_type == "p" and "{} [*]".format(net_type) or net_type,
+                        self.name,
+                        nw_postfix,
+                    )
+                )
         else:
             self.log("No IPs set")
 
@@ -460,7 +606,13 @@ class Machine(object):
                                     logging_tools.LOG_LEVEL_ERROR
                                 )
                             else:
-                                self.log(" removed wrong link (%s pointed to %s instead of %s)" % (ps, old_dest, dest))
+                                self.log(
+                                    " removed wrong link ({} pointed to {} instead of {})".format(
+                                        ps,
+                                        old_dest,
+                                        dest
+                                    )
+                                )
                                 create_link = True
                     else:
                         pass
@@ -507,11 +659,11 @@ class Machine(object):
                         # check for deletion of empty month-dirs
                         if not sub_dirs:
                             if len(root_dir_p) == 1:
-                                host_info_str = "(dir %04d)" % (
+                                host_info_str = "(dir {:04d})".format(
                                     root_dir_p[0]
                                 )
                             else:
-                                host_info_str = "(dir %04d/%02d)" % (
+                                host_info_str = "(dir {:04d}/{:02d})".format(
                                     root_dir_p[0],
                                     root_dir_p[1]
                                 )
@@ -565,7 +717,7 @@ class Machine(object):
                             ]
                         )
                         day_diff = int((start_time - dir_time) / (3600 * 24))
-                        host_info_str = "(dir %04d/%02d/%02d)" % (
+                        host_info_str = "(dir {:04d}/{:02d}/{:02d})".format(
                             root_dir_p[0],
                             root_dir_p[1],
                             root_dir_p[2]
@@ -633,6 +785,16 @@ class FileWatcher(object):
         )
         self.log("init filewatcher at {}".format(self.__root_dir))
         self.__inotify_root = Machine.register_root(self.__root_dir, self)
+
+    def get_logs(self, lines):
+        _logs = self.__inotify_root.get_logs()
+        _to_read = lines
+        lines = []
+        for _log in _logs:
+            _to_read -= _log.read_chunks(lines, _to_read)
+            if not _to_read:
+                break
+        return lines
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.machine.log("[fw] {}".format(what), log_level)

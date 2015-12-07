@@ -31,7 +31,8 @@ from initat.tools import server_mixins, configfile, logging_tools, \
     process_tools, threading_tools, service_tools
 
 
-class server_process(server_mixins.ICSWBasePool):
+@server_mixins.RemoteCallProcess
+class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
     def __init__(self, options):
         threading_tools.process_pool.__init__(self, "main", zmq=True)
         self.CC.init("logcheck-server", global_config)
@@ -50,7 +51,8 @@ class server_process(server_mixins.ICSWBasePool):
         self._prepare_directories()
         # enable syslog_config
         self._enable_syslog_config()
-        self.__options = options
+        # network bind
+        self._init_network_sockets()
         Machine.setup(self)
         self.register_poller(Machine.get_watcher()._fd, zmq.POLLIN, Machine.inotify_event)
         self.register_timer(self.sync_machines, 3600, instant=True)
@@ -61,6 +63,15 @@ class server_process(server_mixins.ICSWBasePool):
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
             self["exit_requested"] = True
+
+    def _init_network_sockets(self):
+        self.network_bind(
+            need_all_binds=True,
+            bind_port=global_config["COMMAND_PORT"],
+            pollin=self.remote_call,
+            server_type="logcheck-server",
+        )
+        return True
 
     def _prepare_directories(self):
         for cur_dir in [global_config["SYSLOG_DIR"]]:
@@ -110,7 +121,13 @@ class server_process(server_mixins.ICSWBasePool):
             self.__msi_block.remove_meta_block()
 
     def loop_post(self):
+        self.network_unbind()
         self.CC.close()
+
+    @server_mixins.RemoteCall()
+    def get_syslog(self, srv_com, **kwargs):
+        Machine.get_syslog(srv_com)
+        return srv_com
 
     # syslog stuff
     def _enable_syslog_config(self):

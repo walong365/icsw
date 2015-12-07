@@ -338,7 +338,7 @@ class get_device_ip(View):
 
         if from_dev is None:
             # fall back to local device
-            cur_routing = routing.srv_type_routing(force=True)
+            cur_routing = routing.SrvTypeRouting(force=True)
             from_dev = cur_routing.local_device
 
         from_server_check = config_tools.server_check(device=from_dev, config=None, server_type="node")

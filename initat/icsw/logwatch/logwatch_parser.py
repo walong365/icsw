@@ -70,7 +70,9 @@ class Parser(object):
                 )
             )
         opt_ns.rootdir = rd
-        opt_ns.systems = [_entry for _entry in os.listdir(opt_ns.rootdir) if not _entry.count(".") and not _entry.count("-server-direct")]
+        opt_ns.systems = [
+            _entry for _entry in os.listdir(opt_ns.rootdir) if not _entry.count(".") and not _entry.count("-server-direct")
+        ]
         max_system_len = max([len(_entry) for _entry in opt_ns.systems])
         try:
             opt_ns.system_re = re.compile(opt_ns.system_filter)
@@ -82,8 +84,9 @@ class Parser(object):
         except:
             print("cannot interpret '{}', using default".format(opt_ns.node_filter))
             opt_ns.node_re = re.compile("^$")
-        opt_ns.line_format = u"{{datetime}} : {{device:<14s}}/{{system:<{:d}s}}/{{node:<14s}} {{level:<5s}} {{process:<20s}}{{msg}}".format(
-            max_system_len
+        opt_ns.line_format = u"{{datetime}} : {{device:<14s}}/{{system:<{:d}s}}/{{node:<{:d}s}} {{level:<5s}} {{process:<20s}}{{msg}}".format(
+            max_system_len,
+            max_system_len,
         )
         opt_ns.used_systems = [_entry for _entry in opt_ns.systems if opt_ns.system_re.match(_entry)]
         _nodes = set()

@@ -41,7 +41,7 @@ from lxml.builder import E
 
 from initat.cluster.backbone.models import device, user_variable, rms_job_run
 from initat.cluster.backbone.render import render_me
-from initat.cluster.backbone.routing import srv_type_routing
+from initat.cluster.backbone.routing import SrvTypeRouting
 from initat.cluster.backbone.serializers import rms_job_run_serializer
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.tools import logging_tools, server_command
@@ -66,10 +66,10 @@ if sge_tools:
         # sge_info object with thread lock layer
         def __init__(self):
             _srv_type = "rms-server"
-            _routing = srv_type_routing()
+            _routing = SrvTypeRouting()
             self.lock = threading.Lock()
             if _srv_type not in _routing:
-                _routing = srv_type_routing(force=True)
+                _routing = SrvTypeRouting(force=True)
             if _srv_type in _routing:
                 _srv_address = _routing.get_server_address(_srv_type)
             else:

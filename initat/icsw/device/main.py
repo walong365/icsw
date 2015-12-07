@@ -21,12 +21,15 @@
 #
 
 import re
+import os
 import datetime
 
 from django.db.models import Q
+from initat.cluster.backbone import routing
 from initat.cluster.backbone.models import device, device_group
 from initat.cluster.backbone.models.functions import to_system_tz
-from initat.tools import logging_tools
+from initat.tools import logging_tools, net_tools, server_command, process_tools
+from initat.icsw.service.instance import InstanceXML
 
 
 class JoinedLogs(object):
@@ -108,6 +111,41 @@ def device_info(opt_ns, cur_dev, j_logs):
                         )
                     )
         print("")
+    if opt_ns.syslog:
+        _cr = routing.SrvTypeRouting(force=True, ignore_errors=True)
+        _ST = "logcheck-server"
+        if _ST in _cr.service_types:
+            _inst_xml = InstanceXML(quiet=True)
+            # get logcheck-server IP
+            _ls_ip = _cr[_ST][0][1]
+            # get logcheck-server Port
+            _ls_port = _inst_xml.get_port_dict(_ST, ptype="command")
+            _sc = server_command.srv_command(
+                command="get_syslog",
+            )
+            _sc["devices"] = _sc.builder(
+                "devices",
+                *[
+                    _sc.builder("device", pk="{:d}".format(cur_dev.pk), lines="{:d}".format(opt_ns.loglines))
+                ]
+            )
+            _conn_str = "tcp://{}:{:d}".format(_ls_ip, _ls_port)
+            _result = net_tools.zmq_connection(
+                "icsw_state_{:d}".format(os.getpid())
+            ).add_connection(
+                _conn_str,
+                _sc,
+            )
+            if _result is not None:
+                _dev = _result.xpath(".//ns:devices/ns:device[@pk]")[0]
+                _lines = _dev[0]
+                print("Lines found: {:d}".format(int(_dev.attrib["read"])))
+                for _dtinfo, _text in process_tools.decompress_struct(_lines.text):
+                    print _dtinfo, _text
+            else:
+                print("got no result from {} ({})".format(_conn_str, _ST))
+        else:
+            print("No logcheck-server found, skipping syslog display")
     if opt_ns.boot:
         if opt_ns.join_logs:
             j_logs.feed("boot", cur_dev, cur_dev.deviceboothistory_set.all())

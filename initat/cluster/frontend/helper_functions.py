@@ -236,11 +236,11 @@ def contact_server(request, srv_type, send_com, **kwargs):
     # xml request
     _xml_req = kwargs.get("xml_request", hasattr(request, "xml_response"))
     # simple mapping
-    cur_router = routing.srv_type_routing()
+    cur_router = routing.SrvTypeRouting()
 
     if srv_type not in cur_router:
         # try again harder (rebuild routing table)
-        cur_router = routing.srv_type_routing(force=True)
+        cur_router = routing.SrvTypeRouting(force=True)
 
     if srv_type in cur_router:
         # print send_com.pretty_print()
