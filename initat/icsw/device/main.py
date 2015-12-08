@@ -140,8 +140,21 @@ def device_info(opt_ns, cur_dev, j_logs):
                 _dev = _result.xpath(".//ns:devices/ns:device[@pk]")[0]
                 _lines = _dev[0]
                 print("Lines found: {:d}".format(int(_dev.attrib["read"])))
-                for _dtinfo, _text in process_tools.decompress_struct(_lines.text):
-                    print _dtinfo, _text
+                _out_lines = logging_tools.new_form_list()
+                for _idx, _dtinfo, _text in process_tools.decompress_struct(_lines.text):
+                    _out_lines.append(
+                        [
+                            logging_tools.form_entry(_idx, header="idx"),
+                            logging_tools.form_entry(
+                                "{:04d}-{:02d}-{:02d} {:02d}:{:02d}:{:02d}".format(
+                                  *_dtinfo
+                                ),
+                                header="Timestamp",
+                            ),
+                            logging_tools.form_entry(_text, header="text"),
+                        ]
+                    )
+                print unicode(_out_lines)
             else:
                 print("got no result from {} ({})".format(_conn_str, _ST))
         else:

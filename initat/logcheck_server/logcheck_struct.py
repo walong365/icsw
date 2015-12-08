@@ -129,6 +129,12 @@ class InotifyFile(object):
         self.year = int(_year)
         self.month = int(_month)
         self.day = int(_day)
+        self.DT_FORMAT = "%Y-%m-%dT%H:%M:%S"
+        self.prefix = "{:04d}{:02d}{:02d}".format(
+            self.year,
+            self.month,
+            self.day,
+        )
         # record last sizes with timestamps
         self.sizes = FileSize(self)
         self.stat = None
@@ -155,8 +161,21 @@ class InotifyFile(object):
     def close(self):
         pass
 
+    def get_line(self, line, idx):
+        _datetime, _rest = line.strip().split(None, 1)
+        _pd = datetime.datetime.strptime(
+            _datetime.split("+")[0],
+            self.DT_FORMAT,
+        )
+        return (
+            "{}{:06d}".format(self.prefix, idx),
+            (
+                _pd.year, _pd.month, _pd.day, _pd.hour, _pd.minute, _pd.second
+            ),
+            _rest
+        )
+
     def read_chunks(self, lines, lines_to_read):
-        DT_FORMAT = "%Y-%m-%dT%H:%M:%S"
         _file = open(self.f_name, "r")
         _tot_lines = self.sizes.slices[-1].tot_lines
         if lines_to_read < _tot_lines:
@@ -170,18 +189,9 @@ class InotifyFile(object):
                 _skipped += 1
             else:
                 _read += 1
-                _datetime, _rest = line.strip().split(None, 1)
-                _pd = datetime.datetime.strptime(
-                    _datetime.split("+")[0],
-                    DT_FORMAT,
-                )
                 lines.insert(
-                    cur_ls, (
-                        (
-                            _pd.year, _pd.month, _pd.day, _pd.hour, _pd.minute, _pd.second
-                        ),
-                        _rest
-                    )
+                    cur_ls,
+                    self.get_line(line, _skipped + _read),
                 )
         return _read
 
@@ -448,6 +458,8 @@ class Machine(object):
                 _dev.attrib.update(
                     {
                         "read": "{:d}".format(len(lines)),
+                        # for line version
+                        "version": "1",
                     }
                 )
                 _dev.append(
