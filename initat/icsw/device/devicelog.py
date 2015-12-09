@@ -32,7 +32,7 @@ from initat.cluster.backbone.models import DeviceLogEntry, LogLevel, device, Log
 from django.db.models import Q
 
 
-def populate_parser(child_parser):
+def populate_log_parser(child_parser):
     try:
         def_source = LogSource.objects.get(Q(identifier="commandline"))
     except:

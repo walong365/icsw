@@ -111,54 +111,6 @@ def device_info(opt_ns, cur_dev, j_logs):
                         )
                     )
         print("")
-    if opt_ns.syslog:
-        _cr = routing.SrvTypeRouting(force=True, ignore_errors=True)
-        _ST = "logcheck-server"
-        if _ST in _cr.service_types:
-            _inst_xml = InstanceXML(quiet=True)
-            # get logcheck-server IP
-            _ls_ip = _cr[_ST][0][1]
-            # get logcheck-server Port
-            _ls_port = _inst_xml.get_port_dict(_ST, ptype="command")
-            _sc = server_command.srv_command(
-                command="get_syslog",
-            )
-            _sc["devices"] = _sc.builder(
-                "devices",
-                *[
-                    _sc.builder("device", pk="{:d}".format(cur_dev.pk), lines="{:d}".format(opt_ns.loglines))
-                ]
-            )
-            _conn_str = "tcp://{}:{:d}".format(_ls_ip, _ls_port)
-            _result = net_tools.zmq_connection(
-                "icsw_state_{:d}".format(os.getpid())
-            ).add_connection(
-                _conn_str,
-                _sc,
-            )
-            if _result is not None:
-                _dev = _result.xpath(".//ns:devices/ns:device[@pk]")[0]
-                _lines = _dev[0]
-                print("Lines found: {:d}".format(int(_dev.attrib["read"])))
-                _out_lines = logging_tools.new_form_list()
-                for _idx, _dtinfo, _text in process_tools.decompress_struct(_lines.text):
-                    _out_lines.append(
-                        [
-                            logging_tools.form_entry(_idx, header="idx"),
-                            logging_tools.form_entry(
-                                "{:04d}-{:02d}-{:02d} {:02d}:{:02d}:{:02d}".format(
-                                  *_dtinfo
-                                ),
-                                header="Timestamp",
-                            ),
-                            logging_tools.form_entry(_text, header="text"),
-                        ]
-                    )
-                print unicode(_out_lines)
-            else:
-                print("got no result from {} ({})".format(_conn_str, _ST))
-        else:
-            print("No logcheck-server found, skipping syslog display")
     if opt_ns.boot:
         if opt_ns.join_logs:
             j_logs.feed("boot", cur_dev, cur_dev.deviceboothistory_set.all())
@@ -170,6 +122,79 @@ def device_info(opt_ns, cur_dev, j_logs):
                     print(j_logs.format_boot_record(_entry))
             else:
                 print("device has no boot history records")
+
+
+def device_syslog(opt_ns, cur_dev, j_logs):
+    print(u"Information about device '{}' (full name {}, devicegroup {})".format(
+        unicode(cur_dev),
+        unicode(cur_dev.full_name),
+        unicode(cur_dev.device_group))
+    )
+    print("UUID is '{}', database-ID is {:d}".format(cur_dev.uuid, cur_dev.pk))
+    _cr = routing.SrvTypeRouting(force=True, ignore_errors=True)
+    _ST = "logcheck-server"
+    if _ST in _cr.service_types:
+        _inst_xml = InstanceXML(quiet=True)
+        # get logcheck-server IP
+        _ls_ip = _cr[_ST][0][1]
+        # get logcheck-server Port
+        _ls_port = _inst_xml.get_port_dict(_ST, ptype="command")
+        _sc = server_command.srv_command(
+            command="get_syslog",
+        )
+        _sc["devices"] = _sc.builder(
+            "devices",
+            *[
+                _sc.builder("device", pk="{:d}".format(cur_dev.pk), lines="{:d}".format(opt_ns.loglines))
+            ]
+        )
+        _conn_str = "tcp://{}:{:d}".format(_ls_ip, _ls_port)
+        _result = net_tools.zmq_connection(
+            "icsw_state_{:d}".format(os.getpid())
+        ).add_connection(
+            _conn_str,
+            _sc,
+        )
+        if _result is not None:
+            _dev = _result.xpath(".//ns:devices/ns:device[@pk]")[0]
+            _lines = _result.xpath("ns:lines", start_el=_dev)[0]
+            _rates = _result.xpath("ns:rates", start_el=_dev)
+            if _rates:
+                _rates = {int(_el.get("timeframe")): float(_el.get("rate")) for _el in _rates[0]}
+                print(
+                    "rate info: {}".format(
+                        ", ".join(
+                            [
+                                "{:.2f} lines/sec in {}".format(
+                                    _rates[_seconds],
+                                    logging_tools.get_diff_time_str(_seconds)
+                                ) for _seconds in sorted(_rates)
+                            ]
+                        )
+                    )
+                )
+            else:
+                print("no rate info found")
+                print _rates
+            _out_lines = logging_tools.new_form_list()
+            for _idx, _dtinfo, _text in process_tools.decompress_struct(_lines.text):
+                _out_lines.append(
+                    [
+                        logging_tools.form_entry(_idx, header="idx"),
+                        logging_tools.form_entry(
+                            "{:04d}-{:02d}-{:02d} {:02d}:{:02d}:{:02d}".format(
+                                *_dtinfo
+                            ),
+                            header="Timestamp",
+                        ),
+                        logging_tools.form_entry(_text, header="text"),
+                    ]
+                )
+            print unicode(_out_lines)
+        else:
+            print("got no result from {} ({})".format(_conn_str, _ST))
+    else:
+        print("No logcheck-server found, skipping syslog display")
 
 
 def show_vector(_dev):
@@ -239,10 +264,12 @@ def dev_main(opt_ns):
             show_vector(cur_dev)
         elif opt_ns.childcom == "removegraph":
             remove_graph(cur_dev, opt_ns)
+        elif opt_ns.childcom == "syslog":
+            device_syslog(opt_ns, cur_dev, j_logs)
         else:
             print(
                 "unknown action {} for device {}".format(
-                    opt_ns.action,
+                    opt_ns.childcom,
                     unicode(cur_dev),
                 )
             )

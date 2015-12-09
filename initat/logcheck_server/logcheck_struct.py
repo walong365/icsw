@@ -92,16 +92,67 @@ class LogRotateResult(object):
 
 class FileBatch(object):
     def __init__(self, offset, diff, tot):
+        self.time = int(time.time())
         self.offset = offset
         self.diff_lines = diff
         self.tot_lines = tot
 
+    def __repr__(self):
+        return unicode(self)
+
+    def __unicode__(self):
+        return "Filebatch at {:d} ({:d} [{:d}] lines @ {:d})".format(
+            self.time,
+            self.diff_lines,
+            self.tot_lines,
+            self.offset,
+        )
+
+
+class FileWiteRater(object):
+    MAX_STREAM_TIME = 15 * 60
+
+    def __init__(self):
+        # simple format, tuples with (time, diff_lines)
+        self.stream = []
+
+    def trim_stream(self, trim_time):
+        self.stream = [_entry for _entry in self.stream if abs(_entry[0] - trim_time) < FileWiteRater.MAX_STREAM_TIME]
+
+    def feed(self, fb):
+        # fb ... filebatch
+        _feed_time = fb.time
+        self.trim_stream(_feed_time)
+        self.stream.append((_feed_time, fb.diff_lines))
+
+    def get_stream_dict(self):
+        cur_time = int(time.time())
+        # monitoring times in seconds
+        mon_times = [_v * 60 for _v in {1, 5, 15}]
+        info_dict = {
+            _time: float(
+                sum([_entry[1] for _entry in self.stream if abs(_entry[0] - cur_time) <= _time])
+            ) / _time for _time in mon_times
+        }
+        return info_dict
+
+    def __unicode__(self):
+        _dict = self.get_stream_dict()
+        return ", ".join(
+            [
+                "{:.2f} lines/sec [{:d}]".format(_dict[_key], _key) for _key in sorted(_dict.iterkeys())
+            ]
+        )
+
 
 class FileSize(object):
+    # hm, really needed ?
     def __init__(self, in_file):
         self.in_file = in_file
         # offset / diff_lines / tot_lines
-        self.slices = [FileBatch(0, 0, 0)]
+        self.slices = [
+            FileBatch(0, 0, 0)
+        ]
 
     def feed(self, size):
         _file = file(self.in_file.f_name, "r")
@@ -114,9 +165,14 @@ class FileSize(object):
             _num += 1
             if _size == size:
                 break
-        self.slices.append(
-            FileBatch(size, _num, _num + self.slices[_num_slices - 1].tot_lines)
+        # todo: create a new batch only every 10 minute
+        new_batch = FileBatch(
+            size,
+            _num,
+            _num + self.slices[_num_slices - 1].tot_lines
         )
+        self.slices.append(new_batch)
+        return new_batch
 
 
 class InotifyFile(object):
@@ -138,22 +194,29 @@ class InotifyFile(object):
         # record last sizes with timestamps
         self.sizes = FileSize(self)
         self.stat = None
-        self.modify()
+        self.rater = FileWiteRater()
+        # read filesize
+        self._update()
 
-    def modify(self):
+    def _update(self):
         # invalidate cache
         # self.cache_valid = False
-        #if self.stat is not None:
+        # if self.stat is not None:
         #    prev_size = self.stat[stat.ST_SIZE]
         #    _handle = file(self.f_name, "r")
         #    # _handle.seek(prev_size)
         #    # print _handle.read()
         self.stat = os.stat(self.f_name)
         # each size tuple
-        self.sizes.feed(self.stat[stat.ST_SIZE])
+        _batch = self.sizes.feed(self.stat[stat.ST_SIZE])
+        return _batch
         # if len(self.sizes) > self.in_root.linecache_size:
         #    todo: shorten list of batches
         #    self.sizes.remove(0)
+
+    def update(self):
+        _new_batch = self._update()
+        self.rater.feed(_new_batch)
 
     def is_stale(self, cur_time):
         return abs(cur_time - self.stat[stat.ST_MTIME]) > self.in_root.track_seconds
@@ -219,6 +282,14 @@ class InotifyRoot(object):
         self._file_dict = {}
         self.register_dir(self.root_dir)
 
+    def get_latest_stream_dict(self):
+        # return stream dict of latest written file
+        _latest = self.latest_log
+        if _latest is not None:
+            return _latest.rater.get_stream_dict()
+        else:
+            return {}
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.fw_obj.log("[IR] {}".format(what), log_level)
 
@@ -265,7 +336,7 @@ class InotifyRoot(object):
     def update_file(self, f_name):
         if f_name not in self._file_dict:
             self.register_file(f_name)
-        self._file_dict[f_name].modify()
+        self._file_dict[f_name].update()
 
     def register_file(self, f_name):
         cur_time = time.time()
@@ -292,22 +363,28 @@ class InotifyRoot(object):
         else:
             self.log("trying to remove non-tracked file {}".format(f_name), logging_tools.LOG_LEVEL_ERROR)
 
-    def log_file_info(self):
+    @property
+    def latest_log(self):
         if self._file_dict:
             _latest = sorted(
                 [
                     (_f_obj.stat[stat.ST_MTIME], _f_obj) for _f_obj in self._file_dict.itervalues()
                 ],
                 reverse=True
-            )[0][1].f_name
+            )[0][1]
         else:
             _latest = None
-        self.log(
-            "tracking {}{}".format(
-                logging_tools.get_plural("file", len(self._file_dict.keys())),
-                ", latest: {}".format(_latest) if _latest else "",
+        return _latest
+
+    def log_file_info(self):
+        _latest = self.latest_log
+        if _latest is not None:
+            self.log(
+                "tracking {}{}".format(
+                    logging_tools.get_plural("file", len(self._file_dict.keys())),
+                    ", latest: {}".format(_latest.f_name) if _latest else "",
+                )
             )
-        )
 
     def check_for_stale_files(self):
         self.log("checking for stale files")
@@ -436,7 +513,7 @@ class Machine(object):
 
     @staticmethod
     def get_syslog(srv_com):
-        print srv_com.pretty_print()
+        # print srv_com.pretty_print()
         for _dev in srv_com.xpath(".//ns:devices/ns:device"):
             _dev.attrib.update(
                 {
@@ -448,7 +525,7 @@ class Machine(object):
             if Machine.has_device(_pk):
                 dev = Machine.get_device(_pk)
                 _to_read = int(_dev.attrib["lines"])
-                lines = dev.filewatcher.get_logs(_to_read)
+                lines, rates = dev.filewatcher.get_logs(_to_read)
                 dev.log(
                     "lines found: {:d} (of {:d})".format(
                         len(lines),
@@ -462,6 +539,19 @@ class Machine(object):
                         "version": "1",
                     }
                 )
+                if rates:
+                    _dev.append(
+                        srv_com.builder(
+                            "rates",
+                            *[
+                                srv_com.builder(
+                                    "rate",
+                                    timeframe="{:d}".format(_seconds),
+                                    rate="{:.4f}".format(_rate)
+                                ) for _seconds, _rate in rates.iteritems()
+                            ]
+                        )
+                    )
                 _dev.append(
                     srv_com.builder(
                         "lines",
@@ -806,7 +896,7 @@ class FileWatcher(object):
             _to_read -= _log.read_chunks(lines, _to_read)
             if not _to_read:
                 break
-        return lines
+        return lines, self.__inotify_root.get_latest_stream_dict()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.machine.log("[fw] {}".format(what), log_level)

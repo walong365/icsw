@@ -39,7 +39,8 @@ class Parser(object):
             from . import devicelog
             self._add_info_parser(child_parser)
             self._add_overview_parser(child_parser)
-            devicelog.populate_parser(child_parser)
+            devicelog.populate_log_parser(child_parser)
+            self._add_syslog_parser(child_parser)
             self._add_graphdump_parser(child_parser)
             self._add_removegraph_parser(child_parser)
             self._add_modify_parser(child_parser)
@@ -52,7 +53,12 @@ class Parser(object):
         _act.add_argument("--ip", default=False, action="store_true", help="enable display of IP-info [%(default)s]")
         _act.add_argument("--boot", default=False, action="store_true", help="enable display of bootrecords [%(default)s]")
         _act.add_argument("--join-logs", default=False, action="store_true", help="join logs [%(default)s]")
-        _act.add_argument("--syslog", default=False, action="store_true", help="also show syslogs [%(default)s]")
+        self._add_many_device_option(_act)
+
+    def _add_syslog_parser(self, sub_parser):
+        _act = sub_parser.add_parser("syslog", help="show device info")
+        _act.set_defaults(childcom="syslog")
+        _act.add_argument("--join-logs", default=False, action="store_true", help="join logs [%(default)s]")
         _act.add_argument("--loglines", default=100, type=int, help="syslog lines to fetch [%(default)d]")
         self._add_many_device_option(_act)
 
@@ -92,7 +98,7 @@ class Parser(object):
         if opt_ns.childcom in ["changeuuid"]:
             from .changeuuid import main
             main(opt_ns)
-        elif opt_ns.childcom in ["info", "graphdump", "removegraph"]:
+        elif opt_ns.childcom in ["info", "graphdump", "removegraph", "syslog"]:
             from .main import dev_main
             dev_main(opt_ns)
         elif opt_ns.childcom in ["csvmodify"]:
