@@ -524,7 +524,7 @@ class Machine(object):
             _pk = int(_dev.attrib["pk"])
             if Machine.has_device(_pk):
                 dev = Machine.get_device(_pk)
-                _to_read = int(_dev.attrib["lines"])
+                _to_read = int(_dev.attrib.get("lines", "0"))
                 lines, rates = dev.filewatcher.get_logs(_to_read)
                 dev.log(
                     "lines found: {:d} (of {:d})".format(
@@ -889,13 +889,14 @@ class FileWatcher(object):
         self.__inotify_root = Machine.register_root(self.__root_dir, self)
 
     def get_logs(self, lines):
-        _logs = self.__inotify_root.get_logs()
-        _to_read = lines
         lines = []
-        for _log in _logs:
-            _to_read -= _log.read_chunks(lines, _to_read)
-            if not _to_read:
-                break
+        if _to_read:
+            _logs = self.__inotify_root.get_logs()
+            _to_read = lines
+            for _log in _logs:
+                _to_read -= _log.read_chunks(lines, _to_read)
+                if not _to_read:
+                    break
         return lines, self.__inotify_root.get_latest_stream_dict()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
