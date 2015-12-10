@@ -35,7 +35,7 @@ def get_models_version():
         _dir = os.path.split(_dir)
     my_md5 = hashlib.md5()
     for _sdir, _dlist, _flist in os.walk(_dir):
-        for _file in _flist:
+        for _file in [_entry for _entry in _flist if _entry.endswith(".py")]:
             _fp = os.path.join(_sdir, _file)
             if os.path.exists(_fp):
                 my_md5.update(file(_fp, "r").read())
