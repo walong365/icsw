@@ -50,6 +50,9 @@
                         <th>valid</th>
                         <th>Name</th>
                         <th>Result</th>
+                        <th>ModelsVers</th>
+                        <th>DatabaseVers</th>
+                        <th>SoftwareVers</th>
                         <th>max Memory</th>
                         <th>total Memory</th>
                     </tr>
@@ -59,6 +62,18 @@
                         <td>{{ srv_info.valid | yesno2 }}</td>
                         <td>{{ srv_info.get_name() }}</td>
                         <td>{{ srv_info.server_reply }}</td>
+                        <td class="text-center">
+                            <span ng-show="srv_info.version_set">{{ srv_info.version_models }}</span>
+                            <span ng-show="!srv_info.version_set">---</span>
+                        </td>
+                        <td class="text-center">
+                            <span ng-show="srv_info.version_set">{{ srv_info.version_database }}</span>
+                            <span ng-show="!srv_info.version_set">---</span>
+                        </td>
+                        <td class="text-center">
+                            <span ng-show="srv_info.version_set">{{ srv_info.version_software }}</span>
+                            <span ng-show="!srv_info.version_set">---</span>
+                        </td>
                         <td class="text-right">{{ srv_info.max_mem | get_size:1:1024:"B":3 }}</td>
                         <td class="text-right">{{ srv_info.sum_mem | get_size:1:1024:"B":3 }}</td>
                     </tr>

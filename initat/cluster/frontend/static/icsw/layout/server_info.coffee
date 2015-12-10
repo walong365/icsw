@@ -108,6 +108,13 @@ angular.module(
             else
                 @max_mem = 0
                 @sum_mem = 0
+            if @xml.find("version_info").length
+                @version_set = true
+                @version_models = @xml.find("version_info > sys").attr("models")
+                @version_database = @xml.find("version_info > sys").attr("database")
+                @version_software = @xml.find("version_info > sys").attr("software")
+            else
+                @version_set = false
         get_tr_class: () ->
             if @server_state
                 return "danger"

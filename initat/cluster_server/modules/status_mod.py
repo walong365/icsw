@@ -19,13 +19,14 @@
 
 import os
 
-from initat.cluster.backbone import routing
-from initat.icsw.service import instance, container, service_parser, main
-import initat.cluster_server
-from initat.tools import process_tools, server_command, uuid_tools, net_tools
-from initat.cluster_server.config import global_config
+from django.conf import settings
 
 import cs_base_class
+import initat.cluster_server
+from initat.cluster.backbone import routing
+from initat.cluster_server.config import global_config
+from initat.icsw.service import instance, container, service_parser, main
+from initat.tools import process_tools, server_command, uuid_tools, net_tools
 
 
 class status(cs_base_class.server_com):
@@ -46,9 +47,14 @@ class server_status(cs_base_class.server_com):
         cur_inst.srv_com["status"] = inst_xml
         _local_state = main.query_local_meta_server()
         if _local_state is not None:
+            _bldr = cur_inst.srv_com.builder()
             cur_inst.srv_com["metastatus"] = _local_state["overview:instances"]
+            cur_inst.srv_com["version_info"] = _bldr(
+                "sys",
+                **settings.ICSW_VERSION_DICT
+            )
             cur_inst.srv_com.set_result(
-                "checked system",
+                "checked system {}".format(global_config["SERVER_FULL_NAME"]),
             )
         else:
             cur_inst.srv_com.set_result(
