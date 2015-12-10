@@ -1,10 +1,10 @@
 <script type="text/ng-template" id="icsw.layout.server.info.overview">
-    <accordion close-others="no">
-        <accordion-group is-open="is_open_roles">
-            <accordion-heading>
+    <uib-accordion close-others="no">
+        <uib-accordion-group is-open="is_open_roles">
+            <uib-accordion-heading>
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': is_open_roles, 'glyphicon-chevron-right': !is_open_roles}"></i>
                 {{ num_roles() }} valid cluster roles defined (viewed from {{ local_device }})
-            </accordion-heading>
+            </uib-accordion-heading>
             <table class="table table-hover table-striped" style="width:auto;">
                 <thead>
                     <tr>
@@ -38,12 +38,12 @@
                     </tr>
                 </tbody>
             </table>
-        </accordion-group>
-        <accordion-group is-open="is_open_list">
-            <accordion-heading>
+        </uib-accordion-group>
+        <uib-accordion-group is-open="is_open_list">
+            <uib-accordion-heading>
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': is_open_list, 'glyphicon-chevron-right': !is_open_list}"></i>
                 <ng-pluralize count="server_info_list.length" when="{'0': 'No Server results', 'one': 'One Server result', 'other': '{} Server results'}"></ng-pluralize>
-            </accordion-heading>
+            </uib-accordion-heading>
             <table class="table table-hover table-striped" style="width:auto;">
                 <thead>
                     <tr>
@@ -64,12 +64,12 @@
                     </tr>
                 </tbody>
             </table>
-        </accordion-group>
-        <accordion-group is-open="is_open_detail">
-            <accordion-heading>
+        </uib-accordion-group>
+        <uib-accordion-group is-open="is_open_detail">
+            <uib-accordion-heading>
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': is_open_detail, 'glyphicon-chevron-right': !is_open_detail}"></i>
                 <ng-pluralize count="server_info_list.length" when="{'0': 'No Servers checked', 'one': 'One Server checked', 'other': '{} Servers checked'}"></ng-pluralize>
-            </accordion-heading>
+            </uib-accordion-heading>
             <table class="table table-hover table-striped" style="width:auto;">
                 <thead>
                     <tr>
@@ -94,8 +94,8 @@
                     </tr>
                 </tbody>
             </table>
-        </accordion-group>
-    </accordion>
+        </uib-accordion-group>
+    </uib-accordion>
 </script>
 
 <script type="text/ng-template" id="icsw.service.enable.disable">

@@ -365,11 +365,16 @@ angular.module(
             delete in_dict.hidden
         else
             hidden = false
+        if in_dict.show_error?
+            show_error = in_dict.show_error
+            delete in_dict.show_error
+        else
+            show_error = true
         in_dict.success = (res) =>
             if in_dict.dataType == "json"
                 _def.resolve(res)
             else
-                if icswParseXMLResponseService(res, 40, show_error=true, hidden=hidden) or ignore_log_level
+                if icswParseXMLResponseService(res, 40, show_error=show_error, hidden=hidden) or ignore_log_level
                     _def.resolve(res)
                 else
                     _def.reject(res)
