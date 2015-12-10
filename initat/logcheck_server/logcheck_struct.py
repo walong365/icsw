@@ -507,7 +507,7 @@ class Machine(object):
                 "compressed {} in {} (per item: {})".format(
                     logging_tools.get_plural("file", len(g_res.compress_list)),
                     logging_tools.get_diff_time_str(end_time - start_time),
-                    logging_tools.get_diff_time_str((end_time - start_time) / len(compress_list)),
+                    logging_tools.get_diff_time_str((end_time - start_time) / len(g_res.compress_list)),
                 )
             )
 
