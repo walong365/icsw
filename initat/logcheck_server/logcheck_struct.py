@@ -33,6 +33,7 @@ import time
 
 from initat.cluster.backbone.models import device
 from initat.tools import logging_tools, process_tools, inotify_tools
+from initat.host_monitoring import limits
 from .config import global_config
 
 
@@ -510,6 +511,14 @@ class Machine(object):
                     logging_tools.get_diff_time_str((end_time - start_time) / len(g_res.compress_list)),
                 )
             )
+
+    @staticmethod
+    def syslog_rate_mon(srv_com):
+        srv_com.set_result(
+            "rate is OK",
+            limits.nag_STATE_OK,
+        )
+        # print srv_com.pretty_print()
 
     @staticmethod
     def get_syslog(srv_com):

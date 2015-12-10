@@ -207,13 +207,22 @@ class SpecialBase(object):
             # not beautifull but working
             self.log("not allowed to make an external call", logging_tools.LOG_LEVEL_CRITICAL)
             return None
-        self.log("calling server '{}' for {}, command is '{}', {}, {}".format(
-            server_name,
-            self.host.valid_ip.ip,
-            command,
-            "args is '{}'".format(", ".join([str(value) for value in args])) if args else "no arguments",
-            ", ".join(["{}='{}'".format(key, str(value)) for key, value in kwargs.iteritems()]) if kwargs else "no kwargs",
-        ))
+        self.log(
+            "calling server '{}' for {}, command is '{}', {}, {}".format(
+                server_name,
+                self.host.valid_ip.ip,
+                command,
+                "args is '{}'".format(", ".join([str(value) for value in args])) if args else "no arguments",
+                ", ".join(
+                    [
+                        "{}='{}'".format(
+                            key,
+                            str(value)
+                        ) for key, value in kwargs.iteritems()
+                    ]
+                ) if kwargs else "no kwargs",
+            )
+        )
         connect_to_localhost = kwargs.pop("connect_to_localhost", False)
         conn_ip = "127.0.0.1" if connect_to_localhost else self.host.valid_ip.ip
         if not self.__use_cache:

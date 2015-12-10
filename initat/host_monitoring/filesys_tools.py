@@ -157,7 +157,11 @@ def get_file_content(srv_com, log_com, **kwargs):
                 if cur_size <= max_size:
                     try:
                         if "encoding" in file_entry.attrib:
-                            content = codecs.open(file_entry.attrib["name"], "r", file_entry.attrib["encoding"]).read()
+                            try:
+                                content = codecs.open(file_entry.attrib["name"], "r", file_entry.attrib["encoding"]).read()
+                            except UnicodeDecodeError:
+                                # try without encoding
+                                content = open(file_entry.attrib["name"], "r").read()
                         else:
                             content = open(file_entry.attrib["name"], "r").read()
                     except:
@@ -168,7 +172,10 @@ def get_file_content(srv_com, log_com, **kwargs):
                             if int(file_entry.get("base64", "0")):
                                 file_entry.text = base64.b64encode(content)
                             else:
-                                file_entry.text = content
+                                try:
+                                    file_entry.text = content
+                                except:
+                                    file_entry.text = content.decode("utf-8", errors="ignore")
                         except:
                             file_entry.attrib["error"] = "1"
                             file_entry.attrib["error_str"] = "error setting content: {}".format(process_tools.get_except_info())

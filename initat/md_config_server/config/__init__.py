@@ -27,7 +27,7 @@ from initat.md_config_server.config.mon_config import *
 from initat.md_config_server.config.base_config import base_config
 from initat.md_config_server.config.content_emitter import content_emitter
 from initat.md_config_server.config.var_cache import var_cache
-from initat.md_config_server.config.build_cache import build_cache
+from initat.md_config_server.config.build_cache import BuildCache
 from initat.md_config_server.config.config_dir import config_dir
 from initat.md_config_server.config.host_type_config import host_type_config
 from initat.md_config_server.config.main_config import main_config

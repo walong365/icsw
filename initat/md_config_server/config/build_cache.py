@@ -24,23 +24,28 @@ import time
 
 from django.db.models import Q
 
+from initat.icsw.service.instance import InstanceXML
+
 from initat.cluster.backbone.models import device, device_group, mon_check_command, user, \
     mon_host_cluster, mon_service_cluster, mon_trace, mon_host_dependency, mon_service_dependency
 from initat.md_config_server.config.var_cache import var_cache
 from initat.snmp.sink import SNMPSink
 from initat.tools import configfile, logging_tools, process_tools
+from initat.cluster.backbone import routing
 
 __all__ = [
-    "build_cache",
+    "BuildCache",
 ]
 
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 
 
-class build_cache(object):
+class BuildCache(object):
     def __init__(self, log_com, cdg, full_build, unreachable_pks=[]):
         self.log_com = log_com
+        self.router = routing.SrvTypeRouting(logger=self.log_com)
+        self.instance_xml = InstanceXML(log_com=self.log, quiet=True)
         # build cache to speed up config generation
         # stores various cached objects
         # global luts
@@ -52,7 +57,9 @@ class build_cache(object):
         for _value in self.mcc_lut_3.itervalues():
             _value.mccs_id = None
             _value.check_command_pk = _value.pk
-        self.mcc_lut = {key: (v0, v1, v2) for key, v0, v1, v2 in mon_check_command.objects.all().values_list("pk", "name", "description", "config__name")}
+        self.mcc_lut = {
+            key: (v0, v1, v2) for key, v0, v1, v2 in mon_check_command.objects.all().values_list("pk", "name", "description", "config__name")
+        }
         # lookup table for config -> mon_check_commands
         self.mcc_lut_2 = {}
         for v_list in mon_check_command.objects.all().values_list("name", "config__name"):
@@ -78,7 +85,9 @@ class build_cache(object):
             ).select_related(
                 "domain_tree_node",
                 "device_group"
-            ).prefetch_related("mon_trace_set")
+            ).prefetch_related(
+                "mon_trace_set"
+            )
         }
         # set reachable flag
         for key, value in self.all_hosts_dict.iteritems():

@@ -53,6 +53,7 @@ except ImportError:
     import server_command
     import logging_tools
     NEW_CODE = False
+    HM_PORT = 2001
 
 
 SEP_LEN = 70

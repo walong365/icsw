@@ -22,7 +22,6 @@
 
 """ host-monitoring, with 0MQ and direct socket support, relay part """
 
-from lxml import etree
 import StringIO
 import base64
 import bz2
@@ -34,17 +33,17 @@ import socket
 import sys
 import time
 
-from lxml.builder import E
 import zmq
+from lxml import etree
 
-from initat.host_monitoring import limits, hm_classes
 from initat.client_version import VERSION_STRING
+from initat.host_monitoring import limits, hm_classes
+from initat.host_monitoring.hm_mixins import HMHRMixin
+from initat.host_monitoring.modules.network_mod import ping_command
+from initat.icsw.service.instance import InstanceXML
 from initat.tools import configfile, logging_tools, process_tools, \
     server_command, threading_tools, uuid_tools, config_store
 from initat.tools.server_mixins import ICSWBasePool
-from initat.host_monitoring.modules.network_mod import ping_command
-from initat.host_monitoring.hm_mixins import HMHRMixin
-from initat.icsw.service.instance import InstanceXML
 from .config import global_config
 from .constants import ICINGA_TOP_DIR, RELAY_SETTINGS_CS_NAME
 from .discovery import ZMQDiscovery
@@ -697,20 +696,23 @@ class relay_code(ICSWBasePool, HMHRMixin):
                         # srv_com["host_unresolved"] = t_host
                         # srv_com["host"] = ip_addr
                         # try to get the state of both addresses
-                        c_state = self.__client_dict.get(t_host, self.__client_dict.get(ip_addr, None))
-                        # just for debug runs
-                        # c_state = "T"
-                        if c_state is None:
-                            # not needed
-                            # HostConnection.delete_hc(srv_com)
-                            if t_host not in self.__last_tried:
-                                self.__last_tried[t_host] = "T" if self.__default_0mq else "0"
-                            self.__last_tried[t_host] = {
-                                "T": "0",
-                                "0": "T",
-                            }[self.__last_tried[t_host]]
-                            c_state = self.__last_tried[t_host]
-                        con_mode = c_state
+                        if int(srv_com["*port"]) == self.__hm_port:
+                            c_state = self.__client_dict.get(t_host, self.__client_dict.get(ip_addr, None))
+                            # just for debug runs
+                            # c_state = "T"
+                            if c_state is None:
+                                # not needed
+                                # HostConnection.delete_hc(srv_com)
+                                if t_host not in self.__last_tried:
+                                    self.__last_tried[t_host] = "T" if self.__default_0mq else "0"
+                                self.__last_tried[t_host] = {
+                                    "T": "0",
+                                    "0": "T",
+                                }[self.__last_tried[t_host]]
+                                c_state = self.__last_tried[t_host]
+                            con_mode = c_state
+                        else:
+                            con_mode = "0"
                         full_con_mode = {
                             "0": "zeromMQ",
                             "T": "TCP",
@@ -939,7 +941,7 @@ class relay_code(ICSWBasePool, HMHRMixin):
     def _send_to_nhm_service(self, src_id, srv_com, xml_input, **kwargs):
         conn_str = "tcp://{}:{:d}".format(
             srv_com["host"].text,
-            int(srv_com["port"].text)
+            int(srv_com["port"].text),
         )
         if ZMQDiscovery.has_mapping(conn_str):
             connected = conn_str in self.__nhm_connections
@@ -1024,10 +1026,18 @@ class relay_code(ICSWBasePool, HMHRMixin):
                     cur_id = srv_result["identity"].text
                     if cur_id in self.__nhm_dict:
                         del self.__nhm_dict[cur_id]
-                        self._send_result(
-                            cur_id,
-                            srv_result["result"].attrib["reply"],
-                            int(srv_result["result"].attrib["state"]))
+                        if "result" in srv_result:
+                            self._send_result(
+                                cur_id,
+                                srv_result["result"].attrib["reply"],
+                                int(srv_result["result"].attrib["state"])
+                            )
+                        else:
+                            self._send_result(
+                                cur_id,
+                                "no result tag found",
+                                limits.nag_STATE_CRITICAL,
+                            )
                     else:
                         self.log(
                             "received nhm-result for unknown id '{}', ignoring".format(cur_id),

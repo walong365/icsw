@@ -67,11 +67,15 @@ def get_server_uuid(srv_type, uuid=None):
 class SrvTypeRouting(object):
     ROUTING_KEY = "_WF_ROUTING"
 
-    def __init__(self, force=False, logger=None, ignore_errors=False):
-        if logger is None:
-            self.logger = logging.getLogger("cluster.routing")
+    def __init__(self, force=False, logger=None, log_com=None, ignore_errors=False):
+        self._logger = None
+        self._log_com = None
+        if logger is not None:
+            self._logger = logger
+        elif log_com is not None:
+            self._log_com = logger
         else:
-            self.logger = logger
+            self._logger = logging.getLogger("cluster.routing")
         self.ignore_errors = ignore_errors
         _resolv_dict = cache.get(self.ROUTING_KEY)
         # if _resolv_dict is None or True:
@@ -90,9 +94,22 @@ class SrvTypeRouting(object):
         self._resolv_dict = _resolv_dict
         self._node_split_list = _resolv_dict.get("node_split_list", [])
 
+    @property
+    def logger(self):
+        if self._log_com:
+            return self._log_com
+        else:
+            return self._logger
+
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        if self._log_com:
+            self._log_com(what, log_level)
+        else:
+            self._logger.log(log_level, what)
+
     def update(self, force=False):
         if not cache.get(self.ROUTING_KEY) or force:
-            self.logger.info("update SrvTypeRouting")
+            self.log("update SrvTypeRouting")
             self._resolv_dict = self._build_resolv_dict()
             if "_local_device" in self._resolv_dict:
                 self._local_device = device.objects.get(Q(pk=self._resolv_dict["_local_device"][0]))
@@ -123,14 +140,20 @@ class SrvTypeRouting(object):
                 # filter
                 _found_srv = [entry for entry in _srv_list if entry[2] == server_id]
                 if not _found_srv:
-                    self.logger.critical("no server_id {:d} found for srv_type {}, taking first one".format(server_id, srv_type))
+                    self.log(
+                        "no server_id {:d} found for srv_type {}, taking first one".format(server_id, srv_type),
+                        logging_tools.LOG_LEVEL_CRITICAL,
+                    )
                     _found_srv = _srv_list
             else:
                 # no server id, take first one
                 _found_srv = _srv_list
             return _found_srv[0][1]
         else:
-            self.logger.critical("no ServerType {} defined".format(srv_type))
+            self.log(
+                "no ServerType {} defined".format(srv_type),
+                logging_tools.LOG_LEVEL_CRITICAL
+            )
             return None
 
     def get_connection_string(self, srv_type, server_id=None):
@@ -141,7 +164,10 @@ class SrvTypeRouting(object):
                 _INSTANCE.get_port_dict(srv_type, command=True),
             )
         else:
-            self.logger.critical("no ServerType {} defined".format(srv_type))
+            self.log(
+                "no ServerType {} defined".format(srv_type),
+                logging_tools.LOG_LEVEL_CRITICAL
+            )
             return None
 
     @property
@@ -195,11 +221,12 @@ class SrvTypeRouting(object):
                     # routing info
                     if _dev.effective_device.is_meta_device:
                         # server-like config is set for an md-device, not good
-                        self.logger.error(
+                        self.log(
                             "device '{}' (srv_type_list {}) is a meta-device".format(
                                 _dev.effective_device.full_name,
                                 self._srv_type_to_string(_srv_type_list),
-                            )
+                            ),
+                            logging_tools.LOG_LEVEL_ERROR
                         )
                     else:
                         if _myself.device and _dev.effective_device.pk == _myself.device.pk:
@@ -241,7 +268,7 @@ class SrvTypeRouting(object):
                                             )
                                         )
                                     _dev_srv_type_lut.setdefault(_dst_key, []).append(_conf_name)
-                                    self.logger.info(
+                                    self.log(
                                         "adding device '{}' (IP {}, EffPK={:d}) to srv_type {} (config {})".format(
                                             _dev.effective_device.full_name,
                                             _first_ip,
@@ -252,18 +279,22 @@ class SrvTypeRouting(object):
                                     )
                         else:
                             if not self.ignore_errors:
-                                self.logger.error(
+                                self.log(
                                     "no route to device '{}' found (srv_type_list {}, config {})".format(
                                         _dev.effective_device.full_name,
                                         self._srv_type_to_string(_srv_type_list),
                                         _conf_name,
-                                    )
+                                    ),
+                                    logging_tools.LOG_LEVEL_ERROR,
                                 )
         # missing routes
         _missing_srv = _INSTANCES_WITH_NAMES - set(_resolv_dict.keys())
         if _missing_srv:
             for _srv_type in sorted(_missing_srv):
-                self.logger.warning("no device for srv_type '{}' found".format(_srv_type))
+                self.log(
+                    "no device for srv_type '{}' found".format(_srv_type),
+                    logging_tools.LOG_LEVEL_WARN
+                )
         # sort entry
         for key, value in _resolv_dict.iteritems():
             # format: device name, device IP, device_pk, penalty
@@ -301,21 +332,23 @@ class SrvTypeRouting(object):
                 _cl_dict.setdefault(_value[1], []).append(_value[0])
             elif _value[0] in _bs_hints:
                 # using boothints
-                self.logger.warning(
+                self.log(
                     "using bootserver_hint {:d} for {:d} ({})".format(
                         _bs_hints[_value[0]],
                         _value[0],
                         _value[2],
-                    )
+                    ),
+                    logging_tools.LOG_LEVEL_WARN
                 )
                 _cl_dict.setdefault(_bs_hints[_value[0]], []).append(_value[0])
             else:
                 self.__no_bootserver_devices.add((_value[0], _value[2]))
-                self.logger.warning(
+                self.log(
                     "device {:d} ({}) has no bootserver associated".format(
                         _value[0],
                         _value[2],
-                    )
+                    ),
+                    logging_tools.LOG_LEVEL_WARN
                 )
         # do we need more than one server connection ?
         if len(_cl_dict) > 1:
@@ -377,7 +410,7 @@ class SrvTypeRouting(object):
                         for entry in result.xpath(".//ns:{}/ns:{}/*".format(_sub_name, _sub_name)):
                             _merged += 1
                             add_list.append(entry)
-                        self.logger.info(
+                        self.log(
                             "merged {} of {}".format(
                                 logging_tools.get_plural("element", _merged),
                                 _sub_name,

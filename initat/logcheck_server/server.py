@@ -28,7 +28,7 @@ from initat.cluster.backbone import db_tools
 from initat.logcheck_server.config import global_config
 from initat.logcheck_server.logcheck_struct import Machine
 from initat.tools import server_mixins, configfile, logging_tools, \
-    process_tools, threading_tools, service_tools
+    process_tools, threading_tools, service_tools, server_command
 
 
 @server_mixins.RemoteCallProcess
@@ -127,6 +127,17 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
     @server_mixins.RemoteCall()
     def get_syslog(self, srv_com, **kwargs):
         Machine.get_syslog(srv_com)
+        return srv_com
+
+    @server_mixins.RemoteCall()
+    def syslog_rate_mon(self, srv_com, **kwargs):
+        Machine.syslog_rate_mon(srv_com)
+        return srv_com
+
+    @server_mixins.RemoteCall()
+    def get_0mq_id(self, srv_com, **kwargs):
+        srv_com["zmq_id"] = self.bind_id
+        srv_com.set_result("0MQ_ID is {}".format(self.bind_id), server_command.SRV_REPLY_STATE_OK)
         return srv_com
 
     # syslog stuff

@@ -32,7 +32,7 @@ import networkx
 from django.core.urlresolvers import reverse
 from django.db import connection
 from django.db.models import Q
-from lxml.builder import E  # @UnresolvedImport
+from lxml.builder import E
 
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device, device_group, device_variable, mon_ext_host, \
@@ -44,7 +44,7 @@ from initat.md_config_server import special_commands, constants
 from initat.md_config_server.config import global_config, main_config, all_commands, \
     all_service_groups, time_periods, all_contacts, all_contact_groups, all_host_groups, all_hosts, \
     all_services, config_dir, device_templates, service_templates, mon_config, \
-    all_host_dependencies, build_cache, build_safe_name, SimpleCounter
+    all_host_dependencies, BuildCache, build_safe_name, SimpleCounter
 from initat.md_config_server.constants import CACHE_MODES, DEFAULT_CACHE_MODE
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
 from initat.md_config_server.mixins import version_check_mixin
@@ -180,11 +180,14 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             del self.__mach_loggers[mach_name]
 
     def _check_md_config(self):
-        c_stat, out = commands.getstatusoutput("{}/bin/{} -v {}/etc/{}.cfg".format(
-            global_config["MD_BASEDIR"],
-            global_config["MD_TYPE"],
-            global_config["MD_BASEDIR"],
-            global_config["MD_TYPE"]))
+        c_stat, out = commands.getstatusoutput(
+            "{}/bin/{} -v {}/etc/{}.cfg".format(
+                global_config["MD_BASEDIR"],
+                global_config["MD_TYPE"],
+                global_config["MD_BASEDIR"],
+                global_config["MD_TYPE"]
+            )
+        )
         if c_stat:
             self.log(
                 "Checking the {}-configuration resulted in an error ({:d})".format(
@@ -486,7 +489,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                     # recreate access files
                     cur_gc._create_access_entries()
 
-                _bc = build_cache(self.log, cdg, full_build=not single_build, unreachable_pks=unreachable_pks)
+                _bc = BuildCache(self.log, cdg, full_build=not single_build, unreachable_pks=unreachable_pks)
                 _bc.cache_mode = cache_mode
                 _bc.build_dv = build_dv
                 _bc.host_list = h_list
@@ -879,7 +882,11 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                     self.mach_log(
                         "device has {} ({})".format(
                             logging_tools.get_plural("device_variable", len(host.dev_variables.keys())),
-                            ", ".join(["{}: {:d}".format(key, var_info[key]) for key in ["d", "g", "c"]]),
+                            ", ".join(
+                                [
+                                    "{}: {:d}".format(key, var_info[key]) for key in ["d", "g", "c"]
+                                ]
+                            ),
                         )
                     )
                     # now we have the device- and service template
@@ -960,8 +967,11 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                     c_list = [entry for entry in all_access] + _bc.get_device_group_users(host.device_group_id)
                     if c_list:
                         act_host["contacts"] = c_list
-                    self.mach_log("contact groups for host: {}".format(
-                        ", ".join(sorted(host_groups)) or "none"))
+                    self.mach_log(
+                        "contact groups for host: {}".format(
+                            ", ".join(sorted(host_groups)) or "none"
+                        )
+                    )
                     if host.monitor_checks or _bc.single_build:
                         if host.valid_ip.ip == "0.0.0.0":
                             self.mach_log("IP address is '{}', host is assumed to be always up".format(unicode(host.valid_ip)))
@@ -1051,9 +1061,6 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                 # act_hostext_info["host_name"] = host.full_name
                                 for key in ["icon_image", "statusmap_image"]:
                                     act_host[key] = getattr(ng_ext_hosts[host.mon_ext_host_id], key)
-                                # FIXME, not working for nagios2
-                                # host_config_list.append(act_hostext_info)
-                                # hostext_nc[host.full_name] = act_hostext_info
                             else:
                                 self.log(
                                     "don't know how to handle hostextinfo for {}_version {:d}".format(
@@ -1407,8 +1414,10 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                             sc_array = cur_special()
                     except:
                         exc_info = process_tools.exception_info()
-                        self.log("error calling special {}:".format(mccs.name),
-                                 logging_tools.LOG_LEVEL_CRITICAL)
+                        self.log(
+                            "error calling special {}:".format(mccs.name),
+                            logging_tools.LOG_LEVEL_CRITICAL
+                        )
                         for line in exc_info.log_lines:
                             self.log(" - {}".format(line), logging_tools.LOG_LEVEL_CRITICAL)
                         sc_array = []
