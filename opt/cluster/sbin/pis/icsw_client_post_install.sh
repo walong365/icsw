@@ -86,7 +86,7 @@ for client in logging-server meta-server loadmodules hoststatus ; do
 done
 
 # deactivate most client services (now handled via meta-server)
-for client in host-monitoring package-client ; do
+for client in host-monitoring package-client memcached ; do
     if [ -f /etc/init.d/${client} ] ; then
         ${ICSW_PIS}/modify_service.sh deactivate ${client}
     fi

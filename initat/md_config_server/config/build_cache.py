@@ -44,7 +44,7 @@ global_config = configfile.get_global_config(process_tools.get_programm_name())
 class BuildCache(object):
     def __init__(self, log_com, cdg, full_build, unreachable_pks=[]):
         self.log_com = log_com
-        self.router = routing.SrvTypeRouting(logger=self.log_com)
+        self.router = routing.SrvTypeRouting(log_com=self.log_com)
         self.instance_xml = InstanceXML(log_com=self.log, quiet=True)
         # build cache to speed up config generation
         # stores various cached objects
