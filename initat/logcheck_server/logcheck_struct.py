@@ -888,14 +888,13 @@ class FileWatcher(object):
         self.log("init filewatcher at {}".format(self.__root_dir))
         self.__inotify_root = Machine.register_root(self.__root_dir, self)
 
-    def get_logs(self, lines):
+    def get_logs(self, to_read):
         lines = []
-        if _to_read:
+        if to_read:
             _logs = self.__inotify_root.get_logs()
-            _to_read = lines
             for _log in _logs:
-                _to_read -= _log.read_chunks(lines, _to_read)
-                if not _to_read:
+                to_read -= _log.read_chunks(lines, to_read)
+                if not to_read:
                     break
         return lines, self.__inotify_root.get_latest_stream_dict()
 
