@@ -79,6 +79,14 @@ def srv_reply_to_nag_state(srv_reply_state):
     }.get(srv_reply_state, nag_STATE_CRITICAL)
 
 
+def nag_state_to_srv_reply(nag_state):
+    return {
+        nag_STATE_OK: SRV_REPLY_STATE_OK,
+        nag_STATE_WARNING: SRV_REPLY_STATE_WARN,
+        nag_STATE_CRITICAL: SRV_REPLY_STATE_ERROR,
+    }.get(nag_state, SRV_REPLY_STATE_ERROR)
+
+
 def log_level_to_srv_reply(log_level):
     return {
         logging_tools.LOG_LEVEL_OK: SRV_REPLY_STATE_OK,

@@ -25,9 +25,10 @@ import stat
 import subprocess
 import time
 
+import psutil
+
 from initat.host_monitoring import hm_classes, limits
 from initat.tools import logging_tools, process_tools, server_command
-import psutil
 
 # name of total-device
 TOTAL_DEVICE_NAME = "all"
@@ -59,7 +60,10 @@ class ArgusProcess(object):
     def __init__(self, proc, interface, arg_path):
         self.interface = interface
         _now = datetime.datetime.now()
-        self.target_file = os.path.join(ARGUS_TARGET, _now.strftime("argus_%%s_%Y-%m-%d_%H:%M:%S") % (self.interface))
+        self.target_file = os.path.join(
+            ARGUS_TARGET,
+            _now.strftime("argus_{}_%Y-%m-%d_%H:%M:%S".format(self.interface)),
+        )
         self.command = "{} -P 0 -i {} -w {}".format(arg_path, interface, self.target_file)
         self.create_day = _now.day
         self.popen = None
@@ -153,7 +157,6 @@ class _general(hm_classes.hm_module):
         priority = 10
 
     def init_module(self):
-        from initat.host_monitoring.config import global_config
 
         self.dev_dict = {}
         self.last_update = time.time()

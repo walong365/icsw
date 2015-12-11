@@ -28,7 +28,8 @@ class special_syslog_rate(SpecialBase):
     class Meta:
         server_contact = False
         info = "syslog_rate_mon"
-        command_line = "$USER2$ -m $ARG1$ -p $ARG2$ syslog_rate $ARG3$"
+        command_line = "$USER2$ -m $ARG1$ -p $ARG2$ syslog_rate -w ${ARG3:DEVICE_SYSLOG_RATE_WARNING:1} " \
+            "-c ${ARG4:DEVICE_SYSLOG_RATE_CRITICAL:2.0} --pk $ARG5$"
         description = "return the current syslog rate of the given device"
 
     def _call(self):
@@ -36,13 +37,17 @@ class special_syslog_rate(SpecialBase):
         SRV_TYPE = "logcheck-server"
         _router = self.build_cache.router
         if SRV_TYPE in _router:
+            warn_value = float(self.host.dev_variables.get("DEVICE_SYSLOG_RATE_WARNING", "1.0"))
+            crit_value = float(self.host.dev_variables.get("DEVICE_SYSLOG_RATE_CRITICAL", "2.0"))
             _srv_address = _router.get_server_address(SRV_TYPE)
             sc_array.append(
                 self.get_arg_template(
                     "syslog rate",
                     arg1=_srv_address,
                     arg2=self.build_cache.instance_xml.get_port_dict(SRV_TYPE, ptype="command"),
-                    arg3=self.host.pk,
+                    arg3="{:.3f}".format(warn_value),
+                    arg4="{:.3f}".format(crit_value),
+                    arg5=self.host.pk,
                 )
             )
         else:

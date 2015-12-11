@@ -151,8 +151,8 @@ def do_nets(conf):
                                 act_filename = "ifcfg-eth-id-{}".format(cur_nd.macaddr)
                                 if global_config["ADD_NETDEVICE_LINKS"]:
                                     conf.add_link_object(
-                                        "/etc/sysconfig/network/%s" % (act_filename),
-                                        "/etc/sysconfig/network/ifcfg-%s" % (cur_nd.devname)
+                                        "/etc/sysconfig/network/{}".format(act_filename),
+                                        "/etc/sysconfig/network/ifcfg-{}".format(cur_nd.devname)
                                     )
                         else:
                             log_str += ", ignoring (zero macaddress)"
@@ -181,10 +181,10 @@ def do_nets(conf):
                         act_file["LLADDR"] = cur_nd.fake_macaddr
                         conf.add_link_object("/etc/sysconfig/network/ifcfg-eth-id-{}".format(cur_nd.fake_macaddr), act_filename)
                     if act_filename:
-                        new_co = conf.add_file_object("/etc/sysconfig/network/%s" % (act_filename))
+                        new_co = conf.add_file_object("/etc/sysconfig/network/{}".format(act_filename))
                         new_co += act_file
             else:
-                act_filename = "ifcfg-%s" % (cur_nd.devname)
+                act_filename = "ifcfg-{}".format(cur_nd.devname)
                 act_file = {
                     "BOOTPROTO": "static",
                     "BROADCAST": cur_net.broadcast,
@@ -200,19 +200,19 @@ def do_nets(conf):
         elif sys_dict["vendor"] == "debian":
             glob_nf += ""
             if cur_nd.devname == "lo":
-                glob_nf += "iface %s inet loopback" % (cur_nd.devname)
+                glob_nf += "iface {} inet loopback".format(cur_nd.devname)
             else:
-                glob_nf += "iface %s inet static" % (cur_nd.devname)
-                glob_nf += "      address %s" % (cur_ip.ip)
-                glob_nf += "      netmask %s" % (cur_net.netmask)
-                glob_nf += "    broadcast %s" % (cur_net.broadcast)
+                glob_nf += "iface {} inet static".format(cur_nd.devname)
+                glob_nf += "      address {}".format(cur_ip.ip)
+                glob_nf += "      netmask {}".format(cur_net.netmask)
+                glob_nf += "    broadcast {}".format(cur_net.broadcast)
                 if cur_nd.devname == boot_dev:
-                    glob_nf += "      gateway %s" % (def_ip)
+                    glob_nf += "      gateway {}".formatt(def_ip)
                 if not cur_nd.fake_macaddr:
                     pass
                 elif int(cur_nd.fake_macaddr.replace(":", ""), 16) != 0:
                     log_str += ", with fake_macaddr"
-                    glob_nf += "    hwaddress ether %s" % (cur_nd.fake_macaddr)
+                    glob_nf += "    hwaddress ether {}".format(cur_nd.fake_macaddr)
         else:
             # redhat-mode
             act_filename = "ifcfg-{}".format(cur_nd.devname)

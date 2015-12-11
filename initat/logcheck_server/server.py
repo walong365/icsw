@@ -131,7 +131,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
 
     @server_mixins.RemoteCall()
     def syslog_rate_mon(self, srv_com, **kwargs):
-        Machine.syslog_rate_mon(srv_com)
+        Machine.mon_command_class.g_run(srv_com)
         return srv_com
 
     @server_mixins.RemoteCall()

@@ -1030,7 +1030,7 @@ class relay_code(ICSWBasePool, HMHRMixin):
                             self._send_result(
                                 cur_id,
                                 srv_result["result"].attrib["reply"],
-                                int(srv_result["result"].attrib["state"])
+                                server_command.srv_reply_to_nag_state(int(srv_result["result"].attrib["state"]))
                             )
                         else:
                             self._send_result(

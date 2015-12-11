@@ -70,6 +70,7 @@ class SrvTypeRouting(object):
     def __init__(self, force=False, logger=None, log_com=None, ignore_errors=False):
         self._logger = None
         self._log_com = None
+        # this is not very beautifull ...
         if logger is not None:
             self._logger = logger
         elif log_com is not None:

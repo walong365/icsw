@@ -179,15 +179,20 @@ def interpret_size_str(in_str, **kwargs):
         return 0
 
 
-def get_diff_time_str(diff_secs):
+def get_diff_time_str(diff_secs, **kwargs):
     if type(diff_secs) == datetime.timedelta:
         diff_secs = diff_secs.total_seconds()
     abs_diffs = abs(diff_secs)
     is_int = type(abs_diffs) in [int, long]
+    _long = kwargs.get("long", True)
+    _secs = {
+        True: "seconds",
+        False: "s",
+    }[_long]
     if abs_diffs < 0.0001:
-        diff_str = "{:.3f} useconds".format(abs_diffs * 1000000)
+        diff_str = "{:.3f} u{}".format(abs_diffs * 1000000, _secs)
     elif abs_diffs < 0.1:
-        diff_str = "{:.3f} mseconds".format(abs_diffs * 1000)
+        diff_str = "{:.3f} m{}".format(abs_diffs * 1000, _secs)
     else:
         abs_mins, abs_hours = (0, 0)
         if abs_diffs > 60:
@@ -211,7 +216,10 @@ def get_diff_time_str(diff_secs):
             else:
                 diff_str = "{:d}:{:02d}".format(abs_mins, abs_secs)
         else:
-            diff_str = "{} seconds".format("{:d}" if is_int else "{:.2f}").format(abs_diffs)
+            diff_str = "{} {}".format(
+                "{:d}".format(abs_diffs) if is_int else "{:.2f}".format(abs_diffs),
+                _secs,
+            )
     if diff_secs < 0:
         diff_str = "{} [NEGATIVE TIME]".format(diff_str)
     return diff_str
@@ -264,7 +272,8 @@ class progress_counter(object):
                 self.__sum_lc,
                 self.__total_count,
                 get_diff_time_str(diff_time),
-                get_diff_time_str(diff_time / self.__sum_lc if self.__sum_lc else 0))
+                get_diff_time_str(diff_time / self.__sum_lc if self.__sum_lc else 0)
+            )
         else:
             log_str = "no entities to work with ({})".format(self.__action)
         self._log(log_str, **kwargs)
