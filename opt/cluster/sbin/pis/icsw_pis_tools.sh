@@ -41,10 +41,15 @@ YELLOW="\033[33m"
 OFF="\033[m"
 
 function is_chroot() {
-    p1_inode=$(ls --color=no -di /proc/1/root/ | tr -s " " | cut -d " " -f 1)
-    root_inode=$(ls --color=no -di / | tr -s " " | cut -d " " -f 1)
-    if [ "${p1_inode}" = "${root_inode}" ] ; then
-        return 1
+    # returns 0 if running chrooted
+    if [ -d /proc -a -d /proc/1 ] ; then
+        p1_inode=$(ls --color=no -di /proc/1/root/ | tr -s " " | cut -d " " -f 1)
+        root_inode=$(ls --color=no -di / | tr -s " " | cut -d " " -f 1)
+        if [ "${p1_inode}" = "${root_inode}" ] ; then
+            return 1
+        else
+            return 0
+        fi
     else
         return 0
     fi

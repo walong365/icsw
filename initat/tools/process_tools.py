@@ -1616,6 +1616,8 @@ def fetch_sysinfo(root_dir="/"):
                 sys_dict["vendor"] = "debian"
             elif arch_str.count("ubuntu"):
                 sys_dict["vendor"] = "ubuntu"
+            elif arch_str.count("scientific"):
+                sys_dict["vendor"] = "scientific"
             # check for sles
             if re.search("sles", arch_str):
                 arch_m = re.match("^.*suse sles (\d+).*$", arch_str)

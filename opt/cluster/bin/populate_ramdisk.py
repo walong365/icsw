@@ -873,9 +873,11 @@ def main_copy():
     if not do_it:
         sys.exit(2)
     else:
-        print "copying kernel from source directory {} to target directory {}".format(
-            lib_dir,
-            target_dir,
+        print(
+            "copying kernel from source directory {} to target directory {}".format(
+                lib_dir,
+                target_dir,
+            )
         )
         print "  system.map : {}".format(system_map_file)
         print "  vmlinuz    : {}".format(vmlinuz_file)
@@ -893,11 +895,11 @@ def main_copy():
         # modules
         t_lib_dir = os.path.join(target_dir, "lib", "modules", copy_args.kernel)
         print "\nCopying modules {} -> {}".format(lib_dir, t_lib_dir)
-        shutil.copytree(lib_dir, t_lib_dir)
+        shutil.copytree(lib_dir, t_lib_dir, symlinks=True)
         # firmware
         t_firm_dir = os.path.join(target_dir, "lib", "firmware")
         print "\nCopying firmware {} -> {}".format(firm_dir, t_firm_dir)
-        shutil.copytree(firm_dir, t_firm_dir)
+        shutil.copytree(firm_dir, t_firm_dir, symlinks=True)
         # local firmware
         # print "\nCopying local firmware {} -> {}".format(firm_dir_local, t_firm_dir)
         # shutil.copytree(firm_dir_local, t_firm_dir)
