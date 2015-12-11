@@ -21,6 +21,7 @@
 #
 
 """ monitoring views """
+
 import StringIO
 import base64
 import collections
@@ -366,7 +367,9 @@ class get_mon_vars(View):
         res_list = []
         mon_check_commands = mon_check_command.objects.filter(
             Q(config__device_config__device__in=_dev_pks)
-        ).select_related("config")
+        ).select_related(
+            "config"
+        )
         for _mc in mon_check_commands:
             _mon_info, _log_lines = parse_commandline(_mc.command_line)
             for _key, _value in _mon_info["default_values"].iteritems():
@@ -398,24 +401,28 @@ class get_mon_vars(View):
                                 _checks[0].config.name,
                             )
                         )
-        return HttpResponse(json.dumps(
-            # [
-            #    {"idx": 0, "name": "please choose..."}
-            # ] +
-            [
-                {
-                    "idx": _idx,
-                    "info": "{} (default {}) from check_command {} (config {})".format(
-                        _value[1],
-                        _value[2],
-                        _value[0],
-                        _value[4],
-                    ),
-                    "type": _value[3],
-                    "name": _value[1],
-                    "value": _value[2],
-                } for _idx, _value in enumerate(res_list, 1)
-            ]), content_type="application/json")
+        return HttpResponse(
+            json.dumps(
+                # [
+                #    {"idx": 0, "name": "please choose..."}
+                # ] +
+                [
+                    {
+                        "idx": _idx,
+                        "info": "{} (default {}) from check_command {} (config {})".format(
+                            _value[1],
+                            _value[2],
+                            _value[0],
+                            _value[4],
+                        ),
+                        "type": _value[3],
+                        "name": _value[1],
+                        "value": _value[2],
+                    } for _idx, _value in enumerate(res_list, 1)
+                ]
+            ),
+            content_type="application/json"
+        )
 
 
 class resolve_name(View):
@@ -438,8 +445,7 @@ class create_device(permission_required_mixin, View):
     @method_decorator(login_required)
     def get(self, request):
         return render_me(
-            request, "create_new_device.html", {
-            }
+            request, "create_new_device.html", {}
         )()
 
     @method_decorator(login_required)

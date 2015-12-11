@@ -172,7 +172,13 @@ class server_process(
         for _name, _entry in SPECIAL_DICT.iteritems():
             _inst = _entry(self.log)
             if "special_{}".format(_inst.Meta.name) != _name:
-                self.log("special {} has illegal name {}".format(_name, _inst.Meta.name), logging_tools.LOG_LEVEL_CRITICAL)
+                self.log(
+                    "special {} has illegal name {}".format(
+                        _name,
+                        _inst.Meta.name
+                    ),
+                    logging_tools.LOG_LEVEL_CRITICAL
+                )
             else:
                 self.log("found special {}".format(_name))
                 cur_mccs = self._check_mccs(_inst.Meta)
@@ -215,8 +221,8 @@ class server_process(
         except mon_check_command_special.DoesNotExist:
             cur_mccs = mon_check_command_special(name=mdef.name)
         # also used in snmp/struct.py and generic_net_handler.py
-        for attr_name in ["command_line", "info", "description", "is_active", "meta", "identifier"]:
-            setattr(cur_mccs, attr_name, getattr(mdef, attr_name))
+        for attr_name in {"command_line", "info", "description", "is_active", "meta", "identifier", "group"}:
+            setattr(cur_mccs, attr_name, getattr(mdef, attr_name, ""))
         cur_mccs.parent = parent
         cur_mccs.save()
         return cur_mccs

@@ -178,22 +178,19 @@
     <td>{{ config.description }}</td>
     <td class="text-center">
         <span ng-class="get_label_class(config, 'var')" ng-click="toggle_expand(config, 'var')">
-            <span ng_class="get_expand_class(config, 'var')">
-            </span>
+            <span ng_class="get_expand_class(config, 'var')" />
             {{ config.var_num }}
         </span>
     </td>
     <td class="text-center">
         <span ng-class="get_label_class(config, 'script')" ng-click="toggle_expand(config, 'script')">
-            <span ng_class="get_expand_class(config, 'script')">
-            </span>
+            <span ng_class="get_expand_class(config, 'script')" />
             {{ config.script_num }}
         </span>
     </td>
     <td class="text-center">
         <span ng-class="get_label_class(config, 'mon')" ng-click="toggle_expand(config, 'mon')">
-            <span ng_class="get_expand_class(config, 'mon')">
-            </span>
+            <span ng_class="get_expand_class(config, 'mon')" />
             {{ config.mon_num }}
         </span>
     </td>
@@ -474,29 +471,34 @@
 </script>
 
 <script type="text/ng-template" id="mon.check.command.form">
-    <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
+    <form class="form-horizontal" ng-submit="modify()" name="form">
         <h2>Check command '{{ edit_obj.name }}'</h2>
         <uib-tabset>
             <uib-tab heading="Basic setup">
                 <fieldset>
                     <legend>Basic settings</legend>
-                    <div id="div_id_name" class="form-group  ng-class:form_error('name')">
-                        <label for="id_name" class="control-label col-sm-2 requiredField">
-                        Name<span class="asteriskField">*</span></label>
+                    <div class="form-group  ng-class:form_error('name')">
+                        <label class="control-label col-sm-2 requiredField">
+                            Name<span class="asteriskField">*</span>
+                        </label>
 
-                        <div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text"></input></div>
+                        <div class="controls col-sm-9">
+                            <input class="textinput textInput form-control" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text"/>
+                        </div>
                     </div>
-                    <div id="div_id_description" class="form-group">
-                        <label for="id_description" class="control-label col-sm-2">
-                        Description
-                    </label>
+                    <div class="form-group">
+                        <label class="control-label col-sm-2">
+                            Description
+                        </label>
 
-                        <div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_description" maxlength="192" name="description" ng-model="edit_obj.description" type="text"></input></div>
+                        <div class="controls col-sm-9">
+                            <input class="textinput textInput form-control" maxlength="192" name="description" ng-model="edit_obj.description" type="text"/>
+                        </div>
                     </div>
-                    <div id="div_id_mon_check_command_special" class="form-group" ng_show="edit_obj.is_active">
-                        <label for="id_mon_check_command_special" class="control-label col-sm-2">
-                        Mon check command special
-                    </label>
+                    <div class="form-group" ng_show="edit_obj.is_active">
+                        <label class="control-label col-sm-2">
+                            Special MonCheck command
+                        </label>
 
                         <div class="controls col-sm-9">
                             <div class="input-group" style="max-width:400px; min-width:240px;">
@@ -508,7 +510,11 @@
                                         <div ng-bind-html="value.info | highlight: $select.search"></div>
                                     </ui-select-choices>
                                 </ui-select>
-                                <span class="input-group-btn"><button type="button" ng-click="edit_obj.mon_check_command_special = undefined" class="btn btn-default"><span class="glyphicon glyphicon-trash"></span></button> </span>
+                                <span class="input-group-btn">
+                                    <button type="button" ng-click="edit_obj.mon_check_command_special = undefined" class="btn btn-default">
+                                        <span class="glyphicon glyphicon-trash"></span>
+                                    </button>
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -516,11 +522,14 @@
                         <span class="glyphicon glyphicon-exclamation-sign"></span>
                         {{ get_mccs_already_used_warning(edit_obj) }}
                     </div>
-                    <div id="div_id_command_line" class="form-group" ng_show="!edit_obj.mon_check_command_special &amp;&amp; edit_obj.is_active">
-                        <label for="id_command_line" class="control-label col-sm-2 requiredField">
-                        Command line<span class="asteriskField">*</span></label>
+                    <div class="form-group" ng_show="!edit_obj.mon_check_command_special &amp;&amp; edit_obj.is_active">
+                        <label class="control-label col-sm-2 requiredField">
+                            Command line<span class="asteriskField">*</span>
+                        </label>
 
-                        <div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_command_line" maxlength="765" name="command_line" ng-model="edit_obj.command_line" required="True" type="text"></input></div>
+                        <div class="controls col-sm-9">
+                            <input class="textinput textInput form-control" maxlength="765" name="command_line" ng-model="edit_obj.command_line" required="True" type="text"/>
+                        </div>
                     </div>
                     <div class="form-group" ng-show="edit_obj.mon_check_command_special">
                         <label class="control-label col-sm-2">Info</label>
@@ -537,11 +546,11 @@
 
                         <div class="controls col-sm-9">
                             <div class="form-inline">
-                                <input type="button" ng-class='"btn btn-sm btn-primary"' ng-click="add_argument(edit_obj)" ng-value='"add argument"'></input>
+                                <input type="button" ng-class='"btn btn-sm btn-primary"' ng-click="add_argument(edit_obj)" ng-value='"add argument"'/>
                                 name:
-                                <input type="text" class="form-control input-sm" title="default value" ng-model="edit_obj.arg_name"></input>
+                                <input type="text" class="form-control input-sm" title="default value" ng-model="edit_obj.arg_name"/>
                                 value:
-                                <input type="text" class="form-control input-sm" title="default value" ng-model="edit_obj.arg_value"></input>
+                                <input type="text" class="form-control input-sm" title="default value" ng-model="edit_obj.arg_value"/>
                             </div>
                         </div>
                     </div>
@@ -550,7 +559,8 @@
 
                         <div class="col-sm-9 list-group">
                             <ul>
-                                <li class="list-group-item" ng-repeat="value in get_moncc_info(edit_obj)">{{ value }}
+                                <li class="list-group-item" ng-repeat="value in get_moncc_info(edit_obj)">
+                                    {{ value }}
                                 </li>
                             </ul>
                         </div>
@@ -558,9 +568,9 @@
                 </fieldset>
                 <fieldset>
                     <legend>Additional settings</legend>
-                    <div id="div_id_mon_service_templ" class="form-group">
-                        <label for="id_mon_service_templ" class="control-label col-sm-2">
-                        Mon service templ
+                    <div class="form-group">
+                        <label class="control-label col-sm-2">
+                            Mon service templ
                         </label>
 
                         <div class="controls col-sm-9">
@@ -577,9 +587,9 @@
                             </div>
                         </div>
                     </div>
-                    <div id="div_id_event_handler" class="form-group" ng_show="!edit_obj.is_event_handler">
-                        <label for="id_event_handler" class="control-label col-sm-2">
-                        Event handler
+                    <div class="form-group" ng_show="!edit_obj.is_event_handler">
+                        <label class="control-label col-sm-2">
+                            Event handler
                         </label>
 
                         <div class="controls col-sm-9">
@@ -600,17 +610,22 @@
                 <fieldset ng-show="!edit_obj.mon_check_command_special">
                     <legend>Active / passive settings</legend>
                     <div class="form-group">
-                        <div id="div_id_is_active" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-9"><label for="id_is_active"><input checked="checked" class="checkboxinput checkbox" id="id_is_active" name="is_active" ng-model="edit_obj.is_active" type="checkbox"></input>
-                                Is active
-                            </label></div>
+                        <div class="checkbox">
+                            <div class="controls col-lg-offset-0 col-sm-9">
+                                <label>
+                                    <input checked="checked" class="checkboxinput checkbox" name="is_active" ng-model="edit_obj.is_active" type="checkbox"/>
+                                    Is active
+                                </label>
+                            </div>
                         </div>
                     </div>
                     <div class="form-group col-sm-12" ng-show="!edit_obj.is_active"><b>Set result via</b></div>
-                    <div class="form-group col-sm-12" ng-show="!edit_obj.is_active"><tt>
+                    <div class="form-group col-sm-12" ng-show="!edit_obj.is_active">
+                        <code>
                         /opt/cluster/bin/set_passive_checkresult.py --device &lt;FQDN&gt; --check {{ edit_obj.name }}
                         --state {OK|WARN|CRITICAL} --output &lt;OUTPUT&gt;
-                    </tt></div>
+                        </code>
+                    </div>
                 </fieldset>
                 <fieldset>
                     <legend>Flags</legend>
@@ -618,32 +633,44 @@
                         <div class="col-md-6">
                             <div class="form-group">
                                 <div class="checkbox">
-                                    <div class="controls col-lg-offset-0 col-sm-9"><label for="id_volatile"><input class="checkboxinput checkbox" id="id_volatile" name="volatile" ng-model="edit_obj.volatile" type="checkbox"></input>
-                                        Volatile
-                                    </label></div>
+                                    <div class="controls col-lg-offset-0 col-sm-9">
+                                        <label>
+                                            <input class="checkboxinput checkbox" name="volatile" ng-model="edit_obj.volatile" type="checkbox"/>
+                                            Volatile
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
                             <div class="form-group">
                                 <div class="checkbox">
-                                    <div class="controls col-lg-offset-0 col-sm-9"><label for="id_enable_perfdata"><input class="checkboxinput checkbox" id="id_enable_perfdata" name="enable_perfdata" ng-model="edit_obj.enable_perfdata" type="checkbox"></input>
-                                        Enable perfdata
-                                    </label></div>
+                                    <div class="controls col-lg-offset-0 col-sm-9">
+                                        <label>
+                                            <input class="checkboxinput checkbox" name="enable_perfdata" ng-model="edit_obj.enable_perfdata" type="checkbox"/>
+                                            Enable perfdata
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="form-group">
                                 <div class="checkbox">
-                                    <div class="controls col-lg-offset-0 col-sm-9"><label for="id_event_handler_enabled"><input checked="checked" class="checkboxinput checkbox" id="id_event_handler_enabled" name="event_handler_enabled" ng-model="edit_obj.event_handler_enabled" type="checkbox"></input>
-                                        Event handler enabled
-                                    </label></div>
+                                    <div class="controls col-lg-offset-0 col-sm-9">
+                                        <label>
+                                            <input checked="checked" class="checkboxinput checkbox" name="event_handler_enabled" ng-model="edit_obj.event_handler_enabled" type="checkbox"/>
+                                            Event handler enabled
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
                             <div class="form-group">
                                 <div class="checkbox" ng_show="edit_obj.event_handler == undefined">
-                                    <div class="controls col-lg-offset-0 col-sm-9"><label for="id_is_event_handler"><input class="checkboxinput checkbox" id="id_is_event_handler" name="is_event_handler" ng-model="edit_obj.is_event_handler" type="checkbox"></input>
-                                        Is event handler
-                                    </label></div>
+                                    <div class="controls col-lg-offset-0 col-sm-9">
+                                        <label>
+                                            <input class="checkboxinput checkbox" name="is_event_handler" ng-model="edit_obj.is_event_handler" type="checkbox"/>
+                                            Is event handler
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -657,9 +684,12 @@
                 </fieldset>
             </uib-tab>
             <uib-tab heading="History">
-                <icsw-history-model-history style="config" model="'mon_check_command'" object-id="edit_obj.idx"></icsw-history-model-history>
+                <icsw-history-model-history style="config" model="'mon_check_command'" object-id="edit_obj.idx">
+                </icsw-history-model-history>
             </uib-tab>
         </uib-tabset>
-        <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" ng-value="action_string"></input></div>
+        <div class="form-actions">
+            <input type="submit" name="submit" value="" class="btn btn-primary primaryAction" ng-value="action_string" />
+        </div>
     </form>
 </script>

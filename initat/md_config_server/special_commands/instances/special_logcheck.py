@@ -27,8 +27,8 @@ from initat.tools import logging_tools
 class special_syslog_rate(SpecialBase):
     class Meta:
         server_contact = False
-        info = "syslog_rate_mon"
-        command_line = "$USER2$ -m $ARG1$ -p $ARG2$ syslog_rate -w ${ARG3:DEVICE_SYSLOG_RATE_WARNING:1} " \
+        info = "Syslog rate"
+        command_line = "$USER2$ -m $ARG1$ -p $ARG2$ syslog_rate_mon -w ${ARG3:DEVICE_SYSLOG_RATE_WARNING:1} " \
             "-c ${ARG4:DEVICE_SYSLOG_RATE_CRITICAL:2.0} --pk $ARG5$"
         description = "return the current syslog rate of the given device"
 

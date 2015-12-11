@@ -244,6 +244,7 @@ class host_check_command(models.Model):
 class mon_check_command_special(models.Model):
     idx = models.AutoField(primary_key=True)
     name = models.CharField(max_length=64, unique=True)
+    group = models.CharField(max_length=64, default="")
     info = models.CharField(max_length=64, default="")
     command_line = models.CharField(max_length=512, default="")
     description = models.CharField(max_length=512, default="")
