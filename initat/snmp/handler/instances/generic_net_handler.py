@@ -33,8 +33,10 @@ try:
     from django.db.models import Q
     from initat.cluster.backbone.models import snmp_network_type, netdevice, netdevice_speed, \
         peer_information
+    from initat.cluster.backbone.models import SpecialGroupsEnum
 except:
-    pass
+    SpecialGroupsEnum = None
+
 
 # if base
 IF_BASE = "1.3.6.1.2.1.2"
@@ -277,6 +279,8 @@ class if_mon(MonCheckDefinition):
         command_line = "* --speed $ARG3$ $ARG4$"
         info = "SNMP Interface check"
         description = "SNMP Interface check, source is Database"
+        if SpecialGroupsEnum:
+            group = SpecialGroupsEnum.system_net
 
     def parser_setup(self, parser):
         parser.add_argument("--speed", type=int, dest="speed", help="target interface speed")

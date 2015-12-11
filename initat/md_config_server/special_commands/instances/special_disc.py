@@ -20,7 +20,8 @@
 """ special call for disc monitoring """
 
 from django.db.models import Q
-from initat.cluster.backbone.models import partition, lvm_lv
+
+from initat.cluster.backbone.models import partition, lvm_lv, SpecialGroupsEnum
 from initat.md_config_server.special_commands.base import SpecialBase
 from initat.tools import logging_tools
 
@@ -28,6 +29,7 @@ from initat.tools import logging_tools
 class special_disc(SpecialBase):
     class Meta:
         info = "Discs via collserver"
+        group = SpecialGroupsEnum.system_disc
         command_line = "$USER2$ -m $HOSTADDRESS$ df -w ${ARG1:85} -c ${ARG2:95} $ARG3$"
         description = "queries the partition on the target system via collserver"
 

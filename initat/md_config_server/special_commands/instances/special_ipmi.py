@@ -19,15 +19,15 @@
 #
 """ IPMI special """
 
-from django.db.models import Q
-from initat.cluster.backbone.models import monitoring_hint
+from initat.cluster.backbone.models import monitoring_hint, SpecialGroupsEnum
 from initat.md_config_server.special_commands.base import SpecialBase
 
 
 class special_ipmi(SpecialBase):
     class Meta:
         server_contact = True
-        info = "IPMI checks via collserver"
+        info = "IPMI checks via collserver (deprecated)"
+        group = SpecialGroupsEnum.hardware
         command_line = "$USER2$ -m $HOSTADDRESS$ ipmi_sensor --lowern=${ARG1:na} --lowerc=${ARG2:na} " \
             "--lowerw=${ARG3:na} --upperw=${ARG4:na} --upperc=${ARG5:na} --uppern=${ARG6:na} $ARG7$"
         description = "queries the IPMI sensors of the underlying IPMI interface of the target device"

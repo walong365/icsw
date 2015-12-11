@@ -43,4 +43,9 @@ class special_snmp_general(SpecialBase):
 
     def get_commands(self):
         snmp_sink = SNMPSink(self.log)
-        return sum([_handler.config_mon_check() for _handler in snmp_sink.handlers if _handler.Meta.mon_check], [])
+        return sum(
+            [
+                _handler.config_mon_check() for _handler in snmp_sink.handlers if _handler.Meta.mon_check
+            ],
+            []
+        )

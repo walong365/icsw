@@ -21,6 +21,7 @@
 
 import json
 import re
+import enum
 from collections import defaultdict
 
 from django.conf import settings
@@ -63,7 +64,17 @@ __all__ = [
     # unreachable info
     "mon_build_unreachable",  # track unreachable devices
     "parse_commandline",  # commandline parsing
+    "SpecialGroupsEnum",
 ]
+
+
+class SpecialGroupsEnum(enum.Enum):
+    unspec = "Unspecified"
+    hardware = "Hardware"
+    hardware_disc = "Hardware / Disc"
+    system = "System"
+    system_disc = "System / Disc"
+    system_net = "System / Network"
 
 
 class mon_trace(models.Model):
@@ -263,6 +274,7 @@ class mon_check_command_special(models.Model):
 
     class Meta:
         verbose_name = "Special check command"
+        ordering = ("group", "name",)
 
     def __unicode__(self):
         return "mccs_{}".format(self.name)

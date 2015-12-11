@@ -1020,6 +1020,7 @@ config_module = angular.module(
         delete_confirm_str: (obj) ->
             return "Really delete MonCheckCommand '#{obj.name}' ?"
         edit_template: "mon.check.command.form"
+        modal_title: "Modify MonCheckCommand"
         save_defer: (new_obj) ->
         object_modified: () ->
             # we don't know if categories have changed, notify to be sure

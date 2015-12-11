@@ -28,7 +28,7 @@ from django.db.models import Q
 
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import mon_notification, config_str, config_int, \
-    mon_check_command_special, mon_check_command
+    mon_check_command_special, mon_check_command, SpecialGroupsEnum
 from initat.cluster.backbone.models.functions import get_related_models
 from initat.host_monitoring.hm_classes import mvect_entry
 from initat.md_config_server import constants
@@ -221,8 +221,9 @@ class server_process(
         except mon_check_command_special.DoesNotExist:
             cur_mccs = mon_check_command_special(name=mdef.name)
         # also used in snmp/struct.py and generic_net_handler.py
-        for attr_name in {"command_line", "info", "description", "is_active", "meta", "identifier", "group"}:
+        for attr_name in {"command_line", "info", "description", "is_active", "meta", "identifier"}:
             setattr(cur_mccs, attr_name, getattr(mdef, attr_name, ""))
+        cur_mccs.group = getattr(mdef, "group", SpecialGroupsEnum.unspec).value
         cur_mccs.parent = parent
         cur_mccs.save()
         return cur_mccs

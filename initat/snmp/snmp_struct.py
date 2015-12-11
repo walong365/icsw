@@ -24,7 +24,6 @@ import time
 from initat.host_monitoring import limits
 from initat.tools import ipvx_tools, server_command
 
-
 class ResultNode(object):
     def __init__(self, **kwargs):
         for inst_name in ["ok", "warn", "error"]:

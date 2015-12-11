@@ -19,7 +19,7 @@
 #
 """ special calls for logcheck-server related commands """
 
-from initat.cluster.backbone.models import monitoring_hint
+from initat.cluster.backbone.models import monitoring_hint, SpecialGroupsEnum
 from initat.md_config_server.special_commands.base import SpecialBase
 from initat.tools import logging_tools
 
@@ -28,6 +28,7 @@ class special_syslog_rate(SpecialBase):
     class Meta:
         server_contact = False
         info = "Syslog rate"
+        group = SpecialGroupsEnum.system
         command_line = "$USER2$ -m $ARG1$ -p $ARG2$ syslog_rate_mon -w ${ARG3:DEVICE_SYSLOG_RATE_WARNING:1} " \
             "-c ${ARG4:DEVICE_SYSLOG_RATE_CRITICAL:2.0} --pk $ARG5$"
         description = "return the current syslog rate of the given device"

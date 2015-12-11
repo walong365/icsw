@@ -20,7 +20,8 @@
 """ IPMI check for collserver special """
 
 from django.db.models import Q
-from initat.cluster.backbone.models import monitoring_hint
+
+from initat.cluster.backbone.models import monitoring_hint, SpecialGroupsEnum
 from initat.md_config_server.special_commands.base import SpecialBase
 
 
@@ -29,6 +30,7 @@ class special_ipmi_ext(SpecialBase):
         command_line = "/bin/true"
         is_active = False
         info = "IPMI as passive checks via collectd"
+        group = SpecialGroupsEnum.hardware
         description = "queries the IPMI sensors of the IPMI interface directly (not via the target host)"
         identifier = "ipmi_passive_checks"
 

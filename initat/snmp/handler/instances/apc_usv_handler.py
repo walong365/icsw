@@ -1,4 +1,4 @@
-# Copyright (C) 2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2014-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -20,11 +20,16 @@
 """ SNMP handler for APC USVs """
 
 from lxml.builder import E
-from initat.host_monitoring import limits
 
+from initat.host_monitoring import limits
 from ..base import SNMPHandler
-from ...snmp_struct import simple_snmp_oid, MonCheckDefinition, snmp_oid
 from ...functions import simplify_dict, flatten_dict
+from ...snmp_struct import simple_snmp_oid, MonCheckDefinition, snmp_oid
+
+try:
+    from initat.cluster.backbone.models import SpecialGroupsEnum
+except ImportError:
+    SpecialGroupsEnum = None
 
 
 USV_BASE = "1.3.6.1.4.1.318.1.1.1"
@@ -49,7 +54,15 @@ class handler(SNMPHandler):
         ]
 
     def collect_feed(self, result_dict, **kwargs):
-        res_dict = flatten_dict(simplify_dict(self.filter_results(result_dict, keys_are_strings=False), (1, 3, 6, 1, 4, 1, 318, 1, 1, 1)))
+        res_dict = flatten_dict(
+            simplify_dict(
+                self.filter_results(
+                    result_dict,
+                    keys_are_strings=False
+                ),
+                (1, 3, 6, 1, 4, 1, 318, 1, 1, 1)
+            )
+        )
         mv_tree = kwargs["mv_tree"]
         mv_tree.extend([
             E.mve(
@@ -174,8 +187,10 @@ class usv_mon_all(usv_mon_base):
     class Meta:
         short_name = "usvoverview"
         command_line = "*"
-        info = "Check USV via SNMP in one line"
+        info = "Check APC USV via SNMP, overview"
         description = "Check USV via SNMP (one-line version)"
+        if SpecialGroupsEnum:
+            group = SpecialGroupsEnum.hardware
 
     def config_call(self, s_com):
         dev = s_com.host
@@ -208,8 +223,10 @@ class usv_mon_detail(usv_mon_base):
     class Meta:
         short_name = "usvdetail"
         command_line = "* --type $ARG3$"
-        info = "Check USV via SNMP"
+        info = "Check APC USV via SNMP"
         description = "Check USV via SNMP"
+        if SpecialGroupsEnum:
+            group = SpecialGroupsEnum.hardware
 
     def parser_setup(self, parser):
         parser.add_argument("--type", type=str, dest="type", default="freqin", help="value to query", choices=[_m.short for _m in USV_METRICS])

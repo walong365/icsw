@@ -19,7 +19,7 @@
 #
 """ openvpn special """
 
-from initat.cluster.backbone.models import monitoring_hint
+from initat.cluster.backbone.models import monitoring_hint, SpecialGroupsEnum
 from initat.md_config_server.special_commands.base import SpecialBase
 
 
@@ -27,6 +27,7 @@ class special_openvpn(SpecialBase):
     class Meta:
         server_contact = True
         info = "OpenVPN check"
+        group = SpecialGroupsEnum.system
         command_line = "$USER2$ -m $HOSTADDRESS$ openvpn_status -i $ARG1$ -p $ARG2$"
         description = "checks for running OpenVPN instances"
 

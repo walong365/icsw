@@ -21,7 +21,7 @@
 
 from argparse import Namespace
 
-from initat.cluster.backbone.models import monitoring_hint, device_variable
+from initat.cluster.backbone.models import monitoring_hint, device_variable, SpecialGroupsEnum
 from initat.md_config_server.special_commands.base import SpecialBase
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
 from initat.host_monitoring.modules.raidcontrollers.all import AllRAIDCtrl
@@ -36,6 +36,7 @@ class special_megaraid_sas(SpecialBase):
     class Meta:
         retries = 2
         server_contact = True
+        group = SpecialGroupsEnum.hardware_disc
         info = "MegaRaid SAS"
         command_line = "$USER2$ -m $HOSTADDRESS$ megaraid_sas_status --key $ARG1$ --check $ARG2$ " \
             "--passive-check-prefix $ARG3$ --short-output ${{ARG4:{}:0}} --ignore-missing-bbu ${{ARG5:{}:0}} " \

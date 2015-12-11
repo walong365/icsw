@@ -22,7 +22,8 @@
 import re
 
 from django.db.models import Q
-from initat.cluster.backbone.models import netdevice
+
+from initat.cluster.backbone.models import netdevice, SpecialGroupsEnum
 from initat.md_config_server.special_commands.base import SpecialBase
 from initat.tools import logging_tools
 
@@ -30,6 +31,7 @@ from initat.tools import logging_tools
 class special_net(SpecialBase):
     class Meta:
         info = "configured netdevices via collserver"
+        group = SpecialGroupsEnum.system_net
         command_line = "$USER2$ -m $HOSTADDRESS$ net --duplex $ARG1$ -s $ARG2$ -w $ARG3$ -c $ARG4$ $ARG5$"
         description = "queries all configured network devices"
 

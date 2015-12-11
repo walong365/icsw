@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2015 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -19,10 +19,8 @@
 #
 """ special tasks for md-config-server, should be split into submodules, FIXME """
 
-from django.db.models import Q
-from initat.cluster.backbone.models import monitoring_hint
+from initat.cluster.backbone.models import monitoring_hint, SpecialGroupsEnum
 from initat.md_config_server.special_commands.base import SpecialBase
-from lxml.builder import E  # @UnresolvedImport @UnusedImport
 from initat.tools import logging_tools
 
 
@@ -30,6 +28,7 @@ class special_eonstor(SpecialBase):
     class Meta:
         retries = 2
         server_contact = True
+        group = SpecialGroupsEnum.hardware_disc
         info = "Eonstor checks"
         command_line = "$USER3$ -m $HOSTADDRESS$ -C ${ARG1:SNMP_COMMUNITY:public} -V ${ARG2:SNMP_VERSION:2} $ARG3$ $ARG4$"
         description = "checks the eonstore disc chassis via SNMP"

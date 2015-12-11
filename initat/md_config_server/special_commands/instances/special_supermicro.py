@@ -21,7 +21,7 @@
 
 from argparse import Namespace
 
-from initat.cluster.backbone.models import monitoring_hint
+from initat.cluster.backbone.models import monitoring_hint, SpecialGroupsEnum
 from initat.host_monitoring.modules import supermicro_mod
 from initat.md_config_server.special_commands.base import SpecialBase
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
@@ -30,7 +30,8 @@ from initat.md_config_server.icinga_log_reader.log_reader import host_service_id
 class special_supermicro(SpecialBase):
     class Meta:
         server_contact = True
-        info = "SuperMicro"
+        group = SpecialGroupsEnum.hardware
+        info = "SuperMicro Bladecenter active"
         command_line = "$USER2$ -t 20 -m 127.0.0.1 smcipmi --ip=$HOSTADDRESS$ --user=${ARG1:SMC_USER:ADMIN} --passwd=${ARG2:SMC_PASSWD:ADMIN} $ARG3$"
         description = "queries IPMI Bladecenters via the collserver on the localhost"
 
@@ -87,7 +88,8 @@ class special_supermicro(SpecialBase):
 class special_supermicro_passive(SpecialBase):
     class Meta:
         server_contact = True
-        info = "SuperMicro passive"
+        group = SpecialGroupsEnum.hardware
+        info = "SuperMicro Bladecenter passive"
         command_line = "$USER2$ -t 20 -m 127.0.0.1 smcipmi --ip=$HOSTADDRESS$ --user=${ARG1:SMC_USER:ADMIN} --passwd=${ARG2:SMC_PASSWD:ADMIN} counter " \
             "--passive-check-prefix=$ARG3$"
         description = "queries IPMI Bladecenters via the collserver on the localhost, reduced load when compared with supermicro"

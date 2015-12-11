@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2015 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -19,12 +19,14 @@
 #
 """ special check for all disks """
 
+from initat.cluster.backbone.models import SpecialGroupsEnum
 from initat.md_config_server.special_commands.base import SpecialBase
 
 
 class special_disc_all(SpecialBase):
     class Meta:
         info = "report fullest disc"
+        group = SpecialGroupsEnum.system_disc
         command_line = "$USER2$ -m $HOSTADDRESS$ df -w ${ARG1:85} -c ${ARG2:95} $ARG3$"
         description = "queries the collserver on the target system for the partition with the lowest space"
 

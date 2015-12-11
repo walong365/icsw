@@ -506,7 +506,7 @@
                                     <ui-select-match placeholder="please select a special command">
                                         {{$select.selected.info}}
                                     </ui-select-match>
-                                    <ui-select-choices repeat="value.idx as value in get_mccs_list()| props_filter:{name:$select.search}">
+                                    <ui-select-choices repeat="value.idx as value in get_mccs_list()| props_filter:{name:$select.search}" group-by="'group'">
                                         <div ng-bind-html="value.info | highlight: $select.search"></div>
                                     </ui-select-choices>
                                 </ui-select>

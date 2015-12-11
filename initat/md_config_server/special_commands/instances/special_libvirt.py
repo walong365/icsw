@@ -19,16 +19,15 @@
 #
 """ special libvirt call """
 
-from django.db.models import Q
-from initat.cluster.backbone.models import monitoring_hint
+from initat.cluster.backbone.models import monitoring_hint, SpecialGroupsEnum
 from initat.md_config_server.special_commands.base import SpecialBase
-from lxml.builder import E  # @UnresolvedImport @UnusedImport
 
 
 class special_libvirt(SpecialBase):
     class Meta:
         server_contact = True
-        info = "libvirt"
+        info = "libvirt (Virtualisation)"
+        group = SpecialGroupsEnum.system
         command_line = "$USER2$ -m $HOSTADDRESS$ domain_status $ARG1$"
         description = "checks running virtual machines on the target host via libvirt"
 
