@@ -179,8 +179,8 @@ class Machine(object):
             "netdevice_set__net_ip_set__network__network_type",
         )
         for cur_dev in all_devs:
-            if cur_dev.name in Machine.devname_dict:
-                cur_mach = Machine.devname_dict[cur_dev.name]
+            if cur_dev.full_name in Machine.devname_dict:
+                cur_mach = Machine.devname_dict[cur_dev.full_name]
             else:
                 cur_mach = Machine(cur_dev)
             cur_mach.add_ips(cur_dev)
@@ -199,10 +199,11 @@ class Machine(object):
         )
         self.device = cur_dev
         self.name = cur_dev.name
+        self.full_name = cur_dev.full_name
         self.pk = cur_dev.pk
-        Machine.devname_dict[self.name] = self
+        Machine.devname_dict[self.full_name] = self
         Machine.devpk_dict[self.pk] = self
-        self.log("Added to dict")
+        self.log(u"Added to dict (full_name={}, pk={:d})".format(self.full_name, self.pk))
         self.__fw = None
         self.__ip_dict = {}
         # if self.device.name == "a":
@@ -242,9 +243,17 @@ class Machine(object):
                 if cur_ip.ip not in self.__ip_dict:
                     any_changes = True
                     if cur_ip.domain_tree_node:
-                        self.__ip_dict[cur_ip.ip] = (cur_ip.domain_tree_node.node_postfix, cur_ip.network.network_type.identifier)
+                        self.__ip_dict[cur_ip.ip] = (
+                            cur_ip.domain_tree_node.node_postfix,
+                            cur_ip.network.network_type.identifier,
+                            cur_ip.domain_tree_node.full_name,
+                        )
                     else:
-                        self.__ip_dict[cur_ip.ip] = ("", cur_ip.network.network_type.identifier)
+                        self.__ip_dict[cur_ip.ip] = (
+                            "",
+                            cur_ip.network.network_type.identifier,
+                            cur_ip.domain_tree_node.full_name,
+                        )
         if any_changes:
             self.log_ip_info()
             self.generate_syslog_dirs()
@@ -253,39 +262,74 @@ class Machine(object):
         if self.__ip_dict:
             self.log("IP information:")
             for ip in sorted(self.__ip_dict.keys()):
-                nw_postfix, net_type = self.__ip_dict[ip]
+                nw_postfix, net_type, nw_name = self.__ip_dict[ip]
                 self.log(
-                    " IP {:<15s}, postfix {:<5s} (type {:<5s}), full name is {}{}".format(
+                    " IP {:<15s}, postfix {:<5s} (type {:<5s}), full name is {}{}{}".format(
                         ip,
                         nw_postfix and "'{}'".format(nw_postfix) or "''",
                         net_type == "p" and "{} [*]".format(net_type) or net_type,
                         self.name,
                         nw_postfix,
+                        ".{}".format(nw_name) if nw_name else "",
                     )
                 )
         else:
             self.log("No IPs set")
 
     def generate_syslog_dirs(self):
-        link_array = [("d", os.path.join(global_config["SYSLOG_DIR"], self.name))]
-        for ip, (nw_postfix, net_type) in self.__ip_dict.iteritems():
-            if nw_postfix:
+        _root_dir = os.path.join(global_config["SYSLOG_DIR"], self.full_name)
+        link_array = [("d", _root_dir)]
+        self.log("link-array root-dir is {}".format(_root_dir))
+        for ip, (nw_postfix, net_type, nw_name) in self.__ip_dict.iteritems():
+            if nw_postfix or nw_name:
                 link_array.append(
                     (
                         "l",
                         os.path.join(
                             global_config["SYSLOG_DIR"],
-                            "{}{}".format(self.name, nw_postfix)
+                            "{}{}{}".format(
+                                self.name,
+                                nw_postfix,
+                                ".{}".format(nw_name) if nw_name else "",
+                            ),
                         )
                     )
                 )
             if net_type != "l" or (net_type == "l" and self.name == global_config["SERVER_SHORT_NAME"]):
-                link_array.append(("l", os.path.join(global_config["SYSLOG_DIR"], ip)))
+                link_array.append(
+                    (
+                        "l",
+                        os.path.join(
+                            global_config["SYSLOG_DIR"],
+                            ip
+                        )
+                    )
+                )
+        # remove all links pointing to to root-dir
+        link_array = [(_type, _dir) for _type, _dir in link_array if _type == "d" or (_type == "l" and _dir != _root_dir)]
         self.process_link_array(link_array)
 
     def process_link_array(self, l_array):
         for pt, ps in l_array:
             if pt == "d":
+                # print ps, os.path.isdir(ps)
+                if os.path.islink(ps):
+                    # root dir is link
+                    _link_target = os.path.join(os.path.dirname(ps), os.readlink(ps))
+                    self.log(
+                        "following root-dir link {} to {}".format(
+                            ps,
+                            _link_target,
+                        )
+                    )
+                    if not os.path.exists(_link_target):
+                        self.log("target does not exist, removing...")
+                        os.unlink(ps)
+                    else:
+                        self.log(" ... renaming")
+                        # print _link_target
+                        os.unlink(ps)
+                        os.rename(_link_target, ps)
                 if not os.path.isdir(ps):
                     self.log("pla(): Creating directory {}".format(ps))
                     try:
@@ -296,10 +340,10 @@ class Machine(object):
                             logging_tools.LOG_LEVEL_ERROR
                         )
             elif pt == "l":
-                if isinstance(ps, basestring):
-                    dest = self.name
-                else:
-                    ps, dest = ps
+                # if isinstance(ps, basestring):
+                dest = self.name
+                # else:
+                # ps, dest = ps
                 create_link = False
                 if not os.path.islink(ps):
                     create_link = True

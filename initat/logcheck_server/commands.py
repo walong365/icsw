@@ -28,6 +28,10 @@ from initat.tools import logging_tools, process_tools, server_command
 from initat.host_monitoring import limits
 
 
+class DeviceNotFoundException(BaseException):
+    pass
+
+
 class MonCommand(object):
     @staticmethod
     def setup(log_com, mach_class):
@@ -49,6 +53,11 @@ class MonCommand(object):
         if com_name in MonCommand.commands:
             try:
                 MonCommand.commands[com_name].parse(srv_com)
+            except DeviceNotFoundException:
+                srv_com.set_result(
+                    "device not found",
+                    server_command.SRV_REPLY_STATE_CRITICAL,
+                )
             except:
                 exc_com = process_tools.exception_info()
                 for _line in exc_com.log_lines:
@@ -70,7 +79,7 @@ class MonCommand(object):
                 if MonCommand.machine_class.has_device(values):
                     setattr(namespace, "device", MonCommand.machine_class.get_device(values))
                 else:
-                    raise ValueError("no device with pk {} defined".format(values))
+                    raise DeviceNotFoundException("no device with pk {} defined".format(values))
 
         # add --pk <INT> for device parser
         self.parser.add_argument("--pk", type=int, help="pk of device to check", action=validate_pk)
