@@ -387,12 +387,22 @@ class icinga_log_reader(threading_tools.process_obj):
                 self._handle_warning(e, logfilepath, cur_line.line_no if cur_line else None)
 
         self.log(u"created from {}: {} ".format(logfilepath if logfilepath else "cur icinga log file", stats.items()))
-        mon_icinga_log_raw_host_alert_data.objects.bulk_create(host_states)
-        mon_icinga_log_raw_service_alert_data.objects.bulk_create(service_states)
+
+        # there can be really many host and service entries (up to 1000000),
+        # so we save them in several stages
+        def save_in_small_batches(model, entries, limit=1000):
+            for i in xrange(0, len(entries), limit):
+                model.objects.bulk_create(entries[i:i+limit])
+
+        save_in_small_batches(mon_icinga_log_raw_host_alert_data, host_states)
+        save_in_small_batches(mon_icinga_log_raw_service_alert_data, service_states)
+
         mon_icinga_log_raw_service_flapping_data.objects.bulk_create(service_flapping_states)
         mon_icinga_log_raw_host_flapping_data.objects.bulk_create(host_flapping_states)
-        mon_icinga_log_raw_service_notification_data.objects.bulk_create(service_notifications)
-        mon_icinga_log_raw_host_notification_data.objects.bulk_create(host_notifications)
+
+        save_in_small_batches(mon_icinga_log_raw_service_notification_data, service_notifications)
+        save_in_small_batches(mon_icinga_log_raw_host_notification_data, host_notifications)
+
         mon_icinga_log_raw_host_downtime_data.objects.bulk_create(host_downtimes)
         mon_icinga_log_raw_service_downtime_data.objects.bulk_create(service_downtimes)
         for timestamp in full_system_dump_times:
