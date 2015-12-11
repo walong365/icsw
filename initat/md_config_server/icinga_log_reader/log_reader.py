@@ -394,8 +394,16 @@ class icinga_log_reader(threading_tools.process_obj):
 
         mon_icinga_log_raw_host_downtime_data.objects.bulk_create(host_downtimes)
         mon_icinga_log_raw_service_downtime_data.objects.bulk_create(service_downtimes)
+
         for timestamp in full_system_dump_times:
-            mon_icinga_log_full_system_dump.objects.get_or_create(date=self._parse_timestamp(timestamp))
+            try:
+                mon_icinga_log_full_system_dump.objects.get_or_create(date=self._parse_timestamp(timestamp))
+            except mon_icinga_log_full_system_dump.MultipleObjectsReturned:
+                # There really is no way how this can happen. However, it now has been
+                # observed twice. Ignore it since this isn't actually a problem
+                self.log(u"Detected multiple objects for time {}, ignoring".format(
+                    self._parse_timestamp(timestamp)
+                ))
         self.log(u"read {} lines, ignored {} old ones".format(line_num, old_ignored))
 
         if cur_line:  # if at least something has been read
