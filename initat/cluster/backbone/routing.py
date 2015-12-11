@@ -73,7 +73,7 @@ class SrvTypeRouting(object):
         if logger is not None:
             self._logger = logger
         elif log_com is not None:
-            self._log_com = logger
+            self._log_com = log_com
         else:
             self._logger = logging.getLogger("cluster.routing")
         self.ignore_errors = ignore_errors
