@@ -27,6 +27,8 @@ import os
 import stat
 import time
 
+import scandir
+
 from initat.tools import logging_tools, process_tools, inotify_tools
 from .config import global_config
 
@@ -311,7 +313,7 @@ class InotifyRoot(object):
             )
             self.log("added dir {} (watching: {:d})".format(in_dir, len(self._dir_dict.keys())))
             if recursive:
-                for sub_dir, _dirs, _files in os.walk(in_dir):
+                for sub_dir, _dirs, _files in scandir.walk(in_dir):
                     if sub_dir != in_dir:
                         self.register_dir(sub_dir, recursive=False)
                     _found_files = InotifyRoot.FILES_TO_SCAN & set(_files)
