@@ -85,6 +85,18 @@ setup(
     ],
     data_files=[
         (
+            "/opt/cluster/share/user_extensions.d",
+            [
+                "README",
+            ],
+        ),
+        (
+            "/opt/cluster/share/user_extensions.d/logcheck_server.d",
+            [
+                "README",
+            ],
+        ),
+        (
             "/opt/cluster/share/pci",
             [
                 "opt/cluster/share/pci/pci.ids",
