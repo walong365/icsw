@@ -87,13 +87,13 @@ setup(
         (
             "/opt/cluster/share/user_extensions.d",
             [
-                "opt/clsuter/share/user_extensions.d/README",
+                "opt/cluster/share/user_extensions.d/README",
             ],
         ),
         (
             "/opt/cluster/share/user_extensions.d/logcheck_server.d",
             [
-                "opt/clsuter/share/user_extensions.d/logcheck_server.d/README",
+                "opt/cluster/share/user_extensions.d/logcheck_server.d/README",
             ],
         ),
         (
