@@ -1,0 +1,22 @@
+<!-- syslog-check definitiion
+parameters:
+  ignore: 1 for ignore this XML, 0 for use it
+  version: 1 (my be expanded in future versions)
+-->
+<syslog-check ignore="1" version="1">
+    <!-- name, must be unique -->
+    <name>example check</name>
+    <parameters>
+        <!-- how many minutes to consider -->
+        <minutes-to-consider>10</minutes-to-consider>
+    </parameters>
+    <!-- one or more expression to use -->
+    <expressions>
+        <!-- each expression must define:
+         - level which can be one of warn or crit
+         - format which is one of re
+        -->
+        <expression level="warn" format="re">bla-bla</expression>
+        <expression level="crit" format="re">bla-blaq</expression>
+    </expressions>
+</syslog-check>

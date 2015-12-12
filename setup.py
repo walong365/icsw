@@ -94,6 +94,7 @@ setup(
             "/opt/cluster/share/user_extensions.d/logcheck_server.d",
             [
                 "opt/cluster/share/user_extensions.d/logcheck_server.d/README",
+                "opt/cluster/share/user_extensions.d/logcheck_server.d/example_check.xml",
             ],
         ),
         (
