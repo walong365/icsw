@@ -313,7 +313,7 @@ class InotifyRoot(object):
             )
             self.log("added dir {} (watching: {:d})".format(in_dir, len(self._dir_dict.keys())))
             if recursive:
-                for sub_dir, _dirs, _files in scandir.walk(in_dir):
+                for sub_dir, _dirs, _files in scandir.walk(str(in_dir)):
                     if sub_dir != in_dir:
                         self.register_dir(sub_dir, recursive=False)
                     _found_files = InotifyRoot.FILES_TO_SCAN & set(_files)
@@ -443,7 +443,7 @@ class FileWatcher(object):
         self.machine = machine
         self.__root_dir = os.path.join(
             global_config["SYSLOG_DIR"],
-            format(self.machine.device.name),
+            format(self.machine.device.full_name),
         )
         self.log("init filewatcher at {}".format(self.__root_dir))
         self.__inotify_root = mach_class.register_root(self.__root_dir, self)

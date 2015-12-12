@@ -25,6 +25,7 @@
 import os
 import shutil
 import subprocess
+import scandir
 import time
 
 from initat.cluster.backbone.models import device
@@ -341,7 +342,7 @@ class Machine(object):
                         )
             elif pt == "l":
                 # if isinstance(ps, basestring):
-                dest = self.name
+                dest = self.full_name
                 # else:
                 # ps, dest = ps
                 create_link = False
@@ -406,7 +407,7 @@ class Machine(object):
             lsd_len = len(log_start_dir)
             self.log("starting walk for rotate_logs() in {}".format(log_start_dir))
             # directories processed
-            for root_dir, sub_dirs, files in os.walk(log_start_dir):
+            for root_dir, sub_dirs, files in scandir.walk(str(log_start_dir)):
                 _res["dirs_found"] += 1
                 if root_dir.startswith(log_start_dir):
                     root_dir_p = [int(entry) for entry in root_dir[lsd_len:].split("/") if entry.isdigit()]
