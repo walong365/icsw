@@ -134,11 +134,13 @@ class Machine(object):
             if Machine.has_device(_pk):
                 dev = Machine.get_device(_pk)
                 _to_read = int(_dev.attrib.get("lines", "0"))
-                lines = dev.filewatcher.get_logs(_to_read)
+                _minutes_to_cover = int(_dev.attrib.get("minutes", "0"))
+                lines = dev.filewatcher.get_logs(to_read=_to_read, minutes=_minutes_to_cover)
                 dev.log(
-                    "lines found: {:d} (of {:d})".format(
+                    "lines found: {:d} (of {:d} / {:d})".format(
                         len(lines),
                         _to_read,
+                        _minutes_to_cover,
                     )
                 )
                 _dev.attrib.update(

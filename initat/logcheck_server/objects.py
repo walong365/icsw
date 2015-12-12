@@ -227,39 +227,68 @@ class InotifyFile(object):
     def close(self):
         pass
 
-    def get_line(self, line, idx):
+    def get_line(self, line, idx, only_pd=False):
         _datetime, _rest = line.strip().split(None, 1)
         _pd = datetime.datetime.strptime(
             _datetime.split("+")[0],
             self.DT_FORMAT,
         )
-        return (
-            "{}{:06d}".format(self.prefix, idx),
-            (
-                _pd.year, _pd.month, _pd.day, _pd.hour, _pd.minute, _pd.second
-            ),
-            _rest
-        )
+        if only_pd:
+            return _pd
+        else:
+            return (
+                "{}{:06d}".format(self.prefix, idx),
+                (
+                    _pd.year, _pd.month, _pd.day, _pd.hour, _pd.minute, _pd.second
+                ),
+                _rest
+            )
 
-    def read_chunks(self, lines, lines_to_read):
+    def read_chunks(self, lines, to_read_total, first_log_time):
         _file = open(self.f_name, "r")
         _tot_lines = self.sizes.slices[-1].tot_lines
-        if lines_to_read < _tot_lines:
-            _to_skip = _tot_lines - lines_to_read
+        lines_to_read = to_read_total - len(lines)
+        if first_log_time:
+            # calculate skip by iterating over file
+            _to_skip_time = _tot_lines
+            for _idx, line in enumerate(_file):
+                _parsed = self.get_line(line, 0, only_pd=True)
+                if _parsed > first_log_time:
+                    # read everything starting from now
+                    _to_skip_time = _idx
+                    break
+            _file.seek(0)
         else:
-            _to_skip = 0
+            _to_skip_time = None
+        if to_read_total:
+            if lines_to_read < _tot_lines:
+                _to_skip_size = _tot_lines - lines_to_read
+            else:
+                _to_skip_size = 0
+        else:
+            _to_skip_size = None
+        # compare _to_skip_time with _to_skip_size
+        if _to_skip_size is None:
+            _to_skip = _to_skip_time
+        elif _to_skip_time is None:
+            _to_skip = _to_skip_size
+        else:
+            _to_skip = min(_to_skip_size, _to_skip_time)
+        # print _to_skip_time, _to_skip_size, _to_skip
         _read, _skipped = (0, 0)
+        _read_sthg = False
         cur_ls = len(lines)
         for line in _file:
             if _to_skip > _skipped:
                 _skipped += 1
             else:
                 _read += 1
+                _read_sthg = True
                 lines.insert(
                     cur_ls,
                     self.get_line(line, _skipped + _read),
                 )
-        return _read
+        return _read_sthg
 
 
 class InotifyRoot(object):
@@ -448,13 +477,17 @@ class FileWatcher(object):
         self.log("init filewatcher at {}".format(self.__root_dir))
         self.__inotify_root = mach_class.register_root(self.__root_dir, self)
 
-    def get_logs(self, to_read=0):
+    def get_logs(self, to_read=0, minutes=0):
         lines = []
-        if to_read:
+        if minutes:
+            first_time = datetime.datetime.now() - datetime.timedelta(minutes=minutes)
+        else:
+            first_time = None
+        if to_read or first_time:
             _logs = self.__inotify_root.get_logs()
             for _log in _logs:
-                to_read -= _log.read_chunks(lines, to_read)
-                if not to_read:
+                sthg_read = _log.read_chunks(lines, to_read, first_time)
+                if not sthg_read:
                     break
         return lines
 

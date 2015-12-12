@@ -145,7 +145,12 @@ def device_syslog(opt_ns, cur_dev, j_logs):
         _sc["devices"] = _sc.builder(
             "devices",
             *[
-                _sc.builder("device", pk="{:d}".format(cur_dev.pk), lines="{:d}".format(opt_ns.loglines))
+                _sc.builder(
+                    "device",
+                    pk="{:d}".format(cur_dev.pk),
+                    lines="{:d}".format(opt_ns.loglines),
+                    minutes="{:d}".format(opt_ns.minutes),
+                )
             ]
         )
         _conn_str = "tcp://{}:{:d}".format(_ls_ip, _ls_port)

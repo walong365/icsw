@@ -59,7 +59,7 @@ def main():
             ("KEEP_LOGS_UNCOMPRESSED", configfile.int_c_var(2)),
             ("KEEP_LOGS_TOTAL", configfile.int_c_var(30)),
             # maximum time in days to track logs
-            ("LOGS_TRACKING_DAYS", configfile.int_c_var(2, info="time to track logs in days")),
+            ("LOGS_TRACKING_DAYS", configfile.int_c_var(4, info="time to track logs in days")),
             # cachesize for lineinfo (per file)
             ("LINECACHE_ENTRIES_PER_FILE", configfile.int_c_var(50, info="line cache per file")),
         ]

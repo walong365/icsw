@@ -59,7 +59,8 @@ class Parser(object):
         _act = sub_parser.add_parser("syslog", help="show device info")
         _act.set_defaults(childcom="syslog")
         _act.add_argument("--join-logs", default=False, action="store_true", help="join logs [%(default)s]")
-        _act.add_argument("--loglines", default=100, type=int, help="syslog lines to fetch [%(default)d]")
+        _act.add_argument("--loglines", default=10, type=int, help="syslog lines to fetch [%(default)d]")
+        _act.add_argument("--minutes", default=10, type=int, help="minutes to cover with the log [%(default)d]")
         self._add_many_device_option(_act)
 
     def _add_overview_parser(self, sub_parser):

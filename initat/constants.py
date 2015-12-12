@@ -24,6 +24,14 @@
 system-wide constants for the ICSW
 """
 
+import os
+
+
 GEN_CS_NAME = "icsw.general"
 DB_ACCESS_CS_NAME = "icsw.db.access"
 VERSION_CS_NAME = "icsw.sysversion"
+
+# cluster dir
+CLUSTER_DIR = "/opt/cluster"
+# user extension dir
+USER_EXTENSION_ROOT = os.path.join(CLUSTER_DIR, "share", "user_extensions.d")
