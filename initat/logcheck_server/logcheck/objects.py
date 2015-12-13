@@ -30,7 +30,7 @@ import time
 import scandir
 
 from initat.tools import logging_tools, process_tools, inotify_tools
-from .config import global_config
+from ..config import global_config
 
 
 class LogRotateResult(object):

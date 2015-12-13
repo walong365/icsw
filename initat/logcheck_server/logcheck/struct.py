@@ -31,7 +31,7 @@ import time
 from initat.cluster.backbone.models import device
 from initat.host_monitoring import limits
 from initat.tools import logging_tools, process_tools, inotify_tools
-from .config import global_config
+from ..config import global_config
 from .objects import LogRotateResult, InotifyRoot, FileWatcher
 from .commands import MonCommand, LogRateCommand
 

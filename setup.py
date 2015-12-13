@@ -56,6 +56,7 @@ setup(
         "initat.discovery_server",
         "initat.discovery_server.event_log",
         "initat.logcheck_server",
+        "initat.logcheck_server.logcheck",
         "initat.logging_server",
         "initat.md_config_server",
         "initat.md_config_server.config",

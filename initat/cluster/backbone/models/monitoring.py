@@ -64,6 +64,8 @@ __all__ = [
     "mon_build_unreachable",  # track unreachable devices
     "parse_commandline",  # commandline parsing
     "SpecialGroupsEnum",
+    # syslog check object
+    "SyslogCheck",
 ]
 
 
@@ -1174,3 +1176,26 @@ class monitoring_hint(models.Model):
     class Meta:
         ordering = ("m_type", "key",)
         verbose_name = "Monitoring hint"
+
+
+class SyslogCheckEnabledManager(models.Manager):
+    def get_queryset(self):
+        return super(SyslogCheckEnabledManager, self).get_queryset().filter(enabled=True)
+
+
+class SyslogCheck(models.Model):
+    idx = models.AutoField(primary_key=True)
+    all_enabled = SyslogCheckEnabledManager()
+    name = models.CharField(max_length=64, unique=True)
+    # XML source
+    xml_source = models.TextField(default="")
+    # XML version
+    version = models.ImageField(default=1)
+    # enabled ?
+    enabled = models.BooleanField(default=True)
+    # how many minutes to span
+    minutes_to_consider = models.IntegerField(default=5)
+    date = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("name", )

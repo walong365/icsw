@@ -26,7 +26,8 @@ import zmq
 
 from initat.cluster.backbone import db_tools
 from initat.logcheck_server.config import global_config
-from initat.logcheck_server.logcheck_struct import Machine
+from initat.logcheck_server.logcheck.struct import Machine
+from initat.logcheck_server.logcheck.scan import LogcheckScanner
 from initat.tools import server_mixins, configfile, logging_tools, \
     process_tools, threading_tools, service_tools, server_command
 
@@ -43,6 +44,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         self.__msi_block = self._init_msi_block()
         self.srv_helper = service_tools.ServiceHelper(self.log)
         self.CC.re_insert_config()
+        self.register_exception("hup_error", self._hup_error)
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         # log config
@@ -54,6 +56,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         # network bind
         self._init_network_sockets()
         Machine.setup(self)
+        self.my_scanner = LogcheckScanner(self)
         self.register_poller(Machine.get_watcher()._fd, zmq.POLLIN, Machine.inotify_event)
         self.register_timer(self.sync_machines, 3600, instant=True)
         self.register_timer(self.rotate_logs, 3600 * 12, instant=True)
@@ -63,6 +66,10 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
             self["exit_requested"] = True
+
+    def _hup_error(self, err_cause):
+        self.log("got SIGHUP")
+        self.my_scanner.rescan()
 
     def _init_network_sockets(self):
         self.network_bind(

@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <instances>
-    <instance check_type="meta" name="logcheck-server" alias="logcheck" pid_file_name="logcheck-server/logcheck-server.pid" has_force_stop="1" meta_server_name="logcheck-server" uuid-postfix="logcheck-server">
+    <instance check_type="meta" name="logcheck-server" alias="logcheck" pid_file_name="logcheck-server/logcheck-server.pid" has_force_stop="1" meta_server_name="logcheck-server" uuid-postfix="logcheck-server" reload="1">
         <!--
         any of the following config_names has to be set to start this service
         a config_name with attribute contact=0 (default is 1) will not be considered when
