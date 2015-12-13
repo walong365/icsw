@@ -22,6 +22,7 @@
 """ create version entries after DB migration run """
 
 from django.core.management.base import BaseCommand
+from django.db.models import Q
 
 from initat.cluster.backbone.models import ICSWVersion, VERSION_NAME_LIST
 from initat.constants import VERSION_CS_NAME
