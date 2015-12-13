@@ -179,6 +179,18 @@ class LogcheckScanner(object):
                         logging_tools.LOG_LEVEL_ERROR
                     )
         post_checks = self.checks.keys()
+        self.log(
+            "{} before rescan: {}".format(
+                logging_tools.get_plural("check", len(pre_checks)),
+                ", ".join(sorted(pre_checks)),
+            )
+        )
+        self.log(
+            "{} after rescan: {}".format(
+                logging_tools.get_plural("check", len(post_checks)),
+                ", ".join(sorted(post_checks)),
+            )
+        )
 
     def add_check(self, check):
         _name = check.file_dict["name"]
