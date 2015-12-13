@@ -3,10 +3,11 @@ parameters:
   ignore: 1 for ignore this XML (do not move to database), 0 for use it
   version: 1 (my be expanded in future versions)
 -->
-<syslog-check ignore="1" version="1">
+<syslog-check ignore="1" version="1" enabled="1">
     <!-- name, must be unique -->
-    <name>example check</name>
     <parameters>
+        <!-- name -->
+        <name>example check</name>
         <!-- how many minutes to consider -->
         <minutes-to-consider>10</minutes-to-consider>
     </parameters>

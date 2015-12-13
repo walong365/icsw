@@ -1185,16 +1185,19 @@ class SyslogCheckEnabledManager(models.Manager):
 
 class SyslogCheck(models.Model):
     idx = models.AutoField(primary_key=True)
+    objects = models.Manager()
     all_enabled = SyslogCheckEnabledManager()
     name = models.CharField(max_length=64, unique=True)
     # XML source
     xml_source = models.TextField(default="")
     # XML version
-    version = models.ImageField(default=1)
+    version = models.IntegerField(default=1)
     # enabled ?
     enabled = models.BooleanField(default=True)
     # how many minutes to span
     minutes_to_consider = models.IntegerField(default=5)
+    # expression-list as json-object
+    expressions = models.TextField(default="")
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
