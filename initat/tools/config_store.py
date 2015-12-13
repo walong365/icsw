@@ -30,6 +30,7 @@ from lxml import etree
 from lxml.builder import E
 
 from initat.tools import process_tools, logging_tools
+from initat.constants import CLUSTER_DIR
 
 CS_NG = """
 <element name="config-store" xmlns="http://relaxng.org/ns/structure/1.0">
@@ -70,7 +71,7 @@ CS_NG = """
 </element>
 """
 
-CONFIG_STORE_ROOT = os.path.join("/opt", "cluster", "etc", "cstores.d")
+CONFIG_STORE_ROOT = os.path.join(CLUSTER_DIR, "etc", "cstores.d")
 
 
 class ConfigVar(object):

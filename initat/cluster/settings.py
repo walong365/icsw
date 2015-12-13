@@ -28,7 +28,7 @@ from django.utils.translation import ugettext_lazy as _
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.crypto import get_random_string
 from initat.tools import logging_tools, config_store
-from initat.constants import GEN_CS_NAME, DB_ACCESS_CS_NAME, VERSION_CS_NAME
+from initat.constants import GEN_CS_NAME, DB_ACCESS_CS_NAME, VERSION_CS_NAME, CLUSTER_DIR
 from initat.icsw.service.instance import InstanceXML
 
 # set unified name
@@ -230,7 +230,7 @@ if _cs["mode.is.slave"]:
     INSTALLED_APPS = tuple([_entry for _entry in list(INSTALLED_APPS)])
 
 
-ICSW_WEBCACHE = "/opt/cluster/share/webcache"
+ICSW_WEBCACHE = os.path.join(CLUSTER_DIR, "share", "webcache")
 
 # coffee settings
 COFFEESCRIPT_EXECUTABLE = "/opt/cluster/bin/coffee"
@@ -494,7 +494,7 @@ TEMPLATES = [
         "BACKEND": "django.template.backends.django.DjangoTemplates",
         "DIRS": [
             os.path.join(MEDIA_ROOT, "angular"),
-            "/opt/cluster/share/doc/handbook/chunks",
+            os.path.join(CLUSTER_DIR, "share", "doc", "handbook", "chunks"),
         ],
         "OPTIONS": {
             "context_processors": [

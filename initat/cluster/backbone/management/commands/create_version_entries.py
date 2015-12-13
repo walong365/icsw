@@ -58,3 +58,6 @@ def main():
             version=_v,
             insert_idx=insert_idx,
         )
+    # stale entries
+    stale = ICSWVersion.objects.filter(Q(insert_idx__lt=insert_idx)).count()
+    print("Stale entries in database: {:d}".format(stale))
