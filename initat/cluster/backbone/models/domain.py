@@ -293,27 +293,6 @@ def domain_tree_node_post_save(sender, **kwargs):
                 sub_node.save()
 
 
-def _migrate_mon_type(cat_tree):
-    # read all monitoring_config_types
-    mon_check_command = apps.get_model("backbone", "mon_check_command")
-    mon_check_command_type = apps.get_model("backbone", "mon_check_command_type")
-    cur_cats = set(mon_check_command.objects.all().values_list("categories", flat=True))
-    if cur_cats == {None}:
-        all_mon_ct = {
-            pk: "{}/{}".format(
-                TOP_MONITORING_CATEGORY,
-                cur_name
-            ) for pk, cur_name in mon_check_command_type.objects.all().values_list("pk", "name")}
-        mig_dict = {
-            key: cat_tree.add_category(value) for key, value in all_mon_ct.iteritems()
-        }
-        for cur_mon_cc in mon_check_command.objects.all().prefetch_related("categories"):
-            if cur_mon_cc.mon_check_command_type_id:
-                cur_mon_cc.categories.add(mig_dict[cur_mon_cc.mon_check_command_type_id])
-                cur_mon_cc.mon_check_command_type = None
-                cur_mon_cc.save()
-
-
 def _migrate_location_type(cat_tree):
     try:
         device_location = apps.get_model("backbone", "device_location")
@@ -389,8 +368,8 @@ class category_tree(object):
                             cur_node.depth = self.__node_dict[cur_node.parent_id].depth + 1
                             cur_node.save()
                         self.__node_dict[cur_node.parent_id]._sub_tree.setdefault(cur_node.name, []).append(cur_node)
-        if TOP_MONITORING_CATEGORY not in self.__category_lut:
-            _migrate_mon_type(self)
+        # if TOP_MONITORING_CATEGORY not in self.__category_lut:
+        #     _migrate_mon_type(self)
         if TOP_LOCATION_CATEGORY not in self.__category_lut:
             _migrate_location_type(self)
         for check_name in [TOP_CONFIG_CATEGORY, TOP_DEVICE_CATEGORY, TOP_MONITORING_CATEGORY, TOP_LOCATION_CATEGORY]:

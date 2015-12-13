@@ -137,10 +137,10 @@ install:
 	    ${INSTALL} ${INSTALL_OPTS} $${file} ${DESTDIR}/${ICSW_SBIN}; \
 	done
 	${INSTALL} ${INSTALL_OPTS} clustershell ${DESTDIR}/${ICSW_SBIN}
-	for shf in migrate_to_django restore_database remove_noctua remove_noctua_simple ; do  \
+	for shf in restore_database remove_noctua remove_noctua_simple ; do  \
 	    cp -a tools/$${shf}.sh ${DESTDIR}/${ICSW_SBIN}; \
 	done
-	for pyf in db_magic create_django_users restore_user_group fix_models ; do \
+	for pyf in create_django_users restore_user_group ; do \
 	    ${INSTALL} ${INSTALL_OPTS} tools/$${pyf}.py ${DESTDIR}/${ICSW_SBIN} ; \
 	done
 	# Create to ICSW_SBIN

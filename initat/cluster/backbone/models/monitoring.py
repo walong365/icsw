@@ -40,7 +40,6 @@ __all__ = [
     "mon_service_cluster",
     "host_check_command",
     "mon_check_command",
-    "mon_check_command_type",
     "mon_contact",
     "mon_notification",
     "mon_contactgroup",
@@ -381,8 +380,6 @@ class mon_check_command(models.Model):
     idx = models.AutoField(db_column="ng_check_command_idx", primary_key=True)
     config_old = models.IntegerField(null=True, blank=True, db_column="config")
     config = models.ForeignKey("backbone.config", db_column="new_config_id")
-    # deprecated, now references category tree
-    mon_check_command_type = models.ForeignKey("backbone.mon_check_command_type", null=True, default=None, blank=True)
     mon_service_templ = models.ForeignKey("backbone.mon_service_templ", null=True, blank=True)
     # only unique per config
     name = models.CharField(max_length=192)  # , unique=True)
@@ -473,18 +470,6 @@ def _mon_check_command_post(sender, instance, raw, **kwargs):
             for dev_pk in instance.get_configured_device_pks():
                 log_usage_data[dev_pk] = [instance]
             LicenseUsage.log_usage(LicenseEnum.notification, LicenseParameterTypeEnum.service, log_usage_data)
-
-
-class mon_check_command_type(models.Model):
-    idx = models.AutoField(db_column="ng_check_command_type_idx", primary_key=True)
-    name = models.CharField(unique=True, max_length=192)
-    date = models.DateTimeField(auto_now_add=True)
-
-    def __unicode__(self):
-        return self.name
-
-    class Meta:
-        db_table = u'ng_check_command_type'
 
 
 class mon_contact(models.Model):
