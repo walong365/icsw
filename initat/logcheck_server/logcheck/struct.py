@@ -33,7 +33,7 @@ from initat.host_monitoring import limits
 from initat.tools import logging_tools, process_tools, inotify_tools
 from ..config import global_config
 from .objects import LogRotateResult, InotifyRoot, FileWatcher
-from .commands import MonCommand, LogRateCommand
+from .commands import MonCommand
 
 
 class Machine(object):
@@ -53,8 +53,6 @@ class Machine(object):
         Machine.inotify_watcher = inotify_tools.InotifyWatcher()
         Machine.mon_command_class = MonCommand
         MonCommand.setup(srv_proc.log, Machine)
-        # add commands
-        LogRateCommand()
 
     @staticmethod
     def get_watcher():
@@ -310,9 +308,10 @@ class Machine(object):
                 )
         # remove all links pointing to to root-dir
         link_array = [(_type, _dir) for _type, _dir in link_array if _type == "d" or (_type == "l" and _dir != _root_dir)]
-        self.process_link_array(link_array)
+        _debug = self.name in ["xeon"]
+        self.process_link_array(link_array, _debug)
 
-    def process_link_array(self, l_array):
+    def process_link_array(self, l_array, debug):
         for pt, ps in l_array:
             if pt == "d":
                 # print ps, os.path.isdir(ps)
@@ -373,7 +372,20 @@ class Machine(object):
                                 )
                                 create_link = True
                     else:
-                        pass
+                        # islink but does not exist, remove
+                        try:
+                            os.unlink(ps)
+                        except:
+                            self.log(
+                                "  ...something went wrong for unlink() of stale link {}: {}".format(
+                                    ps,
+                                    process_tools.get_except_info()
+                                ),
+                                logging_tools.LOG_LEVEL_ERROR
+                            )
+                        else:
+                            self.log("removed stale link {}".format(ps))
+                            create_link = True
                 if create_link:
                     if os.path.exists(ps):
                         try:
@@ -404,7 +416,7 @@ class Machine(object):
     def rotate_logs(self):
         _res = LogRotateResult()
         start_time = time.time()
-        log_start_dir = os.path.join(global_config["SYSLOG_DIR"], self.name)
+        log_start_dir = os.path.join(global_config["SYSLOG_DIR"], self.full_name)
         if os.path.isdir(log_start_dir):
             lsd_len = len(log_start_dir)
             self.log("starting walk for rotate_logs() in {}".format(log_start_dir))

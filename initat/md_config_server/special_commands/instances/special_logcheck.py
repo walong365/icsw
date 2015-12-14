@@ -19,8 +19,9 @@
 #
 """ special calls for logcheck-server related commands """
 
-from initat.cluster.backbone.models import monitoring_hint, SpecialGroupsEnum
+from initat.cluster.backbone.models import SpecialGroupsEnum, SyslogCheck
 from initat.md_config_server.special_commands.base import SpecialBase
+from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
 from initat.tools import logging_tools
 
 
@@ -51,6 +52,52 @@ class special_syslog_rate(SpecialBase):
                     arg5=self.host.pk,
                 )
             )
+        else:
+            self.log("server_type {} not defined in routing".format(SRV_TYPE), logging_tools.LOG_LEVEL_ERROR)
+        return sc_array
+
+
+class special_syslog_general(SpecialBase):
+    class Meta:
+        info = "all configured Syslog checks"
+        description = "Enable all syslog checks"
+        command_line = "$USER2$ -m $ARG1$ -p $ARG2$ syslog_check_mon " \
+            "--pk $ARG3$ --key $ARG4$ --checks $ARG5$"
+
+    def _call(self, instance=None):
+        _checks = SyslogCheck.all_enabled.all()
+        sc_array = []
+        SRV_TYPE = "logcheck-server"
+        _router = self.build_cache.router
+        if SRV_TYPE in _router:
+            warn_value = float(self.host.dev_variables.get("DEVICE_SYSLOG_RATE_WARNING", "1.0"))
+            crit_value = float(self.host.dev_variables.get("DEVICE_SYSLOG_RATE_CRITICAL", "2.0"))
+            _srv_address = _router.get_server_address(SRV_TYPE)
+            _srv_port = self.build_cache.instance_xml.get_port_dict(SRV_TYPE, ptype="command")
+            _passive_check_prefix = host_service_id_util.create_host_service_description(self.host.pk, self.parent_check, "")
+            check_sig = ",".join(["{:d}".format(_check.pk) for _check in _checks])
+            sc_array.append(
+                self.get_arg_template(
+                    "syslog checks ({:d})".format(len(_checks)),
+                    arg1=_srv_address,
+                    arg2=_srv_port,
+                    arg3=self.host.pk,
+                    arg4=_passive_check_prefix,
+                    arg5=check_sig,
+                )
+            )
+            for _check in _checks:
+                sc_array.append(
+                    self.get_arg_template(
+                        "syslog check {}".format(_check.name),
+                        arg1=_srv_address,
+                        arg2=_srv_port,
+                        arg3=self.host.pk,
+                        arg4=_passive_check_prefix,
+                        arg5=check_sig,
+                        check_active=False,
+                    )
+                )
         else:
             self.log("server_type {} not defined in routing".format(SRV_TYPE), logging_tools.LOG_LEVEL_ERROR)
         return sc_array

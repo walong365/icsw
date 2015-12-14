@@ -24,8 +24,11 @@
 
 import argparse
 
-from initat.tools import logging_tools, process_tools, server_command
+from django.db.models import Q
+
+from initat.cluster.backbone.models import SyslogCheck
 from initat.host_monitoring import limits
+from initat.tools import logging_tools, process_tools, server_command
 
 
 class DeviceNotFoundException(BaseException):
@@ -38,6 +41,9 @@ class MonCommand(object):
         MonCommand.machine_class = mach_class
         MonCommand.log_com = log_com
         MonCommand.commands = {}
+        # add commands
+        LogRateCommand()
+        SyslogCheckCommand()
 
     @staticmethod
     def g_log(what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -51,21 +57,7 @@ class MonCommand(object):
     def g_run(srv_com):
         com_name = srv_com["*command"]
         if com_name in MonCommand.commands:
-            try:
-                MonCommand.commands[com_name].parse(srv_com)
-            except DeviceNotFoundException:
-                srv_com.set_result(
-                    "device not found",
-                    server_command.SRV_REPLY_STATE_CRITICAL,
-                )
-            except:
-                exc_com = process_tools.exception_info()
-                for _line in exc_com.log_lines:
-                    MonCommand.g_log(_line, logging_tools.LOG_LEVEL_ERROR)
-                srv_com.set_result(
-                    "an exception occured: {}".format(process_tools.get_except_info()),
-                    server_command.SRV_REPLY_STATE_CRITICAL,
-                )
+            MonCommand.commands[com_name].handle(srv_com)
         else:
             MonCommand.g_log("undefined command '{}'".format(com_name), logging_tools.LOG_LEVEL_ERROR)
             srv_com.set_result(
@@ -84,13 +76,36 @@ class MonCommand(object):
         # add --pk <INT> for device parser
         self.parser.add_argument("--pk", type=int, help="pk of device to check", action=validate_pk)
 
+    def handle(self, srv_com):
+        try:
+            p_args = self.parse(srv_com)
+            self.run(srv_com, p_args)
+        except DeviceNotFoundException:
+            srv_com.set_result(
+                "device not found",
+                server_command.SRV_REPLY_STATE_CRITICAL,
+            )
+        except:
+            exc_com = process_tools.exception_info()
+            for _line in exc_com.log_lines:
+                self.log(_line, logging_tools.LOG_LEVEL_ERROR)
+            srv_com.set_result(
+                "an exception occured: {}".format(process_tools.get_except_info()),
+                server_command.SRV_REPLY_STATE_CRITICAL,
+            )
+
     def parse(self, srv_com):
         if "arg_list" in srv_com:
             args = srv_com["*arg_list"].strip().split()
         else:
             args = []
-        p_args = self.parser.parse_args(args)
-        self.run(srv_com, p_args)
+        self.log(
+            "got {}: '{}'".format(
+                logging_tools.get_plural("argument", len(args)),
+                " ".join(args),
+            )
+        )
+        return self.parser.parse_args(args)
 
     # base class for monitoring commands
     def __init__(self):
@@ -98,6 +113,7 @@ class MonCommand(object):
             description=self.Meta.description,
         )
         self.populate_parser()
+        self.name = self.__class__.__name__
         # monkey patch parsers
         self.parser.exit = self._parser_exit
         self.parser.error = self._parser_error
@@ -158,3 +174,68 @@ class LogRateCommand(MonCommand):
                 "no rates found for {}".format(unicode(_dev.device)),
                 server_command.SRV_REPLY_STATE_WARN,
             )
+
+
+class CheckResult(object):
+    def __init__(self):
+        self.state = server_command.SRV_REPLY_STATE_OK
+        self.rf = []
+
+    def ok(self, what):
+        self.rf.append(what)
+
+    def warn(self, what):
+        self.state = max(self.state, server_command.SRV_REPLY_STATE_WARN)
+        self.rf.append(what)
+
+    def error(self, what):
+        self.state = max(self.state, server_command.SRV_REPLY_STATE_ERROR)
+        self.rf.append(what)
+
+    def set_result(self, srv_com):
+        srv_com.set_result(
+            ", ".join(self.rf) or "nothing set in CheckResult",
+            self.state,
+        )
+
+
+class SyslogCheckCommand(MonCommand):
+    class Meta:
+        command = "syslog_check_mon"
+        description = "Checks Syslogs for problems"
+
+    def populate_parser(self):
+        self.parser.add_argument("--key", type=str, help="passive check key")
+        self.parser.add_argument("--checks", type=str, help="passive check key")
+        self.add_pk_parser()
+
+    def run(self, srv_com, args):
+        _dev = args.device
+        # get checks
+        check_pks = sorted([int(_val) for _val in args.checks.strip().split(",")])
+        checks = SyslogCheck.objects.filter(Q(pk__in=check_pks))
+        found_pks = sorted([_check.pk for _check in checks])
+        res = CheckResult()
+        if check_pks != found_pks:
+            res.warn(
+                "Some checks are missing: {}".format(
+                    ", ".join(
+                        [
+                            "{:d}".format(_mis) for _mis in set(check_pks) - set(found_pks)
+                        ]
+                    )
+                )
+            )
+        if not check_pks:
+            res.warn(
+                "No checks defined"
+            )
+        else:
+            max_minutes = max([_check.minutes_to_consider for _check in checks])
+            _log = _dev.filewatcher.get_logs(minutes=max_minutes)
+            if not _log:
+                res.error("no logs found (max_minutes={:d})".format(max_minutes))
+            else:
+                res.ok("lines to scan: {:d}, checks: {:d}".format(len(_log), len(checks)))
+        # print srv_com, _dev, args
+        res.set_result(srv_com)

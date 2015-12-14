@@ -142,6 +142,11 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         return srv_com
 
     @server_mixins.RemoteCall()
+    def syslog_check_mon(self, srv_com, **kwargs):
+        Machine.mon_command_class.g_run(srv_com)
+        return srv_com
+
+    @server_mixins.RemoteCall()
     def get_0mq_id(self, srv_com, **kwargs):
         srv_com["zmq_id"] = self.bind_id
         srv_com.set_result("0MQ_ID is {}".format(self.bind_id), server_command.SRV_REPLY_STATE_OK)

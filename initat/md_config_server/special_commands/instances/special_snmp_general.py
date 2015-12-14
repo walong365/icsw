@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2015 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -20,8 +20,9 @@
 """ snmp check """
 
 from django.db.models import Q
-from initat.snmp.sink import SNMPSink
+
 from initat.md_config_server.special_commands.base import SpecialBase
+from initat.snmp.sink import SNMPSink
 
 
 class special_snmp_general(SpecialBase):
