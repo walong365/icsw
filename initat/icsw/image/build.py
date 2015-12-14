@@ -69,7 +69,7 @@ NEEDED_PACKAGES = [
 ]
 
 
-class package_check(object):
+class PackageCheck(object):
     def __init__(self, log_com, img_obj):
         self.__log_com = log_com
         self.__image = img_obj
@@ -115,7 +115,7 @@ class package_check(object):
         return subprocess.check_output(cmd_string, shell=True)
 
 
-class build_process(threading_tools.process_obj):
+class BuildProcess(threading_tools.process_obj):
     def process_init(self):
         self.__verbose = global_config["VERBOSE"]
         self.__log_template = logging_tools.get_logger(
@@ -202,7 +202,7 @@ class build_process(threading_tools.process_obj):
         return result
 
 
-class server_process(threading_tools.process_pool):
+class ServerProcess(threading_tools.process_pool):
     def __init__(self):
         self.__start_time = time.time()
         self.__verbose = global_config["VERBOSE"]
@@ -230,13 +230,23 @@ class server_process(threading_tools.process_pool):
         elif not process_tools.find_file("xmllint"):
             self.log("xmllint not found", logging_tools.LOG_LEVEL_ERROR)
             self._int_error("xmllint not found")
+        elif global_config["CLEAR_LOCK"] or global_config["SET_LOCK"]:
+            cur_img = self._get_image()
+            if global_config["CLEAR_LOCK"]:
+                _info_str = "lock cleared"
+                cur_img.build_lock = False
+            else:
+                _info_str = "lock set"
+                cur_img.build_lock = True
+            cur_img.save()
+            self._int_error("{} on image {}".format(_info_str, unicode(cur_img)))
         else:
             self.log("image server is '{}'".format(unicode(self.device) if self.device else "---"))
             self.__builder_names = []
             for cur_num in xrange(global_config["BUILDERS"]):
                 builder_name = "builder_{:d}".format(cur_num)
                 self.__builder_names.append(builder_name)
-                self.add_process(build_process(builder_name), start=True)
+                self.add_process(BuildProcess(builder_name), start=True)
         db_tools.close_connection()
         self.__build_lock = False
         if not self["exit_requested"]:
@@ -498,7 +508,7 @@ class server_process(threading_tools.process_pool):
 
     def _check_packages(self, cur_img):
         """ check packages in image """
-        cur_pc = package_check(self.log, cur_img)
+        cur_pc = PackageCheck(self.log, cur_img)
         missing = cur_pc.check(NEEDED_PACKAGES)
         if all(missing):
             for _mis in missing:
@@ -616,9 +626,11 @@ def build_main(opt_ns):
             ("LOG_NAME", configfile.str_c_var("build_image")),
             ("BUILDERS", configfile.int_c_var(4)),
             ("OVERRIDE", configfile.bool_c_var(opt_ns.override)),
+            ("CLEAR_LOCK", configfile.bool_c_var(opt_ns.clear_lock)),
+            ("SET_LOCK", configfile.bool_c_var(opt_ns.set_lock)),
             ("SKIPCLEANUP", configfile.bool_c_var(opt_ns.skip_cleanup)),
             ("CHECK_SIZE", configfile.bool_c_var(True)),
             ("IMAGE_NAME", configfile.str_c_var(opt_ns.image)),
         ]
     )
-    return server_process().loop()
+    return ServerProcess().loop()

@@ -47,6 +47,8 @@ class Parser(object):
             parser.add_argument("--ignore-errors", "-i", default=False, action="store_true", help="ignore missing packages [%(default)s]")
             parser.add_argument("--override", default=False, action="store_true", help="override build lock [%(default)s]")
             parser.add_argument("--skip-cleanup", default=False, action="store_true", help="skip image cleanup task [%(default)s]")
+            parser.add_argument("--clear-lock", default=False, action="store_true", help="clear lock [%(default)s]")
+            parser.add_argument("--set-lock", default=False, action="store_true", help="set lock [%(default)s]")
         else:
             parser.add_argument("--mode", default="scan", type=str, choices=["scan", "take"])
         parser.add_argument("--image-name", default="", type=str, help="image name from scan command [%(default)s]")
