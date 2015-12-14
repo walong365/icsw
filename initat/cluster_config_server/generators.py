@@ -336,7 +336,7 @@ def do_routes(conf):
                     new_co += "default {} - {}".format(def_ip, boot_dev)
                 else:
                     new_co += "default {} - eth-id-{}".format(def_ip, boot_mac)
-            elif sys_dict["vendor"] == "redhat" or sys_dict["vendor"].lower().startswith("centos"):
+            elif sys_dict["vendor"] in ["redhat", "scientific"] or sys_dict["vendor"].lower().startswith("centos"):
                 # redhat-mode
                 act_co = conf.add_file_object("/etc/sysconfig/network", append=True)
                 act_co += "# from {}".format(gw_source)

@@ -235,7 +235,7 @@ class network(models.Model):
     end_range = models.GenericIPAddressField(default="0.0.0.0")
     date = models.DateTimeField(auto_now_add=True)
     # preferred domain_tree_node
-    preferred_domain_tree_node = models.ForeignKey("backbone.domain_tree_node", null=True)
+    preferred_domain_tree_node = models.ForeignKey("backbone.domain_tree_node", null=True, blank=True)
     network_device_type = models.ManyToManyField("backbone.network_device_type")
     enforce_unique_ips = models.BooleanField(default=False)
 
