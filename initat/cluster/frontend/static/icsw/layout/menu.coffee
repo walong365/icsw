@@ -305,6 +305,7 @@ menu_module = angular.module(
             render: () ->
                 _items = []
                 _idx = 0
+                add_divider = false
                 for entry in @props.entries
                     _idx++
                     _key = "item#{_idx}"
@@ -318,6 +319,11 @@ menu_module = angular.module(
                             if entry.service_types? and _add
                                 _add = icswAcessLevelService.has_all_service_types(entry.service_types)
                             if _add
+                                if add_divider
+                                    add_divider = false
+                                    _items.push(
+                                        li({className: "divider", key: _key})
+                                    )
                                 if angular.isFunction(entry.name)
                                     _items.push(
                                         React.createElement(entry.name, {key: _key})
@@ -327,9 +333,7 @@ menu_module = angular.module(
                                         React.createElement(menu_line, entry)
                                     )
                     else
-                        _items.push(
-                            li({className: "divider", key: _key})
-                        )
+                        add_divider = true
                 if _items.length
                     _res = li(
                         {key: "menu"}

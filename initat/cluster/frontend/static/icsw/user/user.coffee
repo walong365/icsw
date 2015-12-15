@@ -256,7 +256,11 @@ user_module = angular.module(
             icswSimpleAjaxCall(
                 url     : ICSW_URLS.USER_SYNC_USERS
                 title   : "syncing users"
-            ).then((xml) ->
+            ).then(
+                (xml) ->
+                    blockUI.end()
+                (xml) ->
+                    blockUI.end()
             )
         $scope.rebuild_tree = () ->
             $scope.tree.clear_root_nodes()
@@ -383,6 +387,8 @@ user_module = angular.module(
                 $scope.user_edit.edit(obj)
         $scope.$on("icsw.set_password", (event, new_pwd) ->
             $scope._edit_obj.password = new_pwd
+            if $scope._edit_obj.idx?
+                $scope._edit_obj.put()
             $scope.$digest()
         )
         $scope.change_password = () ->
