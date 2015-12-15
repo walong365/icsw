@@ -56,9 +56,11 @@ class MongoDbInterface(object):
         for mongo_config_entry in configs_db:
             mongo_config[mongo_config_entry.name] = mongo_config_entry.value
 
-        client = pymongo.MongoClient(host=mongo_config['MONGODB_HOST'],
-                                     port=mongo_config['MONGODB_PORT'],
-                                     tz_aware=True)
+        client = pymongo.MongoClient(
+            host=mongo_config['MONGODB_HOST'],
+            port=mongo_config['MONGODB_PORT'],
+            tz_aware=True
+        )
 
         event_log_db = client.icsw_event_log
 
@@ -105,12 +107,27 @@ class GetEventLogDeviceInfo(View):
             }])
             devices_with_ipmi = {entry['_id']['device_pk'] for entry in _ipmi_res}
 
+            _syslog_res = mongo.event_log_db.system_log.aggregate(
+                [
+                    {
+                        '$group': {
+                            '_id': {
+                                'device_pk': '$device_pk',
+                            }
+                        }
+                    }
+                ]
+            )
+            devices_with_syslog = {entry["_id"]["device_pk"] for entry in _syslog_res}
+
             for entry in device.objects.filter(pk__in=device_pks):
                 capabilities = []
                 if entry.pk in devices_with_ipmi:
                     capabilities.append("ipmi")
                 if entry.pk in devices_with_wmi:
                     capabilities.append("wmi")
+                if entry.pk in devices_with_syslog:
+                    capabilities.append("syslog")
                 ret[entry.pk] = {
                     'name': entry.full_name,
                     'capabilities': capabilities,
@@ -126,9 +143,15 @@ class GetEventLogDeviceInfo(View):
 class GetEventLog(View):
     """Returns actual log data (all kinds of logs currently)"""
 
-    class EventLogResult(collections.namedtuple("EventLogResult",
-                                                ["entries", "keys_ordered", "grouping_keys", "total_num",
-                                                 "mode_specific_parameters"])):
+    class EventLogResult(
+        collections.namedtuple(
+            "EventLogResult",
+            [
+                "entries", "keys_ordered", "grouping_keys", "total_num",
+                "mode_specific_parameters"
+            ]
+        )
+    ):
         # this pattern allows for default values:
         def __new__(cls, grouping_keys=None, mode_specific_parameters=None, *args, **kwargs):
             return super(GetEventLog.EventLogResult, cls).__new__(
@@ -275,6 +298,81 @@ class GetEventLog(View):
             return GetEventLog.EventLogResult(total_num=total_num, keys_ordered=keys_ordered, entries=result_merged,
                                               grouping_keys=grouping_keys.keys())
 
+    class GetSystemLogEventLog(object):
+        def __init__(self, device_pks, pagination_skip, pagination_limit,
+                     group_by=None, filter_str=None, from_date=None, to_date=None):
+            self.device_pks = device_pks
+            self.pagination_skip = pagination_skip
+            self.pagination_limit = pagination_limit
+            self.group_by = group_by
+            self.filter_str = filter_str
+            self.from_date = from_date
+            self.to_date = to_date
+
+            self.mongo = MongoDbInterface()
+
+        def __call__(self,):
+            # if self.group_by:
+            #     return self._group_by_query()
+            # else:
+            return self._regular_query()
+
+        def _create_match_obj(self):
+            query_obj = {
+                'device_pk': {'$in': self.device_pks},
+            }
+            if self.filter_str is not None:
+                query_obj["$text"] = {'$search': self.filter_str}
+            if self.from_date is not None:
+                query_obj.setdefault('time_generated', {})['$gte'] = GetEventLog._parse_datetime(self.from_date)
+            if self.to_date is not None:
+                query_obj.setdefault('time_generated', {})['$lte'] = GetEventLog._parse_datetime(self.to_date)
+            return query_obj
+
+        def _regular_query(self):
+            query_obj = self._create_match_obj()
+
+            projection_obj = {
+                'line_id': 1,
+                "line_datetime": 1,
+                'device_pk': 1,
+                "text": 1,
+            }
+            sort_obj = [('time_generated', pymongo.DESCENDING), ('record_number', pymongo.DESCENDING)]
+            entries = self.mongo.event_log_db.system_log.find(query_obj, projection_obj, sort=sort_obj)
+            total_num = entries.count()
+            entries.skip(self.pagination_skip)
+            entries.limit(self.pagination_limit)
+
+            include_device_info = len(self.device_pks) > 1
+            device_name_lut = {dev[0]: dev[1] for dev in device.objects.values_list('pk', 'name')}
+
+            result = []
+            keys = set()
+            for entry in entries:  # exhaust cursor
+                # entry = db_row['entry']
+                keys.update(entry.iterkeys())
+
+                entry["line_datetime"] = entry["line_datetime"].strftime("%Y-%m-%d")
+                if include_device_info:
+                    entry['Device'] = device_name_lut.get(db_row['device_pk'])
+                result.append(entry)
+
+            mode_specific_parameters = {}
+
+            grouping_keys = [k for k in keys if self._is_reasonable_grouping_key(k)]
+
+            if include_device_info:
+                keys = ['Device'] + list(keys)
+
+            return GetEventLog.EventLogResult(
+                total_num=total_num, keys_ordered=keys, entries=result, grouping_keys=grouping_keys,
+                mode_specific_parameters=mode_specific_parameters
+            )
+
+        def _is_reasonable_grouping_key(self, key):
+            return key in ()
+
     class GetWmiEventLog(object):
         def __init__(self, device_pks, pagination_skip, pagination_limit,
                      group_by=None, filter_str=None, from_date=None, to_date=None, logfile=None):
@@ -402,13 +500,29 @@ class GetEventLog(View):
 
         if mode == 'wmi':
             # a = time.time()
-            event_log_result = GetEventLog.GetWmiEventLog(device_pks, pagination_skip, pagination_limit,
-                                                          **query_parameters)()
+            event_log_result = GetEventLog.GetWmiEventLog(
+                device_pks,
+                pagination_skip,
+                pagination_limit,
+                **query_parameters
+            )()
             # print 'took', time.time() - a
 
         elif mode == 'ipmi':
-            event_log_result = self.__class__.GetIpmiEventLog()(device_pks, pagination_skip, pagination_limit,
-                                                                **query_parameters)
+            event_log_result = self.__class__.GetIpmiEventLog()(
+                device_pks,
+                pagination_skip,
+                pagination_limit,
+                **query_parameters
+            )
+
+        elif mode == "syslog":
+            event_log_result = GetEventLog.GetSystemLogEventLog(
+                device_pks,
+                pagination_skip,
+                pagination_limit,
+                **query_parameters
+            )()
         else:
             raise AssertionError("Invalid mode: {} ".format(mode))
 

@@ -79,8 +79,10 @@ class IpmiLogJob(EventLogPollerJobBase):
 
     @classmethod
     def _parse_ipmi_datetime_string(cls, datetime_string):
-        return datetime.datetime.strptime(datetime_string.strip(),
-                                          cls.IPMITOOL_DATE_FORMAT).replace(tzinfo=pytz.UTC)
+        return datetime.datetime.strptime(
+            datetime_string.strip(),
+            cls.IPMITOOL_DATE_FORMAT
+        ).replace(tzinfo=pytz.UTC)
 
     def start(self):
         pass
@@ -106,8 +108,12 @@ class IpmiLogJob(EventLogPollerJobBase):
                     "sel",
                     "list",
                 )
-                self.ext_com = ExtCom(job.log, cmd, shell=False,
-                                      debug=global_config['DEBUG'])  # shell=False since args must not be parsed again
+                self.ext_com = ExtCom(
+                    job.log,
+                    cmd,
+                    shell=False,
+                    debug=global_config['DEBUG']
+                )  # shell=False since args must not be parsed again
                 self.ext_com.run()
             else:
                 # job has been started, check

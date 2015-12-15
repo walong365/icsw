@@ -42,8 +42,12 @@ class EventLogPollerProcess(threading_tools.process_obj):
     MAX_CONCURRENT_JOBS = 5
 
     def process_init(self):
-        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"],
-                                                       zmq=True, context=self.zmq_context)
+        self.__log_template = logging_tools.get_logger(
+            global_config["LOG_NAME"],
+            global_config["LOG_DESTINATION"],
+            zmq=True,
+            context=self.zmq_context
+        )
         db_tools.close_connection()
 
         self.register_timer(self.periodic_update, 60 * 1 if global_config["DEBUG"] else 60 * 15, instant=True)
@@ -68,14 +72,26 @@ class EventLogPollerProcess(threading_tools.process_obj):
         self._mongodb_database.wmi_event_log.create_index('time_generated', name='time_generated_index')
 
         self._mongodb_database.wmi_event_log.create_index(
-            [('time_generated', pymongo.DESCENDING), ('record_number', pymongo.DESCENDING)],
+            [
+                ('time_generated', pymongo.DESCENDING),
+                ('record_number', pymongo.DESCENDING)
+            ],
             name='sort_index',
         )
 
-        self._mongodb_database.ipmi_event_log.create_index([('$**', 'text')], name="ipmi_log_full_text_index")
+        self._mongodb_database.ipmi_event_log.create_index(
+            [
+                ('$**', 'text')
+            ],
+            name="ipmi_log_full_text_index"
+        )
         # for sorting:
-        self._mongodb_database.ipmi_event_log.create_index([('creation_date', pymongo.DESCENDING)],
-                                                           name='creation_date_index')
+        self._mongodb_database.ipmi_event_log.create_index(
+            [
+                ('creation_date', pymongo.DESCENDING)
+            ],
+            name='creation_date_index'
+        )
 
         self.log("Set up mongodb successfully")
 

@@ -28,12 +28,16 @@ import subprocess
 import scandir
 import time
 
+import pymongo
+from pymongo.errors import PyMongoError
+
 from initat.cluster.backbone.models import device
 from initat.host_monitoring import limits
 from initat.tools import logging_tools, process_tools, inotify_tools
 from ..config import global_config
 from .objects import LogRotateResult, InotifyRoot, FileWatcher
 from .commands import MonCommand
+from initat.cluster.frontend.discovery_views import MongoDbInterface
 
 
 class Machine(object):
@@ -53,6 +57,41 @@ class Machine(object):
         Machine.inotify_watcher = inotify_tools.InotifyWatcher()
         Machine.mon_command_class = MonCommand
         MonCommand.setup(srv_proc.log, Machine)
+        Machine.setup_mongo()
+
+    @classmethod
+    def setup_mongo(cls):
+        cls.mongo_db = MongoDbInterface().event_log_db
+        cls.mongo_db.system_log.create_index(
+            [('$**', 'text')], name="system_log_full_text_index"
+        )
+        cls.mongo_db.system_log.create_index(
+            "device_pk", name="device_pk_index"
+        )
+        cls.mongo_db.system_log.create_index(
+            [
+                ("line_datetime", pymongo.DESCENDING),
+            ],
+            name="line_datetime_index",
+        )
+        cls.mongo_db.system_log.create_index(
+            [
+                ("line_id", pymongo.DESCENDING),
+            ],
+            name="line_id_index",
+        )
+        cls.g_log("init mongodbo successfully")
+
+    @classmethod
+    def feed_mongo_line(cls, dev_pk, line_struct):
+        db_entry = {
+            "line_id": line_struct[0],
+            "line_datetime": line_struct[1],
+            "line_datetime_parsed": line_struct[2],
+            "text": line_struct[3],
+            "device_pk": dev_pk,
+        }
+        cls.mongo_db.system_log.insert(db_entry)
 
     @staticmethod
     def get_watcher():

@@ -335,6 +335,7 @@ menu_module = angular.module(
                     else
                         add_divider = true
                 if _items.length
+
                     _res = li(
                         {key: "menu"}
                         a(
@@ -562,7 +563,7 @@ menu_module = angular.module(
                                     }
                                     {}
                                     {
-                                        name: "WMI and IPMI Event logs"
+                                        name: "SysLog, WMI- and IPMI-Event logs"
                                         rights: ["device.discovery_server"]
                                         licenses: ["discovery_server"]
                                         icon: "fa-list-alt"

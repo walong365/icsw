@@ -27,6 +27,9 @@ import os
 import stat
 import time
 
+import pymongo
+from pymongo.errors import PyMongoError
+
 import scandir
 
 from initat.tools import logging_tools, process_tools, inotify_tools
@@ -157,13 +160,17 @@ class FileSize(object):
             FileBatch(0, 0, 0)
         ]
 
-    def feed(self, size):
+    def feed(self, size, first=False):
         _file = file(self.in_file.f_name, "r")
         _num_slices = len(self.slices)
         _size = self.slices[_num_slices - 1].offset
+        _start_line = self.slices[_num_slices - 1].tot_lines
         _file.seek(_size)
         _num = 0
         for _line in _file:
+            if not first:
+                # not first call (find first line of file)
+                self.in_file.line_to_mongo(_line, _start_line + 1 + _num)
             _size += len(_line)
             _num += 1
             if _size == size:
@@ -199,9 +206,13 @@ class InotifyFile(object):
         self.stat = None
         self.rater = FileWiteRater()
         # read filesize
-        self._update()
+        self._update(first=True)
 
-    def _update(self):
+    def line_to_mongo(self, line, line_idx):
+        _dev_pk = self.in_root.fw_obj.machine.device.pk
+        self.in_root.mach_class.feed_mongo_line(_dev_pk, self.get_line(line, line_idx))
+
+    def _update(self, first=False):
         # invalidate cache
         # self.cache_valid = False
         # if self.stat is not None:
@@ -211,7 +222,7 @@ class InotifyFile(object):
         #    # print _handle.read()
         self.stat = os.stat(self.f_name)
         # each size tuple
-        _batch = self.sizes.feed(self.stat[stat.ST_SIZE])
+        _batch = self.sizes.feed(self.stat[stat.ST_SIZE], first)
         return _batch
         # if len(self.sizes) > self.in_root.linecache_size:
         #    todo: shorten list of batches
