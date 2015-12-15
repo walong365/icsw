@@ -69,6 +69,18 @@ class Machine(object):
             "device_pk", name="device_pk_index"
         )
         cls.mongo_db.system_log.create_index(
+            "priority", name="priority_index"
+        )
+        cls.mongo_db.system_log.create_index(
+            "facility", name="facility_index"
+        )
+        cls.mongo_db.system_log.create_index(
+            "hostname", name="hostname_index"
+        )
+        cls.mongo_db.system_log.create_index(
+            "tag", name="tag_index"
+        )
+        cls.mongo_db.system_log.create_index(
             [
                 ("line_datetime", pymongo.DESCENDING),
             ],
@@ -83,15 +95,8 @@ class Machine(object):
         cls.g_log("init mongodbo successfully")
 
     @classmethod
-    def feed_mongo_line(cls, dev_pk, line_struct):
-        db_entry = {
-            "line_id": line_struct[0],
-            "line_datetime": line_struct[1],
-            "line_datetime_parsed": line_struct[2],
-            "text": line_struct[3],
-            "device_pk": dev_pk,
-        }
-        cls.mongo_db.system_log.insert(db_entry)
+    def feed_mongo_line(cls, line_struct):
+        cls.mongo_db.system_log.insert(line_struct.get_mongo_db_entry())
 
     @staticmethod
     def get_watcher():
@@ -205,7 +210,7 @@ class Machine(object):
                     srv_com.builder(
                         "lines",
                         process_tools.compress_struct(
-                            [(_a, _c, _d) for _a, _b, _c, _d in lines]
+                            [_line.get_xml_format() for _line in lines]
                         )
                     )
                 )

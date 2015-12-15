@@ -36,6 +36,61 @@ from initat.tools import logging_tools, process_tools, inotify_tools
 from ..config import global_config
 
 
+class LogLine(object):
+    DT_FORMAT = "%Y-%m-%dT%H:%M:%S"
+
+    def __init__(self, line, prefix="", offset=0, dev_pk=0):
+        self.dev_pk = dev_pk
+        num_pipes = line.strip().count("|")
+        if num_pipes > 2:
+            _parts = line.strip().split("|")
+            _priority = int(_parts.pop(0))
+            _facility = int(_parts.pop(0))
+            _datetime = _parts.pop(0)
+            _hostname = _parts.pop(0)
+            _tag = _parts.pop(0)
+            _rest = _parts[0].strip()
+        else:
+            _datetime, _rest = line.strip().split(None, 1)
+            _priority, _facility = (1, 1)
+            _hostname = "unknown"
+            _tag = "unknown"
+        _pd = datetime.datetime.strptime(
+            _datetime.split("+")[0],
+            LogLine.DT_FORMAT,
+        )
+        # format idx, datetime, parsed_datetime, line
+        self.id = "{}{:06d}".format(prefix, offset)
+        self.pd = _pd
+        self.pd_parsed = (
+            _pd.year, _pd.month, _pd.day, _pd.hour, _pd.minute, _pd.second
+        )
+        self.priority = _priority
+        self.facility = _facility
+        self.hostname = _hostname
+        self.tag = _tag
+        self.text = _rest
+
+    def get_xml_format(self):
+        # for XML
+        return (self.id, self.pd_parsed, self.text)
+
+    def get_mongo_db_entry(self):
+        # for mongo insert
+        return {
+            "line_id": self.id,
+            "line_datetime": self.pd,
+            "line_datetime_parsed": self.pd_parsed,
+            "text": self.text,
+            "device_pk": self.dev_pk,
+            "priority": self.priority,
+            "facility": self.facility,
+            "hostname": self.hostname,
+            "tag": self.tag,
+        }
+
+
+
 class LogRotateResult(object):
     def __init__(self):
         self.info_dict = {
@@ -195,7 +250,6 @@ class InotifyFile(object):
         self.year = int(_year)
         self.month = int(_month)
         self.day = int(_day)
-        self.DT_FORMAT = "%Y-%m-%dT%H:%M:%S"
         self.prefix = "{:04d}{:02d}{:02d}".format(
             self.year,
             self.month,
@@ -210,7 +264,14 @@ class InotifyFile(object):
 
     def line_to_mongo(self, line, line_idx):
         _dev_pk = self.in_root.fw_obj.machine.device.pk
-        self.in_root.mach_class.feed_mongo_line(_dev_pk, self.get_line(line, line_idx))
+        self.in_root.mach_class.feed_mongo_line(
+            LogLine(
+                line,
+                prefix=self.prefix,
+                offset=line_idx,
+                dev_pk=_dev_pk
+            )
+        )
 
     def _update(self, first=False):
         # invalidate cache
@@ -238,22 +299,6 @@ class InotifyFile(object):
     def close(self):
         pass
 
-    def get_line(self, line, idx):
-        _datetime, _rest = line.strip().split(None, 1)
-        _pd = datetime.datetime.strptime(
-            _datetime.split("+")[0],
-            self.DT_FORMAT,
-        )
-        # format idx, datetime, parsed_datetime, line
-        return (
-            "{}{:06d}".format(self.prefix, idx),
-            _pd,
-            (
-                _pd.year, _pd.month, _pd.day, _pd.hour, _pd.minute, _pd.second
-            ),
-            _rest
-        )
-
     def read_chunks(self, lines, to_read_total, first_log_time):
         _file = open(self.f_name, "r")
         _tot_lines = self.sizes.slices[-1].tot_lines
@@ -262,7 +307,7 @@ class InotifyFile(object):
             # calculate skip by iterating over file
             _to_skip_time = _tot_lines
             for _idx, line in enumerate(_file):
-                _parsed = self.get_line(line, 0)[1]
+                _parsed = LogLine(line).pd
                 if _parsed > first_log_time:
                     # read everything starting from now
                     _to_skip_time = _idx
@@ -296,7 +341,7 @@ class InotifyFile(object):
                 _read_sthg = True
                 lines.insert(
                     cur_ls,
-                    self.get_line(line, _skipped + _read),
+                    LogLine(line, prefix=self.prefix, offset=_skipped + _read),
                 )
         return _read_sthg
 

@@ -337,6 +337,10 @@ class GetEventLog(View):
                 "line_datetime": 1,
                 'device_pk': 1,
                 "text": 1,
+                "facility": 1,
+                "priority": 1,
+                "hostname": 1,
+                "tag": 1,
             }
             sort_obj = [('time_generated', pymongo.DESCENDING), ('record_number', pymongo.DESCENDING)]
             entries = self.mongo.event_log_db.system_log.find(query_obj, projection_obj, sort=sort_obj)
@@ -353,7 +357,7 @@ class GetEventLog(View):
                 # entry = db_row['entry']
                 keys.update(entry.iterkeys())
 
-                entry["line_datetime"] = entry["line_datetime"].strftime("%Y-%m-%d")
+                entry["line_datetime"] = entry["line_datetime"].strftime("%Y-%m-%d %H:%M:%S")
                 if include_device_info:
                     entry['Device'] = device_name_lut.get(db_row['device_pk'])
                 result.append(entry)
