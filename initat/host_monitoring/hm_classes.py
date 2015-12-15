@@ -287,7 +287,7 @@ class hm_module(object):
                 com_name = com_name[:-8]
             new_co = call_obj(com_name)
             new_co.module = self
-            new_co.flush_log_cache()
+            self.__commands[com_name] = new_co
 
     @property
     def commands(self):
