@@ -545,6 +545,13 @@ class device(models.Model):
     )
 
     @property
+    def com_uuid(self):
+        _uuid = self.uuid
+        if not _uuid.startswith("urn:"):
+            _uuid = "urn:uuid:{}".format(_uuid)
+        return _uuid
+
+    @property
     def full_name(self):
         if not self.domain_tree_node_id:
             self.domain_tree_node = domain_tree_node.objects.get(Q(depth=0))

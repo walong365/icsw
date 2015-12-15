@@ -165,7 +165,9 @@ class Machine(object):
                 _dev.append(
                     srv_com.builder(
                         "lines",
-                        process_tools.compress_struct(lines)
+                        process_tools.compress_struct(
+                            [(_a, _c, _d) for _a, _b, _c, _d in lines]
+                        )
                     )
                 )
 

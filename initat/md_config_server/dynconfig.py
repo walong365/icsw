@@ -97,7 +97,7 @@ class DynConfigProcess(threading_tools.process_obj):
 
     def _pcrs_as_chunk(self, *args, **kwargs):
         in_com = server_command.srv_command(source=args[0])
-        _chunk = json.loads(bz2.decompress(base64.b64decode(in_com["*ascii_chunk"])))
+        _chunk = process_tools.decompress_struct(in_com["*ascii_chunk"])
         _source = _chunk.get("source", "unknown")
         _prefix = _chunk["prefix"]
         try:

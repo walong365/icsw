@@ -29,7 +29,7 @@ import zmq
 from django.conf import settings
 from django.db.models import Q
 from lxml import etree
-from lxml.builder import E  # @UnresolvedImports
+from lxml.builder import E
 
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device, snmp_scheme
@@ -37,21 +37,19 @@ from initat.cluster.backbone.routing import get_server_uuid
 from initat.snmp.process import snmp_process_container
 from initat.tools import cluster_location, config_tools, configfile, logging_tools, process_tools, \
     server_command, server_mixins, threading_tools, uuid_tools
-# from initat.tools.bgnotify.process import ServerBackgroundNotifyMixin
-
-from .sensor_threshold import ThresholdContainer
-from .background import snmp_job, bg_job, ipmi_builder
-from .resize import resize_process
 from .aggregate import aggregate_process
-from .config import global_config, IPC_SOCK_SNMP
+from .background import snmp_job, bg_job, ipmi_builder
 from .collectd_struct import CollectdHostInfo, var_cache, ext_com, host_matcher, file_creator
+from .config import global_config, IPC_SOCK_SNMP
 from .dbsync import SyncProcess
+from .resize import resize_process
 from .rsync import RSyncMixin
+from .sensor_threshold import ThresholdContainer
 
 RRD_CACHED_PID = "/var/run/rrdcached/rrdcached.pid"
 
 
-class server_process(server_mixins.ICSWBasePool, RSyncMixin):
+class server_process(server_mixins.ICSWBasePool, RSyncMixin, server_mixins.SendToRemoteServerMixin):
     def __init__(self):
         self.__verbose = global_config["VERBOSE"]
         threading_tools.process_pool.__init__(self, "main", zmq=True)
@@ -187,32 +185,6 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin):
             self.register_poller(client, zmq.POLLIN, self._recv_command)  # @UndefinedVariable
             self.com_socket = client
             # self.md_target = self.zmq_context.socket(zmq.DEALER)  # @UndefinedVariable
-            self.__last_send_error = {}
-            self.__target_dict = {
-                "md-config-server": (
-                    "{}:{}:".format(
-                        uuid_tools.get_uuid().get_urn(),
-                        self.CC.Instance.get_uuid_postfix("md-config"),
-                    ),
-                    "tcp://{}:{:d}".format(
-                        global_config["MD_SERVER_HOST"],
-                        self.CC.Instance.get_port_dict("md-config", command=True),
-                    )
-                ),
-                "cluster-server": (
-                    "{}:{}:".format(
-                        uuid_tools.get_uuid().get_urn(),
-                        self.CC.Instance.get_uuid_postfix("cluster-server"),
-                    ),
-                    "tcp://{}:{:d}".format(
-                        "localhost",
-                        self.CC.Instance.get_port_dict("cluster-server", command=True),
-                    )
-                ),
-            }
-            for _key, (_uuid, _addr) in self.__target_dict.iteritems():
-                self.com_socket.connect(_addr)
-                self.log("connection to {} at {} (UUID {})".format(_key, _addr, _uuid))
             # receiver socket
             self.receiver = self.zmq_context.socket(zmq.PULL)  # @UndefinedVariable
             listener_url = "tcp://*:{:d}".format(global_config["RECEIVE_PORT"])
@@ -337,28 +309,6 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin):
             else:
                 self.log("closed rrdcached socket")
             self.__rrdcached_socket = None
-
-    def send_to_server(self, target, send_str):
-        cur_time = time.time()
-        if target in self.__last_send_error and abs(self.__last_send_error[target] - cur_time) < 10:
-            # silently fail
-            pass
-        else:
-            try:
-                self.com_socket.send_unicode(self.__target_dict[target][0], zmq.DONTWAIT | zmq.SNDMORE)  # @UndefinedVariable
-                self.com_socket.send_unicode(send_str, zmq.DONTWAIT)  # @UndefinedVariable
-            except zmq.error.ZMQError:
-                # this will never happen because we are using a REQ socket
-                self.log(
-                    "cannot send to {}: {}".format(
-                        target,
-                        process_tools.get_except_info()
-                    ),
-                    logging_tools.LOG_LEVEL_CRITICAL
-                )
-                self.__last_send_error[target] = cur_time
-            else:
-                pass
 
     def loop_post(self):
         self.CC.close()

@@ -463,9 +463,18 @@ class srv_command(object):
             _source[0].attrib.update(
                 {
                     "host": os.uname()[1],
-                    "pid": "{:d}".format(os.getpid())
+                    "pid": "{:d}".format(os.getpid()),
+                    "sendcounter": "{:d}".format(
+                        1 + self.sendcounter
+                    ),
                 }
             )
+
+    @property
+    def sendcounter(self):
+        _source = self.__tree.xpath(".//ns:source", smart_strings=False, namespaces={"ns": XML_NS})
+        if len(_source):
+            return int(_source[0].attrib.get("sendcounter", 0))
 
     def pretty_print(self):
         return etree.tostring(self.__tree, encoding=unicode, pretty_print=True)  # @UndefinedVariable

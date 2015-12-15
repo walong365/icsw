@@ -33,7 +33,7 @@ from initat.tools import server_mixins, configfile, logging_tools, \
 
 
 @server_mixins.RemoteCallProcess
-class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
+class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin, server_mixins.SendToRemoteServerMixin):
     def __init__(self, options):
         threading_tools.process_pool.__init__(self, "main", zmq=True)
         self.CC.init("logcheck-server", global_config)

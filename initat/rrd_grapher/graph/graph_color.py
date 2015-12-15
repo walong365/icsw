@@ -21,11 +21,12 @@
 
 import os
 import re
+
 from lxml import etree
 
 from initat.tools import logging_tools
-from ..config import global_config
 from .base_functions import full_graph_key
+from ..config import global_config
 
 
 class SimpleColorTable(object):

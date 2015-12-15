@@ -23,8 +23,13 @@
 """ implement commands for logcheck-server """
 
 import argparse
+import datetime
+import re
+import json
+import time
 
 from django.db.models import Q
+from lxml.builder import E
 
 from initat.cluster.backbone.models import SyslogCheck
 from initat.host_monitoring import limits
@@ -93,6 +98,9 @@ class MonCommand(object):
                 "an exception occured: {}".format(process_tools.get_except_info()),
                 server_command.SRV_REPLY_STATE_CRITICAL,
             )
+
+    def send_to_remote_server(self, srv_type, srv_com):
+        MonCommand.machine_class.srv_proc.send_to_remote_server(srv_type, unicode(srv_com))
 
     def parse(self, srv_com):
         if "arg_list" in srv_com:
@@ -206,7 +214,7 @@ class SyslogCheckCommand(MonCommand):
 
     def populate_parser(self):
         self.parser.add_argument("--key", type=str, help="passive check key")
-        self.parser.add_argument("--checks", type=str, help="passive check key")
+        self.parser.add_argument("--checks", type=str, help="syslog check pks")
         self.add_pk_parser()
 
     def run(self, srv_com, args):
@@ -233,9 +241,103 @@ class SyslogCheckCommand(MonCommand):
         else:
             max_minutes = max([_check.minutes_to_consider for _check in checks])
             _log = _dev.filewatcher.get_logs(minutes=max_minutes)
+            mon_info = E.monitor_info(
+                uuid=_dev.device.uuid,
+                name=_dev.device.name,
+                time="{:d}".format(int(time.time())),
+            )
             if not _log:
                 res.error("no logs found (max_minutes={:d})".format(max_minutes))
+                _res_list = [
+                    ("syslog check {}".format(_check.name), limits.nag_STATE_CRITICAL, "no logs found") for _check in checks
+                ]
             else:
-                res.ok("lines to scan: {:d}, checks: {:d}".format(len(_log), len(checks)))
+                res.ok("lines to scan: {:d}, checks: {:d}, minutes: {:d}".format(len(_log), len(checks), max_minutes))
+                _res_list = []
+                _now = datetime.datetime.now()
+                for _check in checks:
+                    expressions = [SyslogCheckExpression(_obj) for _obj in json.loads(_check.expressions)]
+                    if expressions:
+                        if _check.minutes_to_consider == max_minutes:
+                            _check_lines = _log
+                        else:
+                            _td = datetime.timedelta(seconds=_check.minutes_to_consider * 60)
+                            _check_lines = [_line for _line in _log if _now - _line[1] < _td]
+                        _matches = []
+                        for _expr in expressions:
+                            _expr.feed(_check_lines)
+                            if _expr.found:
+                                _matches.append(_expr.match_str)
+                        _res_list.append(
+                            (
+                                "slc {}".format(_check.name),
+                                max(_expr.ret_state for _expr in expressions),
+                                "{} / {}, {}".format(
+                                    logging_tools.get_plural("expression", len(expressions)),
+                                    logging_tools.get_plural("line", len(_check_lines)),
+                                    ", ".join(_matches) if _matches else "no expressions matched"
+                                ),
+                            )
+                        )
+                    else:
+                        _res_list.append(
+                            (
+                                "slc {}".format(_check.name),
+                                limits.nag_STATE_WARNING,
+                                "no expressions defined",
+                            )
+                        )
+            _result_chunk = {
+                "source": "logcheck-server check",
+                "prefix": args.key,
+                "list": _res_list
+            }
+            self.send_to_remote_server(
+                "md-config-server",
+                server_command.srv_command(
+                    command="passive_check_results_as_chunk",
+                    ascii_chunk=process_tools.compress_struct(_result_chunk),
+                )
+            )
         # print srv_com, _dev, args
         res.set_result(srv_com)
+
+
+class SyslogCheckExpression(object):
+    def __init__(self, struct):
+        self.text = struct["text"]
+        self.level = struct["level"]
+        self.format = struct["format"]
+        try:
+            self.regexp = re.compile(self.text, re.IGNORECASE)
+        except:
+            self.regexp = re.compile(".*")
+        self.found = 0
+        self.checked = 0
+        self.ret_state = limits.nag_STATE_OK
+
+    def __repr__(self):
+        return "format {}, level {}, found {:d}".format(
+            self.format,
+            self.level,
+            self.found,
+        )
+
+    def feed(self, lines):
+        for line in lines:
+            self.checked += 1
+            _idx, _dt, _dtp, _text = line
+            if self.regexp.search(_text):
+                self.found += 1
+                if self.level == "warn":
+                    self.ret_state = max(self.ret_state, limits.nag_STATE_WARNING)
+                elif self.level == "crit":
+                    self.ret_state = max(self.ret_state, limits.nag_STATE_CRITICAL)
+
+    @property
+    def match_str(self):
+        return "re {} found {} (level: {})".format(
+            self.regexp.pattern,
+            logging_tools.get_plural("time", self.found),
+            self.level,
+        )

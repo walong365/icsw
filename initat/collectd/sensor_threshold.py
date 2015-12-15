@@ -275,7 +275,7 @@ class Threshold(object):
                         "",
                     ]
                 )
-                self.__container.proc.send_to_server(
+                self.__container.proc.send_to_remote_server(
                     "cluster-server",
                     unicode(notify_command()),
                 )

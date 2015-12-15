@@ -227,22 +227,21 @@ class InotifyFile(object):
     def close(self):
         pass
 
-    def get_line(self, line, idx, only_pd=False):
+    def get_line(self, line, idx):
         _datetime, _rest = line.strip().split(None, 1)
         _pd = datetime.datetime.strptime(
             _datetime.split("+")[0],
             self.DT_FORMAT,
         )
-        if only_pd:
-            return _pd
-        else:
-            return (
-                "{}{:06d}".format(self.prefix, idx),
-                (
-                    _pd.year, _pd.month, _pd.day, _pd.hour, _pd.minute, _pd.second
-                ),
-                _rest
-            )
+        # format idx, datetime, parsed_datetime, line
+        return (
+            "{}{:06d}".format(self.prefix, idx),
+            _pd,
+            (
+                _pd.year, _pd.month, _pd.day, _pd.hour, _pd.minute, _pd.second
+            ),
+            _rest
+        )
 
     def read_chunks(self, lines, to_read_total, first_log_time):
         _file = open(self.f_name, "r")
@@ -252,7 +251,7 @@ class InotifyFile(object):
             # calculate skip by iterating over file
             _to_skip_time = _tot_lines
             for _idx, line in enumerate(_file):
-                _parsed = self.get_line(line, 0, only_pd=True)
+                _parsed = self.get_line(line, 0)[1]
                 if _parsed > first_log_time:
                     # read everything starting from now
                     _to_skip_time = _idx

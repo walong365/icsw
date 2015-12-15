@@ -456,7 +456,7 @@ class bg_job(object):
                         # graphing
                         bg_job.bg_proc.process_data_xml(_tree, len(etree.tostring(_tree)))  # @UndefinedVariable
                         # monitoring
-                        bg_job.bg_proc.send_to_server(
+                        bg_job.bg_proc.send_to_remote_server(
                             "md-config-server",
                             unicode(server_command.srv_command(command="monitoring_info", mon_info=_mon_info))
                         )

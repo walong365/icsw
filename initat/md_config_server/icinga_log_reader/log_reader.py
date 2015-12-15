@@ -392,7 +392,7 @@ class icinga_log_reader(threading_tools.process_obj):
         # so we save them in several stages
         def save_in_small_batches(model, entries, limit=1000):
             for i in xrange(0, len(entries), limit):
-                model.objects.bulk_create(entries[i:i+limit])
+                model.objects.bulk_create(entries[i:i + limit])
 
         save_in_small_batches(mon_icinga_log_raw_host_alert_data, host_states)
         save_in_small_batches(mon_icinga_log_raw_service_alert_data, service_states)

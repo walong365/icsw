@@ -50,6 +50,7 @@ class server_process(
     server_mixins.ICSWBasePool,
     version_check_mixin,
     server_mixins.RemoteCallMixin,
+    server_mixins.SendToRemoteServerMixin,
 ):
     def __init__(self):
         threading_tools.process_pool.__init__(self, "main", zmq=True)
@@ -61,7 +62,9 @@ class server_process(
         self._init_msi_block()
         db_tools.close_connection()
         # re-insert config
-        self._re_insert_config()
+        # log config
+        self.CC.log_config()
+        self.CC.re_insert_config()
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.register_exception("hup_error", self._hup_error)
@@ -70,7 +73,6 @@ class server_process(
         # from mixins
         self._check_md_version()
         self._check_relay_version()
-        self._log_config()
         self._init_network_sockets()
 
         if "MD_TYPE" in global_config:
@@ -89,6 +91,10 @@ class server_process(
             time.sleep(0.5)
             self.register_timer(self._check_for_redistribute, 60 if global_config["DEBUG"] else 300)
             self.register_timer(self._update, 30, instant=True)
+            self.send_to_remote_server(
+                "cluster-server",
+                unicode(server_command.srv_command(command="statusd")),
+            )
         else:
             self._int_error("no MD found")
 
@@ -152,18 +158,6 @@ class server_process(
             self.vector_socket.send_unicode(send_str)
         else:
             self.log("empty result dict for _update()", logging_tools.LOG_LEVEL_WARN)
-
-    def _log_config(self):
-        self.log("Config info:")
-        for line, log_level in global_config.get_log(clear=True):
-            self.log(" - clf: [{:d}] {}".format(log_level, line))
-        conf_info = global_config.get_config_info()
-        self.log("Found {:d} valid global config-lines:".format(len(conf_info)))
-        for conf in conf_info:
-            self.log("Config : {}".format(conf))
-
-    def _re_insert_config(self):
-        cluster_location.write_config("monitor_server", global_config)
 
     def _check_special_commands(self):
         from initat.md_config_server.special_commands import SPECIAL_DICT

@@ -31,6 +31,9 @@ from initat.tools import logging_tools, process_tools, threading_tools, server_c
     configfile, config_store, uuid_tools
 
 
+MAX_RESEND_COUNTER = 5
+
+
 class ConfigCheckObject(object):
     def __init__(self, proc):
         self.__process = proc
@@ -255,14 +258,15 @@ class OperationalErrorMixin(threading_tools.exception_handling_base):
         self.register_exception("OperationalError", self._op_error)
 
     def _op_error(self, info):
+        from initat.cluster.backbone import db_tools
         try:
             from django.db import connection
         except:
-            pass
+            self.log("cannot import connection from django.db", logging_tools.LOG_LEVEL_ERROR)
         else:
             self.log("operational error, closing db connection", logging_tools.LOG_LEVEL_ERROR)
             try:
-                connection.close()
+                db_tools.close_connection()
             except:
                 pass
 
@@ -565,15 +569,26 @@ class RemoteCallMixin(object):
                     logging_tools.LOG_LEVEL_ERROR,
                 )
                 if com_type == "router":
-                    if msg_type == RemoteCallMessageType.flat:
-                        _reply = u"unknown command '{}'".format(com_name)
-                    else:
-                        srv_com.set_result(
-                            "unknown command '{}'".format(com_name),
-                            server_command.SRV_REPLY_STATE_ERROR
+                    # check sendcounter
+                    if msg_type == RemoteCallMessageType.xml and srv_com.sendcounter > MAX_RESEND_COUNTER:
+                        self.log(
+                            "sendcounter is too high ({:d} > {:d}, com '{}'), no reply sent, communication loop ?".format(
+                                srv_com.sendcounter,
+                                MAX_RESEND_COUNTER,
+                                com_name,
+                            ),
+                            logging_tools.LOG_LEVEL_CRITICAL
                         )
-                        _reply = srv_com
-                    self._send_remote_call_reply(zmq_sock, src_id, _reply, msg_type)
+                    else:
+                        if msg_type == RemoteCallMessageType.flat:
+                            _reply = u"unknown command '{}'".format(com_name)
+                        else:
+                            srv_com.set_result(
+                                "unknown command '{}'".format(com_name),
+                                server_command.SRV_REPLY_STATE_ERROR
+                            )
+                            _reply = srv_com
+                        self._send_remote_call_reply(zmq_sock, src_id, _reply, msg_type)
         else:
             msg_type = RemoteCallMessageType.unknown
             self.log(
@@ -698,6 +713,144 @@ class RemoteCallSignature(object):
             effective_target_func_name = self.target_process_func or self.func_name
             # print 'effective target name', effective_target_func_name
             instance.send_to_process(self.target_process, effective_target_func_name, unicode(_result), src_id=src_id)
+
+
+class RemoteServerAddress(object):
+    def __init__(self, mixin, srv_type):
+        self.mixin = mixin
+        self.srv_type = srv_type
+        self._address, self._uuid, self._port = (None, None, None)
+        self.log("init for {}".format(self.srv_type))
+        self._connected = False
+
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.mixin.log("[RSA {}] {}".format(self.srv_type, what), log_level)
+
+    def check_for_address(self, router):
+        if not self.valid:
+            router.update()
+            if self.srv_type in router.service_types:
+                _addresses = router[self.srv_type]
+                if len(_addresses):
+                    from initat.cluster.backbone.models import device
+                    from django.db.models import Q
+                    _addr = _addresses[0]
+                    self._address = _addr[1]
+                    _dev = device.objects.get(Q(pk=_addr[2]))
+                    self._port = self.mixin.CC.Instance.get_port_dict(self.srv_type, command=True)
+                    self._postfix = self.mixin.CC.Instance.get_uuid_postfix(self.srv_type)
+                    self._uuid = "{}:{}:".format(_dev.com_uuid, self._postfix)
+                    self.log(
+                        "set address to {} (device {}, port {:d}, COM-UUID {})".format(
+                            self._address,
+                            unicode(_dev),
+                            self._port,
+                            self._uuid,
+                        )
+                    )
+                else:
+                    self.log("got no valid addresses", logging_tools.LOG_LEVEL_ERROR)
+            else:
+                self.log("not found in router".format(self.srv_type), logging_tools.LOG_LEVEL_ERROR)
+
+    @property
+    def valid(self):
+        return True if self._address else False
+
+    @property
+    def connected(self):
+        return self._connected
+
+    @property
+    def connection_string(self):
+        return "tcp://{}:{:d}".format(self._address, self._port)
+
+    def connect(self):
+        if not self._connected:
+            _conn_str = self.connection_string
+            try:
+                self.mixin.main_socket.connect(self.connection_string)
+            except:
+                self.log(
+                    "error connecting to {}: {}".format(
+                        _conn_str,
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
+            else:
+                self.log(
+                    "connected to {}".format(_conn_str),
+                )
+                self._connected = True
+                self._last_error = None
+                self._first_send = True
+
+    def send(self, send_str):
+        cur_time = time.time()
+        if self._last_error and abs(self.last_error - cur_time) < 10:
+            # last send error only 10 seconds ago, fail silently
+            pass
+        else:
+            _loop, _idx, _error = (True, 0, True)
+            while _loop and _idx < 5:
+                _idx += 1
+                _loop = False
+                # time.sleep(1)
+                try:
+                    self.mixin.main_socket.send_unicode(self._uuid, zmq.DONTWAIT | zmq.SNDMORE)
+                    self.mixin.main_socket.send_unicode(unicode(send_str), zmq.DONTWAIT)
+                except zmq.error.ZMQError as e:
+                    self.log(
+                        "cannot send to {}: {}".format(
+                            self.connection_string,
+                            process_tools.get_except_info()
+                        ),
+                        logging_tools.LOG_LEVEL_CRITICAL
+                    )
+                    if e.errno == 113:
+                        _loop = True
+                        time.sleep(0.1)
+                    self._last_error = cur_time
+                else:
+                    self._last_error = None
+                    _error = False
+                    break
+
+            if _idx > 1 or self._first_send:
+                _rf = []
+                if _idx > 1:
+                    _rf.append("after {:d} tries".format(_idx))
+                if self._first_send:
+                    _rf.append("for the first time")
+                self.log("sent {}".format(", ".join(_rf)), logging_tools.LOG_LEVEL_WARN)
+            self._first_send = False
+
+
+class SendToRemoteServerMixin(threading_tools.ICSWAutoInit):
+    def __init__(self):
+        # requires ConfigCheckMixin, clear dict
+        self.__target_dict = None
+
+    def send_to_remote_server(self, srv_type, send_str):
+        from initat.cluster.backbone import routing
+        if self.__target_dict is None:
+            from initat.cluster.backbone import db_tools
+            db_tools.close_connection()
+            self.__target_dict = {}
+            self.__strs_router = routing.SrvTypeRouting(log_com=self.log)
+        if srv_type not in self.__target_dict:
+            self.__target_dict[srv_type] = RemoteServerAddress(self, srv_type)
+        _rsa = self.__target_dict[srv_type]
+        _rsa.check_for_address(self.__strs_router)
+        if _rsa.valid:
+            _rsa.connect()
+            if _rsa.connected:
+                _rsa.send(send_str)
+            else:
+                self.log("unable to send, not connected", logging_tools.LOG_LEVEL_WARN)
+        else:
+            self.log("unable to send, not valid", logging_tools.LOG_LEVEL_WARN)
 
 
 class RemoteCall(object):

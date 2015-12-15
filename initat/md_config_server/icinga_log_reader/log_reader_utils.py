@@ -82,7 +82,7 @@ class host_service_id_util(object):
             # we add the info string to identify it as the services are created dynamically, we don't have a nice db pk
             retval = "host_check:{}:{}:{}".format(host_pk, check_command_pk, info)
         else:
-            retval = "unstructured:" + info
+            retval = "unstructured: {}".format(info)
         return retval
 
     @classmethod
