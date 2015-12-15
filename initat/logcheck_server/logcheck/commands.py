@@ -272,9 +272,10 @@ class SyslogCheckCommand(MonCommand):
                             (
                                 "slc {}".format(_check.name),
                                 max(_expr.ret_state for _expr in expressions),
-                                "{} / {}, {}".format(
+                                "{} / {} [{}], {}".format(
                                     logging_tools.get_plural("expression", len(expressions)),
                                     logging_tools.get_plural("line", len(_check_lines)),
+                                    logging_tools.get_plural("minute", _check.minutes_to_consider),
                                     ", ".join(_matches) if _matches else "no expressions matched"
                                 ),
                             )
@@ -336,7 +337,7 @@ class SyslogCheckExpression(object):
 
     @property
     def match_str(self):
-        return "re {} found {} (level: {})".format(
+        return "pattern '{}' found {} (level: {})".format(
             self.regexp.pattern,
             logging_tools.get_plural("time", self.found),
             self.level,
