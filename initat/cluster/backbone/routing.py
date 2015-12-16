@@ -142,7 +142,10 @@ class SrvTypeRouting(object):
                 _found_srv = [entry for entry in _srv_list if entry[2] == server_id]
                 if not _found_srv:
                     self.log(
-                        "no server_id {:d} found for srv_type {}, taking first one".format(server_id, srv_type),
+                        "no server_id {:d} found for srv_type {}, taking first one".format(
+                            server_id,
+                            srv_type
+                        ),
                         logging_tools.LOG_LEVEL_CRITICAL,
                     )
                     _found_srv = _srv_list

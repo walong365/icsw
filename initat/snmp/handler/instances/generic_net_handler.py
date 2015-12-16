@@ -276,7 +276,7 @@ class handler(SNMPHandler):
 class if_mon(MonCheckDefinition):
     class Meta:
         short_name = "if"
-        command_line = "* --speed $ARG3$ $ARG4$"
+        command_line = "* --speed $ARG3$ --flags $ARG4$ $ARG5$"
         info = "SNMP Interface check"
         description = "SNMP Interface check, source is Database"
         if SpecialGroupsEnum:
@@ -284,6 +284,7 @@ class if_mon(MonCheckDefinition):
 
     def parser_setup(self, parser):
         parser.add_argument("--speed", type=int, dest="speed", help="target interface speed")
+        parser.add_argument("--flags", type=str, dest="flags", default="", help="monitoring flags")
         parser.add_argument("if_idx", nargs=1, type=int, help="interface idx")
 
     def config_call(self, s_com):
@@ -296,7 +297,11 @@ class if_mon(MonCheckDefinition):
                     arg1=dev.dev_variables["SNMP_READ_COMMUNITY"],
                     arg2=dev.dev_variables["SNMP_VERSION"],
                     arg3="{:d}".format(net_dev.netdevice_speed.speed_bps),
-                    arg4="{:d}".format(net_dev.snmp_idx),
+                    arg4="d{}:s{}".format(
+                        net_dev.desired_status,
+                        "1" if net_dev.ignore_netdevice_speed else "0"
+                    ),
+                    arg5="{:d}".format(net_dev.snmp_idx),
                 )
             )
         return _field
@@ -310,7 +315,7 @@ class if_mon(MonCheckDefinition):
                     scheme.opts.if_idx[0]
                 ),
                 single_value=True
-            ) for _idx in [5, 10, 16, 13, 14, 19, 20]
+            ) for _idx in [5, 7, 8, 10, 16, 13, 14, 19, 20]
         ]
         #     + [
         #    snmp_oid(
@@ -339,6 +344,9 @@ class if_mon(MonCheckDefinition):
         else:
             _vector = None
         _vc.set(_key, _val_dict)
+        # print scheme, scheme.opts
+        # import pprint
+        # pprint.pprint(_val_dict)
         if _vector is None:
             return limits.nag_STATE_WARNING, "only one value read out"
         else:

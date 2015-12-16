@@ -225,6 +225,11 @@ angular.module(
                 $scope.devices = (dev for dev in data[0])
                 $scope.peers = data[1]
                 $scope.netdevice_speeds = data[2]
+                $scope.desired_stati = [
+                    {"short": "i", "info_string": "ignore"}
+                    {"short": "u", "info_string": "must be up"}
+                    {"short": "d", "info_string": "must be down"}
+                ]
                 $scope.network_device_types = data[3]
                 $scope.ndt_lut = icswTools.build_lut($scope.network_device_types)
                 $scope.networks = data[4]
@@ -488,6 +493,8 @@ angular.module(
                     "devname" : "eth0"
                     "enabled" : true
                     "netdevice_speed" : (entry.idx for entry in $scope.netdevice_speeds when entry.speed_bps == 1000000000 and entry.full_duplex)[0]
+                    "ignore_netdevice_speed": false
+                    "desired_status": "i"
                     "penalty" : 1
                     "net_ip_set" : []
                     "ethtool_options" : 0
@@ -820,6 +827,12 @@ angular.module(
                     return "success text-center"
                 else
                     return "warning text-center"
+            scope.get_desired_status = (ndip_obj) ->
+                return {
+                    "i": "ignore"
+                    "u": "up"
+                    "d" : "down"
+                }[ndip_obj.desired_status]
     }
 ]).directive("icswDeviceComCapabilities", ["$templateCache", "$compile", "icswCachingCall", "ICSW_URLS", ($templateCache, $compile, icswCachingCall, ICSW_URLS) ->
     return {

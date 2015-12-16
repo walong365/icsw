@@ -609,6 +609,7 @@ class netdevice(models.Model):
     # speed is probably deprecated, use netdevice_speed instead
     speed = models.BigIntegerField(default=0, null=True, blank=True)
     netdevice_speed = models.ForeignKey("backbone.netdevice_speed")
+    ignore_netdevice_speed = models.BooleanField(default=False)
     driver = models.CharField(max_length=384, blank=True, default="e1000e")
     # is a valid routing target
     routing = models.BooleanField(default=False)

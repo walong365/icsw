@@ -265,12 +265,17 @@ class sge_info(object):
             self.update()
 
     def __del__(self):
-        if self.__0mq_socket:
-            self.__0mq_socket.close()
-        if self.__0mq_context:
-            self.__0mq_context.term()
-        if self._cache_socket:
-            self._cache_socket.close()
+        try:
+            if self.__0mq_socket:
+                self.__0mq_socket.close()
+        except:
+            # __0mq_socket may be not set if the __init__() of a subclass goes wrong
+            pass
+        else:
+            if self.__0mq_context:
+                self.__0mq_context.term()
+            if self._cache_socket:
+                self._cache_socket.close()
 
     def _init_cache(self):
         if memcache:

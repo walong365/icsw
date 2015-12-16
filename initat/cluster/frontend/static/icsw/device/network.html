@@ -32,7 +32,7 @@
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': netdevice_open, 'glyphicon-chevron-right': !netdevice_open}"></i>
                 {{ get_nd_objects().length }} netdevices
             </accordion-heading>
-            <icsw-tools-show-hide-columns ng-show="devices.length" columns="idx port ips peers bridge bond mac devtype mtu speed penalty flags status" create-show-column="true">
+            <icsw-tools-show-hide-columns ng-show="devices.length" columns="idx port ips peers bridge bond mac devtype mtu speed penalty flags status desired" create-show-column="true">
             </icsw-tools-show-hide-columns>
             <table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
                 <thead>
@@ -51,6 +51,7 @@
                         <th ng-show="show_column.penalty">penalty</th>
                         <th ng-show="show_column.flags">flags</th>
                         <th ng-show="show_column.status">status</th>
+                        <th ng-show="show_column.desired">desired</th>
                         <th colspan="4">action</th>
                     </tr>
                 </thead>
@@ -218,10 +219,11 @@
     <td ng-show="show_column.mac">{{ ndip_obj.macaddr }}</td>
     <td ng-show="show_column.devtype">{{ get_network_type(ndip_obj) }}</td>
     <td ng-show="show_column.mtu" class="text-right">{{ ndip_obj.mtu }}</td>
-    <td ng-show="show_column.speed">{{ ndip_obj.netdevice_speed | array_lookup:netdevice_speeds:'info_string':'-' }}</td>
+    <td ng-show="show_column.speed">{{ ndip_obj.netdevice_speed | array_lookup:netdevice_speeds:'info_string':'-' }}<span ng-show="ndip_obj.ignore_netdevice_speed">(I)</span></span></td>
     <td ng-show="show_column.penalty" class="text-right">{{ ndip_obj.penalty }}</td>
     <td ng-show="show_column.flags">{{ get_flags(ndip_obj) }}</td>
     <td ng-show="show_column.status" ng-class="get_snmp_ao_status_class(ndip_obj)">{{ get_snmp_ao_status(ndip_obj) }}</td>
+    <td ng-show="show_column.desired" class="text-center">{{ get_desired_status(ndip_obj) }}</td>
     <td>
         <button type="button" class="btn btn-xs btn-success"
          tooltip-placement="right"
@@ -752,8 +754,8 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="control-label col-sm-3 requiredField">
-                            Netdevice speed<span class="asteriskField">*</span>
+                        <label class="control-label col-sm-3">
+                            Netdevice speed
                         </label>
                         <div class="controls col-sm-8">
                             <ui-select ng-model="_edit_obj.netdevice_speed" style="max-width:400px; min-width:240px;" ng-disabled="false">
@@ -768,10 +770,33 @@
                         <div class="checkbox">
                             <div class="controls col-lg-offset-0 col-sm-8">
                                 <label>
+                                    <input class="checkboxinput checkbox" ng-model="_edit_obj.ignore_netdevice_speed" type="checkbox"/>
+                                    Ignore netdevice speed
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <div class="checkbox">
+                            <div class="controls col-lg-offset-0 col-sm-8">
+                                <label>
                                     <input class="checkboxinput checkbox" ng-model="_edit_obj.enabled" type="checkbox"/>
                                     Enabled
                                 </label>
                             </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label col-sm-3">
+                            Desired status
+                        </label>
+                        <div class="controls col-sm-8">
+                            <ui-select ng-model="_edit_obj.desired_status" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                                <ui-select-match placeholder="select the desired status">{{$select.selected.info_string}}</ui-select-match>
+                                <ui-select-choices repeat="value.short as value in desired_stati">
+                                    <div ng-bind-html="value.info_string | highlight: $select.search"></div>
+                                </ui-select-choices>
+                            </ui-select>
                         </div>
                     </div>
                 </fieldset>
