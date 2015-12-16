@@ -329,7 +329,7 @@ class GetEventLog(View):
 
                 entry["line_datetime"] = entry["line_datetime"].strftime("%Y-%m-%d %H:%M:%S")
                 if include_device_info:
-                    entry['Device'] = device_name_lut.get(db_row['device_pk'])
+                    entry['Device'] = device_name_lut.get(entry['device_pk'])
                 result.append(entry)
 
             mode_specific_parameters = {}
