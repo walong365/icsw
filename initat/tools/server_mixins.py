@@ -769,7 +769,7 @@ class RemoteServerAddress(object):
         if not self._connected:
             _conn_str = self.connection_string
             try:
-                self.mixin.main_socket.connect(self.connection_string)
+                self.mixin.strs_com_socket.connect(self.connection_string)
             except:
                 self.log(
                     "error connecting to {}: {}".format(
@@ -788,7 +788,7 @@ class RemoteServerAddress(object):
 
     def send(self, send_str):
         cur_time = time.time()
-        if self._last_error and abs(self.last_error - cur_time) < 10:
+        if self._last_error and abs(self._last_error - cur_time) < 10:
             # last send error only 10 seconds ago, fail silently
             pass
         else:
@@ -798,8 +798,8 @@ class RemoteServerAddress(object):
                 _loop = False
                 # time.sleep(1)
                 try:
-                    self.mixin.main_socket.send_unicode(self._uuid, zmq.DONTWAIT | zmq.SNDMORE)
-                    self.mixin.main_socket.send_unicode(unicode(send_str), zmq.DONTWAIT)
+                    self.mixin.strs_com_socket.send_unicode(self._uuid, zmq.DONTWAIT | zmq.SNDMORE)
+                    self.mixin.strs_com_socket.send_unicode(unicode(send_str), zmq.DONTWAIT)
                 except zmq.error.ZMQError as e:
                     self.log(
                         "cannot send to {}: {}".format(
@@ -831,6 +831,12 @@ class SendToRemoteServerMixin(threading_tools.ICSWAutoInit):
     def __init__(self):
         # requires ConfigCheckMixin, clear dict
         self.__target_dict = None
+        self.STRS_SOCKET_NAME = "main_socket"
+
+    # helper property, only used until collectd is rewritten to use RemoteCall Mixin
+    @property
+    def strs_com_socket(self):
+        return getattr(self, self.STRS_SOCKET_NAME)
 
     def send_to_remote_server(self, srv_type, send_str):
         from initat.cluster.backbone import routing

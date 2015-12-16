@@ -56,6 +56,8 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin, server_mixins.SendT
         self.CC.init("collectd", global_config)
         self.CC.check_config()
         self.__pid_name = global_config["PID_NAME"]
+        # override default
+        self.STRS_SOCKET_NAME = "com_socket"
         global_config.add_config_entries(
             [
                 ("MEMCACHE_PORT", configfile.int_c_var(self.CC.Instance.get_port_dict("memcached", command=True))),
