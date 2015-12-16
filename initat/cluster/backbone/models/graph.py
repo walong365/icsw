@@ -178,7 +178,7 @@ class MVValueEntry(models.Model):
             key=self.key,
             full_key=self.full_key,
             rra_idx=self.rra_idx,
-            date=self.date
+            date=self.date,
         )
         for _key, _value in mod_dict.iteritems():
             if _key not in {"key", "full_key"}:

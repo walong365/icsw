@@ -54,9 +54,13 @@ angular.module(
                         data    : {
                             "pk" : pk
                         }
-                    ).then((xml) ->
-                        blockUI.stop()
-                        $scope.reload()
+                    ).then(
+                        (xml) ->
+                            blockUI.stop()
+                            $scope.reload()
+                        (xml) ->
+                            blockUI.stop()
+                            $scope.reload()
                     )
             $scope.fetch = (pk) ->
                 if pk?
@@ -66,9 +70,13 @@ angular.module(
                         data    : {
                             "pk" : pk
                         }
-                    ).then((xml) ->
-                        blockUI.stop()
-                        $scope.reload()
+                    ).then(
+                        (xml) ->
+                            blockUI.stop()
+                            $scope.reload()
+                        (xml) ->
+                            blockUI.stop()
+                            $scope.reload()
                     )
             $scope.use = (pk) ->
                 if pk?
@@ -78,9 +86,13 @@ angular.module(
                         data    : {
                             "pk" : pk
                         }
-                    ).then((xml) ->
-                        blockUI.stop()
-                        $scope.reload()
+                    ).then(
+                        (xml) ->
+                            blockUI.stop()
+                            $scope.reload()
+                        (xml) ->
+                            blockUI.stop()
+                            $scope.reload()
                     )
         ]
     }

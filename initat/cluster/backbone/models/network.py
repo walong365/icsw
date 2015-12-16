@@ -22,6 +22,7 @@
 
 import logging
 import re
+from enum import Enum
 
 from django.apps import apps
 from django.core.exceptions import ValidationError
@@ -46,6 +47,7 @@ __all__ = [
     "netdevice_speed",
     "peer_information",
     "snmp_network_type",
+    "NetDeviceDesiredStateEnum",
 ]
 
 logger = logging.getLogger(__name__)
@@ -592,6 +594,12 @@ def net_ip_post_save(sender, **kwargs):
             bootsettings_changed.send(sender=cur_inst, device=cur_inst.netdevice.device, cause="netdevice_changed")
 
 
+class NetDeviceDesiredStateEnum(Enum):
+    ignore = "i"
+    up = "u"
+    down = "d"
+
+
 class netdevice(models.Model):
     idx = models.AutoField(db_column="netdevice_idx", primary_key=True)
     device = models.ForeignKey("backbone.device")
@@ -637,6 +645,12 @@ class netdevice(models.Model):
     # admin / oper stats
     snmp_admin_status = models.IntegerField(default=0)
     snmp_oper_status = models.IntegerField(default=0)
+    # desired status
+    desired_status = models.CharField(
+        max_length=4,
+        default=NetDeviceDesiredStateEnum.ignore.value,
+        choices=[(_en.value, _en.name) for _en in NetDeviceDesiredStateEnum]
+    )
     # wmi interface index, only set if device is scanned using wmi
     # https://msdn.microsoft.com/en-us/library/aa394217(v=vs.85).aspx
     wmi_interface_index = models.IntegerField(default=None, null=True, blank=True)
