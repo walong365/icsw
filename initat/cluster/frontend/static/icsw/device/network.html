@@ -219,7 +219,12 @@
     <td ng-show="show_column.mac">{{ ndip_obj.macaddr }}</td>
     <td ng-show="show_column.devtype">{{ get_network_type(ndip_obj) }}</td>
     <td ng-show="show_column.mtu" class="text-right">{{ ndip_obj.mtu }}</td>
-    <td ng-show="show_column.speed">{{ ndip_obj.netdevice_speed | array_lookup:netdevice_speeds:'info_string':'-' }}<span ng-show="ndip_obj.ignore_netdevice_speed">(I)</span></span></td>
+    <td ng-if="show_column.speed && ndip_obj.ignore_netdevice_speed" style="text-decoration: line-through;">
+        {{ ndip_obj.netdevice_speed | array_lookup:netdevice_speeds:'info_string':'-' }}
+    </td>
+    <td ng-if="show_column.speed && !ndip_obj.ignore_netdevice_speed">
+        {{ ndip_obj.netdevice_speed | array_lookup:netdevice_speeds:'info_string':'-' }}
+    </td>
     <td ng-show="show_column.penalty" class="text-right">{{ ndip_obj.penalty }}</td>
     <td ng-show="show_column.flags">{{ get_flags(ndip_obj) }}</td>
     <td ng-show="show_column.status" ng-class="get_snmp_ao_status_class(ndip_obj)">{{ get_snmp_ao_status(ndip_obj) }}</td>
