@@ -28,7 +28,7 @@ from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device, ComCapability, net_ip
 from initat.cluster.backbone.models.functions import memoize_with_expiry
 from initat.cluster.backbone.routing import SrvTypeRouting
-from initat.cluster.frontend.discovery_views import MongoDbInterface
+from initat.tools.mongodb import MongoDbConnector
 from initat.discovery_server.config import global_config
 from initat.discovery_server.event_log.ipmi_event_log_scanner import IpmiLogJob
 from initat.discovery_server.event_log.wmi_event_log_scanner import WmiLogEntryJob, WmiLogFileJob
@@ -63,48 +63,48 @@ class EventLogPollerProcess(threading_tools.process_obj):
         self.__log_template.log(log_level, what)
 
     def _init_db(self):
-        self._mongodb_database = MongoDbInterface().event_log_db
+        _con = MongoDbConnector()
+        if _con.connected:
+            self._mongodb_database = _con.event_log_db
 
-        self._mongodb_database.wmi_event_log.create_index([('$**', 'text')], name="wmi_log_full_text_index")
-        self._mongodb_database.wmi_event_log.create_index('device_pk', name='device_pk_index')
-        self._mongodb_database.wmi_event_log.create_index('logfile_name', name='logfile_name_index')
-        self._mongodb_database.wmi_event_log.create_index('record_number', name='record_number_index')
-        self._mongodb_database.wmi_event_log.create_index('time_generated', name='time_generated_index')
+            self._mongodb_database.wmi_event_log.create_index([('$**', 'text')], name="wmi_log_full_text_index")
+            self._mongodb_database.wmi_event_log.create_index('device_pk', name='device_pk_index')
+            self._mongodb_database.wmi_event_log.create_index('logfile_name', name='logfile_name_index')
+            self._mongodb_database.wmi_event_log.create_index('record_number', name='record_number_index')
+            self._mongodb_database.wmi_event_log.create_index('time_generated', name='time_generated_index')
 
-        self._mongodb_database.wmi_event_log.create_index(
-            [
-                ('time_generated', pymongo.DESCENDING),
-                ('record_number', pymongo.DESCENDING)
-            ],
-            name='sort_index',
-        )
+            self._mongodb_database.wmi_event_log.create_index(
+                [
+                    ('time_generated', pymongo.DESCENDING),
+                    ('record_number', pymongo.DESCENDING)
+                ],
+                name='sort_index',
+            )
 
-        self._mongodb_database.ipmi_event_log.create_index(
-            [
-                ('$**', 'text')
-            ],
-            name="ipmi_log_full_text_index"
-        )
-        # for sorting:
-        self._mongodb_database.ipmi_event_log.create_index(
-            [
-                ('creation_date', pymongo.DESCENDING)
-            ],
-            name='creation_date_index'
-        )
+            self._mongodb_database.ipmi_event_log.create_index(
+                [
+                    ('$**', 'text')
+                ],
+                name="ipmi_log_full_text_index"
+            )
+            # for sorting:
+            self._mongodb_database.ipmi_event_log.create_index(
+                [
+                    ('creation_date', pymongo.DESCENDING)
+                ],
+                name='creation_date_index'
+            )
 
-        self.log("Set up mongodb successfully")
+            self.log("Set up mongodb successfully")
+            self._mongodb_inited = True
+        else:
+            self.log("error connecting to mongodb: {}".format(MongoDbConnector.error), logging_tools.LOG_LEVEL_ERROR)
+            self._mongodb_inited = False
 
     def periodic_update(self):
         if not self._mongodb_inited:
             # do this here in case mongodb is installed after discovery-server has been started
-            try:
-                self._init_db()
-            except PyMongoError as e:
-                self.log("Failed to connect to mongodb: {}".format(e), logging_tools.LOG_LEVEL_WARN)
-                self.log(traceback.format_exc(), logging_tools.LOG_LEVEL_WARN)
-            else:
-                self._mongodb_inited = True
+            self._init_db()
 
         if self._mongodb_inited:
             # only add jobs if we know that mongodb is accessible

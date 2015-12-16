@@ -28,10 +28,11 @@ import re
 
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
-from django.http import HttpResponse
 from django.db.models import Q
+from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
+
 from initat.cluster.backbone.models import device_group, device, \
     cd_connection, domain_tree_node, category
 from initat.cluster.backbone.models.functions import can_delete_obj

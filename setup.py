@@ -30,6 +30,7 @@ setup(
         "initat.tools.bgnotify.tasks",
         "initat.tools.nameserver_tools",
         "initat.tools.prd_tools",
+        "initat.tools.mongodb",
         "initat.rms",
         "initat.cluster",
         "initat.cluster.backbone",

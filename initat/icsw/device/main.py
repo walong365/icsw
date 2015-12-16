@@ -182,17 +182,22 @@ def device_syslog(opt_ns, cur_dev, j_logs):
                 print("no rate info found")
                 print _rates
             _out_lines = logging_tools.new_form_list()
-            for _idx, _dtinfo, _text in process_tools.decompress_struct(_lines.text):
+            for _entry in process_tools.decompress_struct(_lines.text):
                 _out_lines.append(
                     [
-                        logging_tools.form_entry(_idx, header="idx"),
+                        logging_tools.form_entry(_entry["line_id"], header="idx"),
                         logging_tools.form_entry(
                             "{:04d}-{:02d}-{:02d} {:02d}:{:02d}:{:02d}".format(
-                                *_dtinfo
+                                *_entry["line_datetime_parsed"]
                             ),
                             header="Timestamp",
                         ),
-                        logging_tools.form_entry(_text, header="text"),
+                    ] + [
+                        logging_tools.form_entry(_entry[_key], header=_key) for _key in [
+                            "hostname", "priority", "facility", "tag"
+                        ]
+                    ] + [
+                        logging_tools.form_entry(_entry["text"], header="text"),
                     ]
                 )
             print unicode(_out_lines)

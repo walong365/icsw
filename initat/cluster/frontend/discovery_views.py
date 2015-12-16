@@ -19,52 +19,22 @@
 #
 # -*- coding: utf-8 -*-
 #
-import json
 import collections
+import json
 
 import bson.json_util
 import dateutil.parser
+import pymongo
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from pymongo.errors import PyMongoError
-from initat.cluster.backbone.models import device, config, config_str, config_int
-from initat.cluster.backbone.models.functions import memoize_with_expiry
-import pymongo
+
+from initat.cluster.backbone.models import device
 from initat.cluster.backbone.render import render_me
 from initat.cluster.frontend.rest_views import rest_logging
-
-
-class MongoDbInterface(object):
-    def __init__(self):
-        self.client, self.event_log_db = self.__class__._get_config()
-
-    @classmethod
-    @memoize_with_expiry(10)
-    def _get_config(cls):
-        mongo_config = {
-            'MONGODB_HOST': "localhost",
-            'MONGODB_PORT': 27017,
-        }
-
-        configs_db = list(config_str.objects.filter(name="MONGODB_HOST",
-                                                    config__name=config.ConfigName.discovery_server.name))
-
-        configs_db += list(config_int.objects.filter(name="MONGODB_PORT",
-                                                     config__name=config.ConfigName.discovery_server.name))
-        for mongo_config_entry in configs_db:
-            mongo_config[mongo_config_entry.name] = mongo_config_entry.value
-
-        client = pymongo.MongoClient(
-            host=mongo_config['MONGODB_HOST'],
-            port=mongo_config['MONGODB_PORT'],
-            tz_aware=True
-        )
-
-        event_log_db = client.icsw_event_log
-
-        return client, event_log_db
+from initat.tools.mongodb import MongoDbConnector
 
 
 class DiscoveryOverview(View):
@@ -86,56 +56,56 @@ class GetEventLogDeviceInfo(View):
     def get(self, request, *args, **kwargs):
         device_pks = json.loads(request.GET['device_pks'])
         ret = {}
-        mongo = MongoDbInterface()
-
-        try:
-            _wmi_res = mongo.event_log_db.wmi_event_log.aggregate([{
-                '$group': {
-                    '_id': {
-                        'device_pk': '$device_pk',
-                    }
-                }
-            }])
-            devices_with_wmi = {entry['_id']['device_pk'] for entry in _wmi_res}
-
-            _ipmi_res = mongo.event_log_db.ipmi_event_log.aggregate([{
-                '$group': {
-                    '_id': {
-                        'device_pk': '$device_pk',
-                    }
-                }
-            }])
-            devices_with_ipmi = {entry['_id']['device_pk'] for entry in _ipmi_res}
-
-            _syslog_res = mongo.event_log_db.system_log.aggregate(
-                [
-                    {
-                        '$group': {
-                            '_id': {
-                                'device_pk': '$device_pk',
-                            }
+        mongo = MongoDbConnector()
+        if not mongo.connected:
+            ret = MongoDbConnector.json_error_dict()
+        else:
+            try:
+                _wmi_res = mongo.event_log_db.wmi_event_log.aggregate([{
+                    '$group': {
+                        '_id': {
+                            'device_pk': '$device_pk',
                         }
                     }
-                ]
-            )
-            devices_with_syslog = {entry["_id"]["device_pk"] for entry in _syslog_res}
+                }])
+                devices_with_wmi = {entry['_id']['device_pk'] for entry in _wmi_res}
 
-            for entry in device.objects.filter(pk__in=device_pks):
-                capabilities = []
-                if entry.pk in devices_with_ipmi:
-                    capabilities.append("ipmi")
-                if entry.pk in devices_with_wmi:
-                    capabilities.append("wmi")
-                if entry.pk in devices_with_syslog:
-                    capabilities.append("syslog")
-                ret[entry.pk] = {
-                    'name': entry.full_name,
-                    'capabilities': capabilities,
-                }
-        except PyMongoError as e:
-            ret = {
-                'error': "Failed to connect to mongo-db: {}\n".format(e)
-            }
+                _ipmi_res = mongo.event_log_db.ipmi_event_log.aggregate([{
+                    '$group': {
+                        '_id': {
+                            'device_pk': '$device_pk',
+                        }
+                    }
+                }])
+                devices_with_ipmi = {entry['_id']['device_pk'] for entry in _ipmi_res}
+
+                _syslog_res = mongo.event_log_db.system_log.aggregate(
+                    [
+                        {
+                            '$group': {
+                                '_id': {
+                                    'device_pk': '$device_pk',
+                                }
+                            }
+                        }
+                    ]
+                )
+                devices_with_syslog = {entry["_id"]["device_pk"] for entry in _syslog_res}
+
+                for entry in device.objects.filter(pk__in=device_pks):
+                    capabilities = []
+                    if entry.pk in devices_with_ipmi:
+                        capabilities.append("ipmi")
+                    if entry.pk in devices_with_wmi:
+                        capabilities.append("wmi")
+                    if entry.pk in devices_with_syslog:
+                        capabilities.append("syslog")
+                    ret[entry.pk] = {
+                        'name': entry.full_name,
+                        'capabilities': capabilities,
+                    }
+            except PyMongoError as e:
+                ret = MongoDbConnector.json_error_dict()
 
         return HttpResponse(json.dumps(ret), content_type='application/json')
 
@@ -177,7 +147,7 @@ class GetEventLog(View):
 
     class GetIpmiEventLog(object):
         def __init__(self):
-            self.mongo = MongoDbInterface()
+            self.mongo = MongoDbConnector()
 
         def __call__(self, device_pks, pagination_skip, pagination_limit,
                      filter_str=None, from_date=None, to_date=None, group_by=None):
@@ -309,7 +279,7 @@ class GetEventLog(View):
             self.from_date = from_date
             self.to_date = to_date
 
-            self.mongo = MongoDbInterface()
+            self.mongo = MongoDbConnector()
 
         def __call__(self,):
             # if self.group_by:
@@ -389,7 +359,7 @@ class GetEventLog(View):
             self.to_date = to_date
             self.logfile = logfile
 
-            self.mongo = MongoDbInterface()
+            self.mongo = MongoDbConnector()
 
         def _is_reasonable_grouping_key(self, key):
             return key in ("Category", "ComputerName", "CategoryString", "EventCode", "SourceName", "User", "Logfile",

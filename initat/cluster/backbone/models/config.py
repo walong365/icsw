@@ -26,7 +26,6 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
-import enum
 
 from initat.cluster.backbone.models.functions import check_integer, check_empty_string
 
@@ -83,10 +82,6 @@ def config_catalog_pre_save(sender, **kwargs):
 
 
 class config(models.Model):
-
-    class ConfigName(enum.Enum):
-        # use this in code for config names to avoid typos and enforce conformity.
-        discovery_server = 1
 
     idx = models.AutoField(db_column="new_config_idx", primary_key=True)
     name = models.CharField(max_length=192, blank=False)

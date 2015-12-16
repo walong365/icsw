@@ -262,7 +262,7 @@ class SyslogCheckCommand(MonCommand):
                             _check_lines = _log
                         else:
                             _td = datetime.timedelta(seconds=_check.minutes_to_consider * 60)
-                            _check_lines = [_line for _line in _log if _now - _line[1] < _td]
+                            _check_lines = [_line for _line in _log if _now - _line.pd < _td]
                         _matches = []
                         for _expr in expressions:
                             _expr.feed(_check_lines)
@@ -327,8 +327,7 @@ class SyslogCheckExpression(object):
     def feed(self, lines):
         for line in lines:
             self.checked += 1
-            _idx, _dt, _dtp, _text = line
-            if self.regexp.search(_text):
+            if self.regexp.search(line.text):
                 self.found += 1
                 if self.level == "warn":
                     self.ret_state = max(self.ret_state, limits.nag_STATE_WARNING)

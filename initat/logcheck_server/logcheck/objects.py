@@ -1,4 +1,3 @@
-#!/usr/bin/python-init -Otu
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2001-2008,2011-2015 Andreas Lang-Nevyjel
@@ -71,9 +70,12 @@ class LogLine(object):
         self.tag = _tag
         self.text = _rest
 
-    def get_xml_format(self):
+    def get_xml_format(self, format="flat"):
         # for XML
-        return (self.id, self.pd_parsed, self.text)
+        # flat format, also support structured (i.E. full XML) format ?
+        _dict = self.get_mongo_db_entry()
+        _dict.pop("line_datetime")
+        return _dict
 
     def get_mongo_db_entry(self):
         # for mongo insert
@@ -88,7 +90,6 @@ class LogLine(object):
             "hostname": self.hostname,
             "tag": self.tag,
         }
-
 
 
 class LogRotateResult(object):
@@ -259,8 +260,11 @@ class InotifyFile(object):
         self.sizes = FileSize(self)
         self.stat = None
         self.rater = FileWiteRater()
-        # read filesize
+        # read filesize, skip lineparsing when opening for the first time
         self._update(first=True)
+
+    def __repr__(self):
+        return u"InotifyFile for {}".format(self.f_name)
 
     def line_to_mongo(self, line, line_idx):
         _dev_pk = self.in_root.fw_obj.machine.device.pk

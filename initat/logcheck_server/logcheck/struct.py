@@ -37,7 +37,7 @@ from initat.tools import logging_tools, process_tools, inotify_tools
 from ..config import global_config
 from .objects import LogRotateResult, InotifyRoot, FileWatcher
 from .commands import MonCommand
-from initat.cluster.frontend.discovery_views import MongoDbInterface
+from initat.tools.mongodb import MongoDbConnector
 
 
 class Machine(object):
@@ -61,7 +61,22 @@ class Machine(object):
 
     @classmethod
     def setup_mongo(cls):
-        cls.mongo_db = MongoDbInterface().event_log_db
+        cls.mongo_connection = MongoDbConnector()
+        cls.mongo_init = False
+        if cls.mongo_connection.connected:
+            cls.init_mongo()
+        else:
+            cls.g_log(
+                "error connecting to mongodb: {}".format(
+                    cls.mongo_connection.error
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
+
+    @classmethod
+    def init_mongo(cls):
+        cls.mongo_init = True
+        cls.mongo_db = cls.mongo_connection.event_log_db
         cls.mongo_db.system_log.create_index(
             [('$**', 'text')], name="system_log_full_text_index"
         )
@@ -96,7 +111,12 @@ class Machine(object):
 
     @classmethod
     def feed_mongo_line(cls, line_struct):
-        cls.mongo_db.system_log.insert(line_struct.get_mongo_db_entry())
+        if not cls.mongo_connection.connected:
+            cls.mongo_connection.reconnect()
+        if cls.mongo_connection.connected:
+            if not cls.mongo_init:
+                cls.init_mongo()
+            cls.mongo_db.system_log.insert(line_struct.get_mongo_db_entry())
 
     @staticmethod
     def get_watcher():
