@@ -48,6 +48,7 @@ __all__ = [
     "peer_information",
     "snmp_network_type",
     "NetDeviceDesiredStateEnum",
+    "NetDeviceSNMPMonOptions",
 ]
 
 logger = logging.getLogger(__name__)
@@ -598,6 +599,27 @@ class NetDeviceDesiredStateEnum(Enum):
     ignore = "i"
     up = "u"
     down = "d"
+
+
+class NetDeviceSNMPMonOptions(object):
+    def __init__(self, in_str):
+        self.desired_status = NetDeviceDesiredStateEnum.ignore
+        self.ignore_netdevice_speed = False
+        _parts = in_str.strip().split(":")
+        for _part in _parts:
+            if _part.strip():
+                _type = _part[0]
+                if _type == "d":
+                    self.desired_status = NetDeviceDesiredStateEnum(_part[1:])
+                elif _type == "s":
+                    self.ignore_netdevice_speed = True if int(_part[1]) else False
+
+    @staticmethod
+    def flags_to_str(obj):
+        return "d{}:s{}".format(
+            obj.desired_status,
+            "1" if obj.ignore_netdevice_speed else "0"
+        )
 
 
 class netdevice(models.Model):

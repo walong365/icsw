@@ -33,7 +33,7 @@ try:
     from django.db.models import Q
     from initat.cluster.backbone.models import snmp_network_type, netdevice, netdevice_speed, \
         peer_information
-    from initat.cluster.backbone.models import SpecialGroupsEnum
+    from initat.cluster.backbone.models import SpecialGroupsEnum, NetDeviceSNMPMonOptions, NetDeviceDesiredStateEnum
 except:
     SpecialGroupsEnum = None
 
@@ -297,10 +297,7 @@ class if_mon(MonCheckDefinition):
                     arg1=dev.dev_variables["SNMP_READ_COMMUNITY"],
                     arg2=dev.dev_variables["SNMP_VERSION"],
                     arg3="{:d}".format(net_dev.netdevice_speed.speed_bps),
-                    arg4="d{}:s{}".format(
-                        net_dev.desired_status,
-                        "1" if net_dev.ignore_netdevice_speed else "0"
-                    ),
+                    arg4=NetDeviceSNMPMonOptions.flags_to_str(net_dev),
                     arg5="{:d}".format(net_dev.snmp_idx),
                 )
             )
@@ -344,21 +341,21 @@ class if_mon(MonCheckDefinition):
         else:
             _vector = None
         _vc.set(_key, _val_dict)
-        # print scheme, scheme.opts
-        # import pprint
-        # pprint.pprint(_val_dict)
+        _mon_flags = NetDeviceSNMPMonOptions(scheme.opts.flags)
+        ret_state, r_f = (limits.nag_STATE_OK, [])
         if _vector is None:
-            return limits.nag_STATE_WARNING, "only one value read out"
+            r_f.append("only one value read out")
         else:
-            ret_state = limits.nag_STATE_OK
-            r_f = [
-                "rx (in): {}".format(
-                    logging_tools.get_size_str(_vector[0], strip_spaces=True, per_second=True),
-                ),
-                "tx (out): {}".format(
-                    logging_tools.get_size_str(_vector[1], strip_spaces=True, per_second=True),
-                )
-            ]
+            r_f.extend(
+                [
+                    "rx (in): {}".format(
+                        logging_tools.get_size_str(_vector[0], strip_spaces=True, per_second=True),
+                    ),
+                    "tx (out): {}".format(
+                        logging_tools.get_size_str(_vector[1], strip_spaces=True, per_second=True),
+                    )
+                ]
+            )
             if _vector[2]:
                 if _vector[2] > 1:
                     ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
@@ -376,18 +373,25 @@ class if_mon(MonCheckDefinition):
                         _vector[3],
                     )
                 )
-            if scheme.opts.speed is not None and (scheme.opts.speed or _val_dict[5]):
-                if scheme.opts.speed == _val_dict[5]:
-                    r_f.append("speed is {}".format(logging_tools.get_size_str(_val_dict[5], strip_spaces=True, per_second=True, divider=1000)))
+        # check oper status
+        if _mon_flags.desired_status == NetDeviceDesiredStateEnum.up and not _val_dict[8]:
+            r_f.append("OperStatus is down")
+            ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+        elif _mon_flags.desired_status == NetDeviceDesiredStateEnum.down and _val_dict[8]:
+            r_f.append("OperStatus is up")
+            ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+        if scheme.opts.speed is not None and (scheme.opts.speed or _val_dict[5]) and not _mon_flags.ignore_netdevice_speed:
+            if scheme.opts.speed == _val_dict[5]:
+                r_f.append("speed is {}".format(logging_tools.get_size_str(_val_dict[5], strip_spaces=True, per_second=True, divider=1000)))
+            else:
+                if _val_dict[5] in [2 ** 32 - 1, 2 ** 31 - 1]:
+                    pass
                 else:
-                    if _val_dict[5] in [2 ** 32 - 1, 2 ** 31 - 1]:
-                        pass
-                    else:
-                        ret_state = max(ret_state, limits.nag_STATE_WARNING)
-                        r_f.append(
-                            "measured speed {} differs from target speed {}".format(
-                                logging_tools.get_size_str(_val_dict[5], strip_spaces=True, per_second=True, divider=1000),
-                                logging_tools.get_size_str(scheme.opts.speed, strip_spaces=True, per_second=True, divider=1000),
-                            )
+                    ret_state = max(ret_state, limits.nag_STATE_WARNING)
+                    r_f.append(
+                        "measured speed {} differs from target speed {}".format(
+                            logging_tools.get_size_str(_val_dict[5], strip_spaces=True, per_second=True, divider=1000),
+                            logging_tools.get_size_str(scheme.opts.speed, strip_spaces=True, per_second=True, divider=1000),
                         )
-            return ret_state, ", ".join(r_f)
+                    )
+        return ret_state, ", ".join(r_f)

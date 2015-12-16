@@ -452,13 +452,11 @@ class GraphSetting(models.Model):
 
     def to_enum(self):
         # rewrite scale and legend mode to full enum
-        self.scale_mode = [_entry for _entry in GraphScaleModeEnum if _entry.value == self.scale_mode][0]
-        self.legend_mode = [_entry for _entry in GraphLegendModeEnum if _entry.value == self.legend_mode][0]
-        self.cf = [_entry for _entry in GraphCFEnum if _entry.value == self.cf][0]
+        self.scale_mode = GraphScaleModeEnum(self.scale_mode)
+        self.legend_mode = GraphLegendModeEnum(self.legend_mode)
+        self.cf = GraphCFEnum(self.cf)
         if self.graph_setting_forecast_id:
-            self.graph_setting_forecast.mode = [
-                _entry for _entry in GraphForecastModeEnum if _entry.value == self.graph_setting_forecast.mode
-            ][0]
+            self.graph_setting_forecast.mode = GraphForecastModeEnum(graph_setting_forecast.mode)
 
     class Meta:
         if not db_limit_1():
