@@ -485,12 +485,13 @@ class HMInotifyProcess(threading_tools.process_obj):
                 _val = entry.text
                 if _val is None:
                     self.log("key {} has empty value ({})".format(_key, in_com), logging_tools.LOG_LEVEL_ERROR)
-                if _val.lower() in ["true", "false"]:
-                    _val = bool(_val)
-                elif _val.isdigit():
-                    _val = int(_val)
-                # if
-                args[_key] = _val
+                else:
+                    if _val.lower() in ["true", "false"]:
+                        _val = bool(_val)
+                    elif _val.isdigit():
+                        _val = int(_val)
+                    # if
+                    args[_key] = _val
         self.log(
             "got '{}', {}: {}".format(
                 in_com,
