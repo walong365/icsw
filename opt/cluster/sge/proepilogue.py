@@ -63,6 +63,9 @@ CONFIG_FILE_NAME = "proepilogue.conf"
 RMS_SERVER_PORT = 8009
 
 
+SPECIAL_SCRIPT_NAMES = {"INTERACTIVE", "QLOGIN", "QRSH", "QRLOGIN"}
+
+
 def sec_to_str(in_sec):
     diff_d = int(in_sec / (3600 * 24))
     dt = in_sec - 3600 * 24 * diff_d
@@ -151,8 +154,10 @@ class RMSJob(object):
         dst_file = self._get_wrapper_script_name()
         var_file = self._get_var_script_name()
         if not dst_file.startswith("/"):
-            self.log("refuse to create wrapper script {}".format(dst_file),
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "refuse to create wrapper script {}".format(dst_file),
+                logging_tools.LOG_LEVEL_ERROR
+            )
             return
         self.log(
             "Creating wrapper-script ({} for {})".format(
@@ -404,66 +409,74 @@ class RMSJob(object):
         global_config.add_config_entries([("HOST_IP", configfile.str_c_var(host_ip, source="env"))])
 
     def _parse_job_script(self):
+        self.script_is_special = False
         if "JOB_SCRIPT" in os.environ:
             script_file = os.environ["JOB_SCRIPT"]
-            try:
-                lines = [line.strip() for line in file(script_file, "r").read().split("\n")]
-            except:
-                self.log(
-                    "cannot read scriptfile '{}' ({})".format(
-                        script_file,
-                        process_tools.get_except_info()
-                    ),
-                    logging_tools.LOG_LEVEL_ERROR
-                )
+            if script_file in SPECIAL_SCRIPT_NAMES:
+                self.log("script_file {} is a special scriptfile".format(script_file))
+                self.script_is_special = True
             else:
-                if global_config["CALLER_NAME"] == "prologue":
-                    s_list = logging_tools.new_form_list()
+                try:
+                    lines = [line.strip() for line in file(script_file, "r").read().split("\n")]
+                except:
+                    self.log(
+                        "cannot read scriptfile '{}' ({})".format(
+                            script_file,
+                            process_tools.get_except_info()
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
                 else:
-                    s_list = None
-                num_lines, num_sge, num_init = (len(lines), 0, 0)
-                init_dict = {}
-                for line, line_num in zip(lines, xrange(len(lines))):
-                    if s_list is not None:
-                        s_list.append(
-                            [
-                                logging_tools.form_entry(line_num + 1, header="line"),
-                                logging_tools.form_entry(line, header="content")
-                            ]
+                    if global_config["CALLER_NAME"] == "prologue":
+                        s_list = logging_tools.new_form_list()
+                    else:
+                        s_list = None
+                    num_lines, num_sge, num_init = (len(lines), 0, 0)
+                    init_dict = {}
+                    for line, line_num in zip(lines, xrange(len(lines))):
+                        if s_list is not None:
+                            s_list.append(
+                                [
+                                    logging_tools.form_entry(line_num + 1, header="line"),
+                                    logging_tools.form_entry(line, header="content")
+                                ]
+                            )
+                        if line.startswith("#$ "):
+                            num_sge += 1
+                        elif line.startswith("#init "):
+                            # valid init-keys:
+                            # MONITOR=<type>
+                            # MONITOR_KEYS=<key_list;>
+                            # MONITOR_FULL_KEY_LIST=<true>
+                            # TRIGGER_ERROR (flag, triggers error)
+                            # EXTRA_WAIT=x (waits for x seconds)
+                            num_init += 1
+                            line_parts = [x.split("=", 1) for x in line[5:].strip().split(",")]
+                            self.log("found #init-line '%s'" % (line))
+                            if line_parts:
+                                for key, value in [x for x in line_parts if len(x) == 2]:
+                                    key, value = (key.strip().upper(), value.strip().lower())
+                                    if key and value:
+                                        init_dict[key] = value
+                                        self.log("recognised init option '%s' (value '%s')" % (key, value))
+                                        global_config.add_config_entries([(key, configfile.str_c_var(value, source="jobscript"))])
+                                for key in [x[0].strip().upper() for x in line_parts if len(x) == 1]:
+                                    init_dict[key] = True
+                                    self.log("recognised init option '%s' (value '%s')" % (key, True))
+                                    global_config.add_config_entries([(key, configfile.bool_c_var(True, source="jobscript"))])
+                    self.log(
+                        "Scriptfile '{}' has {} ({} and {})".format(
+                            script_file,
+                            logging_tools.get_plural("line", num_lines),
+                            logging_tools.get_plural("SGE related line", num_sge),
+                            logging_tools.get_plural("init.at related line", num_init)
                         )
-                    if line.startswith("#$ "):
-                        num_sge += 1
-                    elif line.startswith("#init "):
-                        # valid init-keys:
-                        # MONITOR=<type>
-                        # MONITOR_KEYS=<key_list;>
-                        # MONITOR_FULL_KEY_LIST=<true>
-                        # TRIGGER_ERROR (flag, triggers error)
-                        # EXTRA_WAIT=x (waits for x seconds)
-                        num_init += 1
-                        line_parts = [x.split("=", 1) for x in line[5:].strip().split(",")]
-                        self.log("found #init-line '%s'" % (line))
-                        if line_parts:
-                            for key, value in [x for x in line_parts if len(x) == 2]:
-                                key, value = (key.strip().upper(), value.strip().lower())
-                                if key and value:
-                                    init_dict[key] = value
-                                    self.log("recognised init option '%s' (value '%s')" % (key, value))
-                                    global_config.add_config_entries([(key, configfile.str_c_var(value, source="jobscript"))])
-                            for key in [x[0].strip().upper() for x in line_parts if len(x) == 1]:
-                                init_dict[key] = True
-                                self.log("recognised init option '%s' (value '%s')" % (key, True))
-                                global_config.add_config_entries([(key, configfile.bool_c_var(True, source="jobscript"))])
-                self.log("Scriptfile '%s' has %d lines (%s and %s)" % (
-                    script_file,
-                    num_lines,
-                    logging_tools.get_plural("SGE related line", num_sge),
-                    logging_tools.get_plural("init.at related line", num_init)))
-                if s_list:
-                    try:
-                        self.write_file("jobscript", str(s_list).split("\n"), linenumbers=False)
-                    except:
-                        self.log("error writing jobscript: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
+                    )
+                    if s_list:
+                        try:
+                            self.write_file("jobscript", str(s_list).split("\n"), linenumbers=False)
+                        except:
+                            self.log("error writing jobscript: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
         else:
             self.log("environ has no JOB_SCRIPT key", logging_tools.LOG_LEVEL_WARN)
 
@@ -1043,16 +1056,24 @@ class RMSJob(object):
         # add all keys from global_config
         _conn = net_tools.zmq_connection(
             "job_{}".format(global_config["FULL_JOB_ID"]),
-            timeout=10)
+            timeout=10
+        )
         _conn_str = "tcp://{}:{:d}".format(global_config["SGE_SERVER"], RMS_SERVER_PORT)
         s_time = time.time()
-        _res = _conn.add_connection(_conn_str, srv_com)
+        # we only send via a DEALER socket, no result required
+        _conn.add_connection(_conn_str, srv_com, multi=True)
         e_time = time.time()
         self.log("connection to {} took {}".format(_conn_str, logging_tools.get_diff_time_str(e_time - s_time)))
-        if _res is not None:
-            self.log(*_res.get_log_tuple())
-        else:
-            self.log("no result (timeout ?)", logging_tools.LOG_LEVEL_ERROR)
+        # if _res is not None:
+        #     self.log(*_res.get_log_tuple())
+        # else:
+        #    self.log(
+        #        "no result from {}, command was {} (timeout ?)".format(
+        #            _conn_str,
+        #            srv_com["*command"],
+        #        ),
+        #        logging_tools.LOG_LEVEL_ERROR
+        #    )
 
     def _flight_check(self, flight_type):
         s_time = time.time()
@@ -1151,12 +1172,14 @@ class RMSJob(object):
 
     def _prologue(self):
         self._send_to_rms_server(server_command.srv_command(command="job_start"))
-        self._create_wrapper_script()
+        if not self.script_is_special:
+            self._create_wrapper_script()
         yield False
 
     def _epilogue(self):
         self._send_to_rms_server(server_command.srv_command(command="job_end"))
-        self._delete_wrapper_script()
+        if not self.script_is_special:
+            self._delete_wrapper_script()
         yield False
 
     def _pe_start(self):
@@ -1181,7 +1204,7 @@ class RMSJob(object):
 
     def loop_function(self):
         self.__start_time = time.time()
-        self.log("log_name is %s/%s" % (global_config["LOG_NAME"], self.__log_name), pool=True)
+        self.log("log_name is {}/{}".format(global_config["LOG_NAME"], self.__log_name), pool=True)
         # copy environment
         self._copy_environments()
         # populate glob_config
