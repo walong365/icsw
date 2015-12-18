@@ -1,4 +1,3 @@
-#!/usr/bin/python-init -Ot
 #
 # Copyright (C) 2015 Andreas Lang-Nevyjel, init.at
 #
@@ -22,8 +21,8 @@
 
 """ return ClusterID if DB is present """
 
-from initat.tools import config_store
 from initat.constants import GEN_CS_NAME
+from initat.tools import config_store
 
 
 def get_cluster_id():

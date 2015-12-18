@@ -1,4 +1,3 @@
-#!/usr/bin/python-init -OtB
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2015 Bernhard Mallinger (mallinger@init.at)
@@ -20,10 +19,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+import sys
 import traceback
 import urllib
 import urllib2
-import sys
+
 from lxml import etree
 
 __all__ = [
@@ -38,12 +38,14 @@ def register_cluster(opts):
     from initat.cluster.backbone.models import License, device_variable
 
     cluster_id = device_variable.objects.get_cluster_id()
-    data = urllib.urlencode({
-        'username': opts.user,
-        'password': opts.password,
-        'cluster_name': opts.cluster_name,
-        'cluster_id': cluster_id
-        })
+    data = urllib.urlencode(
+        {
+            'username': opts.user,
+            'password': opts.password,
+            'cluster_name': opts.cluster_name,
+            'cluster_id': cluster_id
+        }
+    )
 
     try:
         res = urllib2.urlopen(REGISTRATION_URL, data)

@@ -1,4 +1,3 @@
-#!/usr/bin/python-init -Ot
 #
 # Copyright (C) 2015 Bernhard Mallinger, init.at
 #
@@ -20,9 +19,9 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 import csv
-from StringIO import StringIO
-import logging
 import itertools
+import logging
+from StringIO import StringIO
 
 logger = logging.getLogger("discovery.wmi_struct")
 

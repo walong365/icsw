@@ -1,4 +1,3 @@
-#!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2007-2009,2012-2015 Andreas Lang-Nevyjel
@@ -20,8 +19,8 @@
 #
 """ __init__ for zonefiles """
 
-from .zone import Zone
 from .host import Host
+from .monitoring import Monitoring
 from .network import Network
 from .parser import parse_options
-from .monitoring import Monitoring
+from .zone import Zone

@@ -1,4 +1,3 @@
-#!/usr/bin/python-init -Ot
 #
 # -*- coding: utf-8 -*-
 #

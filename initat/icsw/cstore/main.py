@@ -1,4 +1,3 @@
-#!/usr/bin/python-init -Otu
 # Copyright (C) 2015 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of icsw-client

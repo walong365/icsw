@@ -1,4 +1,3 @@
-#!/usr/bin/python-init -OtW default
 #
 # Copyright (C) 2013-2015 Andreas Lang-Nevyjel, init.at
 #

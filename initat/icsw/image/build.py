@@ -1,4 +1,3 @@
-#!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2001-2005,2012-2015 Andreas Lang-Nevyjel, init.at

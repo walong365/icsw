@@ -1,4 +1,3 @@
-#!/usr/bin/python-init -Ot
 #
 # Copyright (c) 2013-2015 Andreas Lang-Nevyjel, lang-nevyjel@init.at
 #

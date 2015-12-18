@@ -1,4 +1,3 @@
-#!/usr/bin/python-init
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #

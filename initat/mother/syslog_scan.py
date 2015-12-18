@@ -22,6 +22,7 @@
 """ simple command snippet for rsyslog """
 
 import sys
+
 import zmq
 
 from initat.tools import logging_tools, process_tools

@@ -1,17 +1,10 @@
-#!/usr/bin/python-init -Otu
-
-from django.conf.urls import patterns, include, url
 from django.conf import settings
-import os
-from initat.cluster.frontend import session_views_test
-# from rest_framework.urlpatterns import format_suffix_patterns
+from django.conf.urls import patterns, include, url
 from django.conf.urls.static import static
 
-# handler404 = main_views.index.as_view()
+from initat.cluster.frontend import session_views_test
 
-# Uncomment the next two lines to enable the admin:
-# from django.contrib import admin
-# admin.autodiscover()
+# handler404 = main_views.index.as_view()
 
 session_patterns = patterns(
     "initat.cluster.frontend",

@@ -1,10 +1,32 @@
-#!/usr/bin/python-init
+# Copyright (C) 2014 Andreas Lang-Nevyjel, init.at
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of cluster-backbone-sql
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+# -*- coding: utf-8 -*-
+#
+""" serializer definitions for network elements """
+
+import logging
+
+from rest_framework import serializers
 
 from initat.cluster.backbone.models import network_type, network_device_type, network, net_ip, \
     netdevice, netdevice_speed, peer_information, snmp_network_type
-# from lxml.builder import E  # @UnresolvedImport
-from rest_framework import serializers
-import logging
 
 __all__ = [
     "network_serializer",
