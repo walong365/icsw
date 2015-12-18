@@ -60,16 +60,6 @@
     </div>
 </script>
 
-<script type="text/ng-template" id="icsw.device.tree.head">
-    <th>Name</th>
-    <th>Sel</th>
-    <th>Description</th>
-    <th>Enabled</th>
-    <th>Type</th>
-    <th ng-repeat="entry in hide_list" ng-show="hide_lut[entry[0]]">{{ entry[1] }}</th>
-    <th colspan="2" class="text-center">Action</th>
-</script> 
-
 <script type="text/ng-template" id="icsw.device.tree.cdg.row">
     <td colspan="2"><strong><em>{{ obj.device_group_obj.name }}</em></strong>
     </td>
@@ -94,7 +84,8 @@
     <td>{{ obj.device_group_obj.description }}</td>
     <td>{{ obj.device_group_obj.enabled | yesno1 }}</td>
     <td>
-        <b>{{ obj.device_group_obj.num_devices }}</b>
+        <b ng-show="obj.device_group_obj.num_devices">{{ obj.device_group_obj.num_devices }}</b>
+        <b ng-show="!obj.device_group_obj.num_devices">---</b>
     </td>
     <td ng-show="hide_lut['tln']">{{ obj.device_group_obj.domain_tree_node | array_lookup:rest_data.domain_tree_node | show_dtn }}</td>
     <td ng-show="num_shown(['tln'])" colspan="{{ num_shown(['tln']) }}"></td>
@@ -115,6 +106,7 @@
         <span ng-show="obj.device_group_obj.enabled">{{ obj.enabled | yesno1 }}</span>
         <span ng-show="!obj.device_group_obj.enabled"><em>{{ obj.enabled | yesno1 }}</em></span>
     </td>
+    <td>&nbsp;</td>
     <td ng-show="hide_lut['tln']">{{ obj.domain_tree_node | array_lookup:rest_data.domain_tree_node | show_dtn }}</td>
     <td ng-show="hide_lut['rrd_store']">{{ obj.store_rrd_data | yesno2 }}</td>
     <td ng-show="hide_lut['passwd']">{{ obj.root_passwd_set | isset }}</td>
@@ -182,7 +174,7 @@
                         <th>Sel</th>
                         <th st-sort='st_attrs.description'>Description</th>
                         <th st-sort='st_attrs.enabled'>Enabled</th>
-                        <th st-sort='st_attrs.type'>Type</th>
+                        <th st-sort='st_attrs.type'>#devs</th>
                         <th ng-repeat="entry in hide_list" ng-show="hide_lut[entry[0]]" st-sort="{{'st_attrs.'+entry[0]}}">{{ entry[1] }}</th>
                         <th colspan="2" class="text-center">Action</th>
                     </tr>

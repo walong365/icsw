@@ -69,12 +69,22 @@ angular.module(
             "device_many"  : "device.tree.many.form"
         }
         $scope.modal_active = false
+        # hack, FIXME
+        $scope.filter_change_iter = 0
         $scope.entries = []
         $scope.$watch(
-                () -> $scope.entries,
-                () ->
-                    $scope.entries_filtered = (entry for entry in $scope.entries when entry._show == true)
-                true)
+            () ->
+                $scope.filter_change_iter
+            (nv) ->
+                if $scope.entries_filtered?
+                    $scope.entries_filtered.length = 0
+                else
+                    $scope.entries_filtered = []
+                for entry in $scope.entries
+                    if entry._show
+                        $scope.entries_filtered.push(entry)
+                # $scope.entries_filtered = (entry for entry in $scope.entries when entry._show == true)
+        )
         $scope.new_devsel = (_dev_sel) ->
             $scope.sel_cache = _dev_sel
             $scope.initial_load = true
@@ -143,7 +153,6 @@ angular.module(
             $scope.create_or_edit(event, false, obj)
         $scope.create_or_edit = (event, create_or_edit, obj) ->
             $scope.edit_obj = obj
-            #console.log $scope.edit_obj
             $scope.create_mode = create_or_edit
             $scope.edit_div = $compile($templateCache.get($scope.edit_map[$scope._array_name]))($scope)
             obj.root_passwd = ""
@@ -254,6 +263,8 @@ angular.module(
                 # FIXME, TODO
                 # reload_sidebar_tree()
                 $scope.update_entries_st_attrs()
+                new_obj._show = true
+                $scope.filter_change_iter++
             else if $scope._array_name == "device_group"
                 # $scope.reload()
                 # FIXME, TODO
@@ -286,7 +297,8 @@ angular.module(
                 data    : {
                     "angular_sel" : angular.toJson((entry.idx for entry in $scope.entries when entry.selected))
                 }
-            ).then((xml) ->
+            ).then(
+                (xml) ->
             )
 
         msgbus.emit("devselreceiver")
@@ -434,16 +446,22 @@ angular.module(
                         sf_flag = if (entry.full_name.match(str_re) or entry.comment.match(str_re)) then true else false
 
                     entry._show = (entry.is_meta_device in md_list) and en_flag and sel_flag and mon_flag and boot_flag and sf_flag
+                scope.filter_change_iter++
 
 
             scope.$watch(
-                    () -> return scope.filter_settings
-                    filter_changed
-                    true)
+                () ->
+                    scope.filter_settings
+                () ->
+                    filter_changed()
+                true
+            )
             scope.$watch(
-                    () -> scope.entries
-                    filter_changed
-                    true)
+                () ->
+                    scope.entries
+                () ->
+                    filter_changed()
+            )
 
             scope.select_shown = () ->
                 for entry in scope.entries

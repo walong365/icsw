@@ -241,9 +241,11 @@ angular.module(
                         # this is Nan on invalid entry, and NaN != 0, which we want here
                         if num_remaining == 0
                             if check_list_entry.after_delete?
+                                console.log "a0"
                                 $rootScope.$apply(
                                     check_list_entry.after_delete()
                                 )
+                                console.log "a1"
                             if !check_list_entry.async
                                 blockUI.stop()
                             remove_list.push(k)
