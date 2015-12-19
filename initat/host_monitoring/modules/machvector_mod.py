@@ -158,7 +158,7 @@ class machine_vector(object):
     def read_config(self):
         # close sockets
         for _send_id, sock in self.__socket_dict.iteritems():
-            self.log("closing socket with id {:d}".format(_send_id))
+            self.log("closing socket with id {}".format(_send_id))
             sock.close()
         self.__socket_dict = {}
         _conf_name = "/etc/sysconfig/host-monitoring.d/machvector.xml"
