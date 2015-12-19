@@ -62,6 +62,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
                 self.add_process(DebianInstallProcess("install"), start=True)
             else:
                 self.add_process(ZypperInstallProcess("install"), start=True)
+            self.register_timer(self.connection_ok_test, 10)
             self.init_network_sockets()
         else:
             self.main_socket = None
@@ -204,14 +205,18 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
             client_type="package-client",
         )
         self.main_socket.connect(self.srv_conn_str)
-        self.init_network_commands()
-
-    def init_network_commands(self):
         self.network_info = {"ok": 0, "error": 0, "total": 0}
+        self.__got_response_from_server = False
         # send commands
         self._register()
         self._get_repos()
         self._get_new_config()
+
+    def connection_ok_test(self):
+        self.unregister_timer(self.connection_ok_test)
+        if not self.__got_response_from_server:
+            self.log("got no response from server, exiting...")
+            self._int_error("no server response")
 
     def _send_to_server_ll(self, send_com):
         self.network_info["total"] += 1
@@ -263,7 +268,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         )
 
     def _check_send_buffer(self):
-        if not self.network_info["ok"]:
+        if not self.network_info["ok"] and False:
             self.log(
                 "no sends were ok, exiting ...",
                 logging_tools.LOG_LEVEL_ERROR
@@ -334,21 +339,25 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
 
     @RemoteCall()
     def get_package_list(self, srv_com, **kwargs):
+        self.__got_response_from_server = True
         self._new_batch_list(srv_com)
         return None
 
     @RemoteCall()
     def package_list(self, srv_com, **kwargs):
+        self.__got_response_from_server = True
         self._new_batch_list(srv_com)
         return None
 
     @RemoteCall()
     def get_repo_list(self, srv_com, **kwargs):
+        self.__got_response_from_server = True
         self._new_batch_list(srv_com)
         return None
 
     @RemoteCall()
     def repo_list(self, srv_com, **kwargs):
+        self.__got_response_from_server = True
         self._new_batch_list(srv_com)
         return None
 
@@ -364,11 +373,13 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
 
     @RemoteCall()
     def sync_repos(self, srv_com, **kwargs):
+        self.__got_response_from_server = True
         self._get_repos()
         return None
 
     @RemoteCall()
     def new_config(self, srv_com, **kwargs):
+        self.__got_response_from_server = True
         self._get_new_config()
         return None
 
