@@ -315,7 +315,14 @@ class NetworkBindMixin(object):
         _main_socket = None
         # create bind list
         if dev_r and dev_r.device_dict:
-            _bind_ips = set(list(dev_r.local_ips) + sum([_list for _dev, _list in dev_r.ip_r_lut.iteritems()], []))
+            _bind_ips = set(
+                list(dev_r.local_ips) + sum(
+                    [
+                        _list for _dev, _list in dev_r.ip_r_lut.iteritems()
+                    ],
+                    []
+                )
+            )
             # complex bind
             master_bind_list = [
                 (

@@ -22,11 +22,11 @@
 import os
 import time
 
+import zmq
+
 from initat.tools import configfile, logging_tools, process_tools, server_command, \
     threading_tools, uuid_tools, server_mixins
 from initat.tools.server_mixins import RemoteCall
-import zmq
-
 from .config import global_config
 from .installprocess import YumInstallProcess, ZypperInstallProcess, get_srv_command, DebianInstallProcess
 
@@ -51,13 +51,10 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         self.register_exception("alarm_error", self._alarm_error)
         # log buffer
         self._show_config()
-        # send buffer
-        self.__send_buffer = []
         # log limits
         self._log_limits()
         self._set_resend_timeout(None)
         if self._get_package_server_id():
-            self._init_network_sockets()
             self.register_func("send_to_server", self._send_to_server)
             if os.path.isfile("/etc/centos-release") or os.path.isfile("/etc/redhat-release"):
                 self.add_process(YumInstallProcess("install"), start=True)
@@ -65,6 +62,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
                 self.add_process(DebianInstallProcess("install"), start=True)
             else:
                 self.add_process(ZypperInstallProcess("install"), start=True)
+            self.init_network_sockets()
         else:
             self.main_socket = None
             self._int_error("no package_server id")
@@ -195,7 +193,9 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         del check_sock
         return _result
 
-    def _init_network_sockets(self):
+    def init_network_sockets(self):
+        # send buffer
+        self.__send_buffer = []
         # socket
         self.network_bind(
             bind_port=global_config["COMMAND_PORT"],
@@ -204,45 +204,96 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
             client_type="package-client",
         )
         self.main_socket.connect(self.srv_conn_str)
+        self.init_network_commands()
+
+    def init_network_commands(self):
+        self.network_info = {"ok": 0, "error": 0, "total": 0}
         # send commands
         self._register()
         self._get_repos()
         self._get_new_config()
 
+    def _send_to_server_ll(self, send_com):
+        self.network_info["total"] += 1
+        try:
+            self.main_socket.send_unicode(self.__package_server_id, zmq.SNDMORE)
+            self.main_socket.send_unicode(send_com)
+        except zmq.error.ZMQError:
+            self.network_info["error"] += 1
+            self.log(
+                "error sending message to server {}, buffering ({:d} bytes, {})".format(
+                    self.__package_server_id,
+                    len(unicode(send_com)),
+                    process_tools.get_except_info()
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
+            _success = False
+            self._show_network_info()
+        else:
+            self.network_info["ok"] += 1
+            _success = True
+        return _success
+
+    def _send_to_server(self, src_proc, *args, **kwargs):
+        _src_pid, com_name, send_com, send_info = args
+        self.log(
+            "sending {} ({}) to server {}".format(
+                com_name,
+                send_info,
+                self.srv_conn_str
+            )
+        )
+        if not self._send_to_server_ll(send_com):
+            self.__send_buffer.append(send_com)
+            self._set_resend_timeout(10)
+
+    def _show_network_info(self):
+        self.log(
+            "send info: {}".format(
+                ", ".join(
+                    [
+                        "{}={:d}".format(
+                            _key,
+                            _value
+                        ) for _key, _value in self.network_info.iteritems()
+                    ]
+                )
+            )
+        )
+
     def _check_send_buffer(self):
+        if not self.network_info["ok"]:
+            self.log(
+                "no sends were ok, exiting ...",
+                logging_tools.LOG_LEVEL_ERROR
+            )
+            self._int_error("network send error")
         new_buffer = []
         _send_ok = 0
         _success = True
+        _num_to_send = len(self.__send_buffer)
+        self._show_network_info()
         for _msg in self.__send_buffer:
             if _success:
-                try:
-                    self.main_socket.send_unicode(self.__package_server_id, zmq.SNDMORE)  # @UndefinedVariable
-                    self.main_socket.send_unicode(_msg)
-                except zmq.error.ZMQError:
-                    self.log(
-                        "error sending to {}: {}".format(
-                            self.__package_server_id,
-                            process_tools.get_except_info(),
-                        ),
-                        logging_tools.LOG_LEVEL_ERROR
-                    )
+                if self._send_to_server_ll(_msg):
+                    _send_ok += 1
+                else:
                     _success = False
                     new_buffer.append(_msg)
-                else:
-                    _send_ok += 1
             else:
                 new_buffer.append(_msg)
         self.__send_buffer = new_buffer
         self.log(
-            "trying to resend {}: {:d} ok, {:d} still pending".format(
-                logging_tools.get_plural("message", len(self.__send_buffer)),
+            "info after resending {} from buffer: {:d} sent, {:d} still pending".format(
+                logging_tools.get_plural("message", _num_to_send),
                 _send_ok,
                 len(self.__send_buffer),
             )
         )
         # print len(self.__send_buffer)
         if not self.__send_buffer:
-            self._set_resend_timeout(300)
+            self._set_resend_timeout(0)
 
     def _set_resend_timeout(self, cur_to):
         if cur_to is None:
@@ -254,28 +305,12 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
                     self.unregister_timer(self._check_send_buffer)
                 else:
                     self.log("setting check_send_buffer timeout to {:d} secs".format(cur_to))
-                self.register_timer(self._check_send_buffer, cur_to)
+                if cur_to:
+                    self.register_timer(self._check_send_buffer, cur_to)
                 self.__rst = cur_to
 
     def _send_to_server_int(self, xml_com):
         self._send_to_server("self", os.getpid(), xml_com["command"].text, unicode(xml_com), "server command")
-
-    def _send_to_server(self, src_proc, *args, **kwargs):
-        _src_pid, com_name, send_com, send_info = args
-        self.log(
-            "sending {} ({}) to server {}".format(
-                com_name,
-                send_info,
-                self.srv_conn_str
-            )
-        )
-        try:
-            self.main_socket.send_unicode(self.__package_server_id, zmq.SNDMORE)
-            self.main_socket.send_unicode(send_com)
-        except zmq.error.ZMQError:
-            self.__send_buffer.append(send_com)
-            self.log("error sending message to server, buffering ({:d})".format(len(self.__send_buffer)))
-            self._set_resend_timeout(10)
 
     def _register(self):
         self._send_to_server_int(get_srv_command(command="register"))
