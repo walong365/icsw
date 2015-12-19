@@ -190,6 +190,10 @@ _PRIV_NETWORKS = [
 ]
 
 
+def is_loopback_network(nw_addr):
+    return True if nw_addr & ipv4("127.0.0.0") == ipv4("127.0.0.0") else False
+
+
 def get_network_name_from_mask(mask):
     return {
         "255.255.255.0": "C",

@@ -486,10 +486,11 @@
                     <div class="btn-group">
                         <icsw-tools-button type="create" ng-click="create($event)" size="sm"></icsw-tools-button>
                         <icsw-tools-button type="reload" ng-click="reload()" size="sm"></icsw-tools-button>
+                        <icsw-tools-button type="create" value="Scan networks" ng-if="!entries.length" ng-click="scan_networks()" size="sm"></icsw-tools-button>
                     </div>
                 </h3>
 
-                <table st-table="entries_displayed" st-safe-src="entries"
+                <table st-table="entries_displayed" st-safe-src="entries" ng-show="entries.length"
                        class="table table-hover table-condensed table-striped" style="width:auto;">
 
                     <thead>

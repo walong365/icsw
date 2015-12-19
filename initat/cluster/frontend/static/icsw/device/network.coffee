@@ -1261,7 +1261,7 @@ angular.module(
         object_created      : (new_obj) -> new_obj.description = ""
         network_types       : nw_types_dict  # for create/edit dialog
     }
-]).service('icswNetworkService', ["Restangular", "$q", "icswTools", "ICSW_URLS", "icswDomainNameService", (Restangular, $q, icswTools, ICSW_URLS, icswDomainNameService) ->
+]).service('icswNetworkService', ["Restangular", "$q", "icswTools", "ICSW_URLS", "icswDomainNameService", "icswSimpleAjaxCall", "blockUI", (Restangular, $q, icswTools, ICSW_URLS, icswDomainNameService, icswSimpleAjaxCall, blockUI) ->
 
     networks_rest = Restangular.all(ICSW_URLS.REST_NETWORK_LIST.slice(1)).getList({"_with_ip_info" : true}).$object
     network_types_rest = Restangular.all(ICSW_URLS.REST_NETWORK_TYPE_LIST.slice(1)).getList({"_with_ip_info" : true}).$object
@@ -1305,6 +1305,20 @@ angular.module(
             domain_tree_node_dict[entry.idx] = entry
         domain_tree_node_list = data
 
+    scan_networks = (scope) ->
+        return () ->
+            # blockUI
+            blockUI.start()
+            icswSimpleAjaxCall(
+                url     : ICSW_URLS.NETWORK_RESCAN_NETWORKS
+                title   : "scanning for networks"
+            ).then(
+                (xml) ->
+                    blockUI.stop()
+                    scope.reload()
+                (xml) ->
+                    blockUI.stop()
+            )
     return {
         rest_handle         : networks_rest
         edit_template       : "network.form"
@@ -1315,6 +1329,9 @@ angular.module(
             icswDomainNameService.load("ins").then((data) ->
                 set_domain_tree_node(data)
             )
+        init_fn             : (scope) ->
+            # install salteed scan_networks function
+            scope.scan_networks = scan_networks(scope)
         networks            : networks_rest
         network_types       : network_types_rest
         network_device_types: network_device_types_rest
