@@ -174,7 +174,6 @@ class RMSJob(object):
                 shell_start_mode
             )
         )
-        # cpuset_dir_name = "%s/cpuset" % (g_config["SGE_ROOT"])
         no_cpuset_cause = []
         if no_cpuset_cause:
             self.log("not using cpuset because: {}".format(", ".join(no_cpuset_cause)))
@@ -247,7 +246,7 @@ class RMSJob(object):
             )
         )
         try:
-            file(var_file, "a").write("export %s=%s\n" % (key, value))
+            file(var_file, "a").write("export {}={}\n".format(key, value))
         except:
             self.log(
                 "error writing to {}: {}".format(
@@ -308,44 +307,54 @@ class RMSJob(object):
     def _show_config(self):
         try:
             for log_line, log_level in global_config.get_log():
-                self.log("Config info : [%d] %s" % (log_level, log_line))
+                self.log("Config info : [{:d}] {}".format(log_level, log_line))
         except:
             self.log(
-                "error showing configfile log, old configfile ? (%s)" % (process_tools.get_except_info()),
+                "error showing configfile log, old configfile ? ({})".format(process_tools.get_except_info()),
                 logging_tools.LOG_LEVEL_ERROR
             )
         conf_info = global_config.get_config_info()
-        self.log("Found %s:" % (logging_tools.get_plural("valid configline", len(conf_info))))
+        self.log("Found {}:".format(logging_tools.get_plural("valid configline", len(conf_info))))
         for conf in conf_info:
             self.log("Config : {}".format(conf))
 
     def write_file(self, name, content, **args):
         ss_time = time.time()
-        logger = logging_tools.get_logger("%s.%s/%s" % (global_config["LOG_NAME"],
-                                                        self.__log_dir.replace(".", "\."),
-                                                        name),
-                                          global_config["LOG_DESTINATION"],
-                                          zmq=True,
-                                          context=self.p_pool.zmq_context)
+        logger = logging_tools.get_logger(
+            "{}.{}/{}".format(
+                global_config["LOG_NAME"],
+                self.__log_dir.replace(".", "\."),
+                name
+            ),
+            global_config["LOG_DESTINATION"],
+            zmq=True,
+            context=self.p_pool.zmq_context
+        )
         if isinstance(content, basestring) and content.startswith("/"):
             # content is a filename
             content = file(content, "r").read().split("\n")
         if isinstance(content, basestring):
             content = content.split("\n")
-        log_str = "content '%s', %s:" % (name,
-                                         logging_tools.get_plural("line", len(content)))
+        log_str = "content '{}', {}:".format(
+            name,
+            logging_tools.get_plural("line", len(content))
+        )
         logger.log(logging_tools.LOG_LEVEL_OK, log_str)
         if args.get("linenumbers", True):
             for line_num, line in zip(xrange(len(content)), content):
-                log_str = "%3d %s" % (line_num + 1, line)
+                log_str = "{:3d} {}".format(line_num + 1, line)
                 logger.log(logging_tools.LOG_LEVEL_OK, log_str)
         else:
             for line in content:
                 logger.log(logging_tools.LOG_LEVEL_OK, line)
         se_time = time.time()
-        self.log("storing content to file %s (%s) in %s" % (name,
-                                                            logging_tools.get_plural("line", len(content)),
-                                                            logging_tools.get_diff_time_str(se_time - ss_time)))
+        self.log(
+            "storing content to file {} ({}) in {}".format(
+                name,
+                logging_tools.get_plural("line", len(content)),
+                logging_tools.get_diff_time_str(se_time - ss_time)
+            )
+        )
         logger.close()
 
     def _copy_environments(self):
@@ -452,17 +461,17 @@ class RMSJob(object):
                             # EXTRA_WAIT=x (waits for x seconds)
                             num_init += 1
                             line_parts = [x.split("=", 1) for x in line[5:].strip().split(",")]
-                            self.log("found #init-line '%s'" % (line))
+                            self.log("found #init-line '{}'".format(line))
                             if line_parts:
                                 for key, value in [x for x in line_parts if len(x) == 2]:
                                     key, value = (key.strip().upper(), value.strip().lower())
                                     if key and value:
                                         init_dict[key] = value
-                                        self.log("recognised init option '%s' (value '%s')" % (key, value))
+                                        self.log("recognised init option '{}' (value '{}')".format(key, value))
                                         global_config.add_config_entries([(key, configfile.str_c_var(value, source="jobscript"))])
                                 for key in [x[0].strip().upper() for x in line_parts if len(x) == 1]:
                                     init_dict[key] = True
-                                    self.log("recognised init option '%s' (value '%s')" % (key, True))
+                                    self.log("recognised init option '{}' (value '{}')".format(key, True))
                                     global_config.add_config_entries([(key, configfile.bool_c_var(True, source="jobscript"))])
                     self.log(
                         "Scriptfile '{}' has {} ({} and {})".format(
@@ -573,24 +582,40 @@ class RMSJob(object):
                 time.ctime(time.time())
             )
         )
-        self.log("writing %s-header for job %s, %s" % (global_config["CALLER_NAME"],
-                                                       global_config["FULL_JOB_ID"],
-                                                       self.get_owner_str()))
-        self.log("Jobname is '%s' in queue '%s'" % (global_config["JOB_NAME"],
-                                                    global_config["JOB_QUEUE"]),
-                 do_print=True)
+        self.log(
+            "writing {}-header for job {}, {}".format(
+                global_config["CALLER_NAME"],
+                global_config["FULL_JOB_ID"],
+                self.get_owner_str()
+            )
+        )
+        self.log(
+            "Jobname is '{}' in queue '{}'".format(
+                global_config["JOB_NAME"],
+                global_config["JOB_QUEUE"]
+            ),
+            do_print=True
+        )
 
     def _write_proepi_footer(self):
         sep_str = "-" * global_config["SEP_LEN"]
-        self.log("writing %s-footer for job %s, return value is %d (%s)" % (global_config["CALLER_NAME"],
-                                                                            global_config["FULL_JOB_ID"],
-                                                                            self.p_pool["return_value"],
-                                                                            self.get_stat_str(self.p_pool["return_value"])))
+        self.log(
+            "writing {}-footer for job {}, return value is {:d} ({})".format(
+                global_config["CALLER_NAME"],
+                global_config["FULL_JOB_ID"],
+                self.p_pool["return_value"],
+                self.get_stat_str(self.p_pool["return_value"])
+            )
+        )
         spent_time = logging_tools.get_diff_time_str(self.__end_time - self.__start_time)
-        self._print("%s finished for job %s, status %s, spent %s" % (global_config["CALLER_NAME"],
-                                                                     global_config["FULL_JOB_ID"],
-                                                                     self.get_stat_str(self.p_pool["return_value"]),
-                                                                     spent_time))
+        self._print(
+            "{} finished for job {}, status {}, spent {}".format(
+                global_config["CALLER_NAME"],
+                global_config["FULL_JOB_ID"],
+                self.get_stat_str(self.p_pool["return_value"]),
+                spent_time
+            )
+        )
         self.log(
             "{} took {}".format(
                 global_config["CALLER_NAME"],
@@ -602,25 +627,41 @@ class RMSJob(object):
     def _write_pe_header(self):
         sep_str = "-" * global_config["SEP_LEN"]
         self._print(sep_str)
-        self._print("Starting %s for job %s, %s at %s" % (global_config["CALLER_NAME"],
-                                                          global_config["FULL_JOB_ID"],
-                                                          self.get_owner_str(),
-                                                          time.ctime(time.time())))
-        self.log("writing %s-header for job %s, %s" % (global_config["CALLER_NAME"],
-                                                       global_config["FULL_JOB_ID"],
-                                                       self.get_owner_str()))
+        self._print(
+            "Starting {} for job {}, {} at {}".format(
+                global_config["CALLER_NAME"],
+                global_config["FULL_JOB_ID"],
+                self.get_owner_str(),
+                time.ctime(time.time())
+            )
+        )
+        self.log(
+            "writing {}-header for job {}, {}".format(
+                global_config["CALLER_NAME"],
+                global_config["FULL_JOB_ID"],
+                self.get_owner_str()
+            )
+        )
 
     def _write_pe_footer(self):
         sep_str = "-" * global_config["SEP_LEN"]
-        self.log("writing %s-footer for job %s, return value is %d (%s)" % (global_config["CALLER_NAME"],
-                                                                            global_config["FULL_JOB_ID"],
-                                                                            self.p_pool["return_value"],
-                                                                            self.get_stat_str(self.p_pool["return_value"])))
+        self.log(
+            "writing {}-footer for job {}, return value is {:d} ({})".format(
+                global_config["CALLER_NAME"],
+                global_config["FULL_JOB_ID"],
+                self.p_pool["return_value"],
+                self.get_stat_str(self.p_pool["return_value"])
+            )
+        )
         spent_time = logging_tools.get_diff_time_str(self.__end_time - self.__start_time)
-        self._print("%s finished for job %s, status %s, spent %s" % (global_config["CALLER_NAME"],
-                                                                     global_config["FULL_JOB_ID"],
-                                                                     self.get_stat_str(self.p_pool["return_value"]),
-                                                                     spent_time))
+        self._print(
+            "{} finished for job {}, status {}, spent {}".format(
+                global_config["CALLER_NAME"],
+                global_config["FULL_JOB_ID"],
+                self.get_stat_str(self.p_pool["return_value"]),
+                spent_time
+            )
+        )
         self.log(
             "{} took {}".format(
                 global_config["CALLER_NAME"],
@@ -649,43 +690,71 @@ class RMSJob(object):
     def _log_environments(self):
         out_list = logging_tools.new_form_list()
         for key in sorted(self.__env_dict.keys()):
-            out_list.append([logging_tools.form_entry(key, header="Key"),
-                             logging_tools.form_entry(self.__env_dict[key], header="Value")])
-        self.write_file("env_%s" % (global_config["CALLER_NAME"]), str(out_list).split("\n"))
+            out_list.append(
+                [
+                    logging_tools.form_entry(key, header="Key"),
+                    logging_tools.form_entry(self.__env_dict[key], header="Value")
+                ]
+            )
+        self.write_file("env_{}".format(global_config["CALLER_NAME"]), str(out_list).split("\n"))
         out_list = logging_tools.new_form_list()
         for key in sorted(self.__env_int_dict.keys()):
-            out_list.append([logging_tools.form_entry(key, header="Key"),
-                             logging_tools.form_entry(self.__env_int_dict[key], header="Value")])
-        self.write_file("env_int_%s" % (global_config["CALLER_NAME"]), str(out_list).split("\n"))
+            out_list.append(
+                [
+                    logging_tools.form_entry(key, header="Key"),
+                    logging_tools.form_entry(self.__env_int_dict[key], header="Value")
+                ]
+            )
+        self.write_file("env_int_{}".format(global_config["CALLER_NAME"]), str(out_list).split("\n"))
 
     def _read_config(self):
         if "CONFIG_FILE" in global_config:
-            sections = ["queue_%s" % (global_config["JOB_QUEUE"]),
-                        "node_%s" % (global_config["HOST_SHORT"])]
+            sections = [
+                "queue_{}".format(global_config["JOB_QUEUE"]),
+                "node_{}".format(global_config["HOST_SHORT"])
+            ]
             if self.is_pe_call:
-                sections.append("pe_%s" % (global_config["PE"]))
-                sections.append("queue_%s_pe_%s" % (global_config["JOB_QUEUE"],
-                                                    global_config["PE"]))
-            self.log("scanning configfile %s for %s: %s" % (global_config["CONFIG_FILE"],
-                                                            logging_tools.get_plural("section", len(sections)),
-                                                            ", ".join(sections)))
+                sections.append("pe_{}".format(global_config["PE"]))
+                sections.append(
+                    "queue_{}_pe_{}".format(
+                        global_config["JOB_QUEUE"],
+                        global_config["PE"]
+                    )
+                )
+            self.log(
+                "scanning configfile {} for {}: {}".format(
+                    global_config["CONFIG_FILE"],
+                    logging_tools.get_plural("section", len(sections)),
+                    ", ".join(sections)
+                )
+            )
             for section in sections:
                 try:
-                    global_config.parse_file(global_config["CONFIG_FILE"],
-                                             section=section)
+                    global_config.parse_file(
+                        global_config["CONFIG_FILE"],
+                        section=section
+                    )
                 except:
-                    self.log("error scanning for section %s: %s" % (section,
-                                                                    process_tools.get_except_info()),
-                             logging_tools.LOG_LEVEL_ERROR)
+                    self.log(
+                        "error scanning for section {}: {}".format(
+                            section,
+                            process_tools.get_except_info()
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
             try:
                 for line, log_level in global_config.get_log(clear=True):
                     self.log(line, log_level)
             except:
-                self.log("error getting config_log: %s" % (process_tools.get_except_info()),
-                         logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "error getting config_log: {}".format(process_tools.get_except_info()),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
         else:
-            self.log("no key CONFIG_FILE in glob_config, strange ...",
-                     logging_tools.LOG_LEVEL_WARN)
+            self.log(
+                "no key CONFIG_FILE in glob_config, strange ...",
+                logging_tools.LOG_LEVEL_WARN
+            )
 
     def _log_resources(self):
         res_used = {}
@@ -737,7 +806,6 @@ class RMSJob(object):
             self._print("Resources used:")
             log_res = []
             out_list = logging_tools.new_form_list()
-            # f_str = "%%%ds : %%s%%s" % (max([len(x) for x in res_used.keys()]))
             for key, value in [(key, res_used[key]) for key in sorted(res_used.keys())]:
                 ext_str = ""
                 if key == "exit_status":
@@ -773,7 +841,7 @@ class RMSJob(object):
                         }.get(i_val, "")
                         if i_val == 99:
                             self._set_exit_code("requeue requested", i_val)
-                        ext_str = " (%s)" % (ext_str) if ext_str else ""
+                        ext_str = " ({})".format(ext_str) if ext_str else ""
                 out_list.append(
                     [
                         logging_tools.form_entry(key, header="key"),
@@ -841,6 +909,17 @@ class RMSJob(object):
             )
         else:
             self.log("no limits found, strange ...", logging_tools.LOG_LEVEL_WARN)
+
+    def _generate_localhost_hosts_file(self):
+        self.__node_list, self.__node_dict = (
+            ["localhost"],
+            {
+                "localhost": {
+                    "ip": LOCAL_IP,
+                    "ip_list": [LOCAL_IP],
+                }
+            }
+        )
 
     def _generate_hosts_file(self):
         if "PE_HOSTFILE" not in self.__env_dict:
@@ -947,9 +1026,9 @@ class RMSJob(object):
 
     def _pprint(self, in_dict, in_name):
         content = pprint.PrettyPrinter(indent=1, width=10).pformat(in_dict)
-        self.log("content of %s" % (in_name))
+        self.log("content of {}".format(in_name))
         for line in content.split("\n"):
-            self.log(" - %s" % (line))
+            self.log(" - {}".format(line))
 
     def _write_hosts_file(self, action):
         # generate various versions of host-file
@@ -963,7 +1042,6 @@ class RMSJob(object):
             ("HOSTFILE_WITH_CPUS", "/tmp/hostfile_wcpu_{}".format(global_config["FULL_JOB_ID"]), self._whf_wcpu),
             ("HOSTFILE_WITH_SLOTS", "/tmp/hostfile_wslot_{}".format(global_config["FULL_JOB_ID"]), self._whf_wslot)
         ]:
-            # ("PE_HOSTFILE"        , "/tmp/hostfile_sge_%s" % (global_config["FULL_JOB_ID"]), self._whf_sge)]:
             global_config.add_config_entries([(var_name, configfile.str_c_var(file_name))])
             self._add_script_var(var_name, file_name)
             if action == "save":
@@ -1028,17 +1106,21 @@ class RMSJob(object):
         return sum([[node_name] * self.__node_dict[node_name]["num"] for node_name in self.__node_list], [])
 
     def _whf_wcpu(self):
-        return ["%s cpu=%d" % (self._get_mpi_name(node_name), self.__node_dict[node_name]["num"]) for node_name in self.__node_list]
+        return ["{} cpu={:d}".format(self._get_mpi_name(node_name), self.__node_dict[node_name]["num"]) for node_name in self.__node_list]
 
     def _whf_wslot(self):
-        return ["%s max_slots=%d" % (self._get_mpi_name(node_name), self.__node_dict[node_name]["num"]) for node_name in self.__node_list]
+        return ["{} max_slots={:d}".format(self._get_mpi_name(node_name), self.__node_dict[node_name]["num"]) for node_name in self.__node_list]
 
     def _whf_sge(self):
         # like PE_HOSTFILE just with the Parallel Interfaces
-        return ["%s %d %s@%s <NULL>" % (self._get_mpi_name(node_name),
-                                        self.__node_dict[node_name]["num"],
-                                        global_config["JOB_QUEUE"],
-                                        node_name) for node_name in self.__node_list]
+        return [
+            "{} {:d} {}@{} <NULL>".format(
+                self._get_mpi_name(node_name),
+                self.__node_dict[node_name]["num"],
+                global_config["JOB_QUEUE"],
+                node_name
+            ) for node_name in self.__node_list
+        ]
 
     def _send_to_rms_server(self, srv_com, **kwargs):
         _added, _content = (0, 0)
@@ -1148,25 +1230,26 @@ class RMSJob(object):
                     ", ".join(failure_list),
                 )
             )
-#             if failure_list and False:
-#                 error_hosts = set([key for key, value in self.__node_dict.iteritems() if error_ips.intersection(set(value["ip_list"]))])
-#                 self.log("%s: %s (%s: %s)" % (logging_tools.get_plural("error host", len(error_hosts)),
-#                                               ", ".join(error_hosts),
-#                                               logging_tools.get_plural("error IP", len(error_ips)),
-#                                               ", ".join(error_ips)),
-#                          logging_tools.LOG_LEVEL_ERROR,
-#                          do_print=True)
-#                 # disable the queues
-#                 self._send_tag("disable",
-#                                error="connection problem",
-#                                fail_objects=["%s@%s" % (self.__opt_dict["QUEUE"], failed_host) for failed_host in error_hosts])
-#                 # hold the job
-#                 self._send_tag("hold",
-#                                error="connection problem",
-#                                fail_objects=[self.__opt_dict["FULL_JOB_ID"]])
-#                 self._set_exit_code("connection problems", 1)
         else:
             self.log("failure list is empty, good")
+        if global_config["REMOVE_IPCS"]:
+            self.log(
+                "sending ipckill to {} ({})".format(
+                    logging_tools.get_plural("IP", len(all_nfs_ips)),
+                    ", ".join(all_nfs_ips),
+                )
+            )
+            # create a new zmq connection object
+            zmq_con2 = net_tools.zmq_connection("job_{}".format(global_config["FULL_JOB_ID"]))
+            for targ_ip in all_nfs_ips:
+                srv_com = server_command.srv_command(command="ipckill")
+                arg_str = "--min-uid {:d}".format(global_config["MIN_KILL_UID"])
+                srv_com["arguments:rest"] = arg_str
+                for idx, cur_str in enumerate(arg_str.strip().split()):
+                    srv_com["arguments:arg{:d}".format(idx)] = cur_str
+                zmq_con2.add_connection("tcp://{}:{:d}".format(targ_ip, HM_PORT), srv_com, multi=True)
+            result = zmq_con2.loop()
+            print result
         e_time = time.time()
         self.log("{} took {}".format(flight_type, logging_tools.get_diff_time_str(e_time - s_time)))
 
@@ -1174,12 +1257,16 @@ class RMSJob(object):
         self._send_to_rms_server(server_command.srv_command(command="job_start"))
         if not self.script_is_special:
             self._create_wrapper_script()
+        self._generate_localhost_hosts_file()
+        self._flight_check("preflight")
         yield False
 
     def _epilogue(self):
         self._send_to_rms_server(server_command.srv_command(command="job_end"))
         if not self.script_is_special:
             self._delete_wrapper_script()
+        self._generate_localhost_hosts_file()
+        self._flight_check("postflight")
         yield False
 
     def _pe_start(self):
@@ -1188,7 +1275,7 @@ class RMSJob(object):
         self._send_to_rms_server(server_command.srv_command(command="pe_start"))
         self._write_hosts_file("save")
         self._show_pe_hosts()
-        self._flight_check("preflight")
+        self._flight_check("preflight/PE")
         yield False
 
     def _pe_end(self):
@@ -1197,8 +1284,7 @@ class RMSJob(object):
         self._send_to_rms_server(server_command.srv_command(command="pe_end"))
         self._show_pe_hosts()
         self._write_hosts_file("keep")
-        self._flight_check("postflight")
-        self._flight_check("postflight")
+        self._flight_check("postflight/PE")
         self._write_hosts_file("delete")
         yield False
 
@@ -1231,7 +1317,7 @@ class RMSJob(object):
         if self.is_start_call:
             self._write_run_info()
         if "JOB_SCRIPT" in self.__env_dict:
-            self.log("starting inner loop for %s" % (global_config["CALLER_NAME"]))
+            self.log("starting inner loop for {}".format(global_config["CALLER_NAME"]))
             if global_config["CALLER_NAME"] == "prologue":
                 sub_func = self._prologue
             elif global_config["CALLER_NAME"] == "epilogue":
@@ -1243,8 +1329,10 @@ class RMSJob(object):
             else:
                 sub_func = None
             if sub_func is None:
-                self.log("unknown runmode %s" % (global_config["CALLER_NAME"]),
-                         logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "unknown runmode {}".format(global_config["CALLER_NAME"]),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
             else:
                 for p_res in sub_func():
                     if p_res:
@@ -1342,14 +1430,18 @@ class ProcessPool(threading_tools.process_pool):
     def _show_config(self):
         try:
             for log_line, log_level in global_config.get_log():
-                self.log("Config info : [%d] %s" % (log_level, log_line))
+                self.log("Config info : [{:d}] {}".format(log_level, log_line))
         except:
-            self.log("error showing configfile log, old configfile ? (%s)" % (process_tools.get_except_info()),
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "error showing configfile log, old configfile ? ({})".format(
+                    process_tools.get_except_info()
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
         conf_info = global_config.get_config_info()
-        self.log("Found %s:" % (logging_tools.get_plural("valid configline", len(conf_info))))
+        self.log("Found {}:".format(logging_tools.get_plural("valid configline", len(conf_info))))
         for conf in conf_info:
-            self.log("Config : %s" % (conf))
+            self.log("Config : {}".format(conf))
 
     def _set_sge_environment(self):
         for v_name, v_src in [
@@ -1358,10 +1450,12 @@ class ProcessPool(threading_tools.process_pool):
         ]:
             if os.path.isfile(v_src):
                 v_val = file(v_src, "r").read().strip()
-                self.log("Setting environment-variable '%s' to %s" % (v_name, v_val))
+                self.log("Setting environment-variable '{}' to {}".format(v_name, v_val))
             else:
-                self.log("Cannot assign environment-variable '%s', problems ahead ..." % (v_name),
-                         logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "Cannot assign environment-variable '{}', problems ahead ...".format(v_name),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
                 # sys.exit(1)
             global_config.add_config_entries([
                 (v_name, configfile.str_c_var(v_val, source=v_src))])
@@ -1373,30 +1467,33 @@ class ProcessPool(threading_tools.process_pool):
         # reading the config
         conf_dir = os.path.join(global_config["SGE_ROOT"], "3rd_party")
         if not os.path.isdir(conf_dir):
-            self.log("no config_dir %s found, using defaults" % (conf_dir),
-                     logging_tools.LOG_LEVEL_ERROR,
-                     do_print=True)
+            self.log(
+                "no config_dir {} found, using defaults".format(conf_dir),
+                logging_tools.LOG_LEVEL_ERROR,
+                do_print=True
+            )
         else:
             conf_file = os.path.join(conf_dir, CONFIG_FILE_NAME)
             if not os.path.isfile(conf_file) or os.stat(conf_file)[stat.ST_SIZE] == 0:
                 if not self.dummy_call:
                     self.log(
-                        "no config_file %s found, using defaults" % (conf_file),
+                        "no config_file {} found, using defaults".format(conf_file),
                         logging_tools.LOG_LEVEL_ERROR,
-                        do_print=True)
-                    print("Copy the following lines to %s :" % (conf_file))
+                        do_print=True
+                    )
+                    print("Copy the following lines to {} :".format(conf_file))
                     print("")
                 self.show_cnf()
             else:
                 global_config.add_config_entries([("CONFIG_FILE", configfile.str_c_var(conf_file))])
-                self.log("reading config from %s" % (conf_file))
+                self.log("reading config from {}".format(conf_file))
                 global_config.parse_file(global_config["CONFIG_FILE"])
 
     def show_cnf(self):
         print("[global]")
         for key in [c_key for c_key in sorted(global_config.keys()) if not c_key.startswith("SGE_") and global_config.get_source(c_key) == "default"]:
             # don't write SGE_* stuff
-            print("%s=%s" % (key, str(global_config[key])))
+            print("{}={}".format(key, str(global_config[key])))
         print("")
 
     def loop_end(self):
@@ -1424,7 +1521,7 @@ def zmq_main_code():
             ("SEP_LEN", configfile.int_c_var(80)),
             ("HAS_MPI_INTERFACE", configfile.bool_c_var(True)),
             ("MPI_POSTFIX", configfile.str_c_var("mp")),
-            ("BRUTAL_CLEAR_MACHINES", configfile.bool_c_var(False)),
+            ("REMOVE_IPCS", configfile.bool_c_var(False)),
             ("SIMULTANEOUS_PINGS", configfile.int_c_var(128)),
             ("PING_PACKETS", configfile.int_c_var(5)),
             ("PING_TIMEOUT", configfile.float_c_var(5.0)),
