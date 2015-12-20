@@ -1249,7 +1249,12 @@ class RMSJob(object):
                     srv_com["arguments:arg{:d}".format(idx)] = cur_str
                 zmq_con2.add_connection("tcp://{}:{:d}".format(targ_ip, HM_PORT), srv_com, multi=True)
             result = zmq_con2.loop()
-            print result
+            for _ip, _res in zip(all_nfs_ips, result):
+                if _res is None:
+                    self.log("got empty result from {}".format(_ip), logging_tools.LOG_LEVEL_ERROR)
+                else:
+                    _ret_str, _ret_state = _res.get_log_tuple()
+                    self.log("from {} we got {}".format(_ip, _ret_str), _ret_state)
         e_time = time.time()
         self.log("{} took {}".format(flight_type, logging_tools.get_diff_time_str(e_time - s_time)))
 
