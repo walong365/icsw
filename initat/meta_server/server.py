@@ -134,7 +134,6 @@ class main_process(ICSWBasePoolClient):
         if _event.mask & inotify_tools.IN_DELETE:
             self._delete_msi_by_file_name(_event.pathname)
         elif _event.mask & inotify_tools.IN_CLOSE_WRITE:
-            print _event.mask
             self._update_or_create_msi_by_file_name(_event.pathname)
 
     def _check_dirs(self):

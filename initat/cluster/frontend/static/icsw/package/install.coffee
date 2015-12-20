@@ -35,14 +35,16 @@ package_module = angular.module(
             obj.publish_to_nodes = if obj.publish_to_nodes then false else true
             obj.put()
     }
-]).service("icswPackageInstallSearchService", ["Restangular", "ICSW_URLS", "icswSimpleAjaxCall", "icswParseXMLResponseService", "$timeout", (Restangular, ICSW_URLS, icswSimpleAjaxCall, $timeout) ->
+]).service("icswPackageInstallSearchService", ["Restangular", "ICSW_URLS", "icswSimpleAjaxCall", "$timeout", (Restangular, ICSW_URLS, icswSimpleAjaxCall, $timeout) ->
     user_rest = Restangular.all(ICSW_URLS.REST_USER_LIST.slice(1)).getList().$object
     _scope = undefined
     reload_func = () ->
+        _scope.reload()
+    post_reload_func = () ->
         if _scope.searches?
             if (obj.current_state for obj in _scope.searches when obj.current_state != "done").length
-                $timeout(reload_func, 5000)
-        _scope.reload()
+                # ont all searches done, trigger another reload
+                $timeout(_scope.reload, 2000)
     return {
         user_rest           : user_rest
         rest_url            : ICSW_URLS.REST_PACKAGE_SEARCH_LIST
@@ -63,6 +65,8 @@ package_module = angular.module(
                 (xml) ->
                     $scope.reload()
             )
+        post_reload_func: () ->
+            post_reload_func()
         reload: () ->
             reload_func()
         init_fn: (scope) ->
@@ -569,23 +573,28 @@ package_module = angular.module(
                     icswPackageInstallSearchResultService.set_data([])
             $scope.create_search = () ->
                 if $scope.search_string
-                    icswUserService.load().then((user) ->
-                        Restangular.all(ICSW_URLS.REST_PACKAGE_SEARCH_LIST.slice(1)).post({"search_string" : $scope.search_string, "user" : user.idx}).then((data) ->
-                            icswSimpleAjaxCall(
-                                url     : ICSW_URLS.PACK_REPO_OVERVIEW
-                                data    : {
-                                    "mode" : "reload_searches"
+                    icswUserService.load().then(
+                        (user) ->
+                            Restangular.all(ICSW_URLS.REST_PACKAGE_SEARCH_LIST.slice(1)).post(
+                                {
+                                    "search_string" : $scope.search_string
+                                    "user" : user.idx
                                 }
                             ).then(
-                                (xml) ->
-                                    icswPackageInstallSearchService.reload()
-                                    $timeout(icswPackageInstallSearchService.reload, 500)
-                                (xml) ->
-                                    icswPackageInstallSearchService.reload()
-                                    $timeout(icswPackageInstallSearchService.reload, 500)
+                                (data) ->
+                                    icswSimpleAjaxCall(
+                                        url     : ICSW_URLS.PACK_REPO_OVERVIEW
+                                        data    : {
+                                            "mode" : "reload_searches"
+                                        }
+                                    ).then(
+                                        (xml) ->
+                                            icswPackageInstallSearchService.reload()
+                                        (xml) ->
+                                            icswPackageInstallSearchService.reload()
+                                    )
+                                    $scope.search_string = ""
                             )
-                            $scope.search_string = ""
-                        )
                     )
             $scope.take_search_result = (obj, exact) ->
                 obj.copied = 1

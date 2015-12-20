@@ -49,8 +49,11 @@ class repo_overview(permission_required_mixin, View):
 
     @method_decorator(login_required)
     def get(self, request):
-        return render_me(request, "package_install.html", {
-            })()
+        return render_me(
+            request,
+            "package_install.html",
+            {}
+        )()
 
     @method_decorator(xml_wrapper)
     def post(self, request):
@@ -268,11 +271,13 @@ class change_package_flag(View):
         value = True if int(_post["value"]) else False
         sflag_name = flag_name[:-5] if flag_name.endswith("_flag") else flag_name
         request.xml_response.info(
-            "setting %s flag to %s for %s" % (
+            "setting {} flag to {} for {}".format(
                 sflag_name,
                 "True" if value else "False",
                 unicode(cur_pdc.package),
-                ), logger)
+            ),
+            logger
+        )
         setattr(cur_pdc, flag_name, value)
         cur_pdc.save()
         # signal package-server ?

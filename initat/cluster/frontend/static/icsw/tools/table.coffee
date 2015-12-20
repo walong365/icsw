@@ -155,9 +155,10 @@ angular.module(
                     fn = () ->
                         for entry in new_data
                             list.push(entry)
+                        if scope.config_service.post_reload_func?
+                            scope.config_service.post_reload_func()
 
                     $timeout(fn, 0)
-
                     # NOTE: this also makes the watch below work, see below before changing this
 
 
