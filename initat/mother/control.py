@@ -66,9 +66,9 @@ class Host(object):
         # clear maintenance ip/mac
         self.set_maint_ip()
         assert not self.device.uuid, "device {} has no uuid".format(unicode(self.device))
-        Host.add_lut_key(self, self.device.pk)
-        Host.add_lut_key(self, self.device.uuid)
-        Host.add_lut_key(self, self.device.get_boot_uuid())
+        Host.add_lut_key(self, "pk", self.device.pk)
+        Host.add_lut_key(self, "uuid", self.device.uuid)
+        Host.add_lut_key(self, "boot_uuid", self.device.get_boot_uuid())
 
     def init(self):
         pass
@@ -92,8 +92,13 @@ class Host(object):
         Host.iso_dir = global_config["ISO_DIR"]
         Host.g_log("init (etherboot_dir={}, isos in{})".format(Host.eb_dir, Host.iso_dir))
         Host.__lut = {}
+        Host.__name_lut = {}
         # pks
         Host.__unique_keys = set()
+
+    @staticmethod
+    def name_keys(name):
+        return Host.__name_lut.get(name, {}).keys()
 
     @staticmethod
     def shutdown():
@@ -107,10 +112,15 @@ class Host(object):
         Host.process.log("[mach] {}".format(what), log_level)
 
     @staticmethod
-    def get_query(names=[], ips=[]):
+    def get_query(names=[], ips=[], pks=[], exclude_existing=True):
         query = device.all_real_enabled.filter(
             Q(bootserver=Host.process.sc.effective_device)
-        ).prefetch_related(
+        )
+        if exclude_existing:
+            query = query.exclude(
+                Q(pk__in=Host.name_keys("pk"))
+            )
+        query = query.prefetch_related(
             "domain_tree_node",
             "netdevice_set",
             "netdevice_set__net_ip_set",
@@ -123,10 +133,13 @@ class Host(object):
             query = query.filter(Q(name__in=names))
         if ips:
             query = query.filter(Q(netdevice__net_ip__ip__in=ips))
+        if pks:
+            query = query.filter(Q(pk__in=pks))
         return query
 
     def refresh_device(self):
-        found_devs = Host.get_query(names=[self.device.name])
+        # fetch db-info, ignore when the device is already present
+        found_devs = Host.get_query(names=[self.device.name], exclude_existing=False)
         if len(found_devs) == 1:
             self.device = found_devs[0]
         elif not len(found_devs):
@@ -134,26 +147,34 @@ class Host(object):
             self.log("device has vanished from database ...", logging_tools.LOG_LEVEL_ERROR)
 
     @staticmethod
-    def sync(names=[], ips=[]):
+    def sync(names=[], ips=[], pks=[]):
         s_time = time.time()
-        query = Host.get_query(names=names, ips=ips)
+        query = Host.get_query(names=names, ips=ips, pks=pks)
         # from django.db import connection
         # import pprint
         # pprint.pprint(connection.queries)
-        Host.g_log(
-            "found {}: {}".format(
-                logging_tools.get_plural("device", len(query)),
-                logging_tools.compress_list([cur_dev.name for cur_dev in query])
+        _added = len(query)
+        if _added:
+            Host.g_log(
+                "found {}: {}".format(
+                    logging_tools.get_plural("device", _added),
+                    logging_tools.compress_list([cur_dev.name for cur_dev in query])
+                )
             )
-        )
-        for cur_dev in query:
-            Host.set_device(cur_dev)
+            for cur_dev in query:
+                Host.set_device(cur_dev)
+        else:
+            Host.g_log(
+                "found no hosts",
+                logging_tools.LOG_LEVEL_WARN,
+            )
         e_time = time.time()
         Host.g_log("sync took {}".format(logging_tools.get_diff_time_str(e_time - s_time)))
+        return _added
         # pprint.pprint(connection.queries)
 
     @staticmethod
-    def add_lut_key(obj, key):
+    def add_lut_key(obj, key_name, key):
         if key in Host.__lut:
             Host.g_log(
                 "key '{}' already set in Host.__lut ({} set, obj is {})".format(
@@ -165,10 +186,14 @@ class Host(object):
             )
         else:
             Host.__lut[key] = obj
+            Host.__name_lut.setdefault(key_name, {})[key] = obj
             obj.additional_lut_keys.add(key)
 
     @staticmethod
     def del_lut_key(obj, key):
+        for _name_key in Host.__name_lut.keys():
+            if key in Host.__name_lut[_name_key]:
+                del Host.__name_lut[_name_key][key]
         del Host.__lut[key]
 
     @staticmethod
@@ -193,13 +218,16 @@ class Host(object):
         if dev_spec in Host.__lut:
             return Host.__lut[dev_spec]
         else:
-            Host.g_log(
-                "no device with spec '{}' found (not mother / bootserver ?)".format(
-                    str(dev_spec),
-                ),
-                logging_tools.LOG_LEVEL_ERROR
-            )
-            return None
+            if Host.sync(pks=[dev_spec]):
+                return Host.__lut[dev_spec]
+            else:
+                Host.g_log(
+                    "no device with spec '{}' found (not mother / bootserver ?)".format(
+                        str(dev_spec),
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
+                return None
 
     @staticmethod
     def iterate(com_name, *args, **kwargs):

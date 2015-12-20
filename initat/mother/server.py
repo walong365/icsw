@@ -366,26 +366,23 @@ class server_process(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixi
                     self.srv_helper.service_command(_srv_name, "restart")
 
     def _enable_syslog_config(self):
-        syslog_exe_dict = {value.pid: value.exe() for value in psutil.process_iter() if value.is_running() and value.exe().count("syslog")}
-        syslog_type = None
-        for key, value in syslog_exe_dict.iteritems():
-            self.log("syslog process found: {}".format(key))
-            if value.endswith("rsyslogd"):
-                syslog_type = "rsyslogd"
-            elif value.endswith("syslog-ng"):
-                syslog_type = "syslog-ng"
-        self.log("syslog type found: {}".format(syslog_type or "none"))
-        self.__syslog_type = syslog_type
-        if self.__syslog_type == "rsyslogd":
-            self._enable_rsyslog()
-        elif self.__syslog_type == "syslog-ng":
-            self._enable_syslog_ng()
+        syslog_srvcs = self.srv_helper.find_services(".*syslog", active=True)
+        self.__syslog_type = None
+        if syslog_srvcs:
+            self.__syslog_type = syslog_srvcs[0]
+            self.log("syslog type found: {}".format(self.__syslog_type))
+            if self.__syslog_type.count("rsys"):
+                self._enable_rsyslog()
+            else:
+                self.log("syslog-type {} not supported".format(self.__syslog_type), logging_tools.LOG_LEVEL_ERROR)
+        else:
+            self.log("found no valid syslog service", logging_tools.LOG_LEVEL_ERROR)
 
     def _disable_syslog_config(self):
         if self.__syslog_type == "rsyslogd":
             self._disable_rsyslog()
-        elif self.__syslog_type == "syslog-ng":
-            self._disable_syslog_ng()
+        else:
+            self.log("syslog-type {} not supported".format(self.__syslog_type), logging_tools.LOG_LEVEL_ERROR)
 
     def _enable_rsyslog(self):
         from initat.mother import syslog_scan
@@ -410,14 +407,8 @@ class server_process(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixi
             os.unlink(slcn)
         self._restart_syslog()
 
-    def _enable_syslog_ng(self):
-        self.log("syslog-ng is no longer supported", logging_tools.LOG_LEVEL_ERROR)
-
-    def _disable_syslog_ng(self):
-        self.log("syslog-ng is no longer supported", logging_tools.LOG_LEVEL_ERROR)
-
     def _restart_syslog(self):
-        for _srv_name in self.srv_helper.find_services(".*syslog"):
+        for _srv_name in self.srv_helper.find_services(self.__syslog_type):
             self.srv_helper.service_command(_srv_name, "restart")
 
     def _check_netboot_functionality(self):

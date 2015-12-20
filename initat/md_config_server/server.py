@@ -91,10 +91,11 @@ class server_process(
             time.sleep(0.5)
             self.register_timer(self._check_for_redistribute, 60 if global_config["DEBUG"] else 300)
             self.register_timer(self._update, 30, instant=True)
-            self.send_to_remote_server(
-                "cluster-server",
-                unicode(server_command.srv_command(command="statusd")),
-            )
+            # only test code
+            # self.send_to_remote_server(
+            #    "cluster-server",
+            #    unicode(server_command.srv_command(command="statusd")),
+            # )
         else:
             self._int_error("no MD found")
 

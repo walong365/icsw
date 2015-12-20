@@ -54,6 +54,17 @@ class ServiceHelper(object):
                 pass
             else:
                 self.__services[_key] = _value
+        # second task: list unit-files
+        _stat, _out, _err = self._call_command("{} list-unit-files".format(self._systemctl))
+        for _line in _out.strip().split("\n")[1:-1]:
+            try:
+                _key, _value = _line.strip().split(None, 1)
+            except:
+                pass
+            else:
+                if _value.lower().count("disabled"):
+                    if _key not in self.__services:
+                        self.__services[_key] = _value
 
     def service_is_active(self, key):
         if self._method == "i":

@@ -35,6 +35,7 @@ from initat.server_version import VERSION_STRING
 from initat.tools import cluster_location, configfile, process_tools
 import initat.mother.server
 from initat.mother.config import global_config
+from initat.constants import CLUSTER_DIR
 
 
 def main():
@@ -59,13 +60,13 @@ def main():
         "mother_server",
         [
             ("TFTP_LINK", configfile.str_c_var("/tftpboot")),
-            ("TFTP_DIR", configfile.str_c_var("/opt/cluster/system/tftpboot")),
-            ("CLUSTER_DIR", configfile.str_c_var("/opt/cluster")),
+            ("TFTP_DIR", configfile.str_c_var(os.path.join(CLUSTER_DIR, "system", "tftpboot"))),
+            ("CLUSTER_DIR", configfile.str_c_var(CLUSTER_DIR)),
             # in 10th of seconds
             ("NODE_BOOT_DELAY", configfile.int_c_var(50)),
             ("FANCY_PXE_INFO", configfile.bool_c_var(False)),
             ("SERVER_SHORT_NAME", configfile.str_c_var(mach_name)),
-            ("WRITE_DHCP_CONFIG", configfile.bool_c_var(False)),
+            ("WRITE_DHCP_CONFIG", configfile.bool_c_var(True)),
             ("DHCP_AUTHORITATIVE", configfile.bool_c_var(False)),
             ("DHCP_ONLY_BOOT_NETWORKS", configfile.bool_c_var(True)),
             ("MODIFY_NFS_CONFIG", configfile.bool_c_var(True)),
