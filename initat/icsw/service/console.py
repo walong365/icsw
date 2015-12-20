@@ -21,13 +21,11 @@
 
 """ checks installed servers on system """
 
-import os
+import time
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
+import urwid
 
 from initat.tools import logging_tools
-import urwid
-import time
 
 
 class ServiceOutput(urwid.Text):
@@ -41,7 +39,7 @@ class ServiceOutput(urwid.Text):
     def update(self):
         self.set_text("")
         self.srv_c.check_system(self.opt_ns, self.inst_xml)
-        self._srv_text = self.srv_c.instance_to_form_list(self.opt_ns, self.inst_xml).urwid_encode()
+        self._srv_text = self.srv_c.instance_to_form_list(self.opt_ns, self.inst_xml.tree).urwid_encode()
 
     def get_text(self):
         return self._srv_text

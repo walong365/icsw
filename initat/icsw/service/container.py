@@ -36,6 +36,7 @@ except:
     get_models_version = None
     is_debug_run = None
 from .constants import *
+from .tools import query_local_meta_server
 from .service import Service
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
@@ -155,7 +156,7 @@ class ServiceContainer(object):
                             logging_tools.LOG_LEVEL_WARN
                         )
 
-    def check_service(self, entry, use_cache=True, refresh=True, version_changed=False):
+    def check_service(self, entry, use_cache=True, refresh=True, version_changed=False, meta_result=None):
         if not use_cache or not self.__act_proc_dict:
             self.update_proc_dict()
             self.update_valid_licenses()
@@ -165,10 +166,11 @@ class ServiceContainer(object):
             config_tools=config_tools,
             valid_licenses=self.valid_licenses,
             version_changed=version_changed,
+            meta_result=meta_result,
         )
 
     def apply_filter(self, service_list, instance_xml):
-        check_list = instance_xml.xpath(".//instance[@runs_on]", smart_strings=False)
+        check_list = instance_xml.tree.xpath(".//instance[@runs_on]", smart_strings=False)
         if service_list:
             check_list = [Service(_entry, self.__log_com) for _entry in check_list if _entry.get("name") in service_list]
             found_names = set([_srv.name for _srv in check_list])
@@ -191,8 +193,16 @@ class ServiceContainer(object):
         self.update_proc_dict()
         self.update_valid_licenses()
         self.update_version_tuple()
+        if opt_ns.tstate:
+            meta_result = query_local_meta_server(instance_xml, "overview", services=[_srv.name for _srv in check_list])
+            # check for valid meta-server result
+            if meta_result is not None:
+                if meta_result.get_log_tuple()[1] > logging_tools.LOG_LEVEL_WARN:
+                    meta_result = None
+        else:
+            meta_result = None
         for entry in check_list:
-            self.check_service(entry, use_cache=True, refresh=True, version_changed=self.model_version_changed)
+            self.check_service(entry, use_cache=True, refresh=True, version_changed=self.model_version_changed, meta_result=meta_result)
         # if self._config_check_errors:
         #    self.log(
         #        "{} not ok ({}), triggering model check".format(
@@ -244,6 +254,10 @@ class ServiceContainer(object):
             CONF_STATE_RUN: ("run", "ok"),
             CONF_STATE_STOP: ("stop", "critical"),
             CONF_STATE_IP_MISMATCH: ("ip mismatch", "critical"),
+        }
+        meta_dict = {
+            TARGET_STATE_RUNNING: ("run", "ok"),
+            TARGET_STATE_STOPPED: ("stop", "critical"),
         }
         if License is not None:
             lic_dict = {
@@ -374,5 +388,24 @@ class ServiceContainer(object):
                         display_attribute=crc_dict[c_state][1],
                     )
                 )
+                if opt_ns.tstate:
+                    _meta_res = act_struct.find(".//meta_result")
+                    if _meta_res is not None:
+                        t_state = int(_meta_res.get("target_state"))
+                        cur_line.append(
+                            logging_tools.form_entry(
+                                meta_dict[t_state][0],
+                                header="TState",
+                                display_attribute=meta_dict[t_state][1],
+                            )
+                        )
+                    else:
+                        cur_line.append(
+                            logging_tools.form_entry(
+                                "unknown",
+                                header="TState",
+                                display_attribute="warning",
+                            )
+                        )
                 out_bl.append(cur_line)
         return out_bl

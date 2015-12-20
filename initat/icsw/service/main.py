@@ -31,6 +31,7 @@ from . import container
 from . import instance
 from . import logging
 from . import transition
+from .tools import query_local_meta_server
 from .constants import STATE_DICT, LIC_STATE_DICT, CONF_STATE_DICT
 
 
@@ -44,17 +45,6 @@ def show_form_list(form_list):
     print(datetime.datetime.now().strftime("%a, %d. %b %Y %d %H:%M:%S"))
     form_list.display_attribute_map = d_map
     print(unicode(form_list))
-
-
-def query_local_meta_server():
-    return net_tools.zmq_connection(
-        "icsw_state_{:d}".format(os.getpid())
-    ).add_connection(
-        "tcp://localhost:8012",
-        server_command.srv_command(
-            command="stateoverview",
-        ),
-    )
 
 
 def _state_overview(opt_ns, result):
@@ -135,7 +125,7 @@ def main(opt_ns):
     if os.getuid():
         log_com("Not running as root, information may be incomplete, disabling display of memory", logging_tools.LOG_LEVEL_ERROR)
         opt_ns.memory = False
-    inst_xml = instance.InstanceXML(log_com).tree
+    inst_xml = instance.InstanceXML(log_com)
     cur_c = container.ServiceContainer(log_com)
 
     if opt_ns.childcom == "version":
@@ -146,9 +136,9 @@ def main(opt_ns):
             console.main(opt_ns, cur_c, inst_xml)
         else:
             cur_c.check_system(opt_ns, inst_xml)
-            form_list = cur_c.instance_to_form_list(opt_ns, inst_xml)
+            form_list = cur_c.instance_to_form_list(opt_ns, inst_xml.tree)
             show_form_list(form_list)
-            _res = inst_xml.findall(".//result")
+            _res = inst_xml.tree.findall(".//result")
             if len(_res) == 1:
                 # set return state to single-state result
                 _state = int(_res[0].find("process_state_info").get("state"))
@@ -176,15 +166,7 @@ def main(opt_ns):
         # override logger
         log_com = logging.get_logger(opt_ns.logger, all=True)
         # contact meta-server at localhost
-        _result = net_tools.zmq_connection(
-            "icsw_state_{:d}".format(os.getpid())
-        ).add_connection(
-            "tcp://localhost:8012",
-            server_command.srv_command(
-                command="state{}".format(opt_ns.statecom),
-                services=",".join(opt_ns.service),
-            ),
-        )
+        _result = query_local_meta_server(inst_xml, opt_ns.statecom, services=opt_ns.service)
         if _result is None:
             log_com("Got no result from meta-server")
             sys.exit(1)

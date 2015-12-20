@@ -134,6 +134,7 @@ class main_process(ICSWBasePoolClient):
         if _event.mask & inotify_tools.IN_DELETE:
             self._delete_msi_by_file_name(_event.pathname)
         elif _event.mask & inotify_tools.IN_CLOSE_WRITE:
+            print _event.mask
             self._update_or_create_msi_by_file_name(_event.pathname)
 
     def _check_dirs(self):
@@ -176,7 +177,7 @@ class main_process(ICSWBasePoolClient):
             self.__exit_process = True
             if not (self.__next_stop_is_restart or global_config["DEBUG"]):
                 self.service_state.enable_shutdown_mode()
-                _res_list = self.container.check_system(self.def_ns, self.server_instance.tree)
+                _res_list = self.container.check_system(self.def_ns, self.server_instance)
                 trans_list = self.service_state.update(
                     _res_list,
                     throttle=[("uwsgi-init", 5)],
@@ -321,7 +322,7 @@ class main_process(ICSWBasePoolClient):
                 _trans.action,
                 [_trans.name],
                 self.container,
-                self.server_instance.tree,
+                self.server_instance,
                 self.log,
                 _trans.trans_id,
             )
@@ -358,7 +359,7 @@ class main_process(ICSWBasePoolClient):
             self.def_ns.service = service_list
         else:
             self.def_ns.service = []
-        _res_list = self.container.check_system(self.def_ns, self.server_instance.tree)
+        _res_list = self.container.check_system(self.def_ns, self.server_instance)
         # always reset service to the empty list
         self.def_ns.service = []
         trans_list = self.service_state.update(

@@ -25,7 +25,8 @@ import cs_base_class
 import initat.cluster_server
 from initat.cluster.backbone import routing
 from initat.cluster_server.config import global_config
-from initat.icsw.service import instance, container, service_parser, main
+from initat.icsw.service import instance, container, service_parser
+from initat.icsw.service.tools import query_local_meta_server
 from initat.tools import process_tools, server_command, uuid_tools, net_tools
 
 
@@ -40,12 +41,12 @@ class status(cs_base_class.server_com):
 
 class server_status(cs_base_class.server_com):
     def _call(self, cur_inst):
-        inst_xml = instance.InstanceXML(cur_inst.log).tree
+        inst_xml = instance.InstanceXML(cur_inst.log)
         cur_c = container.ServiceContainer(cur_inst.log)
         _def_ns = service_parser.Parser.get_default_ns()
         cur_c.check_system(_def_ns, inst_xml)
-        cur_inst.srv_com["status"] = inst_xml
-        _local_state = main.query_local_meta_server()
+        cur_inst.srv_com["status"] = inst_xml.tree
+        _local_state = query_local_meta_server(inst_xml, "overview")
         if _local_state is not None:
             _bldr = cur_inst.srv_com.builder()
             cur_inst.srv_com["metastatus"] = _local_state["overview:instances"]
@@ -106,39 +107,6 @@ class modify_service(cs_base_class.server_com):
                 "error unknown mode '{}'".format(self.option_dict["mode"]),
                 server_command.SRV_REPLY_STATE_ERROR
             )
-
-
-# merged from check_server_mod, still needed ?
-class check_server(cs_base_class.server_com):
-    def _call(self, cur_inst):
-        def_ns = check_scripts.ICSWParser.get_default_ns()
-        # def_ns["full_status"] = True
-        # def_ns["mem_info"] = True
-        ret_dict = check_scripts.check_system(def_ns)
-        pub_coms = sorted(
-            [
-                com_name for com_name, com_struct in initat.cluster_server.modules.command_dict.iteritems() if com_struct.Meta.public_via_net
-            ]
-        )
-        priv_coms = sorted(
-            [
-                com_name for com_name, com_struct in initat.cluster_server.modules.command_dict.iteritems() if not com_struct.Meta.public_via_net
-            ]
-        )
-        # FIXME, sql info not transfered
-        for _key, value in ret_dict.iteritems():
-            if type(value) == dict and "sql" in value:
-                value["sql"] = str(value["sql"])
-        cur_inst.srv_com.set_result(
-            "returned server info",
-        )
-        cur_inst.srv_com["result:server_info"] = {
-            "version": global_config["VERSION"],
-            "uuid": uuid_tools.get_uuid().get_urn(),
-            "server_status": ret_dict,
-            "public_commands": pub_coms,
-            "private_commands": priv_coms
-        }
 
 
 # merged from version_mod

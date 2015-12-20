@@ -145,7 +145,7 @@ class Service(object):
             else:
                 return "error"
 
-    def check(self, act_proc_dict, refresh=True, config_tools=None, valid_licenses=None, version_changed=False):
+    def check(self, act_proc_dict, refresh=True, config_tools=None, valid_licenses=None, version_changed=False, meta_result=None):
         if self.entry.find("result") is not None:
             if refresh:
                 # remove current result record
@@ -198,6 +198,15 @@ class Service(object):
         act_state = int(_result.find("process_state_info").attrib["state"])
         c_state = CONF_STATE_RUN
 
+        if meta_result is not None:
+            _meta_result = meta_result.xpath(".//ns:instance[@name='{}']".format(self.attrib["name"]))
+            if len(_meta_result):
+                _meta_result = _meta_result[0]
+                _result.append(
+                    E.meta_result(
+                        target_state=_meta_result.get("target_state"),
+                    )
+                )
         run_info = []
         if self.attrib["runs_on"] == "server":
             if version_changed:

@@ -43,7 +43,7 @@ def restart_services():
         "restart",
         srv_list,
         cur_c,
-        instance.InstanceXML(log_com).tree,
+        instance.InstanceXML(log_com),
         log_com,
     )
     while True:

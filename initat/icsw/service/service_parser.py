@@ -53,6 +53,7 @@ class Parser(object):
         _srvc.add_argument("-a", dest="almost_all", action="store_true", default=False, help="almost all of the above, except start and DB info [%(default)s]")
         _srvc.add_argument("-A", dest="all", action="store_true", default=False, help="all of the above [%(default)s]")
         _srvc.add_argument("-v", dest="version", default=False, action="store_true", help="show version info [%(default)s]")
+        _srvc.add_argument("--with-tstate", dest="tstate", default=False, action="store_true", help="add target-state info from local meta-server [%(default)s]")
         self._add_iccs_sel(_srvc)
         # _srvc.add_argument("--mode", type=str, default="show", choices=["show", "stop", "start", "restart"], help="operation mode [%(default)s]")
         _srvc.add_argument("--failed", default=False, action="store_true", help="show only instances in failed state [%(default)s]")
@@ -151,4 +152,5 @@ class Parser(object):
         def_ns.pid = True
         def_ns.started = True
         def_ns.thread = True
+        def_ns.tstate = True
         return def_ns

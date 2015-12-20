@@ -132,7 +132,7 @@ def reload_relay():
         "reload",
         ["host-relay"],
         cur_c,
-        instance.InstanceXML(log_com).tree,
+        instance.InstanceXML(log_com),
         log_com,
     )
     while True:
