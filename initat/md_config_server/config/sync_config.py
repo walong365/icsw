@@ -133,12 +133,14 @@ class sync_config(object):
         if _r_vers.count("-"):
             _r_vers = _r_vers.split("-")[0]
             if _r_vers.count(".") == 1:
-                _r_vers = [int(_part.strip()) for _part in _r_vers.split(".") if _part.strip() and _part.strip().isdigit()]
+                _r_vers = [
+                    int(_part.strip()) for _part in _r_vers.split(".") if _part.strip() and _part.strip().isdigit()
+                ]
                 if len(_r_vers) == 2:
                     major, minor = _r_vers
-                    if major < 5:
+                    if major < 2:
                         pass
-                    elif major > 5:
+                    elif major == 3:
                         _r_gen = 1
                     else:
                         if minor > 1:
@@ -182,7 +184,8 @@ class sync_config(object):
             "sbin",
             "lib",
             "var/spool",
-            "var/spool/checkresults"]
+            "var/spool/checkresults"
+        ]
         if process_tools.get_sys_bits() == 64:
             dir_names.append("lib64")
         # dir dict for writing on disk
@@ -244,7 +247,7 @@ class sync_config(object):
                 # monitorig daemon
                 md_version=VERSION_STRING,
                 mon_version=self.mon_version,
-                )
+            )
         else:
             self.__md_master = master
             _md = mon_dist_slave(
@@ -252,7 +255,7 @@ class sync_config(object):
                 mon_dist_master=self.__md_master,
                 relayer_version=self.relayer_version,
                 mon_version=self.mon_version,
-                )
+            )
         _md.save()
         self.__md_struct = _md
         return self.__md_struct
@@ -280,11 +283,13 @@ class sync_config(object):
             self.send_time_lut[self.send_time] = self.config_version_send
             self.dist_ok = False
             _r_gen = self._relayer_gen()
-            self.log("start send to slave (version {:d} [{:d}], generation is {:d})".format(
-                self.config_version_send,
-                self.send_time,
-                _r_gen,
-                ))
+            self.log(
+                "start send to slave (version {:d} [{:d}], generation is {:d})".format(
+                    self.config_version_send,
+                    self.send_time,
+                    _r_gen,
+                )
+            )
             # number of atomic commands
             self.__num_com = 0
             self.__size_raw, size_data = (0, 0)
@@ -461,29 +466,40 @@ class sync_config(object):
             # check return state for validity
             if not server_command.srv_reply_state_is_valid(file_status):
                 self.log("file_state {:d} is not valid".format(file_status), logging_tools.LOG_LEVEL_CRITICAL)
-            self.log("file_content_status for %s is %s (%d), version %d (dist: %d)" % (
-                file_name,
-                srv_com["result"].attrib["reply"],
-                file_status,
-                version,
-                self.send_time_lut.get(version, 0),
-                ), file_status)
+            self.log(
+                "file_content_status for {} is {} ({:d}), version {:d} (dist: {:d})".format(
+                    file_name,
+                    srv_com["result"].attrib["reply"],
+                    file_status,
+                    version,
+                    self.send_time_lut.get(version, 0),
+                ),
+                file_status
+            )
             file_names = [file_name]
         elif cmd == "file_content_bulk_result":
             num_ok, num_failed = (int(srv_com["num_ok"].text), int(srv_com["num_failed"].text))
-            self.log("%d ok / %d failed" % (num_ok, num_failed))
+            self.log("{:d} ok / {:d} failed".format(num_ok, num_failed))
             failed_list = marshal.loads(bz2.decompress(base64.b64decode(srv_com["failed_list"].text)))
             ok_list = marshal.loads(bz2.decompress(base64.b64decode(srv_com["ok_list"].text)))
             if ok_list:
                 _ok_dir, _ok_list = self._parse_list(ok_list)
-                self.log("ok list (beneath {}): {}".format(
-                    _ok_dir,
-                    ", ".join(sorted(_ok_list)) if global_config["DEBUG"] else logging_tools.get_plural("entry", len(_ok_list))))
+                self.log(
+                    "ok list (beneath {}): {}".format(
+                        _ok_dir,
+                        ", ".join(
+                            sorted(_ok_list)
+                        ) if global_config["DEBUG"] else logging_tools.get_plural("entry", len(_ok_list))
+                    )
+                )
             if failed_list:
                 _failed_dir, _failed_list = self._parse_list(failed_list)
-                self.log("failed list (beneath %s): %s" % (
-                    _failed_dir,
-                    ", ".join(sorted(_failed_list))))
+                self.log(
+                    "failed list (beneath {}): {}".format(
+                        _failed_dir,
+                        ", ".join(sorted(_failed_list))
+                    )
+                )
             file_names = ok_list
         err_dict = {}
         for file_name in file_names:

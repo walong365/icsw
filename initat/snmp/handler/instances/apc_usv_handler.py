@@ -28,7 +28,7 @@ from ...snmp_struct import simple_snmp_oid, MonCheckDefinition, snmp_oid
 
 try:
     from initat.cluster.backbone.models import SpecialGroupsEnum
-except ImportError:
+except:
     SpecialGroupsEnum = None
 
 

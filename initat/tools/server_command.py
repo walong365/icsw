@@ -165,6 +165,8 @@ class srv_command(object):
     def set_result(self, ret_str, level=SRV_REPLY_STATE_OK):
         if "result" not in self:
             self["result"] = None
+        if level not in [SRV_REPLY_STATE_ERROR, SRV_REPLY_STATE_WARN, SRV_REPLY_STATE_OK, SRV_REPLY_STATE_CRITICAL, SRV_REPLY_STATE_UNSET]:
+            raise ValueError("srv_com_level '{}' not valid".format(level))
         self["result"].attrib.update(
             {
                 "reply": ret_str,
