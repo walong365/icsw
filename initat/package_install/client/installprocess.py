@@ -493,8 +493,8 @@ class DebianInstallProcess(InstallProcess):
             "upgrade": "install",
             "erase": "remove"
         }.get(cur_pdc.attrib["target_state"])
-        _opts = "-o Dpkg::Options::='--force-confdef' -o Dpkg::Options::='--force-confold'"
-        "-o Aptitude::Cmdline::ignore-trust-violations=true -y --no-gui -q",
+        _opts = "-o Dpkg::Options::='--force-confdef' -o Dpkg::Options::='--force-confold'" \
+            " -o Aptitude::Cmdline::ignore-trust-violations=true -y --no-gui -q"
         options = {
             "install": _opts,
             "upgrade": _opts,
