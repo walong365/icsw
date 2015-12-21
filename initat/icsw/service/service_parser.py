@@ -143,7 +143,8 @@ class Parser(object):
         main(opt_ns)
 
     @staticmethod
-    def get_default_ns():
+    def get_default_ns(meta_server=False):
+        # meta_server is True when called from ... meta_server
         sub_parser = argparse.ArgumentParser().add_subparsers()
         def_ns = Parser()._add_status_parser(sub_parser).parse_args([])
         def_ns.all = True
@@ -152,5 +153,5 @@ class Parser(object):
         def_ns.pid = True
         def_ns.started = True
         def_ns.thread = True
-        def_ns.tstate = True
+        def_ns.tstate = not meta_server
         return def_ns

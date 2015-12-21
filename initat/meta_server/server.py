@@ -86,7 +86,7 @@ class main_process(ICSWBasePoolClient):
 
     def _init_statemachine(self):
         self.__transitions = []
-        self.def_ns = service_parser.Parser.get_default_ns()
+        self.def_ns = service_parser.Parser.get_default_ns(meta_server=True)
         self.service_state = ServiceState(self.log)
         self.server_instance = instance.InstanceXML(self.log)
         self.container = container.ServiceContainer(self.log)
@@ -120,6 +120,7 @@ class main_process(ICSWBasePoolClient):
                 ),
                 logging_tools.LOG_LEVEL_ERROR
             )
+            raise
         else:
             pass
 
@@ -421,7 +422,7 @@ class main_process(ICSWBasePoolClient):
     def _update_or_create_msi_by_file_name(self, file_name):
         self.log("file {} has been changed or created, triggering check".format(file_name))
         # changes in MSI-blocks are now handled in the state machine
-        _service_list = self.container.filter_msi_file_name(self.container.apply_filter([], self.server_instance.tree), file_name)
+        _service_list = self.container.filter_msi_file_name(self.container.apply_filter([], self.server_instance), file_name)
         if len(_service_list):
             self._check_processes(service_list=[_entry.name for _entry in _service_list])
         else:
