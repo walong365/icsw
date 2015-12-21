@@ -43,7 +43,6 @@ if (sys.version_info.major, sys.version_info.minor) in [(2, 7)]:
 
 DEBUG = "DEBUG_WEBFRONTEND" in os.environ
 LOCAL_STATIC = "LOCAL_STATIC" in os.environ
-PIPELINE_ENABLED = not DEBUG
 
 ADMINS = (
     ("Andreas Lang-Nevyjel", "lang-nevyjel@init.at"),
@@ -238,16 +237,22 @@ COFFEESCRIPT_EXECUTABLE = "/opt/cluster/bin/coffee"
 # pipeline settings
 
 # the pipeline function wrapper breaks FileSaver.js
-PIPELINE_DISABLE_WRAPPER = True
-
-PIPELINE_JS_COMPRESSOR = 'pipeline.compressors.uglifyjs.UglifyJSCompressor'
-PIPELINE_UGLIFYJS_BINARY = "/opt/cluster/lib/node_modules/uglify-js/bin/uglifyjs"
-
-PIPELINE_CSS_COMPRESSOR = 'pipeline.compressors.cssmin.CSSMinCompressor'
-PIPELINE_CSSMIN_BINARY = '/opt/cluster/lib/node_modules/ycssmin/bin/cssmin'
+PIPELINE = {
+    "PIPELINE_ENABLED": not DEBUG,
+    "DISABLE_WRAPPER": True,
+    "JS_COMPRESSOR": 'pipeline.compressors.uglifyjs.UglifyJSCompressor',
+    "UGLIFYJS_BINARY": "/opt/cluster/lib/node_modules/uglify-js/bin/uglifyjs",
+    "CSS_COMPRESSOR": 'pipeline.compressors.cssmin.CSSMinCompressor',
+    "CSSMIN_BINARY": '/opt/cluster/lib/node_modules/ycssmin/bin/cssmin',
+    "COMPILERS": (
+        "pipeline.compilers.coffee.CoffeeScriptCompiler",
+    ),
+    "COFFEE_SCRIPT_BINARY": "/opt/cluster/bin/coffee",
+    "COFFEE_SCRIPT_ARGUMENTS": "",
+}
 
 if not _cs["mode.is.slave"]:
-    for binary in [PIPELINE_UGLIFYJS_BINARY, PIPELINE_CSSMIN_BINARY]:
+    for binary in [PIPELINE["UGLIFYJS_BINARY"], PIPELINE["CSSMIN_BINARY"]]:
         if not os.path.exists(binary):
             raise ImproperlyConfigured("{} does not exist".format(binary))
 
@@ -339,16 +344,9 @@ if any([_app.startswith("initat.cluster.") for _app in INSTALLED_APPS]):
 
 INSTALLED_APPS = tuple(INSTALLED_APPS)
 
-PIPELINE_COMPILERS = (
-    "pipeline.compilers.coffee.CoffeeScriptCompiler",
-)
-
-PIPELINE_COFFEE_SCRIPT_BINARY = "/opt/cluster/bin/coffee"
-PIPELINE_COFFEE_SCRIPT_ARGUMENTS = ""
-
 WITH_REACT = True
 
-PIPELINE_CSS = {
+PIPELINE["STYLESHEETS"] = {
     "part1": {
         "source_filenames": {
             "css/smoothness/jquery-ui-1.10.2.custom.min.css",
@@ -374,7 +372,7 @@ PIPELINE_CSS = {
     }
 }
 
-PIPELINE_JS = {
+PIPELINE["JAVASCRIPT"] = {
     "js_jquery_new": {
         "source_filenames": {
             "js/modernizr-2.8.1.min.js",
@@ -452,9 +450,9 @@ PIPELINE_JS = {
 }
 
 if WITH_REACT:
-    PIPELINE_JS["js_base"]["source_filenames"] = tuple(
+    PIPELINE["JAVASCRIPT"]["js_base"]["source_filenames"] = tuple(
         list(
-            PIPELINE_JS["js_base"]["source_filenames"]
+            PIPELINE["JAVASCRIPT"]["js_base"]["source_filenames"]
         ) + [
             "js/react-0.14.2.js",
             "js/react-dom-0.14.2.js",
