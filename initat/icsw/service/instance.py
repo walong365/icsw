@@ -34,6 +34,34 @@ def _dummy_log_com(what, log_level=logging_tools.LOG_LEVEL_OK):
     print("{} {}".format(logging_tools.get_log_level_str(log_level), what))
 
 
+class RelaxNG(object):
+    cache = {}
+
+    def __init__(self, start_dir, name):
+        self.name = name
+        if self.name not in RelaxNG.cache:
+            RelaxNG.cache[self.name] = etree.RelaxNG(
+                etree.fromstring(
+                    file(
+                        os.path.join(
+                            start_dir,
+                            "relax.d",
+                            "{}.xml".format(self.name)
+                        ),
+                        "r"
+                    ).read()
+                )
+            )
+        self.ng = RelaxNG.cache[self.name]
+
+    def validate(self, in_xml):
+        return self.ng.validate(in_xml)
+
+    @property
+    def error_log(self):
+        return self.ng.error_log
+
+
 class InstanceXML(object):
     def __init__(self, log_com=None, quiet=False):
         self.__quiet = quiet
@@ -58,6 +86,14 @@ class InstanceXML(object):
         self.normalize()
 
     def read(self):
+        relax_dir = os.path.dirname(__file__)
+        if __file__.startswith("/opt"):
+            _dir = SERVERS_DIR
+        else:
+            # not beautiful but working
+            _dir = os.path.join(os.path.dirname(__file__), "..", "..", "..", SERVERS_DIR[1:])
+        _inst_ng = RelaxNG(_dir, "instance")
+        _overlay_ng = RelaxNG(_dir, "overlay")
         self.tree = E.instances()
         # lookup table for name / alias search
         self.__lut = {}
@@ -65,15 +101,15 @@ class InstanceXML(object):
         self.__alias_lut = {}
         # check for additional instances
         _tree_dict = {}
-        if os.path.isdir(SERVERS_DIR):
-            for entry in [_file for _file in os.listdir(SERVERS_DIR) if _file.endswith(".xml")]:
+        if os.path.isdir(_dir):
+            for entry in [_file for _file in os.listdir(_dir) if _file.endswith(".xml")]:
                 try:
-                    _tree_dict[entry] = etree.fromstring(open(os.path.join(SERVERS_DIR, entry), "r").read())  # @UndefinedVariable
+                    _tree_dict[entry] = etree.fromstring(open(os.path.join(_dir, entry), "r").read())  # @UndefinedVariable
                 except:
                     self.log(
                         "cannot read entry '{}' from {}: {}".format(
                             entry,
-                            SERVERS_DIR,
+                            _dir,
                             process_tools.get_except_info(),
                         ),
                         logging_tools.LOG_LEVEL_ERROR
@@ -86,6 +122,33 @@ class InstanceXML(object):
                 _key for _key, _value in _tree_dict.iteritems() if int(_value.get("overlay", "0"))
             ],
         )
+        _to_remove = []
+        for _keys, _relax, _catastrophic in [(_inst_keys, _inst_ng, True), (_overlay_keys, _overlay_ng, False)]:
+            for _key in _keys:
+                _valid = _relax.validate(_tree_dict[_key])
+                if not _valid:
+                    if _catastrophic:
+                        raise ValueError(
+                            "cannot validate {} in {}: {}".format(
+                                _key,
+                                _dir,
+                                str(_relax.error_log)
+                            )
+                        )
+                    else:
+                        self.log(
+                            "error validating {} in {}: {}".format(
+                                _key,
+                                _dir,
+                                str(_relax.error_log),
+                            ),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
+                        _to_remove.append(_key)
+        for _key in _to_remove:
+            del _tree_dict[_key]
+        _inst_keys = list(set(_inst_keys) - set(_to_remove))
+        _overlay_keys = list(set(_overlay_keys) - set(_to_remove))
         for _inst_key in _inst_keys:
             for sub_inst in _tree_dict[_inst_key].findall("instance"):
                 _add_list = [sub_inst.attrib["name"]]

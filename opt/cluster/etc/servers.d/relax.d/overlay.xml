@@ -1,0 +1,136 @@
+<element name="instances" xmlns="http://relaxng.org/ns/structure/1.0">
+    <optional>
+        <attribute name="overlay">
+            <choice>
+                <value>1</value>
+            </choice>
+        </attribute>
+    </optional>
+    <oneOrMore>
+        <element name="instance">
+            <attribute name="name"/>
+            <interleave>
+                <optional>
+                    <element name="network">
+                        <element name="ports">
+                            <oneOrMore>
+                                <element name="port">
+                                    <attribute name="type">
+                                    </attribute>
+                                    <text/>
+                                </element>
+                            </oneOrMore>
+                        </element>
+                    </element>
+                </optional>
+                <optional>
+                    <element name="start-argument">
+                        <oneOrMore>
+                            <element name="arg">
+                                <attribute name="key"/>
+                                <text/>
+                            </element>
+                        </oneOrMore>
+                    </element>
+                </optional>
+                <optional>
+                    <element name="nice-level">
+                        <text/>
+                    </element>
+                </optional>
+                <optional>
+                    <element name="node-split">
+                        <empty/>
+                    </element>
+                </optional>
+                <optional>
+                    <element name="ignore-missing-database">
+                        <empty/>
+                    </element>
+                </optional>
+                <optional>
+                    <element name="access-rights">
+                        <interleave>
+                            <zeroOrMore>
+                                <element name="dir">
+                                    <attribute name="value"/>
+                                    <attribute name="user"/>
+                                    <attribute name="group"/>
+                                    <optional>
+                                        <attribute name="create"/>
+                                    </optional>
+                                    <optional>
+                                        <attribute name="mask"/>
+                                    </optional>
+                                    <optional>
+                                        <attribute name="recursive"/>
+                                    </optional>
+                                </element>
+                            </zeroOrMore>
+                            <zeroOrMore>
+                                <element name="file">
+                                    <attribute name="value"/>
+                                    <attribute name="user"/>
+                                    <attribute name="group"/>
+                                    <optional>
+                                        <attribute name="mask"/>
+                                    </optional>
+                                </element>
+                            </zeroOrMore>
+                        </interleave>
+                    </element>
+                </optional>
+                <optional>
+                    <element name="config_names">
+                        <oneOrMore>
+                            <element name="config_name">
+                                <optional>
+                                    <attribute name="contact">
+                                        <choice>
+                                            <value>0</value>
+                                        </choice>
+                                    </attribute>
+                                </optional>
+                                <text/>
+                            </element>
+                        </oneOrMore>
+                    </element>
+                </optional>
+                <optional>
+                    <element name="required-ips">
+                        <oneOrMore>
+                            <element name="required-ip">
+                                <text/>
+                            </element>
+                        </oneOrMore>
+                    </element>
+                </optional>
+                <optional>
+                    <element name="programm-name">
+                        <text/>
+                    </element>
+                </optional>
+                <optional>
+                    <element name="programm-title">
+                        <text/>
+                    </element>
+                </optional>
+                <optional>
+                    <element name="module-name">
+                        <text/>
+                    </element>
+                </optional>
+                <optional>
+                    <element name="old-binary">
+                        <text/>
+                    </element>
+                </optional>
+                <optional>
+                    <element name="required-license">
+                        <text/>
+                    </element>
+                </optional>
+            </interleave>
+        </element>
+    </oneOrMore>
+</element>

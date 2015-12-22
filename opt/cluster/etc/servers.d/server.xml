@@ -75,7 +75,7 @@
             <dir value="/var/cache/rrd" user="idrrd" group="idg" create="1"/>
             <dir value="/var/run/rrdcached" user="idrrd" group="idg" create="1"/>
             <dir value="/opt/cluster/share/collectd" user="idrrd" group="idg" create="1"/>
-            <dir value="/opt/cluster/system/rrd" user="idrrd" groupd="idg" create="1"/>
+            <dir value="/opt/cluster/system/rrd" user="idrrd" group="idg" create="1"/>
         </access-rights>
     </instance>
     <instance name="memcached" check_type="simple" pid_file_name="memcached/memcached.pid" any_threads_ok="1" runs_on="system">
@@ -234,7 +234,7 @@
         <config_names>
             <config_name>monitor_server</config_name>
             <config_name>monitor_master</config_name>
-        </config_names>-
+        </config_names>
         <start-argument>
             <arg key="user">idnagios</arg>
             <arg key="group">idg</arg>

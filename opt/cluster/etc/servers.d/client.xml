@@ -13,16 +13,13 @@
             <arg key="group">idg</arg>
         </start-argument>
         <nice-level>15</nice-level>
-        <access-rights>
-            <dir value="/var/log/cluster/logging-server" user="idlog" group="idg" create="1" recursive="1"/>
-            <dir value="/var/lib/logging-server" user="idlog" group="idg" create="1"/>
-        </access-rights>
         <network>
             <ports>
                 <port type="command">8011</port>
             </ports>
         </network>
         <access-rights>
+            <dir value="/var/log/cluster/logging-server" user="idlog" group="idg" create="1" recursive="1"/>
             <dir value="/var/lib/logging-server" user="idlog" group="idg" create="1" mask="0777"/>
             <dir value="/var/run/icsw/sockets" user="idlog" group="idg" create="1" mask="0777"/>
             <dir value="/var/run/icsw/zmq" user="idlog" group="idg" create="1" mask="0777"/>
