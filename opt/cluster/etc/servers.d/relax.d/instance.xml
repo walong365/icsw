@@ -32,6 +32,9 @@
                 <attribute name="meta_server_name"/>
             </optional>
             <optional>
+                <attribute name="init_script_name"/>
+            </optional>
+            <optional>
                 <attribute name="has_force_stop">
                     <choice>
                         <value>0</value>
