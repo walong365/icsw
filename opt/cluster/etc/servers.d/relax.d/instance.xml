@@ -35,6 +35,9 @@
                 <attribute name="init_script_name"/>
             </optional>
             <optional>
+                <attribute name="version_file"/>
+            </optional>
+            <optional>
                 <attribute name="has_force_stop">
                     <choice>
                         <value>0</value>
