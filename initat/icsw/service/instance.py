@@ -22,6 +22,7 @@
 """ instance definition for services """
 
 import os
+import hashlib
 
 from lxml import etree
 from lxml.builder import E
@@ -32,6 +33,12 @@ from .constants import SERVERS_DIR
 
 def _dummy_log_com(what, log_level=logging_tools.LOG_LEVEL_OK):
     print("{} {}".format(logging_tools.get_log_level_str(log_level), what))
+
+
+IGNORE_MD5S = {
+    "39939c77aa728b14cd26ee10b7070401",
+    "f06717b8d1334fe1e6ced9ee1f7cb9df",
+}
 
 
 class RelaxNG(object):
@@ -54,8 +61,15 @@ class RelaxNG(object):
             )
         self.ng = RelaxNG.cache[self.name]
 
-    def validate(self, in_xml):
-        return self.ng.validate(in_xml)
+    def validate(self, content, in_xml):
+        md5 = hashlib.new("md5")
+        md5.update(content)
+        md5 = md5.hexdigest()
+        if md5 in IGNORE_MD5S:
+            # ignore certain files
+            return True
+        else:
+            return self.ng.validate(in_xml)
 
     @property
     def error_log(self):
@@ -100,11 +114,14 @@ class InstanceXML(object):
         # alias lut
         self.__alias_lut = {}
         # check for additional instances
+        _content_dict = {}
         _tree_dict = {}
         if os.path.isdir(_dir):
             for entry in [_file for _file in os.listdir(_dir) if _file.endswith(".xml")]:
                 try:
-                    _tree_dict[entry] = etree.fromstring(open(os.path.join(_dir, entry), "r").read())  # @UndefinedVariable
+                    _content = open(os.path.join(_dir, entry), "r").read()
+                    _content_dict[entry] = _content
+                    _tree_dict[entry] = etree.fromstring(_content)  # @UndefinedVariable
                 except:
                     self.log(
                         "cannot read entry '{}' from {}: {}".format(
@@ -125,7 +142,7 @@ class InstanceXML(object):
         _to_remove = []
         for _keys, _relax, _catastrophic in [(_inst_keys, _inst_ng, True), (_overlay_keys, _overlay_ng, False)]:
             for _key in _keys:
-                _valid = _relax.validate(_tree_dict[_key])
+                _valid = _relax.validate(_content_dict[_key], _tree_dict[_key])
                 if not _valid:
                     if _catastrophic:
                         raise ValueError(
