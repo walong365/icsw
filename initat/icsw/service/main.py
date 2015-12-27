@@ -26,13 +26,13 @@ import os
 import sys
 import time
 
-from initat.tools import logging_tools, net_tools, server_command
+from initat.tools import logging_tools
 from . import container
 from . import instance
 from . import logging
 from . import transition
-from .tools import query_local_meta_server
 from .constants import STATE_DICT, LIC_STATE_DICT, CONF_STATE_DICT
+from .tools import query_local_meta_server
 
 
 def show_form_list(form_list):

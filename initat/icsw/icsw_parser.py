@@ -30,6 +30,10 @@ try:
     django.setup()
 except:
     django = None
+else:
+    from initat.cluster.backbone import db_tools
+    if not db_tools.is_reachable():
+        django = None
 
 import importlib
 import argparse
@@ -37,6 +41,7 @@ import argparse
 from initat.icsw.service.instance import InstanceXML
 
 SC_MAPPING = {
+    "service": ".service.service_parser",
     "user": ".user.user_parser",
     "collectd": ".collectd.collectd_parser",
     "job": ".job.job_parser",

@@ -21,16 +21,17 @@
 
 """ container for service checks """
 
-import hashlib
 import os
 import time
 
+from initat.cluster.backbone import db_tools
 from initat.constants import GEN_CS_NAME
 from initat.tools import logging_tools, process_tools, config_store
-try:
+
+if db_tools.is_reachable():
     from initat.cluster.backbone.models.version_functions import get_database_version, \
         get_models_version, is_debug_run
-except:
+else:
     # not present
     get_database_version = None
     get_models_version = None
@@ -58,19 +59,18 @@ else:
         config_tools = None
         License = None
     else:
-        import django
-        try:
+        if db_tools.is_reachable():
+            import django
             django.setup()
-        except:
-            config_tools = None
-            License = None
-        else:
             from initat.tools import config_tools
             try:
                 from initat.cluster.backbone.models import License, LicenseState
             except ImportError:
                 License = None
                 LicenseState = None
+        else:
+            config_tools = None
+            License = None
 
 
 class ServiceContainer(object):
