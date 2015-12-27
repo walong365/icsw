@@ -24,13 +24,23 @@
 import os
 import time
 
-from initat.cluster.backbone import db_tools
 from initat.constants import GEN_CS_NAME
 from initat.tools import logging_tools, process_tools, config_store
 
-if db_tools.is_reachable():
+DB_VALID = False
+
+try:
+    from initat.cluster.backbone import db_tools
+except:
+    # client, db_tools not installed
+    db_tools = None
+else:
+    if db_tools.is_reachable():
+        DB_VALID = True
+
+if DB_VALID:
     from initat.cluster.backbone.models.version_functions import get_database_version, \
-        get_models_version, is_debug_run
+    get_models_version, is_debug_run
 else:
     # not present
     get_database_version = None
