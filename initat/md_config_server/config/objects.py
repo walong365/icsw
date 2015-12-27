@@ -170,7 +170,7 @@ class all_commands(host_type_config):
             cluster_name = cluster_location.db_device_variable(cdg, "CLUSTER_NAME", description="name of the cluster").get_value()
         md_vers = global_config["MD_VERSION_STRING"]
         md_type = global_config["MD_TYPE"]
-        send_mail_prog = "/opt/cluster/sbin/icsw user --mode mail"
+        send_mail_prog = "/opt/cluster/sbin/icsw --nodb user --mode mail"
         send_sms_prog = "/opt/icinga/bin/sendsms"
         from_addr = "{}@{}".format(
             global_config["MD_TYPE"],

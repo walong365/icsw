@@ -25,15 +25,20 @@ import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
-try:
-    import django
-    django.setup()
-except:
+import sys
+
+if "--nodb" in sys.argv:
     django = None
 else:
-    from initat.cluster.backbone import db_tools
-    if not db_tools.is_reachable():
+    try:
+        import django
+        django.setup()
+    except:
         django = None
+    else:
+        from initat.cluster.backbone import db_tools
+        if not db_tools.is_reachable():
+            django = None
 
 import importlib
 import argparse
@@ -64,6 +69,7 @@ class ICSWParser(object):
         for _pn in ["_parser", "_dummy_parser"]:
             _parser = argparse.ArgumentParser(prog="icsw", add_help="dummy" not in _pn)
             _parser.add_argument("--logger", type=str, default="stdout", choices=["stdout", "logserver"], help="choose logging facility")
+            _parser.add_argument("--nodb", default=False, action="store_true", help="disable usage of database [%(default)s]")
             setattr(self, _pn, _parser)
         # catch args for dummy parser
         self._dummy_parser.add_argument("args", nargs="*")
