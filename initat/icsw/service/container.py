@@ -40,7 +40,7 @@ else:
 
 if DB_VALID:
     from initat.cluster.backbone.models.version_functions import get_database_version, \
-    get_models_version, is_debug_run
+        get_models_version, is_debug_run
 else:
     # not present
     get_database_version = None
