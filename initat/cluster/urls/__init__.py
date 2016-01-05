@@ -20,7 +20,8 @@ for entry in os.listdir(path_name):
         _py_name = entry.split(".")[0]
         if _py_name not in _BLACKLIST:
             new_mod = __import__(entry.split(".")[0], globals(), locals())
-            urlpatterns.extend(new_mod.urlpatterns)
+            if hasattr(new_mod, "urlpatterns"):
+                urlpatterns.extend(new_mod.urlpatterns)
 
 urlpatterns.extend(
     [
