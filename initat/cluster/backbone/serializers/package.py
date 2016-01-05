@@ -43,7 +43,7 @@ class package_service_serializer(serializers.ModelSerializer):
 
 
 class package_repo_serializer(serializers.ModelSerializer):
-    service_name = serializers.Field(source="get_service_name")
+    service_name = serializers.CharField(source="get_service_name", read_only=True)
 
     class Meta:
         model = package_repo
@@ -65,7 +65,7 @@ class package_device_connection_serializer(serializers.ModelSerializer):
 
 
 class package_serializer(serializers.ModelSerializer):
-    target_repo_name = serializers.Field(source="target_repo_name")
+    target_repo_name = serializers.CharField(read_only=True)
 
     class Meta:
         model = package
