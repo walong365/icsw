@@ -43,7 +43,7 @@ def main():
     _new_s["build.time"] = _now.strftime("%Y-%m-%d %H:%M:%S")
     _new_s["build.machine"] = os.uname()[1]
     _dir = os.path.dirname(__file__)
-    _dir = os.path.join(_dir, "..", "initat", "cluster", "backbone", "models")
+    _dir = os.path.join(_dir, "..", "initat", "cluster", "backbone")
     sys.path.append(_dir)
     _func_mod = importlib.import_module("version_functions")
     _new_s["database"] = _func_mod.get_database_version()

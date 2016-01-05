@@ -42,6 +42,7 @@ BACKBONE_DIR = os.path.join(ICSW_ROOT, "initat", "cluster", "backbone")
 CMIG_DIR = os.path.join(BACKBONE_DIR, "migrations")
 MIGRATION_DIRS = [
     "reversion",
+    "django/contrib/sites",
     "django/contrib/auth",
     "initat/cluster/backbone",
     "initat/cluster/liebherr",
@@ -482,7 +483,7 @@ def create_db(opts):
     ds0 = DirSave(CMIG_DIR, 799)
     os.environ["INIT_REMOVE_APP_NAME_1"] = "django.contrib.sites"
     os.environ["INIT_REMOVE_APP_NAME_2"] = "initat.cluster."
-    for _app in ["auth", "contenttypes"]:
+    for _app in ["auth", "contenttypes", "sites"]:
         apply_migration(_app)
     del os.environ["INIT_REMOVE_APP_NAME_1"]
     for _app in ["sites"]:
@@ -529,7 +530,7 @@ def migrate_db(opts):
                 # call_manage(["migrate", _sync_app, "--noinput"])
         subprocess.check_output("/opt/cluster/sbin/pis/check_content_stores.py")
         auth_app_name = "django.contrib.auth"
-        for _app in ["backbone", auth_app_name, "reversion", "django.contrib.admin", "django.contrib.sessions"]:
+        for _app in ["backbone", auth_app_name, "reversion", "django.contrib.admin", "django.contrib.sessions", "django.contrib.sites"]:
             if app_has_unapplied_migrations(_app.split(".")[-1]):
                 print("migrating app {}".format(_app))
                 success = apply_migration(_app)

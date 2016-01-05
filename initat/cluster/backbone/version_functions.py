@@ -30,9 +30,7 @@ def is_debug_run():
 
 
 def get_models_version():
-    _dir = os.path.dirname(__file__)
-    while not _dir.endswith("models"):
-        _dir = os.path.split(_dir)
+    _dir = os.path.join(os.path.dirname(__file__), "models")
     my_md5 = hashlib.md5()
     for _sdir, _dlist, _flist in os.walk(_dir):
         for _file in [_entry for _entry in _flist if _entry.endswith(".py")]:
@@ -43,10 +41,7 @@ def get_models_version():
 
 
 def get_database_version():
-    _dir = os.path.dirname(__file__)
-    while not _dir.endswith("models"):
-        _dir = os.path.split(_dir)
-    _dir = os.path.join(_dir, "..", "migrations")
+    _dir = os.path.join(os.path.dirname(__file__), "migrations")
     highest_patch = 0
     for _sdir, _dlist, _flist in os.walk(_dir):
         for _file in _flist:
