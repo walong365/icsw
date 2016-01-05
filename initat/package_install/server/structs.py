@@ -29,7 +29,7 @@ import urlparse
 from django.db.models import Q
 from lxml import etree
 from lxml.builder import E
-from rest_framework.renderers import XMLRenderer
+from rest_framework_xml.renderers import XMLRenderer
 
 from initat.cluster.backbone.models import package_repo, cluster_timezone, \
     package_search_result, device_variable, device, package_device_connection, \

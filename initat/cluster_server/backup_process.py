@@ -52,10 +52,11 @@ class backup_process(threading_tools.process_obj):
         self.__log_template.log(log_level, what)
 
     def get_ignore_list(self, table_name=False):
-        from django.db.models import get_apps, get_models  # @UnresolvedImport
+        from django.apps import apps
+        # from django.db.models import get_apps, get_models
         ignore_list = []
-        for _app in get_apps():
-            for _model in get_models(_app):
+        for _config in apps.get_app_configs():
+            for _model in _config.get_models():
                 if hasattr(_model, "CSW_Meta"):
                     if not getattr(_model.CSW_Meta, "backup", True):
                         if table_name:
@@ -96,7 +97,7 @@ class backup_process(threading_tools.process_obj):
         full_path = os.path.join(
             bu_dir,
             bu_name)
-        self.log("storing backup in %s" % (full_path))
+        self.log("storing backup in {}".format(full_path))
         buf_com = dumpdataslow.Command()
         buf_com.stdout = dummy_file(full_path, "wb")
         opts, args = OptionParser(option_list=buf_com.option_list).parse_args(

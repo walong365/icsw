@@ -5,14 +5,11 @@ scan all apps in backbone for new CSW rights
 
 import pprint
 import time
-from collections import OrderedDict
-from optparse import make_option
 
 from django.apps import apps
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ImproperlyConfigured
-from django.core.management.base import BaseCommand, CommandError
-from django.db import DEFAULT_DB_ALIAS
+from django.core.management.base import BaseCommand
 from django.db.models import Q
 
 from initat.cluster.backbone.models import csw_permission

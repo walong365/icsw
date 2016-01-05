@@ -1,11 +1,31 @@
-from django.db.models import get_app, get_apps, get_model, get_models  # @UnresolvedImport
+# Copyright (C) 2012-2016 Andreas Lang-Nevyjel
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+""" dump django database to XML """
+
+from collections import OrderedDict
+from optparse import make_option
+
+from django.apps import apps
 from django.core import serializers
 from django.core.exceptions import ImproperlyConfigured
 from django.core.management.base import BaseCommand, CommandError
 from django.db import DEFAULT_DB_ALIAS
 from django.db.models import ForeignKey, OneToOneField
-from django.utils.datastructures import SortedDict
-from optparse import make_option
 
 
 class Command(BaseCommand):
@@ -59,31 +79,31 @@ class Command(BaseCommand):
         for exclude in excludes:
             if '.' in exclude:
                 app_label, model_name = exclude.split('.', 1)
-                model_obj = get_model(app_label, model_name)
+                model_obj = apps.get_model(app_label, model_name)
                 if not model_obj:
                     raise CommandError('Unknown model in excludes: %s' % exclude)
                 excluded_models.add(model_obj)
             else:
                 try:
-                    app_obj = get_app(exclude)
+                    app_obj = apps.get_app_config(exclude)
                     excluded_apps.add(app_obj)
                 except ImproperlyConfigured:
                     raise CommandError('Unknown app in excludes: %s' % exclude)
-
+        apps_list = apps.get_app_configs()
         if len(app_labels) == 0:
-            app_list = SortedDict((app, None) for app in get_apps() if app not in excluded_apps)
+            app_list = OrderedDict((app, None) for app in apps.get_app_config() if app not in excluded_apps)
         else:
-            app_list = SortedDict()
+            app_list = OrderedDict()
             for label in app_labels:
                 try:
                     app_label, model_label = label.split('.')
                     try:
-                        app = get_app(app_label)
+                        app = apps.get_app_config(app_label)
                     except ImproperlyConfigured:
                         raise CommandError("Unknown application: %s" % app_label)
                     if app in excluded_apps:
                         continue
-                    model = get_model(app_label, model_label)
+                    model = apps.get_model(app_label, model_label)
                     if model is None:
                         raise CommandError("Unknown model: %s.%s" % (app_label, model_label))
 
@@ -96,7 +116,7 @@ class Command(BaseCommand):
                     # This is just an app - no model qualifier
                     app_label = label
                     try:
-                        app = get_app(app_label)
+                        app = apps.get_app_config(app_label)
                     except ImproperlyConfigured:
                         raise CommandError("Unknown application: %s" % app_label)
                     if app in excluded_apps:
@@ -115,9 +135,9 @@ class Command(BaseCommand):
 
         deps = Dependencies()
         models = set()
-        for app, model_list in app_list.items():
+        for app_config, model_list in app_list.items():
             if model_list is None:
-                model_list = get_models(app)
+                model_list = app_config.get_models()
 
             for model in model_list:
                 models.add(model)
@@ -150,89 +170,6 @@ class Command(BaseCommand):
             if show_traceback:
                 raise
             raise CommandError("Unable to serialize database: %s" % e)
-
-
-def sort_dependencies(app_list):
-    """Sort a list of app,modellist pairs into a single list of models.
-
-    The single list of models is sorted so that any model with a natural key
-    is serialized before a normal model, and any model with a natural key
-    dependency has it's dependencies serialized first.
-    """
-    # Process the list of models, and get the list of dependencies
-    model_dependencies = []
-    models = set()
-    for app, model_list in app_list:
-        if model_list is None:
-            model_list = get_models(app)
-
-        for model in model_list:
-            models.add(model)
-            # Add any explicitly defined dependencies
-            if hasattr(model, 'natural_key'):
-                deps = getattr(model.natural_key, 'dependencies', [])
-                if deps:
-                    deps = [get_model(*d.split('.')) for d in deps]
-            else:
-                deps = []
-
-            # Now add a dependency for any FK or M2M relation with
-            # a model that defines a natural key
-            for field in model._meta.fields:
-                if hasattr(field.rel, 'to'):
-                    rel_model = field.rel.to
-                    if hasattr(rel_model, 'natural_key') and rel_model != model:
-                        deps.append(rel_model)
-            for field in model._meta.many_to_many:
-                rel_model = field.rel.to
-                if hasattr(rel_model, 'natural_key') and rel_model != model:
-                    deps.append(rel_model)
-            model_dependencies.append((model, deps))
-
-    model_dependencies.reverse()
-    # Now sort the models to ensure that dependencies are met. This
-    # is done by repeatedly iterating over the input list of models.
-    # If all the dependencies of a given model are in the final list,
-    # that model is promoted to the end of the final list. This process
-    # continues until the input list is empty, or we do a full iteration
-    # over the input models without promoting a model to the final list.
-    # If we do a full iteration without a promotion, that means there are
-    # circular dependencies in the list.
-    model_list = []
-    while model_dependencies:
-        skipped = []
-        changed = False
-        while model_dependencies:
-            model, deps = model_dependencies.pop()
-
-            # If all of the models in the dependency list are either already
-            # on the final model list, or not on the original serialization list,
-            # then we've found another model with all it's dependencies satisfied.
-            found = True
-            for candidate in ((d not in models or d in model_list) for d in deps):
-                if not candidate:
-                    found = False
-            if found:
-                model_list.append(model)
-                changed = True
-            else:
-                skipped.append((model, deps))
-        if not changed:
-            raise CommandError(
-                "Can't resolve dependencies for {} in serialized app list.".format(
-                    ', '.join(
-                        [
-                            "{}.{}".format(
-                                model._meta.app_label,
-                                model._meta.object_name
-                            ) for model, deps in sorted(skipped, key=lambda obj: obj[0].__name__)
-                        ]
-                    )
-                )
-            )
-        model_dependencies = skipped
-
-    return model_list
 
 
 class Dependencies(object):
