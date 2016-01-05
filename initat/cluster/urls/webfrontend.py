@@ -177,7 +177,7 @@ monitoring_patterns = [
     url("^build_info$", monitoring_views.build_info.as_view(), name="build_info"),
     url("^livestatus$", monitoring_views.livestatus.as_view(), name="livestatus"),
     url("^StatusHistory$", monitoring_views.StatusHistory.as_view(), name="StatusHistory"),
-    url("^Graph$", monitoring_views.Graph.as_view(), name="Graph"),
+    url("^graph$", monitoring_views.Graph.as_view(), name="graph"),
     url("^overview$", monitoring_views.overview.as_view(), name="overview"),
     url("^create_device$", monitoring_views.create_device.as_view(), name="create_device"),
     url("^resolve_name$", monitoring_views.resolve_name.as_view(), name="resolve_name"),
@@ -242,6 +242,7 @@ main_patterns = [
 ]
 
 rrd_patterns = [
+    url(r"^dev_rrds$", rrd_views.device_rrds.as_view(), name="device_rrds"),
     url(r"^graph_rrd$", rrd_views.graph_rrds.as_view(), name="graph_rrds"),
     url(r"^trigger_threshold", rrd_views.trigger_sensor_threshold.as_view(), name="trigger_sensor_threshold"),
 ]

@@ -222,6 +222,9 @@ class SrvTypeRouting(object):
             _sc = device_with_config(config_name=_conf_name)
             if _conf_name in _sc:
                 for _dev in _sc[_conf_name]:
+                    if _dev.effective_device is None:
+                        # may be the case when the local system is too old (database-wise)
+                        continue
                     # routing info
                     if _dev.effective_device.is_meta_device:
                         # server-like config is set for an md-device, not good
