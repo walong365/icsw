@@ -66,9 +66,9 @@ def extract_views_from_urlpatterns(urlpatterns, base='', namespace=None):
                 views.append((p._get_callback(), base + p.regex.pattern, p.name))
             except ViewDoesNotExist:
                 continue
-        elif hasattr(p, 'urlpatterns') or hasattr(p, '_get_url_patterns'):
+        elif hasattr(p, 'url_patterns') or hasattr(p, '_get_url_patterns'):
             try:
-                patterns = p.urlpatterns
+                patterns = p.url_patterns
             except ImportError:
                 continue
             views.extend(extract_views_from_urlpatterns(patterns, base + p.regex.pattern, namespace=namespace))
