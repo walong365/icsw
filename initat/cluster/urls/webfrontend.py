@@ -20,26 +20,26 @@
 
 import os
 
-from django.conf.urls import patterns, include, url
+import django.contrib.staticfiles.views
 from django.conf import settings
+from django.conf.urls import include, url
+from django.conf.urls.static import static
+
 from initat.cluster.frontend import rest_views, device_views, main_views, network_views, \
     monitoring_views, user_views, package_views, config_views, boot_views, session_views, rrd_views, \
     base_views, setup_views, doc_views, license_views, model_history_views, discovery_views, rms_views, \
     lic_views
-from django.conf.urls.static import static
 
 handler404 = main_views.index.as_view()
 
-session_patterns = patterns(
-    "initat.cluster.frontend",
+session_patterns = [
     url(r"logout", session_views.sess_logout.as_view(), name="logout"),
     url(r"login", session_views.sess_login.as_view(), name="login"),
     url(r"log_addons$", session_views.login_addons.as_view(), name="login_addons"),
     url(r"get_user$", session_views.get_user.as_view(), name="get_user"),
-)
+]
 
-rms_patterns = patterns(
-    "initat.cluster.rms",
+rms_patterns = [
     url(r"overview", rms_views.overview.as_view(), name="overview"),
     url(r"get_header_xml", rms_views.get_header_xml.as_view(), name="get_header_xml"),
     url(r"get_rms_json", rms_views.get_rms_json.as_view(), name="get_rms_json"),
@@ -51,11 +51,10 @@ rms_patterns = patterns(
     url(r"set_user_setting", rms_views.set_user_setting.as_view(), name="set_user_setting"),
     url(r"get_user_setting", rms_views.get_user_setting.as_view(), name="get_user_setting"),
     url(r"change_job_pri$", rms_views.change_job_priority.as_view(), name="change_job_priority"),
-)
+]
 
 # license overview
-lic_patterns = patterns(
-    "initat.cluster.rms",
+lic_patterns = [
     url(r"overview$", lic_views.overview.as_view(), name="overview"),
     url(r"license_liveview$", lic_views.license_liveview.as_view(), name="license_liveview"),
     url(r"get_license_overview_steps$", lic_views.get_license_overview_steps.as_view(),
@@ -66,11 +65,10 @@ lic_patterns = patterns(
     url("^license_user_coarse_list$", lic_views.license_user_coarse_list.as_view(), name="license_user_coarse_list"),
     url("^license_device_coarse_list$", lic_views.license_device_coarse_list.as_view(),
         name="license_device_coarse_list"),
-)
+]
 
 
-base_patterns = patterns(
-    "initat.cluster.setup",
+base_patterns = [
     url("^get_gauge_info$", base_views.get_gauge_info.as_view(), name="get_gauge_info"),
     url("^DeviceCategory$", base_views.DeviceCategory.as_view(), name="DeviceCategory"),
     url("^DeviceLocation$", base_views.DeviceLocation.as_view(), name="DeviceLocation"),
@@ -89,10 +87,9 @@ base_patterns = patterns(
     url("^kpi$", base_views.KpiView.as_view(), name="kpi"),
     url("^GetKpiSourceData$", base_views.GetKpiSourceData.as_view(), name="GetKpiSourceData"),
     url("^CalculateKpiPreview$", base_views.CalculateKpiPreview.as_view(), name="CalculateKpiPreview"),
-)
+]
 
-setup_patterns = patterns(
-    "initat.cluster.setup",
+setup_patterns = [
     url(r"p_overview", setup_views.partition_overview.as_view(), name="partition_overview"),
     url(r"xml/validate", setup_views.validate_partition.as_view(), name="validate_partition"),
     url(r"i_overview", setup_views.image_overview.as_view(), name="image_overview"),
@@ -101,10 +98,9 @@ setup_patterns = patterns(
     url(r"xml/use_image", setup_views.use_image.as_view(), name="use_image"),
     url(r"xml/rescan_kernels", setup_views.rescan_kernels.as_view(), name="rescan_kernels"),
     url(r"BuildImage", setup_views.BuildImage.as_view(), name="BuildImage"),
-)
+]
 
-config_patterns = patterns(
-    "initat.cluster.frontend",
+config_patterns = [
     url("^show_config$", config_views.show_configs.as_view(), name="show_configs"),
     url("^set_config_cb$", config_views.alter_config_cb.as_view(), name="alter_config_cb"),
     url("^generate_config$", config_views.generate_config.as_view(), name="generate_config"),
@@ -115,10 +111,9 @@ config_patterns = patterns(
     url("^xml/delete_objects$", config_views.delete_objects.as_view(), name="delete_objects"),
     url("^get_cached_uploads$", config_views.get_cached_uploads.as_view(), name="get_cached_uploads"),
     url("^handle_cached_config$", config_views.handle_cached_config.as_view(), name="handle_cached_config"),
-)
+]
 
-boot_patterns = patterns(
-    "initat.cluster.frontend",
+boot_patterns = [
     url("^show_boot$", boot_views.show_boot.as_view(), name="show_boot"),
     url("^xml/get_boot_infojs$", boot_views.get_boot_info_json.as_view(), name="get_boot_info_json"),
     url("^xml/get_devlog_info$", boot_views.get_devlog_info.as_view(), name="get_devlog_info"),
@@ -126,10 +121,9 @@ boot_patterns = patterns(
     url("^hard_control$", boot_views.hard_control.as_view(), name="hard_control"),
     url("^update_device/(\d+)$", boot_views.update_device.as_view(), name="update_device"),
     url("^modify_mbl$", boot_views.modify_mbl.as_view(), name="modify_mbl"),
-)
+]
 
-device_patterns = patterns(
-    "initat.cluster.frontend",
+device_patterns = [
     # url("^device_tree$", device_views.device_tree.as_view(), name="tree"),
     url("^DeviceGeneral$", device_views.DeviceGeneral.as_view(), name="DeviceGeneral"),
     url("^device_tree_smart$", device_views.device_tree_smart.as_view(), name="tree_smart"),
@@ -144,19 +138,17 @@ device_patterns = patterns(
     url("^device_info/(?P<device_pk>\d+)/(?P<mode>\S+)$", device_views.device_info.as_view(), name="device_info"),
     url("^get_device_locations$", device_views.get_device_location.as_view(), name="get_device_location"),
     url("^GetMatchingDevices$", device_views.GetMatchingDevices.as_view(), name="GetMatchingDevices"),
-)
+]
 
 
-icsw_lic_patterns = patterns(
-    "initat.cluster.license",
+icsw_lic_patterns = [
     url("^get_all_licenses$", license_views.get_all_licenses.as_view(), name="get_all_licenses"),
     url("^get_license_packages$", license_views.get_license_packages.as_view(), name="get_license_packages"),
     url("^GetLicenseViolations$", license_views.GetLicenseViolations.as_view(), name="GetLicenseViolations"),
     url("^GetValidLicenses$", license_views.GetValidLicenses.as_view(), name="GetValidLicenses"),
-)
+]
 
-network_patterns = patterns(
-    "initat.cluster.frontend",
+network_patterns = [
     url("^network$", network_views.show_cluster_networks.as_view(), name="show_networks"),
     url("^dev_network$", network_views.device_network.as_view(), name="device_network"),
     url("^copy_network$", network_views.copy_network.as_view(), name="copy_network"),
@@ -166,10 +158,9 @@ network_patterns = patterns(
     url("^get_scans", network_views.get_active_scans.as_view(), name="get_active_scans"),
     url("^get_free_ip$", network_views.get_free_ip.as_view(), name="get_free_ip"),
     url("^rescan_networks", network_views.rescan_networks.as_view(), name="rescan_networks"),
-)
+]
 
-monitoring_patterns = patterns(
-    "initat.cluster.frontend",
+monitoring_patterns = [
     url("^create_config$", monitoring_views.create_config.as_view(), name="create_config"),
     url("^setup$", monitoring_views.setup.as_view(), name="setup"),
     url("^extsetupc$", monitoring_views.setup_cluster.as_view(), name="setup_cluster"),
@@ -201,10 +192,9 @@ monitoring_patterns = patterns(
         name="get_hist_device_line_graph_data"),
     url("^svg_to_png$", monitoring_views.svg_to_png.as_view(), name="svg_to_png"),
     url("^fetch_png/(?P<cache_key>\S+)$", monitoring_views.fetch_png_from_cache.as_view(), name="fetch_png_from_cache"),
-)
+]
 
-user_patterns = patterns(
-    "initat.cluster.frontend",
+user_patterns = [
     url("overview/$", user_views.overview.as_view(), name="overview"),
     url("sync$", user_views.sync_users.as_view(), name="sync_users"),
     url("^set_user_var$", user_views.set_user_var.as_view(), name="set_user_var"),
@@ -220,10 +210,9 @@ user_patterns = patterns(
     url("^GetObjectPermissions$", user_views.GetObjectPermissions.as_view(), name="GetObjectPermissions"),
     url("^GetInitProduct$", user_views.GetInitProduct.as_view(), name="GetInitProduct"),
     url("^GetNumQuotaServers$", user_views.get_num_quota_servers.as_view(), name="get_num_quota_servers"),
-)
+]
 
-pack_patterns = patterns(
-    "initat.cluster.frontend",
+pack_patterns = [
     url("overview/repo$", package_views.repo_overview.as_view(), name="repo_overview"),
     url("search/retry", package_views.retry_search.as_view(), name="retry_search"),
     url("search/use_package", package_views.use_package.as_view(), name="use_package"),
@@ -237,10 +226,9 @@ pack_patterns = patterns(
     url("pack/change_pflag", package_views.change_package_flag.as_view(), name="change_package_flag"),
     url("pack/sync", package_views.synchronize.as_view(), name="synchronize"),
     url("pack/get_status", package_views.get_pdc_status.as_view(), name="get_pdc_status"),
-)
+]
 
-main_patterns = patterns(
-    "initat.cluster.frontend",
+main_patterns = [
     url(r"^index$", main_views.index.as_view(), name="index"),
     url(r"^permission$", main_views.permissions_denied.as_view(), name="permission_denied"),
     url(r"^info$", main_views.info_page.as_view(), name="info_page"),
@@ -251,22 +239,19 @@ main_patterns = patterns(
     url(r"^routing_info$", main_views.get_routing_info.as_view(), name="routing_info"),
     url(r"^get_cluster_info$", main_views.get_cluster_info.as_view(), name="get_cluster_info"),
     url(r"^get_docu_info$", main_views.get_docu_info.as_view(), name="get_docu_info"),
-)
+]
 
-rrd_patterns = patterns(
-    "initat.cluster.frontend",
-    url(r"^dev_rrds$", rrd_views.device_rrds.as_view(), name="device_rrds"),
+rrd_patterns = [
     url(r"^graph_rrd$", rrd_views.graph_rrds.as_view(), name="graph_rrds"),
     url(r"^trigger_threshold", rrd_views.trigger_sensor_threshold.as_view(), name="trigger_sensor_threshold"),
-)
+]
 
-discovery_patterns = patterns(
-    "initat.cluster.frontend",
+discovery_patterns = [
     url(r"^Overview$", discovery_views.DiscoveryOverview.as_view(), name="Overview"),
     url(r"^EventLogOverview$", discovery_views.EventLogOverview.as_view(), name="EventLogOverview"),
     url(r"^GetEventLog$", discovery_views.GetEventLog.as_view(), name="GetEventLog"),
     url(r"^GetEventLogDeviceInfo$", discovery_views.GetEventLogDeviceInfo.as_view(), name="GetEventLogDeviceInfo"),
-)
+]
 
 rpl = []
 for src_mod, obj_name in rest_views.REST_LIST:
@@ -296,37 +281,46 @@ rpl.extend([
     url("^min_access_levels$", rest_views.min_access_levels.as_view({"get": "list"}), name="min_access_levels"),
 ])
 
-rest_patterns = patterns(
-    "initat.cluster.frontend",
-    *rpl
-)
-# rest_patterns = format_suffix_patterns(rest_patterns)
+rest_patterns = rpl
 
-dyndoc_patterns = patterns(
-    "initat.cluster.frontend",
+dyndoc_patterns = [
+    # "initat.cluster.frontend",
     url(r"^hb/root$", doc_views.test_page.as_view(), name="doc_root"),
     # TODO: fix handbook prefix in accordance with actual handbook html
     url(r"^(?P<page>.*)$", doc_views.doc_page.as_view(), name="doc_page"),
-)
+]
 
-doc_patterns = patterns(
-    "",
-    url(r"^{}/(?P<path>.*)$".format(settings.REL_SITE_ROOT),
-        "django.views.static.serve", {
+doc_patterns = [
+    url(
+        r"^{}/(?P<path>.*)$".format(settings.REL_SITE_ROOT),
+        django.contrib.staticfiles.views.serve,
+        {
             "document_root": os.path.join(settings.FILE_ROOT, "doc", "build", "html")
-        }, name="show"),
-)
+        },
+        name="show"
+    ),
+]
 
-system_patterns = patterns(
-    "initat.cluster.frontend",
-    url(r"^history_overview$", model_history_views.history_overview.as_view(), name="history_overview"),
-    url(r"^get_historical_data$", model_history_views.get_historical_data.as_view(), name="get_historical_data"),
-    url(r"^get_models_with_history$", model_history_views.get_models_with_history.as_view(),
-        name="get_models_with_history"),
-)
+system_patterns = [
+    url(
+        r"^history_overview$",
+        model_history_views.history_overview.as_view(),
+        name="history_overview"
+    ),
+    url(
+        r"^get_historical_data$",
+        model_history_views.get_historical_data.as_view(),
+        name="get_historical_data"
+    ),
+    url(
+        r"^get_models_with_history$",
+        model_history_views.get_models_with_history.as_view(),
+        name="get_models_with_history"
+    ),
+]
 
-my_url_patterns = patterns(
-    "",
+my_url_patterns = [
+    # "",
     url(r"^$", session_views.redirect_to_main.as_view()),
     # redirect old entry point
     url(r"^main.py$", session_views.redirect_to_main.as_view()),
@@ -350,17 +344,11 @@ my_url_patterns = patterns(
     url(r"^rest/", include(rest_patterns, namespace="rest")),
     url(r"^system/", include(system_patterns, namespace="system")),
     url(r"^discovery/", include(discovery_patterns, namespace="discovery")),
-)
+]
 
-url_patterns = patterns(
-    "",
+urlpatterns = [
     url(r"^{}/".format(settings.REL_SITE_ROOT), include(my_url_patterns)),
     url(r"^$", session_views.redirect_to_main.as_view()),
-)
+]
 
-url_patterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
-# no longer needed ...
-# url_patterns += patterns(
-#    'django.contrib.staticfiles.views',
-#    url(r'^{}/static/(?P<path>.*)$'.format(settings.REL_SITE_ROOT), 'serve'),
-# )
+urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

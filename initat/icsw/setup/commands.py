@@ -621,7 +621,7 @@ def app_has_unapplied_migrations(app_name):
         migration_name for app_name_, migration_name in recorder.applied_migrations()
         if app_name_ == app_name
     }
-    migration_directory = os.path.join(apps.get_app_path(app_name), "migrations")
+    migration_directory = os.path.join(apps.get_app_config(app_name).path, "migrations")
     migrations_on_disk = set(
         fnmatch.filter(os.listdir(migration_directory), "*.py")
     )

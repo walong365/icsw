@@ -78,11 +78,6 @@ def extract_views_from_urlpatterns(urlpatterns, base='', namespace=None):
 
 
 class Command(BaseCommand):
-    option_list = BaseCommand.option_list + (
-        make_option("--unsorted", "-u", action="store_true", dest="unsorted",
-                    help="Show urls unsorted but same order as found in url patterns"),
-    )
-
     help = "Displays all of the url matching routes for the project."
 
     def handle(self, *args, **options):
