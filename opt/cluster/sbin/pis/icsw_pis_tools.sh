@@ -27,6 +27,8 @@ ICSW_SHARE=${ICSW_BASE}/share
 ICSW_SYSCONF=${SYSCONF}/cluster
 ICSW_TFTP=${ICSW_BASE}/system/tftpboot
 ICSW_MOTHER=${ICSW_SHARE}/mother
+PREFIX_INIT=/opt/python-init/lib/python/site-packages
+DJANGO_PY=${PREFIX_INIT}/django/
 
 MANAGE=${PREFIX_INIT}/initat/cluster/manage.py
 
@@ -39,6 +41,24 @@ RED="\033[31m"
 GREEN="\033[32m"
 YELLOW="\033[33m"
 OFF="\033[m"
+
+function icsw_cleanup() {
+    rm -rf /usr/local/sbin/check_scripts.py*
+    rm -rf ${ICSW_SBIN}/modules/*.pyo
+    rm -rf /opt/python-init/lib/python2.7/site-packages/initat/tools/logging_tools
+    rm -f /opt/python-init/lib/python2.7/site-packages/initat/icsw/setup/*.py{c,o}
+    rm -f /opt/python-init/lib/python2.7/site-packages/initat/tools/logging_tools.py{c,o}
+    # remove cached urls.py files
+    rm -f ${PREFIX_INIT}/initat/cluster/urls.py{c,o}
+    rm -rf ${PREFIX_INIT}/initat/core
+
+    # delete modules install via npm
+    rm -rf ${ICSW_BASE}/lib/node_modules/yuglify/node_modules
+    # delete old modules
+    rm -rf ${PREFIX_INIT}/initat/cluster/rms
+    # old django py(o|c) files
+    rm -f ${DJANGO_PY}/utils/*.py{c,o}
+}
 
 function is_chroot() {
     # returns 0 if running chrooted

@@ -40,14 +40,7 @@ for SRV in cluster-server collectd collectd-init mother ; do
     rm -f /etc/sysconfig/${SRV}
 done
 
-# remove cached urls.py files
-rm -f ${PREFIX_INIT}/initat/cluster/urls.py{c,o}
-rm -rf ${PREFIX_INIT}/initat/core
-
-# delete modules install via npm
-rm -rf ${ICSW_BASE}/lib/node_modules/yuglify/node_modules
-# delete old modules
-rm -rf ${PREFIX_INIT}/initat/cluster/rms
+icsw_cleanup
 
 # remove old socket and zmq dirs
 [ -d /var/log/cluster/sockets ] && rm -rf /var/log/cluster/sockets

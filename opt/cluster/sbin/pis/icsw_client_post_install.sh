@@ -44,11 +44,7 @@ OFF="\033[m"
 
 # some cleanup tasks
 
-rm -rf /usr/local/sbin/check_scripts.py*
-rm -rf ${ICSW_SBIN}/modules/*.pyo
-rm -rf /opt/python-init/lib/python2.7/site-packages/initat/tools/logging_tools
-rm -f /opt/python-init/lib/python2.7/site-packages/initat/icsw/setup/*.py{c,o}
-rm -f /opt/python-init/lib/python2.7/site-packages/initat/tools/logging_tools.py{c,o}
+icsw_cleanup
 
 [ -d /var/log/cluster/sockets ] && rm -rf /var/log/cluster/sockets
 [ -d /tmp/.icsw_zmq ] && rm -rf /tmp/.icsw_zmq
