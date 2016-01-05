@@ -134,7 +134,15 @@ def get_except_info(exc_info=None, **kwargs):
     exc_name = _exc_list.__class__.__name__
     if exc_name in ["ValidationError"]:
         # special handling of Django ValidationErrors
-        _exc_list = ", ".join(_exc_list.messages)
+        _result = []
+        if type(_exc_list) is dict:
+            _result = [
+                "{}: {}".format(_key, ", ".join(_values)) for _key, _values in _exc_list.iteritems()
+            ]
+        else:
+            if hasattr(_exc_list, "messages"):
+                _result.extend(_exc_list.messages)
+        _exc_list = ", ".join(_result)
     elif exc_name in ["IntegrityError"]:
         _exc_list = _exc_list.message
     return u"{} ({}{})".format(

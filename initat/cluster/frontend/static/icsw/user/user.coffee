@@ -258,9 +258,9 @@ user_module = angular.module(
                 title   : "syncing users"
             ).then(
                 (xml) ->
-                    blockUI.end()
+                    blockUI.stop()
                 (xml) ->
-                    blockUI.end()
+                    blockUI.stop()
             )
         $scope.rebuild_tree = () ->
             $scope.tree.clear_root_nodes()

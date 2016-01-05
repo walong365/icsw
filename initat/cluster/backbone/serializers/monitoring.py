@@ -30,7 +30,8 @@ __all__ = [
     "mon_host_cluster_serializer",
     "mon_service_cluster_serializer",
     "host_check_command_serializer",
-    "mon_check_command_serializer", "mon_check_command_nat_serializer",
+    "mon_check_command_serializer",
+    "mon_check_command_nat_serializer",
     "mon_contact_serializer",
     "mon_notification_serializer",
     "mon_contactgroup_serializer",
@@ -71,14 +72,14 @@ class mon_check_command_special_serializer(serializers.ModelSerializer):
 
 
 class mon_check_command_serializer(serializers.ModelSerializer):
-    object_type = serializers.Field(source="get_object_type")
+    object_type = serializers.CharField(source="get_object_type", read_only=True)
 
     class Meta:
         model = mon_check_command
 
 
 class mon_check_command_nat_serializer(serializers.ModelSerializer):
-    config = serializers.SlugRelatedField(slug_field="name")
+    config = serializers.SlugRelatedField(slug_field="name", read_only=True)
 
     class Meta:
         model = mon_check_command
@@ -90,7 +91,7 @@ class mon_notification_serializer(serializers.ModelSerializer):
 
 
 class mon_contact_serializer(serializers.ModelSerializer):
-    user_name = serializers.Field(source="get_user_name")
+    user_name = serializers.CharField(source="get_user_name", read_only=True)
 
     class Meta:
         model = mon_contact
@@ -133,7 +134,7 @@ class mon_service_dependency_serializer(serializers.ModelSerializer):
 
 
 class mon_ext_host_serializer(serializers.ModelSerializer):
-    data_image = serializers.Field(source="data_image_field")
+    data_image = serializers.URLField(source="data_image_field", read_only=True)
 
     class Meta:
         model = mon_ext_host

@@ -38,8 +38,8 @@ from django.utils.decorators import method_decorator
 from django.views.generic import View
 from lxml import etree
 from lxml.builder import E
-from rest_framework.parsers import XMLParser
-from rest_framework.renderers import XMLRenderer
+from rest_framework_xml.parsers import XMLParser
+from rest_framework_xml.renderers import XMLRenderer
 
 from initat.cluster.backbone import serializers
 from initat.cluster.backbone.models import config, device, device_config, ConfigTreeNode, \

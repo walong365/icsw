@@ -44,7 +44,7 @@ class snmp_scheme_vendor_serializer(serializers.ModelSerializer):
 class snmp_scheme_serializer(serializers.ModelSerializer):
     snmp_scheme_vendor = snmp_scheme_vendor_serializer()
     snmp_scheme_tl_oid_set = snmp_scheme_tl_oid_serializer(many=True)
-    full_name = serializers.Field(source="full_name")
+    full_name = serializers.CharField()
 
     class Meta:
         model = snmp_scheme

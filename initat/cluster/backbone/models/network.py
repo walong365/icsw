@@ -239,7 +239,7 @@ class network(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     # preferred domain_tree_node
     preferred_domain_tree_node = models.ForeignKey("backbone.domain_tree_node", null=True, blank=True)
-    network_device_type = models.ManyToManyField("backbone.network_device_type")
+    network_device_type = models.ManyToManyField("backbone.network_device_type", blank=True)
     enforce_unique_ips = models.BooleanField(default=False)
 
     class CSW_Meta:

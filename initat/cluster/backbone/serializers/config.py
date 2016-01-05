@@ -51,35 +51,35 @@ class config_catalog_serializer(serializers.ModelSerializer):
 
 
 class config_str_serializer(serializers.ModelSerializer):
-    object_type = serializers.Field(source="get_object_type")
+    object_type = serializers.CharField(source="get_object_type", read_only=True)
 
     class Meta:
         model = config_str
 
 
 class config_int_serializer(serializers.ModelSerializer):
-    object_type = serializers.Field(source="get_object_type")
+    object_type = serializers.CharField(source="get_object_type", read_only=True)
 
     class Meta:
         model = config_int
 
 
 class config_blob_serializer(serializers.ModelSerializer):
-    object_type = serializers.Field(source="get_object_type")
+    object_type = serializers.CharField(source="get_object_type", read_only=True)
 
     class Meta:
         model = config_blob
 
 
 class config_bool_serializer(serializers.ModelSerializer):
-    object_type = serializers.Field(source="get_object_type")
+    object_type = serializers.CharField(source="get_object_type", read_only=True)
 
     class Meta:
         model = config_bool
 
 
 class config_script_serializer(serializers.ModelSerializer):
-    object_type = serializers.Field(source="get_object_type")
+    object_type = serializers.CharField(source="get_object_type", read_only=True)
 
     class Meta:
         model = config_script
@@ -92,7 +92,7 @@ class config_serializer(serializers.ModelSerializer):
     config_bool_set = config_bool_serializer(many=True, read_only=True)
     config_script_set = config_script_serializer(many=True, read_only=True)
     mon_check_command_set = mon_check_command_serializer(many=True, read_only=True)
-    usecount = serializers.Field(source="get_use_count")
+    usecount = serializers.IntegerField(source="get_use_count", read_only=True)
     # categories only as flat list, no nesting
 
     class Meta:
@@ -100,35 +100,35 @@ class config_serializer(serializers.ModelSerializer):
 
 
 class config_str_nat_serializer(serializers.ModelSerializer):
-    config = serializers.SlugRelatedField(slug_field="name")
+    config = serializers.SlugRelatedField(slug_field="name", read_only=True)
 
     class Meta:
         model = config_str
 
 
 class config_int_nat_serializer(serializers.ModelSerializer):
-    config = serializers.SlugRelatedField(slug_field="name")
+    config = serializers.SlugRelatedField(slug_field="name", read_only=True)
 
     class Meta:
         model = config_int
 
 
 class config_bool_nat_serializer(serializers.ModelSerializer):
-    config = serializers.SlugRelatedField(slug_field="name")
+    config = serializers.SlugRelatedField(slug_field="name", read_only=True)
 
     class Meta:
         model = config_bool
 
 
 class config_blob_nat_serializer(serializers.ModelSerializer):
-    config = serializers.SlugRelatedField(slug_field="name")
+    config = serializers.SlugRelatedField(slug_field="name", read_only=True)
 
     class Meta:
         model = config_blob
 
 
 class config_script_nat_serializer(serializers.ModelSerializer):
-    config = serializers.SlugRelatedField(slug_field="name")
+    config = serializers.SlugRelatedField(slug_field="name", read_only=True)
 
     class Meta:
         model = config_script

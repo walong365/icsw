@@ -527,13 +527,13 @@ rest_renderers = (
 ) + [
     "rest_framework.renderers.JSONRenderer",
     # "rest_framework_csv.renderers.CSVRenderer",
-    "rest_framework.renderers.XMLRenderer",
+    "rest_framework_xml.renderers.XMLRenderer",
 ]
 
 REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': tuple(rest_renderers),
     "DEFAULT_PARSER_CLASSES": (
-        "rest_framework.parsers.XMLParser",
+        "rest_framework_xml.parsers.XMLParser",
         "rest_framework.parsers.JSONParser",
     ),
     "DEFAULT_AUTHENTICATION_CLASSES": (

@@ -57,11 +57,11 @@ class device_config_serializer(serializers.ModelSerializer):
 
 
 class device_config_help_serializer(serializers.ModelSerializer):
-    info_string = serializers.Field(source="home_info")
-    homeexport = serializers.SerializerMethodField("get_homeexport")
-    createdir = serializers.SerializerMethodField("get_createdir")
-    name = serializers.SerializerMethodField("get_name")
-    full_name = serializers.SerializerMethodField("get_full_name")
+    info_string = serializers.CharField(source="home_info")
+    homeexport = serializers.SerializerMethodField()
+    createdir = serializers.SerializerMethodField()
+    name = serializers.SerializerMethodField()
+    full_name = serializers.SerializerMethodField()
 
     def get_name(self, obj):
         return obj.info_dict["name"]
@@ -151,13 +151,13 @@ class DeviceSNMPInfoSerializer(serializers.ModelSerializer):
 
 
 class device_serializer(serializers.ModelSerializer):
-    full_name = serializers.Field(source="full_name")
-    is_meta_device = serializers.Field(source="is_meta_device")
-    is_cluster_device_group = serializers.Field(source="is_cluster_device_group")
-    device_group_name = serializers.Field(source="device_group_name")
-    access_level = serializers.SerializerMethodField("get_access_level")
-    access_levels = serializers.SerializerMethodField("get_access_levels")
-    root_passwd_set = serializers.Field(source="root_passwd_set")
+    full_name = serializers.CharField(read_only=True)
+    is_meta_device = serializers.BooleanField()
+    is_cluster_device_group = serializers.BooleanField()
+    device_group_name = serializers.CharField()
+    access_level = serializers.SerializerMethodField()
+    access_levels = serializers.SerializerMethodField()
+    root_passwd_set = serializers.BooleanField()
     act_partition_table = partition_table_serializer(read_only=True)
     partition_table = partition_table_serializer()
     netdevice_set = netdevice_serializer(many=True)
@@ -166,12 +166,12 @@ class device_serializer(serializers.ModelSerializer):
     device_mon_location_set = device_mon_location_serializer(many=True)
     device_config_set = device_config_serializer(many=True)
     package_device_connection_set = package_device_connection_serializer(many=True)
-    latest_contact = serializers.Field(source="latest_contact")
-    client_version = serializers.Field(source="client_version")
-    monitor_type = serializers.Field(source="get_monitor_type")
+    latest_contact = serializers.Field()
+    client_version = serializers.CharField()
+    monitor_type = serializers.CharField(source="get_monitor_type")
     snmp_schemes = snmp_scheme_serializer(many=True, read_only=True)
     DeviceSNMPInfo = DeviceSNMPInfoSerializer(read_only=True)
-    is_cd_device = serializers.SerializerMethodField("get_is_cd_device")
+    is_cd_device = serializers.SerializerMethodField()
 
     def __init__(self, *args, **kwargs):
         fields = kwargs.get("context", {}).pop("fields", [])
@@ -264,7 +264,7 @@ class device_serializer_package_state(device_serializer):
         fields = (
             "idx", "name", "device_group", "is_meta_device",
             "comment", "full_name", "domain_tree_node", "enabled",
-            "package_device_connection_set", "latest_contact", "is_meta_device",
+            "package_device_connection_set", "latest_contact",
             "access_level", "access_levels", "client_version",
         )
 

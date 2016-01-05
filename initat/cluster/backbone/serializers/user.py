@@ -121,7 +121,7 @@ class user_serializer(serializers.ModelSerializer):
     user_object_permission_set = user_object_permission_serializer(many=True, read_only=True)
     user_quota_setting_set = user_quota_setting_serializer(many=True, read_only=True)
     user_scan_run_set = user_scan_run_serializer(many=True, read_only=True)
-    info = serializers.Field(source="get_info")
+    info = serializers.CharField(source="get_info")
 
     class Meta:
         model = user

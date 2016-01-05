@@ -95,7 +95,7 @@ class config(models.Model):
     enabled = models.BooleanField(default=True)
     date = models.DateTimeField(auto_now_add=True)
     # categories for this config
-    categories = models.ManyToManyField("backbone.category")
+    categories = models.ManyToManyField("backbone.category", blank=True)
 
     def get_use_count(self):
         return self.device_config_set.all().count()

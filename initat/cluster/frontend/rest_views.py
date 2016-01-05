@@ -93,8 +93,8 @@ for module in model_serializer_modules:
 #    })
 
 
-def csw_exception_handler(exc):
-    response = exception_handler(exc)
+def csw_exception_handler(exc, info_dict):
+    response = exception_handler(exc, info_dict)
     if response is None:
         detail_str, detail_info = (exc.__class__.__name__, [])
         if hasattr(exc, "messages"):
@@ -104,12 +104,22 @@ def csw_exception_handler(exc):
         if hasattr(exc, "args"):
             for entry in exc.args:
                 detail_info.append(unicode(entry))
-        detail_info = list(set([_entry for _entry in [_part.strip() for _part in detail_info if _part.strip()] if _entry not in ["()"]]))
+        detail_info = list(
+            set(
+                [
+                    _entry for _entry in [
+                        _part.strip() for _part in detail_info if _part.strip()
+                    ] if _entry not in ["()"]
+                ]
+            )
+        )
         response = Response(
             {
                 u"detail": u"{}{}".format(
                     detail_str,
-                    u" ({})".format(u", ".join(detail_info)) if detail_info else u""
+                    u" ({})".format(
+                        u", ".join(detail_info)
+                    ) if detail_info else u""
                 ),
             },
             status=status.HTTP_406_NOT_ACCEPTABLE,
@@ -268,20 +278,18 @@ class DBPrefetchMixin(object):
         return ["device__domain_tree_node"]
 
     def _location_gfx_put(self, req_changes, prev_model):
-        print req_changes
         req_changes.update(
             {
                 key: getattr(prev_model, key) for key in ["image_count"]
             }
         )
-        print req_changes
         return req_changes
 
 
 class detail_view(mixins.RetrieveModelMixin,
                   mixins.UpdateModelMixin,
                   mixins.DestroyModelMixin,
-                  generics.SingleObjectAPIView,
+                  generics.GenericAPIView,
                   DBPrefetchMixin):
     @rest_logging
     def get(self, request, *args, **kwargs):
@@ -310,7 +318,7 @@ class detail_view(mixins.RetrieveModelMixin,
     def put(self, request, *args, **kwargs):
         model_name = self.model._meta.model_name
         prev_model = self.model.objects.get(Q(pk=kwargs["pk"]))
-        req_changes = getattr(self, "_{}_put".format(model_name), lambda changed, prev: changed)(request.DATA, prev_model)
+        req_changes = getattr(self, "_{}_put".format(model_name), lambda changed, prev: changed)(request.data, prev_model)
         # try:
         resp = self.update(request, *args, **kwargs)
         # except ValidationError as cur_exc:
@@ -349,7 +357,7 @@ class detail_view(mixins.RetrieveModelMixin,
 
 class list_view(mixins.ListModelMixin,
                 mixins.CreateModelMixin,
-                generics.MultipleObjectAPIView,
+                generics.GenericAPIView,
                 DBPrefetchMixin
                 ):
     @rest_logging
@@ -361,7 +369,8 @@ class list_view(mixins.ListModelMixin,
         resp = self.create(request, *args, **kwargs)
         silent = int(request.GET.get('silent', 0))
         if not silent and resp.status_code in [200, 201, 202, 203]:
-            resp.data["_messages"] = [u"created '{}'".format(unicode(self.object))]
+            # TODO, FIXME, get name (or unicode representation) of new object
+            resp.data["_messages"] = [u"created '{}'".format(unicode(self.model._meta.object_name))]
         return resp
 
     @rest_logging
@@ -371,7 +380,7 @@ class list_view(mixins.ListModelMixin,
                 return partition_disc_serializer_create
         elif self.request.method == "GET":
             if self.model._meta.object_name == "network":
-                if "_with_ip_info" in self.request.QUERY_PARAMS:
+                if "_with_ip_info" in self.request.query_params:
                     return network_with_ip_serializer
         return self.serializer_class
 
@@ -389,7 +398,7 @@ class list_view(mixins.ListModelMixin,
         res = self.model.objects.all()
         filter_list = []
         special_dict = {}
-        for key, value in self.request.QUERY_PARAMS.iteritems():
+        for key, value in self.request.query_params.iteritems():
             if key.startswith("_"):
                 special_dict[key[1:]] = value
             else:
@@ -476,7 +485,7 @@ class netdevice_peer_list(viewsets.ViewSet):
 
 
 class rest_home_export_list(mixins.ListModelMixin,
-                            generics.MultipleObjectAPIView):
+                            generics.GenericAPIView):
     authentication_classes = (SessionAuthentication,)
     permission_classes = (IsAuthenticated,)
     model = device_config
@@ -529,9 +538,9 @@ class min_access_levels(viewsets.ViewSet):
 
     @rest_logging
     def list(self, request):
-        obj_list = json.loads(request.QUERY_PARAMS["obj_list"])
+        obj_list = json.loads(request.query_params["obj_list"])
         min_dict = None
-        for _dev in apps.get_model("backbone", request.QUERY_PARAMS["obj_type"]).objects.filter(Q(pk__in=obj_list)):
+        for _dev in apps.get_model("backbone", request.query_params["obj_type"]).objects.filter(Q(pk__in=obj_list)):
             _cur_dict = request.user.get_object_access_levels(_dev)
             if min_dict is None:
                 min_dict = _cur_dict
@@ -599,8 +608,8 @@ class csw_object_list(viewsets.ViewSet):
 
 class device_tree_mixin(object):
     def _get_post_boolean(self, name, default):
-        if name in self.request.QUERY_PARAMS:
-            p_val = self.request.QUERY_PARAMS[name]
+        if name in self.request.query_params:
+            p_val = self.request.query_params[name]
             if p_val.lower() in ["1", "true"]:
                 return True
             else:
@@ -611,8 +620,8 @@ class device_tree_mixin(object):
     @rest_logging
     def _get_serializer_context(self):
         ctx = {"request": self.request}
-        if self.request.QUERY_PARAMS.get("olp", ""):
-            ctx["olp"] = self.request.QUERY_PARAMS["olp"]
+        if self.request.query_params.get("olp", ""):
+            ctx["olp"] = self.request.query_params["olp"]
         _fields = []
         if self._get_post_boolean("with_com_info", False):
             _fields.extend(["DeviceSNMPInfo", "snmp_schemes", "com_capability_list"])
@@ -659,7 +668,7 @@ class device_tree_detail(detail_view, device_tree_mixin):
 class device_tree_list(
     mixins.ListModelMixin,
     mixins.CreateModelMixin,
-    generics.MultipleObjectAPIView,
+    generics.GenericAPIView,
     device_tree_mixin,
 ):
     authentication_classes = (SessionAuthentication,)
@@ -683,7 +692,7 @@ class device_tree_list(
     def post(self, request, *args, **kwargs):
         resp = self.create(request, *args, **kwargs)
         if resp.status_code in [200, 201, 202, 203]:
-            resp.data["_messages"] = [u"created '{}'".format(unicode(self.object))]
+            resp.data["_messages"] = [u"created '{}'".format(unicode(self.model._meta.object_name))]
         return resp
 
     @rest_logging
@@ -693,9 +702,9 @@ class device_tree_list(
         _q = device.objects
         # permission handling
         if not self.request.user.is_superuser:
-            if self.request.QUERY_PARAMS.get("olp", ""):
+            if self.request.query_params.get("olp", ""):
                 # object permissions needed for devices, get a list of all valid pks
-                allowed_pks = self.request.user.get_allowed_object_list(self.request.QUERY_PARAMS["olp"])
+                allowed_pks = self.request.user.get_allowed_object_list(self.request.query_params["olp"])
                 dg_list = list(
                     device.objects.filter(
                         Q(pk__in=allowed_pks)
@@ -733,8 +742,8 @@ class device_tree_list(
             with_md = self._get_post_boolean("with_meta_devices", False)
             if with_md:
                 ignore_md = False
-            if "pks" in self.request.QUERY_PARAMS:
-                dev_keys = json.loads(self.request.QUERY_PARAMS["pks"])
+            if "pks" in self.request.query_params:
+                dev_keys = json.loads(self.request.query_params["pks"])
                 if self._get_post_boolean("cd_connections", False):
                     cd_con_pks = set(
                         sum(
@@ -820,7 +829,7 @@ class device_tree_list(
             )
         # ordering: at first cluster device group, then by group / is_meta_device / name
         _q = _q.order_by("-device_group__cluster_device_group", "device_group__name", "-is_meta_device", "name")
-        # print _q.count(), self.request.QUERY_PARAMS, self.request.session.get("sel_list", [])
+        # print _q.count(), self.request.query_params, self.request.session.get("sel_list", [])
         return _q
 
 
@@ -841,7 +850,7 @@ class device_com_capabilities(APIView):
     @rest_logging
     def get(self, request):
         # have default value since in some strange corner cases, request does not contain devices
-        _devs = json.loads(request.QUERY_PARAMS.get("devices", "[]"))
+        _devs = json.loads(request.query_params.get("devices", "[]"))
         _devs = device.objects.filter(Q(pk__in=_devs)).prefetch_related("com_capability_list")
         _data = []
         for _dev in _devs:

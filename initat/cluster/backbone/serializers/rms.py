@@ -58,7 +58,7 @@ __all__ = [
 
 
 class RMSJobVariableSerializer(serializers.ModelSerializer):
-    value = serializers.Field(source="get_value")
+    value = serializers.CharField(source="get_value", read_only=True)
 
     class Meta:
         model = RMSJobVariable
@@ -123,12 +123,12 @@ class rms_job_run_serializer(serializers.ModelSerializer):
     rms_department = rms_department_serializer()
     rms_pe = rms_pe_serializer()
     # need workaround because of django restframework error :-(
-    rms_pe_info = serializers.Field(source="rms_pe_info")
-    start_time = serializers.Field(source="get_start_time")
-    end_time = serializers.Field(source="get_end_time")
-    queue_time = serializers.Field(source="get_queue_time")
-    start_time_py = serializers.Field(source="get_start_time_py")
-    end_time_py = serializers.Field(source="get_end_time_py")
+    rms_pe_info = serializers.CharField()
+    start_time = serializers.CharField()
+    end_time = serializers.CharField()
+    queue_time = serializers.CharField()
+    start_time_py = serializers.CharField()
+    end_time_py = serializers.CharField()
     rmsjobvariable_set = RMSJobVariableSerializer(many=True)
 
     class Meta:

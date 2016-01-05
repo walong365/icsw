@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 
 
 class network_device_type_serializer(serializers.ModelSerializer):
-    info_string = serializers.Field(source="info_string")
+    info_string = serializers.CharField()
 
     class Meta:
         model = network_device_type
@@ -56,19 +56,19 @@ class network_type_serializer(serializers.ModelSerializer):
 
 
 class network_serializer(serializers.ModelSerializer):
-    info_string = serializers.Field(source="info_string")
-    network_type_identifier = serializers.Field(source="get_identifier")
-    network_type_name = serializers.Field(source="get_type_name")
-    num_ip = serializers.Field(0)
+    info_string = serializers.CharField(read_only=True)
+    network_type_identifier = serializers.CharField(source="get_identifier", read_only=True)
+    network_type_name = serializers.CharField(source="get_type_name", read_only=True)
+    num_ip = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = network
 
 
 class network_with_ip_serializer(serializers.ModelSerializer):
-    info_string = serializers.Field(source="info_string")
-    network_type_identifier = serializers.Field(source="get_identifier")
-    num_ip = serializers.Field(source="num_ip")
+    info_string = serializers.CharField(read_only=True)
+    network_type_identifier = serializers.CharField(source="get_identifier", read_only=True)
+    num_ip = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = network
@@ -87,16 +87,16 @@ class net_ip_serializer(serializers.ModelSerializer):
 
 class netdevice_serializer(serializers.ModelSerializer):
     net_ip_set = net_ip_serializer(many=True, read_only=True)
-    ethtool_autoneg = serializers.Field(source="ethtool_autoneg")
-    ethtool_duplex = serializers.Field(source="ethtool_duplex")
-    ethtool_speed = serializers.Field(source="ethtool_speed")
+    ethtool_autoneg = serializers.IntegerField()
+    ethtool_duplex = serializers.IntegerField()
+    ethtool_speed = serializers.IntegerField()
 
     class Meta:
         model = netdevice
 
 
 class netdevice_speed_serializer(serializers.ModelSerializer):
-    info_string = serializers.Field(source="info_string")
+    info_string = serializers.CharField()
 
     class Meta:
         model = netdevice_speed
