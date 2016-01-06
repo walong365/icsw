@@ -74,7 +74,7 @@ else:
         config_tools = None
         License = None
     else:
-        if db_tools.is_reachable():
+        if db_tools and db_tools.is_reachable():
             import django
             django.setup()
             from initat.tools import config_tools
