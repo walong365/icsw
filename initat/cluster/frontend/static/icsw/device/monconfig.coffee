@@ -190,6 +190,8 @@ angular.module(
                     else
                         hint["#{_var}"] = hint["#{_var}_saved"]
                         hint["#{_var}_source"] = hint["#{_var}_source_saved"]
+        $scope.show_modify = (hint) ->
+            return if hint.v_type in ["B"] then false else true
         $scope.modify_hint = (hint, event) ->
             event.stopPropagation()
             $scope.backup_values(hint)
@@ -219,9 +221,12 @@ angular.module(
         template : $templateCache.get("icsw.device.livestatus.hint.row")
         link : (scope) ->
             scope.get_v_type = () ->
-                return {"f" : "float", "i" : "int", "s" : "string"}[scope.hint.v_type]
+                return {"f" : "float", "i" : "int", "s" : "string", "B": "blob"}[scope.hint.v_type]
             scope.get_value = () ->
-                return scope.hint["value_" + scope.get_v_type()]
+                if scope.hint.v_type == "B"
+                    return scope.hint.value_blob.length + " bytes"
+                else
+                    return scope.hint["value_" + scope.get_v_type()]
             scope.from_now = (dt) ->
                 return moment(dt).fromNow(true)
             scope.get_td_title = (name) ->

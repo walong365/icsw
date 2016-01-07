@@ -26,6 +26,7 @@ from requests_futures.sessions import FuturesSession
 from initat.host_monitoring import limits, hm_classes
 from initat.tools import process_tools, server_command, logging_tools
 from initat.host_monitoring.long_running_checks import LongRunningCheck
+from initat.host_monitoring.host_monitoring_struct import ExtReturn
 
 
 class _general(hm_classes.hm_module):
@@ -319,20 +320,78 @@ class ovirt_overview_command(hm_classes.hm_command):
         )
         return OvirtCheck(api, srv_command_obj)
 
-    def interpret(self, srv_com, *args, **kwargs):
+    def interpret(self, srv_com, ns, *args, **kwargs):
+        if ns.reference not in ["", "-"]:
+            _ref = process_tools.decompress_struct(ns.reference)
+            _passive_dict = {
+                "source": "ovirt_overview",
+                "prefix": ns.passive_check_prefix,
+                "list": [],
+            }
+        else:
+            _ref = None
+            _passive_dict = {}
         _vms = E.vms()
         for _entry in srv_com.xpath(".//ns:vms")[0]:
             _vms.append(etree.fromstring(process_tools.decompress_struct(_entry.text)))
         _num_vms = len(_vms)
         _states = _vms.xpath(".//vm/status/state/text()", smart_strings=False)
         _state_dict = {_state: _states.count(_state) for _state in set(_states)}
-        if set(_state_dict.keys()) - {"up", "down"}:
-            ret_state = limits.nag_STATE_WARNING
+        if _ref:
+            for run_name in _ref["run_names"]:
+                _vm = _vms.xpath(".//vm[name[text()='{}']]".format(run_name))
+                _prefix = "ovirt Domain {}".format(run_name)
+                if len(_vm):
+                    _vm = _vm[0]
+                    _memory = int(_vm.findtext("memory"))
+                    _sockets = int(_vm.find("cpu/topology").get("sockets"))
+                    _cores = int(_vm.find("cpu/topology").get("cores"))
+                    _state = _vm.findtext("status/state")
+                    _ret_f = [
+                        "state is {}".format(_state),
+                        "memory {}".format(logging_tools.get_size_str(_memory, long_format=True)),
+                        "CPU info: {}, {}".format(
+                            logging_tools.get_plural("socket", _sockets),
+                            logging_tools.get_plural("core", _cores),
+                        )
+                    ]
+                    if _state in ["up"]:
+                        _nag_state = limits.nag_STATE_OK
+                    else:
+                        _nag_state = limits.nag_STATE_CRITICAL
+                    _passive_dict["list"].append(
+                        (
+                            _prefix,
+                            _nag_state,
+                            ", ".join(_ret_f),
+                        )
+                    )
+                else:
+                    _passive_dict["list"].append(
+                        (
+                            _prefix,
+                            limits.nag_STATE_CRITICAL,
+                            "domain not found",
+                        )
+                    )
+        if _ref:
+            if _state_dict.get("up", 0) == _ref["up"] and _state_dict.get("down", 0) == _ref["down"]:
+                ret_state = limits.nag_STATE_OK
+            else:
+                ret_state = limits.nag_STATE_WARNING
         else:
             ret_state = limits.nag_STATE_OK
-        return limits.nag_STATE_OK, "{}, {}".format(
-            logging_tools.get_plural("VM", _num_vms),
-            ", ".join(
-                ["{:d} {}".format(_state_dict[_key], _key) for _key in sorted(_state_dict)]
-            )
+        if _ref is None:
+            ascii_chunk = ""
+        else:
+            ascii_chunk = process_tools.compress_struct(_passive_dict)
+        return ExtReturn(
+            ret_state,
+            "{}, {}".format(
+                logging_tools.get_plural("VM", _num_vms),
+                ", ".join(
+                    ["{:d} {}".format(_state_dict[_key], _key) for _key in sorted(_state_dict)]
+                ),
+            ),
+            ascii_chunk=ascii_chunk,
         )

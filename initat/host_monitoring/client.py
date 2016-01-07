@@ -109,5 +109,7 @@ def client_code(global_config):
             limits.nag_STATE_CRITICAL,
             "unknown command {}, {}".format(com_name, cm_str)
         )
+    if ret.ascii_chunk:
+        print("Ignoring ascii_chunk with {:d} bytes".format(len(ret.ascii_chunk)))
     print ret.ret_str
     return ret.ret_state

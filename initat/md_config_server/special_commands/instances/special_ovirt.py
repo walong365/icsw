@@ -45,22 +45,28 @@ class special_ovirt(SpecialBase):
 
     def to_hint(self, srv_reply):
         _hints = []
+        VALID_STATES = {"up", "down"}
         if srv_reply is not None:
             # print srv_reply.pretty_print()
-            num_states = {key: 0 for key in ["up", "down"]}
+            info_dict = {key: 0 for key in VALID_STATES}
+            info_dict["run_ids"] = []
+            info_dict["run_names"] = []
             if "vms" in srv_reply:
                 for vm in srv_reply.xpath(".//ns:vms")[0]:
                     _xml = etree.fromstring(process_tools.decompress_struct(vm.text))
                     _state = _xml.xpath(".//status/state/text()")[0]
-                    if _state in num_states:
-                        num_states[_state] += 1
+                    if _state in VALID_STATES:
+                        info_dict[_state] += 1
                     if _state == "up":
+                        _dom_id = _xml.get("id")
                         _dom_name = _xml.findtext("name")
+                        info_dict["run_ids"].append(_dom_id)
+                        info_dict["run_names"].append(_dom_name)
                         _hints.append(
                             monitoring_hint(
                                 key="domain_{}".format(_xml.get("id")),
                                 v_type="s",
-                                info="domain {}".format(_dom_name),
+                                info="ovirt Domain {}".format(_dom_name),
                                 value_string=_dom_name,
                                 persistent=True,
                                 is_active=False,
@@ -72,7 +78,7 @@ class special_ovirt(SpecialBase):
                     v_type="B",
                     info="Domain overview",
                     persistent=True,
-                    value_blob=process_tools.compress_struct(num_states),
+                    value_blob=process_tools.compress_struct(info_dict),
                     is_active=True,
                 )
             )
@@ -91,7 +97,6 @@ class special_ovirt(SpecialBase):
             connect_to_localhost=True,
         ):
             _trigger_passive = hint.key.startswith("overview")
-            print "****", hint
             sc_array.append(
                 self.get_arg_template(
                     hint.info,
@@ -99,7 +104,7 @@ class special_ovirt(SpecialBase):
                     arg2=_user_name,
                     arg3=_password,
                     arg4=_passive_check_prefix if _trigger_passive else "-",
-                    arg5=hint.value_string if hint.is_active else "",
+                    arg5=hint.value_blob if hint.is_active else "",
                     check_active=hint.is_active,
                 )
             )

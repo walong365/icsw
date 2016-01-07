@@ -21,15 +21,21 @@
 
 import time
 
-from initat.host_monitoring import limits
 from lxml.builder import E
-from initat.tools import logging_tools
 
+from initat.host_monitoring import limits
+from initat.tools import logging_tools
+from ..base import SNMPHandler
 from ...functions import simplify_dict
 from ...snmp_struct import ResultNode, snmp_if, simple_snmp_oid, snmp_hs, MonCheckDefinition, snmp_oid
-from ..base import SNMPHandler
 
 try:
+    import os
+
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
+
+    import django
+    django.setup()
     from django.db.models import Q
     from initat.cluster.backbone.models import snmp_network_type, netdevice, netdevice_speed, \
         peer_information

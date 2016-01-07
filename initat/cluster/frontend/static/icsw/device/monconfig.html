@@ -114,7 +114,7 @@
         <input type="button" class="btn btn-xs" ng-class="hint.enabled && 'btn-success' || 'btn-warning'" ng-value="hint.enabled && 'disable' || 'enable'" ng-click="toggle_enabled(hint, $event)"/></input>
     </td>
     <td class="text-center">
-        <icsw-tools-button type="modify" ng-click="modify_hint(hint, $event)" size="xs"></icsw-tools-button>
+        <icsw-tools-button ng-show="show_modify(hint)" type="modify" ng-click="modify_hint(hint, $event)" size="xs"></icsw-tools-button>
     </td>
     <td>{{ hint.info }}</td>
     <td>{{ from_now(hint.date) }}</td>

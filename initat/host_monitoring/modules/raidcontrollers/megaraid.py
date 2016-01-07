@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2008,2012-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2012-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -288,7 +288,12 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 elif parts[0] in ["exit"]:
                     # last line, pass
                     pass
-                elif (parts[0], cur_mode) in [("enclosure", None), ("enclosure", "run"),  ("enclosure", "enc"), ("enclosure", "bbu")]:
+                elif (parts[0], cur_mode) in [
+                    ("enclosure", None),
+                    ("enclosure", "run"),
+                    ("enclosure", "enc"),
+                    ("enclosure", "bbu")
+                ]:
                     # get enclosure id
                     enc_id = int(parts[-1])
                     cur_mode = "enc"
@@ -510,12 +515,12 @@ class ctrl_type_megaraid_sas(ctrl_type):
 
         def emit_keys(in_dict, level=0):
             if type(in_dict) == dict:
-                _dk_l = set(in_dict.iterkeys()) - set(["lines", "_checks"])
+                _dk_l = set(in_dict.iterkeys()) - {"lines", "_checks"}
                 r_list = sum(
                     [
                         [
-                            "{}{}{}".format(_key, ":" if sub_key else "", sub_key) for sub_key in emit_keys(in_dict[_key], level+1)
-                        ] for _key in _dk_l
+                            "{}{}{}".format(_s2_key, ":" if sub_key else "", sub_key) for sub_key in emit_keys(in_dict[_s2_key], level + 1)
+                        ] for _s2_key in _dk_l
                     ],
                     []
                 )

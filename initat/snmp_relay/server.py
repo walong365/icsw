@@ -22,13 +22,13 @@ import os
 import socket
 import time
 
+import zmq
+
 from initat.host_monitoring import limits
 from initat.snmp.process import snmp_process_container
 from initat.snmp.sink import SNMPSink
-from initat.snmp_relay.schemes import SNMPRelayScheme, SNMPNetObject, SNMPGeneralScheme, snmp_schemes, import_errors
 from initat.snmp_relay.config import global_config, IPC_SOCK_SNMP
-import zmq
-
+from initat.snmp_relay.schemes import SNMPNetObject, SNMPGeneralScheme, snmp_schemes, import_errors
 from initat.tools import configfile, logging_tools, process_tools, \
     server_command, threading_tools
 
