@@ -374,13 +374,21 @@ class ovirt_overview_command(hm_classes.hm_command):
                             "domain not found",
                         )
                     )
+        _error_list = []
+        ret_state = limits.nag_STATE_OK
         if _ref:
-            if _state_dict.get("up", 0) == _ref["up"] and _state_dict.get("down", 0) == _ref["down"]:
-                ret_state = limits.nag_STATE_OK
-            else:
-                ret_state = limits.nag_STATE_WARNING
-        else:
             ret_state = limits.nag_STATE_OK
+            for _state in ["up", "down"]:
+                _current = _state_dict.get(_state, 0)
+                if _current != _ref[_state]:
+                    _error_list.append(
+                        "{} should by {:d}".format(
+                            _state,
+                            _ref[_state],
+                        )
+                    )
+                    ret_state = max(ret_state, limits.nag_STATE_WARNING)
+
         if _ref is None:
             ascii_chunk = ""
         else:
@@ -390,7 +398,7 @@ class ovirt_overview_command(hm_classes.hm_command):
             "{}, {}".format(
                 logging_tools.get_plural("VM", _num_vms),
                 ", ".join(
-                    ["{:d} {}".format(_state_dict[_key], _key) for _key in sorted(_state_dict)]
+                    ["{:d} {}".format(_state_dict[_key], _key) for _key in sorted(_state_dict)] + _error_list
                 ),
             ),
             ascii_chunk=ascii_chunk,
