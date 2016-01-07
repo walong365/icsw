@@ -526,7 +526,10 @@ class category(models.Model):
 
     def get_references(self):
         num_refs = 0
-        for rel in self._meta.get_all_related_many_to_many_objects():
+        all_m2ms = [
+            _f for _f in self._meta.get_fields(include_hidden=True) if _f.many_to_many and _f.auto_created
+        ]
+        for rel in all_m2ms:
             num_refs += getattr(self, rel.get_accessor_name()).count()
         return num_refs
 

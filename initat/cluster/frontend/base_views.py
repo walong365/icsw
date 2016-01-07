@@ -62,7 +62,8 @@ class get_gauge_info(View):
                     idx="%d" % (gauge_dv.pk),
                 )
             )
-        # gauge_info.append(E.gauge_element("test", value="40"))
+        # for testing
+        # gauge_info.append(E.gauge_element("test", value="40", idx="50"))
         request.xml_response["response"] = gauge_info
 
 

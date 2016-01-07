@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2015 Andreas Lang-Nevyjel init.at
+# Copyright (C) 2008-2016 Andreas Lang-Nevyjel init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -19,8 +19,9 @@
 
 import time
 
-from initat.tools import process_tools, server_command
 import zmq
+
+from initat.tools import process_tools, server_command
 
 
 def send_and_receive_zmq(target_host, command, *args, **kwargs):

@@ -296,6 +296,16 @@ class ovirt_overview_command(hm_classes.hm_command):
             help="The CA of the ovirt installation [%(default)s]",
             default="",
         )
+        self.parser.add_argument(
+            "--passive-check-prefix",
+            help="prefix for passive checks [%(default)s]",
+            default="-",
+        )
+        self.parser.add_argument(
+            "--reference",
+            help="reference binary chunk [%(default)s], only for automated checks",
+            default="-",
+        )
 
     def __call__(self, srv_command_obj, arguments):
         api = OvirtAPI(

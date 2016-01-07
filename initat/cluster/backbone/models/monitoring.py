@@ -1068,6 +1068,7 @@ class monitoring_hint(models.Model):
             ("i", "integer"),
             ("b", "boolean"),
             ("s", "string"),
+            ("B", "blob"),
         ],
         max_length=6
     )
@@ -1075,6 +1076,7 @@ class monitoring_hint(models.Model):
     value_float = models.FloatField(default=0.0)
     value_int = models.IntegerField(default=0)
     value_string = models.CharField(default="", max_length=256, blank=True)
+    value_blob = models.TextField(default="")
     # limits
     lower_crit_float = models.FloatField(default=0.0)
     lower_warn_float = models.FloatField(default=0.0)

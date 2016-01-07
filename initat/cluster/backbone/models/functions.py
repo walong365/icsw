@@ -149,7 +149,13 @@ def get_related_models(in_obj, m2m=False, detail=False, check_all=False, ignore_
     # copy ignore_list to static list because some entries can be referenced more than once
     # (peer_information for instance [in netdevice])
     ignore_list_static = [entry for entry in ignore_list]
-    for rel_obj in in_obj._meta.get_all_related_objects():
+    # django 1.9 code
+    rel_objs = list(
+        [
+            _f for _f in in_obj._meta.get_fields() if (_f.one_to_many or _f.one_to_one) and _f.auto_created
+        ]
+    )
+    for rel_obj in rel_objs:
         rel_field_name = rel_obj.field.name
         _rel_name = rel_obj.related_model._meta.object_name
         if _rel_name not in ignore_list_static:
@@ -179,7 +185,10 @@ def get_related_models(in_obj, m2m=False, detail=False, check_all=False, ignore_
             if _rel_name in ignore_list:
                 ignore_list.remove(_rel_name)
     if m2m:
-        for m2m_obj in in_obj._meta.get_all_related_many_to_many_objects():
+        all_m2ms = [
+            _f for _f in in_obj._meta.get_fields(include_hidden=True) if _f.many_to_many and _f.auto_created
+        ]
+        for m2m_obj in all_m2ms:
             m2m_field_name = m2m_obj.field.name
             if detail:
                 used_objs.extend(list(m2m_obj.related_model.objects.filter(Q(**{m2m_field_name: in_obj}))))
