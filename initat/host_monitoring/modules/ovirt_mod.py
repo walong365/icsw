@@ -528,13 +528,17 @@ class ovirt_storagedomains_command(hm_classes.hm_command, OvirtBaseMixin):
                         "storage type is {}".format(_sd.findtext("storage/type")),
                     ]
                     if _stype in ["data", "iso", "export"]:
-                        _ret_f.append(
-                            "size is {} (used {}, commited {})".format(
+                        try:
+                            _size_str = "size is {} (used {}, commited {})".format(
                                 logging_tools.get_size_str(int(_sd.findtext("available"))),
                                 logging_tools.get_size_str(int(_sd.findtext("used"))),
                                 logging_tools.get_size_str(int(_sd.findtext("committed"))),
                             )
-                        )
+                        except:
+                            _ret_f.append("cannot evaluate size")
+                            _nag_state = max(nag_state, limits.nag_STATE_WARNING)
+                        else:
+                            _ret_f.append(_size_str)
                     _passive_dict["list"].append(
                         (
                             _prefix,
