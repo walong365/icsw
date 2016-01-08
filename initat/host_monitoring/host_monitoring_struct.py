@@ -34,11 +34,39 @@ class ExtReturn(object):
     # extended return, for results where more than nag_state / nag_str
     # has to be returned (passive results for instance)
     # __slots__ = []
-    def __init__(self, ret_state, ret_str, passive_results=None, ascii_chunk=""):
-        self.ret_state = ret_state
+    def __init__(self, ret_state=None, ret_str=None, passive_results=None, ascii_chunk=""):
+        self.ret_state = ret_state if ret_state is not None else limits.nag_STATE_OK
         self.ret_str = ret_str
+        self._ret_field = []
         self.passive_results = passive_results or []
         self.ascii_chunk = ascii_chunk
+
+    def ret_str_setter(self, value):
+        self._ret_str = value
+
+    def ret_str_getter(self):
+        if self._ret_field:
+            if self._ret_str is not None:
+                raise ValueError(
+                    "ret_str '{}' and ret_field '{}' both set".format(
+                        self._ret_str,
+                        str(self._ret_field),
+                    )
+                )
+            return ", ".join(self._ret_field)
+        else:
+            return self._ret_str or "return not set in ExtReturn(...)"
+    ret_str = property(ret_str_getter, ret_str_setter)
+
+    def feed_state(self, state):
+        self.ret_state = max(self.ret_state, state)
+
+    def feed_str(self, value):
+        self._ret_field.append(value)
+
+    def feed_str_state(self, str_value, state_value):
+        self.feed_str(str_value)
+        self.feed_state(state_value)
 
     @staticmethod
     def get_state_str(in_val):
@@ -58,6 +86,49 @@ class ExtReturn(object):
 
     def unicode(self):
         return "{} ({:d})".format(self.ret_str, self.ret_state)
+
+
+class SimpleCounter(object):
+    def __init__(self, in_list, ok=[], warn=[], prefix=None, unknown_is_warn=False):
+        self._list = in_list
+        # all not in ok or warn are deemed error
+        self._ok = ok
+        self._warn = warn
+        self._prefix = prefix
+        self._unknown_is_warn = unknown_is_warn
+        self._error = _error = list(set(self._list) - set(self._warn) - set(self._ok))
+        self._lut = {}
+        self._lut.update(
+            {
+                _key: "[E]" for _key in self._error
+            }
+        )
+        self._lut.update(
+            {
+                _key: "[W]" for _key in self._warn
+            }
+        )
+
+    @property
+    def result(self):
+        if self._error:
+            _state = limits.nag_STATE_WARNING if self._unknown_is_warn else limits.nag_STATE_CRITICAL
+        elif self._warn and set(self._list) & set(self._warn):
+            _state = limits.nag_STATE_WARNING
+        else:
+            _state = limits.nag_STATE_OK
+        _str = ", ".join(
+            [
+                "{:d} {}{}".format(
+                    self._list.count(_value),
+                    _value,
+                    self._lut.get(_value, ""),
+                ) for _value in sorted(self._ok + self._warn + self._error) if self._list.count(_value)
+            ]
+        ) or "empty list in SCounter"
+        if self._prefix:
+            _str = "{}: {}".format(self._prefix, _str)
+        return _str, _state
 
 
 class SRProbe(object):

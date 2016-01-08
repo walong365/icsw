@@ -68,7 +68,7 @@ class ServiceHelper(object):
 
     def service_is_active(self, key):
         if self._method == "i":
-            return True if self.__services[key].count(":on") else False
+            return True if any([self.__services[key].count(_match) for _match in [":on", " on"]]) or self.__services[key] == "on" else False
         else:
             return True if self.__services[key].count(" active ") else False
 

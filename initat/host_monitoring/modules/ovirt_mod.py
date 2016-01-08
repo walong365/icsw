@@ -1,4 +1,4 @@
-# Copyright (C) 2015 Andreas Lang-Nevyjel init.at
+# Copyright (C) 2015-2016 Andreas Lang-Nevyjel init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -15,18 +15,19 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" monitor ovirt instances """
+""" monitor ovirt instances, also used from md-config-server """
 
-from lxml import etree
-from lxml.builder import E
 import copy
 
 import requests
+from lxml import etree
+from lxml.builder import E
 from requests_futures.sessions import FuturesSession
+
 from initat.host_monitoring import limits, hm_classes
-from initat.tools import process_tools, server_command, logging_tools
+from initat.host_monitoring.host_monitoring_struct import ExtReturn, SimpleCounter
 from initat.host_monitoring.long_running_checks import LongRunningCheck
-from initat.host_monitoring.host_monitoring_struct import ExtReturn
+from initat.tools import process_tools, server_command, logging_tools
 
 
 class _general(hm_classes.hm_module):
@@ -105,6 +106,10 @@ class APIObject(object):
         self.xml = copy.deepcopy(xml)
         self.client = client
 
+    @property
+    def send_data(self):
+        return process_tools.compress_struct(etree.tostring(self.xml))
+
     @staticmethod
     def zero_text_strip(x):
         return x[0].text.strip()
@@ -167,6 +172,10 @@ class NIC(APIObject):
 
 
 class VM(APIObject):
+    class Meta:
+        root = "/api/vms"
+        obj_xpath = "/vms/vm"
+
     xpath_properties = {
         "name": ("/vm/name", APIObject.zero_text_strip),
         "status": ("/vm/status/state", APIObject.zero_text_strip),
@@ -179,10 +188,6 @@ class VM(APIObject):
 
     def __unicode__(self):
         return self.name
-
-    @property
-    def send_data(self):
-        return process_tools.compress_struct(etree.tostring(self.xml))
 
     @property
     def is_up(self):
@@ -200,10 +205,63 @@ class VM(APIObject):
             "/vm/link[@rel='nics']/@href", "/nics/nic", NIC
         )
 
+    @staticmethod
+    def serialize(result, srv_com):
+        for _idx, _vm in enumerate(result):
+            srv_com["vms:vm{:d}".format(_idx)] = _vm.send_data
+        srv_com.set_result("found {}".format(logging_tools.get_plural("VM", len(result))))
+
+    @staticmethod
+    def deserialize(srv_com):
+        _vms = E.vms()
+        for _entry in srv_com.xpath(".//ns:vms")[0]:
+            _vms.append(etree.fromstring(process_tools.decompress_struct(_entry.text)))
+        return _vms
+
+
+class StorageDomain(APIObject):
+    class Meta:
+        root = "/api/storagedomains"
+        obj_xpath = "/storage_domains/storage_domain"
+
+    xpath_properties = {
+        "name": ("/storage_domain/name", APIObject.zero_text_strip),
+        "status": ("/storage_domain/external_status/state", APIObject.zero_text_strip),
+    }
+    __metaclass__ = XpathPropertyMeta
+
+    @property
+    def root(self):
+        return "/api/storagedomains"
+
+    def __init__(self, xml, client):
+        super(StorageDomain, self).__init__(xml, client)
+        self.url = self.xml.xpath("/storage_domain/@href")[0].strip()
+
+    def __unicode__(self):
+        return self.name
+
+    @staticmethod
+    def serialize(result, srv_com):
+        for _idx, _sd in enumerate(result):
+            srv_com["storagedomains:storagedomain{:d}".format(_idx)] = _sd.send_data
+        srv_com.set_result(
+            "found {}".format(
+                logging_tools.get_plural("storage domain", len(result))
+            )
+        )
+
+    @staticmethod
+    def deserialize(srv_com):
+        _sds = E.storage_domains()
+        for _entry in srv_com.xpath(".//ns:storagedomains")[0]:
+            _sds.append(etree.fromstring(process_tools.decompress_struct(_entry.text)))
+        return _sds
+
 
 class OvirtAPI(object):
     """ The ovirt API entry point """
-    def __init__(self, schema, address, port, ignore_ssl_warnings, ca_cert, username, password):
+    def __init__(self, schema, address, port, ignore_ssl_warnings, ca_cert, username, password, api_object):
         self.base_url = "{}://{}:{:d}/".format(
             schema,
             address,
@@ -216,18 +274,18 @@ class OvirtAPI(object):
             username,
             password
         )
+        self.api_object = api_object
         self._xml = None
 
     @property
-    def vms(self):
+    def objects(self):
         if self._xml is None:
-            self.response = self.client.get("/api/vms")
+            self.response = self.client.get(self.api_object.Meta.root)
             self._xml = etree.fromstring(self.response.content)
-        vms = FilterList()
-        for vm in self._xml.xpath("/vms/vm"):
-            # print etree.tostring(vm, pretty_print=True)
-            vms.append(VM(vm, self.client))
-        return vms
+        result = FilterList()
+        for obj in self._xml.xpath(self.api_object.Meta.obj_xpath):
+            result.append(self.api_object(obj, self.client))
+        return result
 
 
 class OvirtCheck(LongRunningCheck):
@@ -237,29 +295,26 @@ class OvirtCheck(LongRunningCheck):
 
     def perform_check(self, queue):
         try:
-            _vms = self.api.vms
+            _result = self.api.objects
         except:
             self.srv_com.set_result(
-                "error getting VMs: {}".format(
+                "error calling {}: {}".format(
+                    str(self.api.api_object),
                     process_tools.get_except_info(),
                 ),
                 server_command.SRV_REPLY_STATE_ERROR
             )
         else:
-
-            for _idx, _vm in enumerate(_vms):
-                self.srv_com["vms:vm{:d}".format(_idx)] = _vm.send_data
-            # print len(unicode(self.srv_com))
-            self.srv_com.set_result("found {}".format(logging_tools.get_plural("VM", len(_vms))))
+            self.api.api_object.serialize(_result, self.srv_com)
         queue.put(unicode(self.srv_com))
 
 
-class ovirt_overview_command(hm_classes.hm_command):
-    def __init__(self, name):
-        super(ovirt_overview_command, self).__init__(
-            name,
-            positional_arguments=True
-        )
+class OvirtBaseMixin(object):
+
+    def __init__(self):
+        super(OvirtBaseMixin, self).__init__()
+
+    def add_ovirt_options(self):
         self.parser.add_argument(
             "--schema",
             default="https",
@@ -308,6 +363,15 @@ class ovirt_overview_command(hm_classes.hm_command):
             default="-",
         )
 
+
+class ovirt_overview_command(hm_classes.hm_command, OvirtBaseMixin):
+    def __init__(self, name):
+        super(ovirt_overview_command, self).__init__(
+            name,
+            positional_arguments=True
+        )
+        self.add_ovirt_options()
+
     def __call__(self, srv_command_obj, arguments):
         api = OvirtAPI(
             arguments.schema,
@@ -316,7 +380,8 @@ class ovirt_overview_command(hm_classes.hm_command):
             arguments.ignore_ssl_warnings,
             arguments.ca_cert,
             arguments.username,
-            arguments.password
+            arguments.password,
+            VM
         )
         return OvirtCheck(api, srv_command_obj)
 
@@ -331,9 +396,7 @@ class ovirt_overview_command(hm_classes.hm_command):
         else:
             _ref = None
             _passive_dict = {}
-        _vms = E.vms()
-        for _entry in srv_com.xpath(".//ns:vms")[0]:
-            _vms.append(etree.fromstring(process_tools.decompress_struct(_entry.text)))
+        _vms = VM.deserialize(srv_com)
         _num_vms = len(_vms)
         _states = _vms.xpath(".//vm/status/state/text()", smart_strings=False)
         _state_dict = {_state: _states.count(_state) for _state in set(_states)}
@@ -403,3 +466,99 @@ class ovirt_overview_command(hm_classes.hm_command):
             ),
             ascii_chunk=ascii_chunk,
         )
+
+
+class ovirt_storagedomains_command(hm_classes.hm_command, OvirtBaseMixin):
+    def __init__(self, name):
+        super(ovirt_storagedomains_command, self).__init__(
+            name,
+            positional_arguments=True
+        )
+        self.add_ovirt_options()
+
+    def __call__(self, srv_command_obj, arguments):
+        api = OvirtAPI(
+            arguments.schema,
+            arguments.address,
+            arguments.port,
+            arguments.ignore_ssl_warnings,
+            arguments.ca_cert,
+            arguments.username,
+            arguments.password,
+            StorageDomain,
+        )
+        return OvirtCheck(api, srv_command_obj)
+
+    def interpret(self, srv_com, ns, *args, **kwargs):
+        sds = StorageDomain.deserialize(srv_com)
+        # print etree.tostring(sds)
+        ret = ExtReturn()
+        ret.feed_str(logging_tools.get_plural("Storagedomain", len(sds.findall(".//storage_domain"))))
+        ret.feed_str_state(*SimpleCounter(sds.xpath(".//external_status/state/text()"), ok=["ok"], prefix="State").result)
+        ret.feed_str_state(*SimpleCounter(sds.xpath(".//storage_domain/type/text()"), ok=["data", "export", "image", "iso"], prefix="Domain Type").result)
+        ret.feed_str_state(*SimpleCounter(sds.xpath(".//storage_domain/storage/type/text()"), ok=["glance", "iscsi", "nfs"], prefix="Storage Type").result)
+        size_dict = {
+            _key: sum([int(_val) for _val in sds.xpath(".//storage_domain/{}/text()".format(_key))]) for _key in [
+                "used",
+                "available",
+                "committed",
+            ]
+        }
+        if ns.reference not in ["", "-"]:
+            _ref = process_tools.decompress_struct(ns.reference)
+            _passive_dict = {
+                "source": "ovirt_overview",
+                "prefix": ns.passive_check_prefix,
+                "list": [],
+            }
+            for run_id, run_name in zip(_ref["run_ids"], _ref["run_names"]):
+                _prefix = "ovirt StorageDomain {}".format(run_name)
+                _sd = sds.xpath(".//storage_domain[@id='{}']".format(run_id))
+                if len(_sd):
+                    _sd = _sd[0]
+                    _state = _sd.findtext(".//external_status/state")
+                    if _state in ["ok"]:
+                        _nag_state = limits.nag_STATE_OK
+                    else:
+                        _nag_state = limits.nag_STATE_CRITICAL
+                    _stype = _sd.findtext("type")
+                    _ret_f = [
+                        "state is {}".format(_state),
+                        "type is {}".format(_stype),
+                        "storage type is {}".format(_sd.findtext("storage/type")),
+                    ]
+                    if _stype in ["data", "iso", "export"]:
+                        _ret_f.append(
+                            "size is {} (used {}, commited {})".format(
+                                logging_tools.get_size_str(int(_sd.findtext("available"))),
+                                logging_tools.get_size_str(int(_sd.findtext("used"))),
+                                logging_tools.get_size_str(int(_sd.findtext("committed"))),
+                            )
+                        )
+                    _passive_dict["list"].append(
+                        (
+                            _prefix,
+                            _nag_state,
+                            ", ".join(_ret_f),
+                        )
+                    )
+                else:
+                    _passive_dict["list"].append(
+                        (
+                            _prefix,
+                            limits.nag_STATE_CRITICAL,
+                            "StorageDomain not found",
+                        )
+                    )
+            ret.ascii_chunk = process_tools.compress_struct(_passive_dict)
+        ret.feed_str(
+            ", ".join(
+                [
+                    "{}: {}".format(
+                        _key,
+                        logging_tools.get_size_str(size_dict[_key])
+                    ) for _key in sorted(size_dict.keys())
+                ]
+            )
+        )
+        return ret

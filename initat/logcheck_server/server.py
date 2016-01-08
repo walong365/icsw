@@ -158,7 +158,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin, 
         if syslog_srvcs:
             self.__syslog_type = syslog_srvcs[0]
             self.log("syslog type found: {}".format(self.__syslog_type))
-            if self.__syslog_type.count("rsys"):
+            if self.__syslog_type.count("rsys") or self.__syslog_type == "syslog":
                 self._enable_rsyslog()
             elif self.__syslog_type.count("-ng"):
                 self._enable_syslog_ng()

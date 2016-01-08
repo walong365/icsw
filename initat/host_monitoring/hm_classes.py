@@ -322,6 +322,7 @@ class hm_command(object):
     info_str = ""
 
     def __init__(self, name, **kwargs):
+        super(hm_command, self).__init__()
         self.__log_cache = []
         self.name = name
         # argument parser
