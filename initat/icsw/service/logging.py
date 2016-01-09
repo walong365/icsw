@@ -21,16 +21,26 @@
 
 """ loggers for commandline usage """
 
+import datetime
+
 from initat.tools import logging_tools
 
+__all__ = [
+    "get_logger",
+]
 
-def stdout_logger(what, log_level=logging_tools.LOG_LEVEL_OK):
-    if log_level > logging_tools.LOG_LEVEL_OK:
-        print(u"[{}] {}".format(logging_tools.get_log_level_str(log_level), what))
 
-
-def stdout_all_logger(what, log_level=logging_tools.LOG_LEVEL_OK):
-    print(u"[{}] {}".format(logging_tools.get_log_level_str(log_level), what))
+def _get_logger(log_all):
+    def logger(what, log_level=logging_tools.LOG_LEVEL_OK):
+        if log_all or log_level > logging_tools.LOG_LEVEL_OK:
+            print(
+                u"{} [{}] {}".format(
+                    str(datetime.datetime.now()),
+                    logging_tools.get_log_level_str(log_level),
+                    what
+                )
+            )
+    return logger
 
 
 def get_logger(name, options, **kwargs):
@@ -38,9 +48,9 @@ def get_logger(name, options, **kwargs):
     log_all = options.logall
     if log_type == "stdout":
         if log_all or kwargs.get("all", False):
-            return stdout_all_logger
+            return _get_logger(True)
         else:
-            return stdout_logger
+            return _get_logger(False)
     else:
         return logging_tools.get_logger(
             "icsw_{}".format(name),
