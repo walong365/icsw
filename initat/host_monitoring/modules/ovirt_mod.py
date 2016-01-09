@@ -230,10 +230,6 @@ class StorageDomain(APIObject):
     }
     __metaclass__ = XpathPropertyMeta
 
-    @property
-    def root(self):
-        return "/api/storagedomains"
-
     def __init__(self, xml, client):
         super(StorageDomain, self).__init__(xml, client)
         self.url = self.xml.xpath("/storage_domain/@href")[0].strip()
@@ -255,6 +251,42 @@ class StorageDomain(APIObject):
     def deserialize(srv_com):
         _sds = E.storage_domains()
         for _entry in srv_com.xpath(".//ns:storagedomains")[0]:
+            _sds.append(etree.fromstring(process_tools.decompress_struct(_entry.text)))
+        return _sds
+
+
+class Host(APIObject):
+    class Meta:
+        root = "/api/hosts"
+        obj_xpath = "/hosts/host"
+
+    xpath_properties = {
+        "name": ("/host/name", APIObject.zero_text_strip),
+        "status": ("/host/status/state", APIObject.zero_text_strip),
+    }
+    __metaclass__ = XpathPropertyMeta
+
+    def __init__(self, xml, client):
+        super(Host, self).__init__(xml, client)
+        self.url = self.xml.xpath("/host/@href")[0].strip()
+
+    def __unicode__(self):
+        return self.name
+
+    @staticmethod
+    def serialize(result, srv_com):
+        for _idx, _sd in enumerate(result):
+            srv_com["hosts:host{:d}".format(_idx)] = _sd.send_data
+        srv_com.set_result(
+            "found {}".format(
+                logging_tools.get_plural("host", len(result))
+            )
+        )
+
+    @staticmethod
+    def deserialize(srv_com):
+        _sds = E.hosts()
+        for _entry in srv_com.xpath(".//ns:hosts")[0]:
             _sds.append(etree.fromstring(process_tools.decompress_struct(_entry.text)))
         return _sds
 
@@ -536,7 +568,7 @@ class ovirt_storagedomains_command(hm_classes.hm_command, OvirtBaseMixin):
                             )
                         except:
                             _ret_f.append("cannot evaluate size")
-                            _nag_state = max(nag_state, limits.nag_STATE_WARNING)
+                            _nag_state = max(_nag_state, limits.nag_STATE_WARNING)
                         else:
                             _ret_f.append(_size_str)
                     _passive_dict["list"].append(
@@ -562,6 +594,111 @@ class ovirt_storagedomains_command(hm_classes.hm_command, OvirtBaseMixin):
                         _key,
                         logging_tools.get_size_str(size_dict[_key])
                     ) for _key in sorted(size_dict.keys())
+                ]
+            )
+        )
+        return ret
+
+
+class ovirt_hosts_command(hm_classes.hm_command, OvirtBaseMixin):
+    def __init__(self, name):
+        super(ovirt_hosts_command, self).__init__(
+            name,
+            positional_arguments=True
+        )
+        self.add_ovirt_options()
+
+    def __call__(self, srv_command_obj, arguments):
+        api = OvirtAPI(
+            arguments.schema,
+            arguments.address,
+            arguments.port,
+            arguments.ignore_ssl_warnings,
+            arguments.ca_cert,
+            arguments.username,
+            arguments.password,
+            Host,
+        )
+        return OvirtCheck(api, srv_command_obj)
+
+    def interpret(self, srv_com, ns, *args, **kwargs):
+        hosts = Host.deserialize(srv_com)
+        # print etree.tostring(hosts, pretty_print=True)
+        # print etree.tostring(sds)
+        ret = ExtReturn()
+        ret.feed_str(logging_tools.get_plural("Host", len(hosts.findall(".//host"))))
+        ret.feed_str(logging_tools.reduce_list(hosts.xpath(".//host/name/text()")))
+        ret.feed_str_state(*SimpleCounter(hosts.xpath(".//host/status/state/text()"), ok=["up"], prefix="State").result)
+        ret.feed_str_state(*SimpleCounter(hosts.xpath(".//host/external_status/state/text()"), ok=["ok"], prefix="ExtStatus").result)
+        ret.feed_str_state(*SimpleCounter(hosts.xpath(".//host/type/text()"), ok=["rhel"], prefix="Type").result)
+        count_dict = {
+            _key: sum([int(_val) for _val in hosts.xpath(".//host/summary/{}/text()".format(_key))]) for _key in [
+                "active",
+                "migrating",
+                "total",
+            ]
+        }
+        if ns.reference not in ["", "-"]:
+            _ref = process_tools.decompress_struct(ns.reference)
+            _passive_dict = {
+                "source": "ovirt_overview",
+                "prefix": ns.passive_check_prefix,
+                "list": [],
+            }
+            for run_id, run_name in zip(_ref["run_ids"], _ref["run_names"]):
+                _prefix = "ovirt Host {}".format(run_name)
+                _host = hosts.xpath(".//host[@id='{}']".format(run_id))
+                if len(_host):
+                    _host = _host[0]
+                    _state = _host.findtext(".//status/state")
+                    _htype = _host.findtext("type")
+                    if _state in ["up"]:
+                        _nag_state = limits.nag_STATE_OK
+                    else:
+                        _nag_state = limits.nag_STATE_CRITICAL
+                    _ret_f = [
+                        "state is {}".format(_state),
+                        "type is {}".format(_htype),
+                    ]
+                    if _host.find("summary") is not None:
+                        _ret_f.extend(
+                            [
+                                "{}={:d}".format(
+                                    _key,
+                                    int(_host.findtext("summary/{}".format(_key)))
+                                ) for _key in ["active", "migrating", "total"]
+                            ]
+                        )
+                    if _host.find("memory") is not None:
+                        _ret_f.append(
+                            "mem {}".format(
+                                logging_tools.get_size_str(int(_host.findtext("memory")))
+                            )
+                        )
+                    _passive_dict["list"].append(
+                        (
+                            _prefix,
+                            _nag_state,
+                            ", ".join(_ret_f),
+                        )
+                    )
+                else:
+                    _passive_dict["list"].append(
+                        (
+                            _prefix,
+                            limits.nag_STATE_CRITICAL,
+                            "Host {} not found".format(run_name),
+                        )
+                    )
+            # print _passive_dict
+            ret.ascii_chunk = process_tools.compress_struct(_passive_dict)
+        ret.feed_str(
+            ", ".join(
+                [
+                    "{}: {}".format(
+                        _key,
+                        count_dict[_key]
+                    ) for _key in sorted(count_dict.keys())
                 ]
             )
         )
