@@ -83,9 +83,8 @@ function restart_software() {
         [ -x /bin/systemctl ] && /bin/systemctl daemon-reload
 
         # logging-server
-        echo -e "\n${GREEN}restarting logging-server${OFF}\n"
-        ${ICSW_SBIN}/icsw service restart logging-server
-        echo -e "\n${GREEN}restarting hoststatus{OFF}\n"
+        echo -e "\n${GREEN}restarting logging-server and hoststatus${OFF}\n"
+        ${ICSW_SBIN}/icsw --logger stdout --logall service restart logging-server
         ${INIT}/hoststatus restart
 
         if [ ! -f ${ICSW_PIS}/icsw_server_post_install.sh -o "${mode}" = "server" ] ; then
@@ -100,8 +99,8 @@ function restart_software() {
 
             for idx in $(seq ${NUM_RS} ) ; do
                 echo -e "${GREEN}(${idx}/${NUM_RS}) restarting all ICSW related services (mode=${mode})${OFF}\n"
-                ${ICSW_SBIN}/icsw service stop meta-server
-                ${ICSW_SBIN}/icsw service start meta-server
+                ${ICSW_SBIN}/icsw --logall service stop meta-server
+                ${ICSW_SBIN}/icsw --logall service start meta-server
             done
         fi
     fi
