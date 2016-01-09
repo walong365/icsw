@@ -121,7 +121,7 @@ def version_command(opt_ns):
 
 
 def main(opt_ns):
-    log_com = logging.get_logger(opt_ns.logger)
+    log_com = logging.get_logger("service", opt_ns, all=True if opt_ns.childcom in ["state"] else False)
     if os.getuid():
         log_com("Not running as root, information may be incomplete, disabling display of memory", logging_tools.LOG_LEVEL_ERROR)
         opt_ns.memory = False
@@ -163,8 +163,6 @@ def main(opt_ns):
             else:
                 break
     elif opt_ns.childcom in ["state"]:
-        # override logger
-        log_com = logging.get_logger(opt_ns.logger, all=True)
         # contact meta-server at localhost
         _result = query_local_meta_server(inst_xml, opt_ns.statecom, services=opt_ns.service)
         if _result is None:

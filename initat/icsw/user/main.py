@@ -416,7 +416,7 @@ def do_chpasswd(cur_opts, log_com):
 
 
 def user_main(cur_opts):
-    log_com = logging.get_logger(cur_opts.logger, all=True)
+    log_com = logging.get_logger("user", cur_opts, all=True)
     ret_code = 0
     if cur_opts.mode == "mail":
         do_mail(cur_opts, log_com)

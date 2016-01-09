@@ -69,6 +69,7 @@ class ICSWParser(object):
         for _pn in ["_parser", "_dummy_parser"]:
             _parser = argparse.ArgumentParser(prog="icsw", add_help="dummy" not in _pn)
             _parser.add_argument("--logger", type=str, default="stdout", choices=["stdout", "logserver"], help="choose logging facility")
+            _parser.add_argument("--logall", default=False, action="store_true", help="log all (no just warning / error), [%(default)s]")
             _parser.add_argument("--nodb", default=False, action="store_true", help="disable usage of database [%(default)s]")
             setattr(self, _pn, _parser)
         # catch args for dummy parser

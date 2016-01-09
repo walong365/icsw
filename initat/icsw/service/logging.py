@@ -33,14 +33,18 @@ def stdout_all_logger(what, log_level=logging_tools.LOG_LEVEL_OK):
     print(u"[{}] {}".format(logging_tools.get_log_level_str(log_level), what))
 
 
-def get_logger(log_type, **kwargs):
+def get_logger(name, options, **kwargs):
+    log_type = options.logger
+    log_all = options.logall
     if log_type == "stdout":
-        if kwargs.get("all", False):
+        if log_all or kwargs.get("all", False):
             return stdout_all_logger
         else:
             return stdout_logger
     else:
         return logging_tools.get_logger(
-            ""
-            "init.at.icsw", "uds:/var/lib/logging-server/py_log_zmq",
+            "icsw_{}".format(name),
+            "uds:/var/lib/logging-server/py_log_zmq",
+            zmq=True,
+            init_logger=True,
         ).log
