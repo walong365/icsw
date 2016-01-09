@@ -561,11 +561,21 @@ class ovirt_storagedomains_command(hm_classes.hm_command, OvirtBaseMixin):
                     ]
                     if _stype in ["data", "iso", "export"]:
                         try:
-                            _size_str = "size is {} (used {}, commited {})".format(
-                                logging_tools.get_size_str(int(_sd.findtext("available"))),
-                                logging_tools.get_size_str(int(_sd.findtext("used"))),
-                                logging_tools.get_size_str(int(_sd.findtext("committed"))),
+                            _avail = int(_sd.findtext("available"))
+                            _used = int(_sd.findtext("used"))
+                            _committed = int(_sd.findtext("committed"))
+                            _pused = 100. * _used / max(1, _avail + _used)
+                            _size_str = "size is {} (used {} [{:.2f}%], avail {}), commited {}".format(
+                                logging_tools.get_size_str(_avail + _used),
+                                logging_tools.get_size_str(_used),
+                                _pused,
+                                logging_tools.get_size_str(_avail),
+                                logging_tools.get_size_str(_committed),
                             )
+                            if _pused > 95:
+                                _nag_state = max(_nag_state, limits.nag_STATE_CRITICAL)
+                            elif _pused > 90:
+                                _nag_state = max(_nag_state, limits.nag_STATE_WARNING)
                         except:
                             _ret_f.append("cannot evaluate size")
                             _nag_state = max(_nag_state, limits.nag_STATE_WARNING)
