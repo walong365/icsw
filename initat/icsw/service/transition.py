@@ -111,7 +111,7 @@ class ServiceTransition(object):
                 break
         e_time = time.time()
         self.log(
-            "step {:d}@{} took {}, {}{}".format(
+            "step {:d} after {} took {}, {}{}".format(
                 self.__step_num,
                 logging_tools.get_diff_time_str(e_time - self.__init_time),
                 logging_tools.get_diff_time_str(e_time - s_time),
