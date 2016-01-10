@@ -111,10 +111,11 @@ class ServiceTransition(object):
                 break
         e_time = time.time()
         self.log(
-            "step {:d} took {}, pending elements: {:d}{}".format(
-                self.__step_num,
+            "step {:d} took {}, (total: {}), {}{}".format(
+            self.__step_num,
                 logging_tools.get_diff_time_str(e_time - s_time),
-                len(self._action_list),
+                logging_tools.get_diff_time_str(e_time - self.__init_time),
+                logging_tools.get_plural("pending element", len(self._action_list)),
                 " (inner loops: {:d})".format(_loopcount) if _loopcount > 1 else "",
             )
         )
