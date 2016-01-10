@@ -35,7 +35,7 @@ import termios
 import time
 
 from initat.tools import mail_tools, logging_tools, process_tools, server_command, net_tools
-from . import logging
+from .. import icsw_logging
 
 
 def get_users(cur_opts, log_com):
@@ -416,7 +416,7 @@ def do_chpasswd(cur_opts, log_com):
 
 
 def user_main(cur_opts):
-    log_com = logging.get_logger("user", cur_opts, all=True)
+    log_com = icsw_logging.get_logger("user", cur_opts, all=True)
     ret_code = 0
     if cur_opts.mode == "mail":
         do_mail(cur_opts, log_com)

@@ -29,7 +29,7 @@ import time
 from initat.tools import logging_tools
 from . import container
 from . import instance
-from . import logging
+from .. import icsw_logging
 from . import transition
 from .constants import STATE_DICT, LIC_STATE_DICT, CONF_STATE_DICT
 from .tools import query_local_meta_server
@@ -121,7 +121,7 @@ def version_command(opt_ns):
 
 
 def main(opt_ns):
-    log_com = logging.get_logger("service", opt_ns, all=True if opt_ns.childcom in ["state"] else False)
+    log_com = icsw_logging.get_logger("service", opt_ns, all=True if opt_ns.childcom in ["state"] else False)
     if os.getuid():
         log_com("Not running as root, information may be incomplete, disabling display of memory", logging_tools.LOG_LEVEL_ERROR)
         opt_ns.memory = False
