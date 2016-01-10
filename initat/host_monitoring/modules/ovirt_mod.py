@@ -536,6 +536,7 @@ class ovirt_storagedomains_command(hm_classes.hm_command, OvirtBaseMixin):
                 "committed",
             ]
         }
+        size_dict["size"] = size_dict["used"] + size_dict["available"]
         if ns.reference not in ["", "-"]:
             _ref = process_tools.decompress_struct(ns.reference)
             _passive_dict = {
