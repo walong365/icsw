@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2012-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2012-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -22,8 +22,12 @@
 """ helper functions for db access / close """
 
 import socket
+
 from django.conf import settings
 from django.db import OperationalError
+
+from initat.constants import DB_ACCESS_CS_NAME
+from initat.tools import config_store
 
 # connection test timeout
 DB_TIMEOUT = 2.0
@@ -35,6 +39,8 @@ def is_oracle():
 
 
 def is_reachable():
+    if not config_store.ConfigStore.exists(DB_ACCESS_CS_NAME):
+        return False
     from django.db import connections
     _settings = settings.DATABASES["default"]
     if _settings.get("HOST", "").strip() and _settings["HOST"] not in ["localhost", "127.0.0.1"]:
