@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2009,2013-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2007-2009,2013-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -23,6 +23,7 @@ import datetime
 import os
 import rrdtool
 import stat
+import pprint
 from lxml import etree
 
 from django.db.models import Q
@@ -57,7 +58,8 @@ class RRDGraph(object):
         g_key_dict = {}
         for key_dict in graph_keys:
             s_key, v_key = (key_dict["struct_key"], key_dict["value_key"])
-            if key_dict.get("build_info", ""):
+            # to be improved
+            if key_dict.get("build_info", "") not in ["", None, [""]]:
                 # is a compound (has build info)
                 g_key_dict.setdefault(full_graph_key(key_dict), []).append((s_key, v_key))
             else:
