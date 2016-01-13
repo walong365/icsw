@@ -1,0 +1,15 @@
+#
+# PACKAGES
+
+ovirt-guest-agent man rsyslog killall vim mlocate
+
+
+#
+# REPOS
+
+
+
+#
+# SSH KEY
+
+ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC9SZH2dxCMsjZvyFTO8ZeHmEon7GXyVoAJpaNzWjqVe8Op6M0LcelhPOgVXDQ3/0DRqUaKTIs0qv/Ag765R4T6GjVv56+bwgoa+FtN+E3N3c9KdN1nEvo94AR27TWaL6z64eyCD41bVqz01pxtGdd9ebXhFmIR8vv6b6leITNMmorhwNXjMAO8jpPm5ooOCFgh80ySLL6QaUu2MoYSz9w4BSb9KYYpMp9SIktIoBmA5cPY1heiw+Q/beCIUtRRyzJs1ah4Sr+fGiL8NxNPmP0wa3ScrlgQbRRFirCPzdU2MSHlEHV//LQoR5oDe8ChxMem2FmtHAzcppil4hr8Yq8z mallinger@mallinger
