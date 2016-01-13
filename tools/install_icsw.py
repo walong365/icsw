@@ -94,7 +94,7 @@ class SuseHandler(OSHandler):
     # version must be like "13.1"
     # CLUSTER_DEVEL_URL = "http://{user}:{password}@www.initat.org/cluster/RPMs/suse_{version}/cluster-devel"
     # EXTRA_URL = "http://{user}:{password}@www.initat.org/cluster/RPMs/suse_{version}/extra"
-    ICSW_2_5_URl = "http://{user}:{password}@www.initat.org/cluster/RPMs/suse_{version}/icsw-2.5"
+    ICSW_2_5_URL = "http://{user}:{password}@www.initat.org/cluster/RPMs/suse_{version}/{cluster_version}"
 
     def add_repos(self):
         suse_version = platform.linux_distribution()[1]
@@ -102,20 +102,26 @@ class SuseHandler(OSHandler):
             'user': self.opts.user,
             'password': self.opts.password,
             'version': suse_version,
+            'cluster_version': self.opts.cluster_version,
         }
         repos = (
             # ("initat_cluster_devel", self.__class__.CLUSTER_DEVEL_URL.format(**expansions)),
             # ("initat_extra", self.__class__.EXTRA_URL.format(**expansions)),
-            ("initat_2_5", self.__class__.ICSW_2_5_URl.format(**expansions)),
+            #("{cluster_version}".format(cluster_version=self.opts.cluster_version), self.__class__.ICSW_2_5_URL.format(**expansions)),
+            (self.opts.cluster_version, self.__class__.ICSW_2_5_URL.format(**expansions)),
         )
 
-        for repo_name, repo_url in repos:
+       # for item in repos:
+       #     cluster_version = item[0]
+       #     repo_url = item[1]
+
+        for cluster_version, repo_url in repos:
             repo_list = subprocess.check_output(("zypper", "repos", "--uri"))
-            if repo_name not in str(repo_list):
-                command = ("zypper", "addrepo", "--refresh", "--no-gpgcheck", repo_url, repo_name)
+            if cluster_version not in str(repo_list):
+                command = ("zypper", "addrepo", "--refresh", "--no-gpgcheck", repo_url, cluster_version)
                 self.process_command(command)
             else:
-                log.info("Repo {r} already installed".format(r=repo_name))
+                log.info("Repo {r} already installed".format(r=cluster_version))
 
     def install_icsw(self):
         commands = [
@@ -130,20 +136,19 @@ class SuseHandler(OSHandler):
 class CentosHandler(OSHandler):
     def add_repos(self):
         version = platform.linux_distribution()[1].lower()[0]
-        if version == '5':
-            version = "5.11"
-        elif version == '6':
+        if version == '6':
             version = "6.2"
         elif version == '7':
             version = "7.0"
         else:
             raise RuntimeError("Unsupported Centos version: {v}\n".format(v=platform.linux_distribution()) +
-                               "Supported versions are 5, 6 and 7.")
+                               "Supported versions are 6 and 7.")
 
         expansions = {
             'user': self.opts.user,
             'password': self.opts.password,
             'version': version,
+            'cluster_version': self.opts.cluster_version,
             }
 
         repos = (
@@ -156,8 +161,8 @@ class CentosHandler(OSHandler):
             #     "http://{user}:{password}@www.initat.org/cluster/RPMs/rhel_{version}/extra".format(**expansions)
             # )
             (
-                "initat_2_5",
-                "http://{user}:{password}@www.initat.org/cluster/RPMs/rhel_{version}/icsw-2.5".format(**expansions)
+                "initat_{cluster_version}".format(**expansions),
+                "http://{user}:{password}@www.initat.org/cluster/RPMs/rhel_{version}/{cluster_version}".format(**expansions)
             ),
         )
 
@@ -203,8 +208,8 @@ class AptgetHandler(OSHandler):
                 #     .format(**expansions)
                 # )
                 (
-                    "initat_2_5.list",
-                    "deb http://{user}:{password}@www.initat.org/cluster/DEBs/ubuntu_12.04/icsw-2.5 precise main\n"
+                    "cluster_version.list",
+                    "deb http://{user}:{password}@www.initat.org/cluster/DEBs/ubuntu_12.04/{cluster_version} precise main\n"
                     .format(**expansions)
                 ),
             )
@@ -231,8 +236,8 @@ class AptgetHandler(OSHandler):
                 #     .format(rel=debian_release, **expansions)
                 # )
                 (
-                    "initat_extra.list",
-                    "deb http://{user}:{password}@www.initat.org/cluster/DEBs/debian_{rel}/icsw-2.5 {rel} main\n"
+                    "cluster_version.list",
+                    "deb http://{user}:{password}@www.initat.org/cluster/DEBs/debian_{rel}/cluster_version {rel} main\n"
                     .format(rel=debian_release, **expansions)
                 ),
             )
@@ -262,6 +267,8 @@ def parse_args():
         parser.add_argument("-p", "--password", dest='password', required=True, help="your icsw password")
         parser.add_argument("-n", "--cluster-name", dest='cluster_name', required=True,
                             help="cluster name as provided by init.at")
+        parser.add_argument("-v", "--cluster-version", dest='cluster_version', required=True,
+                            help="choose the version to install, either icsw-2.5 or icsw-devel")
         opts = parser.parse_args()
     except ImportError:
         import optparse
@@ -272,6 +279,8 @@ def parse_args():
         parser.add_option("-p", "--password", dest='password', help="your icsw password")
         parser.add_option("-n", "--cluster-name", dest='cluster_name',
                           help="cluster name as provided by init.at")
+        parser.add_option("-v", "--cluster-version", dest='cluster_version',
+                            help="choose the version to install, either 2.5 or devel")
         # emulate required
         opts, _ = parser.parse_args()
         if opts.user is None:
@@ -280,6 +289,8 @@ def parse_args():
             raise optparse.OptParseError("argument -p/--password is required")
         if opts.cluster_name is None:
             raise optparse.OptParseError("argument -n/--cluster-name is required")
+        if opts.cluster_version is None:
+            raise optparse.OptParseError("argument -v/--cluster-version is required")
 
     return opts
 
@@ -330,6 +341,7 @@ def main():
 
 
 if __name__ == "__main__":
+    main()
     try:
         main()
     except Exception as e:
