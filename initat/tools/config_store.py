@@ -374,6 +374,8 @@ class ConfigStore(object):
                 _descr = self.vars[key].description
             else:
                 _descr = ""
+            if isinstance(value, tuple):
+                value, _descr = value
             self.vars[key] = ConfigVar(key, value, descr=_descr)
 
     def __contains__(self, key):

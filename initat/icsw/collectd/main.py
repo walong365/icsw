@@ -222,6 +222,8 @@ class KeyListCom(BaseCom):
             print "{:30s} ({}) : last updated {}".format(value[1], key, time.ctime(value[0]))
         out_f = logging_tools.new_form_list()
         # pprint.pprint(k_dict)
+        max_num_keys = 0
+        _list = []
         for h_uuid in _sorted_uuids:
             h_struct = k_dict[h_uuid]
             num_key = 0
@@ -239,11 +241,17 @@ class KeyListCom(BaseCom):
                             base=entry[6],
                             factor=entry[7]
                         )
-                    out_f.append(
-                        [
-                            logging_tools.form_entry(v_dict[h_uuid][1], header="device")
-                        ] + cur_mv.get_form_entry(num_key)
-                    )
+                    else:
+                        print("no simple format?")
+                        sys.exit(0)
+                    _list.append((h_uuid, cur_mv))
+                    max_num_keys = max(max_num_keys, cur_mv.num_keys)
+        for h_uuid, entry in _list:
+            out_f.append(
+                [
+                    logging_tools.form_entry(v_dict[h_uuid][1], header="device")
+                ] + entry.get_form_entry(num_key, max_num_keys)
+            )
         print unicode(out_f)
         # print v_list
 
@@ -253,6 +261,8 @@ class KeyListCom(BaseCom):
             h_list = h_list[0]
             out_f = logging_tools.new_form_list()
             print "got result for {}:".format(logging_tools.get_plural("host", int(h_list.attrib["entries"])))
+            max_num_keys = 0
+            _list = []
             for host in h_list:
                 print "{:<30s} ({:<40s}) : {:4d} keys, last update {}".format(
                     host.attrib["name"],
@@ -262,11 +272,14 @@ class KeyListCom(BaseCom):
                 )
                 for num_key, key_el in enumerate(host):
                     cur_mv = mvect_entry(key_el.attrib.pop("name"), info="", **key_el.attrib)
-                    out_f.append(
-                        [
-                            logging_tools.form_entry(host.attrib["name"], header="device")
-                        ] + cur_mv.get_form_entry(num_key + 1)
-                    )
+                    _list.append((host.attrib["name"], cur_mv))
+                    max_num_keys = max(max_num_keys, cur_mv.num_keys)
+            for h_name, entry in _list:
+                out_f.append(
+                    [
+                        logging_tools.form_entry(h_name, header="device")
+                    ] + entry.get_form_entry(num_key, max_num_keys)
+                )
             print unicode(out_f)
         else:
             print "No host_list found in result"

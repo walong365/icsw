@@ -450,10 +450,14 @@ class mvect_entry(object):
     def check_timeout(self, cur_time):
         return True if (self.valid_until and cur_time > self.valid_until) else False
 
-    def get_form_entry(self, idx):
+    @property
+    def num_keys(self):
+        return self.name.count(".") + 1
+
+    def get_form_entry(self, idx, max_num_keys):
         act_line = []
-        sub_keys = (self.name.split(".") + ["", "", "", "", ""])[0:6]
-        for key_idx, sub_key in zip(xrange(6), sub_keys):
+        sub_keys = (self.name.split(".") + [""] * max_num_keys)[0:max_num_keys]
+        for key_idx, sub_key in zip(xrange(max_num_keys), sub_keys):
             act_line.append(logging_tools.form_entry("{}{}".format("" if (key_idx == 0 or sub_key == "") else ".", sub_key), header="key{:d}".format(key_idx)))
         # check for unknow
         if self.value is None:

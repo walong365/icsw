@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -24,6 +24,7 @@ import re
 import stat
 import subprocess
 import time
+import inflection
 
 import psutil
 
@@ -212,6 +213,12 @@ class _general(hm_classes.hm_module):
         else:
             self.__argus_map = {}
             self.__argus_path = None
+        _df = "hm.network.detailed"
+        if _df not in self.main_proc.CC.CS:
+            self.main_proc.CC.CS[_df] = (False, "Enable detailed network statistics")
+            self.main_proc.CC.CS.write()
+        self._detailed_network = self.main_proc.CC.CS[_df]
+        self._detailed_dict = {}
 
     @property
     def argus_map(self):
@@ -345,6 +352,36 @@ class _general(hm_classes.hm_module):
             for log_line in process_tools.exception_info().log_lines:
                 self.log(" - {}".format(log_line), logging_tools.LOG_LEVEL_ERROR)
 
+    def get_netstat_info(self):
+
+        def camel_to_dot(word):
+            return inflection.underscore(word.replace("TCP", "Tcp").replace("PAWS", "Paws")).replace("_", ".")
+
+        ns_info = {}
+        for _file in ["/proc/net/netstat", "/proc/net/snmp"]:
+            if os.path.exists(_file):
+                _lines = file(_file, "r").readlines()
+                loc_dict = {}
+                for _line in _lines:
+                    _head, _rest = _line.strip().split(":", 1)
+                    loc_dict.setdefault(_head, []).append(_rest)
+                loc_dict = {key: value for key, value in loc_dict.iteritems() if len(value) == 2}
+                for key, value in loc_dict.iteritems():
+                    _ckey = camel_to_dot(key)
+                    if len(value) == 2:
+                        ns_info.update(
+                            {
+                                "{}.{}".format(
+                                    _ckey,
+                                    camel_to_dot(_key)
+                                ): (
+                                    int(_value),
+                                    "{} from {} in {}".format(_key, key, _file)
+                                ) for _key, _value in zip(value[0].split(), value[1].split())
+                            }
+                        )
+        return ns_info
+
     def _check_iptables(self, req_chain):
         """ req_chain can be:
         None ............. return everything
@@ -415,6 +452,20 @@ class _general(hm_classes.hm_module):
                 self.log("error reading {}: {}".format(_filename, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                 _lines = 0
             mvect["net.count.{}".format(_type)] = _lines
+        # netstat
+        if self._detailed_network:
+            ns_info = self.get_netstat_info()
+            dn_keys = set(ns_info.keys())
+            for _key, _value in ns_info.iteritems():
+                _mv_key = "net.detail.{}".format(_key)
+                if _mv_key not in mvect:
+                    mvect.register_entry(_mv_key, 0, _value[1], "1/s", 1000)
+                else:
+                    _mvv = (_value[0] - self._detailed_dict[_key][0]) / time_diff
+                    mvect[_mv_key] = _mvv
+            self._detailed_dict = ns_info
+            for del_key in set(self._detailed_dict.keys()) - dn_keys:
+                mvect.unregister_entry("net.detail.{}".format(del_key))
         nd_dict = self.act_nds.make_speed_dict()
         # pprint.pprint(nd_dict)
         if nd_dict:

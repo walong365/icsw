@@ -97,10 +97,19 @@ class get_mvector_command(hm_classes.hm_command):
                 )
             ]
             out_list = logging_tools.new_form_list()
+            max_num_keys = 0
+            _list = []
             for mv_num, mv_key in enumerate(vector_keys):
                 if mv_key in used_keys:
                     cur_xml = srv_com.xpath("//ns:mve[@name='{}']".format(mv_key), start_el=cur_vector, smart_strings=False)[0]
-                    out_list.append(hm_classes.mvect_entry(cur_xml.attrib.pop("name"), **cur_xml.attrib).get_form_entry(mv_num))
+                    _mv = hm_classes.mvect_entry(
+                        cur_xml.attrib.pop("name"),
+                        **cur_xml.attrib
+                    )
+                    _list.append((mv_num, _mv))
+                    max_num_keys = max(max_num_keys, _mv.num_keys)
+            for mv_num, entry in _list:
+                out_list.append(entry.get_form_entry(mv_num, max_num_keys))
             ret_array.extend(unicode(out_list).split("\n"))
             return limits.nag_STATE_OK, "\n".join(ret_array)
 
@@ -311,7 +320,7 @@ class machine_vector(object):
             send_vector.attrib["uuid"] = self.module.main_proc.zeromq_id
         else:
             send_vector = self.build_json(simple=not full)
-            send_vector[1]["name"] = struct.get("send_name", fqdn) or fqdn
+            send_vector[1]["name"] = _struct.get("send_name", fqdn) or fqdn
             send_vector[1]["interval"] = _struct.get("send_every")
             send_vector[1]["uuid"] = self.module.main_proc.zeromq_id
         # send to server
