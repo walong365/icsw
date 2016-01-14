@@ -262,13 +262,14 @@ def parse_args():
         parser = argparse.ArgumentParser(prog="install_icsw.py")
         parser.add_argument("-s", "--show-commands", dest="show_commands", action="store_true",
                             help="only show commands without actually executing them")
-
         parser.add_argument("-u", "--user", dest='user', required=True, help="your icsw user name")
         parser.add_argument("-p", "--password", dest='password', required=True, help="your icsw password")
         parser.add_argument("-n", "--cluster-name", dest='cluster_name', required=True,
                             help="cluster name as provided by init.at")
         parser.add_argument("-v", "--cluster-version", dest='cluster_version', required=True,
                             help="choose the version to install, either icsw-2.5 or icsw-devel")
+        parser.add_argument("-y", "--assume-yes", dest='assume_yes', action="store_true",
+                            help="Don't ask user to confirm install")
         opts = parser.parse_args()
     except ImportError:
         import optparse
@@ -281,6 +282,8 @@ def parse_args():
                           help="cluster name as provided by init.at")
         parser.add_option("-v", "--cluster-version", dest='cluster_version',
                             help="choose the version to install, either 2.5 or devel")
+        parser.add_option("-y", "--assume-yes", dest='assume_yes', action="store_true",
+                            help="Don't ask user to confirm install")
         # emulate required
         opts, _ = parser.parse_args()
         if opts.user is None:
@@ -301,7 +304,7 @@ def main():
 
     opts = parse_args()
 
-    if not opts.show_commands:
+    if not opts.show_commands and not opts.assume_yes:
         answer = input("This script will add repositories and install packages using your package management. " +
                        "Continue? (y/n) ")
         if answer.lower() != "y":

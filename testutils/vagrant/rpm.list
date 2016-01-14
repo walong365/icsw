@@ -1,7 +1,7 @@
 #
 # PACKAGES
 
-ovirt-guest-agent man rsyslog killall vim mlocate
+ovirt-guest-agent man rsyslog killall vim mlocate rsync
 
 
 #
