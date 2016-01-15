@@ -268,8 +268,10 @@ def parse_args():
                             help="cluster name as provided by init.at")
         parser.add_argument("-v", "--cluster-version", dest='cluster_version', required=True,
                             help="choose the version to install, either icsw-2.5 or icsw-devel")
-        parser.add_argument("-y", "--assume-yes", dest='assume_yes', action="store_true",
+        parser.add_argument( "--assume-yes", dest='assume_yes', action="store_true",
                             help="Don't ask user to confirm install")
+        parser.add_argument( "--do-not-config", dest='do_not_config', action="store_true",
+                    help="Do also a base configuration of database and license file")
         opts = parser.parse_args()
     except ImportError:
         import optparse
@@ -284,6 +286,8 @@ def parse_args():
                             help="choose the version to install, either 2.5 or devel")
         parser.add_option("-y", "--assume-yes", dest='assume_yes', action="store_true",
                             help="Don't ask user to confirm install")
+        parser.add_option("--do-not-config", dest='do_not_config', action="store_true",
+                    help="Do also a base configuration of database and license file")
         # emulate required
         opts, _ = parser.parse_args()
         if opts.user is None:
@@ -322,25 +326,26 @@ def main():
     log.debug("Installing packages")
     local_os.install_icsw()
 
-    log.debug("Setting up database")
-    local_os.process_command(
-        (
-            "/opt/cluster/sbin/icsw",
-            "setup",
+    if not opts.do_not_config:
+        log.debug("Setting up database")
+        local_os.process_command(
+            (
+                "/opt/cluster/sbin/icsw",
+                "setup",
+            )
         )
-    )
 
-    log.debug("Installing license file")
-    local_os.process_command(
-        (
-            "/opt/cluster/sbin/icsw",
-            "license",
-            "register_cluster",
-            "--user", opts.user,
-            "--password", opts.password,
-            "--cluster-name", opts.cluster_name,
+        log.debug("Installing license file")
+        local_os.process_command(
+            (
+                "/opt/cluster/sbin/icsw",
+                "license",
+                "register_cluster",
+                "--user", opts.user,
+                "--password", opts.password,
+                "--cluster-name", opts.cluster_name,
+            )
         )
-    )
 
 
 if __name__ == "__main__":
