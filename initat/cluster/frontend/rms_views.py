@@ -65,28 +65,34 @@ if sge_tools:
     class ThreadLockedSGEInfo(sge_tools.sge_info):
         # sge_info object with thread lock layer
         def __init__(self):
-            _srv_type = "rms-server"
-            _routing = SrvTypeRouting()
-            self.lock = threading.Lock()
-            if _srv_type not in _routing:
-                _routing = SrvTypeRouting(force=True)
-            if _srv_type in _routing:
-                _srv_address = _routing.get_server_address(_srv_type)
-            else:
-                _srv_address = "127.0.0.1"
-            sge_tools.sge_info.__init__(
-                self,
-                server=_srv_address,
-                source="server",
-                run_initial_update=False,
-                verbose=settings.DEBUG,
-                persistent_socket=True,
-            )
+            self._init = False
+
+        def ensure_init(self):
+            if not self._init:
+                self._init = True
+                _srv_type = "rms-server"
+                _routing = SrvTypeRouting()
+                self.lock = threading.Lock()
+                if _srv_type not in _routing:
+                    _routing = SrvTypeRouting(force=True)
+                if _srv_type in _routing:
+                    _srv_address = _routing.get_server_address(_srv_type)
+                else:
+                    _srv_address = "127.0.0.1"
+                sge_tools.sge_info.__init__(
+                    self,
+                    server=_srv_address,
+                    source="server",
+                    run_initial_update=False,
+                    verbose=settings.DEBUG,
+                    persistent_socket=True,
+                )
 
         def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
             logger.log(log_level, "[sge] {}".format(what))
 
         def update(self):
+            self.ensure_init()
             self.lock.acquire()
             try:
                 sge_tools.sge_info.update(self)

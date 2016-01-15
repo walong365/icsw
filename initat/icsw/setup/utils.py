@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2014-2015 Andreas Lang-Nevyjel init.at
+# Copyright (C) 2014-2016 Andreas Lang-Nevyjel init.at
 #
 # this file is part of icsw-server
 #
@@ -26,7 +26,9 @@ import random
 import os
 import shutil
 import string
+import time
 import tempfile
+import sys
 
 from initat.tools import logging_tools
 
@@ -97,3 +99,53 @@ def remove_pyco(start_dir):
                 os.unlink(_path)
     if _removed:
         print("    removed {}".format(logging_tools.get_plural("file", len(_removed))))
+
+
+class Redirect(object):
+    def __init__(self, glog, io_type):
+        self.glog = glog
+        self.io_type = io_type
+
+    def write(self, what):
+        self.glog.write(self.io_type, what)
+
+    def flush(self):
+        pass
+
+
+class GLog(object):
+    def __init__(self):
+
+        self._log_dir = tempfile.mkdtemp(prefix="icsw_setup_{:d}_".format(int(time.time())))
+        self._prev = {
+            "stdout": sys.stdout,
+            "stderr": sys.stderr,
+        }
+        self._names = {
+            key: os.path.join(self._log_dir, key) for key in {"stdout", "stderr", "unified"}
+        }
+        self._ends_with_cr = {key: True for key in self._names.iterkeys()}
+        print("Logs are in {}".format(self._log_dir))
+        sys.stdout = Redirect(self, "stdout")
+        sys.stderr = Redirect(self, "stderr")
+
+    def transform(self, io_type, what):
+        _pf = "[{}] ".format(time.ctime())
+        if self._ends_with_cr[io_type]:
+            what = "{}{}".format(_pf, what)
+        _ends_with_cr = what.endswith("\n")
+        self._ends_with_cr[io_type] = _ends_with_cr
+        if _ends_with_cr:
+            what = what[:-1].replace("\n", "\n{}".format(_pf)) + "\n"
+        else:
+            what = what.replace("\n", "\n{}".format(_pf))
+        return what
+
+    def write(self, io_type, what):
+        file(self._names[io_type], "a").write(self.transform(io_type, what))
+        file(self._names["unified"], "a").write(self.transform("unified", what))
+        self._prev[io_type].write(what)
+
+
+def install_global_logger():
+    GLog()

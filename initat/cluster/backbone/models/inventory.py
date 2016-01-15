@@ -1,5 +1,4 @@
-
-# Copyright (C) 2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2015-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -22,21 +21,16 @@
 #
 """ inventory definitions for ICSW """
 
-import datetime
-import time
-
 from django.db import models
-from django.db.models import signals
-from django.dispatch import receiver
-from initat.cluster.backbone.models.functions import cluster_timezone, duration as duration_types
-#from djxml import xmlmodels
+
+# from djxml import xmlmodels
 
 __all__ = [
     "DeviceInventory",
 ]
 
 
-#class XMLTest(xmlmodels.XmlModel):
+# class XMLTest(xmlmodels.XmlModel):
 #    pass
 
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2010,2012-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2010,2012-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -16,8 +16,9 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from initat.host_monitoring import limits, hm_classes
 import commands
+
+from initat.host_monitoring import limits, hm_classes
 from initat.tools import logging_tools, process_tools
 
 
@@ -199,7 +200,7 @@ class heartbeat_status_command(hm_classes.hm_command):
                             if len(line_split) == 4:
                                 res_name, res_type, res_status, res_node = line_split
                                 res_node = res_node.split(".")[0]
-                                if (res_node == local_node and only_local_resources):
+                                if res_node == local_node and only_local_resources:
                                     r_dict["resources"][res_name] = {
                                         "type": res_type,
                                         "status": res_status,

@@ -331,8 +331,10 @@ for sub_dir in os.listdir(dir_name):
 
 ADDITIONAL_JS = tuple(ADDITIONAL_JS)
 
+_show_apps = False
 for rem_app_key in [key for key in os.environ.keys() if key.startswith("INIT_REMOVE_APP_NAME")]:
     rem_app = os.environ[rem_app_key]
+    _show_apps = True
     if rem_app.endswith("."):
         INSTALLED_APPS = [_entry for _entry in INSTALLED_APPS if not _entry.startswith(rem_app)]
     else:
@@ -340,7 +342,10 @@ for rem_app_key in [key for key in os.environ.keys() if key.startswith("INIT_REM
             INSTALLED_APPS.remove(rem_app)
 
 if any([_app.startswith("initat.cluster.") for _app in INSTALLED_APPS]):
+    ICSW_INCLUDE_URLS = True
     AUTH_USER_MODEL = "backbone.user"
+else:
+    ICSW_INCLUDE_URLS = False
 
 INSTALLED_APPS = tuple(INSTALLED_APPS)
 
@@ -517,6 +522,14 @@ TEMPLATES = [
 ]
 
 INSTALLED_APPS = tuple(list(INSTALLED_APPS) + ["rest_framework"])
+
+if _show_apps:
+    print(
+        "{:d} INSTALLED_APPS: {}".format(
+            len(INSTALLED_APPS),
+            " ".join(INSTALLED_APPS),
+        )
+    )
 
 TEST_RUNNER = 'django.test.runner.DiscoverRunner'
 

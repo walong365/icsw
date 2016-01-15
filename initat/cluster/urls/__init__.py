@@ -14,14 +14,14 @@ path_name = os.path.dirname(__file__)
 # _BLACKLIST = ["webfrontend"]
 _BLACKLIST = ["webfrontend_min", "__init__"]
 
-
-for entry in os.listdir(path_name):
-    if entry.endswith(".py"):
-        _py_name = entry.split(".")[0]
-        if _py_name not in _BLACKLIST:
-            new_mod = __import__(entry.split(".")[0], globals(), locals())
-            if hasattr(new_mod, "urlpatterns"):
-                urlpatterns.extend(new_mod.urlpatterns)
+if settings.ICSW_INCLUDE_URLS:
+    for entry in os.listdir(path_name):
+        if entry.endswith(".py"):
+            _py_name = entry.split(".")[0]
+            if _py_name not in _BLACKLIST:
+                new_mod = __import__(entry.split(".")[0], globals(), locals())
+                if hasattr(new_mod, "urlpatterns"):
+                    urlpatterns.extend(new_mod.urlpatterns)
 
 urlpatterns.extend(
     [

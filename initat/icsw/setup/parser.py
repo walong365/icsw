@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
-from .commands import AVAILABLE_DATABASES, DB_CS_FILENAME, main
-from .utils import generate_password
+from .constants import AVAILABLE_DATABASES, DB_CS_FILENAME
+from .utils import generate_password, install_global_logger
 
 
 class Parser(object):
@@ -12,7 +12,7 @@ class Parser(object):
         self.parser = parser.add_parser(
             "setup", help="Create database and perform initial setup"
         )
-        self.parser.set_defaults(execute=main)
+        self.parser.set_defaults(execute=self.execute)
         self.add_db_group()
         self.add_migration_group()
         self.add_creation_group()
@@ -21,6 +21,11 @@ class Parser(object):
         self.add_webfrontend_group()
         if "sqlite" in AVAILABLE_DATABASES:
             self.add_sqlite_group()
+
+    def execute(self, options):
+        from .commands import main
+        install_global_logger()
+        main(options)
 
     def add_db_group(self):
         group = self.parser.add_argument_group("database options")

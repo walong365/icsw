@@ -19,12 +19,13 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 from collections import defaultdict
+
 import dateutil.relativedelta
 import django.utils.timezone
-
 from django.db import models
 from django.db.models import Avg
 from enum import IntEnum
+
 from initat.cluster.backbone.models.functions import memoize_with_expiry
 
 

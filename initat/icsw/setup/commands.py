@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2014-2015 Andreas Lang-Nevyjel init.at
+# Copyright (C) 2014-2016 Andreas Lang-Nevyjel init.at
 #
-# this file is part of cluster-backbone-sql
+# this file is part of icsw-server
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -23,8 +23,6 @@
 
 import fnmatch
 import grp
-import importlib
-import os
 import pwd
 import shutil
 import stat
@@ -32,68 +30,66 @@ import subprocess
 import sys
 import time
 
-from initat.constants import GEN_CS_NAME, DB_ACCESS_CS_NAME
-from initat.tools import logging_tools, process_tools, config_store
+from initat.constants import GEN_CS_NAME
+from initat.tools import logging_tools, process_tools
 from .connection_tests import test_psql, test_mysql, test_sqlite
+from .constants import *
 from .utils import generate_password, DirSave, get_icsw_root, remove_pyco
 
-ICSW_ROOT = get_icsw_root()
-BACKBONE_DIR = os.path.join(ICSW_ROOT, "initat", "cluster", "backbone")
-CMIG_DIR = os.path.join(BACKBONE_DIR, "migrations")
-MIGRATION_DIRS = [
-    "reversion",
-    "django/contrib/sites",
-    "django/contrib/auth",
-    "initat/cluster/backbone",
-    "initat/cluster/liebherr",
-]
 
-# which apps needs syncing
-SYNC_APPS = ["liebherr", "licadmin"]
+class SetupLogger(object):
+    nest_level = 0
 
-NEEDED_DIRS = ["/var/log/cluster"]
+    def __init__(self, func):
+        self.__name__ = func.__name__
+        self.__doc__ = func.__doc__
+        self._func = func
 
-BACKBONE_DIR = os.path.join(ICSW_ROOT, "initat/cluster/backbone")
-PRE_MODELS_DIR = os.path.join(BACKBONE_DIR, "models16")
-MODELS_DIR = os.path.join(BACKBONE_DIR, "models")
-MODELS_DIR_SAVE = os.path.join(BACKBONE_DIR, ".models_save")
-Z800_MODELS_DIR = os.path.join(BACKBONE_DIR, "0800_models")
+    def __repr__(self):
+        return self._func
 
-#
-# Database related values
-#
-
-DEFAULT_DATABASE = "cdbase"
-DB_PRESENT = {
-    "psql": True,
-    "mysql": True,
-    "sqlite": True,
-}
-
-for module_name, key in (
-    ("psycopg2", "psql"),
-    ("MySQLdb", "mysql"),
-    ("sqlite3", "sqlite"),
-):
-    try:
-        importlib.import_module(module_name)
-    except:
-        DB_PRESENT[key] = False
-
-AVAILABLE_DATABASES = [key for key, value in DB_PRESENT.items() if value]
-if "psql" in AVAILABLE_DATABASES:
-    DEFAULT_ENGINE = "psql"
-else:
-    try:
-        DEFAULT_ENGINE = AVAILABLE_DATABASES[0]
-    except IndexError:
-        DEFAULT_ENGINE = ""
-
-DB_CS_FILENAME = config_store.ConfigStore.build_path(DB_ACCESS_CS_NAME)
-
-# DB_FILE = "/etc/sysconfig/cluster/db.cf"
+    def __call__(self, *args, **kwargs):
+        SetupLogger.nest_level += 1
+        _pf = "  " * SetupLogger.nest_level
+        print(
+            "{}[{:d}] Entering {} ({}, {})".format(
+                _pf,
+                SetupLogger.nest_level,
+                self.__name__,
+                logging_tools.get_plural("arg", len(args)),
+                logging_tools.get_plural("kwarg", len(kwargs)),
+            )
+        )
+        s_time = time.time()
+        ret_value = self._func(*args, **kwargs)
+        e_time = time.time()
+        print(
+            "{}[{:d}] Leaving {}, call took {}".format(
+                _pf,
+                SetupLogger.nest_level,
+                self.__name__,
+                logging_tools.get_diff_time_str(e_time - s_time),
+            )
+        )
+        SetupLogger.nest_level -= 1
+        return ret_value
 
 
+@SetupLogger
+def selinux_enabled():
+    _bin = process_tools.find_file("selinuxenabled")
+    if _bin:
+        try:
+            c_out = subprocess.check_output(_bin)
+        except subprocess.CalledProcessError as e:
+            return False
+        else:
+            return True
+    else:
+        return False
+
+
+@SetupLogger
 def call_manage(args, **kwargs):
     _output = kwargs.get("output", False)
     _show_output = kwargs.get("show_output", False)
@@ -139,6 +135,7 @@ def call_manage(args, **kwargs):
             return True
 
 
+@SetupLogger
 def _input(in_str, default, **kwargs):
     _choices = kwargs.get("choices", [])
     is_int = type(default) in [int, long]
@@ -186,6 +183,7 @@ def _input(in_str, default, **kwargs):
     return _cur_inp
 
 
+@SetupLogger
 def enter_data(c_dict, engine_selected, database_selected):
     print("-" * 20)
     print("enter exit to exit installation")
@@ -213,6 +211,7 @@ def enter_data(c_dict, engine_selected, database_selected):
     }[c_dict["_engine"]]
 
 
+@SetupLogger
 def init_webfrontend(opts):
     for _what, _command, _target in [
         ("collecting static", "collectstatic --noinput -c", None),
@@ -240,6 +239,7 @@ def init_webfrontend(opts):
         print("")
 
 
+@SetupLogger
 def create_db_cf(opts):
     c_dict = {
         "host": opts.host,
@@ -322,6 +322,7 @@ def create_db_cf(opts):
         return True
 
 
+@SetupLogger
 def clear_migrations():
     print("clearing existing migrations")
     for mig_dir in MIGRATION_DIRS:
@@ -331,6 +332,7 @@ def clear_migrations():
             shutil.rmtree(fm_dir)
 
 
+@SetupLogger
 def check_migrations():
     print("checking existing migrations")
     any_found = False
@@ -346,6 +348,7 @@ def check_migrations():
         print("no migrations found, OK")
 
 
+@SetupLogger
 def check_for_pre17(opts):
     if os.path.isdir(PRE_MODELS_DIR):
         print("pre-1.7 models dir {} found".format(PRE_MODELS_DIR))
@@ -423,6 +426,7 @@ def check_for_pre17(opts):
             file(_key, "w").write(_value)
 
 
+@SetupLogger
 def check_for_0800(opts):
     # move away all migrations above 0800
     ds0 = DirSave(CMIG_DIR, 800)
@@ -455,6 +459,7 @@ def check_for_0800(opts):
         ds1.cleanup()
 
 
+@SetupLogger
 def migrate_app(_app, **kwargs):
     if not _app:
         print("")
@@ -466,11 +471,13 @@ def migrate_app(_app, **kwargs):
     call_manage(["migrate", _app.split(".")[-1], "--noinput"] + kwargs.get("migrate_args", []))
 
 
+@SetupLogger
 def apply_migration(_app, **kwargs):
     success = call_manage(["migrate", _app.split(".")[-1], "--noinput"] + kwargs.get("migrate_args", []))
     return success
 
 
+@SetupLogger
 def create_db(opts):
     if os.getuid():
         print("need to be root to create database")
@@ -516,6 +523,7 @@ def create_db(opts):
         call_update_funcs(opts)
 
 
+@SetupLogger
 def migrate_db(opts):
     remove_pyco(BACKBONE_DIR)
     if os.path.isdir(CMIG_DIR):
@@ -554,6 +562,7 @@ def migrate_db(opts):
         sys.exit(5)
 
 
+@SetupLogger
 def call_update_funcs(opts):
     create_version_entries()
     create_fixtures()
@@ -562,15 +571,18 @@ def call_update_funcs(opts):
     call_manage(["migrate_to_config_catalog"])
 
 
+@SetupLogger
 def create_version_entries():
     call_manage(["create_version_entries"], show_output=True)
 
 
+@SetupLogger
 def create_fixtures():
     call_manage(["create_fixtures"])
     call_manage(["init_csw_permissions"])
 
 
+@SetupLogger
 def check_db_rights():
     if os.path.isfile(DB_CS_FILENAME):
         c_stat = os.stat(DB_CS_FILENAME)
@@ -580,6 +592,7 @@ def check_db_rights():
                 os.chmod(DB_CS_FILENAME, c_stat.st_mode | stat.S_IROTH)
 
 
+@SetupLogger
 def _check_dirs():
     _missing_dirs = []
     for _dir in NEEDED_DIRS:
@@ -600,6 +613,7 @@ def _check_dirs():
         sys.exit(6)
 
 
+@SetupLogger
 def setup_django():
     import django
     django.setup()
@@ -610,6 +624,7 @@ def setup_django():
     return connection, apps, MigrationRecorder
 
 
+@SetupLogger
 def app_has_unapplied_migrations(app_name):
     # Note: We cannot configure Django globally, because some config files
     # might not exist yet.
@@ -631,7 +646,11 @@ def app_has_unapplied_migrations(app_name):
     return len(migrations_on_disk - applied_migrations) > 0
 
 
+@SetupLogger
 def main(args):
+    if selinux_enabled():
+        print("SELinux is enabled, refuse to operate")
+        sys.exit(-1)
     _check_dirs()
     DB_MAPPINGS = {
         "psql": "python-modules-psycopg2",
