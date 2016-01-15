@@ -191,26 +191,33 @@ def _input(in_str, default, **kwargs):
 
 
 @SetupLogger
-def enter_data(c_dict, engine_selected, database_selected):
+def enter_data(c_dict, opts):
     print("-" * 20)
     print("enter exit to exit installation")
-    if not engine_selected:
+
+    # if parameters have been specified in opts, we do not query any more.
+
+    if opts.engine is None:
         c_dict["_engine"] = _input("DB engine", c_dict["_engine"], choices=AVAILABLE_DATABASES)
     if c_dict["_engine"] == "sqlite":
         c_dict["host"] = ""
         c_dict["user"] = ""
     else:
-        c_dict["host"] = _input("DB host", c_dict["host"])
-        c_dict["user"] = _input("DB user", c_dict["user"])
-    if not database_selected:
+        if opts.host is None:
+            c_dict["host"] = _input("DB host", c_dict["host"])
+        if opts.user is None:
+            c_dict["user"] = _input("DB user", c_dict["user"])
+    if opts.database is None:
         c_dict["database"] = _input("DB name", c_dict["database"])
     if c_dict["_engine"] == "sqlite":
         c_dict["passwd"] = ""
         c_dict["port"] = 0
     else:
         def_port = {"mysql": 3306, "psql": 5432, "sqlite": 0}[c_dict["_engine"]]
-        c_dict["passwd"] = _input("DB passwd", c_dict["passwd"])
-        c_dict["port"] = _input("DB port", def_port)
+        if opts.passwd is None:
+            c_dict["passwd"] = _input("DB passwd", c_dict["passwd"])
+        if opts.port is None:
+            c_dict["port"] = _input("DB port", def_port)
     c_dict["engine"] = {
         "mysql": "django.db.backends.mysql",
         "psql": "django.db.backends.postgresql_psycopg2",
@@ -251,13 +258,24 @@ def create_db_cf(opts):
     c_dict = {
         "host": opts.host,
         "user": opts.user,
-        "database": opts.database if opts.database is not None else DEFAULT_DATABASE,
+        "port": opts.port,
+        "database": opts.database,
         "passwd": opts.passwd,
-        "_engine": opts.engine if opts.engine is not None else DEFAULT_ENGINE,
+        "_engine": opts.engine,
     }
-    while True:
+    if c_dict['database'] is None:
+        c_dict['database'] = DEFAULT_DATABASE
+    if c_dict['_engine'] is None:
+        c_dict['_engine'] = DEFAULT_ENGINE
+
+    all_parameters_specified = all(entry is not None for entry in c_dict.itervalues())
+    connection_successful = False
+    while not connection_successful and not all_parameters_specified:
         # enter all relevant data
-        enter_data(c_dict, opts.engine is not None, opts.database is not None)
+        enter_data(
+            c_dict,
+            opts,
+        )
 
         if c_dict["_engine"] == "sqlite":
 
@@ -305,10 +323,15 @@ def create_db_cf(opts):
         test_obj = {"psql": test_psql, "mysql": test_mysql, "sqlite": test_sqlite}[c_dict["_engine"]](c_dict)
         if test_obj.test_connection():
             print("connection successful")
-            break
+            connection_successful = True
         else:
             print("cannot connect, please check your settings and / or the setup of your database:")
             test_obj.show_config()
+
+    if not connection_successful:
+        print("failed to connect to database")
+        return False
+
     # content
     _cs = config_store.ConfigStore(DB_ACCESS_CS_NAME)
     for _key in sorted(c_dict):

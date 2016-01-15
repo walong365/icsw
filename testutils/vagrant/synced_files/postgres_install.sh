@@ -1,4 +1,4 @@
-#!/bin/bash -e -x
+#!/bin/bash -ex
 #
 echo "###########"
 echo "Install postgresql server and psycopg2 packages"
@@ -29,3 +29,4 @@ echo "###########"
 echo "create database, user and set password"
 sudo -u postgres psql --command "CREATE USER cdbuser LOGIN NOCREATEDB UNENCRYPTED PASSWORD 'init4u';"
 sudo -u postgres psql --command "CREATE DATABASE cdbase OWNER cdbuser;"
+exit 0

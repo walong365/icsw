@@ -50,6 +50,9 @@ class Parser(object):
             "--host", type=str, default="localhost", help="set database host"
         )
         group.add_argument(
+            "--port", type=int, help="set database port"
+        )
+        group.add_argument(
             "--ignore-existing", default=False, action="store_true",
             help="Ignore existing db.cf file {} [%(default)s]".format(DB_CS_FILENAME)
         )
