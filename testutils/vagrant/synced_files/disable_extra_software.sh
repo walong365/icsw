@@ -1,3 +1,3 @@
 #!/bin/bash -ex
 
-icsw state disable nginx icinga mongodb-init
+/opt/cluster/sbin/icsw state disable nginx icinga mongodb-init
