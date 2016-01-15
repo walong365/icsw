@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
 from .constants import AVAILABLE_DATABASES, DB_CS_FILENAME
-from .utils import generate_password, install_global_logger
+from .utils import generate_password
+from ..icsw_logging import install_global_logger
 
 
 class Parser(object):

@@ -48,22 +48,29 @@ class SetupLogger(object):
     def __repr__(self):
         return self._func
 
+    def debug(self, what):
+        print(
+            "<DBG>{}".format(what)
+        )
+
     def __call__(self, *args, **kwargs):
         SetupLogger.nest_level += 1
         _pf = "  " * SetupLogger.nest_level
-        print(
-            "{}[{:d}] Entering {} ({}, {})".format(
+        self.debug(
+            "{}[{:d}] Entering {} ({}{}, {}{})".format(
                 _pf,
                 SetupLogger.nest_level,
                 self.__name__,
                 logging_tools.get_plural("arg", len(args)),
+                " [{}]".format(", ".join([str(_val) for _val in args])) if args else "",
                 logging_tools.get_plural("kwarg", len(kwargs)),
+                " [{}]".format(", ".join(kwargs.keys())) if kwargs else "",
             )
         )
         s_time = time.time()
         ret_value = self._func(*args, **kwargs)
         e_time = time.time()
-        print(
+        self.debug(
             "{}[{:d}] Leaving {}, call took {}".format(
                 _pf,
                 SetupLogger.nest_level,

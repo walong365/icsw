@@ -35,3 +35,4 @@ VERSION_CS_NAME = "icsw.sysversion"
 CLUSTER_DIR = "/opt/cluster"
 # user extension dir
 USER_EXTENSION_ROOT = os.path.join(CLUSTER_DIR, "share", "user_extensions.d")
+LOG_ROOT = "/var/log/cluster"
