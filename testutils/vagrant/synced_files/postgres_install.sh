@@ -1,4 +1,4 @@
-#!/bin/bash -e -x
+#!/bin/bash -ex
 #
 echo "###########"
 echo "Install postgresql server and psycopg2 packages"
