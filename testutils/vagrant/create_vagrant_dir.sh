@@ -14,7 +14,7 @@ if [ $# -ne 1 ] ; then
     exit 1
 fi
 
-VAGRANT_TEST_UTILS_SOURCE="icsw/testutils/vagrant"
+VAGRANT_TEST_UTILS_SOURCE="testutils/vagrant"
 VAGRANT_DIR="install_test_vagant"
 SYNC_DIR="synced_files"
 
