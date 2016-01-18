@@ -16,8 +16,9 @@ fi
 
 VAGRANT_TEST_UTILS_SOURCE="icsw/testutils/vagrant"
 VAGRANT_DIR="install_test_vagant"
+SYNC_DIR="synced_files"
 
-mkdir $VAGRANT_DIR
+mkdir -p $VAGRANT_DIR/$SYNC_DIR
 
 cp $VAGRANT_TEST_UTILS_DIR/synced_files/* "$VAGRANT_DIR/synced_files"
 
@@ -28,5 +29,3 @@ else
     echo "Invalid linux distribution: $1"
     exit 1
 fi
-
-
