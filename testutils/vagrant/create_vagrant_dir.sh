@@ -23,8 +23,8 @@ mkdir -p $VAGRANT_DIR/$SYNC_DIR
 cp $VAGRANT_TEST_UTILS_SOURCE/synced_files/* "$VAGRANT_DIR/synced_files"
 
 if [ "$1" = "centos" ] ; then
-    cp "$VAGRANT_TEST_UTILS_DIR/Vagrantfile.centos" "$VAGRANT_DIR/Vagrantfile"
-    cp $VAGRANT_TEST_UTILS_DIR/synced_files_centos/* "$VAGRANT_DIR/synced_files"
+    cp "$VAGRANT_TEST_UTILS_SOURCE/Vagrantfile.centos" "$VAGRANT_DIR/Vagrantfile"
+    cp $VAGRANT_TEST_UTILS_SOURCE/synced_files_centos/* "$VAGRANT_DIR/synced_files"
 else
     echo "Invalid linux distribution: $1"
     exit 1
