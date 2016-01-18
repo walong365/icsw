@@ -15,12 +15,12 @@ if [ $# -ne 1 ] ; then
 fi
 
 VAGRANT_TEST_UTILS_SOURCE="testutils/vagrant"
-VAGRANT_DIR="install_test_vagant"
+VAGRANT_DIR="../../install_test_vagant"
 SYNC_DIR="synced_files"
 
 mkdir -p $VAGRANT_DIR/$SYNC_DIR
 
-cp $VAGRANT_TEST_UTILS_DIR/synced_files/* "$VAGRANT_DIR/synced_files"
+cp $VAGRANT_TEST_UTILS_SOURCE/synced_files/* "$VAGRANT_DIR/synced_files"
 
 if [ "$1" = "centos" ] ; then
     cp "$VAGRANT_TEST_UTILS_DIR/Vagrantfile.centos" "$VAGRANT_DIR/Vagrantfile"
