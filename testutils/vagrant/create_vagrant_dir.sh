@@ -24,6 +24,7 @@ cp $VAGRANT_TEST_UTILS_SOURCE/synced_files/* "$VAGRANT_DIR/synced_files"
 
 if [ "$1" = "centos" ] ; then
     cp "$VAGRANT_TEST_UTILS_SOURCE/Vagrantfile.centos" "$VAGRANT_DIR/Vagrantfile"
+    cp "$VAGRANT_TEST_UTILS_SOURCE/vagrant_insecure_key" "$VAGRANT_DIR/vagrant_insecure_key"
     cp $VAGRANT_TEST_UTILS_SOURCE/synced_files_centos/* "$VAGRANT_DIR/synced_files"
 else
     echo "Invalid linux distribution: $1"
