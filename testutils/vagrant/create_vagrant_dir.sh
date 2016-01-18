@@ -15,7 +15,7 @@ if [ $# -ne 1 ] ; then
 fi
 
 VAGRANT_TEST_UTILS_SOURCE="testutils/vagrant"
-VAGRANT_DIR="install_test_vagant"
+VAGRANT_DIR="install_test_vagrant"
 SYNC_DIR="synced_files"
 
 mkdir -p $VAGRANT_DIR/$SYNC_DIR
