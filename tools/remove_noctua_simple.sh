@@ -11,7 +11,7 @@ if rpm -q noctua > /dev/null ; then
     fi
     # remove all migrations, not needed here (done via setup_cluster.py)
     #echo "removing all migration dirs"
-    #find /opt/python-init/lib/python/site-packages/ -type d -iname migrations -exec rm -rf {} \;
+    #find /opt/python-init/lib/python2.7/site-packages/ -type d -iname migrations -exec rm -rf {} \;
 else
     echo "NOCTUA not installed";
 fi

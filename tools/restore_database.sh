@@ -1,6 +1,6 @@
 #!/bin/bash
 
-LIB_DIR="/opt/python-init/lib/python/site-packages"
+LIB_DIR="/opt/python-init/lib/python2.7/site-packages"
 C_DIR="${LIB_DIR}/initat/cluster/"
 MIG_DIR="${C_DIR}/backbone/migrations/"
 

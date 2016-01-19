@@ -19,7 +19,7 @@
 
 source $(dirname $0)/icsw_pis_tools.sh
 
-export PREFIX_INIT=/opt/python-init/lib/python/site-packages
+export PREFIX_INIT=/opt/python-init/lib/python2.7/site-packages
 
 # static dir
 STATIC_DIR=/srv/www/htdocs/icsw/static

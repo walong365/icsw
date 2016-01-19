@@ -27,7 +27,7 @@ ICSW_SHARE=${ICSW_BASE}/share
 ICSW_SYSCONF=${SYSCONF}/cluster
 ICSW_TFTP=${ICSW_BASE}/system/tftpboot
 ICSW_MOTHER=${ICSW_SHARE}/mother
-PREFIX_INIT=/opt/python-init/lib/python/site-packages
+PREFIX_INIT=/opt/python-init/lib/python2.7/site-packages
 DJANGO_PY=${PREFIX_INIT}/django/
 
 MANAGE=${PREFIX_INIT}/initat/cluster/manage.py
