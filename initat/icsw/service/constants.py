@@ -49,7 +49,6 @@ __all__ = [
     "CONF_STATE_IP_MISMATCH",
     # also valid for database change
     "CONF_STATE_MODELS_CHANGED",
-    "INIT_BASE",
     "SERVERS_DIR",
     # dicts
     "STATE_DICT",
