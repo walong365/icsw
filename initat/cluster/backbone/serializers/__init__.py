@@ -152,12 +152,12 @@ class DeviceSNMPInfoSerializer(serializers.ModelSerializer):
 
 class device_serializer(serializers.ModelSerializer):
     full_name = serializers.CharField(read_only=True)
-    is_meta_device = serializers.BooleanField()
-    is_cluster_device_group = serializers.BooleanField()
-    device_group_name = serializers.CharField()
+    is_meta_device = serializers.BooleanField(read_only=True, required=False)
+    is_cluster_device_group = serializers.BooleanField(read_only=True)
+    device_group_name = serializers.CharField(read_only=True)
     access_level = serializers.SerializerMethodField()
     access_levels = serializers.SerializerMethodField()
-    root_passwd_set = serializers.BooleanField()
+    root_passwd_set = serializers.BooleanField(read_only=True)
     act_partition_table = partition_table_serializer(read_only=True)
     partition_table = partition_table_serializer()
     netdevice_set = netdevice_serializer(many=True)

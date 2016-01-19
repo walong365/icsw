@@ -19,6 +19,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+
+
 import glob
 import os
 import sys
@@ -462,11 +464,10 @@ if WITH_REACT:
         ]
     )
 
-SSI_ROOTS = []
-SSI_FILES = []
-SSI_ROOT_DICT = {}
+ICSW_RAW_ROOTS = []
+ICSW_RAW_FILES = []
 for _local_ssi_root in ["frontend"] + ICSW_ADDON_APPS:
-    _SSI_ROOT = os.path.normpath(
+    _RAW_ROOT = os.path.normpath(
         os.path.join(
             __file__,
             "..",
@@ -475,20 +476,22 @@ for _local_ssi_root in ["frontend"] + ICSW_ADDON_APPS:
             "icsw"
         )
     )
-    SSI_ROOT_DICT[_local_ssi_root] = _SSI_ROOT
     # print _SSI_ROOT
-    if os.path.exists(_SSI_ROOT):
-        for _dir, _dirlist, _filelist in os.walk(_SSI_ROOT):
-            if _dir == _SSI_ROOT:
+    # TEMPLATES["DIRS"].append(_SSI_ROOT)
+    if os.path.exists(_RAW_ROOT):
+        for _dir, _dirlist, _filelist in os.walk(_RAW_ROOT):
+            if _dir == _RAW_ROOT:
                 continue
             for _file in _filelist:
                 if _file.endswith(".html"):
                     # print "*", _dir, _file
-                    SSI_FILES.append(os.path.join(_dir, _file))
-        SSI_ROOTS.append(_SSI_ROOT)
+                    ICSW_RAW_FILES.append(os.path.join(_dir, _file)[len(_RAW_ROOT) + 1:])
+                    # print SSI_FILES[-1], _SSI_ROOT
+        ICSW_RAW_ROOTS.append(_RAW_ROOT)
 
-if not SSI_FILES and not DEBUG:
+if not ICSW_RAW_FILES and not DEBUG:
     raise ImproperlyConfigured("no static files found, wrong filesystem rights ?")
+
 
 TEMPLATES = [
     {
@@ -496,14 +499,14 @@ TEMPLATES = [
         "DIRS": [
             os.path.join(MEDIA_ROOT, "angular"),
             os.path.join(CLUSTER_DIR, "share", "doc", "handbook", "chunks"),
-        ],
+        ] + ICSW_RAW_ROOTS,
         "OPTIONS": {
             "context_processors": [
                 "django.contrib.auth.context_processors.auth",
-                "django.core.context_processors.i18n",
-                "django.core.context_processors.request",
-                "django.core.context_processors.media",
-                "django.core.context_processors.debug",
+                "django.template.context_processors.i18n",
+                "django.template.context_processors.request",
+                "django.template.context_processors.media",
+                "django.template.context_processors.debug",
                 "initat.cluster.backbone.context_processors.add_session",
                 "initat.cluster.backbone.context_processors.add_settings",
                 "initat.cluster.backbone.context_processors.add_csw_permissions",
@@ -513,7 +516,6 @@ TEMPLATES = [
                 "django.template.loaders.filesystem.Loader",
                 "django.template.loaders.app_directories.Loader",
             ],
-            "allowed_include_roots": SSI_ROOTS,
         },
 
     }
@@ -529,7 +531,7 @@ if _show_apps:
         )
     )
 
-TEST_RUNNER = 'django.test.runner.DiscoverRunner'
+TEST_RUNNER = "django.test.runner.DiscoverRunner"
 
 rest_renderers = (
     [

@@ -43,6 +43,7 @@ setup(
         "initat.cluster.backbone.management.commands",
         "initat.cluster.backbone.management.commands.fixtures",
         "initat.cluster.frontend",
+        "initat.cluster.frontend.templatetags",
         "initat.cluster.frontend.ext",
         "initat.cluster.frontend.management",
         "initat.cluster.frontend.management.commands",

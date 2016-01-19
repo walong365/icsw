@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2014-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2014-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -23,6 +23,7 @@
 import logging
 
 import django
+import django.template
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ImproperlyConfigured
@@ -30,7 +31,6 @@ from django.core.urlresolvers import reverse
 from django.shortcuts import render_to_response, redirect
 from django.template.loader import render_to_string
 from django.utils.decorators import method_decorator
-import django.template
 
 logger = logging.getLogger("cluster.render")
 
@@ -69,10 +69,13 @@ class render_me(object):
 
 
 def render_string(request, template_name, in_dict=None):
-    return unicode(render_to_string(
-        template_name,
-        in_dict if in_dict is not None else {},
-        django.template.RequestContext(request))
+    return unicode(
+        render_to_string(
+            template_name,
+            in_dict if in_dict is not None else {},
+            # was: context_instance = ...
+            django.template.RequestContext(request)
+        )
     )
 
 

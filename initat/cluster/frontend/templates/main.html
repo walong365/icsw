@@ -6,7 +6,7 @@
 <!-- Consider adding a manifest.appcache: h5bp.com/d/Offline -->
 <!--[if gt IE 8]><!--> <html class="no-js" lang="en"> <!--<![endif]-->
 <head>
-    {% load i18n pipeline staticfiles %}
+    {% load i18n pipeline staticfiles icsw_tags %}
 
     <meta charset="utf-8">
     
@@ -51,8 +51,8 @@ window.DEVICE_OBJECT_LEVEL_PERMISSION = "{{ device_object_level_permission }}";
     </p>
 <![endif]-->
     <div ng-app="icsw.app">
-        {% for ssi_file in settings.SSI_FILES %}
-            {% ssi ssi_file %}
+        {% for raw_file in settings.ICSW_RAW_FILES %}
+            {% raw_include raw_file %}
         {% endfor %}
         <icsw-layout-menubar></icsw-layout-menubar>
         <div block-ui="main" class="block-ui-main"></div>
