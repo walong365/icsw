@@ -379,7 +379,7 @@ PIPELINE["JAVASCRIPT"] = {
     "js_jquery_new": {
         "source_filenames": {
             "js/modernizr-2.8.1.min.js",
-            "js/jquery-2.1.4.min.js",
+            "js/jquery-2.2.0.min.js",
         },
         "output_filename": "pipeline/js/jquery_new.js"
     },
