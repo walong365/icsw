@@ -103,5 +103,5 @@ TARGET_STATE_DICT = {
 }
 
 # path definitions
-INIT_BASE = os.path.join("/", "opt", "python-init", "lib", "python", "site-packages", "initat")
+INIT_BASE = os.path.join("/", "opt", "python-init", "lib", "python2.7", "site-packages", "initat")
 SERVERS_DIR = os.path.join("/", "opt", "cluster", "etc", "servers.d")

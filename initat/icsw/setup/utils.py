@@ -33,7 +33,7 @@ from initat.tools import logging_tools
 
 def get_icsw_root():
     return os.environ.get(
-        "ICSW_ROOT", "/opt/python-init/lib/python/site-packages"
+        "ICSW_ROOT", "/opt/python-init/lib/python2.7/site-packages"
     )
 
 

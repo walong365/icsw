@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -18,8 +18,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 """ config part of md-config-server """
-
-import os
 
 from django.db.models import Q
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2013-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2013-2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -40,7 +40,7 @@ from initat.md_config_server.kpi import KpiProcess
 from initat.md_config_server.mixins import version_check_mixin
 from initat.md_config_server.status import StatusProcess, LiveSocket
 from initat.md_config_server.syncer import SyncerProcess, RemoteSlave
-from initat.tools import cluster_location, configfile, logging_tools, process_tools, server_command, \
+from initat.tools import configfile, logging_tools, process_tools, server_command, \
     threading_tools, server_mixins
 from initat.tools.server_mixins import RemoteCall
 

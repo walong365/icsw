@@ -164,8 +164,6 @@ if not os.path.isdir(STATIC_ROOT_DEBUG):
 # use X-Forwarded-Host header
 USE_X_FORWARDED_HOST = True
 
-# STATIC_ROOT = "/opt/python-init/lib/python2.7/site-packages/initat/cluster/"
-
 # URL prefix for static files.
 # Example: "http://media.lawrence.com/static/"
 STATIC_URL = "{}/static/".format(SITE_ROOT)
@@ -280,7 +278,7 @@ if os.path.isdir("/opt/icinga/share/images/logos"):
         ("icinga", "/opt/icinga/share/images/logos")
     )
 STATICFILES_DIRS.append(
-    ("admin", "/opt/python-init/lib/python/site-packages/django/contrib/admin/static/admin"),
+    ("admin", "/opt/python-init/lib/python2.7/site-packages/django/contrib/admin/static/admin"),
 )
 STATICFILES_DIRS = list(STATICFILES_DIRS)
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -154,7 +154,8 @@ class main_config(object):
             "sbin",
             "lib",
             "var/spool",
-            "var/spool/checkresults"]
+            "var/spool/checkresults"
+        ]
         if process_tools.get_sys_bits() == 64:
             dir_names.append("lib64")
         # dir dict for writing on disk
@@ -188,207 +189,222 @@ class main_config(object):
             #
             nagvis_main_cfg = ConfigParser.RawConfigParser(allow_no_value=True)
             for sect_name, var_list in [
-                ("global", [
-                    ("audit_log", 1),
-                    ("authmodule", "CoreAuthModSQLite"),
-                    ("authorisationmodule", "CoreAuthorisationModSQLite"),
-                    ("controls_size", 10),
-                    ("dateformat", "Y-m-d H:i:s"),
-                    ("dialog_ack_sticky", 1),
-                    ("dialog_ack_notify", 1),
-                    ("dialog_ack_persist", 0),
-                    # ("file_group", ""),
-                    ("file_mode", "660"),
-                    # ("http_proxy", ""),
-                    ("http_timeout", 10),
-                    ("language_detection", "user,session,browser,config"),
-                    ("language", "en_US"),
-                    ("logonmodule", "LogonMixed"),
-                    ("logonenvvar", "REMOTE_USER"),
-                    ("logonenvcreateuser", 1),
-                    ("logonenvcreaterole", "Guests"),
-                    ("refreshtime", 60),
-                    ("sesscookiedomain", "auto-detect"),
-                    ("sesscookiepath", "/nagvis"),
-                    ("sesscookieduration", "86400"),
-                    ("startmodule", "Overview"),
-                    ("startaction", "view"),
-                    ("startshow", ""),
-                    ]),
-                ("paths", [
-                    ("base", "%s/" % (os.path.normpath(global_config["NAGVIS_DIR"]))),
-                    ("htmlbase", global_config["NAGVIS_URL"]),
-                    ("htmlcgi", "/icinga/cgi-bin"),
-                    ]),
-                ("defaults", [
-                    ("backend", "live_1"),
-                    ("backgroundcolor", "#ffffff"),
-                    ("contextmenu", 1),
-                    ("contexttemplate", "default"),
-                    ("event_on_load", 0),
-                    ("event_repeat_interval", 0),
-                    ("event_repeat_duration", -1),
-                    ("eventbackground", 0),
-                    ("eventhighlight", 1),
-                    ("eventhighlightduration", 10000),
-                    ("eventhighlightinterval", 500),
-                    ("eventlog", 0),
-                    ("eventloglevel", "info"),
-                    ("eventlogevents", 24),
-                    ("eventlogheight", 75),
-                    ("eventloghidden", 1),
-                    ("eventscroll", 1),
-                    ("eventsound", 1),
-                    ("headermenu", 1),
-                    ("headertemplate", "default"),
-                    ("headerfade", 1),
-                    ("hovermenu", 1),
-                    ("hovertemplate", "default"),
-                    ("hoverdelay", 0),
-                    ("hoverchildsshow", 0),
-                    ("hoverchildslimit", 100),
-                    ("hoverchildsorder", "asc"),
-                    ("hoverchildssort", "s"),
-                    ("icons", "std_medium"),
-                    ("onlyhardstates", 0),
-                    ("recognizeservices", 1),
-                    ("showinlists", 1),
-                    ("showinmultisite", 1),
-                    # ("stylesheet", ""),
-                    ("urltarget", "_self"),
-                    ("hosturl", "[htmlcgi]/status.cgi?host=[host_name]"),
-                    ("hostgroupurl", "[htmlcgi]/status.cgi?hostgroup=[hostgroup_name]"),
-                    ("serviceurl", "[htmlcgi]/extinfo.cgi?type=2&host=[host_name]&service=[service_description]"),
-                    ("servicegroupurl", "[htmlcgi]/status.cgi?servicegroup=[servicegroup_name]&style=detail"),
-                    ("mapurl", "[htmlbase]/index.php?mod=Map&act=view&show=[map_name]"),
-                    ("view_template", "default"),
-                    ("label_show", 0),
-                    ("line_weather_colors", "10:#8c00ff,25:#2020ff,40:#00c0ff,55:#00f000,70:#f0f000,85:#ffc000,100:#ff0000"),
-                    ]),
-                ("index", [
-                    ("backgroundcolor", "#ffffff"),
-                    ("cellsperrow", 4),
-                    ("headermenu", 1),
-                    ("headertemplate", "default"),
-                    ("showmaps", 1),
-                    ("showgeomap", 0),
-                    ("showrotations", 1),
-                    ("showmapthumbs", 0),
-                    ]),
-                ("automap", [
-                    ("defaultparams", "&childLayers=2"),
-                    ("defaultroot", ""),
-                    ("graphvizpath", "/opt/cluster/bin/"),
-                    ]),
-                ("wui", [
-                    ("maplocktime", 5),
-                    ("grid_show", 0),
-                    ("grid_color", "#D5DCEF"),
-                    ("grid_steps", 32),
-                    ]),
-                ("worker", [
-                    ("interval", "10"),
-                    ("requestmaxparams", 0),
-                    ("requestmaxlength", 1900),
-                    ("updateobjectstates", 30),
-                    ]),
-                ("backend_live_1", [
-                    ("backendtype", "mklivestatus"),
-                    ("statushost", ""),
-                    ("socket", "unix:/opt/icinga/var/live"),
-                    ]),
-                ("backend_ndomy_1", [
-                    ("backendtype", "ndomy"),
-                    ("statushost", ""),
-                    ("dbhost", "localhost"),
-                    ("dbport", 3306),
-                    ("dbname", "nagios"),
-                    ("dbuser", "root"),
-                    ("dbpass", ""),
-                    ("dbprefix", "nagios_"),
-                    ("dbinstancename", "default"),
-                    ("maxtimewithoutupdate", 180),
-                    ("htmlcgi", "/nagios/cgi-bin"),
-                    ]),
-                # ("backend_merlinmy_1", [
-                #    ("backendtype", "merlinmy"),
-                #    ("dbhost", "localhost"),
-                #    ("dbport", 3306),
-                #    ("dbname", "merlin"),
-                #    ("dbuser", "merlin"),
-                #    ("dbpass", "merlin"),
-                #    ("maxtimewithoutupdate", 180),
-                #    ("htmlcgi", "/nagios/cgi-bin"),
-                #    ]),
-                # ("rotation_demo", [
-                #    ("maps", "demo-germany,demo-ham-racks,demo-load,demo-muc-srv1,demo-geomap,demo-automap"),
-                #    ("interval", 15),
-                #    ]),
-                ("states", [
-                    ("down", 10),
-                    ("down_ack", 6),
-                    ("down_downtime", 6),
-                    ("unreachable", 9),
-                    ("unreachable_ack", 6),
-                    ("unreachable_downtime", 6),
-                    ("critical", 8),
-                    ("critical_ack", 6),
-                    ("critical_downtime", 6),
-                    ("warning", 7),
-                    ("warning_ack", 5),
-                    ("warning_downtime", 5),
-                    ("unknown", 4),
-                    ("unknown_ack", 3),
-                    ("unknown_downtime", 3),
-                    ("error", 4),
-                    ("error_ack", 3),
-                    ("error_downtime", 3),
-                    ("up", 2),
-                    ("ok", 1),
-                    ("unchecked", 0),
-                    ("pending", 0),
-                    ("unreachable_bgcolor", "#F1811B"),
-                    ("unreachable_color", "#F1811B"),
-                    # ("unreachable_ack_bgcolor", ""),
-                    # ("unreachable_downtime_bgcolor", ""),
-                    ("down_bgcolor", "#FF0000"),
-                    ("down_color", "#FF0000"),
-                    # ("down_ack_bgcolor", ""),
-                    # ("down_downtime_bgcolor", ""),
-                    ("critical_bgcolor", "#FF0000"),
-                    ("critical_color", "#FF0000"),
-                    # ("critical_ack_bgcolor", ""),
-                    # ("critical_downtime_bgcolor", ""),
-                    ("warning_bgcolor", "#FFFF00"),
-                    ("warning_color", "#FFFF00"),
-                    # ("warning_ack_bgcolor", ""),
-                    # ("warning_downtime_bgcolor", ""),
-                    ("unknown_bgcolor", "#FFCC66"),
-                    ("unknown_color", "#FFCC66"),
-                    # ("unknown_ack_bgcolor", ""),
-                    # ("unknown_downtime_bgcolor", ""),
-                    ("error_bgcolor", "#0000FF"),
-                    ("error_color", "#0000FF"),
-                    ("up_bgcolor", "#00FF00"),
-                    ("up_color", "#00FF00"),
-                    ("ok_bgcolor", "#00FF00"),
-                    ("ok_color", "#00FF00"),
-                    ("unchecked_bgcolor", "#C0C0C0"),
-                    ("unchecked_color", "#C0C0C0"),
-                    ("pending_bgcolor", "#C0C0C0"),
-                    ("pending_color", "#C0C0C0"),
-                    ("unreachable_sound", "std_unreachable.mp3"),
-                    ("down_sound", "std_down.mp3"),
-                    ("critical_sound", "std_critical.mp3"),
-                    ("warning_sound", "std_warning.mp3"),
-                    # ("unknown_sound", ""),
-                    # ("error_sound", ""),
-                    # ("up_sound", ""),
-                    # ("ok_sound", ""),
-                    # ("unchecked_sound", ""),
-                    # ("pending_sound", ""),
-
-                ])
+                (
+                    "global",
+                    [
+                        ("audit_log", 1),
+                        ("authmodule", "CoreAuthModSQLite"),
+                        ("authorisationmodule", "CoreAuthorisationModSQLite"),
+                        ("controls_size", 10),
+                        ("dateformat", "Y-m-d H:i:s"),
+                        ("dialog_ack_sticky", 1),
+                        ("dialog_ack_notify", 1),
+                        ("dialog_ack_persist", 0),
+                        # ("file_group", ""),
+                        ("file_mode", "660"),
+                        # ("http_proxy", ""),
+                        ("http_timeout", 10),
+                        ("language_detection", "user,session,browser,config"),
+                        ("language", "en_US"),
+                        ("logonmodule", "LogonMixed"),
+                        ("logonenvvar", "REMOTE_USER"),
+                        ("logonenvcreateuser", 1),
+                        ("logonenvcreaterole", "Guests"),
+                        ("refreshtime", 60),
+                        ("sesscookiedomain", "auto-detect"),
+                        ("sesscookiepath", "/nagvis"),
+                        ("sesscookieduration", "86400"),
+                        ("startmodule", "Overview"),
+                        ("startaction", "view"),
+                        ("startshow", ""),
+                    ]
+                ),
+                (
+                    "paths",
+                    [
+                        ("base", "%s/" % (os.path.normpath(global_config["NAGVIS_DIR"]))),
+                        ("htmlbase", global_config["NAGVIS_URL"]),
+                        ("htmlcgi", "/icinga/cgi-bin"),
+                    ]
+                ),
+                (
+                    "defaults",
+                    [
+                        ("backend", "live_1"),
+                        ("backgroundcolor", "#ffffff"),
+                        ("contextmenu", 1),
+                        ("contexttemplate", "default"),
+                        ("event_on_load", 0),
+                        ("event_repeat_interval", 0),
+                        ("event_repeat_duration", -1),
+                        ("eventbackground", 0),
+                        ("eventhighlight", 1),
+                        ("eventhighlightduration", 10000),
+                        ("eventhighlightinterval", 500),
+                        ("eventlog", 0),
+                        ("eventloglevel", "info"),
+                        ("eventlogevents", 24),
+                        ("eventlogheight", 75),
+                        ("eventloghidden", 1),
+                        ("eventscroll", 1),
+                        ("eventsound", 1),
+                        ("headermenu", 1),
+                        ("headertemplate", "default"),
+                        ("headerfade", 1),
+                        ("hovermenu", 1),
+                        ("hovertemplate", "default"),
+                        ("hoverdelay", 0),
+                        ("hoverchildsshow", 0),
+                        ("hoverchildslimit", 100),
+                        ("hoverchildsorder", "asc"),
+                        ("hoverchildssort", "s"),
+                        ("icons", "std_medium"),
+                        ("onlyhardstates", 0),
+                        ("recognizeservices", 1),
+                        ("showinlists", 1),
+                        ("showinmultisite", 1),
+                        # ("stylesheet", ""),
+                        ("urltarget", "_self"),
+                        ("hosturl", "[htmlcgi]/status.cgi?host=[host_name]"),
+                        ("hostgroupurl", "[htmlcgi]/status.cgi?hostgroup=[hostgroup_name]"),
+                        ("serviceurl", "[htmlcgi]/extinfo.cgi?type=2&host=[host_name]&service=[service_description]"),
+                        ("servicegroupurl", "[htmlcgi]/status.cgi?servicegroup=[servicegroup_name]&style=detail"),
+                        ("mapurl", "[htmlbase]/index.php?mod=Map&act=view&show=[map_name]"),
+                        ("view_template", "default"),
+                        ("label_show", 0),
+                        ("line_weather_colors", "10:#8c00ff,25:#2020ff,40:#00c0ff,55:#00f000,70:#f0f000,85:#ffc000,100:#ff0000"),
+                    ]
+                ),
+                (
+                    "index",
+                    [
+                        ("backgroundcolor", "#ffffff"),
+                        ("cellsperrow", 4),
+                        ("headermenu", 1),
+                        ("headertemplate", "default"),
+                        ("showmaps", 1),
+                        ("showgeomap", 0),
+                        ("showrotations", 1),
+                        ("showmapthumbs", 0),
+                    ]
+                ),
+                (
+                    "automap",
+                    [
+                        ("defaultparams", "&childLayers=2"),
+                        ("defaultroot", ""),
+                        ("graphvizpath", "/opt/cluster/bin/"),
+                    ]
+                ),
+                (
+                    "wui",
+                    [
+                        ("maplocktime", 5),
+                        ("grid_show", 0),
+                        ("grid_color", "#D5DCEF"),
+                        ("grid_steps", 32),
+                    ]
+                ),
+                (
+                    "worker",
+                    [
+                        ("interval", "10"),
+                        ("requestmaxparams", 0),
+                        ("requestmaxlength", 1900),
+                        ("updateobjectstates", 30),
+                    ]
+                ),
+                (
+                    "backend_live_1",
+                    [
+                        ("backendtype", "mklivestatus"),
+                        ("statushost", ""),
+                        ("socket", "unix:/opt/icinga/var/live"),
+                    ]
+                ),
+                (
+                    "backend_ndomy_1",
+                    [
+                        ("backendtype", "ndomy"),
+                        ("statushost", ""),
+                        ("dbhost", "localhost"),
+                        ("dbport", 3306),
+                        ("dbname", "nagios"),
+                        ("dbuser", "root"),
+                        ("dbpass", ""),
+                        ("dbprefix", "nagios_"),
+                        ("dbinstancename", "default"),
+                        ("maxtimewithoutupdate", 180),
+                        ("htmlcgi", "/nagios/cgi-bin"),
+                    ]
+                ),
+                (
+                    "states",
+                    [
+                        ("down", 10),
+                        ("down_ack", 6),
+                        ("down_downtime", 6),
+                        ("unreachable", 9),
+                        ("unreachable_ack", 6),
+                        ("unreachable_downtime", 6),
+                        ("critical", 8),
+                        ("critical_ack", 6),
+                        ("critical_downtime", 6),
+                        ("warning", 7),
+                        ("warning_ack", 5),
+                        ("warning_downtime", 5),
+                        ("unknown", 4),
+                        ("unknown_ack", 3),
+                        ("unknown_downtime", 3),
+                        ("error", 4),
+                        ("error_ack", 3),
+                        ("error_downtime", 3),
+                        ("up", 2),
+                        ("ok", 1),
+                        ("unchecked", 0),
+                        ("pending", 0),
+                        ("unreachable_bgcolor", "#F1811B"),
+                        ("unreachable_color", "#F1811B"),
+                        # ("unreachable_ack_bgcolor", ""),
+                        # ("unreachable_downtime_bgcolor", ""),
+                        ("down_bgcolor", "#FF0000"),
+                        ("down_color", "#FF0000"),
+                        # ("down_ack_bgcolor", ""),
+                        # ("down_downtime_bgcolor", ""),
+                        ("critical_bgcolor", "#FF0000"),
+                        ("critical_color", "#FF0000"),
+                        # ("critical_ack_bgcolor", ""),
+                        # ("critical_downtime_bgcolor", ""),
+                        ("warning_bgcolor", "#FFFF00"),
+                        ("warning_color", "#FFFF00"),
+                        # ("warning_ack_bgcolor", ""),
+                        # ("warning_downtime_bgcolor", ""),
+                        ("unknown_bgcolor", "#FFCC66"),
+                        ("unknown_color", "#FFCC66"),
+                        # ("unknown_ack_bgcolor", ""),
+                        # ("unknown_downtime_bgcolor", ""),
+                        ("error_bgcolor", "#0000FF"),
+                        ("error_color", "#0000FF"),
+                        ("up_bgcolor", "#00FF00"),
+                        ("up_color", "#00FF00"),
+                        ("ok_bgcolor", "#00FF00"),
+                        ("ok_color", "#00FF00"),
+                        ("unchecked_bgcolor", "#C0C0C0"),
+                        ("unchecked_color", "#C0C0C0"),
+                        ("pending_bgcolor", "#C0C0C0"),
+                        ("pending_color", "#C0C0C0"),
+                        ("unreachable_sound", "std_unreachable.mp3"),
+                        ("down_sound", "std_down.mp3"),
+                        ("critical_sound", "std_critical.mp3"),
+                        ("warning_sound", "std_warning.mp3"),
+                        # ("unknown_sound", ""),
+                        # ("error_sound", ""),
+                        # ("up_sound", ""),
+                        # ("ok_sound", ""),
+                        # ("unchecked_sound", ""),
+                        # ("pending_sound", ""),
+                    ]
+                )
             ]:
                 nagvis_main_cfg.add_section(sect_name)
                 for key, value in var_list:
@@ -497,14 +513,21 @@ class main_config(object):
                     ("debug_file", "%s/ndo2db.debug" % (self.__r_dir_dict["var"])),
                     ("max_debug_file_size", 1000000)])
         main_values = [
-            ("log_file", "{}/{}.log".format(
-                self.__r_dir_dict["var"],
-                global_config["MD_TYPE"]
-            )),
+            (
+                "log_file",
+                "{}/{}.log".format(
+                    self.__r_dir_dict["var"],
+                    global_config["MD_TYPE"]
+                )
+            ),
             ("cfg_file", []),
-            ("resource_file", "%s/%s.cfg" % (
-                self.__r_dir_dict["etc"],
-                resource_cfg.get_name())),
+            (
+                "resource_file",
+                "%s/%s.cfg" % (
+                    self.__r_dir_dict["etc"],
+                    resource_cfg.get_name()
+                )
+            ),
             ("%s_user" % (global_config["MD_TYPE"]), "idnagios"),
             ("%s_group" % (global_config["MD_TYPE"]), "idg"),
             ("check_external_commands", 1),
@@ -875,22 +898,28 @@ class main_config(object):
                                     cur_c.execute("INSERT INTO roles2perms VALUES(%d, %d)" % (
                                         role_dict[target_role],
                                         perms_dict[new_perm]))
-                            self.log("creating new role '%s' with perms %s" % (
-                                target_role,
-                                ", ".join(add_perms)
-                            ))
+                            self.log(
+                                "creating new role '%s' with perms %s" % (
+                                    target_role,
+                                    ", ".join(add_perms)
+                                )
+                            )
                         self.log("creating user '%s' with role %s" % (
                             unicode(cur_u),
                             target_role,
                         ))
-                        new_userid = cur_c.execute("INSERT INTO users VALUES(Null, '%s', '%s')" % (
-                            cur_u.login,
-                            binascii.hexlify(base64.b64decode(cur_u.password.split(":", 1)[1])),
-                            )).lastrowid
-                        cur_c.execute("INSERT INTO users2roles VALUES(%d, %d)" % (
-                            new_userid,
-                            role_dict[target_role],
-                        ))
+                        new_userid = cur_c.execute(
+                            "INSERT INTO users VALUES(Null, '{}', '{}')".format(
+                                cur_u.login,
+                                binascii.hexlify(base64.b64decode(cur_u.password.split(":", 1)[1])),
+                            )
+                        ).lastrowid
+                        cur_c.execute(
+                            "INSERT INTO users2roles VALUES({:d}, {:d})".format(
+                                new_userid,
+                                role_dict[target_role],
+                            )
+                        )
                     conn.commit()
                     conn.close()
 

@@ -736,7 +736,7 @@ class MetaService(Service):
         if debug:
             _daemon_path = os.path.split(os.path.split(os.path.dirname(__file__))[0])[0]
         else:
-            _daemon_path = "/opt/python-init/lib/python/site-packages/initat"
+            _daemon_path = "/opt/python-init/lib/python2.7/site-packages/initat"
         _arg_list = [
             os.path.join(_daemon_path, "tools", "daemonize.py"),
             "--progname",

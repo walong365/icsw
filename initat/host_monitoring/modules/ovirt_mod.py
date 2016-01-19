@@ -528,7 +528,7 @@ class ovirt_storagedomains_command(hm_classes.hm_command, OvirtBaseMixin):
         ret.feed_str(logging_tools.get_plural("Storagedomain", len(sds.findall(".//storage_domain"))))
         ret.feed_str_state(*SimpleCounter(sds.xpath(".//external_status/state/text()"), ok=["ok"], prefix="State").result)
         ret.feed_str_state(*SimpleCounter(sds.xpath(".//storage_domain/type/text()"), ok=["data", "export", "image", "iso"], prefix="Domain Type").result)
-        ret.feed_str_state(*SimpleCounter(sds.xpath(".//storage_domain/storage/type/text()"), ok=["glance", "iscsi", "nfs"], prefix="Storage Type").result)
+        ret.feed_str_state(*SimpleCounter(sds.xpath(".//storage_domain/storage/type/text()"), ok=["glance", "iscsi", "nfs", "fcp"], prefix="Storage Type").result)
         size_dict = {
             _key: sum([int(_val) for _val in sds.xpath(".//storage_domain/{}/text()".format(_key))]) for _key in [
                 "used",

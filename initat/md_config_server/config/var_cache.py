@@ -59,7 +59,7 @@ class var_cache(dict):
 
     def add_variable(self, new_var):
         v_key = "d__{:d}".format(new_var.device_id)
-        self.setdefault(v_key, {})[new_var.name] = (new_var.value, new_val.inherit)
+        self.setdefault(v_key, {})[new_var.name] = (new_var.value, new_var.inherit)
 
     def set_variable(self, dev, var_name, var_value):
         # update db
