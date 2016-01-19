@@ -517,7 +517,7 @@ class _general(hm_classes.hm_module):
                     ]
                     if not name_p and len(self.stat_list) > 7:
                         # correction factor for small rounding errors, correct ?
-                        _correction = len(self.cpu_list) * 100.0 / sum(_vals[0:8])
+                        _correction = len(self.cpu_list) * 100.0 / sum(_vals[0:len(self.stat_list)])
                     for idx, name in enumerate(self.stat_list):
                         mvect["vms.{}{}".format(name, name_p)] = _vals[idx] * _correction
                 else:

@@ -284,6 +284,7 @@ angular.module(
                 scope.vars.current.legend_mode = scope.vars.current.legend_mode2["short"]
                 scope.vars.current.scale_mode = scope.vars.current.scale_mode2["short"]
                 scope.vars.current.cf = scope.vars.current.cf2["short"]
+                console.log scope.vars.current
             scope.set_current(icswRrdGraphSettingService.get_active())
             scope.save_setting = () ->
                 scope.update_setting()

@@ -456,7 +456,7 @@ class GraphSetting(models.Model):
         self.legend_mode = GraphLegendModeEnum(self.legend_mode)
         self.cf = GraphCFEnum(self.cf)
         if self.graph_setting_forecast_id:
-            self.graph_setting_forecast.mode = GraphForecastModeEnum(graph_setting_forecast.mode)
+            self.graph_setting_forecast.mode = GraphForecastModeEnum(self.graph_setting_forecast.mode)
 
     class Meta:
         if not db_limit_1():
