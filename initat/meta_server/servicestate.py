@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2015 Andreas Lang-Nevyjel
+# Copyright (C) 2015-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -111,10 +111,27 @@ class ServiceActionState(object):
 
 
 class ServiceStateTranstaction(object):
-    def __init__(self, name, action, trans_id):
+    def __init__(self, prev_list, name, action, trans_id):
         self.name = name
+        prev_t = [entry for entry in prev_list if entry.name == self.name]
+        if prev_t:
+            prev_t = prev_t[0]
+            self.repeat = prev_t.repeat + 1
+        else:
+            self.repeat = 0
         self.action = action
         self.trans_id = trans_id
+        if self.repeat > 3:
+            self.post_disable = True
+        else:
+            self.post_disable = False
+
+    def __repr__(self):
+        return "SST for {} ({:d}{})".format(
+            self.name,
+            self.repeat,
+            ", will be disabled" if self.post_disable else "",
+        )
 
 
 class ServiceState(object):
@@ -132,6 +149,8 @@ class ServiceState(object):
         self.__shutdown = False
         # for throtteling
         self.__throttle_dict = {}
+        # transition memory
+        self.__previous_transitions = []
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com("[SrvState] {}".format(what), log_level)
@@ -418,7 +437,7 @@ class ServiceState(object):
     def _update_state(self, name, p_state, c_state, lic_state, proc_info_str):
         if (p_state, c_state, lic_state) != self.__state_dict.get(name, None):
             self.log(
-                "state for {} is {} (configured: {}, license: {}, target_dict_state TODO)".format(
+                "state for {} is {} (configured: {}, license: {})".format(
                     name,
                     constants.STATE_DICT[p_state],
                     constants.CONF_STATE_DICT[c_state],
@@ -520,6 +539,7 @@ class ServiceState(object):
                 self.__transition_lock_dict[name] = cur_time
             return [
                 ServiceStateTranstaction(
+                    self.__previous_transitions,
                     name,
                     action,
                     trans_id,
@@ -602,11 +622,30 @@ class ServiceState(object):
         self.conn.commit()
         # sync system states with target states (for meta-server and logging-server)
         self._sync_system_states()
+        # store for next run
+        self.__previous_transitions = t_list
+        # check for disable
+        dis_list = [entry.name for entry in t_list if entry.post_disable]
+        if dis_list:
+            self.log(
+                "{} will be disabled: {}".format(
+                    logging_tools.get_plural("service", len(dis_list)),
+                    ", ".join(sorted(dis_list)),
+                )
+            )
+            self._disable_command(
+                server_command.srv_command(
+                    command="disable",
+                    services=",".join(dis_list)
+                )
+            )
         return t_list
         # print _res, etree.tostring(_el.entry, pretty_print=True)
 
     def get_mail_text(self, trans_list):
-        subject = "ICSW Transaction info for {}: {}".format(
+        critical = True if any([entry.repeat > 0 for entry in trans_list]) else False
+        subject = "{}ICSW Transaction info for {}: {}".format(
+            "[CRITICAL] " if critical else "",
             logging_tools.get_plural("transaction", len(trans_list)),
             ", ".join(sorted([_trans.name for _trans in trans_list])),
         )
@@ -618,7 +657,12 @@ class ServiceState(object):
             "{} initiated:".format(logging_tools.get_plural("transaction", len(trans_list))),
             "",
         ] + [
-            "   - {} -> {}".format(_trans.name, _trans.action) for _trans in trans_list
+            "   - service {}, action is {}{}{}".format(
+                _trans.name,
+                _trans.action,
+                " for the {:d} time".format(_trans.repeat + 1) if _trans.repeat else "",
+                " (will be disabled)" if _trans.post_disable else "",
+            ) for _trans in trans_list
         ] + [
             ""
         ]
@@ -760,34 +804,7 @@ class ServiceState(object):
             trigger = self._update_target_dict()
             self._sync_system_states()
         elif _com == "disable":
-            services = [_name for _name in srv_com["*services"].strip().split(",") if _name.strip()]
-            with self.get_cursor(cached=False) as crsr:
-                disable_list = [
-                    (_entry[0], _entry[1]) for _entry in crsr.execute(
-                        "SELECT idx, name FROM service WHERE target_state={:d}".format(
-                            constants.TARGET_STATE_RUNNING
-                        )
-                    ).fetchall() if _entry[1] in services
-                ]
-                for _idx, _name in disable_list:
-                    crsr.execute(
-                        "UPDATE service SET target_state=? WHERE idx=?",
-                        (constants.TARGET_STATE_STOPPED, _idx)
-                    )
-                    crsr.execute(
-                        "INSERT INTO action(service, action, created, success, finished) VALUES(?, ?, ?, ?, ?)",
-                        (
-                            _idx, "disable", int(time.time()), 1, 1,
-                        )
-                    )
-            srv_com.set_result(
-                "disabled {}: {}".format(
-                    logging_tools.get_plural("service", len(disable_list)),
-                    ", ".join([_name for _id, _name in disable_list]) or "none",
-                )
-            )
-            trigger = self._update_target_dict()
-            self._sync_system_states()
+            self._disable_command(srv_com)
         else:
             srv_com.set_result(
                 "command {} not defined".format(srv_com["command"].text),
@@ -795,3 +812,33 @@ class ServiceState(object):
             )
         self.log("handled command {} in {}".format(_com, logging_tools.get_diff_time_str(time.time() - cur_time)))
         return trigger
+
+    def _disable_command(self, srv_com):
+        services = [_name for _name in srv_com["*services"].strip().split(",") if _name.strip()]
+        with self.get_cursor(cached=False) as crsr:
+            disable_list = [
+                (_entry[0], _entry[1]) for _entry in crsr.execute(
+                    "SELECT idx, name FROM service WHERE target_state={:d}".format(
+                        constants.TARGET_STATE_RUNNING
+                    )
+                ).fetchall() if _entry[1] in services
+            ]
+            for _idx, _name in disable_list:
+                crsr.execute(
+                    "UPDATE service SET target_state=? WHERE idx=?",
+                    (constants.TARGET_STATE_STOPPED, _idx)
+                )
+                crsr.execute(
+                    "INSERT INTO action(service, action, created, success, finished) VALUES(?, ?, ?, ?, ?)",
+                    (
+                        _idx, "disable", int(time.time()), 1, 1,
+                    )
+                )
+        trigger = self._update_target_dict()
+        self._sync_system_states()
+        srv_com.set_result(
+            "disabled {}: {}".format(
+                logging_tools.get_plural("service", len(disable_list)),
+                ", ".join([_name for _id, _name in disable_list]) or "none",
+            )
+        )
