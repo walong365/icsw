@@ -21,12 +21,15 @@ SYNC_DIR="synced_files"
 mkdir -p $VAGRANT_DIR/$SYNC_DIR
 cp "$VAGRANT_TEST_UTILS_SOURCE/vagrant_insecure_key" "$VAGRANT_DIR/vagrant_insecure_key"
 cp "tools/install_icsw.py" "$VAGRANT_DIR/$SYNC_DIR"
-
 cp $VAGRANT_TEST_UTILS_SOURCE/synced_files/* "$VAGRANT_DIR/$SYNC_DIR"
 
 if [ "$1" = "centos" ] ; then
     cp "$VAGRANT_TEST_UTILS_SOURCE/Vagrantfile.centos" "$VAGRANT_DIR/Vagrantfile"
     cp $VAGRANT_TEST_UTILS_SOURCE/synced_files_centos/* "$VAGRANT_DIR/$SYNC_DIR"
+
+elif [ "$1" = "debian" ] ; then
+    cp "$VAGRANT_TEST_UTILS_SOURCE/Vagrantfile.debian" "$VAGRANT_DIR/Vagrantfile"
+    cp $VAGRANT_TEST_UTILS_SOURCE/synced_files_debian/* "$VAGRANT_DIR/$SYNC_DIR"
 else
     echo "Invalid linux distribution: $1"
     exit 1
