@@ -20,7 +20,7 @@ SYNC_DIR="synced_files"
 
 mkdir -p $VAGRANT_DIR/$SYNC_DIR
 cp "$VAGRANT_TEST_UTILS_SOURCE/vagrant_insecure_key" "$VAGRANT_DIR/vagrant_insecure_key"
-cp "initat/tools/install_icsw.py" "$VAGRANT_DIR/$SYNC_DIR"
+cp "tools/install_icsw.py" "$VAGRANT_DIR/$SYNC_DIR"
 
 cp $VAGRANT_TEST_UTILS_SOURCE/synced_files/* "$VAGRANT_DIR/$SYNC_DIR"
 
