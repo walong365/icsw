@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2008,2012-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2012-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -17,12 +17,9 @@
 #
 """ checks for various RAID controllers """
 
-import re
-
 from initat.host_monitoring import limits, hm_classes
-from initat.tools import logging_tools
-
 from initat.host_monitoring.modules.raidcontrollers.base import ctrl_type, ctrl_check_struct
+from initat.tools import logging_tools
 
 
 class ctrl_type_lsi(ctrl_type):
@@ -30,6 +27,7 @@ class ctrl_type_lsi(ctrl_type):
         name = "lsi"
         exec_name = "cfggen"
         description = "LSI 1030 RAID Controller"
+        kernel_modules = ["mptctl"]
 
     def get_exec_list(self, ctrl_list=[]):
         if ctrl_list == []:

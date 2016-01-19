@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2008,2012-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2012-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -31,6 +31,8 @@ class ctrl_type(object):
 
     def __init__(self, module_struct, all_struct, **kwargs):
         self.name = self.Meta.name
+        self.kernel_modules = getattr(self.Meta, "kernel_modules", [])
+        self._modules_loaded = False
         # allraidctrl struct
         ctrl_type.all_struct = all_struct
         # last scan date
@@ -42,6 +44,28 @@ class ctrl_type(object):
         self._check_exec = None
         if not kwargs.get("quiet", False):
             self.log("init")
+
+    def load_kernel_modules(self):
+        if not self._modules_loaded:
+            self._modules_loaded = True
+            if self.kernel_modules:
+                self.log(
+                    "trying to load {}: {}".format(
+                        logging_tools.get_plural("kernel module", len(self.kernel_modules)),
+                        ", ".join(self.kernel_modules)
+                    )
+                )
+                mp_command = process_tools.find_file("modprobe")
+                for kern_mod in self.kernel_modules:
+                    cmd = "{} {}".format(mp_command, kern_mod)
+                    c_stat, c_out = commands.getstatusoutput(cmd)
+                    self.log(
+                        "calling '{}' gave ({:d}): {}".format(
+                            cmd,
+                            c_stat,
+                            c_out
+                        )
+                    )
 
     # calls to all_raidctrl
     @staticmethod
@@ -86,6 +110,7 @@ class ctrl_type(object):
         self._module.log("[ct {}] {}".format(self.name, what), log_level)
 
     def _scan(self):
+        self.load_kernel_modules()
         self.scanned = time.time()
         self.log("scanning for {} controller".format(self.name))
         self.check_for_exec()
