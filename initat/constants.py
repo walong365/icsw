@@ -25,6 +25,7 @@ system-wide constants for the ICSW
 """
 
 import os
+import sys
 
 
 GEN_CS_NAME = "icsw.general"
@@ -36,3 +37,10 @@ CLUSTER_DIR = "/opt/cluster"
 # user extension dir
 USER_EXTENSION_ROOT = os.path.join(CLUSTER_DIR, "share", "user_extensions.d")
 LOG_ROOT = "/var/log/cluster"
+_PY_VERSION = "{:d}{:d}".format(
+    sys.version_info.major,
+    sys.version_info.minor
+)
+PY_LIBDIR_SHORT = "python{}".format(_PY_VERSION)
+SITE_PACKAGES_BASE = os.path.join("/opt/python-init", "lib", PY_LIBDIR_SHORT, "site-packages")
+INITAT_BASE = os.path.join(SITE_PACKAGES_BASE, "initat")

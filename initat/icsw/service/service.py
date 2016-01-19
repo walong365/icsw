@@ -31,7 +31,7 @@ from lxml.builder import E
 import psutil
 
 from initat.tools import logging_tools, process_tools, config_store
-from initat.constants import VERSION_CS_NAME
+from initat.constants import VERSION_CS_NAME, INITAT_BASE
 from .constants import *
 
 
@@ -736,7 +736,7 @@ class MetaService(Service):
         if debug:
             _daemon_path = os.path.split(os.path.split(os.path.dirname(__file__))[0])[0]
         else:
-            _daemon_path = "/opt/python-init/lib/python2.7/site-packages/initat"
+            _daemon_path = INITAT_BASE
         _arg_list = [
             os.path.join(_daemon_path, "tools", "daemonize.py"),
             "--progname",

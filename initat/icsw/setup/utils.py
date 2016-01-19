@@ -28,12 +28,13 @@ import shutil
 import string
 import tempfile
 
+from initat.constants import SITE_PACKAGES_BASE
 from initat.tools import logging_tools
 
 
 def get_icsw_root():
     return os.environ.get(
-        "ICSW_ROOT", "/opt/python-init/lib/python2.7/site-packages"
+        "ICSW_ROOT", SITE_PACKAGES_BASE
     )
 
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2015-2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of icsw-client
 #
@@ -22,6 +22,7 @@
 
 import os
 
+from initat.constants import CLUSTER_DIR
 
 __all__ = [
     # process states
@@ -103,5 +104,4 @@ TARGET_STATE_DICT = {
 }
 
 # path definitions
-INIT_BASE = os.path.join("/", "opt", "python-init", "lib", "python2.7", "site-packages", "initat")
-SERVERS_DIR = os.path.join("/", "opt", "cluster", "etc", "servers.d")
+SERVERS_DIR = os.path.join(CLUSTER_DIR, "etc", "servers.d")

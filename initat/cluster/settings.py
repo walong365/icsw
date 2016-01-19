@@ -28,7 +28,7 @@ from django.utils.translation import ugettext_lazy as _
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.crypto import get_random_string
 from initat.tools import logging_tools, config_store
-from initat.constants import GEN_CS_NAME, DB_ACCESS_CS_NAME, VERSION_CS_NAME, CLUSTER_DIR
+from initat.constants import GEN_CS_NAME, DB_ACCESS_CS_NAME, VERSION_CS_NAME, CLUSTER_DIR, SITE_PACKAGES_BASE
 from initat.icsw.service.instance import InstanceXML
 
 # set unified name
@@ -278,7 +278,7 @@ if os.path.isdir("/opt/icinga/share/images/logos"):
         ("icinga", "/opt/icinga/share/images/logos")
     )
 STATICFILES_DIRS.append(
-    ("admin", "/opt/python-init/lib/python2.7/site-packages/django/contrib/admin/static/admin"),
+    ("admin", os.path.join(SITE_PACKAGES_BASE, "django", "contrib", "admin", "static", "admin")),
 )
 STATICFILES_DIRS = list(STATICFILES_DIRS)
 

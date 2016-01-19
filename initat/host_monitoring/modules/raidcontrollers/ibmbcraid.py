@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2008,2012-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2012-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -23,6 +23,7 @@ import os
 import stat
 import time
 
+from initat.constants import INITAT_BASE
 from initat.host_monitoring import limits, hm_classes
 from initat.host_monitoring.modules.raidcontrollers.base import ctrl_type, ctrl_check_struct
 from initat.tools import logging_tools, server_command
@@ -39,7 +40,8 @@ class ctrl_type_ibmbcraid(ctrl_type):
             ctrl_list = self._dict.keys()
 
         _list = [(
-            "/opt/python-init/lib/python2.7/site-packages/initat/host_monitoring/exe/check_ibmbcraid.py --host {} --user {} --passwd {} --target {}".format(
+            "{}/host_monitoring/exe/check_ibmbcraid.py --host {} --user {} --passwd {} --target {}".format(
+                INITAT_BASE,
                 ctrl_id,
                 self.cur_ns.user,
                 self.cur_ns.passwd,
