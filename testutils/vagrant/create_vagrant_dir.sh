@@ -14,18 +14,19 @@ if [ $# -ne 1 ] ; then
     exit 1
 fi
 
-VAGRANT_TEST_UTILS_SOURCE="icsw/testutils/vagrant"
-VAGRANT_DIR="vagant"
+VAGRANT_TEST_UTILS_SOURCE="testutils/vagrant"
+VAGRANT_DIR="install_test_vagrant"
+SYNC_DIR="synced_files"
 
-mkdir $VAGRANT_DIR
+mkdir -p $VAGRANT_DIR/$SYNC_DIR
+
+cp $VAGRANT_TEST_UTILS_SOURCE/synced_files/* "$VAGRANT_DIR/$SYNC_DIR"
 
 if [ "$1" = "centos" ] ; then
-    cp "$VAGRANT_TEST_UTILS_DIR/Vagrantfile.centos" "$VAGRANT_DIR/Vagrantfile"
-    cp $VAGRANT_TEST_UTILS_DIR/synced_files/* "$VAGRANT_DIR/synced_files"
-    cp $VAGRANT_TEST_UTILS_DIR/synced_files_centos/* "$VAGRANT_DIR/synced_files"
+    cp "$VAGRANT_TEST_UTILS_SOURCE/Vagrantfile.centos" "$VAGRANT_DIR/Vagrantfile"
+    cp "$VAGRANT_TEST_UTILS_SOURCE/vagrant_insecure_key" "$VAGRANT_DIR/vagrant_insecure_key"
+    cp $VAGRANT_TEST_UTILS_SOURCE/synced_files_centos/* "$VAGRANT_DIR/$SYNC_DIR"
 else
     echo "Invalid linux distribution: $1"
     exit 1
 fi
-
-
