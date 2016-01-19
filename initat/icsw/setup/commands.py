@@ -268,9 +268,10 @@ def create_db_cf(opts):
     if c_dict['_engine'] is None:
         c_dict['_engine'] = DEFAULT_ENGINE
 
-    all_parameters_specified = all(entry is not None for entry in c_dict.itervalues())
+    all_parameters_forced = all(entry is not None for entry in c_dict.itervalues())
+
     connection_successful = False
-    while not connection_successful and not all_parameters_specified:
+    while not connection_successful:
         # enter all relevant data
         enter_data(
             c_dict,
@@ -327,6 +328,10 @@ def create_db_cf(opts):
         else:
             print("cannot connect, please check your settings and / or the setup of your database:")
             test_obj.show_config()
+
+            if all_parameters_forced:
+                # don't loop if all parameters were forced
+                break
 
     if not connection_successful:
         print("failed to connect to database")
