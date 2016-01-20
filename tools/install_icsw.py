@@ -192,6 +192,7 @@ class AptgetHandler(OSHandler):
         expansions = {
             'user': self.opts.user,
             'password': self.opts.password,
+            'cluster_version': self.opts.cluster_version,
         }
 
         if distro == "ubuntu":
@@ -208,7 +209,7 @@ class AptgetHandler(OSHandler):
                 #     .format(**expansions)
                 # )
                 (
-                    "cluster_version.list",
+                    "initat_{cluster_version}.list".format(**expansions),
                     "deb http://{user}:{password}@www.initat.org/cluster/DEBs/ubuntu_12.04/{cluster_version} precise main\n"
                     .format(**expansions)
                 ),
@@ -220,10 +221,11 @@ class AptgetHandler(OSHandler):
                 debian_release = "squeeze"
             elif debian_version.startswith("7"):
                 debian_release = "wheezy"
+            elif debian_version.startswith("8"):
+                debian_release = "jessie"
             else:
                 raise RuntimeError("Unsupported debian version: {v}.\n".format(v=platform.linux_distribution()) +
                                    "Currently squeeze and wheezy are supported.")
-
             repos = (
                 # (
                 #     "initat_cluster_devel.list",
@@ -236,8 +238,8 @@ class AptgetHandler(OSHandler):
                 #     .format(rel=debian_release, **expansions)
                 # )
                 (
-                    "cluster_version.list",
-                    "deb http://{user}:{password}@www.initat.org/cluster/DEBs/debian_{rel}/cluster_version {rel} main\n"
+                    "initat_{cluster_version}.list".format(**expansions),
+                    "deb http://{user}:{password}@www.initat.org/cluster/DEBs/debian_{rel}/{cluster_version} {rel} main\n"
                     .format(rel=debian_release, **expansions)
                 ),
             )
