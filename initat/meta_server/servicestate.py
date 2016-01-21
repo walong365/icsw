@@ -26,10 +26,14 @@ import os
 import sqlite3
 import time
 import commands
+import inflection
 
 from initat.meta_server.config import global_config
 from initat.tools import logging_tools, server_command, process_tools
 from initat.icsw.service import constants
+
+LOCK_TIMEOUT = 30
+TRANSACTION_WINDOW = 300
 
 
 class DBCursor(object):
@@ -111,17 +115,19 @@ class ServiceActionState(object):
 
 
 class ServiceStateTranstaction(object):
-    def __init__(self, prev_list, name, action, trans_id):
+    def __init__(self, actions, name, action, trans_id):
         self.name = name
-        prev_t = [entry for entry in prev_list if entry.name == self.name]
-        if prev_t:
-            prev_t = prev_t[0]
-            self.repeat = prev_t.repeat + 1
-        else:
-            self.repeat = 0
+        self.repeat = 0
+        max_dt = 0.0
+        for _action, _time in actions:
+            if _action == "start":
+                self.repeat += 1
+                max_dt = max(max_dt, _time)
+            else:
+                break
         self.action = action
         self.trans_id = trans_id
-        if self.repeat > 3:
+        if self.repeat > 2 and max_dt > 30:
             self.post_disable = True
         else:
             self.post_disable = False
@@ -149,8 +155,6 @@ class ServiceState(object):
         self.__shutdown = False
         # for throtteling
         self.__throttle_dict = {}
-        # transition memory
-        self.__previous_transitions = []
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com("[SrvState] {}".format(what), log_level)
@@ -468,54 +472,71 @@ class ServiceState(object):
         # check database for state records
         cur_time = int(time.time())
         with self.get_cursor() as crs:
-            _records = crs.execute(
-                "SELECT pstate, cstate, license_state, ?-created FROM state WHERE service=? ORDER BY -created LIMIT 10",
-                (cur_time, self.__service_lut[name]),
-            ).fetchall()
-            _stable = True
-            # correct times
-            _records = [(_a, _b, _c, abs(_d)) for _a, _b, _c, _d in _records]
-            # print _records
-            _first = _records.pop(0)
-            _stable_time = _first[3]
-            for _rec in _records:
-                if _rec[3] < STABLE_INTERVAL:
-                    # only compare records which are not older than STABLE_INTERVAL
-                    if _rec[0:3] != _first[0:3]:
-                        _stable = False
-                        break
-                    else:
-                        _stable_time = _rec[3]
-        if not _stable:
-            service.log(
-                "state is not stable ({} < {})".format(
-                    logging_tools.get_diff_time_str(_stable_time),
-                    logging_tools.get_diff_time_str(STABLE_INTERVAL),
-                ),
-                logging_tools.LOG_LEVEL_WARN
-            )
-        else:
-            # compare record for SERVICE_OK_LIST
-            c_rec = (self.__target_dict[name], _first[0], _first[1], _first[2])
-            # print _first, c_rec
-            if not self._check_current_state(c_rec)[0] and _first[3] < MIN_STATE_TIME:
-                service.log("state is not OK", logging_tools.LOG_LEVEL_WARN)
-                _stable = False
-            elif _first[3] < MIN_STATE_TIME:
-                service.log(
-                    "state not old enough ({:.2f} < {:.2f})".format(
-                        _first[3],
-                        MIN_STATE_TIME
-                    ),
-                    logging_tools.LOG_LEVEL_WARN
+            _actions = crs.execute(
+                "SELECT action, ?-created FROM action WHERE service=? ORDER BY -created LIMIT 10",
+                (
+                    cur_time,
+                    self.__service_lut[name],
                 )
+            ).fetchall()
+            if _actions and _actions[0][0] == "start" and _actions[0][1] < 5:
+                # latest action only 5 seconds ago, not stable
                 _stable = False
+                service.log(
+                    "latest start-action only {:.2f} seconds ago".format(_actions[0][1]),
+                    logging_tools.LOG_LEVEL_WARN,
+                )
+            else:
+                _stable = True
+                _records = crs.execute(
+                    "SELECT pstate, cstate, license_state, ?-created FROM state WHERE service=? ORDER BY -created LIMIT 10",
+                    (
+                        cur_time,
+                        self.__service_lut[name]
+                    ),
+                ).fetchall()
+                # correct times
+                _records = [(_a, _b, _c, abs(_d)) for _a, _b, _c, _d in _records]
+                # print _records
+                _first = _records.pop(0)
+                _stable_time = _first[3]
+                for _rec in _records:
+                    if _rec[3] < STABLE_INTERVAL:
+                        # only compare records which are not older than STABLE_INTERVAL
+                        if _rec[0:3] != _first[0:3]:
+                            _stable = False
+                            break
+                        else:
+                            _stable_time = _rec[3]
+                if not _stable:
+                    service.log(
+                        "state is not stable ({} < {})".format(
+                            logging_tools.get_diff_time_str(_stable_time),
+                            logging_tools.get_diff_time_str(STABLE_INTERVAL),
+                        ),
+                        logging_tools.LOG_LEVEL_WARN
+                    )
+                else:
+                    # compare record for SERVICE_OK_LIST
+                    c_rec = (self.__target_dict[name], _first[0], _first[1], _first[2])
+                    # print _first, c_rec
+                    if not self._check_current_state(c_rec)[0] and _first[3] < MIN_STATE_TIME:
+                        service.log("state is not OK", logging_tools.LOG_LEVEL_WARN)
+                        _stable = False
+                    elif _first[3] < MIN_STATE_TIME:
+                        service.log(
+                            "state not old enough ({:.2f} < {:.2f})".format(
+                                _first[3],
+                                MIN_STATE_TIME
+                            ),
+                            logging_tools.LOG_LEVEL_WARN
+                        )
+                        _stable = False
         return _stable
 
     def _generate_transition(self, service, action):
         name = service.name
         cur_time = time.time()
-        LOCK_TIMEOUT = 30
         if name in self.__transition_lock_dict and self.__transition_lock_dict[name] + LOCK_TIMEOUT > cur_time:
             lock_to = abs(cur_time - self.__transition_lock_dict[name])
             self.log(
@@ -529,17 +550,26 @@ class ServiceState(object):
             return []
         else:
             with self.get_cursor() as crs:
+                # filter all actions older than TRANSACTION_WINDOW seconds
+                actions = crs.execute(
+                    "SELECT action, ?-created FROM action WHERE service=? AND created > ? ORDER BY -created LIMIT 10",
+                    (
+                        cur_time,
+                        self.__service_lut[name],
+                        cur_time - TRANSACTION_WINDOW,
+                    )
+                ).fetchall()
                 crs.execute(
                     "INSERT INTO action(service, action, created) VALUES(?, ?, ?)",
                     (
-                        self.__service_lut[name], action, int(time.time())
+                        self.__service_lut[name], action, int(cur_time),
                     ),
                 )
                 trans_id = crs.lastrowid
                 self.__transition_lock_dict[name] = cur_time
             return [
                 ServiceStateTranstaction(
-                    self.__previous_transitions,
+                    actions,
                     name,
                     action,
                     trans_id,
@@ -622,8 +652,6 @@ class ServiceState(object):
         self.conn.commit()
         # sync system states with target states (for meta-server and logging-server)
         self._sync_system_states()
-        # store for next run
-        self.__previous_transitions = t_list
         # check for disable
         dis_list = [entry.name for entry in t_list if entry.post_disable]
         if dis_list:
@@ -643,9 +671,11 @@ class ServiceState(object):
         # print _res, etree.tostring(_el.entry, pretty_print=True)
 
     def get_mail_text(self, trans_list):
-        critical = True if any([entry.repeat > 0 for entry in trans_list]) else False
-        subject = "{}ICSW Transaction info for {}: {}".format(
-            "[CRITICAL] " if critical else "",
+        critical = any([entry.repeat > 0 for entry in trans_list])
+        disabled = any([entry.post_disable for entry in trans_list])
+        subject = "{}{}ICSW Transaction info for {}: {}".format(
+            "[REP] " if critical else "",
+            "[DIS] " if disabled else "",
             logging_tools.get_plural("transaction", len(trans_list)),
             ", ".join(sorted([_trans.name for _trans in trans_list])),
         )
@@ -660,7 +690,9 @@ class ServiceState(object):
             "   - service {}, action is {}{}{}".format(
                 _trans.name,
                 _trans.action,
-                " for the {:d} time".format(_trans.repeat + 1) if _trans.repeat else "",
+                " for the {} time".format(
+                    inflection.ordinalize(_trans.repeat + 1)
+                ) if _trans.repeat else "",
                 " (will be disabled)" if _trans.post_disable else "",
             ) for _trans in trans_list
         ] + [

@@ -174,6 +174,7 @@ class main_process(ICSWBasePoolClient):
         if self.__exit_process:
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
+            self.log("got signal ({})".format(err_cause))
             self.__exit_process = True
             if not (self.__next_stop_is_restart or global_config["DEBUG"]):
                 self.service_state.enable_shutdown_mode()

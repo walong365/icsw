@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2006-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -434,10 +434,6 @@ class poller_obj(object):
                                     self.poller_handler[sock][r_type](self._socket_lut.get(sock, sock))
                             except:
                                 exc_info = process_tools.exception_info()
-                                # try:
-                                #    open("/tmp/exc", "a").write("\n".join(exc_info.log_lines + ["", ""]))
-                                # except:
-                                #    pass
                                 self.log(
                                     "error calling handler in poller_obj: {}".format(
                                         process_tools.get_except_info()
@@ -446,7 +442,7 @@ class poller_obj(object):
                                 )
                                 for line in exc_info.log_lines:
                                     self.log("    {}".format(line), logging_tools.LOG_LEVEL_ERROR)
-                                # raise exception, important
+                                # re-raise exception, important
                                 self.log("re-raising exception")
                                 raise
                         else:
