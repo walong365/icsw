@@ -858,9 +858,10 @@ get_conf_str "create_boot_entry"
 pci_str=""
 for dev in /sys/bus/pci/devices/* ; do
     pci_str="${pci_str} $(echo -n $(cat $dev/modalias)::$(cat $dev/class))" ;
-done 
+done
+pci_str="$(echo $pci_str | /opt/cluster/bin/pbzip2 -c | base64 -w 0)"
 
-set_hoststat "Requesting modules"
+set_hoststat "Requesting modules (pci_str has ${#pci_str} bytes)"
 
 mods=$(get_conf_str get_autodetect_mods base | cut -d " " -f 3- )
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2008,2012-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2012-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -22,6 +22,8 @@
 import crypt
 import os
 import time
+import base64
+import bz2
 
 from django.db.models import Q
 from initat.cluster.backbone.models import device, partition, DeviceBootHistory
@@ -351,6 +353,12 @@ class config_control(object):
                         )
                         unique_mods.extend(disc_mods)
                 else:
+                    try:
+                        _b64_str = bz2.decompress(base64.b64decode(in_parts[0]))
+                    except:
+                        pass
+                    else:
+                        in_parts = _b64_str.strip().split()
                     pci_list = [_entry.split("::") for _entry in in_parts if _entry.count("::")]
                     # apply filter
                     if _filter:

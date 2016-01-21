@@ -175,6 +175,11 @@ int main(int argc, char **argv)
         // skip first space
         if (i > optind)
             sprintf(filebuff, "%s ", filebuff);
+        int new_len;
+        new_len = strlen(filebuff) + strlen(argv[i]) + 1;
+        if (new_len > SENDBUFF_SIZE) {
+            err_exit("buffer overrun");
+        }
         sprintf(filebuff, "%s%s", filebuff, argv[i]);
 //        if (act_pos != sendbuff) *act_pos++=' ';
 //        act_source = argv[i];
