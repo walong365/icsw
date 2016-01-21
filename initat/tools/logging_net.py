@@ -256,30 +256,29 @@ class initat_formatter(object):
             delattr(record, "request")
 
 
-class init_handler(ZMQHandler):
+class ZMQInitHS(object):
     zmq_context = None
 
+    def get_zmq_context(self):
+        if not ZMQInitHS.zmq_context:
+            ZMQInitHS.zmq_context = zmq.Context()
+            ZMQInitHS.init_pid = os.getpid()
+        return ZMQInitHS.zmq_context
+
+    def reopen_context(self):
+        # overwrite current context
+        ZMQInitHS.zmq_context = zmq.Context()
+        ZMQInitHS.init_pid = os.getpid()
+
+
+class init_handler(ZMQHandler, ZMQInitHS):
     def __init__(self, filename=None):
-        if not init_handler.zmq_context:
-            self._init_zmq()
-        # pub = self._socket()
         ZMQHandler.__init__(
             self,
             None,
-            zmq_context=init_handler.zmq_context,
+            zmq_context=self.get_zmq_context(),
             destination=rewrite_log_destination("uds:/var/lib/logging-server/py_log_zmq")
         )
-
-    def _init_zmq(self):
-        init_handler.init_pid = os.getpid()
-        init_handler.zmq_context = zmq.Context()
-
-    # def _socket(self):
-    #    cur_context = init_handler.zmq_context
-    #    pub = cur_context.socket(zmq.PUSH)
-    #    # pub.setsockopt(zmq.IMMEDIATE, True)
-    #    pub.connect(rewrite_log_destination("uds:/var/lib/logging-server/py_log_zmq"))
-    #    return pub
 
     def emit(self, record):
         if not record.name.startswith("init.at."):
@@ -288,17 +287,12 @@ class init_handler(ZMQHandler):
         ZMQHandler.emit(self, record)
 
 
-class init_email_handler(ZMQHandler):
-    zmq_context = None
-
+class init_email_handler(ZMQHandler, ZMQInitHS):
     def __init__(self, filename=None, *args, **kwargs):
-        if not init_email_handler.zmq_context:
-            init_email_handler.zmq_context = zmq.Context()
-        cur_context = init_email_handler.zmq_context
         ZMQHandler.__init__(
             self,
             None,
-            zmq_context=init_email_handler.zmq_context,
+            zmq_context=self.get_zmq_context(),
             destination=rewrite_log_destination("uds:/var/lib/logging-server/py_log_zmq")
         )
         self.__lens = {
@@ -317,31 +311,23 @@ class init_email_handler(ZMQHandler):
         ZMQHandler.emit(self, record)
 
 
-class init_handler_unified(ZMQHandler):
-    zmq_context = None
-
+class init_handler_unified(ZMQHandler, ZMQInitHS):
     def __init__(self, filename=None, *args, **kwargs):
-        if not init_handler_unified.zmq_context:
-            self._init_zmq()
         ZMQHandler.__init__(
             self,
             None,
-            zmq_context=init_handler_unified.zmq_context,
+            zmq_context=self.get_zmq_context(),
             destination=rewrite_log_destination("uds:/var/lib/logging-server/py_log_zmq")
         )
-
-    def _init_zmq(self):
-        init_handler_unified.init_pid = os.getpid()
-        init_handler_unified.zmq_context = zmq.Context()
 
     def emit(self, record):
         if record.name.startswith("init.at."):
             record.name = record.name[8:]
-        if os.getpid() != init_handler.init_pid:
+        if os.getpid() != ZMQInitHS.init_pid:
             # dont share zmq-contexts between processes
-            self._init_zmq()
-            pub = self._socket()
-            self.set_target(pub)
+            self.reopen_context()
+            # reopen socket
+            self.reopen()
         self.format(record)
         form_str = "{:<s}/{}[{:d}]"
         record.threadName = form_str.format(record.name, record.threadName, record.lineno)
