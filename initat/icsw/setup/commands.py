@@ -105,7 +105,7 @@ def call_manage(args, **kwargs):
     s_time = time.time()
     c_stat = 0
     try:
-        c_out = subprocess.check_output(command)
+        c_out = subprocess.check_output(command, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as e:
         c_stat = e.returncode
         c_out = e.output
@@ -461,6 +461,15 @@ def check_for_pre17(opts):
             file(_key, "w").write(_value)
 
 
+def alarm(msg):
+    _len = len(msg)
+    print("")
+    print("*" * (_len + 8))
+    print("*** {} ***".format(msg))
+    print("*" * (_len + 8))
+    print("")
+
+
 @SetupLogger
 def check_for_0800(opts):
     # move away all migrations above 0800
@@ -478,15 +487,19 @@ def check_for_0800(opts):
         # move away all migrations >= 0800
         ds1 = DirSave(CMIG_DIR, 799)
         # rename models dir
+        alarm("0800 MODELS ARE NOW ACTIVE")
         os.rename(MODELS_DIR, MODELS_DIR_SAVE)
         os.rename(Z800_MODELS_DIR, MODELS_DIR)
+        os.environ["ICSW_0800_MIGRATION"] = "yes"
         # migrate (to 0800_models version)
         migrate_app("backbone")
+        del os.environ["ICSW_0800_MIGRATION"]
         # move back
         os.rename(MODELS_DIR, Z800_MODELS_DIR)
         os.rename(MODELS_DIR_SAVE, MODELS_DIR)
         # move all files back
         ds1.restore(800)
+        alarm("0800 models no longer active")
         # fake migration (to 0800)
         call_manage(["makemigrations", "backbone", "--merge", "--noinput"])
         call_manage(["migrate", "backbone", "--noinput", "--fake"])
