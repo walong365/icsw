@@ -83,9 +83,8 @@ function restart_software() {
         [ -x /bin/systemctl ] && /bin/systemctl daemon-reload
 
         # logging-server
-        echo -e "\n${GREEN}restarting logging-server and hoststatus${OFF}\n"
+        echo -e "\n${GREEN}restarting logging-server{OFF}\n"
         ${ICSW_SBIN}/icsw --logger stdout --logall service restart logging-server
-        ${INIT}/hoststatus restart
 
         if [ ! -f ${ICSW_PIS}/icsw_server_post_install.sh -o "${mode}" = "server" ] ; then
             # start / stop to force restart of all services

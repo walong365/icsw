@@ -35,14 +35,11 @@ import zmq
 
 from .logging_tools import LOG_LEVEL_OK, rewrite_log_destination, my_syslog, get_plural, UNIFIED_NAME
 
+CONTEXT_KEY = "__ctx__"
+
 
 def debug(msg):
     file("/tmp/.icsw_log_debug", "a").write("[{}/{:d}] {}\n".format(time.ctime(), os.getpid(), msg))
-
-
-# class ZMQEmitError(Exception):
-#     def __init__(self, msg, *args):
-#         super(ZMQEmitError, self).__init__(msg, *args)
 
 
 def get_logger(name, destination, **kwargs):
@@ -136,31 +133,79 @@ class log_adapter(logging.LoggerAdapter):
 
 class ZMQHandler(logging.Handler):
     def __init__(self, logger_struct, **kwargs):
-        # print bla
-        self._context = kwargs.get("zmq_context", None)
+        self._pid = os.getpid()
+        ZMQHandler.register_pid(self._pid)
+        if "zmq_context" in kwargs:
+            self._context = kwargs["zmq_context"]
+            ZMQHandler.store_context(self._context)
+        else:
+            self._context = ZMQHandler.get_context()
         self._dest = kwargs["destination"]
         logging.Handler.__init__(self)
         self.__logger = logger_struct
-        self.open()
+        self._open = False
+        self.register()
 
-    def open(self):
+    @staticmethod
+    def setup():
+        # pid dict
+        ZMQHandler.pid_dict = {}
+
+    @staticmethod
+    def register_pid(pid):
+        if pid not in ZMQHandler.pid_dict:
+            ZMQHandler.pid_dict[pid] = {
+                CONTEXT_KEY: None,
+            }
+
+    @staticmethod
+    def store_context(context):
+        _pid = os.getpid()
+        if _pid in ZMQHandler.pid_dict:
+            if context != ZMQHandler.pid_dict[_pid][CONTEXT_KEY]:
+                # print("Context for pid {:d} already set".format(_pid))
+                pass
+        else:
+            ZMQHandler.pid_dict[_pid][CONTEXT_KEY] = context
+
+    @staticmethod
+    def get_context():
+        _pid = os.getpid()
+        if ZMQHandler.pid_dict[_pid][CONTEXT_KEY] is not None:
+            # print "fetch context for", _pid
+            context = ZMQHandler.pid_dict[_pid][CONTEXT_KEY]
+        else:
+            # print "create context for", _pid
+            context = zmq.Context()
+            ZMQHandler.store_context(context)
+        return context
+
+    def register(self):
+        if self.__logger:
+            self.__logger.addHandler(self)
+
+    def unregister(self):
+        if self.__logger:
+            # remove from handler
+            self.__logger.removeHandler(self)
+
+    def open(self, pid):
         self._open = True
+        # print "open", self._context, os.getpid()
         pub = self._context.socket(zmq.PUSH)
         pub.setsockopt(zmq.IMMEDIATE, 1)
         pub.setsockopt(zmq.LINGER, 10)
         pub.setsockopt(zmq.SNDTIMEO, 10)
         pub.connect(rewrite_log_destination(self._dest))
-        self.set_target(pub)
-        if self.__logger:
-            self.__logger.addHandler(self)
-
-    def set_target(self, t_sock):
-        self.__target = t_sock
+        ZMQHandler.pid_dict[pid][self._dest] = pub
+        # self.set_target(pub)
 
     def reopen(self):
+        # print("Reopen for {:d}".format(os.getpid()))
         self.close()
         time.sleep(0.2)
-        self.open()
+        self.open(os.getpid())
+        self.register()
 
     def makePickle(self, record):
         """
@@ -179,13 +224,20 @@ class ZMQHandler(logging.Handler):
             record.exc_info = ei  # for next handler
         return p_str
 
+    @property
+    def socket(self):
+        _pid = os.getpid()
+        if self._dest not in ZMQHandler.pid_dict.get(_pid, {}):
+            self.open(_pid)
+        return ZMQHandler.pid_dict[_pid][self._dest]
+
     def emit(self, record):
         _reopen_count = 0
         while True:
             try:
                 if _reopen_count:
                     time.sleep(0.1)
-                self.__target.send(self.makePickle(record), zmq.DONTWAIT)
+                self.socket.send(self.makePickle(record), zmq.DONTWAIT)
             except zmq.error.Again:
                 _reopen_count += 1
                 self.reopen()
@@ -195,13 +247,14 @@ class ZMQHandler(logging.Handler):
     def close(self):
         if self._open:
             self._open = False
+            pid = os.getpid()
             # set linger to zero to speed up close process
-            self.__target.setsockopt(zmq.LINGER, 0)
-            self.__target.close()
-            del self.__target
-            if self.__logger:
-                # remove from handler
-                self.__logger.removeHandler(self)
+            _pub = ZMQHandler.pid_dict[pid][self._dest]
+            _pub.disconnect(rewrite_log_destination(self._dest))
+            _pub.setsockopt(zmq.LINGER, 0)
+            _pub.close()
+            del ZMQHandler.pid_dict[pid][self._dest]
+            self.unregister()
 
 
 class initat_formatter(object):
@@ -256,27 +309,11 @@ class initat_formatter(object):
             delattr(record, "request")
 
 
-class ZMQInitHS(object):
-    zmq_context = None
-
-    def get_zmq_context(self):
-        if not ZMQInitHS.zmq_context:
-            ZMQInitHS.zmq_context = zmq.Context()
-            ZMQInitHS.init_pid = os.getpid()
-        return ZMQInitHS.zmq_context
-
-    def reopen_context(self):
-        # overwrite current context
-        ZMQInitHS.zmq_context = zmq.Context()
-        ZMQInitHS.init_pid = os.getpid()
-
-
-class init_handler(ZMQHandler, ZMQInitHS):
+class init_handler(ZMQHandler):
     def __init__(self, filename=None):
         ZMQHandler.__init__(
             self,
             None,
-            zmq_context=self.get_zmq_context(),
             destination=rewrite_log_destination("uds:/var/lib/logging-server/py_log_zmq")
         )
 
@@ -287,12 +324,11 @@ class init_handler(ZMQHandler, ZMQInitHS):
         ZMQHandler.emit(self, record)
 
 
-class init_email_handler(ZMQHandler, ZMQInitHS):
+class init_email_handler(ZMQHandler):
     def __init__(self, filename=None, *args, **kwargs):
         ZMQHandler.__init__(
             self,
             None,
-            zmq_context=self.get_zmq_context(),
             destination=rewrite_log_destination("uds:/var/lib/logging-server/py_log_zmq")
         )
         self.__lens = {
@@ -311,23 +347,17 @@ class init_email_handler(ZMQHandler, ZMQInitHS):
         ZMQHandler.emit(self, record)
 
 
-class init_handler_unified(ZMQHandler, ZMQInitHS):
+class init_handler_unified(ZMQHandler):
     def __init__(self, filename=None, *args, **kwargs):
         ZMQHandler.__init__(
             self,
             None,
-            zmq_context=self.get_zmq_context(),
             destination=rewrite_log_destination("uds:/var/lib/logging-server/py_log_zmq")
         )
 
     def emit(self, record):
         if record.name.startswith("init.at."):
             record.name = record.name[8:]
-        if os.getpid() != ZMQInitHS.init_pid:
-            # dont share zmq-contexts between processes
-            self.reopen_context()
-            # reopen socket
-            self.reopen()
         self.format(record)
         form_str = "{:<s}/{}[{:d}]"
         record.threadName = form_str.format(record.name, record.threadName, record.lineno)
@@ -347,3 +377,5 @@ class queue_handler(logging.Handler):
             self.__target_queue.put((self.__pre_tuple, record))
         except:
             self.handleError(record)
+
+ZMQHandler.setup()

@@ -694,6 +694,7 @@ class process_obj(multiprocessing.Process, TimerBase, poller_obj, process_base, 
             self.zmq_context = debug_zmq_ctx()
         else:
             self.zmq_context = zmq.Context()
+        # print("context of {:d} is {}".format(os.getpid(), str(self.zmq_context)))
         com_socket = self.zmq_context.socket(zmq.ROUTER)  # @UndefinedVariable
         # cast to str, no unicode allowed
         com_socket.setsockopt(zmq.IDENTITY, str(self.name))  # @UndefinedVariable

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (c) 2001-2007,2009-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (c) 2001-2007,2009-2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #
@@ -29,7 +29,6 @@ from enum import IntEnum
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import logging_tools, process_tools, threading_tools, server_command, \
     configfile, config_store, uuid_tools
-
 
 MAX_RESEND_COUNTER = 5
 
@@ -64,7 +63,6 @@ class ConfigCheckObject(object):
             self.__process.log_template = logging_tools.get_logger(
                 global_config["LOG_NAME"],
                 global_config["LOG_DESTINATION"],
-                zmq=True,
                 context=self.__process.zmq_context,
             )
 

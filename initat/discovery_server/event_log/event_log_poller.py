@@ -22,17 +22,16 @@ import traceback
 
 import django.utils.timezone
 import pymongo
-from pymongo.errors import PyMongoError
 
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device, ComCapability, net_ip
 from initat.cluster.backbone.models.functions import memoize_with_expiry
 from initat.cluster.backbone.routing import SrvTypeRouting
-from initat.tools.mongodb import MongoDbConnector
 from initat.discovery_server.config import global_config
 from initat.discovery_server.event_log.ipmi_event_log_scanner import IpmiLogJob
 from initat.discovery_server.event_log.wmi_event_log_scanner import WmiLogEntryJob, WmiLogFileJob
 from initat.tools import logging_tools, threading_tools, config_tools, process_tools
+from initat.tools.mongodb import MongoDbConnector
 
 
 class EventLogPollerProcess(threading_tools.process_obj):
@@ -267,13 +266,19 @@ class EventLogPollerProcess(threading_tools.process_obj):
         return ret
 
     def _get_ip_to_host(self, to_dev):
-        from_server_check = config_tools.server_check(device=SrvTypeRouting().local_device, config=None,
-                                                      server_type="node")
+        from_server_check = config_tools.server_check(
+            device=SrvTypeRouting().local_device,
+            config=None,
+            server_type="node"
+        )
         to_server_check = config_tools.server_check(device=to_dev, config=None, server_type="node")
 
-        route = from_server_check.get_route_to_other_device(self._get_router_obj(), to_server_check,
-                                                            allow_route_to_other_networks=True,
-                                                            prefer_production_net=True)
+        route = from_server_check.get_route_to_other_device(
+            self._get_router_obj(),
+            to_server_check,
+            allow_route_to_other_networks=True,
+            prefer_production_net=True
+        )
 
         if route:
             ip = route[-1][3][1][0]
