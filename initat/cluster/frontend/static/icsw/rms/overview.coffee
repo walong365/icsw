@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2015 init.at
+# Copyright (C) 2012-2016 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -638,21 +638,21 @@ rms_module = angular.module(
             scope.struct_name = attrs["struct"]
             scope.get_datetime = (dt) ->
                 if dt
-                    return moment.unix(dt).format(DT_FORM)
+                    return moment(dt).format(DT_FORM)
                 else
                     return "---"
             scope.get_runtime = (data) ->
                 if data.start_time and data.end_time
-                    _et = moment.unix(data.end_time)
-                    _st = moment.unix(data.start_time)
+                    _et = moment(data.end_time)
+                    _st = moment(data.start_time)
                     _diff = moment.duration(_et.diff(_st, "seconds"), "seconds")
                     return _diff.humanize()
                 else
                     return "---"     
             scope.get_waittime = (data) ->
                 if data.queue_time and data.start_time
-                    _et = moment.unix(data.start_time)
-                    _st = moment.unix(data.queue_time)
+                    _et = moment(data.start_time)
+                    _st = moment(data.queue_time)
                     _diff = moment.duration(_et.diff(_st, "seconds"), "seconds")
                     return _diff.humanize()
                 else
