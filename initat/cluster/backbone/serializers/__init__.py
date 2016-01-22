@@ -114,15 +114,15 @@ class mac_ignore_serializer(serializers.ModelSerializer):
 
 
 class macbootlog_serializer(serializers.ModelSerializer):
-    created = serializers.Field(source="get_created")
-    device_name = serializers.Field(source="get_device_name")
+    created = serializers.DateTimeField(read_only=True)
+    device_name = serializers.CharField(read_only=True)
 
     class Meta:
         model = macbootlog
 
 
 class status_serializer(serializers.ModelSerializer):
-    info_string = serializers.Field(source="info_string")
+    info_string = serializers.CharField(read_only=True)
 
     class Meta:
         model = status
@@ -297,20 +297,20 @@ class cd_connection_serializer_boot(serializers.ModelSerializer):
 
 
 class device_serializer_boot(device_serializer):
-    partition_table = serializers.SerializerMethodField("get_partition_table")
+    partition_table = serializers.SerializerMethodField()
     # current partition table
-    act_partition_table = serializers.SerializerMethodField("get_act_partition_table")
+    act_partition_table = serializers.SerializerMethodField()
     bootnetdevice = netdevice_serializer()
-    hoststatus_source = serializers.SerializerMethodField("get_hoststatus_source")
+    hoststatus_source = serializers.SerializerMethodField()
     # uptime = serializers.Field(source="get_uptime")
     # uptime_valid = serializers.Field(source="uptime_valid")
-    network = serializers.SerializerMethodField("get_network")
-    net_state = serializers.SerializerMethodField("get_net_state")
-    hoststatus_str = serializers.SerializerMethodField("get_hoststatus_str")
-    act_image = serializers.Field(source="get_act_image")
-    act_kernel = serializers.Field(source="get_act_kernel")
-    master_connections = serializers.SerializerMethodField("get_master_connections")
-    slave_connections = serializers.SerializerMethodField("get_slave_connections")
+    network = serializers.SerializerMethodField()
+    net_state = serializers.SerializerMethodField()
+    hoststatus_str = serializers.SerializerMethodField()
+    act_image = serializers.ReadOnlyField(source="get_act_image")
+    act_kernel = serializers.ReadOnlyField(source="get_act_kernel")
+    master_connections = serializers.SerializerMethodField()
+    slave_connections = serializers.SerializerMethodField()
 
     def _get_dev_node(self, dev):
         _res = self.context["mother_result"]
