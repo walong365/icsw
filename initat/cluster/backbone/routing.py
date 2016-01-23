@@ -33,8 +33,11 @@ from initat.cluster.backbone.models import device
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import uuid_tools, logging_tools, server_command
 from initat.tools.config_tools import server_check, device_with_config, router_object
-
+import os
+print "GL0", os.getpid()
 logger = logging.getLogger("cluster.routing")
+print "GL1"
+
 
 
 def _log(what, log_level):
@@ -76,7 +79,9 @@ class SrvTypeRouting(object):
         elif log_com is not None:
             self._log_com = log_com
         else:
+            print "GL2", os.getpid()
             self._logger = logging.getLogger("cluster.routing")
+            print "GL3"
         self.ignore_errors = ignore_errors
         _resolv_dict = cache.get(self.ROUTING_KEY)
         # if _resolv_dict is None or True:
