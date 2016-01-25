@@ -35,8 +35,8 @@ __all__ = [
 
 
 class background_job_serializer(serializers.ModelSerializer):
-    initiator_name = serializers.Field(source="initiator_name")
-    user_name = serializers.Field(source="user_name")
+    initiator_name = serializers.CharField(read_only=True)
+    user_name = serializers.CharField(read_only=True)
 
     class Meta:
         model = background_job
