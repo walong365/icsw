@@ -47,6 +47,7 @@ NEEDED_DIRS = ["/var/log/cluster"]
 BACKBONE_DIR = os.path.join(ICSW_ROOT, "initat/cluster/backbone")
 PRE_MODELS_DIR = os.path.join(BACKBONE_DIR, "models16")
 MODELS_DIR = os.path.join(BACKBONE_DIR, "models")
+MIGRATIONS_DIR = os.path.join(BACKBONE_DIR, "migrations")
 MODELS_DIR_SAVE = os.path.join(BACKBONE_DIR, ".models_save")
 Z800_MODELS_DIR = os.path.join(BACKBONE_DIR, "0800_models")
 

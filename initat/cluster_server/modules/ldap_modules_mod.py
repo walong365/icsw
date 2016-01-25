@@ -703,9 +703,9 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                         if u_stuff.home.startswith("/"):
                             _u_home = u_stuff.home.strip()
                         else:
-                            _u_home = u"{}/{}".format(g_stuff.homestart, u_stuff.login.strip())
+                            _u_home = u"{}/{}".format(g_stuff.homestart, u_stuff.home.strip())
                     else:
-                        _u_home = u"{}/{}".format(g_stuff.homestart, u_stuff.home.strip())
+                        _u_home = u"{}/{}".format(g_stuff.homestart, u_stuff.login.strip())
                     u_stuff.attributes = {
                         "objectClass": [_entry for _entry in par_dict["user_object_classes"]],
                         # "structuralObjectClass" : ["namedObject"],

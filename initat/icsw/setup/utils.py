@@ -29,7 +29,7 @@ import string
 import tempfile
 
 from initat.constants import SITE_PACKAGES_BASE
-from initat.tools import logging_tools
+from initat.tools import logging_tools, process_tools
 
 
 def get_icsw_root():
@@ -57,13 +57,29 @@ class DirSave(object):
         self.__move_files = [
             _entry for _entry in os.listdir(self.__dir_name) if _entry.endswith(".py") and self._match(_entry)
         ]
+        _del_files = [
+            _entry for _entry in os.listdir(self.__dir_name) if _entry.endswith(".pyc") or _entry.endswith(".pyo")
+        ]
         print(
-            "moving away migrations above {:04d}_* ({}) to {}".format(
+            "moving away migrations above {:04d}_* ({}) to {}, removing {}".format(
                 self.__min_idx,
                 logging_tools.get_plural("file", len(self.__move_files)),
                 self.__tmp_dir,
+                logging_tools.get_plural("file", len(_del_files)),
             )
         )
+        if _del_files:
+            for _del_file in _del_files:
+                _path = os.path.join(self.__dir_name, _del_file)
+                try:
+                    os.unlink(_path)
+                except:
+                    print(
+                        "error removing {}: {}".format(
+                            _path,
+                            process_tools.get_except_info(),
+                        )
+                    )
         for _move_file in self.__move_files:
             shutil.move(os.path.join(self.__dir_name, _move_file), os.path.join(self.__tmp_dir, _move_file))
 
