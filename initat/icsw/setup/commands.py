@@ -505,7 +505,7 @@ def check_for_0800(opts):
         if not os.path.exists(os.path.join(MIGRATIONS_DIR, "0801_merge.py")):
             # create dummy merge file
             alarm("creating dummy merge file")
-            call_manage(["makemigrations", "backbone", "--merge", "-n", "merge", "--empty", "--noinput"])
+            call_manage(["makemigrations", "backbone", "-n", "merge", "--empty", "--noinput"])
         call_manage(["migrate", "backbone", "--noinput", "--fake"])
         ds1.restore()
         ds1.cleanup()
