@@ -30,6 +30,10 @@ if [ "$1" = "centos" ] ; then
 elif [ "$1" = "debian" ] ; then
     cp "$VAGRANT_TEST_UTILS_SOURCE/Vagrantfile.debian" "$VAGRANT_DIR/Vagrantfile"
     cp $VAGRANT_TEST_UTILS_SOURCE/synced_files_debian/* "$VAGRANT_DIR/$SYNC_DIR"
+
+elif [ "$1" = "suse" ] ; then
+    cp "$VAGRANT_TEST_UTILS_SOURCE/Vagrantfile.suse" "$VAGRANT_DIR/Vagrantfile"
+    cp $VAGRANT_TEST_UTILS_SOURCE/synced_files_suse/* "$VAGRANT_DIR/$SYNC_DIR"
 else
     echo "Invalid linux distribution: $1"
     exit 1
