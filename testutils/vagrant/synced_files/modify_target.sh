@@ -1,7 +1,7 @@
 #!/bin/sh -ex
 
-sed -i 's/lang-nevyjel/bahlon/g' /opt/cluster/etc/cstores.d/client_config.xml
-sed -i 's/\<logging-server\>/VAGRANT_logging-server/g' /opt/cluster/etc/cstores.d/client_config.xml
-sed -i 's/\<meta-server\>/VAGRANT_meta-server/g' /opt/cluster/etc/cstores.d/client_config.xml
-sed -i 's/cluster\@init.at/bahlon\@init.at/g' /opt/cluster/etc/cstores.d/client_config.xml
-/opt/cluster/sbin/icsw service restart logging-server
+xml ed -u "//key[@name='log.mail.from.name']" -v 'VAGRANT_logging-server' /opt/cluster/etc/cstores.d/client_config.xm
+xml ed -u "//key[@name='mail.target.address']" -v 'bahlon@init.at' /opt/cluster/etc/cstores.d/client_config.xm
+xml ed -u "//key[@name='meta.mail.from.name']" -v 'VAGRANT_meta-server' /opt/cluster/etc/cstores.d/client_config.xm
+
+/opt/cluster/sbin/icsw service restart
