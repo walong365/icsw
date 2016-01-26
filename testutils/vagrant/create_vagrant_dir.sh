@@ -9,6 +9,11 @@
 # are only once in git anyway.
 #
 
+if [ -d $VAGRANT_DIR ]; then
+    echo "remove existing vagrant dir $VAGRANT_DIR"
+    rm -r $VAGRANT_DIR
+fi
+
 if [ $# -ne 1 ] ; then
     echo "USAGE: $0 LINUX_DISTRIBUTION"
     exit 1
