@@ -9,6 +9,10 @@
 # are only once in git anyway.
 #
 
+VAGRANT_TEST_UTILS_SOURCE="testutils/vagrant"
+VAGRANT_DIR="install_test_vagrant"
+SYNC_DIR="synced_files"
+
 if [ -d $VAGRANT_DIR ]; then
     echo "remove existing vagrant dir $VAGRANT_DIR"
     rm -r $VAGRANT_DIR
@@ -19,9 +23,6 @@ if [ $# -ne 1 ] ; then
     exit 1
 fi
 
-VAGRANT_TEST_UTILS_SOURCE="testutils/vagrant"
-VAGRANT_DIR="install_test_vagrant"
-SYNC_DIR="synced_files"
 
 mkdir -p $VAGRANT_DIR/$SYNC_DIR
 cp "$VAGRANT_TEST_UTILS_SOURCE/vagrant_insecure_key" "$VAGRANT_DIR/vagrant_insecure_key"
