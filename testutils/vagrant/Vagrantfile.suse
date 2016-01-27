@@ -73,7 +73,7 @@ Vagrant.configure(2) do |config|
   config.vm.box_url = 'http://www.initat.org/hpc_monitoring/wp-content/uploads/2016/01/vagrant/dummy.box?raw=true'
     config.vm.provider :ovirt3 do |ovirt|
 #    ovirt.template = 'centos-7-template-2' with SELINUX enabled
-    ovirt.template = 'debian-8-template-3'
+    ovirt.template = 'suse-132-template' # with SELINUX disabled
     ovirt.cpus = 2
     ovirt.memory = 4092
     ovirt.console = 'vnc' #could also be 'spice'
