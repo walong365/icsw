@@ -119,7 +119,11 @@ class handler(SNMPHandler):
                     pnd_lut[if_struct.name].delete()
                 _dev_nd.snmp_idx = if_idx
                 _dev_nd.devname = if_struct.name
-                _dev_nd.netdevice_speed = ND_SPEED_LUT.get(if_struct.speed, ND_SPEED_LUT[0])
+                if if_idx in _hs_dict:
+                    _speed = max(if_struct.speed, _hs_dict[if_idx].highspeed * 1000000)
+                else:
+                    _speed = if_struct.speed
+                _dev_nd.netdevice_speed = ND_SPEED_LUT.get(_speed, ND_SPEED_LUT[0])
                 _dev_nd.snmp_network_type = snmp_type_dict[if_struct.if_type]
                 _dev_nd.mtu = if_struct.mtu
                 _dev_nd.macaddr = if_struct.macaddr
