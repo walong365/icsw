@@ -49,7 +49,8 @@ for mod_name in [
                     import_errors.append(
                         (
                             mod_name,
-                            "parser", "'{}' is an SNMPRelayScheme instance but has wrong name".format(
+                            "parser",
+                            "'{}' is an SNMPRelayScheme instance but has wrong name".format(
                                 _key
                             )
                         )

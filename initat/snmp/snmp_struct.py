@@ -220,6 +220,7 @@ class snmp_ip(object):
 
 class simple_snmp_oid(object):
     def __init__(self, *oid, **kwargs):
+        self.optional = False
         self._target_value = kwargs.get("target_value", None)
         if type(oid[0]) in [tuple, list] and len(oid) == 1:
             oid = oid[0]
@@ -281,6 +282,7 @@ class snmp_oid(simple_snmp_oid):
         else:
             self._max_oid_len, self._str_max_oid = (0, "")
         self.cache_it = kwargs.get("cache", False)
+        self.optional = kwargs.get("optional", False)
         if self.cache_it:
             # time after which cache invalidates
             self.cache_timeout = kwargs.get("cache_timeout", 60)

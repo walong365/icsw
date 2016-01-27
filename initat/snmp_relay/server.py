@@ -1,4 +1,4 @@
-# Copyright (C) 2009-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2009-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -382,7 +382,7 @@ class server_process(threading_tools.process_pool):
                 comline_split = comline.split()
                 scheme = comline_split.pop(0)
             except:
-                self._send_return(envelope, limits.nag_STATE_CRITICAL, "message format error: %s" % (process_tools.get_except_info()))
+                self._send_return(envelope, limits.nag_STATE_CRITICAL, "message format error: {}".format(process_tools.get_except_info()))
             else:
                 self.__ret_dict[envelope] = time.time()
                 if scheme in self.__local_schemes:

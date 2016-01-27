@@ -1,4 +1,4 @@
-# Copyright (C) 2009-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2009-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -161,9 +161,13 @@ class snmp_process(threading_tools.process_obj):
             try:
                 rsp_msg, whole_msg = decoder.decode(whole_msg, asn1Spec=self.v2c_decoder.Message())
             except:
-                self.log("error decoding message from {}: {}".format(
-                    address,
-                    process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
+                self.log(
+                    "error decoding message from {}: {}".format(
+                        address,
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_CRITICAL
+                )
                 # send meaningfull error message to client ? TODO, FIXME
                 whole_msg = None
             else:

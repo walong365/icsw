@@ -156,22 +156,24 @@ class snmp_batch(object):
 
     def get_tables(self, base_oids, **kwargs):
         self._set = kwargs.get("set", False)
+        self.__max_items = kwargs.get("max_items", 0)
         self._stop_after_first = kwargs.get("stop_after_first", False)
+        self.__single_values = kwargs.get("single_values", False)
+        self.__base_oids = base_oids
+        return self._init_tables()
+
+    def _init_tables(self):
         # table header
-        self.__head_vars = [self.__p_mod.ObjectIdentifier(base_oid) for base_oid in base_oids]
-        self.__max_head_vars = [self.__p_mod.ObjectIdentifier(base_oid.get_max_oid()) if base_oid.has_max_oid() else None for base_oid in base_oids]
+        self.__head_vars = [self.__p_mod.ObjectIdentifier(base_oid) for base_oid in self.__base_oids]
+        self.__max_head_vars = [self.__p_mod.ObjectIdentifier(base_oid.get_max_oid()) if base_oid.has_max_oid() else None for base_oid in self.__base_oids]
         # actual header vars
         self.__act_head_vars = [(header, max_header) for header, max_header in zip(self.__head_vars, self.__max_head_vars)]
         # numer of result values
         self.num_result_values = 0
-        # timeout is being set by snmp_scheme.scheme_data
-        # self.__timeout = kwargs.get("timeout", 30)
         # max items
-        self.__max_items = kwargs.get("max_items", 0)
         self.__num_items = 0
         # who many times the timer_func was called
         self.__timer_count = 0
-        self.__single_values = kwargs.get("single_values", False)
         if self._set:
             self.__req_pdu = self.__p_mod.SetRequestPDU()
         elif self.__single_values:
@@ -182,12 +184,15 @@ class snmp_batch(object):
             self.__req_pdu = self.__p_mod.GetNextRequestPDU()
         self.__p_mod.apiPDU.setDefaults(self.__req_pdu)
         self.__next_names = [value for value, _max_value in self.__act_head_vars]
+        self.__optional = {
+            str(value): idx for idx, (value, base_oid) in enumerate(zip(self.__next_names, self.__base_oids))
+        }
         self.__act_domain, self.__act_address = (udp.domainName, (self.__snmp_host, 161))
         if self._set:
             self.__p_mod.apiPDU.setVarBinds(
                 self.__req_pdu,
                 [
-                    (head_var, base_oid.get_value(self.__p_mod)) for (head_var, _max_head_var), base_oid in zip(self.__act_head_vars, base_oids)
+                    (head_var, base_oid.get_value(self.__p_mod)) for (head_var, _max_head_var), base_oid in zip(self.__act_head_vars, self.__base_oids)
                 ]
             )
         else:
@@ -199,7 +204,9 @@ class snmp_batch(object):
             )
         if self.__p_mod.apiPDU.getErrorStatus(self.__req_pdu):
             self.log(
-                "Something went seriously wrong: {}".format(self.__p_mod.apiPDU.getErrorStatus(self.__req_pdu).prettyPrint()),
+                "Something went seriously wrong: {}".format(
+                    self.__p_mod.apiPDU.getErrorStatus(self.__req_pdu).prettyPrint()
+                ),
                 logging_tools.LOG_LEVEL_CRITICAL
             )
         # message
@@ -213,9 +220,6 @@ class snmp_batch(object):
         self.__start_time = time.time()
         # start of init get
         self.__start_get_time = time.time()
-        # self.__single_value = self.__single_values
-        # self.__act_scheme.set_single_value(self.__single_values)
-        # self.__disp.sendMessage(encoder.encode(self.__req_msg), self.__act_domain, self.__act_address)
         self.request_id = self.__p_mod.apiPDU.getRequestID(self.__req_pdu)
         return encoder.encode(self.__req_msg), self.__act_domain, self.__act_address
 
@@ -242,11 +246,38 @@ class snmp_batch(object):
         # Check for SNMP errors reported
         error_status = self.__p_mod.apiPDU.getErrorStatus(rsp_pdu)
         if error_status:
-            self.log("SNMP error_status: {}".format(self.__p_mod.apiPDU.getErrorStatus(rsp_pdu).prettyPrint()),
-                     logging_tools.LOG_LEVEL_WARN)
-            if error_status not in [2]:
-                self.__other_errors = True
-            terminate = True
+            error_index = self.__p_mod.apiPDU.getErrorIndex(rsp_pdu)
+            var_bind = self.__p_mod.apiPDU.getVarBinds(rsp_pdu)[error_index - 1]
+            self.log(
+                "SNMP error_status {}@{}: {} ({})".format(
+                    error_status,
+                    error_index,
+                    self.__p_mod.apiPDU.getErrorStatus(rsp_pdu).prettyPrint(),
+                    str(var_bind[0]),
+                ),
+                logging_tools.LOG_LEVEL_WARN
+            )
+            _restart = False
+            var_bind_table = self.__p_mod.apiPDU.getVarBindTable(self.__req_pdu, rsp_pdu)
+            var_bind_name = str(var_bind[0])
+            if var_bind_name in self.__optional:
+                _idx = self.__optional[var_bind_name]
+                if self.__base_oids[_idx].optional:
+                    # still experimental
+                    self.log("  ... is flagged as optional, restarting")
+                    # remove defective base_oid
+                    self.__base_oids.pop(_idx)
+                    _restart = True
+                    if self.__base_oids:
+                        _encoded, _domain, _address = self._init_tables()
+                        self.proc.send_next(self, (_encoded, _domain, _address))
+                        return
+                    else:
+                        self.log("list of OIDs is empty, strange ...", logging_tools.LOG_LEVEL_ERROR)
+            if not _restart:
+                if error_status not in [2]:
+                    self.__other_errors = True
+                terminate = True
         else:
             # Format var-binds table
             var_bind_table = self.__p_mod.apiPDU.getVarBindTable(self.__req_pdu, rsp_pdu)
@@ -312,7 +343,6 @@ class snmp_batch(object):
         self.__p_mod.apiPDU.setRequestID(self.__req_pdu, self.__p_mod.getNextRequestID())
         self.request_id = self.__p_mod.apiPDU.getRequestID(self.__req_pdu)
         self.proc.send_next(self, (encoder.encode(self.__req_msg), self.__act_domain, self.__act_address))
-        # self.__disp.sendMessage(encoder.encode(self.__req_msg), self.__act_domain, self.__act_address)
 
     def timer_func(self, act_time):
         diff_time = int(abs(act_time - self.__start_time))

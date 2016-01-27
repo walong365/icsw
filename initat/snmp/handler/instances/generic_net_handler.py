@@ -65,9 +65,13 @@ class handler(SNMPHandler):
         initial = True
 
     def update(self, dev, scheme, result_dict, oid_list, flags):
-        _if_dict = {key: snmp_if(value) for key, value in simplify_dict(result_dict[IF_BASE], (2, 1)).iteritems()}
+        _if_dict = {
+            key: snmp_if(value) for key, value in simplify_dict(result_dict[IF_BASE], (2, 1)).iteritems()
+        }
         if HS_BASE in result_dict:
-            _hs_dict = {key: snmp_hs(value) for key, value in simplify_dict(result_dict[HS_BASE], ()).iteritems()}
+            _hs_dict = {
+                key: snmp_hs(value) for key, value in simplify_dict(result_dict[HS_BASE], ()).iteritems()
+            }
             # pprint.pprint(_hs_dict)
         else:
             _hs_dict = {}
@@ -312,6 +316,16 @@ class if_mon(MonCheckDefinition):
     def mon_start(self, scheme):
         return [
             snmp_oid(
+                "{}.{:d}.{:d}".format(
+                    HS_BASE,
+                    _idx,
+                    scheme.opts.if_idx[0]
+                ),
+                single_value=True,
+                optional=True
+            ) for _idx in [15]
+        ] + [
+            snmp_oid(
                 "{}.2.1.{:d}.{:d}".format(
                     IF_BASE,
                     _idx,
@@ -319,15 +333,6 @@ class if_mon(MonCheckDefinition):
                 ),
                 single_value=True
             ) for _idx in [5, 7, 8, 10, 16, 13, 14, 19, 20]
-        ] + [
-            snmp_oid(
-                "{}.{:d}.{:d}".format(
-                    HS_BASE,
-                    _idx,
-                    scheme.opts.if_idx[0]
-                ),
-                single_value=True
-            ) for _idx in [15]
         ]
 
     def mon_result(self, scheme):

@@ -1,4 +1,4 @@
-# Copyright (C) 2009-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2009-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -165,21 +165,52 @@ class snmp_process_container(object):
             _snmp_id = "snmp_{:d}".format(snmp_id)
             if self.__buffer:
                 # send buffer to free process
-                self.log("sending buffer ({}) to {}".format(logging_tools.get_plural("entry", len(self.__buffer)), _snmp_id))
+                self.log(
+                    "sending buffer ({}) to {}".format(
+                        logging_tools.get_plural("entry", len(self.__buffer)),
+                        _snmp_id
+                    )
+                )
                 for _vers, _ip, _com, _batch_id, _single_key_transform, _timeout, _oid_list, _kwargs in self.__buffer:
                     self.__snmp_dict[snmp_id]["jobs"] += 1
                     self.__snmp_dict[snmp_id]["pending"] += 1
                     self.send(
-                        _snmp_id, "fetch_snmp", _vers, _ip, _com, _batch_id, _single_key_transform, _timeout,
-                        *_oid_list, VERBOSE=0, **_kwargs
+                        _snmp_id,
+                        "fetch_snmp",
+                        _vers,
+                        _ip,
+                        _com,
+                        _batch_id,
+                        _single_key_transform,
+                        _timeout,
+                        *_oid_list,
+                        VERBOSE=0,
+                        **_kwargs
                     )
                 self.__buffer = []
             self.__snmp_dict[snmp_id]["jobs"] += 1
             self.__snmp_dict[snmp_id]["pending"] += 1
-            self.send(_snmp_id, "fetch_snmp", vers, ip, com, batch_id, single_key_transform, timeout, *oid_list, VERBOSE=0, **kwargs)
+            self.send(
+                _snmp_id,
+                "fetch_snmp",
+                vers,
+                ip,
+                com,
+                batch_id,
+                single_key_transform,
+                timeout,
+                *oid_list,
+                VERBOSE=0,
+                **kwargs
+            )
         else:
             self.__buffer.append((vers, ip, com, batch_id, single_key_transform, timeout, oid_list, kwargs))
-            self.log("no free SNMP processes, buffering ({:d})...".format(len(self.__buffer)), logging_tools.LOG_LEVEL_WARN)
+            self.log(
+                "no free SNMP processes, buffering ({:d})...".format(
+                    len(self.__buffer)
+                ),
+                logging_tools.LOG_LEVEL_WARN
+            )
 
     def send(self, target, m_type, *args, **kwargs):
         _iter = 0

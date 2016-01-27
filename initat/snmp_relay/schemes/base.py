@@ -179,6 +179,7 @@ class SNMPRelayScheme(object):
             self.__hv_mapping = {tuple(base_oid): base_oid for base_oid in self.requests}
             # list of oids we need and oids already pending
             act_oids, _pending_oids = (set(self.__hv_mapping.keys()), set())
+            self.__hv_optional = {tuple(base_oid) for base_oid in self.requests if base_oid.optional}
             # check for caching and already pending requests
             # self.net_obj.lock()
             cache_ok = all(
@@ -241,6 +242,8 @@ class SNMPRelayScheme(object):
         # self.net_obj.lock()
         self.net_obj.remove_from_pending_requests(self.__waiting_for)
         self.__waiting_for = self.__waiting_for.difference(self.__received)
+        # remove optionals
+        self.__waiting_for -= self.__hv_optional
         if self.__waiting_for:
             self.__missing_headers.extend(self.__waiting_for)
         else:
