@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2015 init.at
+# Copyright (C) 2012-2016 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -332,7 +332,7 @@ angular.module(
             ]
             $q.all(wait_list).then((data) ->
                 $scope.ls_devsel.set(_dev_sel)
-                $scope.dev_tree_lut = icswTools.build_lut(data[0][0])
+                $scope.dev_tree_lut = data[0].enabled_lut
                 $scope.new_data(data[1])
                 #console.log "gen", data[1][4]
                 # console.log "watch for", data[1]
@@ -527,69 +527,71 @@ angular.module(
                 data : {
                     "pk_list" : angular.toJson(watched_devs)
                 }
-            ).then((xml) ->
-                icswDeviceTreeService.fetch("bla").then((data) ->
-                    dev_tree_lut = data[2]
-                    service_entries = []
-                    $(xml).find("value[name='service_result']").each (idx, node) =>
-                        service_entries = service_entries.concat(angular.fromJson($(node).text()))
-                    host_entries = []
-                    $(xml).find("value[name='host_result']").each (idx, node) =>
-                        host_entries = host_entries.concat(angular.fromJson($(node).text()))
-                    host_lut = {}
-                    used_cats = []
-                    host_id = 0
-                    for entry in host_entries
-                        host_id++
-                        # sanitize entries
-                        _sanitize_entries(entry)
-                        # list of checks for host
-                        entry.checks = []
-                        entry.ct = "host"
-                        # dummy link
-                        entry.host = entry
-                        entry.custom_variables = _parse_custom_variables(entry.custom_variables)
-                        entry._srv_id = "host#{host_id}"
-                        if entry.custom_variables.device_pk of dev_tree_lut
-                            _dev = dev_tree_lut[entry.custom_variables.device_pk]
-                            entry.group_name = _dev.device_group_name
-                        host_lut[entry.host_name] = entry
-                        host_lut[entry.custom_variables.device_pk] = entry
-                    srv_id = 0
-                    for entry in service_entries
-                        entry.search_str = "#{entry.plugin_output} #{entry.display_name}"
-                        srv_id++
-                        # sanitize entries
-                        _sanitize_entries(entry)
-                        entry.custom_variables = _parse_custom_variables(entry.custom_variables)
-                        entry.description = entry.display_name  # this is also what icinga displays
-                        entry.ct = "service"
-                        entry._srv_id = "srvc#{srv_id}"
-                        # populate list of checks
-                        host_lut[entry.custom_variables.device_pk].checks.push(entry)
-                        entry.host = host_lut[entry.custom_variables.device_pk]
-                        entry.group_name = host_lut[entry.host_name].group_name
-                        if entry.custom_variables and entry.custom_variables.cat_pks?
-                            used_cats = _.union(used_cats, entry.custom_variables.cat_pks)
-                        else
-                            used_cats = _.union(used_cats, [0])
-                    _host_lut = host_lut
+            ).then(
+                (xml) ->
+                    icswDeviceTreeService.fetch("bla").then(
+                        (data) ->
+                            dev_tree_lut = data.enabled_lut
+                            service_entries = []
+                            $(xml).find("value[name='service_result']").each (idx, node) =>
+                                service_entries = service_entries.concat(angular.fromJson($(node).text()))
+                            host_entries = []
+                            $(xml).find("value[name='host_result']").each (idx, node) =>
+                                host_entries = host_entries.concat(angular.fromJson($(node).text()))
+                            host_lut = {}
+                            used_cats = []
+                            host_id = 0
+                            for entry in host_entries
+                                host_id++
+                                # sanitize entries
+                                _sanitize_entries(entry)
+                                # list of checks for host
+                                entry.checks = []
+                                entry.ct = "host"
+                                # dummy link
+                                entry.host = entry
+                                entry.custom_variables = _parse_custom_variables(entry.custom_variables)
+                                entry._srv_id = "host#{host_id}"
+                                if entry.custom_variables.device_pk of dev_tree_lut
+                                    _dev = dev_tree_lut[entry.custom_variables.device_pk]
+                                    entry.group_name = _dev.device_group_name
+                                host_lut[entry.host_name] = entry
+                                host_lut[entry.custom_variables.device_pk] = entry
+                            srv_id = 0
+                            for entry in service_entries
+                                entry.search_str = "#{entry.plugin_output} #{entry.display_name}"
+                                srv_id++
+                                # sanitize entries
+                                _sanitize_entries(entry)
+                                entry.custom_variables = _parse_custom_variables(entry.custom_variables)
+                                entry.description = entry.display_name  # this is also what icinga displays
+                                entry.ct = "service"
+                                entry._srv_id = "srvc#{srv_id}"
+                                # populate list of checks
+                                host_lut[entry.custom_variables.device_pk].checks.push(entry)
+                                entry.host = host_lut[entry.custom_variables.device_pk]
+                                entry.group_name = host_lut[entry.host_name].group_name
+                                if entry.custom_variables and entry.custom_variables.cat_pks?
+                                    used_cats = _.union(used_cats, entry.custom_variables.cat_pks)
+                                else
+                                    used_cats = _.union(used_cats, [0])
+                            _host_lut = host_lut
 
-                    for client, _defer of defer_list
-                        _result = result_list[client]
-                        hosts_client = []
-                        services_client = []
-                        host_lut_client = {}
-                        for dev, watchers of watch_list
-                            if client in watchers and dev of host_lut  # sometimes we don't get data for a device
-                                entry = host_lut[dev]
-                                hosts_client.push(entry)
-                                for check in entry.checks
-                                    services_client.push(check)
-                                host_lut_client[dev] = entry
-                                host_lut_client[entry.host_name] = entry
-                        _result.update(hosts_client, services_client, host_lut_client, used_cats)
-                        _defer.resolve(_result) #[hosts_client, services_client, host_lut_client, used_cats, _data_generation])
+                            for client, _defer of defer_list
+                                _result = result_list[client]
+                                hosts_client = []
+                                services_client = []
+                                host_lut_client = {}
+                                for dev, watchers of watch_list
+                                    if client in watchers and dev of host_lut  # sometimes we don't get data for a device
+                                        entry = host_lut[dev]
+                                        hosts_client.push(entry)
+                                        for check in entry.checks
+                                            services_client.push(check)
+                                        host_lut_client[dev] = entry
+                                        host_lut_client[entry.host_name] = entry
+                                _result.update(hosts_client, services_client, host_lut_client, used_cats)
+                                _defer.resolve(_result) #[hosts_client, services_client, host_lut_client, used_cats, _data_generation])
                 )
             )
 
@@ -726,15 +728,16 @@ angular.module(
             icswDeviceTreeService.fetch($scope.$id)
             icswDeviceLivestatusDataService.retain($scope.$id, _dev_list)
         ]
-        $q.all(wait_list).then((data) ->
-            $scope.dev_tree_lut = data[0][2]
-            $scope.new_data(data[1])
-            $scope.$watch(
-                () ->
-                    return data[1].generation
-                () ->
-                    $scope.new_data(data[1])
-            )
+        $q.all(wait_list).then(
+            (data) ->
+                $scope.dev_tree_lut = data[0].enabled_lut
+                $scope.new_data(data[1])
+                $scope.$watch(
+                    () ->
+                        return data[1].generation
+                    () ->
+                        $scope.new_data(data[1])
+                )
         )
         $scope.new_data = (mres) ->
             $scope.host_entries = mres.hosts

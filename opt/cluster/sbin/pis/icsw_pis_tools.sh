@@ -48,6 +48,8 @@ function icsw_cleanup() {
     rm -rf /opt/python-init/lib/python2.7/site-packages/initat/tools/logging_tools
     rm -f /opt/python-init/lib/python2.7/site-packages/initat/icsw/setup/*.py{c,o}
     rm -f /opt/python-init/lib/python2.7/site-packages/initat/tools/logging_tools.py{c,o}
+    # old template tags
+    rm -f /opt/python-init/lib/python2.7/site-packages/initat/cluster/frontend/templatetags/*.py{c,o}
     # remove cached urls.py files
     rm -f ${PREFIX_INIT}/initat/cluster/urls.py{c,o}
     rm -rf ${PREFIX_INIT}/initat/core

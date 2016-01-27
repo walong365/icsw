@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2015 init.at
+# Copyright (C) 2012-2016 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -25,22 +25,61 @@ angular.module(
         "init.csw.filters", "restangular", "noVNC", "ui.select", "icsw.tools",
         "icsw.device.info", "icsw.tools.tree", "icsw.user",
     ]
-).service("icswDeviceTreeService", ["$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall", "icswTools", ($q, Restangular, ICSW_URLS, $window, icswCachingCall, icswTools) ->
+).service("icswDeviceTree", ["icswTools", (icswTools) ->
+    class icswDeviceTree
+        constructor: (full_list, cat_list, group_list) ->
+            @all_list = []
+            @enabled_list = []
+            @cat_list = cat_list
+            @group_list = group_list
+            @disabled_list = []
+            @enabled_lut = {}
+            @disabled_lut = {}
+            _enabled = []
+            _disabled = []
+            _disabled_groups = []
+            for _entry in full_list
+                @all_list.push(_entry)
+                if not _entry.is_meta_device and _entry.device_group in _disabled_groups
+                    @disabled_list.push(_entry)
+                else if _entry.enabled
+                    @enabled_list.push(_entry)
+                else
+                    if _entry.is_meta_device
+                        _disabled_groups.push(_entry.device_group)
+                    @disabled_list.push(_entry)
+            @enabled_lut = icswTools.build_lut(@enabled_list)
+            @disabled_lut = icswTools.build_lut(@disabled_list)
+            @all_lut = icswTools.build_lut(@all_list)
+            # console.log @enabled_list.length, @disabled_list.length, @all_list.length
+            @link()
+        link: () =>
+            # create helper structures
+            # console.log "link"
+]).service("icswDeviceTreeService", ["$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall", "icswTools", "icswDeviceTree", ($q, Restangular, ICSW_URLS, $window, icswCachingCall, icswTools, icswDeviceTree) ->
     rest_map = [
         [
-            ICSW_URLS.REST_DEVICE_TREE_LIST,
+            ICSW_URLS.REST_DEVICE_TREE_LIST
             {
                 "ignore_cdg" : false
                 "tree_mode" : true
                 "all_devices" : true
                 "with_categories" : true
+                "ignore_disabled": true
                 "olp" : $window.DEVICE_OBJECT_LEVEL_PERMISSION
             }
         ]
-        [ICSW_URLS.REST_CATEGORY_LIST, {}]
+        [
+            ICSW_URLS.REST_CATEGORY_LIST
+            {}
+        ]
+        [
+            ICSW_URLS.REST_DEVICE_GROUP_LIST
+            {}
+        ]
     ]
     _fetch_dict = {}
-    _result = []
+    _result = undefined
     # load called
     load_called = false
     load_data = (client) ->
@@ -48,9 +87,7 @@ angular.module(
         _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in rest_map)
         _defer = $q.defer()
         $q.all(_wait_list).then((data) ->
-            _result = data
-            # build luts
-            _result.push(icswTools.build_lut(data[0]))
+            _result = new icswDeviceTree(data[0], data[1], data[2])
             _defer.resolve(_result)
             for client of _fetch_dict
                 # resolve clients
@@ -64,7 +101,7 @@ angular.module(
             # register client
             _defer = $q.defer()
             _fetch_dict[client] = _defer
-        if _result.length
+        if _result
             # resolve immediately
             _fetch_dict[client].resolve(_result)
         return _fetch_dict[client]
@@ -84,8 +121,8 @@ angular.module(
     return (dev_pk) ->
         defer = $q.defer()
         icswDeviceTreeService.fetch(id).then((new_data) ->
-            if dev_pk of new_data[2]
-                defer.resolve(new_data[2][dev_pk])
+            if dev_pk of new_data.all_lut
+                defer.resolve(new_data.all_lut[dev_pk])
             else
                 defer.resolve(undefined)
         )
@@ -95,7 +132,7 @@ angular.module(
     return (dev_pk) ->
         defer = $q.defer()
         icswDeviceTreeService.fetch(id).then((new_data) ->
-            defer.resolve(dev_pk of new_data[2])
+            defer.resolve(dev_pk of new_data.all_lut)
         )
         return defer.promise
 ]).service("icswActiveSelectionService", ["$q", "Restangular", "msgbus", "$rootScope", "ICSW_URLS", "icswSelection", "icswSelectionService", ($q, Restangular, msgbus, $rootScope, ICSW_URLS, icswSelection, icswSelectionService) ->
@@ -239,26 +276,28 @@ angular.module(
 ]).service("icswSelectionService", ["icswDeviceTreeService", "$q", (icswDeviceTreeService, $q) ->
     load_data = (client) ->
         _defer = $q.defer()
-        icswDeviceTreeService.fetch(client).then((data) ->
-            # data[2] is already a lut, use ? FIXME, TODO
-            # categories
-            for cat in data[1]
-                cat.devices = []
-                cat_lut[cat.idx] = cat
-            # device groups
-            for dev in data[0]
-                if dev.is_meta_device
-                    dev.devices = []
-                    devg_lut[dev.device_group] = dev
-            # devices
-            for dev in data[0]
-                if ! dev.is_meta_device
-                    devg_lut[dev.device_group].devices.push(dev.idx)
-                dev_lut[dev.idx] = dev
-                if dev.categories
-                    for t_cat in dev.categories
-                        cat_lut[t_cat].devices.push(dev.idx)
-            _defer.resolve([data[0], data[1]])
+        icswDeviceTreeService.fetch(client).then(
+            (data) ->
+                # move to icswDeviceTree object, TODO, FIXME
+                # categories
+                # console.log data
+                for cat in data.cat_list
+                    cat.devices = []
+                    cat_lut[cat.idx] = cat
+                # device groups
+                for dev in data.enabled_list
+                    if dev.is_meta_device
+                        dev.devices = []
+                        devg_lut[dev.device_group] = dev
+                # devices
+                for dev in data.enabled_list
+                    if not dev.is_meta_device
+                        devg_lut[dev.device_group].devices.push(dev.idx)
+                    dev_lut[dev.idx] = dev
+                    if dev.categories
+                        for t_cat in dev.categories
+                            cat_lut[t_cat].devices.push(dev.idx)
+                _defer.resolve([data.enabled_list, data.enabled_lut])
         )
         return _defer.promise
     # lookup objects

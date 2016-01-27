@@ -42,6 +42,21 @@ def generate_password(size=10):
     return "".join([random.choice(string.ascii_letters) for _ in range(size)])
 
 
+class DummyFile(object):
+    def __init__(self, file_name, content):
+        self.__file_name = file_name
+        self.__content = content
+        self._existed = os.path.exists(self.__file_name)
+        print("File {} is {}".format(self.__file_name, "present" if self._existed else "not present"))
+        if not self._existed:
+            file(self.__file_name, "w").write(self.__content)
+
+    def restore(self):
+        if not self._existed:
+            print("removing dummy file {}".format(self.__file_name))
+            os.unlink(self.__file_name)
+
+
 class DirSave(object):
     def __init__(self, dir_name, min_idx):
         self.__dir_name = dir_name

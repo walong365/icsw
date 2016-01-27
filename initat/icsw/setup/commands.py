@@ -34,7 +34,7 @@ from initat.constants import GEN_CS_NAME
 from initat.tools import logging_tools, process_tools
 from .connection_tests import test_psql, test_mysql, test_sqlite
 from .constants import *
-from .utils import generate_password, DirSave, get_icsw_root, remove_pyco
+from .utils import generate_password, DirSave, get_icsw_root, remove_pyco, DummyFile
 
 
 class SetupLogger(object):
@@ -474,7 +474,28 @@ def alarm(msg):
 def check_for_0800(opts):
     # move away all migrations above 0800
     ds0 = DirSave(CMIG_DIR, 800)
+    # create dummy 0001_initial.py file for the list-command to succeed
+    dummy_mig = DummyFile(
+        os.path.join(MIGRATIONS_DIR, "0001_initial.py"),
+        """
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
+
+from django.db import models, migrations
+import datetime
+import django.db.models.deletion
+from django.conf import settings
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ('contenttypes', '0001_initial'),
+    ]
+"""
+    )
     _list_stat, _list_out = call_manage(["migrate", "backbone", "--list", "--no-color"], output=True)
+    dummy_mig.restore()
     ds0.restore()
     ds0.cleanup()
     if not _list_stat:

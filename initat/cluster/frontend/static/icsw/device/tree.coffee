@@ -28,15 +28,17 @@ angular.module(
     ["$scope", "$compile", "$filter", "$templateCache", "Restangular",  "restDataSource", "$q", "$timeout",
      "$uibModal", "array_lookupFilter", "show_dtnFilter", "msgbus", "blockUI", "icswTools", "ICSW_URLS", "icswToolsButtonConfigService",
      "icswSimpleAjaxCall", "icswToolsSimpleModalService", "toaster", "icswDialogDeleteObjects",
+     "icswDeviceTreeService",
     ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $timeout,
     $uibModal, array_lookupFilter, show_dtnFilter, msgbus, blockUI, icswTools, ICSW_URLS, icswToolsButtonConfigService,
-    icswSimpleAjaxCall, icswToolsSimpleModalService, toaster, icswDialogDeleteObjects) ->
+    icswSimpleAjaxCall, icswToolsSimpleModalService, toaster, icswDialogDeleteObjects,
+    icswDeviceTreeService) ->
         $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
         $scope.initial_load = true
         $scope.rest_data = {}
         $scope.rest_map = [
-            {"short" : "device", "url" : ICSW_URLS.REST_DEVICE_TREE_LIST, "options" : {"all_devices" : true, "ignore_cdg" : false, "tree_mode" : true, "ignore_disabled" : true}}
-            {"short" : "device_group", "url" : ICSW_URLS.REST_DEVICE_GROUP_LIST}
+            # {"short" : "device", "url" : ICSW_URLS.REST_DEVICE_TREE_LIST, "options" : {"all_devices" : true, "ignore_cdg" : false, "tree_mode" : true, "ignore_disabled" : true}}
+            # {"short" : "device_group", "url" : ICSW_URLS.REST_DEVICE_GROUP_LIST}
             {"short" : "mother_server", "url" : ICSW_URLS.REST_DEVICE_TREE_LIST, "options" : {"all_mother_servers" : true}}
             {"short" : "monitor_server", "url" : ICSW_URLS.REST_DEVICE_TREE_LIST, "options" : {"monitor_server_type" : true}}
             {"short" : "domain_tree_node", "url" : ICSW_URLS.REST_DOMAIN_TREE_NODE_LIST}
@@ -96,26 +98,37 @@ angular.module(
             if not $scope.initial_load
                 $scope.sel_cache = (entry.idx for entry in $scope.entries when entry.selected)
             wait_list = []
+            # $scope.rest_data.mother_server = data[0]
             for value, idx in $scope.rest_map
                 $scope.rest_data[value.short] = restDataSource.reload([value.url, value.options])
                 wait_list.push($scope.rest_data[value.short])
-            $q.all(wait_list).then((data) ->
-                for value, idx in data
-                    if idx == 0
-                        $scope.entries = value
-                    $scope.rest_data[$scope.rest_map[idx].short] = value
-                if block_ui
-                    blockUI.stop()
-                $scope.rest_data_set()
-                $scope.update_entries_st_attrs()  # this depends on rest data
+            wait_list.push(icswDeviceTreeService.fetch($scope.$id))
+            $q.all(wait_list).then(
+                (data) ->
+                    $scope.rest_data["mother_server"] = data[0]
+                    $scope.rest_data["monitor_server"] = data[1]
+                    $scope.rest_data["domain_tree_node"] = data[2]
+                    $scope.rest_data["device_sel"] = data[3]
+                    $scope.rest_data.device_group = data[4].group_list
+                    $scope.entries = data[4].all_list
+                    # console.log data[4]
+                    if block_ui
+                        blockUI.stop()
+                    $scope.rest_data_set()
+                    $scope.update_entries_st_attrs()  # this depends on rest data
             )
         $scope.dg_present = () ->
             return (entry for entry in $scope.entries when entry.is_meta_device).length > 1
         $scope.modify = () ->
             if not $scope.form.$invalid
-                rest_entry = (entry for entry in $scope.rest_map when entry.short == $scope._array_name)[0]
+                # console.log $scope._array_name
+                # rest_entry = (entry for entry in $scope.rest_map when entry.short == $scope._array_name)[0]
+                if $scope._array_name == "device"
+                    _url = ICSW_URLS.REST_DEVICE_TREE_LIST
+                else
+                    _url = ICSW_URLS.REST_DEVICE_GROUP_LIST
                 if $scope.create_mode
-                    Restangular.all(rest_entry["url"].slice(1)).post($scope.new_obj, rest_entry.options).then((new_data) ->
+                    Restangular.all(_url.slice(1)).post($scope.new_obj).then((new_data) ->
                         if $scope.new_obj.root_passwd
                             new_data.root_passwd_set = true
                         $scope.object_created(new_data)
@@ -124,8 +137,8 @@ angular.module(
                     if $scope._array_name == "device"
                         cur_f = $scope.entries
                     else
-                        cur_f = $scope.rest_data[$scope._array_name]
-                    $scope.edit_obj.put(rest_entry.options).then(
+                        cur_f = $scope.rest_data.device_group
+                    $scope.edit_obj.put().then(
                         (data) ->
                             $scope.my_modal.close()
                             icswTools.handle_reset(data, cur_f, $scope.edit_obj.idx)
@@ -193,10 +206,10 @@ angular.module(
                     $scope.reload()
             )
         $scope.delete = (a_name, obj) ->
-            icswDialogDeleteObjects([obj], a_name, () -> $scope.reload(false))  # set blocking to false because it might happen in background of the delete dlg
+            icswDialogDeleteObjects([obj], a_name, () -> $scope.reload(false))  # set blocking to false because it might happen in background of the delete dialog
         $scope.delete_many = (event) ->
             to_delete_list = (entry for entry in $scope.entries when entry.is_meta_device == false and entry.selected)
-            icswDialogDeleteObjects(to_delete_list, "device", () -> $scope.reload(false)) # set blocking to false because it might happen in background of the delete dlg
+            icswDialogDeleteObjects(to_delete_list, "device", () -> $scope.reload(false)) # set blocking to false because it might happen in background of the delete dialog
         $scope.get_action_string = () ->
             return if $scope.create_mode then "Create" else "Modify"
         $scope.rest_data_set = () ->
