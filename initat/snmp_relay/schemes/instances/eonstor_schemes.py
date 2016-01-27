@@ -1,4 +1,4 @@
-# Copyright (C) 2009-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2009-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -22,7 +22,6 @@ from initat.snmp.snmp_struct import snmp_oid
 from initat.tools import logging_tools, process_tools
 
 from ..base import SNMPRelayScheme
-
 
 
 # timeout of Eonstor
@@ -133,14 +132,16 @@ class eonstor_disc(eonstor_object):
 
 
 class eonstor_ld(eonstor_object):
-    lu_dict = {0: ("Good", limits.nag_STATE_OK),
-               1: ("Rebuilding", limits.nag_STATE_WARNING),
-               2: ("Initializing", limits.nag_STATE_WARNING),
-               3: ("Degraded", limits.nag_STATE_CRITICAL),
-               4: ("Dead", limits.nag_STATE_CRITICAL),
-               5: ("Invalid", limits.nag_STATE_CRITICAL),
-               6: ("Incomplete", limits.nag_STATE_CRITICAL),
-               7: ("Drive missing", limits.nag_STATE_CRITICAL)}
+    lu_dict = {
+        0: ("Good", limits.nag_STATE_OK),
+        1: ("Rebuilding", limits.nag_STATE_WARNING),
+        2: ("Initializing", limits.nag_STATE_WARNING),
+        3: ("Degraded", limits.nag_STATE_CRITICAL),
+        4: ("Dead", limits.nag_STATE_CRITICAL),
+        5: ("Invalid", limits.nag_STATE_CRITICAL),
+        6: ("Incomplete", limits.nag_STATE_CRITICAL),
+        7: ("Drive missing", limits.nag_STATE_CRITICAL)
+    }
 
     def __init__(self, in_dict):
         eonstor_object.__init__(self, "ld", in_dict, state_key=7)
@@ -160,14 +161,16 @@ class eonstor_ld(eonstor_object):
             self.set_warn("SCSI drives operation paused")
         # opmode
         op_mode = int(in_dict[5]) & 15
-        op_mode_str = {0: "Single Drive",
-                       1: "NON-RAID",
-                       2: "RAID 0",
-                       3: "RAID 1",
-                       4: "RAID 3",
-                       5: "RAID 4",
-                       6: "RAID 5",
-                       7: "RAID 6"}.get(op_mode, "NOT DEFINED")
+        op_mode_str = {
+            0: "Single Drive",
+            1: "NON-RAID",
+            2: "RAID 0",
+            3: "RAID 1",
+            4: "RAID 3",
+            5: "RAID 4",
+            6: "RAID 5",
+            7: "RAID 6"
+        }.get(op_mode, "NOT DEFINED")
         op_mode_extra_bits = int(in_dict[5]) - op_mode
         if type(in_dict[3]) == str and in_dict[3].lower().startswith("0x"):
             ld_size = int(in_dict[3][2:], 16) * 512

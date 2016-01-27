@@ -1,4 +1,4 @@
-# Copyright (C) 2014-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2014-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -21,10 +21,9 @@
 
 from lxml.builder import E
 
-from ...snmp_struct import simple_snmp_oid
-from ..base import SNMPHandler
-
 from initat.tools import logging_tools
+from ..base import SNMPHandler
+from ...snmp_struct import simple_snmp_oid
 
 UCD_OID = "1.3.6.1.4.1.2021"
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2015-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -319,21 +319,23 @@ class if_mon(MonCheckDefinition):
                 ),
                 single_value=True
             ) for _idx in [5, 7, 8, 10, 16, 13, 14, 19, 20]
+        ] + [
+            snmp_oid(
+                "{}.{:d}.{:d}".format(
+                    HS_BASE,
+                    _idx,
+                    scheme.opts.if_idx[0]
+                ),
+                single_value=True
+            ) for _idx in [15]
         ]
-        #     + [
-        #    snmp_oid(
-        #        "{}.{:d}.{:d}".format(
-        #            HS_BASE,
-        #            _idx,
-        #            scheme.opts.if_idx
-        #        ),
-        #        single_value=True
-        #    ) for _idx in [6, 10]
-        # ]
 
     def mon_result(self, scheme):
         _net_obj = scheme.net_obj
+        # import pprint
+        # attention: value 15 is a mirror from HS_BASE
         _val_dict = {list(_key)[-2]: _value for _key, _value in scheme.snmp.iteritems()}
+        # pprint.pprint(_val_dict)
         # print ND_SPEED_LUT
         _key = "network-if-{:d}".format(scheme.opts.if_idx[0])
         _vc = _net_obj.value_cache
@@ -386,17 +388,20 @@ class if_mon(MonCheckDefinition):
         elif _mon_flags.desired_status == NetDeviceDesiredStateEnum.down and _val_dict[8]:
             r_f.append("OperStatus is up")
             ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
-        if scheme.opts.speed is not None and (scheme.opts.speed or _val_dict[5]) and not _mon_flags.ignore_netdevice_speed:
-            if scheme.opts.speed == _val_dict[5]:
-                r_f.append("speed is {}".format(logging_tools.get_size_str(_val_dict[5], strip_spaces=True, per_second=True, divider=1000)))
+        _low_speed = _val_dict[5]
+        _high_speed = _val_dict.get(15, 0) * 1000000
+        _speed = max(_low_speed, _high_speed)
+        if scheme.opts.speed is not None and (scheme.opts.speed or _speed) and not _mon_flags.ignore_netdevice_speed:
+            if scheme.opts.speed == _speed:
+                r_f.append("speed is {}".format(logging_tools.get_size_str(_speed, strip_spaces=True, per_second=True, divider=1000)))
             else:
-                if _val_dict[5] in [2 ** 32 - 1, 2 ** 31 - 1]:
+                if _speed in [2 ** 32 - 1, 2 ** 31 - 1]:
                     pass
                 else:
                     ret_state = max(ret_state, limits.nag_STATE_WARNING)
                     r_f.append(
                         "measured speed {} differs from target speed {}".format(
-                            logging_tools.get_size_str(_val_dict[5], strip_spaces=True, per_second=True, divider=1000),
+                            logging_tools.get_size_str(_speed, strip_spaces=True, per_second=True, divider=1000),
                             logging_tools.get_size_str(scheme.opts.speed, strip_spaces=True, per_second=True, divider=1000),
                         )
                     )
