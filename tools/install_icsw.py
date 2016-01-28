@@ -48,15 +48,16 @@ class OSHandler(object):
         """
         # format as in platform module
         # for ubuntu, ubuntu is returned anyway, so supported dists does not appear to be strict
-        supported_dists = ("SuSE", "centos", "debian")
+        supported_dists = ("SuSE", "centos", "debian", "ubuntu", "univention")
         distro = platform.linux_distribution(supported_dists=supported_dists,
                                              full_distribution_name=False)[0]
+	distro = distro.lower().strip("\"")
 
-        if distro.lower() == "suse":
+        if distro == "suse":
             return SuseHandler(opts)
-        elif distro.lower() == "centos":
+        elif distro == "centos":
             return CentosHandler(opts)
-        elif distro.lower() in ("debian", "ubuntu"):
+        elif distro in ("debian", "ubuntu", "univention"):
             return AptgetHandler(opts)
         else:
             raise RuntimeError(
@@ -188,38 +189,28 @@ class AptgetHandler(OSHandler):
 
     def add_repos(self):
         distro = platform.linux_distribution()[0].lower()
-
+        distro = distro.lower().strip("\"")
         expansions = {
             'user': self.opts.user,
             'password': self.opts.password,
             'cluster_version': self.opts.cluster_version,
         }
-
         if distro == "ubuntu":
             # we only support 12.04 explicitly as of now
             repos = (
-                # (
-                #     "initat_cluster_devel.list",
-                #   "deb http://{user}:{password}@www.initat.org/cluster/DEBs/ubuntu_12.04/cluster-devel precise main\n"
-                #     .format(**expansions),
-                # ),
-                # (
-                #     "initat_extra.list",
-                #     "deb http://{user}:{password}@www.initat.org/cluster/DEBs/ubuntu_12.04/extra precise main\n"
-                #     .format(**expansions)
-                # )
                 (
                     "initat_{cluster_version}.list".format(**expansions),
                     "deb http://{user}:{password}@www.initat.org/cluster/DEBs/ubuntu_12.04/{cluster_version} precise main\n"
                     .format(**expansions)
                 ),
             )
-        elif distro == "debian":
-            debian_version = platform.linux_distribution()[1]
-
+        elif distro == "debian" or distro == "univention":
+            debian_version = platform.linux_distribution()[1].strip("\"")
             if debian_version.startswith("6"):
                 debian_release = "squeeze"
             elif debian_version.startswith("7"):
+                debian_release = "wheezy"
+            elif debian_version.startswith("4") and distro == "univention":
                 debian_release = "wheezy"
             elif debian_version.startswith("8"):
                 debian_release = "jessie"
@@ -227,16 +218,6 @@ class AptgetHandler(OSHandler):
                 raise RuntimeError("Unsupported debian version: {v}.\n".format(v=platform.linux_distribution()) +
                                    "Currently squeeze and wheezy are supported.")
             repos = (
-                # (
-                #     "initat_cluster_devel.list",
-                #     "deb http://{user}:{password}@www.initat.org/cluster/DEBs/debian_{rel}/cluster-devel {rel} main\n"
-                #     .format(rel=debian_release, **expansions)
-                # ),
-                # (
-                #     "initat_extra.list",
-                #     "deb http://{user}:{password}@www.initat.org/cluster/DEBs/debian_{rel}/extra {rel} main\n"
-                #     .format(rel=debian_release, **expansions)
-                # )
                 (
                     "initat_{cluster_version}.list".format(**expansions),
                     "deb http://{user}:{password}@www.initat.org/cluster/DEBs/debian_{rel}/{cluster_version} {rel} main\n"
