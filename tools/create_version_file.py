@@ -1,5 +1,5 @@
 #!/usr/bin/python-init -Otu
-# Copyright (C) 2014-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2014-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -26,7 +26,14 @@ import importlib
 import os
 import sys
 
-from initat.tools import config_store
+try:
+    from initat.tools import config_store
+except:
+    # will not work on first build
+    _dir = os.path.dirname(__file__)
+    _dir = os.path.join(_dir, "..", "initat", "tools")
+    sys.path.append(_dir)
+    config_store = importlib.import_module("config_store")
 
 
 def main():
