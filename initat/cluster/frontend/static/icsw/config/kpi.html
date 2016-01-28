@@ -23,8 +23,8 @@
 
         <uib-tabset>
             <uib-tab heading="Basic">
-                <accordion close-others="false">
-                    <accordion-group heading="Basic properties" is-open="true">
+                <uib-accordion close-others="false">
+                    <uib-accordion-group heading="Basic properties" is-open="true">
                         <form class="form-horizontal">
                             <div class="form-group">
                                 <label class="control-label col-sm-2">Name:</label>
@@ -72,8 +72,8 @@
                                 </label>
                             </div>
                         </form>
-                    </accordion-group>
-                </accordion>
+                    </uib-accordion-group>
+                </uib-accordion>
             </uib-tab>
             <uib-tab heading="Data source" select="on_data_source_tab_selected()">
                 <icsw-config-kpi-dev-mon-selection></icsw-config-kpi-dev-mon-selection>
@@ -83,11 +83,11 @@
 
             <uib-tab heading="KPI calculation">
 
-                <accordion close-others="false">
-                    <accordion-group heading="Formula" is-open="true">
+                <uib-accordion close-others="false">
+                    <uib-accordion-group heading="Formula" is-open="true">
                         <textarea ui-codemirror="editorOptions" ng-model="cur_edit_kpi.formula"></textarea>
-                    </accordion-group>
-                    <accordion-group heading="Evaluation" is-open="true" ng-show="true">
+                    </uib-accordion-group>
+                    <uib-accordion-group heading="Evaluation" is-open="true" ng-show="true">
                         <icsw-tools-button type="reload" value="recalculate" ng-click="calculate_kpi()" ></icsw-tools-button>
 
                         <div ng-if="kpi_result.loading" ladda="kpi_result.loading"></div>
@@ -100,7 +100,7 @@
                                 <uib-alert type="danger" ng-bind-html="kpi_result.kpi_error_report"></uib-alert>
                             </div>
                         </div>
-                    </accordion-group>
+                    </uib-accordion-group>
             </uib-tab>
         </uib-tabset>
 
@@ -112,8 +112,8 @@
 
 
 <script type="text/ng-template" id="icsw.config.kpi.dev_mon_selection">
-    <accordion close-others="false">
-        <accordion-group heading="Select device and monitoring categories" is-open="true">
+    <uib-accordion close-others="false">
+        <uib-accordion-group heading="Select device and monitoring categories" is-open="true">
             <div class="row">
                 <div class="col-md-6">
                     Device categories
@@ -125,15 +125,15 @@
                 </div>
             </div>
             <button class="btn btn-default btn-xs" ng-click="show_all_selected_categories()">Show all categories selected below</button>
-        </accordion-group>
-    </accordion>
+        </uib-accordion-group>
+    </uib-accordion>
 </script>
 
 
 <script type="text/ng-template" id="icsw.config.kpi.dev_mon_linker">
 
-    <accordion close-others="false">
-        <accordion-group heading="Select which monitoring categories apply to which device categories" is-open="true">
+    <uib-accordion close-others="false">
+        <uib-accordion-group heading="Select which monitoring categories apply to which device categories" is-open="true">
 
             <div class="alert alert-warning"
                  ng-show="cur_edit_kpi.available_device_categories.length == 0 && cur_edit_kpi.available_monitoring_categories.length == 0">
@@ -174,8 +174,8 @@
                     body-height="300"
                     ></icsw-config-kpi-show-kpi-set>
 
-        </accordion-group>
-    </accordion>
+        </uib-accordion-group>
+    </uib-accordion>
 </script>
 
 <script type="text/ng-template" id="icsw.config.kpi.configuration_table">

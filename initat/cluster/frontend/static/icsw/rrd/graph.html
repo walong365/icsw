@@ -86,12 +86,12 @@
 
 <script type="text/ng-template" id="icsw.rrd.graph.sensor">
     <div ng-cloack>
-        <accordion close-others="false">
-            <accordion-group ng-repeat="sensor in graph.sensors" is-open="sensor.open">
-                <accordion-heading>
+        <uib-accordion close-others="false">
+            <uib-accordion-group ng-repeat="sensor in graph.sensors" is-open="sensor.open">
+                <uib-accordion-heading>
                     Sensor key: {{ sensor.mv_key }}, device: {{ sensor.device_id }}<span ng-show="sensor.thresholds.length">, #thresholds: {{  sensor.thresholds.length }}</span>
                     <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': sensor.open, 'glyphicon-chevron-right': !sensor.open}"></i>
-                </accordion-heading>
+                </uib-accordion-heading>
                 <div>
                     <table class="table table-striped table-hover">
                         <tbody>
@@ -108,8 +108,8 @@
                         </span>
                     </div>
                 </div>
-            </accordion-group>
-        </accordion>
+            </uib-accordion-group>
+        </uib-accordion>
     </div>
 </script>
 

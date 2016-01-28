@@ -27,7 +27,7 @@ from initat.host_monitoring import limits
 from initat.tools import logging_tools
 from ..base import SNMPHandler
 from ...functions import simplify_dict
-from ...snmp_struct import ResultNode, snmp_if, simple_snmp_oid, snmp_hs, MonCheckDefinition, snmp_oid
+from ...snmp_struct import ResultNode, ifSNMPStruct, simple_snmp_oid, IfSNMPHighSpeed, MonCheckDefinition, snmp_oid
 
 try:
     import os
@@ -66,11 +66,11 @@ class handler(SNMPHandler):
 
     def update(self, dev, scheme, result_dict, oid_list, flags):
         _if_dict = {
-            key: snmp_if(value) for key, value in simplify_dict(result_dict[IF_BASE], (2, 1)).iteritems()
+            key: ifSNMPStruct(value) for key, value in simplify_dict(result_dict[IF_BASE], (2, 1)).iteritems()
         }
         if HS_BASE in result_dict:
             _hs_dict = {
-                key: snmp_hs(value) for key, value in simplify_dict(result_dict[HS_BASE], ()).iteritems()
+                key: IfSNMPHighSpeed(value) for key, value in simplify_dict(result_dict[HS_BASE], ()).iteritems()
             }
             # pprint.pprint(_hs_dict)
         else:

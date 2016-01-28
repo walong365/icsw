@@ -57,21 +57,20 @@
                         </td>
                         <td colspan="2">
 
-                            <accordion close-others="false">
-                               <accordion-group is-open="web_viewer">
-                                   <accordion-heading>
+                            <uib-accordion close-others="false">
+                               <uib-accordion-group is-open="web_viewer">
+                                   <uib-accordion-heading>
                                        Web viewer
                                        <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': web_viewer, 'glyphicon-chevron-right': !web_viewer}"></i>
-                                   </accordion-heading>
+                                   </uib-accordion-heading>
                                    <div ng-if="web_viewer">
                                        <!--
                                        ie10 warns about leaving the page if a vnc directive is in the dom, this way it is only the case if the user has explicitly opened it
                                        -->
                                        <vnc host="{{ ips_for_devices[vdus.device] }}" port="{{ vdus.websockify_effective_port  }}" is-connected="true" password="{{ vdus.password }}" display="{width:1024,height:768,fitTo:'width',}"></vnc>
                                    </div>
-                               </accordion-group>
-                               </accordion>
-
+                               </uib-accordion-group>
+                           </uib-accordion>
                         </td>
                     </tr>
                 </table>

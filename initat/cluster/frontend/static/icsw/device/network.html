@@ -2,12 +2,12 @@
     <h3>
         Network config for {{ devices.length }} devices ({{ get_nd_objects().length }} netdevices, {{ get_ip_objects().length }} IPs, {{ get_peer_objects().length }} peers)
     </h3>
-    <accordion close-others="no">
-        <accordion-group is-open="device_open">
-            <accordion-heading>
+    <uib-accordion close-others="no">
+        <uib-accordion-group is-open="device_open">
+            <uib-accordion-heading>
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': device_open, 'glyphicon-chevron-right': !device_open}"></i>
                 {{ devices.length }} devices
-            </accordion-heading>
+            </uib-accordion-heading>
             <table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
                 <thead>
                     <tr>
@@ -26,12 +26,12 @@
                     <tr icsw-device-network-device-row ng-repeat="ndip_obj in devices"></tr>
                 </tbody>
             </table>
-        </accordion-group>
-        <accordion-group is-open="netdevice_open">
-            <accordion-heading>
+        </uib-accordion-group>
+        <uib-accordion-group is-open="netdevice_open">
+            <uib-accordion-heading>
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': netdevice_open, 'glyphicon-chevron-right': !netdevice_open}"></i>
                 {{ get_nd_objects().length }} netdevices
-            </accordion-heading>
+            </uib-accordion-heading>
             <icsw-tools-show-hide-columns ng-show="devices.length" columns="idx port ips peers bridge bond mac devtype mtu speed penalty flags status desired" create-show-column="true">
             </icsw-tools-show-hide-columns>
             <table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
@@ -59,12 +59,12 @@
                     <tr icsw-device-network-netdevice-row ng-repeat="ndip_obj in get_nd_objects()"></tr>
                 </tbody>
             </table>
-        </accordion-group>
-        <accordion-group is-open="netip_open">
-            <accordion-heading>
+        </uib-accordion-group>
+        <uib-accordion-group is-open="netip_open">
+            <uib-accordion-heading>
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': netip_open, 'glyphicon-chevron-right': !netip_open}"></i>
                 {{ get_ip_objects().length }} IPs
-            </accordion-heading>
+            </uib-accordion-heading>
             <table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
                 <thead>
                     <tr>
@@ -81,12 +81,12 @@
                     <tr icsw-device-network-ip-row ng-repeat="ndip_obj in get_ip_objects()"></tr>
                 </tbody>
             </table>
-        </accordion-group>
-        <accordion-group is-open="peer_open">
-            <accordion-heading>
+        </uib-accordion-group>
+        <uib-accordion-group is-open="peer_open">
+            <uib-accordion-heading>
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': peer_open, 'glyphicon-chevron-right': !peer_open}"></i>
                 {{ get_peer_objects().length }} peer connections
-            </accordion-heading>
+            </uib-accordion-heading>
             <table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
                 <thead>
                     <tr>
@@ -105,8 +105,8 @@
                     <tr icsw-device-network-peer-row ng-repeat="ndip_obj in get_peer_objects()"></tr>
                 </tbody>
             </table>
-        </accordion-group>
-    </accordion>
+        </uib-accordion-group>
+    </uib-accordion>
     <div class="input-group-btn" ng-show="devices.length > 1 && show_copy_button " ng-if="acl_create(null, 'backbone.device.change_network')">
         <div class="btn-group">
             <button type="button" class="btn btn-danger btn-md dropdown-toggle" data-toggle="dropdown">

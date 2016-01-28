@@ -2,44 +2,44 @@
 
     <h3>License overview (ClusterID is {{ CLUSTER_ID }})</h3>
 
-    <accordion close-others="false">
+    <uib-accordion close-others="false">
 
-        <accordion-group is-open="your_licenses_open" is-disabled="license_views_disabled">
-            <accordion-heading>
+        <uib-accordion-group is-open="your_licenses_open" is-disabled="license_views_disabled">
+            <uib-accordion-heading>
                 Your licenses for this cluster
                 <i class="pull-right glyphicon"
                    ng-class="{'glyphicon-chevron-down': your_licenses_open, 'glyphicon-chevron-right': !your_licenses_open}"></i>
-            </accordion-heading>
+            </uib-accordion-heading>
 
             <icsw-user-license-your-licenses></icsw-user-license-your-licenses>
-        </accordion-group>
+        </uib-accordion-group>
 
 
-        <accordion-group is-open="lic_packs_open" is-disabled="license_views_disabled">
-            <accordion-heading>
+        <uib-accordion-group is-open="lic_packs_open" is-disabled="license_views_disabled">
+            <uib-accordion-heading>
                 License packages
                 <i class="pull-right glyphicon"
                    ng-class="{'glyphicon-chevron-down': lic_packs_open, 'glyphicon-chevron-right': !lic_packs_open}"></i>
-            </accordion-heading>
+            </uib-accordion-heading>
 
             <icsw-user-license-packages></icsw-user-license-packages>
-        </accordion-group>
+        </uib-accordion-group>
 
-        <accordion-group is-open="lic_upload_open">
-            <accordion-heading>
+        <uib-accordion-group is-open="lic_upload_open">
+            <uib-accordion-heading>
                 Upload license file
                 <i class="pull-right glyphicon"
                    ng-class="{'glyphicon-chevron-down': lic_upload_open, 'glyphicon-chevron-right': !lic_upload_open}"></i>
-            </accordion-heading>
+            </uib-accordion-heading>
 
             <div style="width: 300px; float: left; margin-right: 10px;">
                 <input type="file" nv-file-select="" class="form-control btn btn-default btn-file" uploader="uploader">
             </div>
             <input type="button" ng-show="uploader.queue.length " class="btn btn-warning btn-sm" value="upload"
                    ng-click="uploader.uploadAll()">
-        </accordion-group>
+        </uib-accordion-group>
 
-    </accordion>
+    </uib-accordion>
 
 </script>
 
@@ -127,16 +127,16 @@
 
             </table>
 
-            <accordion close-others="true">
-                <accordion-group is-open="cluster_accordion_open[$index]"
+            <uib-accordion close-others="true">
+                <uib-accordion-group is-open="cluster_uib-accordion_open[$index]"
                                  ng-repeat="data in get_list(pack.cluster_licenses) | orderBy:cluster_order_fun">
                     <!-- workaround for angular bug https://github.com/angular/angular.js/issues/1286 -->
-                    <accordion-heading>
+                    <uib-accordion-heading>
                         <!-- data[0] is cluster_id, data[1] is cluster_licenses -->
                         {{get_cluster_title(data[0])}}
                         <i class="pull-right glyphicon"
-                           ng-class="{'glyphicon-chevron-down': cluster_accordion_open[$index], 'glyphicon-chevron-right': !cluster_accordion_open[$index]}"></i>
-                    </accordion-heading>
+                           ng-class="{'glyphicon-chevron-down': cluster_uib-accordion_open[$index], 'glyphicon-chevron-right': !cluster_uib-accordion_open[$index]}"></i>
+                    </uib-accordion-heading>
                     <table st-table="entries_displayed" st-safe-src="data[1]" class="table table-condensed table-hover"
                            style="width:auto;">
                         <thead>
@@ -167,8 +167,8 @@
                             </tr>
                         </tbody>
                     </table>
-                </accordion-group>
-            </accordion>
+                </uib-accordion-group>
+            </uib-accordion>
 
         </uib-tab>
 

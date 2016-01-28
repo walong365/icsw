@@ -59,12 +59,12 @@
             </div>
         </div>
     </div>
-    <accordion ng-show="devices.length" close-others="false">
-        <accordion-group is-open="table_mode">
-            <accordion-heading>
+    <uib-accordion ng-show="devices.length" close-others="false">
+        <uib-accordion-group is-open="table_mode">
+            <uib-accordion-heading>
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': table_mode, 'glyphicon-chevron-right': !table_mode}"></i>
                 Table mode
-            </accordion-heading>
+            </uib-accordion-heading>
             <table ng-show="devices.length" class="table table-condensed table-hover" style="width:auto;">
                 <thead>
                     <tr>
@@ -86,12 +86,12 @@
                      <tr icsw-device-configuration-row ng-repeat="dev in devices"></tr>
                 </tbody>
             </table>
-        </accordion-group>
-        <accordion-group is-open="list_mode">
-            <accordion-heading>
+        </uib-accordion-group>
+        <uib-accordion-group is-open="list_mode">
+            <uib-accordion-heading>
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': list_mode, 'glyphicon-chevron-right': !list_mode}"></i>
                 List mode
-            </accordion-heading>
+            </uib-accordion-heading>
             <table class="table table-condensed table-hover" ng-if="list_mode" style="width:auto;">
                 <thead>
                     <tr>
@@ -111,8 +111,8 @@
                     </tr>
                 </tbody>
             </table>
-        </accordion-group>
-    </accordion>
+        </uib-accordion-group>
+    </uib-accordion>
 </script>
 
 <script type="text/ng-template" id="icsw.device.configuration.var.overview">

@@ -20,7 +20,7 @@
 """ SNMP handler instances """
 
 from ...functions import simplify_dict
-from ...snmp_struct import ResultNode, snmp_ip
+from ...snmp_struct import ResultNode, ifSNMPIP
 from initat.tools import process_tools, logging_tools, ipvx_tools
 from ..base import SNMPHandler
 
@@ -68,7 +68,7 @@ class handler(SNMPHandler):
                         3: "".join([chr(int(_value)) for _value in _nw[1].netmask.split(".")]),
                     }
                     try:
-                        _ip = snmp_ip(_dict)
+                        _ip = ifSNMPIP(_dict)
                     except:
                         self.log(
                             "error interpreting {} as IP: {}".format(
@@ -83,7 +83,7 @@ class handler(SNMPHandler):
                     self.log("found no matching network for IP {}".format(unicode(_ip)), logging_tools.LOG_LEVEL_ERROR)
         for key, value in simplify_dict(result_dict["1.3.6.1.2.1.4.20"], (1,)).iteritems():
             try:
-                _ip = snmp_ip(value)
+                _ip = ifSNMPIP(value)
             except:
                 self.log(
                     "error interpreting {} as IP: {}".format(

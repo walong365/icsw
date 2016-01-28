@@ -1,8 +1,8 @@
 
 <script type="text/ng-template" id="icsw.config.category.location.list.edit">
-    <accordion close-others="no">
-        <accordion-group ng-repeat="loc in locations" is-open="loc.open">
-            <accordion-heading>
+    <uib-accordion close-others="no">
+        <uib-accordion-group ng-repeat="loc in locations" is-open="loc.open">
+            <uib-accordion-heading>
                 <icsw-tools-button type="create" value="add locGfx" size="sm" ng-click="add_location_gfx($event, loc)"></icsw-tools-button>
                 <icsw-tools-button type="display" value="locate" size="sm" ng-click="locate(loc, $event)" title="({{ loc.latitude }}, {{ loc.longitude }})"></icsw-tools-button>
                 <button
@@ -20,7 +20,7 @@
                 <span class="pull-right" ng-show="loc.location_gfxs.length">
                     <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': loc.open, 'glyphicon-chevron-right': !loc.open}"></i>
                 </span>
-            </accordion-heading>
+            </uib-accordion-heading>
             <ul ng-show="loc.location_gfxs.length" class="list-group">
                 <li class="list-group-item" ng-repeat="loc_gfx in loc.location_gfxs">
                     <div class="btn-group">
@@ -41,8 +41,8 @@
                     </span>
                 </li>
             </ul>
-        </accordion-group>
-    </accordion>
+        </uib-accordion-group>
+    </uib-accordion>
 </script>
 
 <script type="text/ng-template" id="icsw.config.category.location.list.show">

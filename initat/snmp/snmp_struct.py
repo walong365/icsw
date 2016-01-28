@@ -123,7 +123,7 @@ class MonCheckDefinition(object):
         return self.Meta.name
 
 
-class snmp_if_counter(object):
+class ifSNMPCounter(object):
     def __init__(self, octets, ucast_pkts, nucast_pkts, discards, errors):
         self.octets = octets
         self.ucast_pkts = ucast_pkts
@@ -132,7 +132,7 @@ class snmp_if_counter(object):
         self.errors = errors
 
 
-class snmp_if(object):
+class ifSNMPStruct(object):
     def __init__(self, in_dict):
         self.idx = in_dict[1]
         self.name = in_dict[2]
@@ -153,11 +153,11 @@ class snmp_if(object):
         self.last_change = in_dict[9]
         # Ciscos 2960X does not have ifInNUcastPakts or ifOutNUcastPakts
         if 10 in in_dict:
-            self.in_counter = snmp_if_counter(in_dict[10], in_dict[11], in_dict.get(12, 0), in_dict[13], in_dict[14])
+            self.in_counter = ifSNMPCounter(in_dict[10], in_dict[11], in_dict.get(12, 0), in_dict[13], in_dict[14])
         else:
             self.in_counter = None
         if 16 in in_dict:
-            self.out_counter = snmp_if_counter(in_dict[16], in_dict[17], in_dict.get(18, 0), in_dict[19], in_dict[20])
+            self.out_counter = ifSNMPCounter(in_dict[16], in_dict[17], in_dict.get(18, 0), in_dict[19], in_dict[20])
         else:
             self.out_counter = None
         # as mtu, see above
@@ -172,23 +172,23 @@ class snmp_if(object):
         )
 
 
-class snmp_hs_counter(object):
+class IfSNMPHighSpeedCounter(object):
     def __init__(self, multicast_pkts, broadcast_pkts, octets):
         self.multicast_pkts = multicast_pkts
         self.broadcast_pkts = broadcast_pkts
         self.octets = octets
 
 
-class snmp_hs(object):
+class IfSNMPHighSpeed(object):
     # high speed counter
     def __init__(self, in_dict):
         self.name = in_dict[1]
         if 2 in in_dict:
-            self.in_counter = snmp_hs_counter(in_dict[2], in_dict[3], in_dict.get(6, 0))
+            self.in_counter = IfSNMPHighSpeedCounter(in_dict[2], in_dict[3], in_dict.get(6, 0))
         else:
             self.in_counter = None
         if 4 in in_dict:
-            self.out_counter = snmp_hs_counter(in_dict[4], in_dict[5], in_dict.get(10, 0))
+            self.out_counter = IfSNMPHighSpeedCounter(in_dict[4], in_dict[5], in_dict.get(10, 0))
         else:
             self.out_counter = None
         self.trap_enable = in_dict.get(14, 2) == 1
@@ -206,7 +206,7 @@ class snmp_hs(object):
         )
 
 
-class snmp_ip(object):
+class ifSNMPIP(object):
     def __init__(self, in_dict):
         self.address = ".".join(["{:d}".format(ord(_val)) for _val in in_dict[1]])
         self.netmask = ".".join(["{:d}".format(ord(_val)) for _val in in_dict[3]])

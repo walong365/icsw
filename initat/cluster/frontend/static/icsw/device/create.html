@@ -8,8 +8,8 @@
 <script type="text/ng-template" id="icsw.device.create.mask">
     <h3>Create a new device</h3>
     <form class="form-horizontal" name="baseForm" novalidate ng-controller="form_ctrl">
-        <accordion ng-cloack close-others="false">
-            <accordion-group heading="Base data" is-open="base_open">
+        <uib-accordion ng-cloack close-others="false">
+            <uib-accordion-group heading="Base data" is-open="base_open">
                 <!-- {{ baseForm || json }} {{baseForm.$valid}} -->
                 <div class="form-group">
                     <label class="control-label col-md-5">Fully qualified device name</label>
@@ -96,10 +96,10 @@
                         <input name="comment" class="form-control" ng-model="device_data.comment"/>
                     </div>
                 </div>
-            </accordion-group>
-            <accordion-group heading="Optional data">
-            </accordion-group>
-        </accordion>
+            </uib-accordion-group>
+            <uib-accordion-group heading="Optional data">
+            </uib-accordion-group>
+        </uib-accordion>
         <input type="button" class="btn btn-sm btn-success" ng-show="baseForm.$valid" value="create device" ng-click="create_device()"/>
     </form>
 </script>
