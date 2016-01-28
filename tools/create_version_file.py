@@ -26,14 +26,10 @@ import importlib
 import os
 import sys
 
-try:
-    from initat.tools import config_store
-except:
-    # will not work on first build
-    _dir = os.path.dirname(__file__)
-    _dir = os.path.join(_dir, "..", "initat", "tools")
-    sys.path.append(_dir)
-    config_store = importlib.import_module("config_store")
+_dir = os.path.join(os.path.dirname(__file__), "..")
+sys.path.append(_dir)
+
+from initat.tools import config_store
 
 
 def main():
