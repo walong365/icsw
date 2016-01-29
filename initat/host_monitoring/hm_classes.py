@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -251,7 +251,7 @@ class subprocess_struct(object):
         # popen may not be set or None
         if getattr(self, "popen", None):
             self.popen.kill()
-        if getattr(self, "srv_com"):
+        if getattr(self, "srv_com", None):
             self.srv_com.set_result(
                 "runtime ({}) exceeded".format(logging_tools.get_plural("second", self.Meta.max_runtime)),
                 server_command.SRV_REPLY_STATE_ERROR

@@ -165,7 +165,7 @@ class ctrl_type_ibmbcraid(ctrl_type):
                     ret_f.append(", ".join(ctrl_f))
                 if "drive_dict" in ctrl_dict:
                     _drives = ctrl_dict["drive_dict"]
-                    ctrl_f.append(logging_tools.get_plural("drive", len(_drives)))
+                    ret_f.append(logging_tools.get_plural("drive", len(_drives)))
                     spares, problems = ([], [])
                     for _id in sorted(_drives.keys()):
                         _drive = _drives[_id]
