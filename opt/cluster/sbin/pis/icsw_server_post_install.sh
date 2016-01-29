@@ -144,6 +144,10 @@ else
                 ${ICSW_SBIN}/icsw setup --init-webfrontend
                 RESTART_SRV=1
                 RESTART_CAUSE="software updated"
+            elif [ "$(${ICSW_SBIN}/icsw cstore --mode getkey --store icsw.general --key mode.is.satellite)" = "True" ] ; then
+                echo "Node is Satellite-node, restarting software"
+                RESTART_SRV=1
+                RESTART_CAUSE="software updated"
             else
                 echo "Database is not valid and system is not slave, skipping restart"
             fi

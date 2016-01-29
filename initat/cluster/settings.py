@@ -225,10 +225,6 @@ INSTALLED_APPS = (
     "pipeline",
 )
 
-if _cs["mode.is.slave"]:
-    INSTALLED_APPS = tuple([_entry for _entry in list(INSTALLED_APPS)])
-
-
 ICSW_WEBCACHE = os.path.join(CLUSTER_DIR, "share", "webcache")
 
 # coffee settings
