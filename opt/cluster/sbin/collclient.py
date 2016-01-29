@@ -26,7 +26,7 @@
 import os
 import sys
 
-if __package__ is None:
+if not __file__.startswith("/opt/cluster"):
     _add_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
     if _add_path not in sys.path:
         sys.path.insert(0, _add_path)
