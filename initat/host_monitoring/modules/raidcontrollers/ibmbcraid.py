@@ -109,7 +109,7 @@ class ctrl_type_ibmbcraid(ctrl_type):
             for cur_key in sorted(match_keys):
                 ctrl_dict = ctrl_dict[cur_key]
                 ret_state = limits.nag_STATE_OK
-                ret_f = []
+                ret_f = ["Info from {}".format(cur_key)]
                 for ctrl_info in ctrl_dict["ctrl_list"]:
                     ret_f.append(
                         "{} ({})".format(
