@@ -23,7 +23,7 @@ import os
 import stat
 import time
 
-from initat.constants import INITAT_BASE
+from initat.constants import INITAT_BASE_DEBUG
 from initat.host_monitoring import limits, hm_classes
 from initat.host_monitoring.modules.raidcontrollers.base import ctrl_type, ctrl_check_struct
 from initat.tools import logging_tools, server_command
@@ -39,20 +39,23 @@ class ctrl_type_ibmbcraid(ctrl_type):
         if ctrl_list == []:
             ctrl_list = self._dict.keys()
 
-        _list = [(
-            "{}/host_monitoring/exe/check_ibmbcraid.py --host {} --user {} --passwd {} --target {}".format(
-                INITAT_BASE,
-                ctrl_id,
-                self.cur_ns.user,
-                self.cur_ns.passwd,
-                self._get_target_file(ctrl_id),
+        _list = [
+            (
+                "{}/host_monitoring/exe/check_ibmbcraid.py --host {} --user {} --passwd {} --target {}".format(
+                    INITAT_BASE_DEBUG,
+                    ctrl_id,
+                    self.cur_ns.user,
+                    self.cur_ns.passwd,
+                    self._get_target_file(ctrl_id),
                 ),
-            ctrl_id,
-            self._get_target_file(ctrl_id)) for ctrl_id in ctrl_list]
+                ctrl_id,
+                self._get_target_file(ctrl_id)
+            ) for ctrl_id in ctrl_list
+        ]
         return _list
 
     def _get_target_file(self, ctrl_id):
-        return "/tmp/.bcraidctrl_%s" % (ctrl_id)
+        return "/tmp/.bcraidctrl_{}".format(ctrl_id)
 
     def scan_ctrl(self):
         _cur_stat, _cur_lines = self.exec_command(" info", post="strip")
@@ -77,14 +80,20 @@ class ctrl_type_ibmbcraid(ctrl_type):
             file_age = abs(time.time() - f_dt)
             if file_age > 60 * 15:
                 ccs.srv_com.set_result(
-                    "controller information for %s is too old: %s" % (ctrl_id, logging_tools.get_diff_time_str(file_age)),
-                    server_command.SRV_REPLY_STATE_ERROR)
+                    "controller information for {} is too old: {}".format(
+                        ctrl_id,
+                        logging_tools.get_diff_time_str(file_age)
+                    ),
+                    server_command.SRV_REPLY_STATE_ERROR
+                )
             else:
                 # content of s_file is already marshalled
-                ccs.srv_com["result:ctrl_%s" % (ctrl_id)] = base64.b64encode(file(s_file, "r").read())
+                ccs.srv_com["result:ctrl_{}".format(ctrl_id)] = base64.b64encode(file(s_file, "r").read())
         else:
-            ccs.srv_com.set_result("no controller information found for %s" % (ctrl_id),
-                                   server_command.SRV_REPLY_STATE_ERROR)
+            ccs.srv_com.set_result(
+                "no controller information found for {} (file {})".format(ctrl_id, s_file),
+                server_command.SRV_REPLY_STATE_ERROR
+            )
 
     def process(self, ccs):
         pass
@@ -102,15 +111,19 @@ class ctrl_type_ibmbcraid(ctrl_type):
                 ret_state = limits.nag_STATE_OK
                 ret_f = []
                 for ctrl_info in ctrl_dict["ctrl_list"]:
-                    ret_f.append("%s (%s)" % (ctrl_info["name"],
-                                              ctrl_info["status"]))
+                    ret_f.append(
+                        "{} ({})".format(
+                            ctrl_info["name"],
+                            ctrl_info["status"]
+                        )
+                    )
                     if ctrl_info["status"].lower() not in ["primary", "secondary"]:
                         ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
                 for ctrl_key in [key for key in ctrl_dict.keys() if key.split("_")[1].isdigit()]:
                     cur_dict = ctrl_dict[ctrl_key]
                     # pprint.pprint(cur_dict)
                     ctrl_f = [
-                        "C%d: %s" % (
+                        "C{:d}: {}".format(
                             int(ctrl_key.split("_")[1]),
                             cur_dict["Current Status"],
                         )
@@ -122,19 +135,31 @@ class ctrl_type_ibmbcraid(ctrl_type):
                     else:
                         ctrl_f.append("no BBU Charge info")
                         ret_state = max(ret_state, limits.nag_STATE_WARNING)
-                    if cur_dict["BBU State"].split()[0] != "1" or cur_dict["BBU Fault Code"].split()[0] != "0":
-                        ctrl_f.append("BBU State/Fault Code: '%s/%s'" % (cur_dict["BBU State"],
-                                                                         cur_dict["BBU Fault Code"]))
+                    if "BBU State" in cur_dict:
+                        if cur_dict["BBU State"].split()[0] != "1" or cur_dict["BBU Fault Code"].split()[0] != "0":
+                            ctrl_f.append(
+                                "BBU State/Fault Code: '{}/{}'".format(
+                                    cur_dict["BBU State"],
+                                    cur_dict["BBU Fault Code"]
+                                )
+                            )
+                            ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                    else:
                         ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                        ctrl_f.append("BBU State missing")
                     if cur_dict["Current Status"].lower() not in ["primary", "secondary"]:
                         ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
                     vol_info = [logging_tools.get_plural("volume", len(cur_dict["volumes"]))]
                     for cur_vol in cur_dict["volumes"]:
                         if cur_vol["status"] != "VBL INI":
-                            vol_info.append("%s (%d, %s): %s" % (cur_vol["name"],
-                                                                 cur_vol["raidlevel"],
-                                                                 cur_vol["capacity"],
-                                                                 cur_vol["status"]))
+                            vol_info.append(
+                                "{} ({:d}, {:d}): {}".format(
+                                    cur_vol["name"],
+                                    cur_vol["raidlevel"],
+                                    cur_vol["capacity"],
+                                    cur_vol["status"]
+                                )
+                            )
                         pass
                     ctrl_f.append(",".join(vol_info))
                     ret_f.append(", ".join(ctrl_f))
@@ -159,7 +184,12 @@ class ibmbcraid_status_command(hm_classes.hm_command):
         return ctrl_check_struct(self.log, srv_com, ctrl_type.ctrl("ibmbcraid"), ctrl_list)
 
     def interpret(self, srv_com, cur_ns):
-        return self._interpret({srv_com._interpret_tag(cur_el, cur_el.tag): srv_com._interpret_el(cur_el) for cur_el in srv_com["result"]}, cur_ns)
+        return self._interpret(
+            {
+                srv_com._interpret_tag(cur_el, cur_el.tag): srv_com._interpret_el(cur_el) for cur_el in srv_com["result"]
+            },
+            cur_ns
+        )
 
     def _interpret(self, ctrl_dict, cur_ns):
         return ctrl_type.ctrl("ibmbcraid")._interpret(ctrl_dict, cur_ns)

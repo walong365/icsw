@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2011-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2011-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -23,7 +23,13 @@
 
 """ client for host-monitoring """
 
+import os
 import sys
+
+if __package__ is None:
+    _add_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+    if _add_path not in sys.path:
+        sys.path.insert(0, _add_path)
 
 from initat.host_monitoring import main
 

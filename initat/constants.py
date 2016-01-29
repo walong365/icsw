@@ -1,4 +1,4 @@
-# Copyright (C) 2011-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2011-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -43,4 +43,8 @@ _PY_VERSION = "{:d}.{:d}".format(
 )
 PY_LIBDIR_SHORT = "python{}".format(_PY_VERSION)
 SITE_PACKAGES_BASE = os.path.join("/opt/python-init", "lib", PY_LIBDIR_SHORT, "site-packages")
+
+# system base
 INITAT_BASE = os.path.join(SITE_PACKAGES_BASE, "initat")
+# local debug base (== same as INITAT_BASE for production)
+INITAT_BASE_DEBUG = os.path.dirname(__file__)

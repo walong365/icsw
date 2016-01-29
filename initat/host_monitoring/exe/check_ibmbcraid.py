@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2012,2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2012-2013,2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -19,12 +19,11 @@
 #
 """ reads the status of IBM SAS Raid-controller(s) """
 
-import telnetlib
 import argparse
-import pprint
-import time
-import re
 import marshal
+import re
+import telnetlib
+import time
 
 CLI_STR = "<CLI>"
 
@@ -38,7 +37,7 @@ class ctrl_command(object):
         self.command = command
         self.wait_for = wait_for or CLI_STR
         self.targ_key = targ_key
-        self.send_str = "%s\n" % (self.command)
+        self.send_str = "{}\n".format(self.command)
 
     def read(self, cur_con):
         if self.command:
@@ -51,15 +50,18 @@ class ctrl_command(object):
                 in_str = cur_con.read_very_eager()
             except EOFError:
                 break
+            time.sleep(0.1)
             if in_str:
-                cur_str = "%s%s" % (cur_str, in_str)
+                cur_str = "{}{}".format(cur_str, in_str)
                 if cur_str.strip().endswith(self.wait_for):
                     break
         ctrl_command.com_list.append(cur_str)
         if self.targ_key:
             ctrl_command.target_dict[self.targ_key] = self._interpret(
                 self.interpret_list(
-                    [line.rstrip() for line in "".join(cur_str).split("\r\n") if line.rstrip() and line.strip() != CLI_STR]
+                    [
+                        line.rstrip() for line in "".join(cur_str).split("\r\n") if line.rstrip() and line.strip() != CLI_STR
+                    ]
                 )
             )
         e_time = time.time()
@@ -71,7 +73,7 @@ class ctrl_command(object):
     def _interpret(self, in_value):
         if type(in_value) is dict:
             for key, value in in_value.iteritems():
-                if insinstance(value, basestring):
+                if isinstance(value, basestring):
                     if value.isdigit() and "%d" % (int(value)) == value:
                         in_value[key] = int(value)
                     elif value.lower() == "true":
@@ -89,15 +91,25 @@ class ctrl_command(object):
 class ctrl_list(ctrl_command):
     def interpret_list(self, in_list):
         line_re = re.compile("^\|\s*(?P<num>\d+)\s*\|\s*(?P<name>\S+)\s*\|\s*(?P<status>\S+)\s*\|\s*(?P<ports>\S+)\s*\|\s*(?P<luns>\S+)\s*\|$")
-        return [cur_re.groupdict() for cur_re in [line_re.match(cur_line) for cur_line in in_list] if cur_re]
+        return [
+            cur_re.groupdict() for cur_re in [
+                line_re.match(cur_line) for cur_line in in_list
+            ] if cur_re
+        ]
     
 
 class ctrl_detail(ctrl_command):
     def interpret_list(self, in_list):
         keyvalue_re = re.compile("^\s+(?P<key>.*?):(?P<value>.+)$")
         volume_re = re.compile("^\|\s*(?P<volume>\d+)\s*\|\s+(?P<name>\S+)\s*\|\s+(?P<capacity>\S+)\s*\|\s+(?P<raidlevel>\d+)\s*\|\s+(?P<status>.*)\|$")
-        kv_dict = {cur_re.group("key").strip(): cur_re.group("value").strip() for cur_re in [keyvalue_re.match(cur_line) for cur_line in in_list] if cur_re}
-        kv_dict["volumes"] = [cur_re.groupdict() for cur_re in [volume_re.match(cur_line) for cur_line in in_list] if cur_re]
+        kv_dict = {
+            cur_re.group("key").strip(): cur_re.group("value").strip() for cur_re in [
+                keyvalue_re.match(cur_line) for cur_line in in_list
+            ] if cur_re
+        }
+        kv_dict["volumes"] = [
+            cur_re.groupdict() for cur_re in [volume_re.match(cur_line) for cur_line in in_list] if cur_re
+        ]
         return kv_dict
     
 
@@ -109,14 +121,17 @@ def main():
     my_parser.add_argument("--target", type=str, default="/tmp/.ctrl_result", help="target file name [%(default)s]")
     options = my_parser.parse_args()
     act_con = telnetlib.Telnet(options.host)
-    [act_cmd.read(act_con) for act_cmd in [
-        ctrl_command("", "login:"),
-        ctrl_command(options.user, "Password:"),
-        ctrl_command(options.passwd),
-        ctrl_list("list controller", targ_key="ctrl_list"),
-        ctrl_detail("detail controller -ctlr 0", targ_key="ctrl_0"),
-        ctrl_detail("detail controller -ctlr 1", targ_key="ctrl_1"),
-        ctrl_command("exit")]]
+    [
+        act_cmd.read(act_con) for act_cmd in [
+            ctrl_command("", "login:"),
+            ctrl_command(options.user, "Password:"),
+            ctrl_command(options.passwd),
+            ctrl_list("list controller", targ_key="ctrl_list"),
+            ctrl_detail("detail controller -ctlr 0", targ_key="ctrl_0"),
+            ctrl_detail("detail controller -ctlr 1", targ_key="ctrl_1"),
+            ctrl_command("exit")
+        ]
+    ]
     # pprint.pprint(ctrl_command.target_dict)
     # total runtime
     # print ctrl_command.run_time
