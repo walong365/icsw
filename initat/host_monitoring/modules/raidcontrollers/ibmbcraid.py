@@ -163,6 +163,48 @@ class ctrl_type_ibmbcraid(ctrl_type):
                         pass
                     ctrl_f.append(",".join(vol_info))
                     ret_f.append(", ".join(ctrl_f))
+                if "drive_dict" in ctrl_dict:
+                    _drives = ctrl_dict["drive_dict"]
+                    ctrl_f.append(logging_tools.get_plural("drive", len(_drives)))
+                    spares, problems = ([], [])
+                    for _id in sorted(_drives.keys()):
+                        _drive = _drives[_id]
+                        if _drive["state"] in ["OK"]:
+                            pass
+                        else:
+                            problems.append(_drive)
+                        if _drive["usage"] in ["GRP"]:
+                            pass
+                        elif _drive["usage"] in ["GLS"]:
+                            spares.append(_drive)
+                        else:
+                            pass
+                    if spares:
+                        ret_f.append(logging_tools.get_plural("spare", len(spares)))
+                    else:
+                        ret_f.append("No spares found")
+                        ret_state = max(ret_state, limits.nag_STATE_WARNING)
+                    if problems:
+                        ret_f.append(
+                            "{} found: {}".format(
+                                logging_tools.get_plural("problem disk", len(problems)),
+                                ", ".join(
+                                    [
+                                        "{} has state {} ({}, {}, {})".format(
+                                            _drv["E:T"],
+                                            _drv["state"],
+                                            _drv["usage"],
+                                            _drv["mount state"],
+                                            _drv["cap"],
+                                        ) for _drv in problems
+                                    ]
+                                )
+                            )
+                        )
+                        ret_state = max(ret_state, limits.nag_STATE_WARNING)
+                else:
+                    ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                    ret_f.append("missing drive info")
             return ret_state, "; ".join(ret_f)
         else:
             return limits.nag_STATE_CRITICAL, "no controller found"

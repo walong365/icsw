@@ -28,7 +28,7 @@ import time
 CLI_STR = "<CLI>"
 
 
-class ctrl_command(object):
+class CtrlCommand(object):
     target_dict = {}
     com_list = []
     run_time = 0.0
@@ -41,7 +41,7 @@ class ctrl_command(object):
 
     def read(self, cur_con):
         if self.command:
-            ctrl_command.com_list.append(self.send_str)
+            CtrlCommand.com_list.append(self.send_str)
             cur_con.write(self.send_str)
         s_time = time.time()
         cur_str = ""
@@ -55,9 +55,9 @@ class ctrl_command(object):
                 cur_str = "{}{}".format(cur_str, in_str)
                 if cur_str.strip().endswith(self.wait_for):
                     break
-        ctrl_command.com_list.append(cur_str)
+        CtrlCommand.com_list.append(cur_str)
         if self.targ_key:
-            ctrl_command.target_dict[self.targ_key] = self._interpret(
+            CtrlCommand.target_dict[self.targ_key] = self._interpret(
                 self.interpret_list(
                     [
                         line.rstrip() for line in "".join(cur_str).split("\r\n") if line.rstrip() and line.strip() != CLI_STR
@@ -65,7 +65,7 @@ class ctrl_command(object):
                 )
             )
         e_time = time.time()
-        ctrl_command.run_time += e_time - s_time
+        CtrlCommand.run_time += e_time - s_time
 
     def interpret_list(self, in_list):
         return in_list
@@ -88,7 +88,7 @@ class ctrl_command(object):
         return in_value
     
 
-class ctrl_list(ctrl_command):
+class CtrlList(CtrlCommand):
     def interpret_list(self, in_list):
         line_re = re.compile("^\|\s*(?P<num>\d+)\s*\|\s*(?P<name>\S+)\s*\|\s*(?P<status>\S+)\s*\|\s*(?P<ports>\S+)\s*\|\s*(?P<luns>\S+)\s*\|$")
         return [
@@ -98,7 +98,7 @@ class ctrl_list(ctrl_command):
         ]
     
 
-class ctrl_detail(ctrl_command):
+class CtrlDetail(CtrlCommand):
     def interpret_list(self, in_list):
         keyvalue_re = re.compile("^\s+(?P<key>.*?):(?P<value>.+)$")
         volume_re = re.compile("^\|\s*(?P<volume>\d+)\s*\|\s+(?P<name>\S+)\s*\|\s+(?P<capacity>\S+)\s*\|\s+(?P<raidlevel>\d+)\s*\|\s+(?P<status>.*)\|$")
@@ -113,6 +113,31 @@ class ctrl_detail(ctrl_command):
         return kv_dict
     
 
+class DriveList(CtrlCommand):
+    def interpret_list(self, in_list):
+        HEADERS = [
+            "E:T",
+            "serial",
+            "cap",
+            "pool",
+            "usage",
+            "state",
+            "mount state",
+            "ctl0",
+            "ctl1",
+            "rpm",
+            "fw level",
+        ]
+        drive_dict = {}
+        for line in in_list:
+            if line.count("|") > 6:
+                _parts = [_val.strip() for _val in line.strip().split("|")[1:-1]]
+                if _parts[0].isdigit() and len(_parts) == 12:
+                    _id = int(_parts.pop(0))
+                    drive_dict[_id] = dict(zip(HEADERS, _parts))
+        return drive_dict
+
+
 def main():
     my_parser = argparse.ArgumentParser()
     my_parser.add_argument("--host", type=str, default="", help="address of raidcontroller [%(default)s]", required=True)
@@ -123,19 +148,20 @@ def main():
     act_con = telnetlib.Telnet(options.host)
     [
         act_cmd.read(act_con) for act_cmd in [
-            ctrl_command("", "login:"),
-            ctrl_command(options.user, "Password:"),
-            ctrl_command(options.passwd),
-            ctrl_list("list controller", targ_key="ctrl_list"),
-            ctrl_detail("detail controller -ctlr 0", targ_key="ctrl_0"),
-            ctrl_detail("detail controller -ctlr 1", targ_key="ctrl_1"),
-            ctrl_command("exit")
+            CtrlCommand("", "login:"),
+            CtrlCommand(options.user, "Password:"),
+            CtrlCommand(options.passwd),
+            CtrlList("list controller", targ_key="ctrl_list"),
+            DriveList("list drive", targ_key="drive_dict"),
+            CtrlDetail("detail controller -ctlr 0", targ_key="ctrl_0"),
+            CtrlDetail("detail controller -ctlr 1", targ_key="ctrl_1"),
+            CtrlCommand("exit")
         ]
     ]
     # pprint.pprint(ctrl_command.target_dict)
     # total runtime
     # print ctrl_command.run_time
-    file(options.target, "w").write(marshal.dumps(ctrl_command.target_dict))
+    file(options.target, "w").write(marshal.dumps(CtrlCommand.target_dict))
 
 
 if __name__ == "__main__":
