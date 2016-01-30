@@ -523,21 +523,22 @@ angular.module(
                 dataType: "json"
                 data:
                     search_str: $scope.vars.search_str
-            ).then((matching_device_pks) ->
-                cur_tree = $scope.get_tc($scope.active_tab)
-                cur_tree.toggle_tree_state(undefined, -1, false)
-                num_found = 0
-                cur_tree.iter(
-                    (entry) ->
-                        if entry._node_type == "d"
-                            _sel = icswSelectionService.resolve_device(entry.obj).idx in matching_device_pks
-                            entry.set_selected(_sel)
-                            if _sel
-                                num_found++
-                )
-                $scope.search_ok = num_found > 0
-                cur_tree.show_selected(false)
-                $scope.selection_changed()
+            ).then(
+                (matching_device_pks) ->
+                    cur_tree = $scope.get_tc($scope.active_tab)
+                    cur_tree.toggle_tree_state(undefined, -1, false)
+                    num_found = 0
+                    cur_tree.iter(
+                        (entry) ->
+                            if entry._node_type == "d"
+                                _sel = icswSelectionService.resolve_device(entry.obj).idx in matching_device_pks
+                                entry.set_selected(_sel)
+                                if _sel
+                                    num_found++
+                    )
+                    $scope.search_ok = num_found > 0
+                    cur_tree.show_selected(false)
+                    $scope.selection_changed()
             )
 
         else  # regular search

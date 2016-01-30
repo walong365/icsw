@@ -1,70 +1,58 @@
 <!DOCTYPE html>
-<!-- paulirish.com/2008/conditional-stylesheets-vs-css-hacks-answer-neither/ -->
-<!--[if lt IE 7]> <html class="no-js lt-ie9 lt-ie8 lt-ie7" lang="en"> <![endif]-->
-<!--[if IE 7]>    <html class="no-js lt-ie9 lt-ie8" lang="en"> <![endif]-->
-<!--[if IE 8]>    <html class="no-js lt-ie9" lang="en"> <![endif]-->
-<!-- Consider adding a manifest.appcache: h5bp.com/d/Offline -->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en"> <!--<![endif]-->
-<head>
-    {% load i18n pipeline staticfiles icsw_tags %}
+<html class="no-js" lang="en">
+    <head>
+        {% load i18n pipeline staticfiles icsw_tags %}
 
-    <meta charset="utf-8">
-    
-    <!-- Use the .htaccess and remove these lines to avoid edge case issues.
-         More info: h5bp.com/i/378 -->
-    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <meta charset="utf-8"/>
 
-    <!-- TODO: set title in angular -->
-    <title>ICSW&reg; - {% block title %}Main Page{% endblock %}</title>
-    <meta http-equiv="Cache-Control" content="max-age=28800, must-revalidate" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    
-    <!-- Mobile viewport optimized: h5bp.com/viewport -->
-    <meta name="viewport" content="width=device-width"/>
-    
-    <!-- Place favicon.ico and apple-touch-icon.png in the root directory: mathiasbynens.be/notes/touch-icons -->
-    <link rel="icon" type="image/png" href="/cluster/static/images/noctua_favicon.png" />
-    {% stylesheet 'part1' %}
-    <!-- More ideas for your <head> here: h5bp.com/d/head-Tips -->
-    
-    <!-- All JavaScript at the bottom, except this Modernizr build.
-         Modernizr enables HTML5 elements & feature detects for optimal performance.
-         Create your own custom Modernizr build: www.modernizr.com/download/ -->
-    {% javascript 'js_jquery_new' %}
-    {% javascript 'js_base' %}
-    {% javascript 'js_extra1' %}
-    {% javascript 'js_icsw_modules' %}
-<script type="text/javascript">
-// attach global permissions and license info to window object (== global variable)
-window.DEVICE_OBJECT_LEVEL_PERMISSION = "{{ device_object_level_permission }}";
-{% include "js/app.js" %}
-</script>
-{% javascript 'icsw_cs1' %}
+        <!-- Use the .htaccess and remove these lines to avoid edge case issues.
+             More info: h5bp.com/i/378 -->
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/>
 
-</head>
-<body>
-<!--[if lt IE 8]>
-    <p class=chromeframe>
-        Your browser is <em>ancient!</em>
-        <a href="http://browsehappy.com/">Upgrade to a different browser</a> or
-        <a href="http://www.google.com/chromeframe/?redirect=true">install Google Chrome Frame</a> to experience this site.
-    </p>
-<![endif]-->
-    <div ng-app="icsw.app">
-        {% for raw_file in settings.ICSW_RAW_FILES %}
-            {% raw_include raw_file %}
-        {% endfor %}
-        <icsw-layout-menubar></icsw-layout-menubar>
-        <div block-ui="main" class="block-ui-main"></div>
-        <toaster-container></toaster-container>
-        <div id="icsw-wrapper">
-            <div id="page-content-wrapper">
-                <div class="container-fluid">
-                    {% block content %}
-                    {% endblock %}
+        <!-- TODO: set title in angular -->
+        <title>ICSW&reg; - {% block title %}Main Page{% endblock %}</title>
+        <meta http-equiv="Cache-Control" content="max-age=28800, must-revalidate" />
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
+        <!-- Mobile viewport optimized: h5bp.com/viewport -->
+        <meta name="viewport" content="width=device-width"/>
+
+        <!-- Place favicon.ico and apple-touch-icon.png in the root directory: mathiasbynens.be/notes/touch-icons -->
+        <link rel="icon" type="image/png" href="/cluster/static/images/noctua_favicon.png" />
+        {% stylesheet 'part1' %}
+        <!-- More ideas for your <head> here: h5bp.com/d/head-Tips -->
+
+        <!-- All JavaScript at the bottom, except this Modernizr build.
+             Modernizr enables HTML5 elements & feature detects for optimal performance.
+             Create your own custom Modernizr build: www.modernizr.com/download/ -->
+        {% javascript 'js_jquery_new' %}
+        {% javascript 'js_base' %}
+        {% javascript 'js_extra1' %}
+        {% javascript 'js_icsw_modules' %}
+        <script type="text/javascript">
+            // attach global permissions and license info to window object (== global variable)
+            window.DEVICE_OBJECT_LEVEL_PERMISSION = "{{ device_object_level_permission }}";
+            {% include "js/app.js" %}
+        </script>
+        {% javascript 'icsw_cs1' %}
+
+    </head>
+    <body>
+        <div ng-app="icsw.app">
+            {% for raw_file in settings.ICSW_RAW_FILES %}
+                {% raw_include raw_file %}
+            {% endfor %}
+            <icsw-layout-menubar></icsw-layout-menubar>
+            <div block-ui="main" class="block-ui-main"></div>
+            <toaster-container></toaster-container>
+            <div id="icsw-wrapper">
+                <div id="page-content-wrapper">
+                    <div class="container-fluid">
+                        {% block content %}
+                        {% endblock %}
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-</body>
+    </body>
 </html>

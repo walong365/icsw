@@ -2,7 +2,7 @@
 #
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2010-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2010-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -24,14 +24,15 @@
 import glob
 import os
 import sys
-from lxml import etree
 
-from django.utils.translation import ugettext_lazy as _
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.crypto import get_random_string
-from initat.tools import logging_tools, config_store
+from django.utils.translation import ugettext_lazy as _
+from lxml import etree
+
 from initat.constants import GEN_CS_NAME, DB_ACCESS_CS_NAME, VERSION_CS_NAME, CLUSTER_DIR, SITE_PACKAGES_BASE
 from initat.icsw.service.instance import InstanceXML
+from initat.tools import logging_tools, config_store
 
 # set unified name
 logging_tools.UNIFIED_NAME = "cluster.http"
@@ -52,7 +53,10 @@ ADMINS = (
 
 ALLOWED_HOSTS = ["*"]
 
-INTERNAL_IPS = ("127.0.0.1", "192.168.1.173",)
+INTERNAL_IPS = (
+    "127.0.0.1",
+    "192.168.1.173",
+)
 
 MANAGERS = ADMINS
 
@@ -232,7 +236,6 @@ COFFEESCRIPT_EXECUTABLE = "/opt/cluster/bin/coffee"
 
 # pipeline settings
 
-# the pipeline function wrapper breaks FileSaver.js
 PIPELINE = {
     "PIPELINE_ENABLED": not DEBUG,
     "DISABLE_WRAPPER": True,
@@ -275,9 +278,11 @@ if os.path.isdir("/opt/icinga/share/images/logos"):
     STATICFILES_DIRS.append(
         ("icinga", "/opt/icinga/share/images/logos")
     )
+
 STATICFILES_DIRS.append(
     ("admin", os.path.join(SITE_PACKAGES_BASE, "django", "contrib", "admin", "static", "admin")),
 )
+
 STATICFILES_DIRS = list(STATICFILES_DIRS)
 
 # print STATICFILES_DIRS
@@ -352,7 +357,6 @@ PIPELINE["STYLESHEETS"] = {
         "source_filenames": {
             "css/smoothness/jquery-ui-1.10.2.custom.min.css",
             "css/ui.fancytree.css",
-            "css/jqModal.css",
             "css/codemirror.css",
             "css/bootstrap.css",
             "css/jquery.Jcrop.min.css",
@@ -455,8 +459,8 @@ if WITH_REACT:
         list(
             PIPELINE["JAVASCRIPT"]["js_base"]["source_filenames"]
         ) + [
-            "js/react-0.14.2.js",
-            "js/react-dom-0.14.2.js",
+            "js/react-0.14.7.js",
+            "js/react-dom-0.14.7.js",
         ]
     )
 

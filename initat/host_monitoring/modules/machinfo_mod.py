@@ -977,10 +977,16 @@ class _general(hm_classes.hm_module):
                                 try:
                                     if part.startswith("/dev/mapper"):
                                         vg_lv_base = os.path.basename(part)
-                                        if vg_lv_base.count("-"):
-                                            vg_name, lv_name = part.split("/")[3].split("-")
+                                        if vg_lv_base.count("--"):
+                                            # special case when dashes are also ued
+                                            vg_name, lv_name = part.split("/")[3].replace("--", "|").split("-")
+                                            vg_name = vg_name.replace("|", "-")
+                                            lv_name = lv_name.replace("|", "-")
                                         else:
-                                            vg_name, lv_name = (vg_lv_base, None)
+                                            if vg_lv_base.count("-"):
+                                                vg_name, lv_name = part.split("/")[3].split("-")
+                                            else:
+                                                vg_name, lv_name = (vg_lv_base, None)
                                     else:
                                         vg_name, lv_name = part.split("/")[2:4]
                                 except:

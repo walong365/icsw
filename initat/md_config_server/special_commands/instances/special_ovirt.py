@@ -230,7 +230,7 @@ class special_ovirt_hosts(SpecialBase):
                 monitoring_hint(
                     key="overview",
                     v_type="B",
-                    info="Hohst overview",
+                    info="Host overview",
                     persistent=True,
                     value_blob=process_tools.compress_struct(info_dict),
                     is_active=True,
