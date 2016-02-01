@@ -40,6 +40,10 @@ elif [ "$1" = "univention" ] ; then
     cp "$VAGRANT_TEST_UTILS_SOURCE/Vagrantfile.ucs" "$VAGRANT_DIR/Vagrantfile"
     cp $VAGRANT_TEST_UTILS_SOURCE/synced_files_ucs/* "$VAGRANT_DIR/$SYNC_DIR"
 
+elif [ "$1" = "ucs_32" ] ; then
+    cp "$VAGRANT_TEST_UTILS_SOURCE/Vagrantfile.ucs_32" "$VAGRANT_DIR/Vagrantfile"
+    cp $VAGRANT_TEST_UTILS_SOURCE/synced_files_ucs_32/* "$VAGRANT_DIR/$SYNC_DIR"
+
 elif [ "$1" = "suse" ] ; then
     cp "$VAGRANT_TEST_UTILS_SOURCE/Vagrantfile.suse" "$VAGRANT_DIR/Vagrantfile"
     cp $VAGRANT_TEST_UTILS_SOURCE/synced_files_suse/* "$VAGRANT_DIR/$SYNC_DIR"
