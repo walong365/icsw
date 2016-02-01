@@ -23,6 +23,7 @@ import commands
 import json
 import os
 import platform
+import itertools
 import re
 import statvfs
 import sys
@@ -1105,13 +1106,28 @@ class df_command(hm_classes.hm_command):
                 else:
                     store_info = True
                     if mapped_disk not in n_dict:
+                        # check for dash problems
+                        if mapped_disk.count("-"):
+                            _parts = mapped_disk.split("-")
+                            for _iter in itertools.product("-+", repeat=len(_parts) - 1):
+                                _key = _parts[0]
+                                for _join, _part in zip(_iter, _parts[1:]):
+                                    _key = "{}{}{}".format(
+                                        _key,
+                                        {"+": "--"}.get(_join, _join),
+                                        _part,
+                                    )
+                                    if _key in n_dict:
+                                        mapped_disk = _key
+                                        break
+                    if mapped_disk not in n_dict:
                         # id is just a guess, FIXME
                         try:
                             all_maps = self.__disk_lut["id"][mapped_disk]
                         except KeyError:
                             store_info = False
                             srv_com.set_result(
-                                "invalid partition %s (key is %s)" % (
+                                "invalid partition {} (key is {})".format(
                                     disk,
                                     mapped_disk
                                 ),
