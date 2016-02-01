@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2001-2009,2011-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2009,2011-2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #
@@ -57,6 +57,11 @@ class ServiceTransition(object):
         self.__log_com(u"[SrvT] {}".format(what), log_level)
 
     def step(self, cur_c):
+        def action_info(list_entry):
+            return "{}@{}".format(
+                list_entry[0],
+                unicode(list_entry[1].name),
+            )
         self.__step_num += 1
         s_time = time.time()
         # next step usgin service container cur_c
@@ -110,13 +115,18 @@ class ServiceTransition(object):
                 # no processes vanished, return
                 break
         e_time = time.time()
+        _info = [
+            logging_tools.get_plural("pending element", len(self._action_list)),
+            action_info(self._action_list[0]) if len(self._action_list) == 1 else "",
+            "(inner loops: {:d})".format(_loopcount) if _loopcount > 1 else "",
+        ]
+        _info = [_el for _el in _info if _el.strip()]
         self.log(
-            "step {:d} after {} took {}, {}{}".format(
+            "step {:d} after {} took {}, {}".format(
                 self.__step_num,
                 logging_tools.get_diff_time_str(e_time - self.__init_time),
                 logging_tools.get_diff_time_str(e_time - s_time),
-                logging_tools.get_plural("pending element", len(self._action_list)),
-                " (inner loops: {:d})".format(_loopcount) if _loopcount > 1 else "",
+                " ".join(_info),
             )
         )
         if not self._action_list:

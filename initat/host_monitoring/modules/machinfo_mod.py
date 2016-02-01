@@ -1117,9 +1117,9 @@ class df_command(hm_classes.hm_command):
                                         {"+": "--"}.get(_join, _join),
                                         _part,
                                     )
-                                    if _key in n_dict:
-                                        mapped_disk = _key
-                                        break
+                                if _key in n_dict:
+                                    mapped_disk = _key
+                                    break
                     if mapped_disk not in n_dict:
                         # id is just a guess, FIXME
                         try:
@@ -1196,7 +1196,9 @@ class df_command(hm_classes.hm_command):
                     other_keys.append(result[key])
             part_str = "{}{}".format(
                 result["part"],
-                " ({})".format(", ".join(other_keys)) if other_keys else "",
+                " ({})".format(
+                    ", ".join(other_keys)
+                ) if other_keys else "",
             )
             if "btrfs_info" in result:
                 # check for btrfs info
