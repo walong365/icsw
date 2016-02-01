@@ -27,7 +27,7 @@ chmod 600 /etc/postgresql/9.1/main/pg_hba.conf
 
 echo "###########"
 echo "restart postgresql server"
-systemctl restart postgresql
+service postgresql restart
 
 echo "###########"
 echo "create database, user and set password"
