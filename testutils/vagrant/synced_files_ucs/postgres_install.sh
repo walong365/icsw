@@ -20,7 +20,7 @@ echo "write pg_hba file and set permissions and owner"
 echo "#Allow any IP to connect, with a password:
 host    all         all         0.0.0.0          0.0.0.0      trust
 host    all         all         ::1/128                       trust
-local   all         all                                       trust" > /etc/postgresql/9.4/main/pg_hba.conf
+local   all         all                                       trust" > /etc/postgresql/9.1/main/pg_hba.conf
 
 chown postgres:postgres /etc/postgresql/9.1/main/pg_hba.conf
 chmod 600 /etc/postgresql/9.1/main/pg_hba.conf
