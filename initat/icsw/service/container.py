@@ -155,6 +155,7 @@ class ServiceContainer(object):
                     )
                 )
             else:
+                # this is only a rough start, we have to add grace periods and restart options, TODO, FIXME
                 if _model_v != self.model_version:
                     _cs = "Model version changed from {} to {} (database version is {})".format(
                         self.model_version,

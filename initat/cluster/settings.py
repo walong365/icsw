@@ -437,6 +437,7 @@ PIPELINE["JAVASCRIPT"] = {
             "js/FileSaver.js",
             "js/mousewheel.js",
             "js/smart-table.js",
+            "js/angular-simple-logger.js",
             "js/angular-google-maps.min.js",
             "js/bootstrap-dialog.js",
         ),
