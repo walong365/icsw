@@ -37,7 +37,11 @@ else:
         django = None
     else:
         from initat.cluster.backbone import db_tools
-        if not db_tools.is_reachable():
+        try:
+            if not db_tools.is_reachable():
+                django = None
+        except:
+            # when installing a newer icsw-client package on a machine with an old icsw-server package
             django = None
 
 import importlib
