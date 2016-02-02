@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2001-2009,2011-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2009,2011-2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #
@@ -148,12 +148,18 @@ class ServiceContainer(object):
             if not hasattr(self, "model_version"):
                 self.model_version = _model_v
                 self.model_version_changed = False
-                self.log("Model version is {}".format(_model_v))
+                self.log(
+                    "Model version is {}, database version is {}".format(
+                        _model_v,
+                        _database_v,
+                    )
+                )
             else:
                 if _model_v != self.model_version:
-                    _cs = "Model version changed from {} to {}".format(
+                    _cs = "Model version changed from {} to {} (database version is {})".format(
                         self.model_version,
                         _model_v,
+                        _database_v,
                     )
                     if not is_debug_run():
                         self.model_version_changed = True

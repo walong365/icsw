@@ -36,7 +36,7 @@ monitoring_overview_module = angular.module(
             if !$scope.filter_settings.only_selected || selected.length == 0
                 sel_flag = true
             else
-                sel_flag = _.contains(selected, entry)
+                sel_flag = _.includes(selected, entry)
                     
             try
                 str_re = new RegExp($scope.filter_settings.str_filter, "gi")
@@ -86,7 +86,7 @@ monitoring_overview_module = angular.module(
                             'name': dev.name
                         }
                         if set_initial_sel
-                            entry['selected'] = _.contains($scope.initial_sel, dev.idx)
+                            entry['selected'] = _.includes($scope.initial_sel, dev.idx)
                         new_entries.push(entry)
                 $scope.entries = new_entries
 

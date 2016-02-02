@@ -43,22 +43,22 @@ YELLOW="\033[33m"
 OFF="\033[m"
 
 function icsw_cleanup() {
+    echo -e "${YELLOW}removing old / stale files ...${OFF}"
     rm -rf /usr/local/sbin/check_scripts.py*
     rm -rf ${ICSW_SBIN}/modules/*.pyo
-    rm -rf /opt/python-init/lib/python2.7/site-packages/initat/tools/logging_tools
-    rm -f /opt/python-init/lib/python2.7/site-packages/initat/icsw/setup/*.py{c,o}
-    rm -f /opt/python-init/lib/python2.7/site-packages/initat/tools/logging_tools.py{c,o}
+    rm -rf ${PREFIX_INIT}/initat/tools/logging_tools
+    rm -f ${PREFIX_INIT}/initat/icsw/setup/*.py{c,o}
+    rm -f ${PREFIX_INIT}/initat/tools/logging_tools.py{c,o}
     # old template tags
-    rm -f /opt/python-init/lib/python2.7/site-packages/initat/cluster/frontend/templatetags/*.py{c,o}
+    rm -f ${PREFIX_INIT}/initat/cluster/frontend/templatetags/*.py{c,o}
     # remove cached urls.py files
     rm -f ${PREFIX_INIT}/initat/cluster/urls.py{c,o}
     rm -rf ${PREFIX_INIT}/initat/core
-
     # delete modules install via npm
     rm -rf ${ICSW_BASE}/lib/node_modules/yuglify/node_modules
     # delete old modules
     rm -rf ${PREFIX_INIT}/initat/cluster/rms
-    # old django py(o|c) files
+    # old django py(o|c) files, for instance importlib
     rm -f ${DJANGO_PY}/utils/*.py{c,o}
 }
 

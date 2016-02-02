@@ -70,9 +70,9 @@ angular.module(
         link: (scope, el, attrs) ->
             scope.show_all_selected_categories = () ->
                 for tup in scope.cur_edit_kpi.selected_device_monitoring_category_tuple
-                    if ! _.contains(scope.cur_edit_kpi.available_device_categories, tup[0])
+                    if ! _.includes(scope.cur_edit_kpi.available_device_categories, tup[0])
                         scope.cur_edit_kpi.available_device_categories.push(tup[0])
-                    if ! _.contains(scope.cur_edit_kpi.available_monitoring_categories, tup[1])
+                    if ! _.includes(scope.cur_edit_kpi.available_monitoring_categories, tup[1])
                         scope.cur_edit_kpi.available_monitoring_categories.push(tup[1])
                 scope._rebuild_tree()
 
@@ -103,7 +103,7 @@ angular.module(
                     # update selection in model
                     if entry.selected
                         # entry might already be contained if gui information is not present
-                        if !_.contains(@get_category_list(), entry.obj.idx)
+                        if !_.includes(@get_category_list(), entry.obj.idx)
                             @get_category_list().push(entry.obj.idx)
                     else
                         _.remove(@get_category_list(), (rem_item) -> return rem_item == entry.obj.idx)

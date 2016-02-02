@@ -616,15 +616,20 @@ def migrate_db(opts):
                 print("migrating app {}".format(_app))
                 success = apply_migration(_app)
 
-                if not success and _app == auth_app_name:
-                    # in old installations, we used to have a custom migration due to a patch for a model in auth.
-                    # django 1.8 then added own migrations for auth, which resulted in a divergence.
-                    # we can however just fix that by merging the migrations, which we attempt here.
-                    print("attempting to fix auth migration divergence due to django-1.8")
-                    call_manage(["makemigrations", "auth", "--merge", "--noinput"])
-                    # try to migrate again (can't do anything in case of failure though)
-                    apply_migration(_app)
-
+                if not success:
+                    if _app == auth_app_name:
+                        # in old installations, we used to have a custom migration due to a patch for a model in auth.
+                        # django 1.8 then added own migrations for auth, which resulted in a divergence.
+                        # we can however just fix that by merging the migrations, which we attempt here.
+                        print("attempting to fix auth migration divergence due to django-1.8")
+                        call_manage(["makemigrations", "auth", "--merge", "--noinput"])
+                        # try to migrate again (can't do anything in case of failure though)
+                        apply_migration(_app)
+                    elif _app == "backbone":
+                        print("error in migrating {}, trying to merge auth".format(_app))
+                        call_manage(["makemigrations", "auth", "--merge", "--noinput"])
+                        # try to migrate again (can't do anything in case of failure though)
+                        apply_migration(_app)
             else:
                 print("no unapplied migrations found for app {}".format(_app))
         print("")

@@ -19,27 +19,6 @@
 
 source $(dirname $0)/icsw_pis_tools.sh
 
-ICSW_BASE=/opt/cluster
-ICSW_BIN=${ICSW_BASE}/bin
-ICSW_SBIN=${ICSW_BASE}/sbin
-ICSW_SGE=${ICSW_BASE}/sge
-ICSW_PIS=${ICSW_SBIN}/pis
-ICSW_ETC=${ICSW_BASE}/etc
-ICSW_SHARE=${ICSW_BASE}/share
-ICSW_SYSCONF=${SYSCONF}/cluster
-ICSW_TFTP=${ICSW_BASE}/system/tftpboot
-ICSW_MOTHER=${ICSW_SHARE}/mother
-
-USRSBIN=/usr/sbin
-USRBIN=/usr/bin
-INIT=/etc/init.d
-
-BOLD="\033[1m"
-RED="\033[31m"
-GREEN="\033[32m"
-YELLOW="\033[33m"
-OFF="\033[m"
-
 /sbin/ldconfig
 
 # some cleanup tasks
