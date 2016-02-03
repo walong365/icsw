@@ -18,10 +18,6 @@ VAGRANT_TEST_UTILS_SOURCE="testutils/vagrant"
 VAGRANT_DIR="install_test_vagrant"
 SYNC_DIR="synced_files"
 
-find .
-
-ls $VAGRANT_DIR || true
-
 if [ -d $VAGRANT_DIR ]; then
     echo "remove existing vagrant dir $VAGRANT_DIR"
     rm -r $VAGRANT_DIR
