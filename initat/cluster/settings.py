@@ -47,6 +47,8 @@ if (sys.version_info.major, sys.version_info.minor) in [(2, 7)]:
 DEBUG = "DEBUG_WEBFRONTEND" in os.environ
 LOCAL_STATIC = "LOCAL_STATIC" in os.environ
 
+GULP_MODE = True if int(os.environ.get("ICSW_GULP", "0")) else False
+
 ADMINS = (
     ("Andreas Lang-Nevyjel", "lang-nevyjel@init.at"),
 )
@@ -237,7 +239,7 @@ COFFEESCRIPT_EXECUTABLE = "/opt/cluster/bin/coffee"
 # pipeline settings
 
 PIPELINE = {
-    "PIPELINE_ENABLED": not DEBUG,
+    "PIPELINE_ENABLED": not DEBUG and not GULP_MODE,
     "DISABLE_WRAPPER": True,
     "JS_COMPRESSOR": 'pipeline.compressors.uglifyjs.UglifyJSCompressor',
     "UGLIFYJS_BINARY": "/opt/cluster/lib/node_modules/uglify-js/bin/uglifyjs",
@@ -350,148 +352,142 @@ else:
 
 INSTALLED_APPS = tuple(INSTALLED_APPS)
 
-WITH_REACT = True
-
-PIPELINE["STYLESHEETS"] = {
-    "part1": {
-        "source_filenames": {
-            "css/smoothness/jquery-ui-1.10.2.custom.min.css",
-            "css/ui.fancytree.css",
-            "css/codemirror.css",
-            "css/bootstrap.css",
-            "css/jquery.Jcrop.min.css",
-            "css/angular-datetimepicker.css",
-            "css/angular-block-ui.css",
-            "css/select.css",
-            "css/ladda.min.css",
-            "css/tooltip.css",
-            "css/smart-table.css",
-            "css/font-awesome.min.css",
-            "css/icsw.css",
-            "css/toaster.css",
-            "css/bootstrap-dialog.css",
-            "css/angular-gridster.min.css",
-            "css/main.css",
-        },
-        "output_filename": "pipeline/css/part1.css"
+if not GULP_MODE:
+    PIPELINE["STYLESHEETS"] = {
+        "part1": {
+            "source_filenames": {
+                "css/smoothness/jquery-ui-1.10.2.custom.min.css",
+                "css/ui.fancytree.css",
+                "css/codemirror.css",
+                "css/bootstrap.css",
+                "css/jquery.Jcrop.min.css",
+                "css/angular-datetimepicker.css",
+                "css/angular-block-ui.css",
+                "css/select.css",
+                "css/ladda.min.css",
+                "css/tooltip.css",
+                "css/smart-table.css",
+                "css/font-awesome.min.css",
+                "css/icsw.css",
+                "css/toaster.css",
+                "css/bootstrap-dialog.css",
+                "css/angular-gridster.min.css",
+                "css/main.css",
+            },
+            "output_filename": "pipeline/css/part1.css"
+        }
     }
-}
 
-PIPELINE["JAVASCRIPT"] = {
-    "js_jquery_new": {
-        "source_filenames": {
-            "js/modernizr-2.8.1.min.js",
-            "js/jquery-2.2.0.min.js",
+    PIPELINE["JAVASCRIPT"] = {
+        "js_jquery_new": {
+            "source_filenames": {
+                "js/modernizr-2.8.1.min.js",
+                "js/jquery-2.2.0.min.js",
+            },
+            "output_filename": "pipeline/js/jquery_new.js"
         },
-        "output_filename": "pipeline/js/jquery_new.js"
-    },
-    "js_base": {
-        "source_filenames": (
-            "js/jquery-ui-1.10.2.custom.js",
-            # angular
-            "js/angular-1.4.9.js",
-            "js/lodash.js",
-            "js/bluebird.js",
-            "js/codemirror/codemirror.js",
-            "js/bootstrap.js",
-            "js/jquery.color.js",
-            "js/jquery.blockUI.js",
-            "js/moment-with-locales.js",
-            "js/jquery.Jcrop.min.js",
-            "js/spin.js",
-            "js/ladda.js",
-            "js/angular-ladda.js",
-            "js/hamster.js",
-            "js/toaster.js",
-            "js/angular-gettext.min.js",
-            "js/webfrontend_translation.js",
-            "js/angular-gridster.min.js",
-            "js/angular-promise-extras.js",
-        ),
-        "output_filename": "pipeline/js/base.js"
-    },
-    "js_extra1": {
-        "source_filenames": (
-            "js/codemirror/addon/selection/active-line.js",
-            "js/codemirror/mode/python/python.js",
-            "js/codemirror/mode/xml/xml.js",
-            "js/codemirror/mode/shell/shell.js",
-            # "js/jquery-ui-timepicker-addon.js",
-            "js/angular-route.min.js",
-            "js/angular-resource.min.js",
-            "js/angular-cookies.min.js",
-            "js/angular-sanitize.min.js",
-            "js/angular-animate.min.js",
-            "js/angular-file-upload.js",
-            "js/restangular.min.js",
-            "js/angular-block-ui.js",
-            "js/select.js",
-            "js/ui-bootstrap-tpls.min.js",
-            "js/angular-ui-router.js",
-            # must use minified version, otherwise the minifier destroys injection info
-            "js/ui-codemirror.js",
-            "js/angular-datetimepicker.js",
-            # "js/angular-strap.min.js",
-            # "js/angular-strap.tpl.min.js",
-            "js/angular-noVNC.js",
-            "js/FileSaver.js",
-            "js/mousewheel.js",
-            "js/smart-table.js",
-            "js/angular-simple-logger.js",
-            "js/angular-google-maps.min.js",
-            "js/bootstrap-dialog.js",
-        ),
-        "output_filename": "pipeline/js/extra1.js"
-    },
-    "js_icsw_modules": {
-        "source_filenames": ADDITIONAL_JS,
-        "output_filename": "pipeline/js/icsw_modules.js"
-    },
-    "icsw_cs1": {
-        "source_filenames": (
-            "icsw/*/*.coffee",
-        ),
-        "output_filename": "pipeline/js/icsw1.js"
+        "js_base": {
+            "source_filenames": (
+                "js/jquery-ui-1.10.2.custom.js",
+                # angular
+                "js/angular-1.4.9.js",
+                "js/lodash.js",
+                "js/bluebird.js",
+                "js/codemirror/codemirror.js",
+                "js/bootstrap.js",
+                "js/jquery.color.js",
+                "js/jquery.blockUI.js",
+                "js/moment-with-locales.js",
+                "js/jquery.Jcrop.min.js",
+                "js/spin.js",
+                "js/ladda.js",
+                "js/angular-ladda.js",
+                "js/hamster.js",
+                "js/toaster.js",
+                "js/angular-gettext.min.js",
+                "js/webfrontend_translation.js",
+                "js/angular-gridster.min.js",
+                "js/angular-promise-extras.js",
+                "js/react-0.14.7.js",
+                "js/react-dom-0.14.7.js",
+            ),
+            "output_filename": "pipeline/js/base.js"
+        },
+        "js_extra1": {
+            "source_filenames": (
+                "js/codemirror/addon/selection/active-line.js",
+                "js/codemirror/mode/python/python.js",
+                "js/codemirror/mode/xml/xml.js",
+                "js/codemirror/mode/shell/shell.js",
+                # "js/jquery-ui-timepicker-addon.js",
+                "js/angular-route.min.js",
+                "js/angular-resource.min.js",
+                "js/angular-cookies.min.js",
+                "js/angular-sanitize.min.js",
+                "js/angular-animate.min.js",
+                "js/angular-file-upload.js",
+                "js/restangular.min.js",
+                "js/angular-block-ui.js",
+                "js/select.js",
+                "js/ui-bootstrap-tpls.min.js",
+                "js/angular-ui-router.js",
+                # must use minified version, otherwise the minifier destroys injection info
+                "js/ui-codemirror.js",
+                "js/angular-datetimepicker.js",
+                # "js/angular-strap.min.js",
+                # "js/angular-strap.tpl.min.js",
+                "js/angular-noVNC.js",
+                "js/FileSaver.js",
+                "js/mousewheel.js",
+                "js/smart-table.js",
+                "js/angular-simple-logger.js",
+                "js/angular-google-maps.min.js",
+                "js/bootstrap-dialog.js",
+            ),
+            "output_filename": "pipeline/js/extra1.js"
+        },
+        "js_icsw_modules": {
+            "source_filenames": ADDITIONAL_JS,
+            "output_filename": "pipeline/js/icsw_modules.js"
+        },
+        "icsw_cs1": {
+            "source_filenames": (
+                "icsw/*/*.coffee",
+            ),
+            "output_filename": "pipeline/js/icsw1.js"
+        }
     }
-}
 
-if WITH_REACT:
-    PIPELINE["JAVASCRIPT"]["js_base"]["source_filenames"] = tuple(
-        list(
-            PIPELINE["JAVASCRIPT"]["js_base"]["source_filenames"]
-        ) + [
-            "js/react-0.14.7.js",
-            "js/react-dom-0.14.7.js",
-        ]
-    )
-
-ICSW_RAW_ROOTS = []
-ICSW_RAW_FILES = []
-for _local_ssi_root in ["frontend"] + ICSW_ADDON_APPS:
-    _RAW_ROOT = os.path.normpath(
-        os.path.join(
-            __file__,
-            "..",
-            _local_ssi_root,
-            "static",
-            "icsw"
+    ICSW_RAW_ROOTS = []
+    ICSW_RAW_FILES = []
+    for _local_ssi_root in ["frontend"] + ICSW_ADDON_APPS:
+        _RAW_ROOT = os.path.normpath(
+            os.path.join(
+                __file__,
+                "..",
+                _local_ssi_root,
+                "static",
+                "icsw"
+            )
         )
-    )
-    # print _SSI_ROOT
-    # TEMPLATES["DIRS"].append(_SSI_ROOT)
-    if os.path.exists(_RAW_ROOT):
-        for _dir, _dirlist, _filelist in os.walk(_RAW_ROOT):
-            if _dir == _RAW_ROOT:
-                continue
-            for _file in _filelist:
-                if _file.endswith(".html"):
-                    # print "*", _dir, _file
-                    ICSW_RAW_FILES.append(os.path.join(_dir, _file)[len(_RAW_ROOT) + 1:])
-                    # print SSI_FILES[-1], _SSI_ROOT
-        ICSW_RAW_ROOTS.append(_RAW_ROOT)
+        # print _SSI_ROOT
+        # TEMPLATES["DIRS"].append(_SSI_ROOT)
+        if os.path.exists(_RAW_ROOT):
+            for _dir, _dirlist, _filelist in os.walk(_RAW_ROOT):
+                if _dir == _RAW_ROOT:
+                    continue
+                for _file in _filelist:
+                    if _file.endswith(".html"):
+                        # print "*", _dir, _file
+                        ICSW_RAW_FILES.append(os.path.join(_dir, _file)[len(_RAW_ROOT) + 1:])
+                        # print SSI_FILES[-1], _SSI_ROOT
+            ICSW_RAW_ROOTS.append(_RAW_ROOT)
 
-if not ICSW_RAW_FILES and not DEBUG:
-    raise ImproperlyConfigured("no static files found, wrong filesystem rights ?")
+    if not ICSW_RAW_FILES and not DEBUG:
+        raise ImproperlyConfigured("no static files found, wrong filesystem rights ?")
+else:
+    # no RAW_ROOTS
+    ICSW_RAW_ROOTS = []
 
 
 TEMPLATES = [

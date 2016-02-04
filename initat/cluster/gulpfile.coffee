@@ -16,6 +16,7 @@ middleware = require("http-proxy-middleware")
 angular_filesert = require("gulp-angular-filesort")
 sourcemaps = require("gulp-sourcemaps")
 mod_rewrite = require("connect-modrewrite")
+exec = require("gulp-exec")
 
 class SourceMap
     constructor: (@name, @dest, @sources, @type) ->
@@ -220,7 +221,9 @@ _build_names = (
     create_task(key) for key of sources
 )
 
-gulp.task("app", _build_names, () ->
+gulp.task("basebuild", _build_names)
+
+gulp.task("app", ["basebuild", "allurls"], () ->
     # add urls to app_gulp.js
     return gulp.src(
        "frontend/templates/js/app_gulp.js",
@@ -243,7 +246,24 @@ gulp.task("app", _build_names, () ->
 
 )
 
-gulp.task("css", _build_names, () ->
+gulp.task("allurls", () ->
+    return gulp.src("all_urls.html", {read: false}).pipe(
+        exec(
+            [
+                "./manage.py show_icsw_urls",
+            ]
+            {
+                pipeStdout: true
+            }
+        )
+    ).pipe(
+        gulp.dest(
+            "frontend/templates"
+        )
+    )
+)
+
+gulp.task("css",  ["basebuild"], () ->
     return gulp.src(
         ["#{COMPILE_DIR}/*.css"],
     # ).pipe(
