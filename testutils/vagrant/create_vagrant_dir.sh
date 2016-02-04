@@ -28,23 +28,23 @@ cp "$VAGRANT_TEST_UTILS_SOURCE/vagrant_insecure_key" "$VAGRANT_DIR/vagrant_insec
 cp "tools/install_icsw.py" "$VAGRANT_DIR/$SYNC_DIR"
 cp $VAGRANT_TEST_UTILS_SOURCE/synced_files/* "$VAGRANT_DIR/$SYNC_DIR"
 
-if [ "$1" = "centos" ] ; then
+if [ "$1" = "centos_7" ] ; then
     cp "$VAGRANT_TEST_UTILS_SOURCE/Vagrantfile.centos" "$VAGRANT_DIR/Vagrantfile"
     cp $VAGRANT_TEST_UTILS_SOURCE/synced_files_centos/* "$VAGRANT_DIR/$SYNC_DIR"
 
-elif [ "$1" = "debian" ] ; then
+elif [ "$1" = "debian_8" ] ; then
     cp "$VAGRANT_TEST_UTILS_SOURCE/Vagrantfile.debian" "$VAGRANT_DIR/Vagrantfile"
     cp $VAGRANT_TEST_UTILS_SOURCE/synced_files_debian/* "$VAGRANT_DIR/$SYNC_DIR"
 
 elif [ "$1" = "ucs_64" ] ; then
     cp "$VAGRANT_TEST_UTILS_SOURCE/Vagrantfile.ucs_64" "$VAGRANT_DIR/Vagrantfile"
-    cp $VAGRANT_TEST_UTILS_SOURCE/synced_files_ucs/* "$VAGRANT_DIR/$SYNC_DIR"
+    cp $VAGRANT_TEST_UTILS_SOURCE/synced_files_ucs_64/* "$VAGRANT_DIR/$SYNC_DIR"
 
 elif [ "$1" = "ucs_32" ] ; then
     cp "$VAGRANT_TEST_UTILS_SOURCE/Vagrantfile.ucs_32" "$VAGRANT_DIR/Vagrantfile"
     cp $VAGRANT_TEST_UTILS_SOURCE/synced_files_ucs_32/* "$VAGRANT_DIR/$SYNC_DIR"
 
-elif [ "$1" = "suse" ] ; then
+elif [ "$1" = "suse_132" ] ; then
     cp "$VAGRANT_TEST_UTILS_SOURCE/Vagrantfile.suse" "$VAGRANT_DIR/Vagrantfile"
     cp $VAGRANT_TEST_UTILS_SOURCE/synced_files_suse/* "$VAGRANT_DIR/$SYNC_DIR"
 else
