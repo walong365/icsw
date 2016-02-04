@@ -57,4 +57,4 @@ echo -ne "writing URLS to ${all_urls} ... "
 ./manage.py show_icsw_urls > ${all_urls}
 echo "done"
 
-./manage.py runserver ${RSOPTIONS} ${EXTRA_OPTIONS} 0.0.0.0:8080
+./manage.py runserver ${RSOPTIONS} ${EXTRA_OPTIONS} 0.0.0.0:8081

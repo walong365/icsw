@@ -584,7 +584,7 @@ angular.module(
             act_sel = []
             for entry in @root_nodes
                 act_sel = act_sel.concat(@_get_selected(entry, sel_func))
-            return _.unique(act_sel)
+            return _.uniq(act_sel)
         _get_selected: (entry, sel_func) =>
             act_sel = sel_func(entry)
             for child in entry.children

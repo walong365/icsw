@@ -398,7 +398,7 @@ angular.module(
                                 network_type_names.push(network.network_type_name)
                             ip_dict[network.network_type_name].push(ip.ip)
             for key, value of ip_dict
-                ip_dict[key] = _.unique(_.sortBy(value))
+                ip_dict[key] = _.uniq(_.sortBy(value))
             network_type_names = _.sortBy(network_type_names)
             dev.ip_dict = ip_dict
             dev.network_type_names = network_type_names

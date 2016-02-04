@@ -18,8 +18,6 @@
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 //
 
-// {% load staticfiles %}
-
 // Naming conventions
 //
 // - where possible use CamelCase
@@ -105,10 +103,7 @@ icsw_app = angular.module(
         "icsw.rms",
         "icsw.history",
         "icsw.discovery",
-        "icsw.discovery.event_log"{% if ADDITIONAL_ANGULAR_APPS %},{% endif %}  // make sure that in any case, the last entry does not have a comma (IE workaround)
-        // {% for app in ADDITIONAL_ANGULAR_APPS %}
-        "{{ app }}"{% if not forloop.last %},{% endif %}
-        // {% endfor %}
+        "icsw.discovery.event_log"
     ]
 ).config(
     [
@@ -122,10 +117,10 @@ icsw_app = angular.module(
     ]
 ).constant(
     "ICSW_URLS", {
-        // {% load static %} // this is needed for get_static_prefix below
-        "STATIC_URL": "{% get_static_prefix %}",
-        "D3_MIN_JS": "{% static 'js/d3js/d3.min.js' %}",
-        {% include 'all_urls.html' %}
-        "DIMPLE_MIN_JS": "{% static 'js/dimple.v2.1.6.min.js' %}"
+        <!-- inject:urls:html -->
+        <!-- endinject -->
+        "D3_MIN_JS": "/icsw/static/js/d3js/d3.min.js",
+        "DIMPLE_MIN_JS": "/icsw/static/js/dimple.v2.1.6.min.js",
+        "STATIC_URL": "/icsw/static"
     }
 );

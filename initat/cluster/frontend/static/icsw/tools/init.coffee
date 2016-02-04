@@ -154,7 +154,34 @@ angular.module(
     [
         "toaster"
     ],
-).config(["toasterConfig", (toasterConfig) ->
+).service("icswCSRFService", ["$http", "ICSW_URLS", "$q", ($http, ICSW_URLS, $q) ->
+    csrf_token = undefined
+    _waiting = []
+    $http(
+        {
+            method: 'GET'
+            data: "json"
+            url: ICSW_URLS.SESSION_GET_CSRF_TOKEN
+        }
+    ).then(
+        (data) ->
+            csrf_token = data.data.token
+            for _wait in _waiting
+                _wait.resolve(csrf_token)
+    )
+    get_token = () ->
+        _defer = $q.defer()
+        if csrf_token
+            _defer.resolve(csrf_token)
+        else
+            _waiting.push(_defer)
+        return _defer
+    return {
+        "get_token": () ->
+            return get_token().promise
+
+    }
+]).config(["toasterConfig", (toasterConfig) ->
     # close on click
     toasterConfig["tap-to-dismiss"] = true
 ]).service("icswParseXMLResponseService", ["toaster", (toaster) ->
@@ -320,14 +347,13 @@ angular.module(
                 @ajax_dict[xhr_id]["state"]   = "done"
                 @ajax_dict[xhr_id]["runtime"] = new Date() - @ajax_dict[xhr_id]["start"]
                 @top_div.find("li##{xhr_id}").remove()
-]).service("_icswCallAjaxService", ["icswAjaxInfoService", "icswCSRFService", (icswAjaxInfoService, icswCSRFService) ->
+]).service("_icswCallAjaxService", ["icswAjaxInfoService", "icswCSRFService", "$q", (icswAjaxInfoService, icswCSRFService, $q) ->
     local_ajax_info = new icswAjaxInfoService("div#ajax_info")
     default_ajax_dict =
         type       : "POST"
         timeout    : 50000
         dataType   : "xml"
         headers    : {
-            "X-CSRFToken" : icswCSRFService["csrf_token"],
         }
         beforeSend : (xhr, settings) ->
             if not settings.hidden
@@ -345,13 +371,20 @@ angular.module(
                     alert("*** #{status} ***\nxhr.status : #{xhr.status}\nxhr.statusText : #{xhr.statusText}")
             return false
     return (in_dict) ->
+        _ret = $q.defer()
         for key of default_ajax_dict
             if key not of in_dict
                 in_dict[key] = default_ajax_dict[key]
         #if "success" of in_dict and in_dict["dataType"] == "xml"
         #    console.log "s", in_dict["success"]
-        cur_xhr = $.ajax(in_dict)
-        return cur_xhr
+        icswCSRFService.get_token().then(
+            (token) ->
+                in_dict["headers"]["X-CSRFToken"] = token
+                cur_xhr = $.ajax(in_dict)
+                _ret.resolve(cur_xhr)
+        )
+
+        return _ret.promise
 ]).service("icswSimpleAjaxCall", ["_icswCallAjaxService", "icswParseXMLResponseService", "$q", (_icswCallAjaxService, icswParseXMLResponseService, $q) ->
     return (in_dict) ->
         _def = $q.defer()
@@ -513,8 +546,8 @@ angular.module(
     Restangular.all(ICSW_URLS.USER_GET_INIT_PRODUCT.slice(1)).customGET().then((new_data) ->
         # update dict in place
         angular.extend(product, new_data)
-        product.menu_gfx_url = "#{ICSW_URLS.STATIC_URL}/images/product/#{new_data.name.toLowerCase()}-flat-trans.png"
-        product.menu_gfx_big_url = "#{ICSW_URLS.STATIC_URL}/images/product/#{new_data.name.toLowerCase()}-trans.png"
+        product.menu_gfx_url = "#{ICSW_URLS.STATIC_URL}/#{new_data.name.toLowerCase()}-flat-trans.png"
+        product.menu_gfx_big_url = "#{ICSW_URLS.STATIC_URL}/#{new_data.name.toLowerCase()}-trans.png"
     )
     return product
 ]).config(['$httpProvider',
