@@ -21,10 +21,11 @@
 import os
 import uuid
 
+from initat.constants import CLUSTER_DIR
 from initat.tools import config_store
 
 # for simple C-progs
-NEW_UUID_NAME = "/opt/cluster/etc/.cluster_device_uuid"
+NEW_UUID_NAME = os.path.join(CLUSTER_DIR, "etc", ".cluster_device_uuid")
 # name of datastore
 DATASTORE_NAME = "icsw.device"
 

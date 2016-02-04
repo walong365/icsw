@@ -2,7 +2,7 @@
 #
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2005-2010,2012-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2005-2010,2012-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -76,7 +76,10 @@ def parse_actual_license_usage(log_template, actual_licenses, act_conf, lc_dict)
     # see license.py in rms-server
     all_server_addrs = set(
         [
-            "{:d}@{}".format(act_lic.get_port(), act_lic.get_host()) for act_lic in actual_licenses.values() if act_lic.license_type == "simple"
+            "{:d}@{}".format(
+                act_lic.get_port(),
+                act_lic.get_host()
+            ) for act_lic in actual_licenses.values() if act_lic.license_type == "simple"
         ]
     )
     # print "asa:", all_server_addrs
@@ -89,7 +92,8 @@ def parse_actual_license_usage(log_template, actual_licenses, act_conf, lc_dict)
                 ),
                 port=int(server_addr.split("@")[0]),
                 server=server_addr.split("@")[1],
-                log_com=log_template.log)
+                log_com=log_template.log
+            )
         srv_result = lc_dict[server_addr].check()
     q_e_time = time.time()
     log_template.info(
@@ -158,10 +162,10 @@ def main():
     act_conf = sge_license_tools.text_file(
         sge_license_tools.get_site_config_file_name(base_dir, act_site),
     ).dict
-    log_template.info("read config for actual site '%s'" % (act_site))
-    log_template.info("keys in config: {:d}".format(len(act_conf.keys())))
+    log_template.info("read config for actual site '{}'".format(act_site))
+    log_template.info("{} in config:".format(logging_tools.get_plural("key", len(act_conf.keys()))))
     for key, value in act_conf.iteritems():
-        log_template.info(" - %-20s : %s" % (key, value))
+        log_template.info(" - {:<20s} : {}".format(key, value))
     call_num = 0
     io_in_fd = sys.stdin.fileno()
     io_out_fd = sys.stdout.fileno()
@@ -180,13 +184,13 @@ def main():
                 log_template.warning("call #{:d}, received '{}'".format(call_num, in_lines))
                 break
             else:
-                log_template.info("starting reporting load values (call #%d)" % (call_num))
+                log_template.info("starting reporting load values (call #{:d})".format(call_num))
                 start_time = time.time()
                 site_lic_file_name = sge_license_tools.get_site_license_file_name(base_dir, act_site)
                 if os.path.isfile(site_lic_file_name):
                     file_time = os.stat(site_lic_file_name)[stat.ST_MTIME]
                     if not actual_licenses or file_time > lic_read_time:
-                        log_template.info("reading license_file for site %s" % (act_site))
+                        log_template.info("reading license_file for site {}".format(act_site))
                         actual_licenses = sge_license_tools.parse_license_lines(
                             sge_license_tools.text_file(
                                 sge_license_tools.get_site_license_file_name(base_dir, act_site),

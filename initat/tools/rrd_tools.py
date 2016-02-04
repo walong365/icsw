@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2010,2014-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2010,2014-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -19,15 +19,16 @@
 #
 """ midleware layer for rrdtools """
 
-from lxml import etree  # @UnresolvedImport
-import subprocess
 import os
 import re
-import rrdtool  # @UnresolvedImport
+import rrdtool
+import subprocess
 import tempfile
 import time
 
+from lxml import etree  # @UnresolvedImport
 from lxml.builder import E
+
 from initat.tools import logging_tools
 
 WS_RE = re.compile("^(?P<slot_num>\d+)\s*(?P<slot_type>\S+?)s*\s+for\s+(?P<total_num>\d+)\s*(?P<total_type>\S+?)s*$")

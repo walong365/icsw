@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (C) 2013-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -29,7 +29,7 @@ outcar_name = "OUTCAR"
 vasprun_name = "vasprun.xml"
 
 
-class target_file(object):
+class TargetFile(object):
     def get_file_name(self, base_name):
         if "JOB_ID" in os.environ:
             f_name = "%s.%s.%s" % (base_name, os.environ["JOB_ID"], os.environ["SGE_TASK_ID"])
@@ -44,7 +44,7 @@ class target_file(object):
         return c_file
 
 
-class outcar(target_file):
+class Outcar(TargetFile):
     def __init__(self, f_name):
         res = E.vasp_info(E.timing())
         res.append(E.incar(file("INCAR", "r").read()))
@@ -70,7 +70,7 @@ class outcar(target_file):
         file(t_name, "w").write(etree.tostring(res, pretty_print=True))
 
 
-class VASPRun(target_file):
+class VASPRun(TargetFile):
     def __init__(self, f_name):
         src_xml = etree.fromstring(file(f_name, "r").read())
         self._transform(src_xml)
@@ -95,7 +95,7 @@ class VASPRun(target_file):
 
 def main():
     if os.path.isfile(outcar_name):
-        outcar(outcar_name)
+        Outcar(outcar_name)
     else:
         print("cannot find '{}'".format(outcar_name))
     if os.path.isfile(vasprun_name):

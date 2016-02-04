@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (c) 2012-2015 Andreas Lang-Nevyjel, lang-nevyjel@init.at
+# Copyright (c) 2012-2016 Andreas Lang-Nevyjel, lang-nevyjel@init.at
 #
 # this file is part of icsw-server
 #
@@ -19,9 +19,9 @@
 #
 """ SGE Job submission verifier """
 
+import os
 import re
 import sys
-import os
 
 from initat.tools import logging_tools
 

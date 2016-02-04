@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (C) 2007,2012-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2012-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # encoding: -*- utf8 -*-
@@ -74,13 +74,11 @@ class license_object(object):
     def _check_for_settings(self):
         # checks for missing keys and files (if enabled)
         if self["ENABLED"] == "yes":
-            needed_keys = set(
-                [
-                    "NAME",
-                    "LMGRD_BINARY",
-                    "LICENSE_FILE"
-                ]
-            )
+            needed_keys = {
+                "NAME",
+                "LMGRD_BINARY",
+                "LICENSE_FILE",
+            }
             self["SAVE_NAME"] = self["NAME"].replace(" ", "_").replace("__", "_").replace("__", "_")
             found_keys = needed_keys & set(self.__val_dict.keys())
             if len(found_keys) != len(needed_keys):
@@ -276,8 +274,10 @@ def main():
     lic_tree = license_tree(DEFAULT_CFG_DIR)
     error_lics = lic_tree.get_error_licenses()
     if error_lics:
-        print "error reading %s: %s" % (logging_tools.get_plural("license file", len(error_lics)),
-                                        ", ".join(error_lics)),
+        print "error reading {}: {}".format(
+            logging_tools.get_plural("license file", len(error_lics)),
+            ", ".join(error_lics)
+        )
         sys.exit(1)
     if lic_tree:
         ret_stat = 0

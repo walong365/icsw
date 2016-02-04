@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2015 Andreas Lang-Nevyjel init.at
+# Copyright (C) 2006-2016 Andreas Lang-Nevyjel init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -21,13 +21,14 @@
 #
 """ network middleware """
 
-import operator
-import time
-import os
 import argparse
+import operator
+import os
+import time
+
+import zmq
 
 from initat.tools import process_tools, server_command, logging_tools
-import zmq
 
 
 class zmq_connection(object):

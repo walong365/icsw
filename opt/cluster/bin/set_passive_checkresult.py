@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (c) 2015 Andreas Lang-Nevyjel, lang-nevyjel@init.at
+# Copyright (c) 2015-2016 Andreas Lang-Nevyjel, lang-nevyjel@init.at
 #
 # this file is part of md-config-server
 #
@@ -20,10 +20,11 @@
 """ set the result of a passive checkcommand """
 
 import argparse
-import sys
 import os
+import sys
 
 import zmq
+
 from initat.tools import logging_tools, process_tools, server_command
 
 

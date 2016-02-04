@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (C) 2014-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2014-2016 Andreas Lang-Nevyjel
 #
 # this file is part of cluster-backbone
 #
@@ -28,7 +28,9 @@ import sys
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 import django
+
 django.setup()
+
 from initat.cluster.backbone.models import config_str
 import argparse
 import re
