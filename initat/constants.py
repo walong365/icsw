@@ -27,6 +27,18 @@ system-wide constants for the ICSW
 import os
 import sys
 
+__all__ = [
+    "GEN_CS_NAME",
+    "DB_ACCESS_CS_NAME",
+    "VERSION_CS_NAME",
+    "CLUSTER_DIR",
+    "USER_EXTENSION_ROOT",
+    "LOG_ROOT",
+    "PY_LIBDIR_SHORT",
+    "SITE_PACKAGES_BASE",
+    "INITAT_BASE",
+    "INITAT_BASE_DEBUG",
+]
 
 GEN_CS_NAME = "icsw.general"
 DB_ACCESS_CS_NAME = "icsw.db.access"
