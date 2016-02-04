@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2012-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2012-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -43,6 +43,8 @@ from initat.constants import GEN_CS_NAME
 from initat.cluster.backbone.models import user, login_history
 from initat.cluster.backbone.render import render_me
 from initat.cluster.frontend.helper_functions import xml_wrapper
+from django.views.decorators.csrf import csrf_exempt
+from django.middleware import csrf
 
 logger = logging.getLogger("cluster.setup")
 
@@ -51,6 +53,16 @@ class redirect_to_main(View):
     @method_decorator(never_cache)
     def get(self, request):
         return HttpResponseRedirect(reverse("session:login"))
+
+
+class get_csrf_token(View):
+    @method_decorator(never_cache)
+    @csrf_exempt
+    def get(self, request):
+        return HttpResponse(
+            json.dumps({"token": csrf.get_token(request)}),
+            content_type="application/json"
+        )
 
 
 def _get_login_hints():

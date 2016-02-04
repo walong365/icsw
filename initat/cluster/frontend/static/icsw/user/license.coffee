@@ -97,7 +97,7 @@ angular.module(
                         a = {}
                     if !b?
                         b = {}
-                    return _.unique(Object.keys(a).concat(Object.keys(b)))
+                    return _.uniq(Object.keys(a).concat(Object.keys(b)))
                 scope._state = icswUserLicenseDataService.calculate_effective_license_state
                 scope.undefined_to_zero = (x) ->
                     return if x? then x else 0

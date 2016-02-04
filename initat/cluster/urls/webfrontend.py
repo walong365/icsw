@@ -37,6 +37,7 @@ session_patterns = [
     url(r"login", session_views.sess_login.as_view(), name="login"),
     url(r"log_addons$", session_views.login_addons.as_view(), name="login_addons"),
     url(r"get_user$", session_views.get_user.as_view(), name="get_user"),
+    url(r"get_csrf_token$", session_views.get_csrf_token.as_view(), name="get_csrf_token"),
 ]
 
 rms_patterns = [
