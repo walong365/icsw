@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2015 init.at
+# Copyright (C) 2012-2016 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -23,10 +23,19 @@ menu_module = angular.module(
     [
         "ui.router",
     ]
-).config(["$stateProvider",
-    ($stateProvider) ->
+).config(["$stateProvider", "$urlRouterProvider",
+    ($stateProvider, $urlRouterProvider) ->
+        $urlRouterProvider.otherwise("/login")
         $stateProvider.state(
-            "simple1",
+            "login"
+            {
+                url: "/login",
+                templateUrl: "icsw/login.html"
+                data:
+                    pageTitle: "ICSW Login"
+            }
+        ).state(
+            "simple1"
             {
                 url: "/simple1"
                 template: '
@@ -67,5 +76,21 @@ menu_module = angular.module(
 '
             }
         )
+]).directive('updateTitle', ['$rootScope', '$timeout', ($rootScope, $timeout) ->
+    return {
+        link: (scope, el) ->
+            listener = (event, to_state) ->
+                title = "ICSW page"
+                if to_state.data && to_state.data.pageTitle
+                    title = to_state.data.pageTitle
 
+                $timeout(
+                    ()->
+                        el.text(title)
+                    0
+                    false
+                )
+
+            $rootScope.$on("$stateChangeSuccess", listener)
+    }
 ])

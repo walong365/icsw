@@ -16,6 +16,7 @@ middleware = require("http-proxy-middleware")
 angular_filesert = require("gulp-angular-filesort")
 sourcemaps = require("gulp-sourcemaps")
 mod_rewrite = require("connect-modrewrite")
+changed = require("gulp-changed")
 exec = require("gulp-exec")
 
 class SourceMap
@@ -173,6 +174,10 @@ create_task = (key) ->
         _is_prod = options.production
         _el = gulp.src(
             _sources
+        ).pipe(
+            changed(
+                COMPILE_DIR
+            )
         ).pipe(
             gulpif(
                 _is_coffee and ! options.production, sourcemaps.init()

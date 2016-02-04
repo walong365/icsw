@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html class="no-js" lang="en">
+<html class="no-js" lang="en" ng-app="icsw.app">
     <head>
         <meta charset="utf-8"/>
 
@@ -8,7 +8,7 @@
         <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/>
 
         <!-- TODO: set title in angular -->
-        <title>ICSW&reg;</title>
+        <title update-title>ICSW&reg;</title>
         <meta http-equiv="Cache-Control" content="max-age=28800, must-revalidate" />
         <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 
@@ -30,19 +30,19 @@
 
     </head>
     <body>
-        <div ng-app="icsw.app">
-            <!-- inject:content:html -->
-            <!-- endinject -->
-            <icsw-layout-menubar></icsw-layout-menubar>
-            <div block-ui="main" class="block-ui-main"></div>
-            <toaster-container></toaster-container>
-            <div id="icsw-wrapper">
-                <div id="page-content-wrapper">
-                    <div class="container-fluid">
-                        <div ng-controller="icswLoginCtrl">
-                            <icsw-login-page></icsw-login-page>
-                        </div>
+        <!-- inject:content:html -->
+        <!-- endinject -->
+        <icsw-layout-menubar></icsw-layout-menubar>
+        <div block-ui="main" class="block-ui-main"></div>
+        <toaster-container></toaster-container>
+        <div id="icsw-wrapper">
+            <div id="page-content-wrapper">
+                <div ui-view>
+                <!-- <div class="container-fluid">
+                    <div ng-controller="icswLoginCtrl">
+                        <icsw-login-page></icsw-login-page>
                     </div>
+                </div> -->
                 </div>
             </div>
         </div>

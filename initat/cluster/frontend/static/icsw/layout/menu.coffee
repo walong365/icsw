@@ -26,8 +26,6 @@ menu_module = angular.module(
 ).controller("menu_base", ["$scope", "$timeout", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswAcessLevelService", "initProduct", "icswLayoutSelectionDialogService", "icswActiveSelectionService", "$q", "icswUserService",
     ($scope, $timeout, $window, ICSW_URLS, icswSimpleAjaxCall, icswAcessLevelService, initProduct, icswLayoutSelectionDialogService, icswActiveSelectionService, $q, icswUserService) ->
         $scope.is_authenticated = false
-        # init background jobs
-        $scope.NUM_BACKGROUND_JOBS = 0
         # init service types
         $scope.ICSW_URLS = ICSW_URLS
         $scope.initProduct = initProduct
@@ -51,6 +49,7 @@ menu_module = angular.module(
                 $scope.HANDBOOK_PDF_PRESENT = data[0].HANDBOOK_PDF_PRESENT
                 $scope.HANDBOOK_CHUNKS_PRESENT = data[0].HANDBOOK_CHUNKS_PRESENT
                 $scope.is_authenticated = data[1].authenticated
+                # console.log $scope.is_authenticated
                 $scope.CURRENT_USER = data[1]
         )
         $scope.get_progress_style = (obj) ->

@@ -85,7 +85,8 @@ def _get_login_hints():
 
 def login_page(request, **kwargs):
     # this is checked in sess_login
-    request.session.set_test_cookie()
+    # not longer used due to gulp
+    # request.session.set_test_cookie()
     # store next url
     _ckey = "_NEXT_URL_{}".format(request.META["REMOTE_ADDR"])
     cache.set(_ckey, kwargs.get("next", ""), 15)
@@ -197,7 +198,9 @@ class sess_login(View):
     def _check_login_data(cls, request, username, password):
         """Returns a valid user instance to be logged in or raises ValidationError"""
         if username and password:
+            print "*"
             db_user = authenticate(username=username, password=password)
+            print "+", db_user
             if db_user is None:
                 raise ValidationError(
                     "Please enter a correct username and password. " +
@@ -209,9 +212,12 @@ class sess_login(View):
             raise ValidationError("Need username and password")
         # TODO: determine whether this should be moved to its own method.
         if request:
-            if not request.session.test_cookie_worked():
-                raise ValidationError("Your Web browser doesn't appear to have cookies enabled. " +
-                                      "Cookies are required for logging in.")
+            # ignore missing testcookie
+            if not request.session.test_cookie_worked() and False:
+                raise ValidationError(
+                    "Your Web browser doesn't appear to have cookies enabled. " +
+                    "Cookies are required for logging in."
+                )
 
         assert db_user is not None
         return db_user
