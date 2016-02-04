@@ -36,8 +36,8 @@ elif [ "$1" = "debian" ] ; then
     cp "$VAGRANT_TEST_UTILS_SOURCE/Vagrantfile.debian" "$VAGRANT_DIR/Vagrantfile"
     cp $VAGRANT_TEST_UTILS_SOURCE/synced_files_debian/* "$VAGRANT_DIR/$SYNC_DIR"
 
-elif [ "$1" = "univention" ] ; then
-    cp "$VAGRANT_TEST_UTILS_SOURCE/Vagrantfile.ucs" "$VAGRANT_DIR/Vagrantfile"
+elif [ "$1" = "ucs_64" ] ; then
+    cp "$VAGRANT_TEST_UTILS_SOURCE/Vagrantfile.ucs_64" "$VAGRANT_DIR/Vagrantfile"
     cp $VAGRANT_TEST_UTILS_SOURCE/synced_files_ucs/* "$VAGRANT_DIR/$SYNC_DIR"
 
 elif [ "$1" = "ucs_32" ] ; then
