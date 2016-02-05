@@ -136,7 +136,7 @@ ANONYMOUS_USER_ID = -1
 
 SITE_ID = 1
 
-REL_SITE_ROOT = "cluster"
+REL_SITE_ROOT = "icsw/api/v2"
 SITE_ROOT = "/{}".format(REL_SITE_ROOT)
 LOGIN_URL = "{}/session/login/".format(SITE_ROOT)
 

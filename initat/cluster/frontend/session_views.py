@@ -236,7 +236,9 @@ class sess_login(View):
             ) if al_list is not None and al_list.strip()
         ]
         rev_dict = {}
-        all_logins = [login_name for login_name, al_list in all_aliases]
+        all_logins = [
+            login_name for login_name, al_list in all_aliases
+        ]
         for pk, al_list in all_aliases:
             for cur_al in al_list:
                 if cur_al in rev_dict:

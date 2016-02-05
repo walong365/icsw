@@ -431,7 +431,7 @@ gulp.task("serve", ["watch", "django"], () ->
             middleware: (connect, opt) ->
                 return [
                     middleware(
-                        "/cluster/",
+                        "/icsw/api/v2/",
                         {
                             target: "http://localhost:8081"
                         }
