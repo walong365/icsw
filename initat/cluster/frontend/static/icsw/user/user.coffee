@@ -48,29 +48,71 @@ user_module = angular.module(
     ]
 ).service("icswUserService", ["$q", "ICSW_URLS", "icswSimpleAjaxCall", ($q, ICSW_URLS, icswSimpleAjaxCall) ->
     _last_load = 0
-    _user = undefined
-    load_data = (cache) ->
+    current_user = ANON_USER
+    authenticated = false
+    _fetch_pending = false
+    ANON_USER = {
+        "authenticated": false
+    }
+    _force_logout = false
+    load_user = (cache) ->
         cur_time = moment().unix()
         _diff_time = Math.abs(cur_time - _last_load)
         _defer = $q.defer()
         if _diff_time > 5 or not cache
+            _fetch_pending = true
             icswSimpleAjaxCall(
                 url: ICSW_URLS.SESSION_GET_USER,
                 dataType: "json"
-            ).then((data) ->
-                _last_load = moment().unix()
-                _user = data
-                _defer.resolve(data)
+            ).then(
+                (data) ->
+                    _fetch_pending = false
+                    if _force_logout
+                        _force_logout = false
+                        logout_user()
+                    else
+                        _last_load = moment().unix()
+                        current_user = data
+                        authenticated = current_user.authenticated
+                    _defer.resolve(current_user)
+                (error) ->
+                    _fetch_pending = false
             )
         else
-            _defer.resolve(_user)
+            _defer.resolve(current_user)
+        return _defer
+    force_logout = () ->
+        if _fetch_pending
+            _force_logout = true
+    logout_user = () ->
+        _defer = $q.defer()
+        authenticated = false
+        current_user = ANON_USER
+        icswSimpleAjaxCall(
+            {
+                url: ICSW_URLS.SESSION_LOGOUT
+                dataType: "json"
+            }
+        ).then(
+            (json) ->
+                _defer.resolve(json)
+        )
         return _defer
     return {
         "load": (cache) ->
             # loads from server
-            return load_data(cache).promise
+            return load_user(cache).promise
+        "logout": () ->
+            return logout_user().promise
         "get": () ->
             return _user
+        "is_authenticated": () ->
+            return authenticated
+        "force_logout": () ->
+            # force user logout, also when a (valid) load_user request is pending
+            force_logout()
+        "get_anon_user": () ->
+            return ANON_USER
     }
 ]).service("icswUserTree", ["icswTreeConfig", (icswTreeConfig) ->
     class icsw_user_tree extends icswTreeConfig

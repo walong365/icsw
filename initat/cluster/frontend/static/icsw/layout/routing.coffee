@@ -35,6 +35,24 @@ menu_module = angular.module(
                     pageTitle: "ICSW Login"
             }
         ).state(
+            "logout"
+            {
+                url: "/logout",
+                templateUrl: "icsw/login.html"
+                data:
+                    pageTitle: "ICSW Logout"
+                # controller: ($scope) ->
+                #    console.log "lo", $scope
+            }
+        ).state(
+            "main",
+            {
+                url: "/main"
+                templateUrl: "icsw/main.html"
+                data:
+                    pageTitle: "ICSW Main page"
+            }
+        ).state(
             "simple1"
             {
                 url: "/simple1"
@@ -90,7 +108,6 @@ menu_module = angular.module(
                     0
                     false
                 )
-
             $rootScope.$on("$stateChangeSuccess", listener)
     }
 ])

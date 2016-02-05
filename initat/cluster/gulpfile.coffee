@@ -18,6 +18,7 @@ sourcemaps = require("gulp-sourcemaps")
 mod_rewrite = require("connect-modrewrite")
 changed = require("gulp-changed")
 exec = require("gulp-exec")
+bg = require("gulp-bg")
 
 class SourceMap
     constructor: (@name, @dest, @sources, @type) ->
@@ -184,7 +185,13 @@ create_task = (key) ->
             )
         ).pipe(
             gulpif(
-                _is_coffee, coffee()
+                _is_coffee, coffee().on(
+                    "error",
+                    (error) ->
+                        console.log "an Coffee-error happed"
+                        console.log error.stack
+                        gulp.start("stop")
+                )
             )
         ).pipe(
             concat(
@@ -409,7 +416,14 @@ gulp.task("watch", ["index"], () ->
     )
 )
 
-gulp.task("serve", ["watch"], () ->
+bgtask = bg("./runserver.sh", "--gulp")
+gulp.task("django", bgtask)
+
+gulp.task("stop", () ->
+    bgtask.stop()
+)
+
+gulp.task("serve", ["watch", "django"], () ->
     connect.server(
         {
             root: "work"

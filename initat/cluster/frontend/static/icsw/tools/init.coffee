@@ -157,29 +157,38 @@ angular.module(
 ).service("icswCSRFService", ["$http", "ICSW_URLS", "$q", ($http, ICSW_URLS, $q) ->
     csrf_token = undefined
     _waiting = []
-    $http(
-        {
-            method: 'GET'
-            data: "json"
-            url: ICSW_URLS.SESSION_GET_CSRF_TOKEN
-        }
-    ).then(
-        (data) ->
-            csrf_token = data.data.token
-            for _wait in _waiting
-                _wait.resolve(csrf_token)
-    )
+    _fetching = false
+    fetch_token = () ->
+        _fetching = true
+        $http(
+            {
+                method: 'GET'
+                data: "json"
+                url: ICSW_URLS.SESSION_GET_CSRF_TOKEN
+            }
+        ).then(
+            (data) ->
+                _fetching = false
+                csrf_token = data.data.token
+                for _wait in _waiting
+                    _wait.resolve(csrf_token)
+        )
     get_token = () ->
         _defer = $q.defer()
         if csrf_token
             _defer.resolve(csrf_token)
         else
             _waiting.push(_defer)
+            if not _fetching
+                fetch_token()
         return _defer
+    # prefetch
+    fetch_token()
     return {
         "get_token": () ->
             return get_token().promise
-
+        "clear_token": () ->
+            csrf_token = undefined
     }
 ]).config(["toasterConfig", (toasterConfig) ->
     # close on click

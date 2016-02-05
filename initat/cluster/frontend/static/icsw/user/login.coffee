@@ -22,8 +22,8 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "icsw.user.license",
     ]
-).controller("icswLoginCtrl", ["$scope", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswParseXMLResponseService", "blockUI", "initProduct", "icswUserLicenseDataService", "$q",
-    ($scope, $window, ICSW_URLS, icswSimpleAjaxCall, icswParseXMLResponseService, blockUI, initProduct, icswUserLicenseDataService, $q) ->
+).controller("icswLoginCtrl", ["$scope", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswParseXMLResponseService", "blockUI", "initProduct", "icswUserLicenseDataService", "$q", "$state", "icswCSRFService", "icswUserService",
+    ($scope, $window, ICSW_URLS, icswSimpleAjaxCall, icswParseXMLResponseService, blockUI, initProduct, icswUserLicenseDataService, $q, $state, icswCSRFService, icswUserService) ->
         $scope.ICSW_URLS = ICSW_URLS
         $scope.initProduct = initProduct
         $scope.lds = icswUserLicenseDataService
@@ -85,7 +85,7 @@ angular.module(
             }
 
         $scope.do_login = () ->
-            blockUI.start()
+            blockUI.start("Logging in...")
             icswSimpleAjaxCall(
                 {
                     url: ICSW_URLS.SESSION_LOGIN
@@ -97,7 +97,16 @@ angular.module(
                     # blockUI.stop()
                     if $(xml).find("value[name='redirect']").length
                         _val = $(xml).find("value[name='redirect']").text()
-                        console.log "login"
+                        # clear token
+                        icswCSRFService.clear_token()
+                        icswCSRFService.get_token().then(
+                            (csrf_token) ->
+                                icswUserService.load().then(
+                                    (_user) ->
+                                        blockUI.stop()
+                                        $state.go("main")
+                                )
+                        )
                         # $window.location = _val
                 (error) ->
                     blockUI.stop()
