@@ -555,8 +555,8 @@ angular.module(
     Restangular.all(ICSW_URLS.USER_GET_INIT_PRODUCT.slice(1)).customGET().then((new_data) ->
         # update dict in place
         angular.extend(product, new_data)
-        product.menu_gfx_url = "#{ICSW_URLS.STATIC_URL}/#{new_data.name.toLowerCase()}-flat-trans.png"
-        product.menu_gfx_big_url = "#{ICSW_URLS.STATIC_URL}/#{new_data.name.toLowerCase()}-trans.png"
+        product.menu_gfx_url = "#{ICSW_URLS.STATIC_URL}/images/product/#{new_data.name.toLowerCase()}-flat-trans.png"
+        product.menu_gfx_big_url = "#{ICSW_URLS.STATIC_URL}/images/product/#{new_data.name.toLowerCase()}-trans.png"
     )
     return product
 ]).config(['$httpProvider',
