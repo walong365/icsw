@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2016 init.at
+# Copyright (C) 2012-2015 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -23,13 +23,15 @@ menu_module = angular.module(
     [
         "ngSanitize", "ui.bootstrap", "icsw.layout.selection", "icsw.user",
     ]
-).controller("menu_base", ["$scope", "$timeout", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswAcessLevelService", "initProduct", "icswLayoutSelectionDialogService", "icswActiveSelectionService", "$q", "icswUserService", "blockUI", "$state",
-    ($scope, $timeout, $window, ICSW_URLS, icswSimpleAjaxCall, icswAcessLevelService, initProduct, icswLayoutSelectionDialogService, icswActiveSelectionService, $q, icswUserService, blockUI, $state) ->
+).controller("menu_base", ["$scope", "$timeout", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswAcessLevelService", "initProduct", "icswLayoutSelectionDialogService", "icswActiveSelectionService", "$q", "icswUserService",
+    ($scope, $timeout, $window, ICSW_URLS, icswSimpleAjaxCall, icswAcessLevelService, initProduct, icswLayoutSelectionDialogService, icswActiveSelectionService, $q, icswUserService) ->
         $scope.is_authenticated = false
+        # init background jobs
+        $scope.NUM_BACKGROUND_JOBS = 0
         # init service types
         $scope.ICSW_URLS = ICSW_URLS
         $scope.initProduct = initProduct
-        $scope.CURRENT_USER = icswUserService.get_anon_user()
+        $scope.CURRENT_USER = {}
         $scope.HANDBOOK_PDF_PRESENT = false
         $scope.HANDBOOK_CHUNKS_PRESENT = false
         $scope.HANDBOOK_PAGE = "---"
@@ -70,39 +72,6 @@ menu_module = angular.module(
             if new_val
                 if $scope.is_authenticated
                     $("body").css("padding-top", parseInt(new_val["height"]) + 1)
-        )
-        $scope.$on("$stateChangeStart", (event, new_state, to_params) ->
-            if new_state.name == "main"
-                if icswUserService.is_authenticated()
-                    $scope.is_authenticated = true
-                    icswUserService.load().then(
-                        (user) ->
-                            $scope.CURRENT_USER = user
-                    )
-                else
-                    $scope.is_authenticated = false
-                    $scope.CURRENT_USER = icswUserService.get_anon_user()
-                    event.preventDefault()
-                    $state.go("login")
-            else if new_state.name == "login"
-                # logout if logged in
-                if icswUserService.is_authenticated()
-                    icswUserService.logout()
-                icswUserService.force_logout()
-                $scope.is_authenticated = false
-                $scope.CURRENT_USER = icswUserService.get_anon_user()
-
-        )
-        $scope.$on("$stateChangeSuccess", (event, new_state) ->
-            if new_state.name == "logout"
-                blockUI.start("Logging out...")
-                icswUserService.logout().then(
-                    (json) ->
-                        blockUI.stop()
-                        $scope.is_authenticated = false
-                        $scope.CURRENT_USER = icswUserService.get_anon_user()
-                )
-            # console.log "SCS", event, new_state
         )
         $scope.device_selection = () ->
             icswLayoutSelectionDialogService.show_dialog($scope)
@@ -722,7 +691,6 @@ menu_module = angular.module(
                         el[0]
                     )
             scope.$watch("user", (new_val) ->
-                # console.log "new user", new_val
                 _user = new_val
                 _render()
             )

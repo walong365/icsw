@@ -101,13 +101,10 @@ def login_page(request, **kwargs):
 
 
 class sess_logout(View):
-    def post(self, request):
+    def get(self, request):
         from_logout = request.user.is_authenticated()
         logout(request)
-        return HttpResponse(
-            json.dumps({"logout": True}),
-            content_type="application/json"
-        )
+        return login_page(request, from_logout=from_logout)
 
 
 def _failed_login(request, user_name):
@@ -201,7 +198,9 @@ class sess_login(View):
     def _check_login_data(cls, request, username, password):
         """Returns a valid user instance to be logged in or raises ValidationError"""
         if username and password:
+            print "*"
             db_user = authenticate(username=username, password=password)
+            print "+", db_user
             if db_user is None:
                 raise ValidationError(
                     "Please enter a correct username and password. " +

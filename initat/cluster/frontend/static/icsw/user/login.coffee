@@ -22,8 +22,8 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "icsw.user.license",
     ]
-).controller("icswLoginCtrl", ["$scope", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswParseXMLResponseService", "blockUI", "initProduct", "icswUserLicenseDataService", "$q", "$state", "icswCSRFService", "icswUserService",
-    ($scope, $window, ICSW_URLS, icswSimpleAjaxCall, icswParseXMLResponseService, blockUI, initProduct, icswUserLicenseDataService, $q, $state, icswCSRFService, icswUserService) ->
+).controller("icswLoginCtrl", ["$scope", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswParseXMLResponseService", "blockUI", "initProduct", "icswUserLicenseDataService", "$q",
+    ($scope, $window, ICSW_URLS, icswSimpleAjaxCall, icswParseXMLResponseService, blockUI, initProduct, icswUserLicenseDataService, $q) ->
         $scope.ICSW_URLS = ICSW_URLS
         $scope.initProduct = initProduct
         $scope.lds = icswUserLicenseDataService
@@ -85,7 +85,7 @@ angular.module(
             }
 
         $scope.do_login = () ->
-            blockUI.start("Logging in...")
+            blockUI.start()
             icswSimpleAjaxCall(
                 {
                     url: ICSW_URLS.SESSION_LOGIN
@@ -97,17 +97,7 @@ angular.module(
                     # blockUI.stop()
                     if $(xml).find("value[name='redirect']").length
                         _val = $(xml).find("value[name='redirect']").text()
-                        # clear token
-                        icswCSRFService.clear_token()
-                        icswCSRFService.get_token().then(
-                            (csrf_token) ->
-                                icswUserService.load().then(
-                                    (_user) ->
-                                        blockUI.stop()
-                                        $state.go("main")
-                                )
-                        )
-                        # $window.location = _val
+                        $window.location = _val
                 (error) ->
                     blockUI.stop()
                     $scope.init_login()
