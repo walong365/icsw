@@ -23,7 +23,17 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "angularFileUpload", "gettext",
     ]
-).controller("icswUserLicenseCtrl",
+).config(["$stateProvider", ($stateProvider) ->
+    $stateProvider.state(
+        "main/license/overview",
+          {
+              url: "/main/license/overview"
+              templateUrl: "icsw/main/license/overview.html"
+              data:
+                  pageTitle: "License information"
+          }
+    )
+]).controller("icswUserLicenseCtrl",
     ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$timeout", "$uibModal",
      "ICSW_URLS", 'FileUploader', 'blockUI', 'icswParseXMLResponseService', 'icswUserLicenseDataService',
      "icswAcessLevelService", "icswCSRFService",

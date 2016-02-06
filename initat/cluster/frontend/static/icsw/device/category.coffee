@@ -23,7 +23,17 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "icsw.d3", "icsw.tools.button"
     ]
-).service("icswDeviceCategoryTreeService", ["icswTreeConfig", "msgbus", (icswTreeConfig, msgbus) ->
+).config(["$stateProvider", ($stateProvider) ->
+    $stateProvider.state(
+        "main/category/tree",
+          {
+              url: "/main/category/tree"
+              templateUrl: "icsw/main/category/tree.html"
+              data:
+                  pageTitle: "Category tree"
+          }
+    )
+]).service("icswDeviceCategoryTreeService", ["icswTreeConfig", "msgbus", (icswTreeConfig, msgbus) ->
     class category_tree extends icswTreeConfig
         constructor: (@scope, args) ->
             super(args)

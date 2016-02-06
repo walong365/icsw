@@ -83,29 +83,14 @@ def _get_login_hints():
     return _hints
 
 
-def login_page(request, **kwargs):
-    # this is checked in sess_login
-    # not longer used due to gulp
-    # request.session.set_test_cookie()
-    # store next url
-    _ckey = "_NEXT_URL_{}".format(request.META["REMOTE_ADDR"])
-    cache.set(_ckey, kwargs.get("next", ""), 15)
-    return render_me(
-        request,
-        "login.html",
-        {
-            "from_logout": kwargs.get("from_logout", False),
-            # "app_path": reverse("session:login"),
-        }
-    )()
-
-
 class sess_logout(View):
     def post(self, request):
         from_logout = request.user.is_authenticated()
         logout(request)
         return HttpResponse(
-            json.dumps({"logout": True}),
+            json.dumps(
+                {"logout": True}
+            ),
             content_type="application/json"
         )
 

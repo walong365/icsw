@@ -110,4 +110,10 @@ menu_module = angular.module(
                 )
             $rootScope.$on("$stateChangeSuccess", listener)
     }
+]).run(["$window", ($window) ->
+      window = angular.element($window)
+      window.on("beforeunload", (event) ->
+           # not working ...
+           # event.preventDefault()
+      )
 ])

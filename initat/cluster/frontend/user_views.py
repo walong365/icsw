@@ -241,13 +241,6 @@ class change_object_permission(View):
                 pass
 
 
-class global_license(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def get(self, request):
-        return render_me(request, "global_license.html")()
-
-
 class upload_license_file(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)

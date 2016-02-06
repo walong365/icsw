@@ -438,6 +438,7 @@ gulp.task("serve", ["watch", "django"], () ->
                         }
                     )
                 ]
+            debug: true
         }
     )
 )

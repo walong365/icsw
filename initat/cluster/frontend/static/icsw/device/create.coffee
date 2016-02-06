@@ -23,7 +23,17 @@ angular.module(
     [
         "ngSanitize", "ui.bootstrap", "restangular"
     ]
-).controller("icswDeviceCreateCtrl", ["$scope", "$timeout", "$window", "$templateCache", "restDataSource", "$q", "blockUI", "ICSW_URLS", "icswSimpleAjaxCall",
+).config(["$stateProvider", ($stateProvider) ->
+    $stateProvider.state(
+        "main/device/create",
+          {
+              url: "/main/device/create"
+              templateUrl: "icsw/main/device/create.html"
+              data:
+                  pageTitle: "Create new Device"
+          }
+    )
+]).controller("icswDeviceCreateCtrl", ["$scope", "$timeout", "$window", "$templateCache", "restDataSource", "$q", "blockUI", "ICSW_URLS", "icswSimpleAjaxCall",
     ($scope, $timeout, $window, $templateCache, restDataSource, $q, blockUI, ICSW_URLS, icswSimpleAjaxCall) ->
         $scope.base_open = true
         $scope.resolve_pending = false

@@ -444,9 +444,7 @@ class create_device(permission_required_mixin, View):
 
     @method_decorator(login_required)
     def get(self, request):
-        return render_me(
-            request, "create_new_device.html", {}
-        )()
+        pass
 
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)

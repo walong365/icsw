@@ -83,6 +83,16 @@ menu_module = angular.module(
                 else
                     $scope.is_authenticated = false
                     $scope.CURRENT_USER = icswUserService.get_anon_user()
+                    # not working right now...
+                    # icswUserService.load().then(
+                    #    (user) ->
+                    #        console.log user
+                    #        if user.authenticated
+                    #            $scope.is_authenticated = true
+                    #            $scope.CURRENT_USER = user
+                    #            # delayed state init
+                    #            $state.go(new_state, to_params)
+                    # )
                     event.preventDefault()
                     $state.go("login")
             else if new_state.name == "login"
@@ -413,7 +423,7 @@ menu_module = angular.module(
                                         name: "Create new device"
                                         rights: ["user.modify_tree"]
                                         icon: "fa-plus-circle"
-                                        href: ICSW_URLS.MON_CREATE_DEVICE
+                                        sref: "main/device/create"
                                     }
                                     {}
                                     {
@@ -432,13 +442,13 @@ menu_module = angular.module(
                                         name: "Configurations"
                                         rights: ["device.change_config"]
                                         icon: "fa-check-square-o"
-                                        href: ICSW_URLS.CONFIG_SHOW_CONFIGS
+                                        sref: "main/config/overview"
                                     }
                                     {
                                         name: "Device Configurations"
                                         rights: ["device.change_config"]
                                         icon: "fa-check-square"
-                                        href: ICSW_URLS.DEVICE_SHOW_CONFIGS
+                                        sref: "main/device/config"
                                     }
                                     {
                                         name: "Device variables"
@@ -450,7 +460,7 @@ menu_module = angular.module(
                                         name: "Device category"
                                         rights: ["user.modify_category_tree"]
                                         icon: "fa-table"
-                                        href: ICSW_URLS.BASE_DEVICE_CATEGORY
+                                        sref: "main/category/tree"
                                     }
                                     {
                                         name: "Device location"
@@ -462,7 +472,7 @@ menu_module = angular.module(
                                         name: "Device connections"
                                         rights: ["device.change_connection"]
                                         icon: "fa-plug"
-                                        href: ICSW_URLS.DEVICE_CONNECTIONS
+                                        sref: "main/device/connection"
                                     }
                                     {}
                                     {
@@ -618,7 +628,7 @@ menu_module = angular.module(
                                         rights: ["device.change_boot"]
                                         licenses: ["netboot"]
                                         icon: "fa-rocket"
-                                        href: ICSW_URLS.BOOT_SHOW_BOOT
+                                        sref: "main/deploy/boot"
                                     }
                                     {
                                         name: "Packet install"
@@ -699,7 +709,7 @@ menu_module = angular.module(
                                         name: "License"
                                         rights: if user.is_superuser then [] else ["deny"]
                                         icon: "fa-key"
-                                        href: ICSW_URLS.USER_GLOBAL_LICENSE
+                                        sref: "main/license/overview"
                                     }
                                 ]
                             }

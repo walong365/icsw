@@ -79,18 +79,6 @@ class DeviceLocation(permission_required_mixin, View):
         )()
 
 
-class DeviceCategory(permission_required_mixin, View):
-    all_required_permissions = ["backbone.user.modify_category_tree"]
-
-    @method_decorator(login_required)
-    def get(self, request):
-        return render_me(
-            request,
-            "device_category.html",
-            {}
-        )()
-
-
 class prune_category_tree(permission_required_mixin, View):
     all_required_permissions = ["backbone.user.modify_category_tree"]
 

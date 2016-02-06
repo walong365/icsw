@@ -71,7 +71,6 @@ lic_patterns = [
 
 base_patterns = [
     url("^get_gauge_info$", base_views.get_gauge_info.as_view(), name="get_gauge_info"),
-    url("^DeviceCategory$", base_views.DeviceCategory.as_view(), name="DeviceCategory"),
     url("^DeviceLocation$", base_views.DeviceLocation.as_view(), name="DeviceLocation"),
     url("^upload_loc_gfx$", base_views.upload_location_gfx.as_view(), name="upload_location_gfx"),
     url("^loc_gfx_thumbnail/(?P<id>\d+)/(?P<image_count>\d+)$", base_views.location_gfx_icon.as_view(),
@@ -102,7 +101,6 @@ setup_patterns = [
 ]
 
 config_patterns = [
-    url("^show_config$", config_views.show_configs.as_view(), name="show_configs"),
     url("^set_config_cb$", config_views.alter_config_cb.as_view(), name="alter_config_cb"),
     url("^generate_config$", config_views.generate_config.as_view(), name="generate_config"),
     url("^download_config/(?P<hash>.*)$", config_views.download_configs.as_view(), name="download_configs"),
@@ -115,7 +113,6 @@ config_patterns = [
 ]
 
 boot_patterns = [
-    url("^show_boot$", boot_views.show_boot.as_view(), name="show_boot"),
     url("^xml/get_boot_infojs$", boot_views.get_boot_info_json.as_view(), name="get_boot_info_json"),
     url("^xml/get_devlog_info$", boot_views.get_devlog_info.as_view(), name="get_devlog_info"),
     url("^soft_control$", boot_views.soft_control.as_view(), name="soft_control"),
@@ -130,8 +127,6 @@ device_patterns = [
     url("^device_tree_smart$", device_views.device_tree_smart.as_view(), name="tree_smart"),
     url("^set_selection$", device_views.set_selection.as_view(), name="set_selection"),
     url("^select_parents$", device_views.select_parents.as_view(), name="select_parents"),
-    url("^config$", device_views.show_configs.as_view(), name="show_configs"),
-    url("^connections", device_views.connections.as_view(), name="connections"),
     url("^manual_connection", device_views.manual_connection.as_view(), name="manual_connection"),
     url("^variables$", device_views.variables.as_view(), name="variables"),
     url("^change_devices$", device_views.change_devices.as_view(), name="change_devices"),
@@ -180,7 +175,6 @@ monitoring_patterns = [
     url("^StatusHistory$", monitoring_views.StatusHistory.as_view(), name="StatusHistory"),
     url("^graph$", monitoring_views.Graph.as_view(), name="graph"),
     url("^overview$", monitoring_views.overview.as_view(), name="overview"),
-    url("^create_device$", monitoring_views.create_device.as_view(), name="create_device"),
     url("^resolve_name$", monitoring_views.resolve_name.as_view(), name="resolve_name"),
     url("^delete_hint$", monitoring_views.delete_hint.as_view(), name="delete_hint"),
     url("^get_mon_vars$", monitoring_views.get_mon_vars.as_view(), name="get_mon_vars"),
@@ -200,7 +194,6 @@ user_patterns = [
     url("^set_user_var$", user_views.set_user_var.as_view(), name="set_user_var"),
     url("^get_user_var$", user_views.get_user_var.as_view(), name="get_user_var"),
     url("^change_obj_perm$", user_views.change_object_permission.as_view(), name="change_object_permission"),
-    url("^global_license$", user_views.global_license.as_view(), name="global_license"),
     url("^upload_license_file$", user_views.upload_license_file.as_view(), name="upload_license_file"),
     url("^chdc$", user_views.clear_home_dir_created.as_view(), name="clear_home_dir_created"),
     url("^get_device_ip$", user_views.get_device_ip.as_view(), name="get_device_ip"),

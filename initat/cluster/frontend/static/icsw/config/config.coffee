@@ -22,7 +22,26 @@ config_module = angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.codemirror", "angularFileUpload", "ui.select", "icsw.tools.button",
     ]
-).service("icswConfigMonCategoryTreeService", ["icswTreeConfig", (icswTreeConfig) ->
+).config(["$stateProvider", ($stateProvider) ->
+    $stateProvider.state(
+        "main/config/overview",
+          {
+              url: "/main/config/overview"
+              templateUrl: "icsw/main/config/overview.html"
+              data:
+                  pageTitle: "Configuration Overview"
+          }
+    )
+    $stateProvider.state(
+        "main/device/config"
+          {
+              url: "/main/device/config"
+              templateUrl: "icsw/main/device/config.html"
+              data:
+                  pageTitle: "Configure Device"
+          }
+    )
+]).service("icswConfigMonCategoryTreeService", ["icswTreeConfig", (icswTreeConfig) ->
     class cat_tree extends icswTreeConfig
         constructor: (@scope, args) ->
             super(args)

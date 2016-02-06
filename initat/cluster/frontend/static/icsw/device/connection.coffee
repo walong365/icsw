@@ -22,7 +22,17 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
-).controller("icswDeviceConnectionCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$uibModal", "blockUI", "icswTools", "ICSW_URLS", "icswSimpleAjaxCall", "icswUserService",
+).config(["$stateProvider", ($stateProvider) ->
+    $stateProvider.state(
+        "main/device/connection"
+          {
+              url: "/main/device/connection"
+              templateUrl: "icsw/main/device/connection.html"
+              data:
+                  pageTitle: "Device Connections"
+          }
+    )
+]).controller("icswDeviceConnectionCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$uibModal", "blockUI", "icswTools", "ICSW_URLS", "icswSimpleAjaxCall", "icswUserService",
     ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $uibModal, blockUI, icswTools, ICSW_URLS, icswSimpleAjaxCall, icswUserService) ->
         $scope.devsel_list = []
         # ac settings

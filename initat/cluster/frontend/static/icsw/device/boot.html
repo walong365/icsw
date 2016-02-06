@@ -1,3 +1,9 @@
+<script type="text/ng-template" id="icsw/main/deploy/boot.html">
+    <div ng-controller="icswDeviceBootCtrl">
+        <icsw-device-boot-table></icsw-device-boot-table>
+    </div>
+</script>
+
 <script type="text/ng-template" id="icsw.device.boot.table">
     <h2>
         <span class="label label-danger" ng-show="conn_problems" title="number of connection problems">{{ conn_problems }}</span> Boot config for {{ devices.length }} devices<span ng-show="num_selected">, {{ num_selected }} selected</span>{{ get_global_bootserver_info() }}

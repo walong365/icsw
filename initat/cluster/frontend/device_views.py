@@ -176,16 +176,6 @@ class show_configs(View):
         )()
 
 
-class connections(View):
-    @method_decorator(login_required)
-    def get(self, request):
-        return render_me(request, "device_connections.html")()
-
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        pass
-
-
 class manual_connection(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)

@@ -48,14 +48,6 @@ from initat.tools import logging_tools, server_command
 logger = logging.getLogger("cluster.boot")
 
 
-class show_boot(View):
-    @method_decorator(login_required)
-    def get(self, request):
-        return render_me(
-            request, "boot_overview.html", {}
-        )()
-
-
 class get_boot_info_json(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)

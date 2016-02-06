@@ -53,7 +53,17 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select"
     ]
-).controller("icswDeviceBootCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$uibModal", "icswAcessLevelService", "$timeout", "msgbus", "icswTools", "ICSW_URLS", "icswSimpleAjaxCall",
+).config(["$stateProvider", ($stateProvider) ->
+    $stateProvider.state(
+        "main/deploy/boot",
+          {
+              url: "/main/deploy/boot"
+              templateUrl: "icsw/main/deploy/boot.html"
+              data:
+                  pageTitle: "Boot nodes"
+          }
+    )
+]).controller("icswDeviceBootCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$uibModal", "icswAcessLevelService", "$timeout", "msgbus", "icswTools", "ICSW_URLS", "icswSimpleAjaxCall",
     ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $uibModal, icswAcessLevelService, $timeout, msgbus, icswTools, ICSW_URLS, icswSimpleAjaxCall) ->
         icswAcessLevelService.install($scope)
         msgbus.emit("devselreceiver")
