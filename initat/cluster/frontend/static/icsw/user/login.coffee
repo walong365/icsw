@@ -104,10 +104,9 @@ angular.module(
                                 icswUserService.load().then(
                                     (_user) ->
                                         blockUI.stop()
-                                        $state.go("main")
+                                        $state.go(_val)
                                 )
                         )
-                        # $window.location = _val
                 (error) ->
                     blockUI.stop()
                     $scope.init_login()

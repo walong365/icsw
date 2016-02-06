@@ -1,15 +1,11 @@
 #!/bin/bash
 
 _debug=1
-_localstatic=0
-_nostatic=0
-_insecure=0
-_gulp=0
 
 function print_help {
     echo "usage:"
     echo
-    echo "$0 [--nostatic] [--localstatic] [--gulp] [-h] [[ EXTRA_OPTIONS ]]"
+    echo "$0 [-h] [[ EXTRA_OPTIONS ]]"
     echo
     exit -1
 }
@@ -18,20 +14,6 @@ EXTRA_OPTIONS=""
 
 while (( "$#" )) ; do
     case "$1" in
-        "--nostatic")
-            _nostatic=1
-            ;;
-        "--gulp")
-            _gulp=1
-            _nostatic=1
-            _insecure=0
-            _debug=1
-            ;;
-        "--localstatic")
-            _localstatic=1
-            _insecure=1
-            _debug=0
-            ;;
         "-h")
             print_help
             ;;
@@ -45,35 +27,7 @@ done
 RSOPTIONS="--traceback"
 
 [ "${_debug}" = "1" ] && export DEBUG_WEBFRONTEND=1
-[ "${_localstatic}" == "1" ] && export LOCAL_STATIC=1
-[ "${_insecure}" == "1" ] && RSOPTIONS="${RSOPTIONS} --insecure"
-if [ "${_gulp}" == "1" ] ; then
-    export ICSW_GULP=1
-else
-    export ICSW_GULP=0
-fi
 
-echo "settings: DEBUG=${_debug}, LOCAL_STATIC=${_localstatic}, NOSTATIC=${_nostatic}, INSECURE=${_insecure}, RSOPTIONS='${RSOPTIONS}', ICSW_GULP=${ICSW_GULP}, EXTRA_OPTIONS='${EXTRA_OPTIONS}'"
-
-if [ "${_gulp}" == "0" ] ; then
-    export NODE_PATH=$(/opt/cluster/bin/npm -g root)
-    export NODE_PATH=${NODE_PATH}:${NODE_PATH}/npm/node_modules
-    echo "NODE_PATH=${NODE_PATH}"
-fi
-
-if [ "${_nostatic}" == "0" ] ; then
-    echo -ne "collecting static files ... "
-    ./manage.py collectstatic --noinput -c > /dev/null
-    echo "done"
-fi
-
-if [ "${_gulp}" == "1" ] ; then
-    echo "special gulp-mode, no static handling via django"
-else
-    all_urls=$(dirname $0)/frontend/templates/all_urls.html
-    echo -ne "writing URLS to ${all_urls} ... "
-    ./manage.py show_icsw_urls > ${all_urls}
-    echo "done"
-fi
+echo "settings: DEBUG=${_debug}, RSOPTIONS='${RSOPTIONS}', EXTRA_OPTIONS='${EXTRA_OPTIONS}'"
 
 ./manage.py runserver ${RSOPTIONS} ${EXTRA_OPTIONS} 0.0.0.0:8081

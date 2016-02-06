@@ -46,7 +46,26 @@ user_module = angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular",
         "noVNC", "ui.select", "icsw.tools", "icsw.user.password",
     ]
-).service("icswUserService", ["$q", "ICSW_URLS", "icswSimpleAjaxCall", ($q, ICSW_URLS, icswSimpleAjaxCall) ->
+).config(["$stateProvider", ($stateProvider) ->
+    $stateProvider.state(
+        "main/user/account",
+          {
+              url: "/main/user/account"
+              templateUrl: "icsw/main/user/account.html"
+              data:
+                  pageTitle: "Account info"
+          }
+    )
+    $stateProvider.state(
+        "main/user/tree",
+          {
+              url: "/main/user/tree"
+              templateUrl: "icsw/main/user/tree.html"
+              data:
+                  pageTitle: "User and Group tree"
+          }
+    )
+]).service("icswUserService", ["$q", "ICSW_URLS", "icswSimpleAjaxCall", ($q, ICSW_URLS, icswSimpleAjaxCall) ->
     _last_load = 0
     current_user = ANON_USER
     authenticated = false

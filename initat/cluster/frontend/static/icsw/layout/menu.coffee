@@ -72,7 +72,8 @@ menu_module = angular.module(
                     $("body").css("padding-top", parseInt(new_val["height"]) + 1)
         )
         $scope.$on("$stateChangeStart", (event, new_state, to_params) ->
-            if new_state.name == "main"
+            console.log new_state.name
+            if new_state.name.match(/^main/)
                 if icswUserService.is_authenticated()
                     $scope.is_authenticated = true
                     icswUserService.load().then(
@@ -102,7 +103,6 @@ menu_module = angular.module(
                         $scope.is_authenticated = false
                         $scope.CURRENT_USER = icswUserService.get_anon_user()
                 )
-            # console.log "SCS", event, new_state
         )
         $scope.device_selection = () ->
             icswLayoutSelectionDialogService.show_dialog($scope)
@@ -189,7 +189,7 @@ menu_module = angular.module(
                             icswMenuProgressService.rebuilding = 0
                 )
     }
-]).directive("icswBackgroundJobInfo", ["$templateCache", "ICSW_URLS", "icswSimpleAjaxCall", "$timeout", ($templateCache, ICSW_URLS, icswSimpleAjaxCall, $timeout) ->
+]).directive("icswBackgroundJobInfo", ["$templateCache", "ICSW_URLS", "icswSimpleAjaxCall", "$timeout", "$state", ($templateCache, ICSW_URLS, icswSimpleAjaxCall, $timeout, $state) ->
     return {
         restrict: "EA"
         template: '<button type="button" ng-click="redirect_to_bgj_info()" title="number of background jobs"></button>'
@@ -199,7 +199,7 @@ menu_module = angular.module(
             el.hide()
             scope.redirect_to_bgj_info = () ->
                 if scope.has_menu_permission('background_job.show_background')
-                    window.location = ICSW_URLS.USER_BACKGROUND_JOB_INFO
+                    $state.go("main/backgroundinfo")
                 return false
             el.removeClass()
             el.addClass("btn btn-xs btn-warning")
@@ -312,7 +312,10 @@ menu_module = angular.module(
         menu_line = React.createClass(
             displayName: "menuline"
             render: () ->
-                a_attrs = {href: @props.href, key: "a"}
+                if @props.href?
+                    a_attrs = {href: @props.href, key: "a"}
+                else
+                    a_attrs = {href: "#" + @props.sref, key: "a"}
                 if @props.target?
                     a_attrs["target"] = @props.target
                 return li(
@@ -683,7 +686,7 @@ menu_module = angular.module(
                                         name: "User"
                                         rights: ["group.group_admin"]
                                         icon: "fa-user"
-                                        href: ICSW_URLS.USER_OVERVIEW
+                                        sref: "main/user/tree"
                                     }
                                     {
                                         name: "History"

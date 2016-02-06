@@ -43,16 +43,6 @@ from initat.tools import server_command
 logger = logging.getLogger("cluster.main")
 
 
-class index(View):
-    @method_decorator(login_required)
-    def get(self, request):
-        return render_me(
-            request,
-            "index.html",
-            {}
-        )()
-
-
 class permissions_denied(View):
     @method_decorator(login_required)
     def get(self, request):
@@ -101,12 +91,6 @@ class get_routing_info(View):
             "local_device": unicode(cur_routing.local_device.full_name if cur_routing.local_device is not None else "UNKNOWN"),
         }
         return HttpResponse(json.dumps(_return), content_type="application/json")
-
-
-class info_page(View):
-    @method_decorator(login_required)
-    def get(self, request):
-        return render_me(request, "info_page.html")()
 
 
 class get_server_info(View):

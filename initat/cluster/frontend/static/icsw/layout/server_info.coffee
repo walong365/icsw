@@ -22,7 +22,17 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "init.csw.filters", "ui.bootstrap", "restangular"
     ]
-).controller("icswServerInfoOverviewCtrl", ["$scope", "$timeout", "icswAcessLevelService", "blockUI", "$window", "ICSW_URLS", "icswLayoutServerInfoService", "icswSimpleAjaxCall",
+).config(["$stateProvider", ($stateProvider) ->
+    $stateProvider.state(
+        "main/serverinfo",
+          {
+              url: "/main/serverinfo",
+              templateUrl: "icsw/main/serverinfo.html"
+              data:
+                  pageTitle: "Server info"
+          }
+    )
+]).controller("icswServerInfoOverviewCtrl", ["$scope", "$timeout", "icswAcessLevelService", "blockUI", "$window", "ICSW_URLS", "icswLayoutServerInfoService", "icswSimpleAjaxCall",
     ($scope, $timeout, icswAcessLevelService, blockUI, $window, ICSW_URLS, icswLayoutServerInfoService, icswSimpleAjaxCall) ->
         icswAcessLevelService.install($scope)
         $scope.show_server = true

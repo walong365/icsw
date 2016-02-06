@@ -25,7 +25,17 @@ background_job_info_module = angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
-).service("icswBackgroundInfoRestService", ["$q", "Restangular", "icswCachingCall", "ICSW_URLS", ($q, Restangular, icswCachingCall, ICSW_URLS) ->
+).config(["$stateProvider", ($stateProvider) ->
+    $stateProvider.state(
+        "main/backgroundinfo",
+          {
+              url: "/main/backgroundinfo"
+              templateUrl: "icsw/main/backgroundinfo.html"
+              data:
+                  pageTitle: "Background Job Information"
+          }
+    )
+]).service("icswBackgroundInfoRestService", ["$q", "Restangular", "icswCachingCall", "ICSW_URLS", ($q, Restangular, icswCachingCall, ICSW_URLS) ->
     _bi_info = []
     load_data = (client) ->
         _defer = $q.defer()

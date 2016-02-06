@@ -238,7 +238,7 @@ gulp.task("basebuild", _build_names)
 gulp.task("app", ["basebuild", "allurls"], () ->
     # add urls to app_gulp.js
     return gulp.src(
-       "frontend/templates/js/app_gulp.js",
+       "frontend/templates/js/app.js",
     ).pipe(
         inject(
             gulp.src(
@@ -352,13 +352,13 @@ gulp.task("gifs", ["clean"], () ->
 )
 
 gulp.task("index", ["js", "app", "media"], () ->
-    target = gulp.src("frontend/templates/main_gulp.html")
+    target = gulp.src("frontend/templates/main.html")
     return target.pipe(
         inject(
             gulp.src(
                 [
                     "*.js",
-                    "!app_gulp.js",
+                    "!app.js",
                     "static/*.css",
                     "*.html",
                 ]
@@ -376,7 +376,7 @@ gulp.task("index", ["js", "app", "media"], () ->
     ).pipe(
         inject(
             gulp.src(
-                "app_gulp.js",
+                "app.js",
                 {
                     read: false
                     cwd: "#{DEPLOY_DIR}"
@@ -416,7 +416,7 @@ gulp.task("watch", ["index"], () ->
     )
 )
 
-bgtask = bg("./runserver.sh", "--gulp")
+bgtask = bg("./runserver.sh")
 gulp.task("django", bgtask)
 
 gulp.task("stop", () ->
@@ -428,6 +428,7 @@ gulp.task("serve", ["watch", "django"], () ->
         {
             root: "work"
             port: 8080
+            fallback: "work/icsw/main.html"
             middleware: (connect, opt) ->
                 return [
                     middleware(

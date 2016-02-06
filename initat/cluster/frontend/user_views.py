@@ -241,16 +241,6 @@ class change_object_permission(View):
                 pass
 
 
-class account_info(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def get(self, request):
-        return render_me(
-            request, "account_info.html", {
-            }
-        )()
-
-
 class global_license(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
@@ -298,13 +288,6 @@ class upload_license_file(View):
                     contact_server(request, "server", srv_com, timeout=60, log_error=True, log_result=False)
             else:
                 request.xml_response.warn("This license file has already been uploaded")
-
-
-class background_job_info(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def get(self, request):
-        return render_me(request, "background_job_info.html")()
 
 
 class clear_home_dir_created(View):

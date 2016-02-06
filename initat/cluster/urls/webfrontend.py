@@ -30,7 +30,7 @@ from initat.cluster.frontend import rest_views, device_views, main_views, networ
     base_views, setup_views, doc_views, license_views, model_history_views, discovery_views, rms_views, \
     lic_views
 
-handler404 = main_views.index.as_view()
+# handler404 = main_views.index.as_view()
 
 session_patterns = [
     url(r"logout", session_views.sess_logout.as_view(), name="logout"),
@@ -196,15 +196,12 @@ monitoring_patterns = [
 ]
 
 user_patterns = [
-    url("overview/$", user_views.overview.as_view(), name="overview"),
     url("sync$", user_views.sync_users.as_view(), name="sync_users"),
     url("^set_user_var$", user_views.set_user_var.as_view(), name="set_user_var"),
     url("^get_user_var$", user_views.get_user_var.as_view(), name="get_user_var"),
     url("^change_obj_perm$", user_views.change_object_permission.as_view(), name="change_object_permission"),
-    url("^account_info$", user_views.account_info.as_view(), name="account_info"),
     url("^global_license$", user_views.global_license.as_view(), name="global_license"),
     url("^upload_license_file$", user_views.upload_license_file.as_view(), name="upload_license_file"),
-    url("^background_info$", user_views.background_job_info.as_view(), name="background_job_info"),
     url("^chdc$", user_views.clear_home_dir_created.as_view(), name="clear_home_dir_created"),
     url("^get_device_ip$", user_views.get_device_ip.as_view(), name="get_device_ip"),
     url("^GetGlobalPermissions$", user_views.GetGlobalPermissions.as_view(), name="GetGlobalPermissions"),
@@ -230,9 +227,7 @@ pack_patterns = [
 ]
 
 main_patterns = [
-    url(r"^index$", main_views.index.as_view(), name="index"),
     url(r"^permission$", main_views.permissions_denied.as_view(), name="permission_denied"),
-    url(r"^info$", main_views.info_page.as_view(), name="info_page"),
     url(r"^server_info$", main_views.get_server_info.as_view(), name="get_server_info"),
     url(r"^server_control$", main_views.server_control.as_view(), name="server_control"),
     url(r"^virtual_desktop_viewer$", main_views.virtual_desktop_viewer.as_view(), name="virtual_desktop_viewer"),
