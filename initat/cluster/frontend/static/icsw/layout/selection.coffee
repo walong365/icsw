@@ -140,7 +140,8 @@ angular.module(
     _receivers = 0
     load_selection = () ->
         defer = $q.defer()
-        Restangular.all(ICSW_URLS.REST_DEVICE_SELECTION_LIST_OLD.slice(1)).getList().then((data) ->
+        Restangular.all(ICSW_URLS.REST_DEVICE_SELECTION_SESSION_LIST.slice(1)).getList().then((data) ->
+            console.log "*", data
             cur_sel = new icswSelection([], [], [], (entry.idx for entry in data when entry.sel_type == "d"))
             defer.resolve(cur_sel)
         )
@@ -743,6 +744,7 @@ angular.module(
     quick_dialog = (scope) ->
         sel_scope = scope.$new()
         dialog_div = $compile($templateCache.get("icsw.layout.selection.modify"))(sel_scope)
+        console.log dialog_div, sel_scope
         BootstrapDialog.show
             message: dialog_div
             title: "Device Selection"

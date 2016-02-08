@@ -833,7 +833,7 @@ class device_tree_list(
         return _q
 
 
-class device_selection_list(APIView):
+class device_selection_session_list(APIView):
     authentication_classes = (SessionAuthentication,)
     permission_classes = (IsAuthenticated,)
 

@@ -423,10 +423,11 @@ angular.module(
         _icswCallAjaxService(in_dict)
 
         return _def.promise
-]).service("icswAcessLevelService", ["ICSW_URLS", "Restangular", "$q", (ICSW_URLS, Restangular, $q) ->
+]).service("icswAcessLevelService", ["ICSW_URLS", "Restangular", "$q", "$rootScope", (ICSW_URLS, Restangular, $q, $rootScope) ->
     data = {}
-    acls_are_valid = false
-    reload = () ->
+    _changed = () ->
+        $rootScope.$emit("icsw.acls.changed")
+    _reset = () ->
         data.global_permissions = {}
         # these are not permissions for single objects, but the merged permission set of all objects
         data.object_permissions = {}
@@ -434,6 +435,10 @@ angular.module(
         data.license_data = {}
         # routing info
         data.routing_info = {}
+        data.acls_are_valid = false
+        _changed()
+    reload = () ->
+        _reset()
         $q.all(
             [
                 Restangular.all(ICSW_URLS.USER_GET_GLOBAL_PERMISSIONS.slice(1)).customGET()
@@ -441,15 +446,20 @@ angular.module(
                 Restangular.all(ICSW_URLS.USER_GET_OBJECT_PERMISSIONS.slice(1)).customGET()
                 Restangular.all(ICSW_URLS.MAIN_ROUTING_INFO.slice(1)).customPOST({dataType: "json"})
             ]
-        ).then((r_data) ->
-            data.global_permissions = r_data[0]
-            data.license_data = r_data[1]
-            data.object_permissions = r_data[2]
-            data.routing_info = r_data[3]
-            # console.log data.routing_info.service_types
-            acls_are_valid = true
+        ).then(
+            (r_data) ->
+                data.global_permissions = r_data[0]
+                data.license_data = r_data[1]
+                data.object_permissions = r_data[2]
+                data.routing_info = r_data[3]
+                # console.log data.routing_info.service_types
+                data.acls_are_valid = true
+                _changed()
         )
-    reload()
+    $rootScope.$on("icsw.user.changed", (event, user) ->
+        reload()
+    )
+    _reset()
     # see lines 205 ff in backbone/models/user.py
     check_level = (obj, ac_name, mask, any) ->
         if ac_name.split(".").length != 3
@@ -488,7 +498,7 @@ angular.module(
     has_service_type = (s_name) ->
         return s_name of data.routing_info.service_types
     has_valid_license = (license) ->
-        if not acls_are_valid
+        if not data.acls_are_valid
             # not loaded yet
             return false
         if license not in data.license_data.all_licenses
@@ -510,7 +520,7 @@ angular.module(
         "acl_all" : (obj, ac_name, mask) ->
             return check_level(obj, ac_name, mask, false)
         acl_valid: () ->
-            return acls_are_valid
+            return data.acls_are_valid
 
         # check if permission exists for any object (used for show/hide of entries of menu)
         has_menu_permission: has_menu_permission

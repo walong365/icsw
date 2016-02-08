@@ -35,11 +35,11 @@ class DeviceSelection(models.Model):
     name = models.CharField(max_length=64, default="")
     user = models.ForeignKey("user")
     # link to devices
-    devices = models.ManyToManyField("device")
+    devices = models.ManyToManyField("device", blank=True)
     # lazy device_groups
-    device_groups = models.ManyToManyField("device_group")
+    device_groups = models.ManyToManyField("device_group", blank=True)
     # lazy categories
-    categories = models.ManyToManyField("category")
+    categories = models.ManyToManyField("category", blank=True)
     date = models.DateTimeField(auto_now_add=True)
 
     def resolve(self):

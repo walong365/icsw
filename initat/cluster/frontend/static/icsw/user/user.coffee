@@ -65,14 +65,14 @@ user_module = angular.module(
                   pageTitle: "User and Group tree"
           }
     )
-]).service("icswUserService", ["$q", "ICSW_URLS", "icswSimpleAjaxCall", ($q, ICSW_URLS, icswSimpleAjaxCall) ->
+]).service("icswUserService", ["$q", "ICSW_URLS", "icswSimpleAjaxCall", "$rootScope", ($q, ICSW_URLS, icswSimpleAjaxCall, $rootScope) ->
     _last_load = 0
-    current_user = ANON_USER
-    authenticated = false
+    current_user = undefined
+    set_user = (user) ->
+        current_user = user
+        $rootScope.$emit("icsw.user.changed", current_user)
+    set_user(undefined)
     _fetch_pending = false
-    ANON_USER = {
-        "authenticated": false
-    }
     _force_logout = false
     load_user = (cache) ->
         cur_time = moment().unix()
@@ -81,7 +81,7 @@ user_module = angular.module(
         if _diff_time > 5 or not cache
             _fetch_pending = true
             icswSimpleAjaxCall(
-                url: ICSW_URLS.SESSION_GET_USER,
+                url: ICSW_URLS.SESSION_GET_AUTHENTICATED_USER,
                 dataType: "json"
             ).then(
                 (data) ->
@@ -91,8 +91,7 @@ user_module = angular.module(
                         logout_user()
                     else
                         _last_load = moment().unix()
-                        current_user = data
-                        authenticated = current_user.authenticated
+                        set_user(data)
                     _defer.resolve(current_user)
                 (error) ->
                     _fetch_pending = false
@@ -105,8 +104,7 @@ user_module = angular.module(
             _force_logout = true
     logout_user = () ->
         _defer = $q.defer()
-        authenticated = false
-        current_user = ANON_USER
+        set_user(undefined)
         icswSimpleAjaxCall(
             {
                 url: ICSW_URLS.SESSION_LOGOUT
@@ -125,13 +123,11 @@ user_module = angular.module(
             return logout_user().promise
         "get": () ->
             return _user
-        "is_authenticated": () ->
-            return authenticated
+        "user_present": () ->
+            return if current_user then true else false
         "force_logout": () ->
             # force user logout, also when a (valid) load_user request is pending
             force_logout()
-        "get_anon_user": () ->
-            return ANON_USER
     }
 ]).service("icswUserTree", ["icswTreeConfig", (icswTreeConfig) ->
     class icsw_user_tree extends icswTreeConfig

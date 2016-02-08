@@ -26,25 +26,25 @@ import base64
 import json
 import logging
 
+import django
 from django.contrib.auth import login, logout, authenticate
-from django.core.exceptions import ValidationError
-from django.http.response import HttpResponse
-from django.core.urlresolvers import reverse
 from django.core.cache import cache
+from django.core.exceptions import ValidationError
+from django.core.urlresolvers import reverse
 from django.db.models import Q, Sum
 from django.http import HttpResponseRedirect
+from django.http.response import HttpResponse
+from django.middleware import csrf
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import never_cache
-from django.views.generic import View
-import django
-
-from initat.tools import config_store
-from initat.constants import GEN_CS_NAME
-from initat.cluster.backbone.models import user, login_history
-from initat.cluster.backbone.render import render_me
-from initat.cluster.frontend.helper_functions import xml_wrapper
 from django.views.decorators.csrf import csrf_exempt
-from django.middleware import csrf
+from django.views.generic import View
+
+from initat.cluster.backbone.serializers import user_serializer
+from initat.cluster.backbone.models import user, login_history
+from initat.cluster.frontend.helper_functions import xml_wrapper
+from initat.constants import GEN_CS_NAME
+from initat.tools import config_store
 
 logger = logging.getLogger("cluster.setup")
 
@@ -243,18 +243,10 @@ class sess_login(View):
 class get_user(View):
     def post(self, request):
         if request.user and not request.user.is_anonymous:
-            _user = {
-                "idx": request.user.pk,
-                "pk": request.user.pk,
-                "is_superuser": request.user.is_superuser,
-                "authenticated": True,
-                "login": request.user.login,
-                "login_name": request.session["login_name"],
-                "full_name": unicode(request.user),
-            }
+            _user = user_serializer(request.user).data
         else:
-            _user = {
-                "is_superuser": False,
-                "authenticated": False,
-            }
-        return HttpResponse(json.dumps(_user), content_type="application/json")
+            _user = user_serializer(user()).data
+        return HttpResponse(
+            json.dumps(_user),
+            content_type="application/json"
+        )

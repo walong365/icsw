@@ -25,11 +25,10 @@ menu_module = angular.module(
     ]
 ).controller("menu_base", ["$scope", "$timeout", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswAcessLevelService", "initProduct", "icswLayoutSelectionDialogService", "icswActiveSelectionService", "$q", "icswUserService", "blockUI", "$state",
     ($scope, $timeout, $window, ICSW_URLS, icswSimpleAjaxCall, icswAcessLevelService, initProduct, icswLayoutSelectionDialogService, icswActiveSelectionService, $q, icswUserService, blockUI, $state) ->
-        $scope.is_authenticated = false
         # init service types
         $scope.ICSW_URLS = ICSW_URLS
         $scope.initProduct = initProduct
-        $scope.CURRENT_USER = icswUserService.get_anon_user()
+        $scope.CURRENT_USER = undefined
         $scope.HANDBOOK_PDF_PRESENT = false
         $scope.HANDBOOK_CHUNKS_PRESENT = false
         $scope.HANDBOOK_PAGE = "---"
@@ -48,8 +47,7 @@ menu_module = angular.module(
             (data) ->
                 $scope.HANDBOOK_PDF_PRESENT = data[0].HANDBOOK_PDF_PRESENT
                 $scope.HANDBOOK_CHUNKS_PRESENT = data[0].HANDBOOK_CHUNKS_PRESENT
-                $scope.is_authenticated = data[1].authenticated
-                $scope.CURRENT_USER = data[1]
+                $scope.CURRENT_USER = undefined
         )
         $scope.get_progress_style = (obj) ->
             return {"width" : "#{obj.value}%"}
@@ -67,22 +65,21 @@ menu_module = angular.module(
             true
         )
         $scope.$watch("navbar_size", (new_val) ->
-            if new_val
-                if $scope.is_authenticated
-                    $("body").css("padding-top", parseInt(new_val["height"]) + 1)
+            if new_val and $scope.CURRENT_USER
+                $("body").css("padding-top", parseInt(new_val["height"]) + 1)
         )
-        $scope.$on("$stateChangeStart", (event, new_state, to_params) ->
-            console.log new_state.name
-            if new_state.name.match(/^main/)
-                if icswUserService.is_authenticated()
-                    $scope.is_authenticated = true
+        $scope.$on("$stateChangeStart", (event, to_state, to_params, from_state, from_params) ->
+            to_main = if to_state.name.match(/^main/) then true else false
+            from_main = if from_state.name.match(/^main/) then true else false
+            console.log to_state.name, to_main, from_state.name, from_main
+            if to_main and not from_main
+                if icswUserService.user_present()
                     icswUserService.load().then(
                         (user) ->
                             $scope.CURRENT_USER = user
                     )
                 else
-                    $scope.is_authenticated = false
-                    $scope.CURRENT_USER = icswUserService.get_anon_user()
+                    $scope.CURRENT_USER = undefined
                     # not working right now...
                     # icswUserService.load().then(
                     #    (user) ->
@@ -95,23 +92,21 @@ menu_module = angular.module(
                     # )
                     event.preventDefault()
                     $state.go("login")
-            else if new_state.name == "login"
+            else if to_state.name == "login"
                 # logout if logged in
-                if icswUserService.is_authenticated()
+                if icswUserService.user_present()
                     icswUserService.logout()
                 icswUserService.force_logout()
-                $scope.is_authenticated = false
-                $scope.CURRENT_USER = icswUserService.get_anon_user()
+                $scope.CURRENT_USER = undefined
 
         )
-        $scope.$on("$stateChangeSuccess", (event, new_state) ->
-            if new_state.name == "logout"
+        $scope.$on("$stateChangeSuccess", (event, to_state) ->
+            if to_state.name == "logout"
                 blockUI.start("Logging out...")
                 icswUserService.logout().then(
                     (json) ->
                         blockUI.stop()
-                        $scope.is_authenticated = false
-                        $scope.CURRENT_USER = icswUserService.get_anon_user()
+                        $scope.CURRENT_USER = undefined
                 )
         )
         $scope.device_selection = () ->
@@ -720,7 +715,7 @@ menu_module = angular.module(
         )
         return menu_comp
     ]
-).directive("icswMenuDirective", ["icswReactMenuFactory", "icswAcessLevelService", "icswMenuProgressService", (icswReactMenuFactory, icswAcessLevelService, icswMenuProgressService) ->
+).directive("icswMenuDirective", ["icswReactMenuFactory", "icswAcessLevelService", "icswMenuProgressService", "$rootScope", (icswReactMenuFactory, icswAcessLevelService, icswMenuProgressService, $rootScope) ->
     return {
         restrict: "EA"
         replace: true
@@ -734,16 +729,12 @@ menu_module = angular.module(
                         React.createElement(icswReactMenuFactory, _user)
                         el[0]
                     )
-            scope.$watch("user", (new_val) ->
-                # console.log "new user", new_val
-                _user = new_val
+            $rootScope.$on("icsw.user.changed", (event, user) ->
+                _user = user
                 _render()
             )
-            scope.$watch(
-                () ->
-                    return icswAcessLevelService.acl_valid()
-                (new_val) ->
-                    _render()
+            $rootScope.$on("icsw.acls.changed", () ->
+                _render()
             )
             scope.$watch(
                 () ->

@@ -100,10 +100,11 @@
             <uib-tab heading="saved selections" select="enable_saved_selections()">
                 <form class="form-horizontal">
                     <h3 ng-show="!saved_selections.length" class="text-warning">No saved selections found</h3>
-                    <div ng-show="saved_selections.length">
+                    <div ng-if="saved_selections.length">
                         <h3 class="text-success">{{ saved_selections.length }} saved selections found</h3>
                         <div class="form-group">
                             <div class="col-md-12 controls">
+                                {{  vars }}
                                 <ui-select ng-model="vars.current" on-select="use_selection($item, $model)">
                                     <ui-select-match placeholder="Choose a selection...">{{ $select.selected.info }}</ui-select-match>
                                     <ui-select-choices repeat="sel in saved_selections">
