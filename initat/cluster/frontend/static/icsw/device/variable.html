@@ -132,9 +132,9 @@
                 <label class="control-label col-sm-3">Copy</label>
                 <div class="controls col-sm-8">
                     <ui-select ng-model="edit_obj._mon_copy" ng-change="take_mon_var()">
-                        <ui-select-match placeholder="select a monitoring variable">{{$select.selected.info}}
+                        <ui-select-match class="ui-select-match" placeholder="select a monitoring variable">{{$select.selected.info}}
                         </ui-select-match>
-                        <ui-select-choices repeat="entry.idx as entry in mon_vars | props_filter:{info:$select.search}">
+                        <ui-select-choices class="ui-select-choices" repeat="entry.idx as entry in mon_vars | props_filter:{info:$select.search}">
                             <div ng-bind-html="entry.info | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
@@ -157,8 +157,8 @@
                 </label>
                 <div class="controls col-sm-8">
                     <ui-select ng-model="edit_obj.var_type" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                        <ui-select-match placeholder="Variable type">{{$select.selected.long}}</ui-select-match>
-                        <ui-select-choices repeat="value.short as value in valid_var_types| props_filter:{long:$select.search}">
+                        <ui-select-match class="ui-select-match" placeholder="Variable type">{{$select.selected.long}}</ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.short as value in valid_var_types| props_filter:{long:$select.search}">
                             <div ng-bind-html="value.long | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>

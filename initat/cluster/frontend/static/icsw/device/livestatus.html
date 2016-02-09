@@ -182,8 +182,8 @@
                 <div class="list-group-item">
                     Graph size:
                     <ui-select ng-model="gfx.size" style="width:200px;">
-                        <ui-select-match placeholder="choose size ...">{{ $select.selected }}</ui-select-match>
-                        <ui-select-choices repeat="value in gfx_sizes">
+                        <ui-select-match class="ui-select-match" placeholder="choose size ...">{{ $select.selected }}</ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value in gfx_sizes">
                             <div ng-bind-html="value"></div>
                         </ui-select-choices>
                     </ui-select>

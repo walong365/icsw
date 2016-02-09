@@ -41,16 +41,27 @@ menu_module = angular.module(
                 templateUrl: "icsw/login.html"
                 data:
                     pageTitle: "ICSW Logout"
-                # controller: ($scope) ->
-                #    console.log "lo", $scope
             }
         ).state(
             "main",
             {
                 url: "/main"
+                abstract: true
                 templateUrl: "icsw/main.html"
                 data:
                     pageTitle: "ICSW Main page"
+                resolve:
+                    user: ["$q", "icswUserService", ($q, icswUserService) ->
+                        _defer = $q.defer()
+                        icswUserService.load().then(
+                            (user) ->
+                                if user.idx
+                                    _defer.resolve(user)
+                                else
+                                    _defer.reject(user)
+                        )
+                        return _defer.promise
+                    ]
             }
         ).state(
             "simple1"

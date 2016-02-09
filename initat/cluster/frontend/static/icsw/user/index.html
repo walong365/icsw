@@ -4,6 +4,16 @@
     </div>
 </script>
 
+<script type="text/ng-template" id="icsw/main.html">
+    <div ui-view></div>
+</script>
+
+<script type="text/ng-template" id="icsw/main/dashboard.html">
+    <div id="center_deviceinfo" ng-controller="icswDeviceInfoOverviewCtrl">
+        <index-view ng-controller="icswUserIndexCtrl"></index-view>
+    </div>
+</script>
+
 <script type="text/ng-template" id="icsw.dashboard.quicklinks">
     <ul class="list-group">
         <li class="list-group-item">

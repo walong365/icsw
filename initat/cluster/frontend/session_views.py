@@ -180,7 +180,7 @@ class sess_login(View):
             if _post.get("next_url", "").strip():
                 request.xml_response["redirect"] = _post["next_url"]
             else:
-                request.xml_response["redirect"] = "main"
+                request.xml_response["redirect"] = "main.dashboard"
 
     @classmethod
     def _check_login_data(cls, request, username, password):

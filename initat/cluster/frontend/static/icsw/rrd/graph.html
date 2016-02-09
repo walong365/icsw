@@ -148,8 +148,8 @@
                 <div class="col-md-9 controls">
                     <div class="input-group">
                         <ui-select ng-model="threshold.create_user_obj">
-                            <ui-select-match placeholder="Pick a user ...">{{ $select.selected.login + ' (' + $select.selected.email + ')'}}</ui-select-match>
-                            <ui-select-choices repeat="user in sensor.graph.user_list">
+                            <ui-select-match class="ui-select-match" placeholder="Pick a user ...">{{ $select.selected.login + ' (' + $select.selected.email + ')'}}</ui-select-match>
+                            <ui-select-choices class="ui-select-choices" repeat="user in sensor.graph.user_list">
                                 <div ng-bind-html="user.login + ' (' + user.email + ')'"></div>
                             </ui-select-choices>
                         </ui-select>
@@ -161,8 +161,8 @@
                 <div class="col-md-9 controls">
                     <div class="input-group">
                         <ui-select multiple ng-model="threshold.notify_users_obj">
-                            <ui-select-match placeholder="Pick some notify users...">{{ $item.login + ' (' + $item.email + ')'}}</ui-select-match>
-                            <ui-select-choices repeat="user in sensor.graph.user_list">
+                            <ui-select-match class="ui-select-match" placeholder="Pick some notify users...">{{ $item.login + ' (' + $item.email + ')'}}</ui-select-match>
+                            <ui-select-choices class="ui-select-choices" repeat="user in sensor.graph.user_list">
                                 <div ng-bind-html="user.login + ' (' + user.email + ')'"></div>
                             </ui-select-choices>
                         </ui-select>
@@ -179,8 +179,8 @@
                 <div class="col-md-9 controls">
                     <div class="input-group">
                         <ui-select ng-model="threshold.device_selection_obj">
-                            <ui-select-match placeholder="Pick a device selection...">{{ $select.selected.info }}</ui-select-match>
-                            <ui-select-choices repeat="sel in sensor.graph.selection_list">
+                            <ui-select-match class="ui-select-match" placeholder="Pick a device selection...">{{ $select.selected.info }}</ui-select-match>
+                            <ui-select-choices class="ui-select-choices" repeat="sel in sensor.graph.selection_list">
                                 <div ng-bind-html="sel.info"></div>
                             </ui-select-choices>
                         </ui-select>
@@ -206,8 +206,8 @@
                 <div class="col-md-3 controls">
                     <div class="input-group">
                         <ui-select ng-model="threshold.upper_sensor_action_obj">
-                            <ui-select-match placeholder="Pick one...">{{ $select.selected.name }}</ui-select-match>
-                            <ui-select-choices repeat="action in sensor.graph.sensor_action_list">
+                            <ui-select-match class="ui-select-match" placeholder="Pick one...">{{ $select.selected.name }}</ui-select-match>
+                            <ui-select-choices class="ui-select-choices" repeat="action in sensor.graph.sensor_action_list">
                                 <div ng-bind-html="action.name"></div>
                             </ui-select-choices>
                         </ui-select>
@@ -238,8 +238,8 @@
                 <div class="col-md-3 controls">
                     <div class="input-group">
                         <ui-select ng-model="threshold.lower_sensor_action_obj">
-                            <ui-select-match placeholder="Pick one...">{{ $select.selected.name }}</ui-select-match>
-                            <ui-select-choices repeat="action in sensor.graph.sensor_action_list">
+                            <ui-select-match class="ui-select-match" placeholder="Pick one...">{{ $select.selected.name }}</ui-select-match>
+                            <ui-select-choices class="ui-select-choices" repeat="action in sensor.graph.sensor_action_list">
                                 <div ng-bind-html="action.name"></div>
                             </ui-select-choices>
                         </ui-select>

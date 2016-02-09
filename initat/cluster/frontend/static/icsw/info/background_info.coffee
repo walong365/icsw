@@ -27,9 +27,9 @@ background_job_info_module = angular.module(
     ]
 ).config(["$stateProvider", ($stateProvider) ->
     $stateProvider.state(
-        "main/backgroundinfo",
+        "main.backgroundinfo",
           {
-              url: "/main/backgroundinfo"
+              url: "/backgroundinfo"
               templateUrl: "icsw/main/backgroundinfo.html"
               data:
                   pageTitle: "Background Job Information"

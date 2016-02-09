@@ -71,36 +71,19 @@ menu_module = angular.module(
         $scope.$on("$stateChangeStart", (event, to_state, to_params, from_state, from_params) ->
             to_main = if to_state.name.match(/^main/) then true else false
             from_main = if from_state.name.match(/^main/) then true else false
-            console.log to_state.name, to_main, from_state.name, from_main
+            # console.log to_state.name, to_main, from_state.name, from_main
             if to_main and not from_main
-                if icswUserService.user_present()
-                    icswUserService.load().then(
-                        (user) ->
-                            $scope.CURRENT_USER = user
-                    )
-                else
-                    $scope.CURRENT_USER = undefined
-                    # not working right now...
-                    # icswUserService.load().then(
-                    #    (user) ->
-                    #        console.log user
-                    #        if user.authenticated
-                    #            $scope.is_authenticated = true
-                    #            $scope.CURRENT_USER = user
-                    #            # delayed state init
-                    #            $state.go(new_state, to_params)
-                    # )
-                    event.preventDefault()
-                    $state.go("login")
+                true
             else if to_state.name == "login"
                 # logout if logged in
                 if icswUserService.user_present()
                     icswUserService.logout()
                 icswUserService.force_logout()
                 $scope.CURRENT_USER = undefined
-
         )
-        $scope.$on("$stateChangeSuccess", (event, to_state) ->
+        $scope.$on("$stateChangeSuccess", (event, to_state, to_params, from_state, from_params) ->
+            to_main = if to_state.name.match(/^main/) then true else false
+            from_main = if from_state.name.match(/^main/) then true else false
             if to_state.name == "logout"
                 blockUI.start("Logging out...")
                 icswUserService.logout().then(
@@ -108,6 +91,9 @@ menu_module = angular.module(
                         blockUI.stop()
                         $scope.CURRENT_USER = undefined
                 )
+            else if not from_main and to_main
+                $scope.CURRENT_USER = icswUserService.get()
+                # console.log to_params, $scope
         )
         $scope.device_selection = () ->
             icswLayoutSelectionDialogService.show_dialog($scope)
@@ -204,7 +190,7 @@ menu_module = angular.module(
             el.hide()
             scope.redirect_to_bgj_info = () ->
                 if scope.has_menu_permission('background_job.show_background')
-                    $state.go("main/backgroundinfo")
+                    $state.go("main.backgroundinfo")
                 return false
             el.removeClass()
             el.addClass("btn btn-xs btn-warning")
@@ -418,7 +404,7 @@ menu_module = angular.module(
                                         name: "Create new device"
                                         rights: ["user.modify_tree"]
                                         icon: "fa-plus-circle"
-                                        sref: "main/device/create"
+                                        sref: "main.device.create"
                                     }
                                     {}
                                     {
@@ -437,13 +423,13 @@ menu_module = angular.module(
                                         name: "Configurations"
                                         rights: ["device.change_config"]
                                         icon: "fa-check-square-o"
-                                        sref: "main/config/overview"
+                                        sref: "main.config.overview"
                                     }
                                     {
                                         name: "Device Configurations"
                                         rights: ["device.change_config"]
                                         icon: "fa-check-square"
-                                        sref: "main/device/config"
+                                        sref: "main.device.config"
                                     }
                                     {
                                         name: "Device variables"
@@ -455,7 +441,7 @@ menu_module = angular.module(
                                         name: "Device category"
                                         rights: ["user.modify_category_tree"]
                                         icon: "fa-table"
-                                        sref: "main/category/tree"
+                                        sref: "main.category.tree"
                                     }
                                     {
                                         name: "Device location"
@@ -467,7 +453,7 @@ menu_module = angular.module(
                                         name: "Device connections"
                                         rights: ["device.change_connection"]
                                         icon: "fa-plug"
-                                        sref: "main/device/connection"
+                                        sref: "main.device.connection"
                                     }
                                     {}
                                     {
@@ -623,7 +609,7 @@ menu_module = angular.module(
                                         rights: ["device.change_boot"]
                                         licenses: ["netboot"]
                                         icon: "fa-rocket"
-                                        sref: "main/deploy/boot"
+                                        sref: "main.deploy.boot"
                                     }
                                     {
                                         name: "Packet install"
@@ -691,7 +677,7 @@ menu_module = angular.module(
                                         name: "User"
                                         rights: ["group.group_admin"]
                                         icon: "fa-user"
-                                        sref: "main/user/tree"
+                                        sref: "main.user.tree"
                                     }
                                     {
                                         name: "History"
@@ -704,7 +690,7 @@ menu_module = angular.module(
                                         name: "License"
                                         rights: if user.is_superuser then [] else ["deny"]
                                         icon: "fa-key"
-                                        sref: "main/license/overview"
+                                        sref: "main.license.overview"
                                     }
                                 ]
                             }

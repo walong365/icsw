@@ -508,10 +508,10 @@
                         <div class="controls col-sm-9">
                             <div class="input-group" style="max-width:400px; min-width:240px;">
                                 <ui-select ng-model="edit_obj.mon_check_command_special" ng-disabled="false">
-                                    <ui-select-match placeholder="please select a special command">
+                                    <ui-select-match class="ui-select-match" placeholder="please select a special command">
                                         {{$select.selected.info}}
                                     </ui-select-match>
-                                    <ui-select-choices repeat="value.idx as value in get_mccs_list()| props_filter:{name:$select.search}" group-by="'group'">
+                                    <ui-select-choices class="ui-select-choices" repeat="value.idx as value in get_mccs_list()| props_filter:{name:$select.search}" group-by="'group'">
                                         <div ng-bind-html="value.info | highlight: $select.search"></div>
                                     </ui-select-choices>
                                 </ui-select>
@@ -581,10 +581,10 @@
                         <div class="controls col-sm-9">
                             <div class="input-group" style="max-width:400px; min-width:240px;">
                                 <ui-select ng-model="edit_obj.mon_service_templ" ng-disabled="false">
-                                    <ui-select-match placeholder="please select a service template">
+                                    <ui-select-match class="ui-select-match" placeholder="please select a service template">
                                         {{ $select.selected.name }}
                                     </ui-select-match>
-                                    <ui-select-choices repeat="value.idx as value in mon_service_templ | orderBy:'name'| props_filter:{name:$select.search}">
+                                    <ui-select-choices class="ui-select-choices" repeat="value.idx as value in mon_service_templ | orderBy:'name'| props_filter:{name:$select.search}">
                                         <div ng-bind-html="value.name | highlight: $select.search"></div>
                                     </ui-select-choices>
                                 </ui-select>
@@ -600,10 +600,10 @@
                         <div class="controls col-sm-9">
                             <div class="input-group" style="max-width:400px; min-width:240px;">
                                 <ui-select ng-model="edit_obj.event_handler" ng-disabled="false">
-                                    <ui-select-match placeholder="please select an event handler">
+                                    <ui-select-match class="ui-select-match" placeholder="please select an event handler">
                                         {{ $select.selected.name }}
                                     </ui-select-match>
-                                    <ui-select-choices repeat="value.idx as value in get_event_handlers(edit_obj)| props_filter:{name:$select.search}">
+                                    <ui-select-choices class="ui-select-choices" repeat="value.idx as value in get_event_handlers(edit_obj)| props_filter:{name:$select.search}">
                                         <div ng-bind-html="value.name | highlight: $select.search"></div>
                                     </ui-select-choices>
                                 </ui-select>

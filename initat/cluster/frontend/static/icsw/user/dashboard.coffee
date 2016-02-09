@@ -26,7 +26,17 @@ dashboard_module = angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular",
         "noVNC", "ui.select", "icsw.tools", "icsw.user.password", "icsw.user", "icsw.user.license",
     ]
-).controller("icswUserJobInfoCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$timeout", "$uibModal", "ICSW_URLS", "icswSimpleAjaxCall",
+).config(["$stateProvider", ($stateProvider) ->
+    $stateProvider.state(
+        "main.dashboard",
+          {
+              url: "/dashboard"
+              templateUrl: "icsw/main/dashboard.html"
+              data:
+                  pageTitle: "Dashboard"
+          }
+    )
+]).controller("icswUserJobInfoCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$timeout", "$uibModal", "ICSW_URLS", "icswSimpleAjaxCall",
     ($scope, $compile, $filter, $templateCache, Restangular, $q, $timeout, $uibModal, ICSW_URLS, icswSimpleAjaxCall)->
         $scope.jobs_waiting = []
         $scope.jobs_running = []

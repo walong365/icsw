@@ -765,8 +765,8 @@
                         </label>
                         <div class="controls col-sm-8">
                             <ui-select ng-model="_edit_obj.netdevice_speed" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                                <ui-select-match placeholder="select a target netdevice speed">{{$select.selected.info_string}}</ui-select-match>
-                                <ui-select-choices repeat="value.idx as value in netdevice_speeds">
+                                <ui-select-match class="ui-select-match" placeholder="select a target netdevice speed">{{$select.selected.info_string}}</ui-select-match>
+                                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in netdevice_speeds">
                                     <div ng-bind-html="value.info_string | highlight: $select.search"></div>
                                 </ui-select-choices>
                             </ui-select>
@@ -798,8 +798,8 @@
                         </label>
                         <div class="controls col-sm-8">
                             <ui-select ng-model="_edit_obj.desired_status" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                                <ui-select-match placeholder="select the desired status">{{$select.selected.info_string}}</ui-select-match>
-                                <ui-select-choices repeat="value.short as value in desired_stati">
+                                <ui-select-match class="ui-select-match" placeholder="select the desired status">{{$select.selected.info_string}}</ui-select-match>
+                                <ui-select-choices class="ui-select-choices" repeat="value.short as value in desired_stati">
                                     <div ng-bind-html="value.info_string | highlight: $select.search"></div>
                                 </ui-select-choices>
                             </ui-select>
@@ -846,8 +846,8 @@
                         <div class="controls col-sm-8">
                             <div class="input-group" style="max-width:400px; min-width:240px;">
                                 <ui-select ng-model="_edit_obj.master_device" ng-disabled="false">
-                                    <ui-select-match placeholder="VLAN master device">{{$select.selected.devname}}</ui-select-match>
-                                    <ui-select-choices repeat="value.idx as value in get_vlan_masters(_edit_obj)">
+                                    <ui-select-match class="ui-select-match" placeholder="VLAN master device">{{$select.selected.devname}}</ui-select-match>
+                                    <ui-select-choices class="ui-select-choices" repeat="value.idx as value in get_vlan_masters(_edit_obj)">
                                         <div ng-bind-html="value.devname | highlight: $select.search"></div>
                                     </ui-select-choices>
                                 </ui-select>
@@ -889,8 +889,8 @@
                         <div class="controls col-sm-8">
                             <div class="input-group" style="max-width:400px; min-width:240px;">
                                 <ui-select ng-model="_edit_obj.bridge_device" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                                    <ui-select-match placeholder="bridge master device">{{ $select.selected.devname }}</ui-select-match>
-                                    <ui-select-choices repeat="value.idx as value in get_bridge_masters(_edit_obj)">
+                                    <ui-select-match class="ui-select-match" placeholder="bridge master device">{{ $select.selected.devname }}</ui-select-match>
+                                    <ui-select-choices class="ui-select-choices" repeat="value.idx as value in get_bridge_masters(_edit_obj)">
                                         <div ng-bind-html="value.devname | highlight: $select.search"></div>
                                     </ui-select-choices>
                                 </ui-select>
@@ -922,8 +922,8 @@
                         <div class="controls col-sm-8">
                             <div class="input-group" style="max-width:400px; min-width:240px;">
                                 <ui-select ng-model="_edit_obj.bond_master" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                                    <ui-select-match placeholder="bond master device">{{ $select.selected.devname }}</ui-select-match>
-                                    <ui-select-choices repeat="value.idx as value in get_bond_masters(_edit_obj)">
+                                    <ui-select-match class="ui-select-match" placeholder="bond master device">{{ $select.selected.devname }}</ui-select-match>
+                                    <ui-select-choices class="ui-select-choices" repeat="value.idx as value in get_bond_masters(_edit_obj)">
                                         <div ng-bind-html="value.devname | highlight: $select.search"></div>
                                     </ui-select-choices>
                                 </ui-select>
@@ -1084,8 +1084,8 @@
                         </label>
                         <div class="controls col-sm-7">
                             <ui-select ng-model="edit_obj.network_type" style="max-width:400px; min-width:240px;" ng-disabled="has_master_network(edit_obj)">
-                                <ui-select-match placeholder="network type">{{$select.selected.description}}</ui-select-match>
-                                <ui-select-choices repeat="value.idx as value in config_service.network_types| props_filter:{description:$select.search}">
+                                <ui-select-match class="ui-select-match" placeholder="network type">{{$select.selected.description}}</ui-select-match>
+                                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.network_types| props_filter:{description:$select.search}">
                                     <div ng-bind-html="value.description | highlight: $select.search"></div>
                                 </ui-select-choices>
                             </ui-select>
@@ -1098,9 +1098,9 @@
                         <div class="controls col-sm-7">
                             <div class="input-group" style="max-width:400px; min-width:240px;">
                                 <ui-select ng-model="edit_obj.master_network" ng-disabled="false">
-                                    <ui-select-match placeholder="master network">{{$select.selected.identifier}}
+                                    <ui-select-match class="ui-select-match" placeholder="master network">{{$select.selected.identifier}}
                                     </ui-select-match>
-                                    <ui-select-choices repeat="value.idx as value in config_service.get_production_networks()| props_filter:{identifier:$select.search}">
+                                    <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.get_production_networks()| props_filter:{identifier:$select.search}">
                                         <div ng-bind-html="value.identifier | highlight: $select.search"></div>
                                     </ui-select-choices>
                                 </ui-select>
@@ -1143,7 +1143,7 @@
                         <div class="controls col-sm-7">
                             <div class="input-group" style="max-width:400px; min-width:240px;">
                                 <ui-select ng-model="edit_obj.preferred_domain_tree_node">
-                                    <ui-select-match placeholder="preferred DTN">{{$select.selected.info}}</ui-select-match>
+                                    <ui-select-match class="ui-select-match" placeholder="preferred DTN">{{$select.selected.info}}</ui-select-match>
                                     <ui-select-choices
                                         repeat="value.idx as value in config_service.domain_tree_node_list() | props_filter:{full_name:$select.search}"
                                         refresh="config_service.refresh_domain_tree_node()"
@@ -1165,8 +1165,8 @@
                         </label>
                         <div class="controls col-sm-7">
                             <ui-select multiple="multiple" ng-model="edit_obj.network_device_type" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                                <ui-select-match placeholder="network device types">{{$item.identifier}}</ui-select-match>
-                                <ui-select-choices repeat="value.idx as value in config_service.network_device_types| props_filter:{identifier:$select.search}">
+                                <ui-select-match class="ui-select-match" placeholder="network device types">{{$item.identifier}}</ui-select-match>
+                                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.network_device_types| props_filter:{identifier:$select.search}">
                                     <div ng-bind-html="value.identifier | highlight: $select.search"></div>
                                 </ui-select-choices>
                             </ui-select>
@@ -1232,8 +1232,8 @@
                 </label>
                 <div class="controls col-sm-7">
                     <ui-select ng-model="edit_obj.identifier" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                        <ui-select-match placeholder="network type type">{{$select.selected.name}}</ui-select-match>
-                        <ui-select-choices repeat="value.value as value in config_service.network_types">
+                        <ui-select-match class="ui-select-match" placeholder="network type type">{{$select.selected.name}}</ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.value as value in config_service.network_types">
                             <div ng-bind-html="value.name | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
@@ -1256,8 +1256,8 @@
                 </label>
                 <div class="controls col-sm-8">
                     <ui-select ng-model="_edit_obj.netdevice" style="max-width:400px; min-width:240px;" ng-disabled="!create_mode">-->
-                        <ui-select-match placeholder="netdevice">{{$select.selected.devname}}</ui-select-match>
-                        <ui-select-choices repeat="value.idx as value in _current_dev.netdevice_set">
+                        <ui-select-match class="ui-select-match" placeholder="netdevice">{{$select.selected.devname}}</ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in _current_dev.netdevice_set">
                             <div ng-bind-html="value.devname | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
@@ -1269,8 +1269,8 @@
                 </label>
                 <div class="controls col-sm-8">
                     <ui-select ng-model="_edit_obj.network" ng-change="network_changed(_edit_obj)" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                        <ui-select-match placeholder="network">{{$select.selected.info_string}}</ui-select-match>
-                        <ui-select-choices repeat="value.idx as value in networks| props_filter:{info_string:$select.search}" position="down">
+                        <ui-select-match class="ui-select-match" placeholder="network">{{$select.selected.info_string}}</ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in networks| props_filter:{info_string:$select.search}" position="down">
                             <div ng-bind-html="value.info_string | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
@@ -1295,8 +1295,8 @@
                 </label>
                 <div class="controls col-sm-8">
                     <ui-select ng-model="_edit_obj.domain_tree_node" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                        <ui-select-match placeholder="Domain tree node">{{$select.selected.tree_info}}</ui-select-match>
-                        <ui-select-choices repeat="value.idx as value in domain_tree_node| props_filter:{tree_info:$select.search}">
+                        <ui-select-match class="ui-select-match" placeholder="Domain tree node">{{$select.selected.tree_info}}</ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in domain_tree_node| props_filter:{tree_info:$select.search}">
                             <div ng-bind-html="value.tree_info | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>

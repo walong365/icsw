@@ -79,8 +79,8 @@
                 </label>
                 <div class="controls col-sm-7">
                     <ui-select ng-model="edit_obj.md_cache_mode" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                        <ui-select-match placeholder="please select a cache mode">{{ $select.selected.name }}</ui-select-match>
-                        <ui-select-choices repeat="value.idx as value in config_service.md_cache_modes| props_filter:{name:$select.search}">
+                        <ui-select-match class="ui-select-match" placeholder="please select a cache mode">{{ $select.selected.name }}</ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.md_cache_modes| props_filter:{name:$select.search}">
                             <div ng-bind-html="value.name | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
@@ -93,8 +93,8 @@
                 <div class="controls col-sm-7">
                     <div class="input-group" style="max-width:400px; min-width:240px;">
                         <ui-select ng-model="edit_obj.mon_device_templ" ng-disabled="false">
-                            <ui-select-match placeholder="please select a device template">{{ $select.selected.name }}</ui-select-match>
-                            <ui-select-choices repeat="value.idx as value in config_service.mon_device_templ| props_filter:{name:$select.search}">
+                            <ui-select-match class="ui-select-match" placeholder="please select a device template">{{ $select.selected.name }}</ui-select-match>
+                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.mon_device_templ| props_filter:{name:$select.search}">
                                 <div ng-bind-html="value.name | highlight: $select.search"></div>
                             </ui-select-choices>
                         </ui-select>
@@ -113,8 +113,8 @@
                 <div class="controls col-sm-7">
                     <div class="input-group" style="max-width:400px; min-width:240px;">
                         <ui-select ng-model="edit_obj.mon_ext_host" ng-disabled="false">
-                            <ui-select-match placeholder="please select an icon">{{ $select.selected.name }}</ui-select-match>
-                            <ui-select-choices repeat="value.idx as value in config_service.mon_ext_host| props_filter:{name:$select.search}">
+                            <ui-select-match class="ui-select-match" placeholder="please select an icon">{{ $select.selected.name }}</ui-select-match>
+                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.mon_ext_host| props_filter:{name:$select.search}">
                                 <img ng-src="{{ value.data_image }}"></img>
                                 <span ng-bind-html="value.name | highlight:$select.search">
 
@@ -135,8 +135,8 @@
                 <div class="controls col-sm-7">
                     <div class="input-group" style="max-width:400px; min-width:240px;">
                         <ui-select ng-model="edit_obj.monitor_server" ng-disabled="false">
-                            <ui-select-match placeholder="please select a monitoring server">{{ $select.selected.name }}</ui-select-match>
-                            <ui-select-choices repeat="value.idx as value in config_service.mon_server| props_filter:{name:$select.search}">
+                            <ui-select-match class="ui-select-match" placeholder="please select a monitoring server">{{ $select.selected.name }}</ui-select-match>
+                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.mon_server| props_filter:{name:$select.search}">
                                 <div ng-bind-html="value.name | highlight: $select.search"></div>
                             </ui-select-choices>
                         </ui-select>
@@ -217,8 +217,8 @@
                 <div class="controls col-sm-7">
                     <div class="input-group" style="max-width:400px; min-width:240px;">
                         <ui-select ng-model="edit_obj.nagvis_parent" ng-disabled="false">
-                            <ui-select-match placeholder="select a nagvis parent">{{ $select.selected.name }}</ui-select-match>
-                            <ui-select-choices repeat="value.idx as value in entries | orderBy:'name'| props_filter:{name:$select.search, automap_root_nagvis:true}">
+                            <ui-select-match class="ui-select-match" placeholder="select a nagvis parent">{{ $select.selected.name }}</ui-select-match>
+                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in entries | orderBy:'name'| props_filter:{name:$select.search, automap_root_nagvis:true}">
                                 <div ng-bind-html="value.name | highlight: $select.search"></div>
                             </ui-select-choices>
                         </ui-select>

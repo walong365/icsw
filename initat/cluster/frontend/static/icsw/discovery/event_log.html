@@ -114,8 +114,8 @@
                 </label>
             </span>
             <ui-select ng-model="tab_query_parameters[device_pk].logfile">
-                <ui-select-match placeholder="Filter by Logfile" allow-clear="true">{{$select.selected}}</ui-select-match>
-                <ui-select-choices repeat="key in entries.mode_specific_parameters.logfiles | filter:$select.search">
+                <ui-select-match class="ui-select-match" placeholder="Filter by Logfile" allow-clear="true">{{$select.selected}}</ui-select-match>
+                <ui-select-choices class="ui-select-choices" repeat="key in entries.mode_specific_parameters.logfiles | filter:$select.search">
                     <div ng-bind-html="key | highlight: $select.search"></div>
                 </ui-select-choices>
             </ui-select>
@@ -173,8 +173,8 @@
                 </label>
             </span>
             <ui-select ng-model="tab_query_parameters[device_pk].group_by">
-                <ui-select-match placeholder="Group results by.." allow-clear="true">{{$select.selected}}</ui-select-match>
-                <ui-select-choices repeat="key in entries.grouping_keys | filter:$select.search">
+                <ui-select-match class="ui-select-match" placeholder="Group results by.." allow-clear="true">{{$select.selected}}</ui-select-match>
+                <ui-select-choices class="ui-select-choices" repeat="key in entries.grouping_keys | filter:$select.search">
                     <div ng-bind-html="key | highlight: $select.search"></div>
                 </ui-select-choices>
             </ui-select>

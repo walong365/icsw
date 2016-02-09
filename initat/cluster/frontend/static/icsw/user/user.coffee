@@ -122,7 +122,7 @@ user_module = angular.module(
         "logout": () ->
             return logout_user().promise
         "get": () ->
-            return _user
+            return current_user
         "user_present": () ->
             return if current_user then true else false
         "force_logout": () ->

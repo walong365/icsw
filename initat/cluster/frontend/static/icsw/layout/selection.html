@@ -7,10 +7,11 @@
                         <input type="text" class="form-control" ng-disabled="is_loading" ng-model="vars.search_str" placeholder="search by name, IP or MAC" ng-change="update_search()"/>
                     </div>
                     <span class="input-group-btn">
-                        <button class="btn btn-success fa fa-chevron-right" title="Use selection (with resolve)" type="button" ng-click="call_devsel_func()" ng-show="devsel_receivers">
+                        <button class="btn btn-success btn-sm fa fa-chevron-right" title="Use selection (with resolve)" type="button" ng-click="call_devsel_func()" ng-show="devsel_receivers">
                              Apply
                         </button>
-                        <button class="btn btn-warning fa fa-remove" title="Clear selection" type="button" ng-click="clear_search()">
+                        <button class="btn btn-warning btn-sm fa fa-remove" title="Clear selection" type="button" ng-click="clear_search()">
+                             Clear
                         </button>
                     </span>
                 </div>
@@ -100,14 +101,13 @@
             <uib-tab heading="saved selections" select="enable_saved_selections()">
                 <form class="form-horizontal">
                     <h3 ng-show="!saved_selections.length" class="text-warning">No saved selections found</h3>
-                    <div ng-if="saved_selections.length">
+                    <div ng-show="saved_selections.length">
                         <h3 class="text-success">{{ saved_selections.length }} saved selections found</h3>
                         <div class="form-group">
                             <div class="col-md-12 controls">
-                                {{  vars }}
                                 <ui-select ng-model="vars.current" on-select="use_selection($item, $model)">
-                                    <ui-select-match placeholder="Choose a selection...">{{ $select.selected.info }}</ui-select-match>
-                                    <ui-select-choices repeat="sel in saved_selections">
+                                    <ui-select-match class="ui-select-match" placeholder="Choose a selection...">{{ $select.selected.info }}</ui-select-match>
+                                    <ui-select-choices class="ui-select-choices" repeat="sel in saved_selections">
                                         <div ng-bind-html="sel.info | highlight: $select.search"></div>
                                     </ui-select-choices>
                                 </ui-select>

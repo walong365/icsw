@@ -135,8 +135,8 @@
             <div class="controls col-sm-8">
                 <div class='input-group' style='max-width:400px; min-width:240px;'>
                     <ui-select ng-model='_edit_obj.device' ng-change="on_device_change()">
-                        <ui-select-match placeholder='Select a device'>{{ $select.selected.name }}</ui-select-match>
-                        <ui-select-choices repeat='value.idx as value in virtual_desktop_devices()' group-by='&#39;model_name&#39;'>
+                        <ui-select-match class="ui-select-match" placeholder='Select a device'>{{ $select.selected.name }}</ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat='value.idx as value in virtual_desktop_devices()' group-by='&#39;model_name&#39;'>
                             <div ng-bind-html='value.name | highlight: $select.search'></div>
                         </ui-select-choices>
                     </ui-select>
@@ -154,8 +154,8 @@
             </label>
             <div class="controls col-sm-8">
                 <ui-select ng-model='_edit_obj.virtual_desktop_protocol' style='max-width:400px; min-width:240px;'>
-                    <ui-select-match placeholder='Select an virtual desktop protocol'>{{ $select.selected.description }}</ui-select-match>
-                    <ui-select-choices repeat='value.idx as value in get_available_virtual_desktop_protocols(_edit_obj.device)' group-by='model_name'>
+                    <ui-select-match class="ui-select-match" placeholder='Select an virtual desktop protocol'>{{ $select.selected.description }}</ui-select-match>
+                    <ui-select-choices class="ui-select-choices" repeat='value.idx as value in get_available_virtual_desktop_protocols(_edit_obj.device)' group-by='model_name'>
                         <div ng-bind-html='value.description | highlight: $select.search'></div>
                     </ui-select-choices>
                 </ui-select>
@@ -183,8 +183,8 @@
             </label>
             <div class="controls col-sm-8">
                 <ui-select ng-model='_edit_obj.window_manager' style='max-width:400px; min-width:240px;'>
-                    <ui-select-match placeholder='Select a wm'>{{ $select.selected.description }}</ui-select-match>
-                    <ui-select-choices repeat='value.idx as value in get_available_window_managers(_edit_obj.device)' group-by='model_name'>
+                    <ui-select-match class="ui-select-match" placeholder='Select a wm'>{{ $select.selected.description }}</ui-select-match>
+                    <ui-select-choices class="ui-select-choices" repeat='value.idx as value in get_available_window_managers(_edit_obj.device)' group-by='model_name'>
                         <div ng-bind-html='value.description | highlight: $select.search'></div>
                     </ui-select-choices>
                 </ui-select>
@@ -196,8 +196,8 @@
             </label>
             <div class="controls col-sm-8">
                 <ui-select ng-model='_edit_obj.screen_size' style='max-width:400px; min-width:240px;'>
-                    <ui-select-match placeholder='...'>{{ $select.selected.name }}</ui-select-match>
-                    <ui-select-choices repeat='value as value in available_screen_sizes'>
+                    <ui-select-match class="ui-select-match" placeholder='...'>{{ $select.selected.name }}</ui-select-match>
+                    <ui-select-choices class="ui-select-choices" repeat='value as value in available_screen_sizes'>
                         <div ng-bind-html='value.name | highlight: $select.search'></div>
                     </ui-select-choices>
                 </ui-select>
@@ -551,8 +551,8 @@
                 </label>
                 <div class="controls col-sm-8">
                     <ui-select multiple="multiple" ng-model="_edit_obj.secondary_groups" style="max-width:400px; min-width:240px;">
-                        <ui-select-match placeholder="Select secondary groups">{{ $item.groupname }}</ui-select-match>
-                        <ui-select-choices repeat="value.idx as value in group_list| props_filter:{groupname:$select.search}">
+                        <ui-select-match class="ui-select-match" placeholder="Select secondary groups">{{ $item.groupname }}</ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in group_list| props_filter:{groupname:$select.search}">
                             <div ng-bind-html="value.groupname | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
@@ -629,8 +629,8 @@
                 </label>
                 <div class="controls col-sm-8">
                     <ui-select multiple="multiple" ng-model="_edit_obj.allowed_device_groups" style="max-width:400px; min-width:240px;">
-                        <ui-select-match placeholder="Select one or more device groups">{{$item.name}}</ui-select-match>
-                        <ui-select-choices repeat="value.idx as value in valid_device_groups()| props_filter:{name:$select.search}">
+                        <ui-select-match class="ui-select-match" placeholder="Select one or more device groups">{{$item.name}}</ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in valid_device_groups()| props_filter:{name:$select.search}">
                             <div ng-bind-html="value.name | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
@@ -643,9 +643,9 @@
                 <div class="controls col-sm-8">
                     <div class="input-group" style="max-width:400px; min-width:240px;">
                         <ui-select ng-model="_edit_obj.permission">
-                            <ui-select-match placeholder="Select a permission">{{$select.selected.info}}
+                            <ui-select-match class="ui-select-match" placeholder="Select a permission">{{$select.selected.info}}
                             </ui-select-match>
-                            <ui-select-choices repeat="value.idx as value in valid_user_csw_perms()| props_filter:{info:$select.search}" group-by="'model_name'">
+                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in valid_user_csw_perms()| props_filter:{info:$select.search}" group-by="'model_name'">
                                 <div ng-bind-html="value.info | highlight: $select.search"></div>
                             </ui-select-choices>
                         </ui-select>
@@ -664,8 +664,8 @@
                 <div class="controls col-sm-8">
                     <div class="input-group" style="max-width:400px; min-width:240px;">
                         <ui-select ng-model="_edit_obj.object">
-                            <ui-select-match placeholder="Select an object">{{$select.selected.name}}</ui-select-match>
-                            <ui-select-choices repeat="value.idx as value in object_list()| props_filter:{name:$select.search}" group-by="'group'">
+                            <ui-select-match class="ui-select-match" placeholder="Select an object">{{$select.selected.name}}</ui-select-match>
+                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in object_list()| props_filter:{name:$select.search}" group-by="'group'">
                                 <div ng-bind-html="value.name | highlight: $select.search"></div>
                             </ui-select-choices>
                         </ui-select>
@@ -683,8 +683,8 @@
                 </label>
                 <div class="controls col-sm-8">
                     <ui-select ng-model="_edit_obj.permission_level" style="max-width:400px; min-width:240px;">
-                        <ui-select-match placeholder="Select a permission mode">{{ $select.selected.info }}</ui-select-match>
-                        <ui-select-choices repeat="value.level as value in ac_levels">
+                        <ui-select-match class="ui-select-match" placeholder="Select a permission mode">{{ $select.selected.info }}</ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.level as value in ac_levels">
                             <div ng-bind-html="value.info | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
@@ -802,8 +802,8 @@
                 <div class="controls col-sm-8">
                     <div class="input-group" style="max-width:400px; min-width:240px;">
                         <ui-select ng-model="_edit_obj.parent_group">
-                            <ui-select-match placeholder="Select a parent group">{{ $select.selected.groupname }}</ui-select-match>
-                            <ui-select-choices repeat="value.idx as value in parent_groups[_edit_obj.idx]| props_filter:{groupname:$select.search}">
+                            <ui-select-match class="ui-select-match" placeholder="Select a parent group">{{ $select.selected.groupname }}</ui-select-match>
+                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in parent_groups[_edit_obj.idx]| props_filter:{groupname:$select.search}">
                                 <div ng-bind-html="value.groupname | highlight: $select.search"></div>
                             </ui-select-choices>
                         </ui-select>
@@ -821,8 +821,8 @@
                 </label>
                 <div class="controls col-sm-8">
                     <ui-select multiple="multiple" ng-model="_edit_obj.allowed_device_groups" style="max-width:400px; min-width:240px;">
-                        <ui-select-match placeholder="Select one or more device groups">{{ $item.name }}</ui-select-match>
-                        <ui-select-choices repeat="value.idx as value in valid_device_groups()| props_filter:{name:$select.search}">
+                        <ui-select-match class="ui-select-match" placeholder="Select one or more device groups">{{ $item.name }}</ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in valid_device_groups()| props_filter:{name:$select.search}">
                             <div ng-bind-html="value.name | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
@@ -835,8 +835,8 @@
                 <div class="controls col-sm-8">
                     <div class="input-group" style="max-width:400px; min-width:240px;">
                         <ui-select ng-model="_edit_obj.permission">
-                            <ui-select-match placeholder="Select a permission">{{ $select.selected.info }}</ui-select-match>
-                            <ui-select-choices repeat="value.idx as value in valid_group_csw_perms(_edit_obj)| props_filter:{info:$select.search}" group-by="'model_name'">
+                            <ui-select-match class="ui-select-match" placeholder="Select a permission">{{ $select.selected.info }}</ui-select-match>
+                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in valid_group_csw_perms(_edit_obj)| props_filter:{info:$select.search}" group-by="'model_name'">
                                 <div ng-bind-html="value.info | highlight: $select.search"></div>
                             </ui-select-choices>
                         </ui-select>
@@ -855,8 +855,8 @@
                 <div class="controls col-sm-8">
                     <div class="input-group" style="max-width:400px; min-width:240px;">
                         <ui-select ng-model="_edit_obj.object">
-                            <ui-select-match placeholder="Select an object">{{ $select.selected.name }}</ui-select-match>
-                            <ui-select-choices repeat="value.idx as value in object_list()| props_filter:{name:$select.search}" group-by="'group'">
+                            <ui-select-match class="ui-select-match" placeholder="Select an object">{{ $select.selected.name }}</ui-select-match>
+                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in object_list()| props_filter:{name:$select.search}" group-by="'group'">
                                 <div ng-bind-html="value.name | highlight: $select.search"></div>
                             </ui-select-choices>
                         </ui-select>
@@ -874,8 +874,8 @@
                 </label>
                 <div class="controls col-sm-8">
                     <ui-select ng-model="_edit_obj.permission_level" style="max-width:400px; min-width:240px;">
-                        <ui-select-match placeholder="Select a permission mode">{{ $select.selected.info }}</ui-select-match>
-                        <ui-select-choices repeat="value.level as value in ac_levels">
+                        <ui-select-match class="ui-select-match" placeholder="Select a permission mode">{{ $select.selected.info }}</ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.level as value in ac_levels">
                             <div ng-bind-html="value.info | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
