@@ -6,4 +6,4 @@
     gulp-if gulp-ng-annotate coffee-script del gulp-coffee gulp-sourcemaps \
     gulp-cssnano gulp-htmlmin gulp-gzip gulp-inject gulp-angular-filesort \
     gulp-webserver connect-modrewrite http-proxy-middleware gulp-exec \
-    gulp-changed gulp-remember gulp-cache gulp-bg
+    gulp-changed gulp-remember gulp-cache gulp-bg gulp-rename gulp-clean-dest del

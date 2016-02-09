@@ -19,6 +19,9 @@ mod_rewrite = require("connect-modrewrite")
 changed = require("gulp-changed")
 exec = require("gulp-exec")
 bg = require("gulp-bg")
+rename = require("gulp-rename")
+cleanDest = require("gulp-clean-dest")
+del = require("del")
 
 class SourceMap
     constructor: (@name, @dest, @sources, @type) ->
@@ -351,7 +354,21 @@ gulp.task("gifs", ["clean"], () ->
     )
 )
 
-gulp.task("index", ["js", "app", "media"], () ->
+gulp.task("dummyindex", ["clean"], ()->
+    return gulp.src("frontend/templates/main_reload.html").pipe(
+        rename(
+            {
+                basename: "main"
+            }
+        )
+    ).pipe(
+        gulp.dest(
+            DEPLOY_DIR
+        )
+    )
+)
+
+gulp.task("index", ["dummyindex", "js", "app", "media"], () ->
     target = gulp.src("frontend/templates/main.html")
     return target.pipe(
         inject(
@@ -361,6 +378,7 @@ gulp.task("index", ["js", "app", "media"], () ->
                     "!app.js",
                     "static/*.css",
                     "*.html",
+                    "!main.html",
                 ]
                 {
                     read: false
@@ -390,13 +408,20 @@ gulp.task("index", ["js", "app", "media"], () ->
     ).pipe(
         inject(
             gulp.src(
-                "#{DEPLOY_DIR}/*.html",
+                [
+                    "#{DEPLOY_DIR}/*.html",
+                    "!#{DEPLOY_DIR}/main.html",
+                ]
             )
             {
                 starttag: '<!-- inject:content:{{ext}} -->'
                 transform: (path, file) ->
                     return file.contents.toString("utf8")
             }
+        )
+    ).pipe(
+        cleanDest(
+            DEPLOY_DIR
         )
     ).pipe(
         gulp.dest(
@@ -428,6 +453,7 @@ gulp.task("serve", ["watch", "django"], () ->
         {
             root: "work"
             port: 8080
+            livereload: true
             fallback: "work/icsw/main.html"
             middleware: (connect, opt) ->
                 return [

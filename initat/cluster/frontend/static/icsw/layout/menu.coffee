@@ -71,7 +71,7 @@ menu_module = angular.module(
         $scope.$on("$stateChangeStart", (event, to_state, to_params, from_state, from_params) ->
             to_main = if to_state.name.match(/^main/) then true else false
             from_main = if from_state.name.match(/^main/) then true else false
-            # console.log to_state.name, to_main, from_state.name, from_main
+            console.log "start", to_state.name, to_main, from_state.name, from_main
             if to_main and not from_main
                 true
             else if to_state.name == "login"
@@ -84,6 +84,7 @@ menu_module = angular.module(
         $scope.$on("$stateChangeSuccess", (event, to_state, to_params, from_state, from_params) ->
             to_main = if to_state.name.match(/^main/) then true else false
             from_main = if from_state.name.match(/^main/) then true else false
+            console.log "success", to_state.name, to_main, from_state.name, from_main
             if to_state.name == "logout"
                 blockUI.start("Logging out...")
                 icswUserService.logout().then(
@@ -709,6 +710,7 @@ menu_module = angular.module(
             user: "="
         link: (scope, el, attrs) ->
             _user = undefined
+            _acls = undefined
             _render = () ->
                 if _user
                     ReactDOM.render(
@@ -716,10 +718,12 @@ menu_module = angular.module(
                         el[0]
                     )
             $rootScope.$on("icsw.user.changed", (event, user) ->
+                # console.log "uc", user
                 _user = user
                 _render()
             )
-            $rootScope.$on("icsw.acls.changed", () ->
+            $rootScope.$on("icsw.acls.changed", (event, acls) ->
+                # console.log "ac", acls
                 _render()
             )
             scope.$watch(

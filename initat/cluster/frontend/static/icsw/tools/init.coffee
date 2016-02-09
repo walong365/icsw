@@ -426,7 +426,7 @@ angular.module(
 ]).service("icswAcessLevelService", ["ICSW_URLS", "Restangular", "$q", "$rootScope", (ICSW_URLS, Restangular, $q, $rootScope) ->
     data = {}
     _changed = () ->
-        $rootScope.$emit("icsw.acls.changed")
+        $rootScope.$emit("icsw.acls.changed", data)
     _reset = () ->
         data.global_permissions = {}
         # these are not permissions for single objects, but the merged permission set of all objects
@@ -437,7 +437,11 @@ angular.module(
         data.routing_info = {}
         data.acls_are_valid = false
         _changed()
-    reload = () ->
+    _last_load = 0
+    reload = (force) ->
+        cur_time = moment().unix()
+        if Math.abs(cur_time - _last_load) < 5 and not force
+            return
         _reset()
         $q.all(
             [
@@ -448,6 +452,7 @@ angular.module(
             ]
         ).then(
             (r_data) ->
+                _last_load = moment().unix()
                 data.global_permissions = r_data[0]
                 data.license_data = r_data[1]
                 data.object_permissions = r_data[2]
@@ -457,7 +462,7 @@ angular.module(
                 _changed()
         )
     $rootScope.$on("icsw.user.changed", (event, user) ->
-        reload()
+        reload(true)
     )
     _reset()
     # see lines 205 ff in backbone/models/user.py
@@ -558,7 +563,8 @@ angular.module(
     return angular.extend({
         install: (scope) ->
             angular.extend(scope, func_dict)
-        reload: reload
+        reload: () ->
+            reload(false)
    }, func_dict)
 ]).service("initProduct", ["ICSW_URLS", "Restangular", (ICSW_URLS, Restangular) ->
     product = {}
