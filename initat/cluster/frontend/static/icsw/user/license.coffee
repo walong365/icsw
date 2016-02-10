@@ -25,13 +25,22 @@ angular.module(
     ]
 ).config(["$stateProvider", ($stateProvider) ->
     $stateProvider.state(
-        "main.licenseoverview",
-          {
-              url: "/licenseoverview"
-              templateUrl: "icsw/main/license/overview.html"
-              data:
-                  pageTitle: "License information"
-          }
+        "main.licenseoverview", {
+            url: "/licenseoverview"
+            templateUrl: "icsw/main/license/overview.html"
+            data:
+                pageTitle: "License information"
+                rights: (user, acls) ->
+                    if user.is_superuser
+                        return true
+                    else
+                        return false
+                menuEntry:
+                    menukey: "sys"
+                    name: "License"
+                    icon: "fa-key"
+                    ordering: 20
+        }
     )
 ]).controller("icswUserLicenseCtrl",
     ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$timeout", "$uibModal",

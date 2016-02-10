@@ -1,8 +1,8 @@
-# Copyright (C) 2012-2015 init.at
+# Copyright (C) 2012-2016 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
-# This file is part of webfrontend
+# This file is part of icsw-server
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -17,6 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+
 config_module = angular.module(
     "icsw.config.config",
     [
@@ -25,21 +26,33 @@ config_module = angular.module(
 ).config(["$stateProvider", ($stateProvider) ->
     $stateProvider.state(
         "main.configoverview",
-          {
-              url: "/configoverview"
-              templateUrl: "icsw/main/config/overview.html"
-              data:
-                  pageTitle: "Configuration Overview"
-          }
+            {
+                url: "/configoverview"
+                templateUrl: "icsw/main/config/overview.html"
+                data:
+                    pageTitle: "Configuration Overview"
+                    rights: ["device.change_config"]
+                    menuEntry:
+                        menukey: "dev"
+                        name: "Configurations"
+                        icon: "fa-check-square-o"
+                        ordering: 10
+            }
     )
     $stateProvider.state(
         "main.deviceconfig"
-          {
-              url: "/deviceconfig"
-              templateUrl: "icsw/main/device/config.html"
-              data:
-                  pageTitle: "Configure Device"
-          }
+            {
+                url: "/deviceconfig"
+                templateUrl: "icsw/main/device/config.html"
+                data:
+                    pageTitle: "Configure Device"
+                    rights: ["device.change_config"]
+                    menuEntry:
+                        menukey: "dev"
+                        name: "Device Configurations"
+                        icon: "fa-check-square"
+                        ordering: 10
+            }
     )
 ]).service("icswConfigMonCategoryTreeService", ["icswTreeConfig", (icswTreeConfig) ->
     class cat_tree extends icswTreeConfig

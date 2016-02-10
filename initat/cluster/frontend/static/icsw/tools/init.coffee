@@ -501,6 +501,7 @@ angular.module(
             p_name = "backbone.#{p_name}"
         return p_name of data.global_permissions or p_name of data.object_permissions
     has_service_type = (s_name) ->
+        console.log s_name, data.routing_info.service_types
         return s_name of data.routing_info.service_types
     has_valid_license = (license) ->
         if not data.acls_are_valid

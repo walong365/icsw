@@ -41,7 +41,7 @@ session_patterns = [
 ]
 
 rms_patterns = [
-    url(r"overview", rms_views.overview.as_view(), name="overview"),
+    url(r"get_header_dict", rms_views.get_header_dict.as_view(), name="get_header_dict"),
     url(r"get_header_xml", rms_views.get_header_xml.as_view(), name="get_header_xml"),
     url(r"get_rms_json", rms_views.get_rms_json.as_view(), name="get_rms_json"),
     url(r"get_rms_jobinfo", rms_views.get_rms_jobinfo.as_view(), name="get_rms_jobinfo"),

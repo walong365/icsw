@@ -26,12 +26,18 @@ angular.module(
 ).config(["$stateProvider", ($stateProvider) ->
     $stateProvider.state(
         "main.categorytree",
-          {
-              url: "/categorytree"
-              templateUrl: "icsw/main/category/tree.html"
-              data:
-                  pageTitle: "Category tree"
-          }
+            {
+                url: "/categorytree"
+                templateUrl: "icsw/main/category/tree.html"
+                data:
+                    pageTitle: "Category tree"
+                    rights: ["user.modify_category_tree"]
+                    menuEntry:
+                        menukey: "dev"
+                        name: "Device category"
+                        icon: "fa-table"
+                        ordering: 14
+            }
     )
 ]).service("icswDeviceCategoryTreeService", ["icswTreeConfig", "msgbus", (icswTreeConfig, msgbus) ->
     class category_tree extends icswTreeConfig

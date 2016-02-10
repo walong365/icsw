@@ -222,7 +222,7 @@ menu_module = angular.module(
             reload()
     }
 ]).factory("icswReactMenuFactory",
-    ["icswAcessLevelService", "ICSW_URLS", "icswSimpleAjaxCall", "blockUI", "icswMenuProgressService", (icswAcessLevelService, ICSW_URLS, icswSimpleAjaxCall, blockUI, icswMenuProgressService) ->
+    ["icswAcessLevelService", "ICSW_URLS", "icswSimpleAjaxCall", "blockUI", "icswMenuProgressService", "$state", (icswAcessLevelService, ICSW_URLS, icswSimpleAjaxCall, blockUI, icswMenuProgressService, $state) ->
         # console.log icswAcessLevelService
         {input, ul, li, a, span} = React.DOM
         rebuild_config = (cache_mode) ->
@@ -307,7 +307,7 @@ menu_module = angular.module(
                 if @props.href?
                     a_attrs = {href: @props.href, key: "a"}
                 else
-                    a_attrs = {href: "#" + @props.sref, key: "a"}
+                    a_attrs = {href: @props.sref, key: "a"}
                 if @props.target?
                     a_attrs["target"] = @props.target
                 return li(
@@ -339,7 +339,10 @@ menu_module = angular.module(
                         if not entry.disable?
                             _add = true
                             if entry.rights?
-                                _add = icswAcessLevelService.has_all_menu_permissions(entry.rights)
+                                if angular.isFunction(entry.rights)
+                                    _add = entry.rights(@props.user, @props.acls)
+                                else
+                                    _add = icswAcessLevelService.has_all_menu_permissions(entry.rights)
                             if entry.licenses? and _add
                                 _add = icswAcessLevelService.has_all_valid_licenses(entry.licenses)
                             if entry.service_types? and _add
@@ -382,321 +385,319 @@ menu_module = angular.module(
                     _res = null
                 return _res
         )
+
+        class MenuHeader
+            constructor: (@key, @name, @icon, @ordering) ->
+                @entries = []
+            add_entry: (entry) =>
+                @entries.push(entry)
+            get_react: (user, acls) =>
+                # order entries
+                return React.createElement(
+                    menu_header
+                    {
+                        key: @key
+                        name: @name
+                        icon: @icon
+                        entries: (_entry.get_react() for _entry in _.orderBy(@entries, "ordering"))
+                        user: user
+                        acls: acls
+                    }
+                )
+
+        class MenuEntry
+            constructor: (@name, @rights, @licenses, @service_types, @icon, @ordering, @sref) ->
+            get_react: () =>
+                return {
+                    name: @name
+                    rights: @rights
+                    icon: @icon
+                    sref: @sref
+                    licenses: @licenses
+                    service_types: @service_types
+                }
+
         menu_comp = React.createClass(
             displayName: "menubar"
             propTypes:
                 React.PropTypes.object.isRequired
             render: () ->
+                console.log "render"
+                menus = []
+                for state in $state.get()
+                    if state.data? and state.data.menuHeader?
+                        _hdr = state.data.menuHeader
+                        menus.push(new MenuHeader(
+                            _hdr.key
+                            _hdr.name
+                            _hdr.icon
+                            _hdr.ordering
+                        ))
+                for state in $state.get()
+                    if state.data? and state.data.menuEntry?
+                        # find menu
+                        _entry = state.data.menuEntry
+                        menu = (entry for entry in menus when entry.key == _entry.menukey)[0]
+                        menu.add_entry(
+                            new MenuEntry(
+                                _entry.name
+                                state.data.rights
+                                state.data.licenses
+                                state.data.service_types
+                                _entry.icon
+                                _entry.ordering
+                                $state.href(state)
+                            )
+                        )
                 # todo: check for service_type
-                user = @props
+                user = @props.user
+                acls = @props.acls
+                extra_menus = (menu.get_react(user, acls) for menu in _.orderBy(menus, "ordering"))
+                extra_menus.push(
+                    React.createElement(
+                        menu_header
+                        {
+                            key: "devold"
+                            name: "Device"
+                            icon: "fa-hdd-o"
+                            entries: [
+                                {}
+                                {
+                                    name: "General"
+                                    rights: ["user.modify_tree"]
+                                    icon: "fa-bars"
+                                    href: ICSW_URLS.DEVICE_DEVICE_GENERAL
+                                }
+                                {
+                                    name: "Network"
+                                    rights: ["device.change_network"]
+                                    icon: "fa-sitemap"
+                                    href: ICSW_URLS.NETWORK_DEVICE_NETWORK
+                                }
+                                #{
+                                #    name: "Device Configurations"
+                                #    rights: ["device.change_config"]
+                                #    icon: "fa-check-square"
+                                #    sref: "/main/deviceconfig"
+                                #}
+                                {
+                                    name: "Device variables"
+                                    rights: ["device.change_variables"]
+                                    icon: "fa-code"
+                                    href: ICSW_URLS.DEVICE_VARIABLES
+                                }
+                                #{
+                                #    name: "Device category"
+                                #    rights: ["user.modify_category_tree"]
+                                #    icon: "fa-table"
+                                #    sref: "/main/categorytree"
+                                #}
+                                {
+                                    name: "Device location"
+                                    rights: ["user.modify_category_tree"]
+                                    icon: "fa-map-marker"
+                                    href: ICSW_URLS.BASE_DEVICE_LOCATION
+                                }
+                                #{
+                                #    name: "Device connections"
+                                #    rights: ["device.change_connection"]
+                                #    icon: "fa-plug"
+                                #    sref: "/main/deviceconnection"
+                                #}
+                                {}
+                                {
+                                    name: "Device tree"
+                                    rights: ["user.modify_tree"]
+                                    icon: "fa-list"
+                                    href: ICSW_URLS.DEVICE_TREE_SMART
+                                }
+                                {
+                                    name: "Domain name tree"
+                                    rights: ["user.modify_domain_name_tree"]
+                                    icon: "fa-list-alt"
+                                    href: ICSW_URLS.NETWORK_DOMAIN_NAME_TREE
+                                }
+                                {}
+                                {
+                                    disable: true
+                                    name: "Discovery"
+                                    rights: ["device.discovery_server"]
+                                    href: ICSW_URLS.DISCOVERY_OVERVIEW
+                                }
+
+                            ]
+                        }
+                    )
+
+                )
+                extra_menus.push(
+                    React.createElement(
+                        menu_header
+                        {
+                            key: "mon",
+                            name: "Monitoring",
+                            icon: "fa-gears",
+                            entries: [
+                                {
+                                    name: "Basic setup"
+                                    rights: ["mon_check_command.setup_monitoring"]
+                                    icon: "fa-bars"
+                                    href: ICSW_URLS.MON_SETUP
+                                }
+                                {
+                                    name: "Device settings"
+                                    rights: ["mon_check_command.setup_monitoring", "device.change_monitoring"]
+                                    icon: "fa-laptop"
+                                    href: ICSW_URLS.MON_DEVICE_CONFIG
+                                }
+                                {}
+                                {
+                                    name: "Cluster / Dependency setup"
+                                    licenses: ["md_config_server"]
+                                    rights: ["mon_check_command.setup_monitoring"]
+                                    icon: "fa-chain"
+                                    href: ICSW_URLS.MON_SETUP_CLUSTER
+                                }
+                                {
+                                    name: "Escalation setup"
+                                    licenses: ["md_config_server"]
+                                    rights: ["mon_check_command.setup_monitoring"]
+                                    icon: "fa-bolt"
+                                    href: ICSW_URLS.MON_SETUP_ESCALATION
+                                }
+                                {}
+                                {
+                                    name: "Monitoring hints"
+                                    licenses: ["md_config_server"]
+                                    rights: ["mon_check_command.setup_monitoring"]
+                                    icon: "fa-info"
+                                    href: ICSW_URLS.MON_MONITORING_HINTS
+                                }
+                                {
+                                    name: "Disk"
+                                    licenses: ["md_config_server"]
+                                    rights: ["mon_check_command.setup_monitoring"]
+                                    icon: "fa-hdd-o"
+                                    href: ICSW_URLS.MON_MONITORING_DISK
+                                }
+                                {}
+                                {
+                                    name: "Icinga"
+                                    licenses: ["md_config_server"]
+                                    icon: "fa-share-alt"
+                                    href: ICSW_URLS.MON_CALL_ICINGA
+                                    target: "_blank"
+                                }
+                                {
+                                    rights: ["mon_check_command.setup_monitoring"]
+                                    licenses: ["md_config_server"]
+                                    name: menu_rebuild_mon_config
+                                }
+                                {
+                                    name: "Build Info"
+                                    rights: ["mon_check_command.setup_monitoring"]
+                                    icon: "fa-info-circle"
+                                    href: ICSW_URLS.MON_BUILD_INFO
+                                }
+                            ]
+                        }
+                    )
+                )
+                extra_menus.push(
+                    React.createElement(
+                        menu_header
+                        {
+                            key: "stat",
+                            name: "Status",
+                            icon: "fa-line-chart"
+                            entries: [
+                                {
+                                    name: "Monitoring dashboard"
+                                    rights: ["mon_check_command.show_monitoring_dashboard"]
+                                    licenses: ["monitoring_dashboard"]
+                                    icon: "fa-dot-circle-o"
+                                    href: ICSW_URLS.MON_LIVESTATUS
+                                }
+                                {
+                                    name: "Graph"
+                                    rights: ["backbone.device.show_graphs"]
+                                    licenses: ["graphing"]
+                                    icon: "fa-line-chart"
+                                    href: ICSW_URLS.MON_GRAPH
+                                }
+                                {
+                                    name: "Status History"
+                                    rights: ["backbone.device.show_status_history"]
+                                    licenses: ["reporting"]
+                                    icon: "fa-pie-chart"
+                                    href: ICSW_URLS.MON_STATUS_HISTORY
+                                }
+                                {}
+                                {
+                                    name: "Key performance indicators"
+                                    rights: ["kpi.kpi"]
+                                    licenses: ["kpi"]
+                                    icon: "fa-code-fork"
+                                    href: ICSW_URLS.BASE_KPI
+                                }
+                                {}
+                                {
+                                    name: "SysLog, WMI- and IPMI-Event logs"
+                                    rights: ["device.discovery_server"]
+                                    licenses: ["discovery_server"]
+                                    icon: "fa-list-alt"
+                                    href: ICSW_URLS.DISCOVERY_EVENT_LOG_OVERVIEW
+                                }
+                            ]
+                        }
+                    )
+                )
+                extra_menus.push(
+                    React.createElement(
+                        menu_header
+                        {
+                            key: "clus",
+                            name: "Cluster"
+                            icon: "fa-cubes"
+                            entries: [
+                                {
+                                    name: "Nodeboot"
+                                    rights: ["device.change_boot"]
+                                    licenses: ["netboot"]
+                                    icon: "fa-rocket"
+                                    sref: "/main/deployboot"
+                                }
+                                {
+                                    name: "Packet install"
+                                    rights: ["package.package_install"]
+                                    licenses: ["package_install"]
+                                    icon: "fa-download"
+                                    href: ICSW_URLS.PACK_REPO_OVERVIEW
+                                }
+                                {}
+                                {
+                                    name: "Images and Kernels"
+                                    rights: ["image.modify_images", "kernel.modify_kernels"]
+                                    licenses: ["netboot"]
+                                    icon: "fa-linux"
+                                    href: ICSW_URLS.SETUP_IMAGE_OVERVIEW
+                                }
+                                {
+                                    name: "Partition overview"
+                                    rights: ["partition_fs.modify_partitions"]
+                                    licenses: ["netboot"]
+                                    icon: "fa-database"
+                                    href: ICSW_URLS.SETUP_PARTITION_OVERVIEW
+                                }
+                            ]
+                        }
+                    )
+                )
                 # console.log icswAcessLevelService.has_menu_permission("user.modify_tree")
                 # console.log @props
                 _res = ul(
                     {key: "topmenu", className: "nav navbar-nav"}
-                    [
-                        React.createElement(
-                            menu_header
-                            {
-                                key: "dev"
-                                name: "Device"
-                                icon: "fa-hdd-o"
-                                entries: [
-                                    {
-                                        name: "Create new device"
-                                        rights: ["user.modify_tree"]
-                                        icon: "fa-plus-circle"
-                                        sref: "/main/devicecreate"
-                                    }
-                                    {}
-                                    {
-                                        name: "General"
-                                        rights: ["user.modify_tree"]
-                                        icon: "fa-bars"
-                                        href: ICSW_URLS.DEVICE_DEVICE_GENERAL
-                                    }
-                                    {
-                                        name: "Network"
-                                        rights: ["device.change_network"]
-                                        icon: "fa-sitemap"
-                                        href: ICSW_URLS.NETWORK_DEVICE_NETWORK
-                                    }
-                                    {
-                                        name: "Configurations"
-                                        rights: ["device.change_config"]
-                                        icon: "fa-check-square-o"
-                                        sref: "/main/configoverview"
-                                    }
-                                    {
-                                        name: "Device Configurations"
-                                        rights: ["device.change_config"]
-                                        icon: "fa-check-square"
-                                        sref: "/main/deviceconfig"
-                                    }
-                                    {
-                                        name: "Device variables"
-                                        rights: ["device.change_variables"]
-                                        icon: "fa-code"
-                                        href: ICSW_URLS.DEVICE_VARIABLES
-                                    }
-                                    {
-                                        name: "Device category"
-                                        rights: ["user.modify_category_tree"]
-                                        icon: "fa-table"
-                                        sref: "/main/categorytree"
-                                    }
-                                    {
-                                        name: "Device location"
-                                        rights: ["user.modify_category_tree"]
-                                        icon: "fa-map-marker"
-                                        href: ICSW_URLS.BASE_DEVICE_LOCATION
-                                    }
-                                    {
-                                        name: "Device connections"
-                                        rights: ["device.change_connection"]
-                                        icon: "fa-plug"
-                                        sref: "/main/deviceconnection"
-                                    }
-                                    {}
-                                    {
-                                        name: "Device tree"
-                                        rights: ["user.modify_tree"]
-                                        icon: "fa-list"
-                                        href: ICSW_URLS.DEVICE_TREE_SMART
-                                    }
-                                    {
-                                        name: "Domain name tree"
-                                        rights: ["user.modify_domain_name_tree"]
-                                        icon: "fa-list-alt"
-                                        href: ICSW_URLS.NETWORK_DOMAIN_NAME_TREE
-                                    }
-                                    {}
-                                    {
-                                        disable: true
-                                        name: "Discovery"
-                                        rights: ["device.discovery_server"]
-                                        href: ICSW_URLS.DISCOVERY_OVERVIEW
-                                    }
-
-                                ]
-                            }
-                        )
-                        React.createElement(
-                            menu_header
-                            {
-                                key: "mon",
-                                name: "Monitoring",
-                                icon: "fa-gears",
-                                entries: [
-                                    {
-                                        name: "Basic setup"
-                                        rights: ["mon_check_command.setup_monitoring"]
-                                        icon: "fa-bars"
-                                        href: ICSW_URLS.MON_SETUP
-                                    }
-                                    {
-                                        name: "Device settings"
-                                        rights: ["mon_check_command.setup_monitoring", "device.change_monitoring"]
-                                        icon: "fa-laptop"
-                                        href: ICSW_URLS.MON_DEVICE_CONFIG
-                                    }
-                                    {}
-                                    {
-                                        name: "Cluster / Dependency setup"
-                                        licenses: ["md_config_server"]
-                                        rights: ["mon_check_command.setup_monitoring"]
-                                        icon: "fa-chain"
-                                        href: ICSW_URLS.MON_SETUP_CLUSTER
-                                    }
-                                    {
-                                        name: "Escalation setup"
-                                        licenses: ["md_config_server"]
-                                        rights: ["mon_check_command.setup_monitoring"]
-                                        icon: "fa-bolt"
-                                        href: ICSW_URLS.MON_SETUP_ESCALATION
-                                    }
-                                    {}
-                                    {
-                                        name: "Monitoring hints"
-                                        licenses: ["md_config_server"]
-                                        rights: ["mon_check_command.setup_monitoring"]
-                                        icon: "fa-info"
-                                        href: ICSW_URLS.MON_MONITORING_HINTS
-                                    }
-                                    {
-                                        name: "Disk"
-                                        licenses: ["md_config_server"]
-                                        rights: ["mon_check_command.setup_monitoring"]
-                                        icon: "fa-hdd-o"
-                                        href: ICSW_URLS.MON_MONITORING_DISK
-                                    }
-                                    {}
-                                    {
-                                        name: "Icinga"
-                                        licenses: ["md_config_server"]
-                                        icon: "fa-share-alt"
-                                        href: ICSW_URLS.MON_CALL_ICINGA
-                                        target: "_blank"
-                                    }
-                                    {
-                                        rights: ["mon_check_command.setup_monitoring"]
-                                        licenses: ["md_config_server"]
-                                        name: menu_rebuild_mon_config
-                                    }
-                                    {
-                                        name: "Build Info"
-                                        rights: ["mon_check_command.setup_monitoring"]
-                                        icon: "fa-info-circle"
-                                        href: ICSW_URLS.MON_BUILD_INFO
-                                    }
-                                ]
-                            }
-                        )
-                        React.createElement(
-                            menu_header
-                            {
-                                key: "stat",
-                                name: "Status",
-                                icon: "fa-line-chart"
-                                entries: [
-                                    {
-                                        name: "Monitoring dashboard"
-                                        rights: ["mon_check_command.show_monitoring_dashboard"]
-                                        licenses: ["monitoring_dashboard"]
-                                        icon: "fa-dot-circle-o"
-                                        href: ICSW_URLS.MON_LIVESTATUS
-                                    }
-                                    {
-                                        name: "Graph"
-                                        rights: ["backbone.device.show_graphs"]
-                                        licenses: ["graphing"]
-                                        icon: "fa-line-chart"
-                                        href: ICSW_URLS.MON_GRAPH
-                                    }
-                                    {
-                                        name: "Status History"
-                                        rights: ["backbone.device.show_status_history"]
-                                        licenses: ["reporting"]
-                                        icon: "fa-pie-chart"
-                                        href: ICSW_URLS.MON_STATUS_HISTORY
-                                    }
-                                    {}
-                                    {
-                                        name: "Key performance indicators"
-                                        rights: ["kpi.kpi"]
-                                        licenses: ["kpi"]
-                                        icon: "fa-code-fork"
-                                        href: ICSW_URLS.BASE_KPI
-                                    }
-                                    {}
-                                    {
-                                        name: "SysLog, WMI- and IPMI-Event logs"
-                                        rights: ["device.discovery_server"]
-                                        licenses: ["discovery_server"]
-                                        icon: "fa-list-alt"
-                                        href: ICSW_URLS.DISCOVERY_EVENT_LOG_OVERVIEW
-                                    }
-                                ]
-                            }
-                        )
-                        React.createElement(
-                            menu_header
-                            {
-                                key: "clus",
-                                name: "Cluster"
-                                icon: "fa-cubes"
-                                entries: [
-                                    {
-                                        name: "Nodeboot"
-                                        rights: ["device.change_boot"]
-                                        licenses: ["netboot"]
-                                        icon: "fa-rocket"
-                                        sref: "/main/deployboot"
-                                    }
-                                    {
-                                        name: "Packet install"
-                                        rights: ["package.package_install"]
-                                        licenses: ["package_install"]
-                                        icon: "fa-download"
-                                        href: ICSW_URLS.PACK_REPO_OVERVIEW
-                                    }
-                                    {}
-                                    {
-                                        name: "Images and Kernels"
-                                        rights: ["image.modify_images", "kernel.modify_kernels"]
-                                        licenses: ["netboot"]
-                                        icon: "fa-linux"
-                                        href: ICSW_URLS.SETUP_IMAGE_OVERVIEW
-                                    }
-                                    {
-                                        name: "Partition overview"
-                                        rights: ["partition_fs.modify_partitions"]
-                                        licenses: ["netboot"]
-                                        icon: "fa-database"
-                                        href: ICSW_URLS.SETUP_PARTITION_OVERVIEW
-                                    }
-                                ]
-                            }
-                        )
-                        React.createElement(
-                            menu_header
-                            {
-                                key: "rms"
-                                name: "RMS"
-                                icon: "fa-list-ol"
-                                entries: [
-                                    {
-                                        name: "RMS overview"
-                                        licenses: ["rms"]
-                                        service_types: ["rms-server"]
-                                        icon: "fa-table"
-                                        href: ICSW_URLS.RMS_OVERVIEW
-                                    }
-                                    {
-                                        disable: true
-                                        name: "License overview"
-                                        licenses: ["ext_license"]
-                                        href: ICSW_URLS.LIC_OVERVIEW
-                                    }
-                                    {
-                                        name: "License LiveView"
-                                        licenses: ["ext_license"]
-                                        service_types: ["rms-server"]
-                                        icon: "fa-line-chart"
-                                        href: ICSW_URLS.LIC_LICENSE_LIVEVIEW
-                                    }
-                                ]
-                            }
-                        )
-                        React.createElement(
-                            menu_header
-                            {
-                                key: "sys"
-                                name: "System"
-                                icon: "fa-cog"
-                                entries: [
-                                    {
-                                        name: "User"
-                                        rights: ["group.group_admin"]
-                                        icon: "fa-user"
-                                        sref: "/main/usertree"
-                                    }
-                                    {
-                                        name: "History"
-                                        rights: ["user.snapshots"]
-                                        licenses: ["snapshot"]
-                                        icon: "fa-history"
-                                        href: ICSW_URLS.SYSTEM_HISTORY_OVERVIEW
-                                    }
-                                    {
-                                        name: "License"
-                                        rights: if user.is_superuser then [] else ["deny"]
-                                        icon: "fa-key"
-                                        sref: "/main/licenseoverview"
-                                    }
-                                ]
-                            }
-                        )
-                    ]
+                    extra_menus
                 )
                 return _res
         )
@@ -712,9 +713,9 @@ menu_module = angular.module(
             _user = undefined
             _acls = undefined
             _render = () ->
-                if _user
+                if _user and _acls
                     ReactDOM.render(
-                        React.createElement(icswReactMenuFactory, _user)
+                        React.createElement(icswReactMenuFactory, {"user": _user, "acls": _acls})
                         el[0]
                     )
             $rootScope.$on("icsw.user.changed", (event, user) ->
@@ -724,6 +725,7 @@ menu_module = angular.module(
             )
             $rootScope.$on("icsw.acls.changed", (event, acls) ->
                 # console.log "ac", acls
+                _acls = acls
                 _render()
             )
             scope.$watch(

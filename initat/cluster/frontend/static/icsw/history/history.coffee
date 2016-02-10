@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2015 init.at
+# Copyright (C) 2012-2016 init.at
 #
 # Send feedback to: <mallinger@init.at>
 #
@@ -19,9 +19,23 @@
 #
 angular.module(
     "icsw.history",
-    [
-    ]
-).directive("icswHistoryOverview", ['icswHistoryDataService', (icswHistoryDataService) ->
+    []
+).config(["$stateProvider", ($stateProvider) ->
+    $stateProvider.state(
+        "main.history", {
+            url: "/history"
+            template: "<icsw-history-overview></icsw-history-overview>"
+            data:
+                pageTitle: "Database history"
+                rights: ["user.snapshots"]
+                menuEntry:
+                    menukey: "sys"
+                    name: "History"
+                    icon: "fa-history"
+                    ordering: 10
+        }
+    )
+]).directive("icswHistoryOverview", ['icswHistoryDataService', (icswHistoryDataService) ->
     return  {
         restrict: 'EA'
         templateUrl: 'icsw.history.overview'

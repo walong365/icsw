@@ -48,22 +48,31 @@ user_module = angular.module(
     ]
 ).config(["$stateProvider", ($stateProvider) ->
     $stateProvider.state(
-        "main.useraccount",
-          {
-              url: "/useraccount"
-              templateUrl: "icsw/main/user/account.html"
-              data:
-                  pageTitle: "Account info"
-          }
+        "main.useraccount", {
+            url: "/useraccount"
+            templateUrl: "icsw/main/user/account.html"
+            data:
+                pageTitle: "Account info"
+        }
     )
     $stateProvider.state(
-        "main.usertree",
-          {
-              url: "/usertree"
-              templateUrl: "icsw/main/user/tree.html"
-              data:
-                  pageTitle: "User and Group tree"
-          }
+        "main.usertree", {
+            url: "/usertree"
+            templateUrl: "icsw/main/user/tree.html"
+            data:
+                pageTitle: "User and Group tree"
+                menuHeader:
+                    key: "sys"
+                    name: "System"
+                    icon: "fa-cog"
+                    ordering: 100
+                rights: ["group.group_admin"]
+                menuEntry:
+                    menukey: "sys"
+                    name: "User"
+                    icon: "fa-user"
+                    ordering: 0
+        }
     )
 ]).service("icswUserService", ["$q", "ICSW_URLS", "icswSimpleAjaxCall", "$rootScope", ($q, ICSW_URLS, icswSimpleAjaxCall, $rootScope) ->
     _last_load = 0

@@ -1,3 +1,23 @@
+# Copyright (C) 2016 init.at
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of icsw-server
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+
 gulp = require("gulp")
 del = require("del")
 concat = require("gulp-concat")
@@ -8,19 +28,19 @@ coffee = require("gulp-coffee")
 cssnano = require("gulp-cssnano")
 htmlmin = require("gulp-htmlmin")
 gzip = require("gulp-gzip")
-ngAnnotate = require('gulp-ng-annotate')
+ng_annotate = require('gulp-ng-annotate')
 inject = require("gulp-inject")
 minimist = require('minimist')
 connect = require("gulp-connect")
 middleware = require("http-proxy-middleware")
-angular_filesert = require("gulp-angular-filesort")
+angular_filesort = require("gulp-angular-filesort")
 sourcemaps = require("gulp-sourcemaps")
 mod_rewrite = require("connect-modrewrite")
 changed = require("gulp-changed")
 exec = require("gulp-exec")
 bg = require("gulp-bg")
 rename = require("gulp-rename")
-cleanDest = require("gulp-clean-dest")
+clean_dest = require("gulp-clean-dest")
 del = require("del")
 
 class SourceMap
@@ -432,7 +452,7 @@ gulp.task("index", ["dummyindex", "js", "app", "media"], () ->
             }
         )
     ).pipe(
-        cleanDest(
+        clean_dest(
             DEPLOY_DIR
         )
     ).pipe(
@@ -456,10 +476,9 @@ gulp.task("watch", ["index"], () ->
 bgtask = bg("./runserver.sh")
 gulp.task("django", bgtask)
 
-# not working
-# gulp.task("stop", () ->
-#     bgtask.stop()
-# )
+gulp.task("stop", () ->
+    bgtask.stop()
+)
 
 gulp.task("serve", ["watch", "django", "staticbuild"], () ->
     connect.server(

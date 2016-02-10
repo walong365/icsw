@@ -25,12 +25,18 @@ angular.module(
 ).config(["$stateProvider", ($stateProvider) ->
     $stateProvider.state(
         "main.deviceconnection"
-          {
-              url: "/deviceconnection"
-              templateUrl: "icsw/main/device/connection.html"
-              data:
-                  pageTitle: "Device Connections"
-          }
+            {
+                url: "/deviceconnection"
+                templateUrl: "icsw/main/device/connection.html"
+                data:
+                    pageTitle: "Device Connections"
+                    rights: ["device.change_connection"]
+                    menuEntry:
+                        menukey: "dev"
+                        name: "Device connections"
+                        icon: "fa-plug"
+                        ordering: 25
+            }
     )
 ]).controller("icswDeviceConnectionCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$uibModal", "blockUI", "icswTools", "ICSW_URLS", "icswSimpleAjaxCall", "icswUserService",
     ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $uibModal, blockUI, icswTools, ICSW_URLS, icswSimpleAjaxCall, icswUserService) ->

@@ -222,15 +222,35 @@ rms_module = angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.codemirror", "ui.bootstrap.datetimepicker", "angular-ladda"
     ]
 ).value('ui.config', {
-    codemirror : {
-        mode : 'text/x-php'
+    codemirror: {
+        mode: 'text/x-php'
         lineNumbers: true
         matchBrackets: true
     }
-}).controller("icswRmsOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$uibModal", "icswAcessLevelService", "$timeout", "$sce", "ICSW_URLS", "icswSimpleAjaxCall", "$window"
+}).config(["$stateProvider", ($stateProvider) ->
+    $stateProvider.state(
+        "main.rmsoverview", {
+            url: "/rmsoverview"
+            templateUrl: "icsw/main/rms/overview.html"
+            data:
+                pageTitle: "RMS Overview"
+                licenses: ["rms"]
+                service_types: ["rms-server"]
+                menuHeader:
+                    key: "rms"
+                    name: "RMS"
+                    icon: "fa-list-ol"
+                    ordering: 90
+                menuEntry:
+                    menukey: "rms"
+                    name: "RMS Overview"
+                    icon: "fa-table"
+                    ordering: 0
+        }
+    )
+]).controller("icswRmsOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$uibModal", "icswAcessLevelService", "$timeout", "$sce", "ICSW_URLS", "icswSimpleAjaxCall", "$window"
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $uibModal, icswAcessLevelService, $timeout, $sce, ICSW_URLS, icswSimpleAjaxCall, $window) ->
         icswAcessLevelService.install($scope)
-        $scope.rms_headers = angular.fromJson($templateCache.get("icsw.rms.rms_headers"))
         $scope.pagRun = paginatorSettings.get_paginator("run", $scope)
         $scope.pagWait = paginatorSettings.get_paginator("wait", $scope)
         $scope.pagDone = paginatorSettings.get_paginator("done", $scope)
@@ -296,17 +316,36 @@ rms_module = angular.module(
             137 : [-1, "killed", "glyphicon-remove-circle"]
             99 : [0, "rescheduled", "glyphicon-repeat"]
         }
-        $scope.running_struct = new header_struct("running", $scope.rms_headers.running_headers, [], ICSW_URLS, icswSimpleAjaxCall)
-        $scope.waiting_struct = new header_struct("waiting", $scope.rms_headers.waiting_headers, [], ICSW_URLS, icswSimpleAjaxCall)
-        $scope.done_struct = new header_struct("done", $scope.rms_headers.done_headers, [], ICSW_URLS, icswSimpleAjaxCall)
-        $scope.node_struct = new header_struct("node", $scope.rms_headers.node_headers, ["state"], ICSW_URLS, icswSimpleAjaxCall)
         $scope.rms_operator = false
-        $scope.structs = {
-            "running" : $scope.running_struct
-            "waiting" : $scope.waiting_struct
-            "done" : $scope.done_struct
-            "node" : $scope.node_struct
-        }
+        $q.all(
+            [
+                icswSimpleAjaxCall(
+                    url      : ICSW_URLS.RMS_GET_USER_SETTING
+                    dataType : "json"
+                )
+                icswSimpleAjaxCall(
+                    url: ICSW_URLS.RMS_GET_HEADER_DICT
+                    dataType: "json"
+                )
+            ]
+        ).then(
+            (data) ->
+                $scope.rms_headers = data[1]
+                $scope.running_struct = new header_struct("running", $scope.rms_headers.running_headers, [], ICSW_URLS, icswSimpleAjaxCall)
+                $scope.waiting_struct = new header_struct("waiting", $scope.rms_headers.waiting_headers, [], ICSW_URLS, icswSimpleAjaxCall)
+                $scope.done_struct = new header_struct("done", $scope.rms_headers.done_headers, [], ICSW_URLS, icswSimpleAjaxCall)
+                $scope.node_struct = new header_struct("node", $scope.rms_headers.node_headers, ["state"], ICSW_URLS, icswSimpleAjaxCall)
+                $scope.structs = {
+                    "running" : $scope.running_struct
+                    "waiting" : $scope.waiting_struct
+                    "done" : $scope.done_struct
+                    "node" : $scope.node_struct
+                }
+                for key, value of data[0]
+                    $scope.structs[key].set_disabled(value)
+                $scope.header_filter_set = true
+                $scope.reload()
+        )
         $scope.$on("icsw.disable_refresh", () ->
             $scope.refresh = false
         )
@@ -569,15 +608,6 @@ rms_module = angular.module(
             #        # destroy scopes
             #        $scope.refresh = true
             #        $.simplemodal.close()
-        icswSimpleAjaxCall(
-            url      : ICSW_URLS.RMS_GET_USER_SETTING
-            dataType : "json"
-        ).then((json) ->
-            for key, value of json
-                $scope.structs[key].set_disabled(value)
-            $scope.header_filter_set = true
-            $scope.reload()
-        )
 ]).directive("icswRmsJobRunningTable", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"

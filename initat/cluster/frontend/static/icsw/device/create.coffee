@@ -26,12 +26,23 @@ angular.module(
 ).config(["$stateProvider", ($stateProvider) ->
     $stateProvider.state(
         "main.devicecreate"
-         {
-             url: "/devicecreate"
-             templateUrl: "icsw/main/device/create.html"
-             data:
-                 pageTitle: "Create new Device"
-         }
+        {
+            url: "/devicecreate"
+            templateUrl: "icsw/main/device/create.html"
+            data:
+                pageTitle: "Create new Device"
+                menuHeader:
+                    key: "dev"
+                    name: "Device"
+                    icon: "fa-hdd-o"
+                    ordering: 0
+                rights: ["user.modify_tree"]
+                menuEntry:
+                    menukey: "dev"
+                    name: "Create new device"
+                    icon: "fa-plus-circle"
+                    ordering: 5
+        }
     )
 ]).controller("icswDeviceCreateCtrl", ["$scope", "$timeout", "$window", "$templateCache", "restDataSource", "$q", "blockUI", "ICSW_URLS", "icswSimpleAjaxCall",
     ($scope, $timeout, $window, $templateCache, restDataSource, $q, blockUI, ICSW_URLS, icswSimpleAjaxCall) ->

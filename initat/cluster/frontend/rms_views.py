@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -115,30 +115,21 @@ def get_node_options(request):
     return sge_tools.get_empty_node_options(merge_node_queue=True, show_type=True)
 
 
-def rms_overview(request, template):
-    res = rms_headers(request)
-    if sge_tools is not None:
-        for change_obj in RMS_ADDONS:
-            change_obj.modify_headers(res)
-    header_dict = {}
-    for _entry in res:
-        _sub_list = header_dict.setdefault(_entry.tag, [])
-        if len(_entry):
-            for _header in _entry[0]:
-                _sub_list.append((_header.tag, {key: value for key, value in _header.attrib.iteritems()}))
-    return render_me(
-        request,
-        template,
-        {
-            "RMS_HEADERS": json.dumps(header_dict)
-        }
-    )()
-
-
-class overview(View):
+class get_header_dict(View):
     @method_decorator(login_required)
-    def get(self, request):
-        return rms_overview(request, "rms_overview.html")
+    def post(self, request):
+        res = rms_headers(request)
+        if sge_tools is not None:
+            for change_obj in RMS_ADDONS:
+                change_obj.modify_headers(res)
+        header_dict = {}
+        for _entry in res:
+            _sub_list = header_dict.setdefault(_entry.tag, [])
+            if len(_entry):
+                for _header in _entry[0]:
+                    _sub_list.append((_header.tag, {key: value for key, value in _header.attrib.iteritems()}))
+
+        return HttpResponse(json.dumps(header_dict), content_type="application/json")
 
 
 def rms_headers(request):
