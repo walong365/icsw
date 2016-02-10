@@ -25,9 +25,9 @@ angular.module(
     ]
 ).config(["$stateProvider", ($stateProvider) ->
     $stateProvider.state(
-        "main/category/tree",
+        "main.categorytree",
           {
-              url: "/main/category/tree"
+              url: "/categorytree"
               templateUrl: "icsw/main/category/tree.html"
               data:
                   pageTitle: "Category tree"

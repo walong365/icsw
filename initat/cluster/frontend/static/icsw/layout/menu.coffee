@@ -405,7 +405,7 @@ menu_module = angular.module(
                                         name: "Create new device"
                                         rights: ["user.modify_tree"]
                                         icon: "fa-plus-circle"
-                                        sref: "main.device.create"
+                                        sref: "/main/devicecreate"
                                     }
                                     {}
                                     {
@@ -424,13 +424,13 @@ menu_module = angular.module(
                                         name: "Configurations"
                                         rights: ["device.change_config"]
                                         icon: "fa-check-square-o"
-                                        sref: "main.config.overview"
+                                        sref: "/main/configoverview"
                                     }
                                     {
                                         name: "Device Configurations"
                                         rights: ["device.change_config"]
                                         icon: "fa-check-square"
-                                        sref: "main.device.config"
+                                        sref: "/main/deviceconfig"
                                     }
                                     {
                                         name: "Device variables"
@@ -442,7 +442,7 @@ menu_module = angular.module(
                                         name: "Device category"
                                         rights: ["user.modify_category_tree"]
                                         icon: "fa-table"
-                                        sref: "main.category.tree"
+                                        sref: "/main/categorytree"
                                     }
                                     {
                                         name: "Device location"
@@ -454,7 +454,7 @@ menu_module = angular.module(
                                         name: "Device connections"
                                         rights: ["device.change_connection"]
                                         icon: "fa-plug"
-                                        sref: "main.device.connection"
+                                        sref: "/main/deviceconnection"
                                     }
                                     {}
                                     {
@@ -610,7 +610,7 @@ menu_module = angular.module(
                                         rights: ["device.change_boot"]
                                         licenses: ["netboot"]
                                         icon: "fa-rocket"
-                                        sref: "main.deploy.boot"
+                                        sref: "/main/deployboot"
                                     }
                                     {
                                         name: "Packet install"
@@ -678,7 +678,7 @@ menu_module = angular.module(
                                         name: "User"
                                         rights: ["group.group_admin"]
                                         icon: "fa-user"
-                                        sref: "main.user.tree"
+                                        sref: "/main/usertree"
                                     }
                                     {
                                         name: "History"
@@ -691,7 +691,7 @@ menu_module = angular.module(
                                         name: "License"
                                         rights: if user.is_superuser then [] else ["deny"]
                                         icon: "fa-key"
-                                        sref: "main.license.overview"
+                                        sref: "/main/licenseoverview"
                                     }
                                 ]
                             }

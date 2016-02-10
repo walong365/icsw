@@ -24,7 +24,7 @@ cleanDest = require("gulp-clean-dest")
 del = require("del")
 
 class SourceMap
-    constructor: (@name, @dest, @sources, @type) ->
+    constructor: (@name, @dest, @sources, @type, @static) ->
 
 sources = {
     "css_base": new SourceMap(
@@ -50,6 +50,7 @@ sources = {
             "frontend/static/css/main.css",
         ]
         "css"
+        true
     )
     "js_query_new": new SourceMap(
         "js_query_new"
@@ -59,6 +60,7 @@ sources = {
             "frontend/static/js/jquery-2.2.0.min.js",
         ]
         "js"
+        true
     )
     "js_base": new SourceMap(
         "js_base"
@@ -88,6 +90,7 @@ sources = {
             "frontend/static/js/react-dom-0.14.7.js",
         ]
         "js"
+        true
     )
     "js_extra1": new SourceMap(
         "js_extra1"
@@ -123,6 +126,7 @@ sources = {
             "frontend/static/js/bootstrap-dialog.js",
         ]
         "js"
+        true
     )
     "icsw_cs": new SourceMap(
         "icsw_cs"
@@ -131,6 +135,7 @@ sources = {
             "frontend/static/icsw/**/*.coffee"
         ]
         "coffee"
+        false
     )
     "icsw_html": new SourceMap(
         "icsw_html"
@@ -139,6 +144,7 @@ sources = {
             "frontend/static/icsw/**/*.html"
         ]
         "html"
+        false
     )
 }
 
@@ -232,13 +238,19 @@ create_task = (key) ->
     )
     return key
 
-_build_names = (
-    create_task(key) for key of sources
+gulp.task(
+    "staticbuild", (
+        create_task(key) for key of sources when sources[key].static
+    )
 )
 
-gulp.task("basebuild", _build_names)
+gulp.task(
+    "dynamicbuild", (
+        create_task(key) for key of sources when not sources[key].static
+    )
+)
 
-gulp.task("app", ["basebuild", "allurls"], () ->
+gulp.task("app", ["dynamicbuild", "staticbuild", "allurls"], () ->
     # add urls to app_gulp.js
     return gulp.src(
        "frontend/templates/js/app.js",
@@ -278,7 +290,7 @@ gulp.task("allurls", () ->
     )
 )
 
-gulp.task("css",  ["basebuild"], () ->
+gulp.task("css",  ["dynamicbuild"], () ->
     return gulp.src(
         ["#{COMPILE_DIR}/*.css"],
     # ).pipe(
@@ -444,11 +456,12 @@ gulp.task("watch", ["index"], () ->
 bgtask = bg("./runserver.sh")
 gulp.task("django", bgtask)
 
-gulp.task("stop", () ->
-    bgtask.stop()
-)
+# not working
+# gulp.task("stop", () ->
+#     bgtask.stop()
+# )
 
-gulp.task("serve", ["watch", "django"], () ->
+gulp.task("serve", ["watch", "django", "staticbuild"], () ->
     connect.server(
         {
             root: "work"

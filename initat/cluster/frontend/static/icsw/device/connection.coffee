@@ -24,9 +24,9 @@ angular.module(
     ]
 ).config(["$stateProvider", ($stateProvider) ->
     $stateProvider.state(
-        "main/device/connection"
+        "main.deviceconnection"
           {
-              url: "/main/device/connection"
+              url: "/deviceconnection"
               templateUrl: "icsw/main/device/connection.html"
               data:
                   pageTitle: "Device Connections"

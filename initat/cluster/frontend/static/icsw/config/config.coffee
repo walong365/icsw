@@ -24,18 +24,18 @@ config_module = angular.module(
     ]
 ).config(["$stateProvider", ($stateProvider) ->
     $stateProvider.state(
-        "main/config/overview",
+        "main.configoverview",
           {
-              url: "/main/config/overview"
+              url: "/configoverview"
               templateUrl: "icsw/main/config/overview.html"
               data:
                   pageTitle: "Configuration Overview"
           }
     )
     $stateProvider.state(
-        "main/device/config"
+        "main.deviceconfig"
           {
-              url: "/main/device/config"
+              url: "/deviceconfig"
               templateUrl: "icsw/main/device/config.html"
               data:
                   pageTitle: "Configure Device"

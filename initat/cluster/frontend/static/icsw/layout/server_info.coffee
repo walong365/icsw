@@ -24,9 +24,9 @@ angular.module(
     ]
 ).config(["$stateProvider", ($stateProvider) ->
     $stateProvider.state(
-        "main/serverinfo",
+        "main.serverinfo",
           {
-              url: "/main/serverinfo",
+              url: "/serverinfo",
               templateUrl: "icsw/main/serverinfo.html"
               data:
                   pageTitle: "Server info"

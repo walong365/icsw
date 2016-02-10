@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2015 init.at
+# Copyright (C) 2012-2016 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -25,13 +25,13 @@ angular.module(
     ]
 ).config(["$stateProvider", ($stateProvider) ->
     $stateProvider.state(
-        "main/device/create",
-          {
-              url: "/main/device/create"
-              templateUrl: "icsw/main/device/create.html"
-              data:
-                  pageTitle: "Create new Device"
-          }
+        "main.devicecreate"
+         {
+             url: "/devicecreate"
+             templateUrl: "icsw/main/device/create.html"
+             data:
+                 pageTitle: "Create new Device"
+         }
     )
 ]).controller("icswDeviceCreateCtrl", ["$scope", "$timeout", "$window", "$templateCache", "restDataSource", "$q", "blockUI", "ICSW_URLS", "icswSimpleAjaxCall",
     ($scope, $timeout, $window, $templateCache, restDataSource, $q, blockUI, ICSW_URLS, icswSimpleAjaxCall) ->

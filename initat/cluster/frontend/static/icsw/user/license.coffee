@@ -25,9 +25,9 @@ angular.module(
     ]
 ).config(["$stateProvider", ($stateProvider) ->
     $stateProvider.state(
-        "main/license/overview",
+        "main.licenseoverview",
           {
-              url: "/main/license/overview"
+              url: "/licenseoverview"
               templateUrl: "icsw/main/license/overview.html"
               data:
                   pageTitle: "License information"

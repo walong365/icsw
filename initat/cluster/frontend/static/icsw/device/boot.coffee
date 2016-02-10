@@ -55,9 +55,9 @@ angular.module(
     ]
 ).config(["$stateProvider", ($stateProvider) ->
     $stateProvider.state(
-        "main/deploy/boot",
+        "main.deployboot",
           {
-              url: "/main/deploy/boot"
+              url: "/deployboot"
               templateUrl: "icsw/main/deploy/boot.html"
               data:
                   pageTitle: "Boot nodes"

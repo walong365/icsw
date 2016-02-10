@@ -48,18 +48,18 @@ user_module = angular.module(
     ]
 ).config(["$stateProvider", ($stateProvider) ->
     $stateProvider.state(
-        "main/user/account",
+        "main.useraccount",
           {
-              url: "/main/user/account"
+              url: "/useraccount"
               templateUrl: "icsw/main/user/account.html"
               data:
                   pageTitle: "Account info"
           }
     )
     $stateProvider.state(
-        "main/user/tree",
+        "main.usertree",
           {
-              url: "/main/user/tree"
+              url: "/usertree"
               templateUrl: "icsw/main/user/tree.html"
               data:
                   pageTitle: "User and Group tree"

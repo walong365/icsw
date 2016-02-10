@@ -2,19 +2,21 @@
     <div ng-controller="icswLayoutSelectionController">
         <uib-tabset>
             <uib-tab heading="current selection">
-                <div class="input-group">
+                <dov class="input-group">
                     <div ng-class="search_ok && 'form-group' || 'form-group has-error'">
                         <input type="text" class="form-control" ng-disabled="is_loading" ng-model="vars.search_str" placeholder="search by name, IP or MAC" ng-change="update_search()"/>
                     </div>
                     <span class="input-group-btn">
-                        <button class="btn btn-success btn-sm fa fa-chevron-right" title="Use selection (with resolve)" type="button" ng-click="call_devsel_func()" ng-show="devsel_receivers">
+                        <button class="btn btn-success" title="Use selection (with resolve)" type="button" ng-click="call_devsel_func()" ng-show="devsel_receivers">
+                            <span class="fa fa-chevron-right"></span>
                              Apply
                         </button>
-                        <button class="btn btn-warning btn-sm fa fa-remove" title="Clear selection" type="button" ng-click="clear_search()">
+                        <button class="btn btn-warning" title="Clear selection" type="button" ng-click="clear_search()">
+                            <span class="fa fa-remove"></span>
                              Clear
                         </button>
                     </span>
-                </div>
+                </dov>
                 <span class="input-group">
                     <button class="btn btn-primary"
                             ng-disabled="!selection.any_selected()"
