@@ -22,7 +22,22 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "ui.bootstrap.datetimepicker", "icsw.tools.status_history_utils"
     ]
-).controller("icswDeviceStatusHistoryCtrl", ["$scope",
+).config(["$stateProvider", ($stateProvider) ->
+    $stateProvider.state(
+        "main.statushistory", {
+            url: "/statushistory"
+            templateUrl: "icsw/main/status_history.html"
+            data:
+                pageTitle: "Status History"
+                licenses: ["reporting"]
+                rights: ["backbone.device.show_status_history"]
+                menuEntry:
+                    menukey: "stat"
+                    icon: "fa-pie-chart"
+                    ordering: 60
+        }
+    )
+]).controller("icswDeviceStatusHistoryCtrl", ["$scope",
     ($scope) ->
         # controller takes care of setting the time frame.
         # watch this to get updates

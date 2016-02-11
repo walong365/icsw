@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -41,15 +41,6 @@ from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from initat.tools import logging_tools, server_command, process_tools
 
 logger = logging.getLogger("cluster.device")
-
-
-class DeviceGeneral(View):
-    def get(self, request):
-        return render_me(
-            request,
-            "device_general.html",
-            {}
-        )()
 
 
 class device_tree_smart(permission_required_mixin, View):

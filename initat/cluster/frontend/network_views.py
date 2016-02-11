@@ -43,14 +43,14 @@ from initat.tools import config_tools, ipvx_tools, logging_tools
 logger = logging.getLogger("cluster.network")
 
 
-class device_network(View):
-    @method_decorator(login_required)
-    def get(self, request):
-        return render_me(
-            request, "device_network.html", {
-                "device_object_level_permission": "backbone.device.change_network",
-            }
-        )()
+#class device_network(View):
+#    @method_decorator(login_required)
+#    def get(self, request):
+#        return render_me(
+#            request, "device_network.html", {
+#                "device_object_level_permission": "backbone.device.change_network",
+#            }
+#        )()
 
 
 class show_cluster_networks(permission_required_mixin, View):

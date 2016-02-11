@@ -293,16 +293,6 @@ class CategoryContents(ListAPIView):
         return Response(contents)
 
 
-class KpiView(View):
-    @method_decorator(login_required)
-    def get(self, request):
-        return render_me(
-            request,
-            "kpi.html",
-            {}
-        )()
-
-
 class GetKpiSourceData(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)

@@ -84,7 +84,6 @@ base_patterns = [
     url("^check_delete_object$", base_views.CheckDeleteObject.as_view(), name="check_delete_object"),
     url("^add_delete_request$", base_views.AddDeleteRequest.as_view(), name="add_delete_request"),
     url("^check_deletion_status$", base_views.CheckDeletionStatus.as_view(), name="check_deletion_status"),
-    url("^kpi$", base_views.KpiView.as_view(), name="kpi"),
     url("^GetKpiSourceData$", base_views.GetKpiSourceData.as_view(), name="GetKpiSourceData"),
     url("^CalculateKpiPreview$", base_views.CalculateKpiPreview.as_view(), name="CalculateKpiPreview"),
 ]
@@ -123,7 +122,6 @@ boot_patterns = [
 
 device_patterns = [
     # url("^device_tree$", device_views.device_tree.as_view(), name="tree"),
-    url("^DeviceGeneral$", device_views.DeviceGeneral.as_view(), name="DeviceGeneral"),
     url("^device_tree_smart$", device_views.device_tree_smart.as_view(), name="tree_smart"),
     url("^set_selection$", device_views.set_selection.as_view(), name="set_selection"),
     url("^select_parents$", device_views.select_parents.as_view(), name="select_parents"),
@@ -146,7 +144,7 @@ icsw_lic_patterns = [
 
 network_patterns = [
     url("^network$", network_views.show_cluster_networks.as_view(), name="show_networks"),
-    url("^dev_network$", network_views.device_network.as_view(), name="device_network"),
+    # url("^dev_network$", network_views.device_network.as_view(), name="device_network"),
     url("^copy_network$", network_views.copy_network.as_view(), name="copy_network"),
     url("^json_network$", network_views.json_network.as_view(), name="json_network"),
     url("^cdnt$", network_views.get_domain_name_tree.as_view(), name="domain_name_tree"),
@@ -171,9 +169,6 @@ monitoring_patterns = [
     url("^get_node_status", monitoring_views.get_node_status.as_view(), name="get_node_status"),
     url("^get_node_config", monitoring_views.get_node_config.as_view(), name="get_node_config"),
     url("^build_info$", monitoring_views.build_info.as_view(), name="build_info"),
-    url("^livestatus$", monitoring_views.livestatus.as_view(), name="livestatus"),
-    url("^StatusHistory$", monitoring_views.StatusHistory.as_view(), name="StatusHistory"),
-    url("^graph$", monitoring_views.Graph.as_view(), name="graph"),
     url("^overview$", monitoring_views.overview.as_view(), name="overview"),
     url("^resolve_name$", monitoring_views.resolve_name.as_view(), name="resolve_name"),
     url("^delete_hint$", monitoring_views.delete_hint.as_view(), name="delete_hint"),

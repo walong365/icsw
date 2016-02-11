@@ -354,7 +354,7 @@ gulp.task("js", ["app", "css"], () ->
     )
 )
 
-gulp.task("media", ["fonts", "images", "gifs"])
+gulp.task("media", ["fonts", "images", "gifs", "d3"])
 
 gulp.task("fonts", ["clean"], () ->
     return gulp.src(
@@ -362,6 +362,19 @@ gulp.task("fonts", ["clean"], () ->
     ).pipe(
         gulp.dest(
             DEPLOY_DIR + "/fonts"
+        )
+    )
+)
+
+gulp.task("d3", ["clean"], () ->
+    return gulp.src(
+        [
+            "frontend/static/js/d3js/d3.min.js"
+            "frontend/static/js/dimple.v2.1.6.min.js"
+        ]
+    ).pipe(
+        gulp.dest(
+            DEPLOY_DIR + "/static/"
         )
     )
 )

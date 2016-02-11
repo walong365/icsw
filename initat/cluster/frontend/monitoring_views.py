@@ -319,28 +319,6 @@ class get_node_status(View):
                 request.xml_response.error("no service or node_results", logger=logger)
 
 
-class livestatus(View):
-    @method_decorator(login_required)
-    def get(self, request):
-        return render_me(
-            request, "monitoring_livestatus.html", {}
-        )()
-
-
-class StatusHistory(permission_required_mixin, View):
-    def get(self, request):
-        return render_me(
-            request, "monitoring_status_history.html", {}
-        )()
-
-
-class Graph(permission_required_mixin, View):
-    def get(self, request):
-        return render_me(
-            request, "monitoring_graph.html", {}
-        )()
-
-
 class overview(View):
     @method_decorator(login_required)
     def get(self, request):

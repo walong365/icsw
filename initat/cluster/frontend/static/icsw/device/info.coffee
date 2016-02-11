@@ -25,6 +25,20 @@ angular.module(
 ).controller("icswDeviceInfoOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$timeout", "msgbus", "icswAcessLevelService", "ICSW_URLS",
     ($scope, $compile, $filter, $templateCache, Restangular, $q, $timeout, msgbus, icswAcessLevelService, ICSW_URLS) ->
         icswAcessLevelService.install($scope)
+]).config(["$stateProvider", ($stateProvider) ->
+    $stateProvider.state(
+        "main.deviceinfo", {
+            url: "/deviceinfo"
+            template: '<icsw-simple-device-info icsw-sel-man="0" icsw-sel-man-sel-mode="D"></icsw-simple-device-info>'
+            data:
+                pageTitle: "Device info"
+                rights: ["user.modify_tree"]
+                menuEntry:
+                    menukey: "dev"
+                    icon: "fa-bars"
+                    ordering: 10
+        }
+    )
 ]).service(
     "DeviceOverviewService",
     [

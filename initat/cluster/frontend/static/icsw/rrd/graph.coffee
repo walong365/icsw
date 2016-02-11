@@ -143,7 +143,22 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "icsw.rrd.graphsetting",
     ]
-).controller("icswGraphOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular",
+).config(["$stateProvider", ($stateProvider) ->
+    $stateProvider.state(
+        "main.graph", {
+            url: "/graph"
+            template: '<icsw-rrd-graph icsw-sel-man="0" icsw-sel-man-sel-mode="D"></icsw-rrd-graph>'
+            data:
+                pageTitle: "Graph"
+                licenses: ["graphing"]
+                rights: ["backbone.device.show_graphs"]
+                menuEntry:
+                    menukey: "stat"
+                    icon: "fa-line-chart"
+                    ordering: 40
+        }
+    )
+]).controller("icswGraphOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular",
         "$q", "$uibModal", "$timeout", "ICSW_URLS", "icswRRDGraphTreeService", "icswSimpleAjaxCall", "icswParseXMLResponseService",
         "toaster", "icswCachingCall", "icswUserService", "icswSavedSelectionService", "icswRrdGraphSettingService",
     (

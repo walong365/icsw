@@ -97,7 +97,22 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.router",
     ]
-).factory("icswLivestatusDevSelFactory", [() ->
+).config(["$stateProvider", ($stateProvider) ->
+    $stateProvider.state(
+        "main.livestatus", {
+            url: "/livestatus"
+            template: '<icsw-device-livestatus icsw-sel-man="0" icsw-sel-man-mode="d"></icsw-device-livestatus>'
+            data:
+                pageTitle: "Monitoring dashboard"
+                licenses: ["monitoring_dashboard"]
+                rights: ["mon_check_command.show_monitoring_dashboard"]
+                menuEntry:
+                    menukey: "stat"
+                    icon: "fa-dot-circle-o"
+                    ordering: 20
+        }
+    )
+]).factory("icswLivestatusDevSelFactory", [() ->
     return () ->
         _dev_sel = []
         _changed = 0

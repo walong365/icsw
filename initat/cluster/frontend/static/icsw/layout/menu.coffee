@@ -440,7 +440,7 @@ menu_module = angular.module(
                         menu = (entry for entry in menus when entry.key == _entry.menukey)[0]
                         menu.add_entry(
                             new MenuEntry(
-                                _entry.name
+                                _entry.name or state.data.pageTitle
                                 state.data.rights
                                 state.data.licenses
                                 state.data.service_types
@@ -462,18 +462,18 @@ menu_module = angular.module(
                             icon: "fa-hdd-o"
                             entries: [
                                 {}
-                                {
-                                    name: "General"
-                                    rights: ["user.modify_tree"]
-                                    icon: "fa-bars"
-                                    href: ICSW_URLS.DEVICE_DEVICE_GENERAL
-                                }
-                                {
-                                    name: "Network"
-                                    rights: ["device.change_network"]
-                                    icon: "fa-sitemap"
-                                    href: ICSW_URLS.NETWORK_DEVICE_NETWORK
-                                }
+                                #{
+                                #    name: "General"
+                                #    rights: ["user.modify_tree"]
+                                #    icon: "fa-bars"
+                                #    href: ICSW_URLS.DEVICE_DEVICE_GENERAL
+                                #}
+                                #{
+                                #    name: "Network"
+                                #    rights: ["device.change_network"]
+                                #    icon: "fa-sitemap"
+                                #    href: ICSW_URLS.NETWORK_DEVICE_NETWORK
+                                #}
                                 #{
                                 #    name: "Device Configurations"
                                 #    rights: ["device.change_config"]
@@ -598,55 +598,6 @@ menu_module = angular.module(
                                     rights: ["mon_check_command.setup_monitoring"]
                                     icon: "fa-info-circle"
                                     href: ICSW_URLS.MON_BUILD_INFO
-                                }
-                            ]
-                        }
-                    )
-                )
-                extra_menus.push(
-                    React.createElement(
-                        menu_header
-                        {
-                            key: "stat",
-                            name: "Status",
-                            icon: "fa-line-chart"
-                            entries: [
-                                {
-                                    name: "Monitoring dashboard"
-                                    rights: ["mon_check_command.show_monitoring_dashboard"]
-                                    licenses: ["monitoring_dashboard"]
-                                    icon: "fa-dot-circle-o"
-                                    href: ICSW_URLS.MON_LIVESTATUS
-                                }
-                                {
-                                    name: "Graph"
-                                    rights: ["backbone.device.show_graphs"]
-                                    licenses: ["graphing"]
-                                    icon: "fa-line-chart"
-                                    href: ICSW_URLS.MON_GRAPH
-                                }
-                                {
-                                    name: "Status History"
-                                    rights: ["backbone.device.show_status_history"]
-                                    licenses: ["reporting"]
-                                    icon: "fa-pie-chart"
-                                    href: ICSW_URLS.MON_STATUS_HISTORY
-                                }
-                                {}
-                                {
-                                    name: "Key performance indicators"
-                                    rights: ["kpi.kpi"]
-                                    licenses: ["kpi"]
-                                    icon: "fa-code-fork"
-                                    href: ICSW_URLS.BASE_KPI
-                                }
-                                {}
-                                {
-                                    name: "SysLog, WMI- and IPMI-Event logs"
-                                    rights: ["device.discovery_server"]
-                                    licenses: ["discovery_server"]
-                                    icon: "fa-list-alt"
-                                    href: ICSW_URLS.DISCOVERY_EVENT_LOG_OVERVIEW
                                 }
                             ]
                         }

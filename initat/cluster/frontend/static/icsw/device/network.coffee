@@ -130,7 +130,21 @@ angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "icsw.d3", "ui.select",
         "angular-ladda", "icsw.dragging", "monospaced.mousewheel", "icsw.svg_tools", "icsw.tools", "icsw.tools.table",
     ]
-).controller("icswDeviceNetworkCtrl",
+).config(["$stateProvider", ($stateProvider) ->
+    $stateProvider.state(
+        "main.devicenetwork", {
+            url: "/network"
+            template: '<icsw-device-network-total></icsw-device-network-total>'
+            data:
+                pageTitle: "Network"
+                rights: ["device.change_network"]
+                menuEntry:
+                    menukey: "dev"
+                    icon: "fa-sitemap"
+                    ordering: 30
+        }
+    )
+]).controller("icswDeviceNetworkCtrl",
     ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource",
      "$q", "$uibModal", "icswAcessLevelService", "$rootScope", "$timeout", "blockUI", "icswTools", "icswToolsButtonConfigService", "ICSW_URLS",
     "icswSimpleAjaxCall", "icswToolsSimpleModalService",
