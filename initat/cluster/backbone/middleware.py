@@ -1,7 +1,30 @@
+# Django settings for ICSW
+#
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2010-2016 Andreas Lang-Nevyjel
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+
 """ middleware for django """
 
 # from backend.models import site_call_log, session_call_log
 import fcntl
+import time
 import struct
 import termios
 
@@ -75,7 +98,7 @@ def get_terminal_size():
     return width, height
 
 
-def show_database_calls(**kwargs):
+def show_database_calls(*args, **kwargs):
     DB_DEBUG = False
 
     def output(s):
@@ -90,6 +113,8 @@ def show_database_calls(**kwargs):
         DB_DEBUG = settings.DEBUG
     if DB_DEBUG:
         from django.db import connection  # @Reimport
+        _path = kwargs.get("path", "/unknown")
+        _runtime = kwargs.get("runtime", 0.0)
         full = kwargs.get("full", False)
         tot_time = sum([float(entry["time"]) for entry in connection.queries], 0.)
         try:
@@ -141,12 +166,22 @@ def show_database_calls(**kwargs):
                         out_str
                     )
                 )
+        _line = "{} {:4d} {:8.4f} {:<50s}\n".format(
+            time.ctime(),
+            len(connection.queries),
+            _runtime,
+            _path
+        )
+        file("database_calls", "a").write(_line)
     else:
         output("django.db.connection not loaded in backbone.middleware.py")
 
 
 class database_debug(object):
+    def process_request(self, request):
+        request.__start_time = time.time()
+
     def process_response(self, request, response):
         if settings.DEBUG and not request.path.count(settings.MEDIA_URL) and connection.queries:
-            show_database_calls()
+            show_database_calls(path=request.path, runtime=time.time() - request.__start_time)
         return response
