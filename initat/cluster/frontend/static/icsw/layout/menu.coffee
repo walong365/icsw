@@ -308,8 +308,6 @@ menu_module = angular.module(
                     a_attrs = {href: @props.href, key: "a"}
                 else
                     a_attrs = {href: @props.sref, key: "a"}
-                if @props.target?
-                    a_attrs["target"] = @props.target
                 return li(
                     {key: "li"}
                     [
@@ -453,79 +451,6 @@ menu_module = angular.module(
                 user = @props.user
                 acls = @props.acls
                 extra_menus = (menu.get_react(user, acls) for menu in _.orderBy(menus, "ordering"))
-                extra_menus.push(
-                    React.createElement(
-                        menu_header
-                        {
-                            key: "mon",
-                            name: "Monitoring",
-                            icon: "fa-gears",
-                            entries: [
-                                {
-                                    name: "Basic setup"
-                                    rights: ["mon_check_command.setup_monitoring"]
-                                    icon: "fa-bars"
-                                    href: ICSW_URLS.MON_SETUP
-                                }
-                                {
-                                    name: "Device settings"
-                                    rights: ["mon_check_command.setup_monitoring", "device.change_monitoring"]
-                                    icon: "fa-laptop"
-                                    href: ICSW_URLS.MON_DEVICE_CONFIG
-                                }
-                                {}
-                                {
-                                    name: "Cluster / Dependency setup"
-                                    licenses: ["md_config_server"]
-                                    rights: ["mon_check_command.setup_monitoring"]
-                                    icon: "fa-chain"
-                                    href: ICSW_URLS.MON_SETUP_CLUSTER
-                                }
-                                {
-                                    name: "Escalation setup"
-                                    licenses: ["md_config_server"]
-                                    rights: ["mon_check_command.setup_monitoring"]
-                                    icon: "fa-bolt"
-                                    href: ICSW_URLS.MON_SETUP_ESCALATION
-                                }
-                                {}
-                                {
-                                    name: "Monitoring hints"
-                                    licenses: ["md_config_server"]
-                                    rights: ["mon_check_command.setup_monitoring"]
-                                    icon: "fa-info"
-                                    href: ICSW_URLS.MON_MONITORING_HINTS
-                                }
-                                {
-                                    name: "Disk"
-                                    licenses: ["md_config_server"]
-                                    rights: ["mon_check_command.setup_monitoring"]
-                                    icon: "fa-hdd-o"
-                                    href: ICSW_URLS.MON_MONITORING_DISK
-                                }
-                                {}
-                                {
-                                    name: "Icinga"
-                                    licenses: ["md_config_server"]
-                                    icon: "fa-share-alt"
-                                    href: ICSW_URLS.MON_CALL_ICINGA
-                                    target: "_blank"
-                                }
-                                {
-                                    rights: ["mon_check_command.setup_monitoring"]
-                                    licenses: ["md_config_server"]
-                                    name: menu_rebuild_mon_config
-                                }
-                                {
-                                    name: "Build Info"
-                                    rights: ["mon_check_command.setup_monitoring"]
-                                    icon: "fa-info-circle"
-                                    href: ICSW_URLS.MON_BUILD_INFO
-                                }
-                            ]
-                        }
-                    )
-                )
                 # console.log icswAcessLevelService.has_menu_permission("user.modify_tree")
                 # console.log @props
                 _res = ul(

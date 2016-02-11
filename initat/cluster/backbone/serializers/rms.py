@@ -208,4 +208,3 @@ class ext_license_version_state_coarse_serializer(serializers.ModelSerializer):
 
     class Meta:
         model = ext_license_version_state_coarse
-

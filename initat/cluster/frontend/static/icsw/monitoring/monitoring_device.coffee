@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2015 init.at
+# Copyright (C) 2012-2016 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -28,6 +28,21 @@ monitoring_device_module = angular.module(
         restrict: "EA"
         templateUrl: "icsw.monitoring.device"
     }
+]).config(["$stateProvider", ($stateProvider) ->
+    $stateProvider.state(
+        "main.monitordevice", {
+            url: "/monitordevice"
+            template: "<icsw-monitoring-device></icsw-monitoring-device>"
+            data:
+                pageTitle: "Monitoring Device settings"
+                rights: ["mon_check_command.setup_monitoring", "device.change_monitoring"]
+                menuEntry:
+                    menukey: "mon"
+                    name: "Device settings"
+                    icon: "fa-laptop"
+                    ordering: 10
+        }
+    )
 ]).service('icswMonitoringDeviceService', ["ICSW_URLS", "Restangular", "msgbus", "icswSimpleAjaxCall", (ICSW_URLS, Restangular, msgbus, icswSimpleAjaxCall) ->
     get_rest = (url, opts={}) -> return Restangular.all(url).getList(opts).$object
     data = {

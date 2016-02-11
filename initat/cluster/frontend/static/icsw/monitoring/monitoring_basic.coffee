@@ -20,14 +20,150 @@
 
 monitoring_basic_module = angular.module("icsw.monitoring.monitoring_basic",
         ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select",
-         "icsw.tools.table", "icsw.tools.button"])
-
-monitoring_basic_module.directive("icswMonitoringBasic", () ->
+         "icsw.tools.table", "icsw.tools.button"]
+).directive("icswMonitoringBasic", () ->
     return {
         restrict:"EA"
         templateUrl: "icsw.monitoring.basic"
     }
-).service('icswMonitoringUtilService', () ->
+).config(["$stateProvider", ($stateProvider) ->
+    $stateProvider.state(
+        "main.monitorbasics", {
+            url: "/monitorbasics"
+            template: "<icsw-monitoring-basic></icsw-monitoring-basic>"
+            data:
+                pageTitle: "Monitoring Basic setup"
+                menuHeader:
+                    key: "mon"
+                    name: "Monitoring"
+                    icon: "fa-gears"
+                    ordering: 70
+                rights: ["mon_check_command.setup_monitoring"]
+                menuEntry:
+                    menukey: "mon"
+                    name: "Basic setup"
+                    icon: "fa-bars"
+                    ordering: 0
+        }
+    )
+    $stateProvider.state(
+        "main.monitorredirect", {
+            url: "/monitorredirect"
+            template: "<h2>Redirecting...</h2>"
+            data:
+                menuEntry:
+                    menukey: "mon"
+                    name: "Icinga"
+                    icon: "fa-share-alt"
+                    ordering: 120
+            resolve:
+                redirect: ["$window", "icswSimpleAjaxCall", "ICSW_URLS", "$q", ($window, icswSimpleAjaxCall, ICSW_URLS, $q) ->
+                    _defer = $q.defer()
+                    icswSimpleAjaxCall(
+                        url: ICSW_URLS.MON_CALL_ICINGA
+                        dataType: "json"
+                    ).then(
+                        (json) ->
+                            url = json["url"]
+                            $window.open(url, "_blank")
+                            _defer.reject("nono")
+                    )
+                    return _defer.promise
+                ]
+        }
+    )
+    $stateProvider.state(
+        "main.monitorb0", {
+            url: "/monitorb0"
+            data:
+                menuEntry:
+                    menukey: "mon"
+                    name: "rebuild config cached"
+                    icon: "fa-share-alt"
+                    ordering: 101
+            resolve:
+                redirect: ["icswSimpleAjaxCall", "ICSW_URLS", "$q", "blockUI", (icswSimpleAjaxCall, ICSW_URLS, $q, blockUI) ->
+                    # todo: add icswMenuProgressService
+                    _defer = $q.defer()
+                    blockUI.start()
+                    icswSimpleAjaxCall(
+                        url: ICSW_URLS.MON_CREATE_CONFIG
+                        data:
+                            "cache_mode": "ALWAYS"
+                        title: "create config"
+                    ).then(
+                        (xml) ->
+                            blockUI.stop()
+                            _defer.reject("nono")
+                        (xml) ->
+                            blockUI.stop()
+                            _defer.reject("nono")
+                    )
+                    return _defer.promise
+                ]
+        }
+    )
+    $stateProvider.state(
+        "main.monitorb1", {
+            url: "/monitorb1"
+            data:
+                menuEntry:
+                    menukey: "mon"
+                    name: "rebuild config dynamic"
+                    icon: "fa-share-alt"
+                    ordering: 102
+            resolve:
+                redirect: ["icswSimpleAjaxCall", "ICSW_URLS", "$q", "blockUI", (icswSimpleAjaxCall, ICSW_URLS, $q, blockUI) ->
+                    _defer = $q.defer()
+                    blockUI.start()
+                    icswSimpleAjaxCall(
+                        url: ICSW_URLS.MON_CREATE_CONFIG
+                        data:
+                            "cache_mode": "DYNAMIC"
+                        title: "create config"
+                    ).then(
+                        (xml) ->
+                            blockUI.stop()
+                            _defer.reject("nono")
+                        (xml) ->
+                            blockUI.stop()
+                            _defer.reject("nono")
+                    )
+                    return _defer.promise
+                ]
+        }
+    )
+    $stateProvider.state(
+        "main.monitorb2", {
+            url: "/monitorb2"
+            data:
+                menuEntry:
+                    menukey: "mon"
+                    name: "rebuild config refresh"
+                    icon: "fa-share-alt"
+                    ordering: 103
+            resolve:
+                redirect: ["icswSimpleAjaxCall", "ICSW_URLS", "$q", "blockUI", (icswSimpleAjaxCall, ICSW_URLS, $q, blockUI) ->
+                    _defer = $q.defer()
+                    blockUI.start()
+                    icswSimpleAjaxCall(
+                        url: ICSW_URLS.MON_CREATE_CONFIG
+                        data:
+                            "cache_mode": "REFRESH"
+                        title: "create config"
+                    ).then(
+                        (xml) ->
+                            blockUI.stop()
+                            _defer.reject("nono")
+                        (xml) ->
+                            blockUI.stop()
+                            _defer.reject("nono")
+                    )
+                    return _defer.promise
+                ]
+        }
+    )
+]).service('icswMonitoringUtilService', () ->
     return {
         get_data_incomplete_error: (data, tables) ->
             missing = []

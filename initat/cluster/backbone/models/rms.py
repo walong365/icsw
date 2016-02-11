@@ -464,7 +464,7 @@ class RMSJobVariable(models.Model):
     def get_value(self):
         return self.value
 
-    def get_value_int(self):
+    def get_int_value(self):
         _v = self.value
         if self.parsed_type == "f":
             _v = int(_v)

@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2015 init.at
+# Copyright (C) 2012-2016 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -18,17 +18,33 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-monitoring_cluster_module = angular.module("icsw.monitoring.escalation",
-        ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select",
-         "icsw.tools.table", "icsw.tools.button", "icsw.monitoring.monitoring_basic"])
-
-
-monitoring_cluster_module.directive('icswMonitoringEscalation', () ->
+monitoring_cluster_module = angular.module(
+    "icsw.monitoring.escalation",
+    [
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select",
+        "icsw.tools.table", "icsw.tools.button", "icsw.monitoring.monitoring_basic"
+    ]
+).directive('icswMonitoringEscalation', () ->
     return {
         restrict     : "EA"
         templateUrl  : "icsw.monitoring.escalation"
     }
-).service('icswMonitoringEscalationRestService', ["ICSW_URLS", "Restangular", (ICSW_URLS, Restangular) ->
+).config(["$stateProvider", ($stateProvider) ->
+    $stateProvider.state(
+        "main.monitoresc", {
+            url: "/monitoresc"
+            template: "<icsw-monitoring-escalation></icsw-monitoring-escalation>"
+            data:
+                pageTitle: "Monitoring Escalation setup"
+                rights: ["mon_check_command.setup_monitoring"]
+                menuEntry:
+                    menukey: "mon"
+                    name: "Escalatin setup"
+                    icon: "fa-bolt"
+                    ordering: 30
+        }
+    )
+]).service('icswMonitoringEscalationRestService', ["ICSW_URLS", "Restangular", (ICSW_URLS, Restangular) ->
     get_rest = (url, opts={}) -> return Restangular.all(url).getList(opts).$object
     data = {
         mon_period  : get_rest(ICSW_URLS.REST_MON_PERIOD_LIST.slice(1))

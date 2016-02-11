@@ -65,7 +65,21 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
-).controller("icswDeviceMonConfigCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$uibModal", "$timeout", "icswAcessLevelService", "ICSW_URLS", "icswSimpleAjaxCall", "toaster",
+).config(["$stateProvider", ($stateProvider) ->
+    $stateProvider.state(
+        "main.monitorhint", {
+            url: "/monitorhint"
+            template: '<icsw-device-mon-config icsw-sel-man="0" icsw-sel-man-sel-mode="d"></icsw-device-mon-config>'
+            data:
+                pageTitle: "Monitoring hints"
+                rights: ["mon_check_command.setup_monitoring"]
+                menuEntry:
+                    menukey: "mon"
+                    icon: "fa-info"
+                    ordering: 40
+        }
+    )
+]).controller("icswDeviceMonConfigCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$uibModal", "$timeout", "icswAcessLevelService", "ICSW_URLS", "icswSimpleAjaxCall", "toaster",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $uibModal, $timeout, icswAcessLevelService, ICSW_URLS, icswSimpleAjaxCall, toaster) ->
         icswAcessLevelService.install($scope)
         $scope.hint_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q, "nd")

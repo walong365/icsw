@@ -37,6 +37,20 @@ angular.module(
                     ordering: 35
         }
     )
+    $stateProvider.state(
+        "main.monitordisk", {
+            url: "/monitordisk"
+            template: '<icsw-device-partition-overview icsw-sel-man="0" icsw-sel-man-sel-mode="d"></icsw-device-partition-overview>
+'
+            data:
+                pageTitle: "Disk"
+                rights: ["mon_check_command.setup_monitoring"]
+                menuEntry:
+                    menukey: "mon"
+                    icon: "fa-hdd-o"
+                    ordering: 50
+        }
+    )
 ]).directive("icswDevicePartitionOverview", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"

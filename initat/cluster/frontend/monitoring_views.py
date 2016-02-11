@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2012-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2012-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -53,7 +53,7 @@ from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockList
 from initat.cluster.backbone.models.status_history import mon_icinga_log_aggregated_host_data, \
     mon_icinga_log_aggregated_timespan, mon_icinga_log_aggregated_service_data, \
     mon_icinga_log_raw_base, mon_icinga_log_raw_service_alert_data, mon_icinga_log_raw_host_alert_data, AlertList
-from initat.cluster.backbone.render import permission_required_mixin, render_me
+from initat.cluster.backbone.render import permission_required_mixin
 from initat.cluster.frontend.common import duration_utils
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.frontend.rest_views import rest_logging
@@ -61,73 +61,6 @@ from initat.md_config_server.icinga_log_reader.log_reader_utils import host_serv
 from initat.tools import logging_tools, process_tools, server_command
 
 logger = logging.getLogger("cluster.monitoring")
-
-
-class setup(permission_required_mixin, View):
-    all_required_permissions = ["backbone.mon_check_command.setup_monitoring"]
-
-    def get(self, request):
-        return render_me(
-            request, "monitoring_setup.html", {}
-        )()
-
-
-class setup_cluster(permission_required_mixin, View):
-    all_required_permissions = ["backbone.mon_check_command.setup_monitoring"]
-
-    def get(self, request):
-        return render_me(
-            request, "monitoring_setup_cluster.html", {}
-        )()
-
-
-class build_info(permission_required_mixin, View):
-    all_required_permissions = ["backbone.mon_check_command.setup_monitoring"]
-
-    def get(self, request):
-        return render_me(
-            request, "monitoring_build_info.html", {}
-        )()
-
-
-class setup_escalation(permission_required_mixin, View):
-    all_required_permissions = ["backbone.mon_check_command.setup_monitoring"]
-
-    def get(self, request):
-        return render_me(
-            request, "monitoring_setup_escalation.html", {}
-        )()
-
-
-class device_config(permission_required_mixin, View):
-    all_required_permissions = ["backbone.mon_check_command.change_monitoring"]
-
-    def get(self, request):
-        return render_me(
-            request, "monitoring_device.html", {
-                "device_object_level_permission": "backbone.device.change_monitoring",
-            }
-        )()
-
-
-class MonitoringHints(permission_required_mixin, View):
-    all_required_permissions = ["backbone.mon_check_command.change_monitoring"]
-
-    def get(self, request):
-        return render_me(
-            request, "monitoring_hints.html", {
-            }
-        )()
-
-
-class MonitoringDisk(permission_required_mixin, View):
-    all_required_permissions = ["backbone.device.change_disk"]
-
-    def get(self, request):
-        return render_me(
-            request, "monitoring_disk.html", {
-            }
-        )()
 
 
 class create_config(View):
@@ -145,19 +78,20 @@ class create_config(View):
 
 class call_icinga(View):
     @method_decorator(login_required)
-    def get(self, request):
+    def post(self, request):
         pw = request.session.get("password")
         pw = base64.b64decode(pw) if pw else "no_passwd"
-        resp = HttpResponseRedirect(
-            u"http{}://{}:{}@{}/icinga/".format(
-                "s" if request.is_secure() else "",
-                request.user.login,
-                # fixme, if no password is set (due to automatic login) use no_passwd
-                pw,
-                request.get_host()
-            )
+        _url = u"http{}://{}:{}@{}/icinga/".format(
+            "s" if request.is_secure() else "",
+            request.user.login,
+            # fixme, if no password is set (due to automatic login) use no_passwd
+            pw,
+            request.get_host()
         )
-        return resp
+        return HttpResponse(
+            json.dumps({"url": _url}),
+            content_type="application/json"
+        )
 
 
 class fetch_partition(View):
@@ -317,14 +251,6 @@ class get_node_status(View):
 
             else:
                 request.xml_response.error("no service or node_results", logger=logger)
-
-
-class overview(View):
-    @method_decorator(login_required)
-    def get(self, request):
-        return render_me(
-            request, "monitoring_overview.html", {}
-        )()
 
 
 class delete_hint(View):

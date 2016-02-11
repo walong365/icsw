@@ -18,12 +18,29 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-monitoring_build_info_module = angular.module("icsw.monitoring.build_info",
-    ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"])
-
 DT_FORM = "dd, D. MMM YYYY HH:mm:ss"
 
-monitoring_build_info_module.controller("icswMonitoringBuildInfoCtrl",
+monitoring_build_info_module = angular.module(
+    "icsw.monitoring.build_info",
+    [
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
+    ]
+).config(["$stateProvider", ($stateProvider) ->
+    $stateProvider.state(
+        "main.monitobuildinfo", {
+            url: "/monitorbuildinfo"
+            template: '<div ng-controller="icswMonitoringBuildInfoCtrl"><icsw-monitoring-build-info></icsw-monitoring-build-info></div>'
+            data:
+                pageTitle: "Monitoring build info"
+                rights: ["mon_check_command.setup_monitoring"]
+                menuEntry:
+                    menukey: "mon"
+                    name: "Build info"
+                    icon: "fa-info-circle"
+                    ordering: 60
+        }
+    )
+]).controller("icswMonitoringBuildInfoCtrl",
     ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource",
      "$q", "$uibModal", "icswAcessLevelService", "$timeout", "icswTools", "ICSW_URLS"
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource,

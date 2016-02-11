@@ -28,7 +28,22 @@ monitoring_cluster_module.directive('icswMonitoringCluster', () ->
         restrict     : "EA"
         templateUrl  : "icsw.monitoring.cluster"
     }
-).service('icswMonitoringClusterRestService', ["ICSW_URLS", "Restangular", (ICSW_URLS, Restangular) ->
+).config(["$stateProvider", ($stateProvider) ->
+    $stateProvider.state(
+        "main.monitorcluster", {
+            url: "/monitorcluster"
+            template: "<icsw-monitoring-cluster></icsw-monitoring-cluster>"
+            data:
+                pageTitle: "Monitoring Cluster / Dependency setup"
+                rights: ["mon_check_command.setup_monitoring"]
+                menuEntry:
+                    menukey: "mon"
+                    name: "Cluster / Dependency setup"
+                    icon: "fa-chain"
+                    ordering: 20
+        }
+    )
+]).service('icswMonitoringClusterRestService', ["ICSW_URLS", "Restangular", (ICSW_URLS, Restangular) ->
     get_rest = (url, opts={}) -> return Restangular.all(url).getList(opts).$object
     data = {
         device              : get_rest(ICSW_URLS.REST_DEVICE_TREE_LIST.slice(1), {"ignore_meta_devices" : true, "ignore_selection" : true})

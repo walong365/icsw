@@ -24,7 +24,22 @@ monitoring_overview_module = angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "ui.bootstrap.datetimepicker", "smart-table",
         "icsw.tools.table", "icsw.tools.status_history_utils", "icsw.device.livestatus"
     ]
-).controller("icswMonitoringOverviewCtrl",
+).config(["$stateProvider", ($stateProvider) ->
+    $stateProvider.state(
+        "main.monitorov", {
+            url: "/monitorov"
+            template: "<div ng-controller='icswMonitoringOverviewCtrl'><icsw-monitoring-overview></icsw-monitoring-overview></div>"
+            data:
+                pageTitle: "Monitoring Dashboard"
+                rights: ["mon_check_command.setup_monitoring"]
+                menuEntry:
+                    menukey: "mon"
+                    name: "Monitoring dashboard"
+                    icon: "fa-bars"
+                    ordering: 0
+        }
+    )
+]).controller("icswMonitoringOverviewCtrl",
     ["$scope", "$compile", "$filter", "Restangular", "$q", "$uibModal", "restDataSource",
      "icswAcessLevelService", "$timeout", "msgbus", "status_utils_functions", "ICSW_URLS",
     ($scope, $compile, $filter, Restangular, $q, $uibModal, restDataSource, icswAcessLevelService,
