@@ -110,3 +110,316 @@
     </uib-tabset>
 
 </script>
+
+<script type="text/ng-template" id="mon.device.esc.templ.form">
+    <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
+        <h2>Device Escalation template</h2>
+        <fieldset>
+            <legend>Base data</legend>
+            <div id="div_id_name" class="form-group">
+                <label for="id_name" class="control-label col-sm-3 requiredField">
+                    Name<span class="asteriskField">*</span></label>
+
+                <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text"></input></div>
+            </div>
+            <div id="div_id_mon_service_esc_templ" class="form-group">
+                <label for="id_mon_service_esc_templ" class="control-label col-sm-3 requiredField">
+                    Mon service esc templ<span class="asteriskField">*</span></label>
+
+                <div class="controls col-sm-7">
+                    <ui-select ng-model="edit_obj.mon_service_esc_templ" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                        <ui-select-match class="ui-select-match" placeholder="please select a service escalation template">
+                            {{$select.selected.name}}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.mon_service_esc_templ | orderBy:'name'| props_filter:{name:$select.search}">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Notifications</legend>
+            <div id="div_id_first_notification" class="form-group">
+                <label for="id_first_notification" class="control-label col-sm-3 requiredField">
+                    First notification<span class="asteriskField">*</span></label>
+
+                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_first_notification" max="10" min="1" name="first_notification" ng-model="edit_obj.first_notification" required="True" type="number" value="1"></input></div>
+            </div>
+            <div id="div_id_last_notification" class="form-group">
+                <label for="id_last_notification" class="control-label col-sm-3 requiredField">
+                    Last notification<span class="asteriskField">*</span></label>
+
+                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_last_notification" max="10" min="1" name="last_notification" ng-model="edit_obj.last_notification" required="True" type="number" value="1"></input></div>
+            </div>
+            <div id="div_id_esc_period" class="form-group">
+                <label for="id_esc_period" class="control-label col-sm-3 requiredField">
+                    Esc period<span class="asteriskField">*</span></label>
+
+                <div class="controls col-sm-7">
+                    <ui-select ng-model="edit_obj.esc_period" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                        <ui-select-match class="ui-select-match" placeholder="please select a time period">{{$select.selected.name}}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.mon_period | orderBy:'name'| props_filter:{name:$select.search}">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+            <div id="div_id_ninterval" class="form-group">
+                <label for="id_ninterval" class="control-label col-sm-3 requiredField">
+                    Ninterval<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_ninterval" max="10080" min="0" name="ninterval" ng-model="edit_obj.ninterval" required="True" type="number" value="1"></input></div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Notification</legend>
+        </fieldset>
+        <div class="row">
+            <div class="col-md-4">
+                <div class="form-group">
+                    <div id="div_id_nrecovery" class="checkbox">
+                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nrecovery"><input class="checkboxinput checkbox" id="id_nrecovery" name="nrecovery" ng-model="edit_obj.nrecovery" type="checkbox"></input>
+                            Notify on recovery
+                        </label></div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div id="div_id_ndown" class="checkbox">
+                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_ndown"><input class="checkboxinput checkbox" id="id_ndown" name="ndown" ng-model="edit_obj.ndown" type="checkbox"></input>
+                            Notify when down
+                        </label></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-group">
+                    <div id="div_id_nunreachable" class="checkbox">
+                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nunreachable"><input class="checkboxinput checkbox" id="id_nunreachable" name="nunreachable" ng-model="edit_obj.nunreachable" type="checkbox"></input>
+                            Notify when unreachable
+                        </label></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-group">
+                    <div id="div_id_nflapping" class="checkbox">
+                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nflapping"><input class="checkboxinput checkbox" id="id_nflapping" name="nflapping" ng-model="edit_obj.nflapping" type="checkbox"></input>
+                            Notify when flapping
+                        </label></div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div id="div_id_nplanned_downtime" class="checkbox">
+                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nplanned_downtime"><input class="checkboxinput checkbox" id="id_nplanned_downtime" name="nplanned_downtime" ng-model="edit_obj.nplanned_downtime" type="checkbox"></input>
+                            Notify on planned downtime
+                        </label></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="get_action_string()"></input></div>
+    </form>
+</script>
+
+<script type="text/ng-template" id="mon.host.dependency.form">
+    <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
+        <h2>Host dependency</h2>
+        <fieldset>
+            <legend>Basic settings</legend>
+            <div id="div_id_mon_host_dependency_templ" class="form-group">
+                <label for="id_mon_host_dependency_templ" class="control-label col-sm-3 requiredField">
+                    Mon host dependency templ<span class="asteriskField">*</span></label>
+
+                <div class="controls col-sm-7">
+                    <ui-select ng-model="edit_obj.mon_host_dependency_templ" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                        <ui-select-match class="ui-select-match" placeholder="please select a host dependency template">
+                            {{$select.selected.name}}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.mon_host_dependency_templ | orderBy:'name'| props_filter:{name:$select.search}">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Parent</legend>
+            <div id="div_id_devices" class="form-group">
+                <label for="id_devices" class="control-label col-sm-3">
+                    Devices
+                </label>
+
+                <div class="controls col-sm-7">
+                    <ui-select multiple="multiple" ng-model="edit_obj.devices" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                        <ui-select-match class="ui-select-match" placeholder="please select one or more devices">{{$item.name}}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.device | orderBy:'name'| props_filter:{name:$select.search}">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Child</legend>
+            <div id="div_id_dependent_devices" class="form-group">
+                <label for="id_dependent_devices" class="control-label col-sm-3 requiredField">
+                    Dependent devices<span class="asteriskField">*</span></label>
+
+                <div class="controls col-sm-7">
+                    <ui-select multiple="multiple" ng-model="edit_obj.dependent_devices" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                        <ui-select-match class="ui-select-match" placeholder="please select one or more devices">{{$item.name}}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.device | orderBy:'name'| props_filter:{name:$select.search}">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Cluster</legend>
+            <div id="div_id_mon_host_cluster" class="form-group">
+                <label for="id_mon_host_cluster" class="control-label col-sm-3">
+                    Mon host cluster
+                </label>
+
+                <div class="controls col-sm-7">
+                    <ui-select ng-model="edit_obj.mon_host_cluster" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                        <ui-select-match class="ui-select-match" placeholder="please select a host cluster">{{$select.selected.name}}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.mon_host_cluster | orderBy:'name'| props_filter:{name:$select.search}">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+        </fieldset>
+        <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="get_action_string()"></input></div>
+    </form>
+</script>
+
+<script type="text/ng-template" id="mon.service.esc.templ.form">
+    <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
+        <h2>Service Escalation template</h2>
+        <fieldset>
+            <legend>Base data</legend>
+            <div id="div_id_name" class="form-group">
+                <label for="id_name" class="control-label col-sm-3 requiredField">
+                    Name<span class="asteriskField">*</span></label>
+
+                <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text"></input></div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Notifications</legend>
+            <div id="div_id_first_notification" class="form-group">
+                <label for="id_first_notification" class="control-label col-sm-3 requiredField">
+                    First notification<span class="asteriskField">*</span></label>
+
+                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_first_notification" max="10" min="1" name="first_notification" ng-model="edit_obj.first_notification" required="True" type="number" value="1"></input></div>
+            </div>
+            <div id="div_id_last_notification" class="form-group">
+                <label for="id_last_notification" class="control-label col-sm-3 requiredField">
+                    Last notification<span class="asteriskField">*</span></label>
+
+                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_last_notification" max="10" min="1" name="last_notification" ng-model="edit_obj.last_notification" required="True" type="number" value="1"></input></div>
+            </div>
+            <div id="div_id_esc_period" class="form-group">
+                <label for="id_esc_period" class="control-label col-sm-3 requiredField">
+                    Esc period<span class="asteriskField">*</span></label>
+
+                <div class="controls col-sm-7">
+                    <ui-select ng-model="edit_obj.esc_period" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                        <ui-select-match class="ui-select-match" placeholder="please select a time period">{{$select.selected.name}}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.mon_period | orderBy:'name'| props_filter:{name:$select.search}">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+            <div id="div_id_ninterval" class="form-group">
+                <label for="id_ninterval" class="control-label col-sm-3 requiredField">
+                    Ninterval<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_ninterval" max="10080" min="0" name="ninterval" ng-model="edit_obj.ninterval" required="True" type="number" value="1"></input></div>
+            </div>
+        </fieldset>
+        <div class="row">
+            <div class="col-md-4">
+                <div class="form-group">
+                    <div id="div_id_nrecovery" class="checkbox">
+                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nrecovery"><input class="checkboxinput checkbox" id="id_nrecovery" name="nrecovery" ng-model="edit_obj.nrecovery" type="checkbox"></input>
+                            Nrecovery
+                        </label></div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div id="div_id_ncritical" class="checkbox">
+                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_ncritical"><input class="checkboxinput checkbox" id="id_ncritical" name="ncritical" ng-model="edit_obj.ncritical" type="checkbox"></input>
+                            Ncritical
+                        </label></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-group">
+                    <div id="div_id_nwarning" class="checkbox">
+                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nwarning"><input class="checkboxinput checkbox" id="id_nwarning" name="nwarning" ng-model="edit_obj.nwarning" type="checkbox"></input>
+                            Nwarning
+                        </label></div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div id="div_id_nunknown" class="checkbox">
+                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nunknown"><input class="checkboxinput checkbox" id="id_nunknown" name="nunknown" ng-model="edit_obj.nunknown" type="checkbox"></input>
+                            Nunknown
+                        </label></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-group">
+                    <div id="div_id_nflapping" class="checkbox">
+                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nflapping"><input class="checkboxinput checkbox" id="id_nflapping" name="nflapping" ng-model="edit_obj.nflapping" type="checkbox"></input>
+                            Nflapping
+                        </label></div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div id="div_id_nplanned_downtime" class="checkbox">
+                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nplanned_downtime"><input class="checkboxinput checkbox" id="id_nplanned_downtime" name="nplanned_downtime" ng-model="edit_obj.nplanned_downtime" type="checkbox"></input>
+                            Nplanned downtime
+                        </label></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="get_action_string()"></input></div>
+    </form>
+</script>
+
+<script type="text/ng-template" id="boot.form">
+    <form id="form" class="form-horizontal" method="post" name="form">
+        <h2>Connection {{ get_cd_info() }}</h2>
+        <fieldset>
+            <legend>Settings</legend>
+            <div id="div_id_image" class="form-group">
+                <label for="id_image" class="control-label col-sm-4">
+                    Image
+                </label>
+
+                <div class="controls col-sm-7">
+                    <select multiple="multiple" class="selectmultiple form-control" id="id_image" name="image"></select>
+
+                    <p id="hint_id_image" class="help-block"> Hold down "Control", or "Command" on a Mac, to select more than one.</p>
+                </div>
+            </div>
+        </fieldset>
+        <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="action_string"></input></div>
+    </form>
+</script>
+

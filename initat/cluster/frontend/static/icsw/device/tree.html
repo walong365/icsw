@@ -195,4 +195,462 @@
     </div>
 </script>
 
+<script type="text/ng-template" id="device.tree.many.form">
+    <form id="form" class="form-horizontal" ng-submit="modify_many()" name="form">
+        <h2>Change settings of {{ num_selected() }} devices</h2>
+        <fieldset>
+            <legend>Basic settings</legend>
+            <div class="row">
+                <div class="col-md-2">
+                    <div class="form-group">
+                        <div id="div_id_change_device_group" class="checkbox">
+                            <div class="controls col-lg-offset-0 col-sm-8"><label for="id_change_device_group"><input class="checkboxinput checkbox" id="id_change_device_group" name="change_device_group" ng-model="edit_obj.change_device_group" type="checkbox"></input>
+                                DeviceGroup
+                            </label></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-10">
+                    <div id="div_id_device_group" class="form-group" ng_show="edit_obj.change_device_group">
+                        <label for="id_device_group" class="control-label col-sm-3 requiredField">
+                            Device group<span class="asteriskField">*</span></label>
+
+                        <div class="controls col-sm-8">
+                            <ui-select ng-model="edit_obj.device_group" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                                <ui-select-match class="ui-select-match" placeholder="Select the device group">{{$select.selected.name}}
+                                </ui-select-match>
+                                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in rest_data.device_group | filter:ignore_cdg| props_filter:{name:$select.search}">
+                                    <div ng-bind-html="value.name | highlight: $select.search"></div>
+                                </ui-select-choices>
+                            </ui-select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Additional settings</legend>
+            <div class="row">
+                <div class="col-md-2">
+                    <div class="form-group">
+                        <div id="div_id_change_domain_tree_node" class="checkbox">
+                            <div class="controls col-lg-offset-0 col-sm-8"><label for="id_change_domain_tree_node"><input class="checkboxinput checkbox" id="id_change_domain_tree_node" name="change_domain_tree_node" ng-model="edit_obj.change_domain_tree_node" type="checkbox"></input>
+                                DTN
+                            </label></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-10">
+                    <div id="div_id_domain_tree_node" class="form-group" ng_show="edit_obj.change_domain_tree_node">
+                        <label for="id_domain_tree_node" class="control-label col-sm-3 requiredField">
+                            Domain tree node<span class="asteriskField">*</span></label>
+
+                        <div class="controls col-sm-8">
+                            <ui-select ng-model="edit_obj.domain_tree_node" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                                <ui-select-match class="ui-select-match" placeholder="Select the domain tree node (for FQDN)">
+                                    {{$select.selected.tree_info}}
+                                </ui-select-match>
+                                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in rest_data.domain_tree_node| props_filter:{tree_info:$select.search}">
+                                    <div ng-bind-html="value.tree_info | highlight: $select.search"></div>
+                                </ui-select-choices>
+                            </ui-select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-2">
+                    <div class="form-group">
+                        <div id="div_id_change_bootserver" class="checkbox">
+                            <div class="controls col-lg-offset-0 col-sm-8"><label for="id_change_bootserver"><input class="checkboxinput checkbox" id="id_change_bootserver" name="change_bootserver" ng-model="edit_obj.change_bootserver" type="checkbox"></input>
+                                Bootserver
+                            </label></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-10">
+                    <div id="div_id_bootserver" class="form-group" ng_show="edit_obj.change_bootserver">
+                        <label for="id_bootserver" class="control-label col-sm-3">
+                            Bootserver
+                        </label>
+
+                        <div class="controls col-sm-8">
+                            <div class="input-group" style="max-width:400px; min-width:240px;">
+                                <ui-select ng-model="edit_obj.bootserver" ng-disabled="false">
+                                    <ui-select-match class="ui-select-match" placeholder="Select the bootserver">
+                                        {{$select.selected.full_name}}
+                                    </ui-select-match>
+                                    <ui-select-choices class="ui-select-choices" repeat="value.idx as value in rest_data.mother_server| props_filter:{full_name:$select.search}">
+                                        <div ng-bind-html="value.full_name | highlight: $select.search"></div>
+                                    </ui-select-choices>
+                                </ui-select>
+                                <span class="input-group-btn"><button type="button" ng-click="edit_obj.bootserver = undefined" class="btn btn-default"><span class="glyphicon glyphicon-trash"></span></button> </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-2">
+                    <div class="form-group">
+                        <div id="div_id_change_monitor_server" class="checkbox">
+                            <div class="controls col-lg-offset-0 col-sm-8"><label for="id_change_monitor_server"><input class="checkboxinput checkbox" id="id_change_monitor_server" name="change_monitor_server" ng-model="edit_obj.change_monitor_server" type="checkbox"></input>
+                                MonitorServer
+                            </label></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-10">
+                    <div id="div_id_monitor_server" class="form-group" ng_show="edit_obj.change_monitor_server">
+                        <label for="id_monitor_server" class="control-label col-sm-3">
+                            Monitor server
+                        </label>
+
+                        <div class="controls col-sm-8">
+                            <div class="input-group" style="max-width:400px; min-width:240px;">
+                                <ui-select ng-model="edit_obj.monitor_server" ng-disabled="false">
+                                    <ui-select-match class="ui-select-match" placeholder="Select the monitor server">
+                                        {{$select.selected.full_name_wt}}
+                                    </ui-select-match>
+                                    <ui-select-choices class="ui-select-choices" repeat="value.idx as value in rest_data.monitor_server| props_filter:{full_name_wt:$select.search}">
+                                        <div ng-bind-html="value.full_name_wt | highlight: $select.search"></div>
+                                    </ui-select-choices>
+                                </ui-select>
+                                <span class="input-group-btn"><button type="button" ng-click="edit_obj.monitor_server = undefined" class="btn btn-default"><span class="glyphicon glyphicon-trash"></span></button> </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Security</legend>
+            <div class="row">
+                <div class="col-md-2">
+                    <div class="form-group">
+                        <div id="div_id_change_root_passwd" class="checkbox">
+                            <div class="controls col-lg-offset-0 col-sm-8"><label for="id_change_root_passwd"><input class="checkboxinput checkbox" id="id_change_root_passwd" name="change_root_passwd" ng-model="edit_obj.change_root_passwd" type="checkbox"></input>
+                                pwd
+                            </label></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-10">
+                    <div id="div_id_root_passwd" class="form-group" ng_show="edit_obj.change_root_passwd">
+                        <label for="id_root_passwd" class="control-label col-sm-3">
+                            Root passwd
+                        </label>
+
+                        <div class="controls col-sm-8"><input class="textinput textInput form-control" id="id_root_passwd" name="root_passwd" ng-model="edit_obj.root_passwd" type="password"></input></div>
+                    </div>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Flags</legend>
+            <div class="row">
+                <div class="col-md-2">
+                    <div class="form-group">
+                        <div id="div_id_change_enabled" class="checkbox">
+                            <div class="controls col-lg-offset-0 col-sm-8"><label for="id_change_enabled"><input class="checkboxinput checkbox" id="id_change_enabled" name="change_enabled" ng-model="edit_obj.change_enabled" type="checkbox"></input>
+                                EnabledFlag
+                            </label></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-10">
+                    <div class="form-group">
+                        <div id="div_id_enabled" class="checkbox" ng_show="edit_obj.change_enabled">
+                            <div class="controls col-lg-offset-0 col-sm-8"><label for="id_enabled"><input checked="checked" class="checkboxinput checkbox" id="id_enabled" name="enabled" ng-model="edit_obj.enabled" type="checkbox"></input>
+                                Enabled
+                            </label></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-2">
+                    <div class="form-group">
+                        <div id="div_id_change_enable_perfdata" class="checkbox">
+                            <div class="controls col-lg-offset-0 col-sm-8"><label for="id_change_enable_perfdata"><input class="checkboxinput checkbox" id="id_change_enable_perfdata" name="change_enable_perfdata" ng-model="edit_obj.change_enable_perfdata" type="checkbox"></input>
+                                PerfDataFlag
+                            </label></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-10">
+                    <div class="form-group">
+                        <div id="div_id_enable_perfdata" class="checkbox" ng_show="edit_obj.change_enable_perfdata">
+                            <div class="controls col-lg-offset-0 col-sm-8"><label for="id_enable_perfdata"><input checked="checked" class="checkboxinput checkbox" id="id_enable_perfdata" name="enable_perfdata" ng-model="edit_obj.enable_perfdata" type="checkbox"></input>
+                                Enable perfdata, check IPMI and SNMP
+                            </label></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-2">
+                    <div class="form-group">
+                        <div id="div_id_change_store_rrd_data" class="checkbox">
+                            <div class="controls col-lg-offset-0 col-sm-8"><label for="id_change_store_rrd_data"><input class="checkboxinput checkbox" id="id_change_store_rrd_data" name="change_store_rrd_data" ng-model="edit_obj.change_store_rrd_data" type="checkbox"></input>
+                                store RRD data
+                            </label></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-10">
+                    <div class="form-group">
+                        <div id="div_id_store_rrd_data" class="checkbox" ng_show="edit_obj.change_store_rrd_data">
+                            <div class="controls col-lg-offset-0 col-sm-8"><label for="id_store_rrd_data"><input checked="checked" class="checkboxinput checkbox" id="id_store_rrd_data" name="store_rrd_data" ng-model="edit_obj.store_rrd_data" type="checkbox"></input>
+                                Store rrd data
+                            </label></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-2">
+                    <div class="form-group">
+                        <div id="div_id_change_flap_detection_enabled" class="checkbox">
+                            <div class="controls col-lg-offset-0 col-sm-8"><label for="id_change_flap_detection_enabled"><input class="checkboxinput checkbox" id="id_change_flap_detection_enabled" name="change_flap_detection_enabled" ng-model="edit_obj.change_flap_detection_enabled" type="checkbox"></input>
+                                FlapdetectionFlag
+                            </label></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-10">
+                    <div class="form-group">
+                        <div id="div_id_flap_detection_enabled" class="checkbox" ng_show="edit_obj.change_flap_detection_enabled">
+                            <div class="controls col-lg-offset-0 col-sm-8"><label for="id_flap_detection_enabled"><input checked="checked" class="checkboxinput checkbox" id="id_flap_detection_enabled" name="flap_detection_enabled" ng-model="edit_obj.flap_detection_enabled" type="checkbox"></input>
+                                Enable flap detection
+                            </label></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </fieldset>
+        <div class="form-actions"><input type="submit" name="submit" value="Modify many" class="btn btn-primary primaryAction" id="submit-id-submit"></input></div>
+    </form>
+</script>
+
+<script type="text/ng-template" id="device.group.tree.form">
+    <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
+        <h2>Settings for devicegroup {{ edit_obj.name }}</h2>
+        <fieldset>
+            <legend>Basic settings</legend>
+            <div id="div_id_name" class="form-group">
+                <label for="id_name" class="control-label col-sm-3 requiredField">
+                    Name<span class="asteriskField">*</span></label>
+
+                <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text"></input></div>
+            </div>
+            <div id="div_id_description" class="form-group">
+                <label for="id_description" class="control-label col-sm-3 requiredField">
+                    Description<span class="asteriskField">*</span></label>
+
+                <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_description" maxlength="384" name="description" ng-model="edit_obj.description" required="True" type="text"></input></div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Additional settings</legend>
+            <div id="div_id_domain_tree_node" class="form-group">
+                <label for="id_domain_tree_node" class="control-label col-sm-3 requiredField">
+                    Domain tree node<span class="asteriskField">*</span></label>
+
+                <div class="controls col-sm-7">
+                    <ui-select ng-model="edit_obj.domain_tree_node" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                        <ui-select-match class="ui-select-match" placeholder="Select the domain tree node (for FQDN)">
+                            {{$select.selected.tree_info}}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in rest_data.domain_tree_node| props_filter:{tree_info:$select.search}">
+                            <div ng-bind-html="value.tree_info | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Flags</legend>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <div id="div_id_enabled" class="checkbox">
+                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_enabled"><input checked="checked" class="checkboxinput checkbox" id="id_enabled" name="enabled" ng-model="edit_obj.enabled" ng-show="!edit_obj.cluster_device_group" type="checkbox"></input>
+                                Enabled
+                            </label></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6"></div>
+            </div>
+        </fieldset>
+        <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="get_action_string()"></input></div>
+        </form>
+        </script>
+        <script type="text/ng-template" id="create.device.form"><form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form">
+        <h2>Create new device</h2>
+        <fieldset>
+            <legend>Base data</legend>
+            <div id="div_id_scan_address" class="form-group">
+                <label for="id_scan_address" class="control-label col-sm-3 requiredField">
+                    Scan address<span class="asteriskField">*</span></label>
+
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" id="id_scan_address" maxlength="128" name="scan_address" ng-model="_edit_obj.scan_address" required="True" type="text"></input>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Flags</legend>
+            <div class="form-group">
+                <div id="div_id_strict_mode" class="checkbox">
+                    <div class="controls col-lg-offset-0 col-sm-7"><label for="id_strict_mode"><input class="checkboxinput checkbox" id="id_strict_mode" name="strict_mode" ng-model="_edit_obj.strict_mode" type="checkbox"></input>
+                        Strict mode
+                    </label></div>
+                </div>
+            </div>
+        </fieldset>
+        <div class="form-actions">
+            <input type="button" name="scan" value="scan" class="btn btn btn-sm btn-primary" id="button-id-scan" ng-click="fetch_device_network()"></input> <input type="submit" name="cancel" value="cancel" class="btn btn-primary btn btn-sm btn-warning" id="submit-id-cancel"></input>
+        </div>
+    </form>
+</script>
+
+<script type="text/ng-template" id="device.tree.form">
+    <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
+        <h2>Device settings for {{ edit_obj.name }}</h2>
+        <fieldset>
+            <legend>Basic settings</legend>
+            <div id="div_id_name" class="form-group">
+                <label for="id_name" class="control-label col-sm-3 requiredField">
+                    Name<span class="asteriskField">*</span></label>
+
+                <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text"></input></div>
+            </div>
+            <div id="div_id_comment" class="form-group">
+                <label for="id_comment" class="control-label col-sm-3">
+                    Comment
+                </label>
+
+                <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_comment" maxlength="384" name="comment" ng-model="edit_obj.comment" type="text"></input></div>
+            </div>
+            <div id="div_id_device_group" class="form-group">
+                <label for="id_device_group" class="control-label col-sm-3 requiredField">
+                    Device group<span class="asteriskField">*</span></label>
+
+                <div class="controls col-sm-7">
+                    <ui-select ng-model="edit_obj.device_group" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                        <ui-select-match class="ui-select-match" placeholder="Select the device group">{{$select.selected.name}}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in rest_data.device_group | filter:ignore_cdg| props_filter:{name:$select.search}">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Additional settings</legend>
+            <div id="div_id_domain_tree_node" class="form-group">
+                <label for="id_domain_tree_node" class="control-label col-sm-3 requiredField">
+                    Domain tree node<span class="asteriskField">*</span></label>
+
+                <div class="controls col-sm-7">
+                    <ui-select ng-model="edit_obj.domain_tree_node" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                        <ui-select-match class="ui-select-match" placeholder="Select the domain tree node (for FQDN)">
+                            {{$select.selected.tree_info}}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in rest_data.domain_tree_node| props_filter:{tree_info:$select.search}">
+                            <div ng-bind-html="value.tree_info | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+            <div id="div_id_bootserver" class="form-group">
+                <label for="id_bootserver" class="control-label col-sm-3">
+                    Bootserver
+                </label>
+
+                <div class="controls col-sm-7">
+                    <div class="input-group" style="max-width:400px; min-width:240px;">
+                        <ui-select ng-model="edit_obj.bootserver" ng-disabled="false">
+                            <ui-select-match class="ui-select-match" placeholder="Select the bootserver">{{$select.selected.full_name}}
+                            </ui-select-match>
+                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in rest_data.mother_server| props_filter:{full_name:$select.search}">
+                                <div ng-bind-html="value.full_name | highlight: $select.search"></div>
+                            </ui-select-choices>
+                        </ui-select>
+                        <span class="input-group-btn"><button type="button" ng-click="edit_obj.bootserver = undefined" class="btn btn-default"><span class="glyphicon glyphicon-trash"></span></button> </span>
+                    </div>
+                </div>
+            </div>
+            <div id="div_id_monitor_server" class="form-group">
+                <label for="id_monitor_server" class="control-label col-sm-3">
+                    Monitor server
+                </label>
+
+                <div class="controls col-sm-7">
+                    <div class="input-group" style="max-width:400px; min-width:240px;">
+                        <ui-select ng-model="edit_obj.monitor_server" ng-disabled="false">
+                            <ui-select-match class="ui-select-match" placeholder="Select the monitor server">{{$select.selected.full_name_wt}}
+                            </ui-select-match>
+                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in rest_data.monitor_server| props_filter:{full_name_wt:$select.search}">
+                                <div ng-bind-html="value.full_name_wt | highlight: $select.search"></div>
+                            </ui-select-choices>
+                        </ui-select>
+                        <span class="input-group-btn"><button type="button" ng-click="edit_obj.monitor_server = undefined" class="btn btn-default"><span class="glyphicon glyphicon-trash"></span></button> </span>
+                    </div>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Security</legend>
+            <div id="div_id_root_passwd" class="form-group">
+                <label for="id_root_passwd" class="control-label col-sm-3">
+                    Root passwd
+                </label>
+
+                <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_root_passwd" name="root_passwd" ng-model="edit_obj.root_passwd" type="password"></input></div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Flags</legend>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <div id="div_id_enabled" class="checkbox">
+                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_enabled"><input checked="checked" class="checkboxinput checkbox" id="id_enabled" name="enabled" ng-model="edit_obj.enabled" type="checkbox"></input>
+                                Enabled
+                            </label></div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <div id="div_id_enable_perfdata" class="checkbox">
+                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_enable_perfdata"><input checked="checked" class="checkboxinput checkbox" id="id_enable_perfdata" name="enable_perfdata" ng-model="edit_obj.enable_perfdata" type="checkbox"></input>
+                                Enable perfdata, check IPMI and SNMP
+                            </label></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <div id="div_id_store_rrd_data" class="checkbox">
+                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_store_rrd_data"><input checked="checked" class="checkboxinput checkbox" id="id_store_rrd_data" name="store_rrd_data" ng-model="edit_obj.store_rrd_data" type="checkbox"></input>
+                                Store rrd data
+                            </label></div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <div id="div_id_flap_detection_enabled" class="checkbox">
+                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_flap_detection_enabled"><input checked="checked" class="checkboxinput checkbox" id="id_flap_detection_enabled" name="flap_detection_enabled" ng-model="edit_obj.flap_detection_enabled" type="checkbox"></input>
+                                Flap detection enabled
+                            </label></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </fieldset>
+        <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="get_action_string()"></input></div>
+    </form>
+</script>
 

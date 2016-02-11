@@ -95,3 +95,50 @@
         </li>
     </ul>
 </script>
+
+<script type="text/ng-template" id="location.gfx.form">
+    <form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form">
+        <div>
+            <h2>Location graphic '{{ _edit_obj.name }}'</h2>
+            <fieldset>
+                <legend>Basic settings</legend>
+                <div id="div_id_name" class="form-group  ng-class:form_error('name')">
+                    <label for="id_name" class="control-label col-sm-3 requiredField">
+                        Name<span class="asteriskField">*</span></label>
+
+                    <div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_name" maxlength="64" name="name" ng-model="_edit_obj.name" required="True" type="text"></input></div>
+                </div>
+                <div id="div_id_comment" class="form-group">
+                    <label for="id_comment" class="control-label col-sm-3">
+                        Comment
+                    </label>
+
+                    <div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_comment" maxlength="1024" name="comment" ng-model="_edit_obj.comment" type="text"></input></div>
+                </div>
+            </fieldset>
+            <fieldset ng-if="!create_mode">
+                <legend>Graphic</legend>
+                <div class="form-group">
+                    <div id="div_id_locked" class="checkbox">
+                        <div class="controls col-lg-offset-0 col-sm-9"><label for="id_locked"><input class="checkboxinput checkbox" id="id_locked" name="locked" ng-model="_edit_obj.locked" type="checkbox"></input>
+                            Locked
+                        </label></div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="control-label col-sm-3">
+                        Current Graphic
+                    </label>
+
+                    <div class="col-sm-6"><input type="file" nv-file-select="" class="form-control" uploader="uploader"></input></div>
+                    <div class="col-sm-3"><input type="button" ng-show="uploader.queue.length" class="btn btn-warning btn-sm" value="upload" ng-click="uploader.uploadAll()"></input></div>
+                </div>
+            </fieldset>
+            <div class="form-actions">
+                <input type="submit" name="submit" value="" class="btn btn-primary btn-sm primaryAction" id="submit-id-submit" ng-value="get_action_string()"></input>
+                &#160;<input type="button" name="close" value="close" class="btn btn-sm btn-warning" id="button-id-close" ng-click="close_modal()"></input>
+            </div>
+        </div>
+    </form>
+</script>
+

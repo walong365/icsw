@@ -105,3 +105,28 @@
     <td>{{ obj.present | yesno1 }}
     <td><input type="button" class="btn btn-primary" value="take" ng-click="take_image(obj)" ng-show="! obj.present"/></td>
 </script>
+
+<script type="text/ng-template" id="image.form">
+    <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
+        <h2>Image details</h2>
+        <fieldset>
+            <legend>Base data</legend>
+            <div id="div_id_name" class="form-group">
+                <label for="id_name" class="control-label col-sm-3">
+                    Name
+                </label>
+
+                <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" readonly type="text"></input></div>
+            </div>
+        </fieldset>
+        <div class="form-group">
+            <div id="div_id_enabled" class="checkbox">
+                <div class="controls col-lg-offset-0 col-sm-7"><label for="id_enabled"><input checked="checked" class="checkboxinput checkbox" id="id_enabled" name="enabled" ng-model="edit_obj.enabled" type="checkbox"></input>
+                    Enabled
+                </label></div>
+            </div>
+        </div>
+        <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="get_action_string()"></input></div>
+    </form>
+</script>
+

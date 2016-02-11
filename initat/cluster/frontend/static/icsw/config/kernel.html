@@ -51,3 +51,98 @@
         </table>
     </icsw-tools-rest-table>
 </script>
+
+<script type="text/ng-template" id="kernel.form">
+    <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
+        <h2>Kernel details</h2>
+        <fieldset>
+            <legend>Base data</legend>
+            <div id="div_id_display_name" class="form-group">
+                <label for="id_display_name" class="control-label col-sm-3 requiredField">
+                    Display name<span class="asteriskField">*</span></label>
+
+                <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_display_name" maxlength="128" name="display_name" ng-model="edit_obj.display_name" readonly required="True" type="text"></input></div>
+            </div>
+            <div id="div_id_name" class="form-group">
+                <label for="id_name" class="control-label col-sm-3 requiredField">
+                    Name<span class="asteriskField">*</span></label>
+
+                <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="384" name="name" ng-model="edit_obj.name" readonly required="True" type="text"></input></div>
+            </div>
+            <div id="div_id_comment" class="form-group">
+                <label for="id_comment" class="control-label col-sm-3">
+                    Comment
+                </label>
+
+                <div class="controls col-sm-7">
+                    <textarea class="textarea form-control" cols="40" id="id_comment" name="comment" ng-model="edit_obj.comment" rows="5"></textarea>
+                </div>
+            </div>
+            <div id="div_id_target_module_list" class="form-group">
+                <label for="id_target_module_list" class="control-label col-sm-3">
+                    Target module list
+                </label>
+
+                <div class="controls col-sm-7">
+                    <textarea class="textarea form-control" cols="40" id="id_target_module_list" name="target_module_list" ng-model="edit_obj.target_module_list" rows="3"></textarea>
+                </div>
+            </div>
+            <div id="div_id_module_list" class="form-group">
+                <label for="id_module_list" class="control-label col-sm-3">
+                    Module list
+                </label>
+
+                <div class="controls col-sm-7"><textarea class="textarea form-control" cols="40" id="id_module_list" name="module_list" ng-model="edit_obj.module_list" readonly rows="3"></textarea></div>
+            </div>
+        </fieldset>
+        <div class="form-group">
+            <label class="control-label col-sm-3">
+                initrd built
+            </label>
+
+            <div class="col-sm-7">
+                {{ fn.get_initrd_built(edit_obj) }}
+            </div>
+        </div>
+        <div>
+            <div class="form-actions">
+                <div class="form-group">
+                    <div id="div_id_enabled" class="checkbox">
+                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_enabled"><input class="checkboxinput checkbox" id="id_enabled" name="enabled" ng-model="edit_obj.enabled" type="checkbox"></input>
+                            Enabled
+                        </label></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="control-label col-sm-6">
+                stage1 lo present
+            </label>
+
+            <div class="col-sm-6"><input type="button" disabled ng-class="edit_obj.stage1_lo_present &amp;&amp; 'btn btn-sm btn-success' || 'btn btn-sm btn-danger'" ng-value="config_service.get_flag_value(edit_obj, 'stage1_lo_present')"></input></div>
+        </div>
+        <div class="form-group">
+            <label class="control-label col-sm-6">
+                stage1 cpio present
+            </label>
+
+            <div class="col-sm-6"><input type="button" disabled ng-class="edit_obj.stage1_cpio_present &amp;&amp; 'btn btn-sm btn-success' || 'btn btn-sm btn-danger'" ng-value="config_service.get_flag_value(edit_obj, 'stage1_cpio_present')"></input></div>
+        </div>
+        <div class="form-group">
+            <label class="control-label col-sm-6">
+                stage1 cramfs present
+            </label>
+
+            <div class="col-sm-6"><input type="button" disabled ng-class="edit_obj.stage1_cramfs_present &amp;&amp; 'btn btn-sm btn-success' || 'btn btn-sm btn-danger'" ng-value="config_service.get_flag_value(edit_obj, 'stage1_cramfs_present')"></input></div>
+        </div>
+        <div class="form-group">
+            <label class="control-label col-sm-6">
+                stage2 present
+            </label>
+
+            <div class="col-sm-6"><input type="button" disabled ng-class="edit_obj.stage2_present &amp;&amp; 'btn btn-sm btn-success' || 'btn btn-sm btn-danger'" ng-value="config_service.get_flag_value(edit_obj, 'stage2_present')"></input></div>
+        </div>
+        <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="get_action_string()"></input></div>
+    </form>
+</script>

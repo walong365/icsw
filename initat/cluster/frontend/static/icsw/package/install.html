@@ -307,3 +307,168 @@
         </uib-tab>
     </uib-tabset>
 </script>
+
+<script type="text/ng-template" id="package.action.form">
+    <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
+        <h2>PDC action</h2>
+        <fieldset>
+            <legend>Base data</legend>
+            <div id="div_id_target_state" class="form-group">
+                <label for="id_target_state" class="control-label col-sm-3">
+                    Target state
+                </label>
+                <div class="controls col-sm-7">
+                    <ui-select ng-model="edit_obj.target_state" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                        <ui-select-match class="ui-select-match" placeholder="select a target state">{{$select.selected.info}}</ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.state as value in target_states">
+                            <div ng-bind-html="value.info | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Flags</legend>
+            <div id="div_id_nodeps_flag" class="form-group">
+                <label for="id_nodeps_flag" class="control-label col-sm-3">
+                    Nodeps flag
+                </label>
+
+                <div class="controls col-sm-7">
+                    <div class="input-group" style="max-width:400px; min-width:240px;">
+                        <ui-select ng-model="edit_obj.nodeps_flag" ng-disabled="false">
+                            <ui-select-match class="ui-select-match" placeholder="select the nodeps flag">{{$select.selected.info}}
+                            </ui-select-match>
+                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in flag_states">
+                                <div ng-bind-html="value.info | highlight: $select.search"></div>
+                            </ui-select-choices>
+                        </ui-select>
+                        <span class="input-group-btn"><button type="button" ng-click="edit_obj.nodeps_flag = undefined" class="btn btn-default"><span class="glyphicon glyphicon-trash"></span></button> </span>
+                    </div>
+                </div>
+            </div>
+            <div id="div_id_force_flag" class="form-group">
+                <label for="id_force_flag" class="control-label col-sm-3">
+                    Force flag
+                </label>
+
+                <div class="controls col-sm-7">
+                    <div class="input-group" style="max-width:400px; min-width:240px;">
+                        <ui-select ng-model="edit_obj.force_flag" ng-disabled="false">
+                            <ui-select-match class="ui-select-match" placeholder="select the force flag">{{$select.selected.info}}
+                            </ui-select-match>
+                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in flag_states">
+                                <div ng-bind-html="value.info | highlight: $select.search"></div>
+                            </ui-select-choices>
+                        </ui-select>
+                        <span class="input-group-btn"><button type="button" ng-click="edit_obj.force_flag = undefined" class="btn btn-default"><span class="glyphicon glyphicon-trash"></span></button> </span>
+                    </div>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Image Dependency</legend>
+            <div id="div_id_image_dep" class="form-group">
+                <label for="id_image_dep" class="control-label col-sm-3">
+                    Image dep
+                </label>
+
+                <div class="controls col-sm-7">
+                    <div class="input-group" style="max-width:400px; min-width:240px;">
+                        <ui-select ng-model="edit_obj.image_dep" ng-disabled="false">
+                            <ui-select-match class="ui-select-match" placeholder="select image dependency">{{$select.selected.info}}
+                            </ui-select-match>
+                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in dep_states">
+                                <div ng-bind-html="value.info | highlight: $select.search"></div>
+                            </ui-select-choices>
+                        </ui-select>
+                        <span class="input-group-btn"><button type="button" ng-click="edit_obj.image_dep = undefined" class="btn btn-default"><span class="glyphicon glyphicon-trash"></span></button> </span>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <div id="div_id_image_change" class="checkbox">
+                    <div class="controls col-lg-offset-0 col-sm-7"><label for="id_image_change"><input class="checkboxinput checkbox" id="id_image_change" name="image_change" ng-model="edit_obj.image_change" type="checkbox"></input>
+                        change image list
+                    </label></div>
+                </div>
+            </div>
+            <div id="div_id_image_list" class="form-group" ng_show="edit_obj.image_change">
+                <label for="id_image_list" class="control-label col-sm-3">
+                    Image list
+                </label>
+
+                <div class="controls col-sm-7">
+                    <ui-select multiple="multiple" ng-model="edit_obj.image_list" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                        <ui-select-match class="ui-select-match" placeholder="select one or more images">{{$item.name}}</ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in srv_image_list">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Kernel Dependency</legend>
+            <div id="div_id_kernel_dep" class="form-group">
+                <label for="id_kernel_dep" class="control-label col-sm-3">
+                    Kernel dep
+                </label>
+
+                <div class="controls col-sm-7">
+                    <div class="input-group" style="max-width:400px; min-width:240px;">
+                        <ui-select ng-model="edit_obj.kernel_dep" ng-disabled="false">
+                            <ui-select-match class="ui-select-match" placeholder="select kernel dependency">{{$select.selected.info}}
+                            </ui-select-match>
+                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in dep_states">
+                                <div ng-bind-html="value.info | highlight: $select.search"></div>
+                            </ui-select-choices>
+                        </ui-select>
+                        <span class="input-group-btn"><button type="button" ng-click="edit_obj.kernel_dep = undefined" class="btn btn-default"><span class="glyphicon glyphicon-trash"></span></button> </span>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <div id="div_id_kernel_change" class="checkbox">
+                    <div class="controls col-lg-offset-0 col-sm-7"><label for="id_kernel_change"><input class="checkboxinput checkbox" id="id_kernel_change" name="kernel_change" ng-model="edit_obj.kernel_change" type="checkbox"></input>
+                        change kernel list
+                    </label></div>
+                </div>
+            </div>
+            <div id="div_id_kernel_list" class="form-group" ng_show="edit_obj.kernel_change">
+                <label for="id_kernel_list" class="control-label col-sm-3">
+                    Kernel list
+                </label>
+
+                <div class="controls col-sm-7">
+                    <ui-select multiple="multiple" ng-model="edit_obj.kernel_list" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                        <ui-select-match class="ui-select-match" placeholder="select one or more kernels">{{$item.name}}</ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in srv_kernel_list">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+        </fieldset>
+        <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="submit"></input></div>
+    </form>
+</script>
+
+<script type="text/ng-template" id="package.search.form">
+    <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
+        <h2>Package search</h2>
+        <fieldset>
+            <legend>Base data</legend>
+            <div id="div_id_search_string" class="form-group">
+                <label for="id_search_string" class="control-label col-sm-3 requiredField">
+                    Search string<span class="asteriskField">*</span></label>
+
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" id="id_search_string" maxlength="128" name="search_string" ng-model="edit_obj.search_string" required="True" type="text"></input>
+                </div>
+            </div>
+        </fieldset>
+        <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="get_action_string()"></input></div>
+    </form>
+</script>
+
