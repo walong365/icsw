@@ -23,7 +23,21 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "ui.select", "restangular"
     ]
-).service('icswDomainNameService', ["Restangular", "$q", "icswTools", "icswCachingCall", "ICSW_URLS", (Restangular, $q, icswTools, icswCachingCall, ICSW_URLS) ->
+).config(["$stateProvider", ($stateProvider) ->
+    $stateProvider.state(
+        "main.domaintree", {
+            url: "/domaintree"
+            templateUrl: "icsw/main/device/domaintree.html"
+            data:
+                pageTitle: "Domain name tree"
+                rights: ["user.modify_domain_name_tree"]
+                menuEntry:
+                    menukey: "dev"
+                    icon: "fa-list-alt"
+                    ordering: 45
+        }
+    )
+]).service('icswDomainNameService', ["Restangular", "$q", "icswTools", "icswCachingCall", "ICSW_URLS", (Restangular, $q, icswTools, icswCachingCall, ICSW_URLS) ->
     domain_rest = Restangular.all(ICSW_URLS.REST_DOMAIN_TREE_NODE_LIST.slice(1)).getList().$object
     _fetch_dict = {}
     _result = undefined

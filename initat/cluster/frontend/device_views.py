@@ -43,18 +43,6 @@ from initat.tools import logging_tools, server_command, process_tools
 logger = logging.getLogger("cluster.device")
 
 
-class device_tree_smart(permission_required_mixin, View):
-    all_required_permissions = ["backbone.user.modify_tree"]
-
-    def get(self, request):
-        return render_me(
-            request,
-            "device_tree_smart.html",
-            {
-            }
-        )()
-
-
 class change_devices(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
@@ -243,12 +231,12 @@ class manual_connection(View):
             request.xml_response.warn("found no matching devices", logger)
 
 
-class variables(View):
-    @method_decorator(login_required)
-    def get(self, request):
-        return render_me(request, "device_variables.html", {
-            "device_object_level_permission": "backbone.device.change_variables",
-        })()
+# class variables(View):
+#    @method_decorator(login_required)
+#    def get(self, request):
+#        return render_me(request, "device_variables.html", {
+#            "device_object_level_permission": "backbone.device.change_variables",
+#        })()
 
 
 class scan_device_network(View):

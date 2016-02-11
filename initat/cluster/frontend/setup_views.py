@@ -37,15 +37,6 @@ from initat.tools import server_command
 logger = logging.getLogger("cluster.setup")
 
 
-class partition_overview(View):
-    @method_decorator(login_required)
-    def get(self, request):
-        return render_me(
-            request,
-            "part_overview.html",
-        )()
-
-
 class validate_partition(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
@@ -69,24 +60,6 @@ class validate_partition(View):
                 ) for cur_lev, p_str, g_problem in prob_list
             ]
         )
-
-
-class image_overview(View):
-    @method_decorator(login_required)
-    def get(self, request):
-        return render_me(
-            request,
-            "image_overview.html",
-        )()
-
-
-class kernel_overview(View):
-    @method_decorator(login_required)
-    def get(self, request):
-        return render_me(
-            request,
-            "kernel_overview.html",
-        )()
 
 
 class scan_for_images(View):

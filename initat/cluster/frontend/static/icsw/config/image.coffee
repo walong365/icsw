@@ -23,7 +23,22 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
-).directive("icswImageOverview",
+).config(["$stateProvider", ($stateProvider) ->
+    $stateProvider.state(
+        "main.imagekernel", {
+            url: "/imagekernel"
+            templateUrl: "icsw/main/imagekernel.html"
+            data:
+                pageTitle: "Images and Kernels"
+                rights: ["image.modify_images", "kernel.modify_kernels"]
+                licenses: ["netboot"]
+                menuEntry:
+                    menukey: "cluster"
+                    icon: "fa-linux"
+                    ordering: 25
+        }
+    )
+]).directive("icswImageOverview",
     ["$templateCache",
      ($templateCache) ->
         controller: "icswImageOverviewCtrl"

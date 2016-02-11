@@ -22,7 +22,22 @@ package_module = angular.module(
     "icsw.package.install",
     ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select",
     "icsw.tools.table", ]
-).service("icswPackageInstallRepositoryService", ["Restangular", "ICSW_URLS", (Restangular, ICSW_URLS) ->
+).config(["$stateProvider", ($stateProvider) ->
+    $stateProvider.state(
+        "main.packageinstall", {
+            url: "/packageinstall"
+            template: "<icsw-package-install-overview ng-cloack/>"
+            data:
+                pageTitle: "Package install"
+                rights: ["package.package_install"]
+                licenses: ["package_install"]
+                menuEntry:
+                    menukey: "cluster"
+                    icon: "fa-download"
+                    ordering: 50
+        }
+    )
+]).service("icswPackageInstallRepositoryService", ["Restangular", "ICSW_URLS", (Restangular, ICSW_URLS) ->
     return {
         rest_url            : ICSW_URLS.REST_PACKAGE_REPO_LIST
         delete_confirm_str  : (obj) -> return "Really delete Package repository '#{obj.name}' ?"

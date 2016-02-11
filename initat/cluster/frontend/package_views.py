@@ -47,14 +47,6 @@ logger = logging.getLogger("cluster.package")
 class repo_overview(permission_required_mixin, View):
     all_required_permissions = ["backbone.package.package_install"]
 
-    @method_decorator(login_required)
-    def get(self, request):
-        return render_me(
-            request,
-            "package_install.html",
-            {}
-        )()
-
     @method_decorator(xml_wrapper)
     def post(self, request):
         cur_mode = request.POST.get("mode", None)

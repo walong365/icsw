@@ -71,7 +71,6 @@ lic_patterns = [
 
 base_patterns = [
     url("^get_gauge_info$", base_views.get_gauge_info.as_view(), name="get_gauge_info"),
-    url("^DeviceLocation$", base_views.DeviceLocation.as_view(), name="DeviceLocation"),
     url("^upload_loc_gfx$", base_views.upload_location_gfx.as_view(), name="upload_location_gfx"),
     url("^loc_gfx_thumbnail/(?P<id>\d+)/(?P<image_count>\d+)$", base_views.location_gfx_icon.as_view(),
         name="location_gfx_icon"),
@@ -89,10 +88,7 @@ base_patterns = [
 ]
 
 setup_patterns = [
-    url(r"p_overview", setup_views.partition_overview.as_view(), name="partition_overview"),
     url(r"xml/validate", setup_views.validate_partition.as_view(), name="validate_partition"),
-    url(r"i_overview", setup_views.image_overview.as_view(), name="image_overview"),
-    url(r"k_overview", setup_views.kernel_overview.as_view(), name="kernel_overview"),
     url(r"xml/rescan_images", setup_views.scan_for_images.as_view(), name="rescan_images"),
     url(r"xml/use_image", setup_views.use_image.as_view(), name="use_image"),
     url(r"xml/rescan_kernels", setup_views.rescan_kernels.as_view(), name="rescan_kernels"),
@@ -122,11 +118,10 @@ boot_patterns = [
 
 device_patterns = [
     # url("^device_tree$", device_views.device_tree.as_view(), name="tree"),
-    url("^device_tree_smart$", device_views.device_tree_smart.as_view(), name="tree_smart"),
+    # url("^device_tree_smart$", device_views.device_tree_smart.as_view(), name="tree_smart"),
     url("^set_selection$", device_views.set_selection.as_view(), name="set_selection"),
     url("^select_parents$", device_views.select_parents.as_view(), name="select_parents"),
     url("^manual_connection", device_views.manual_connection.as_view(), name="manual_connection"),
-    url("^variables$", device_views.variables.as_view(), name="variables"),
     url("^change_devices$", device_views.change_devices.as_view(), name="change_devices"),
     url("^scan_device_network$", device_views.scan_device_network.as_view(), name="scan_device_network"),
     url("^device_info/(?P<device_pk>\d+)/(?P<mode>\S+)$", device_views.device_info.as_view(), name="device_info"),
@@ -147,7 +142,7 @@ network_patterns = [
     # url("^dev_network$", network_views.device_network.as_view(), name="device_network"),
     url("^copy_network$", network_views.copy_network.as_view(), name="copy_network"),
     url("^json_network$", network_views.json_network.as_view(), name="json_network"),
-    url("^cdnt$", network_views.get_domain_name_tree.as_view(), name="domain_name_tree"),
+    # url("^cdnt$", network_views.get_domain_name_tree.as_view(), name="domain_name_tree"),
     url("^get_clusters$", network_views.get_network_clusters.as_view(), name="get_clusters"),
     url("^get_scans", network_views.get_active_scans.as_view(), name="get_active_scans"),
     url("^get_free_ip$", network_views.get_free_ip.as_view(), name="get_free_ip"),

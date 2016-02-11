@@ -1,3 +1,14 @@
+<script type="text/ng-template" id="icsw/main/imagekernel.html">
+    <uib-tabset icsw-tools-add-acl-functions>
+        <uib-tab heading="Images" ng-if="has_menu_permission('image.modify_images')">
+            <icsw-image-overview></icsw-image-overview>
+        </uib-tab>
+        <uib-tab heading="Kernels" ng-if="has_menu_permission('kernel.modify_kernels')">
+            <icsw-kernel-overview></icsw-kernel-overview>
+        </uib-tab>
+    </uib-tabset>
+</script>
+
 <script type="text/ng-template" id="icsw.image.head">
     <tr>
         <th st-sort="name">Name</th>

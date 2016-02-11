@@ -22,7 +22,22 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "icsw.d3", "icsw.tools.button"
     ]
-).directive("icswDevicePartitionOverview", ["$templateCache", ($templateCache) ->
+).config(["$stateProvider", ($stateProvider) ->
+    $stateProvider.state(
+        "main.partition", {
+            url: "/partition"
+            templateUrl: "icsw/main/partition.html"
+            data:
+                pageTitle: "Partition overview"
+                rights: ["partition_fs.modify_partitions"]
+                licenses: ["netboot"]
+                menuEntry:
+                    menukey: "cluster"
+                    icon: "fa-database"
+                    ordering: 35
+        }
+    )
+]).directive("icswDevicePartitionOverview", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.device.partition.overview")

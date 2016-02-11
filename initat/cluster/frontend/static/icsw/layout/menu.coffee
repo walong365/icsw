@@ -457,83 +457,6 @@ menu_module = angular.module(
                     React.createElement(
                         menu_header
                         {
-                            key: "devold"
-                            name: "Device"
-                            icon: "fa-hdd-o"
-                            entries: [
-                                {}
-                                #{
-                                #    name: "General"
-                                #    rights: ["user.modify_tree"]
-                                #    icon: "fa-bars"
-                                #    href: ICSW_URLS.DEVICE_DEVICE_GENERAL
-                                #}
-                                #{
-                                #    name: "Network"
-                                #    rights: ["device.change_network"]
-                                #    icon: "fa-sitemap"
-                                #    href: ICSW_URLS.NETWORK_DEVICE_NETWORK
-                                #}
-                                #{
-                                #    name: "Device Configurations"
-                                #    rights: ["device.change_config"]
-                                #    icon: "fa-check-square"
-                                #    sref: "/main/deviceconfig"
-                                #}
-                                {
-                                    name: "Device variables"
-                                    rights: ["device.change_variables"]
-                                    icon: "fa-code"
-                                    href: ICSW_URLS.DEVICE_VARIABLES
-                                }
-                                #{
-                                #    name: "Device category"
-                                #    rights: ["user.modify_category_tree"]
-                                #    icon: "fa-table"
-                                #    sref: "/main/categorytree"
-                                #}
-                                {
-                                    name: "Device location"
-                                    rights: ["user.modify_category_tree"]
-                                    icon: "fa-map-marker"
-                                    href: ICSW_URLS.BASE_DEVICE_LOCATION
-                                }
-                                #{
-                                #    name: "Device connections"
-                                #    rights: ["device.change_connection"]
-                                #    icon: "fa-plug"
-                                #    sref: "/main/deviceconnection"
-                                #}
-                                {}
-                                {
-                                    name: "Device tree"
-                                    rights: ["user.modify_tree"]
-                                    icon: "fa-list"
-                                    href: ICSW_URLS.DEVICE_TREE_SMART
-                                }
-                                {
-                                    name: "Domain name tree"
-                                    rights: ["user.modify_domain_name_tree"]
-                                    icon: "fa-list-alt"
-                                    href: ICSW_URLS.NETWORK_DOMAIN_NAME_TREE
-                                }
-                                {}
-                                {
-                                    disable: true
-                                    name: "Discovery"
-                                    rights: ["device.discovery_server"]
-                                    href: ICSW_URLS.DISCOVERY_OVERVIEW
-                                }
-
-                            ]
-                        }
-                    )
-
-                )
-                extra_menus.push(
-                    React.createElement(
-                        menu_header
-                        {
                             key: "mon",
                             name: "Monitoring",
                             icon: "fa-gears",
@@ -598,47 +521,6 @@ menu_module = angular.module(
                                     rights: ["mon_check_command.setup_monitoring"]
                                     icon: "fa-info-circle"
                                     href: ICSW_URLS.MON_BUILD_INFO
-                                }
-                            ]
-                        }
-                    )
-                )
-                extra_menus.push(
-                    React.createElement(
-                        menu_header
-                        {
-                            key: "clus",
-                            name: "Cluster"
-                            icon: "fa-cubes"
-                            entries: [
-                                {
-                                    name: "Nodeboot"
-                                    rights: ["device.change_boot"]
-                                    licenses: ["netboot"]
-                                    icon: "fa-rocket"
-                                    sref: "/main/deployboot"
-                                }
-                                {
-                                    name: "Packet install"
-                                    rights: ["package.package_install"]
-                                    licenses: ["package_install"]
-                                    icon: "fa-download"
-                                    href: ICSW_URLS.PACK_REPO_OVERVIEW
-                                }
-                                {}
-                                {
-                                    name: "Images and Kernels"
-                                    rights: ["image.modify_images", "kernel.modify_kernels"]
-                                    licenses: ["netboot"]
-                                    icon: "fa-linux"
-                                    href: ICSW_URLS.SETUP_IMAGE_OVERVIEW
-                                }
-                                {
-                                    name: "Partition overview"
-                                    rights: ["partition_fs.modify_partitions"]
-                                    licenses: ["netboot"]
-                                    icon: "fa-database"
-                                    href: ICSW_URLS.SETUP_PARTITION_OVERVIEW
                                 }
                             ]
                         }

@@ -55,13 +55,23 @@ angular.module(
     ]
 ).config(["$stateProvider", ($stateProvider) ->
     $stateProvider.state(
-        "main.deployboot",
-          {
-              url: "/deployboot"
-              templateUrl: "icsw/main/deploy/boot.html"
-              data:
-                  pageTitle: "Boot nodes"
-          }
+        "main.deployboot", {
+            url: "/deployboot"
+            templateUrl: "icsw/main/deploy/boot.html"
+            data:
+                pageTitle: "Boot nodes"
+                rights: ["device.change_boot"]
+                licenses: ["netboot"]
+                menuHeader:
+                    key: "cluster"
+                    name: "Cluster"
+                    icon: "fa-cubes"
+                    ordering: 80
+                menuEntry:
+                    menukey: "cluster"
+                    icon: "fa-rocket"
+                    ordering: 10
+        }
     )
 ]).controller("icswDeviceBootCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$uibModal", "icswAcessLevelService", "$timeout", "msgbus", "icswTools", "ICSW_URLS", "icswSimpleAjaxCall",
     ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $uibModal, icswAcessLevelService, $timeout, msgbus, icswTools, ICSW_URLS, icswSimpleAjaxCall) ->

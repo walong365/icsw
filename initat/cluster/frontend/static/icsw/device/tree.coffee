@@ -24,7 +24,21 @@ angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "smart-table",
         "icsw.tools.table", "icsw.tools", "icsw.tools.button", "icsw.tools.dialog",
     ]
-).controller("icswDeviceTreeCtrl",
+).config(["$stateProvider", ($stateProvider) ->
+    $stateProvider.state(
+        "main.devtree", {
+            url: "/devtree"
+            templateUrl: "icsw/main/device/tree.html"
+            data:
+                pageTitle: "Device tree"
+                rights: ["user.modify_tree"]
+                menuEntry:
+                    menukey: "dev"
+                    icon: "fa-list"
+                    ordering: 15
+        }
+    )
+]).controller("icswDeviceTreeCtrl",
     ["$scope", "$compile", "$filter", "$templateCache", "Restangular",  "restDataSource", "$q", "$timeout",
      "$uibModal", "array_lookupFilter", "show_dtnFilter", "msgbus", "blockUI", "icswTools", "ICSW_URLS", "icswToolsButtonConfigService",
      "icswSimpleAjaxCall", "icswToolsSimpleModalService", "toaster", "icswDialogDeleteObjects",
