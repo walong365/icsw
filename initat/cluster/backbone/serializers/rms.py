@@ -59,11 +59,12 @@ __all__ = [
 
 class RMSJobVariableSerializer(serializers.ModelSerializer):
     value = serializers.CharField(source="get_value", read_only=True)
+    value_int = serializers.CharField(source="get_int_value", read_only=True)
 
     class Meta:
         model = RMSJobVariable
         fields = (
-            "rms_job", "rms_job_run", "name", "raw_value", "parsed_type", "unit", "value",
+            "rms_job", "rms_job_run", "name", "raw_value", "parsed_type", "unit", "value", "value_int",
         )
 
 

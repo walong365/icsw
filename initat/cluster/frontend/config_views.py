@@ -45,7 +45,7 @@ from initat.cluster.backbone import serializers
 from initat.cluster.backbone.models import config, device, device_config, ConfigTreeNode, \
     get_related_models, mon_check_command, category, config_str, \
     config_script, config_bool, config_blob, config_int, config_catalog
-from initat.cluster.backbone.render import permission_required_mixin, render_me
+from initat.cluster.backbone.render import permission_required_mixin
 from initat.cluster.backbone.serializers import config_dump_serializer, mon_check_command_serializer
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.tools import logging_tools, process_tools, server_command
@@ -53,15 +53,8 @@ from initat.tools import logging_tools, process_tools, server_command
 logger = logging.getLogger("cluster.config")
 
 
-class show_configs(permission_required_mixin, View):
-    all_required_permissions = ["backbone.config.modify_config"]
-
-    def get(self, request):
-        return render_me(
-            request,
-            "config_overview.html", {
-            }
-        )()
+# class show_configs(permission_required_mixin, View):
+#     all_required_permissions = ["backbone.config.modify_config"]
 
 
 def delete_object(request, del_obj, **kwargs):

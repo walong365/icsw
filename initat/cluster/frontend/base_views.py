@@ -40,7 +40,7 @@ import initat.cluster.backbone.models
 from initat.cluster.backbone.models import device_variable, category, \
     category_tree, location_gfx, DeleteRequest, device, config, mon_check_command
 from initat.cluster.backbone.models.functions import can_delete_obj, get_related_models
-from initat.cluster.backbone.render import permission_required_mixin, render_me
+from initat.cluster.backbone.render import permission_required_mixin
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from initat.cluster.frontend.rest_views import rest_logging
 from initat.tools import logging_tools, process_tools, server_command
@@ -58,8 +58,8 @@ class get_gauge_info(View):
             gauge_info.append(
                 E.gauge_element(
                     gauge_dv.description,
-                    value="%d" % (gauge_dv.val_int),
-                    idx="%d" % (gauge_dv.pk),
+                    value="{:d}".format(gauge_dv.val_int),
+                    idx="{:d}".format(gauge_dv.pk),
                 )
             )
         # for testing

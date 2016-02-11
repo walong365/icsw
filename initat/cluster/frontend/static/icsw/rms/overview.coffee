@@ -800,6 +800,9 @@ rms_module = angular.module(
             scope.popover =
                 title: "Jobvars vor Job " + scope.job.rms_job.jobid
                 template: "icsw.rms.job.var.info.template"
+            scope.popover_int =
+                title: "Jobvars vor Job " + scope.job.rms_job.jobid
+                template: "icsw.rms.job.var.info.int_template"
             _len = parseInt((scope.job.rmsjobvariable_set.length + 1) / 2)
             _vars = scope.job.rmsjobvariable_set
             _new_vars = []

@@ -335,18 +335,46 @@
     </div>
 </script>
 
+<script type="text/ng-template" id="icsw.rms.job.var.info.int_template">
+    <div width="500px">
+        <table class="table table-condensed table-hover table-striped" style="width:auto;">
+            <tbody>
+                <tr ng-repeat="var_tuple in new_vars">
+                    <td>{{ var_tuple[0].name }}</td>
+                    <td class="text-right"><small>{{ var_tuple[0].value_int}}</small></td>
+                    <td class="text-left"">&nbsp;{{ var_tuple[0].unit }}</td>
+                    <td>{{ var_tuple[1].name }}</td>
+                    <td class="text-right"><small>{{ var_tuple[1].value_int}}</small></td>
+                    <td class="text-left"">&nbsp;{{ var_tuple[1].unit }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</script>
+
 <script type="text/ng-template" id="icsw.rms.job.var.info">
-    <div ng-if="job.rmsjobvariable_set.length">
-        <button type="button" class="btn btn-xs btn-success pull-right"
-            popover-title="{{ popover.title }}"
-            popover-template="popover.template"
-            popover-append-to-body="1"
-            popover-placement="left"
+    <div ng-if="job.rmsjobvariable_set.length" class="pull-right">
+        {{  job.rmsjobvariable_set.length }} vars
+        <button type="button"
+            class="btn btn-xs btn-success"
+            uib-popover-title="{{ popover.title }}"
+            uib-popover-template="popover.template"
+            uib-popover-append-to-body="1"
+            uib-popover-placement="left"
         >
-            Vars: {{ job.rmsjobvariable_set.length }}
+            Show
+        </button>&nbsp;
+        <button type="button"
+            class="btn btn-xs btn-success"
+            uib-popover-title="{{ popover_int.title }}"
+            uib-popover-template="popover_int.template"
+            uib-popover-append-to-body="1"
+            uib-popover-placement="left"
+        >
+            as int
         </button>
     </div>
-    <div ng-if="!job.rmsjobvariable_set.length">
+    <div ng-if="!job.rmsjobvariable_set.length" class="text-center">
         ---
     </div>
 </script>
@@ -488,7 +516,10 @@
 </script>
 
 <script type="text/ng-template" id="icsw.rms.license.graph">
-    <progress max="1000">
-        <bar ng-repeat="stack in lic.license_stack track by $index" value="stack.value" title="{{ stack.title }}" type="{{ stack.type }}">{{ stack.out }}</bar>
-    </progress>
+    <uib-progress max="1000">
+        <uib-bar ng-repeat="stack in lic.license_stack track by $index"
+             value="stack.value"
+             title="{{ stack.title }}"
+             type="{{ stack.type }}">{{ stack.out }}</uib-bar>
+    </uib-progress>
 </script>

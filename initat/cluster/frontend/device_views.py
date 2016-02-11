@@ -231,14 +231,6 @@ class manual_connection(View):
             request.xml_response.warn("found no matching devices", logger)
 
 
-# class variables(View):
-#    @method_decorator(login_required)
-#    def get(self, request):
-#        return render_me(request, "device_variables.html", {
-#            "device_object_level_permission": "backbone.device.change_variables",
-#        })()
-
-
 class scan_device_network(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)

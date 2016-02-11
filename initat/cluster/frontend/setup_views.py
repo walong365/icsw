@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -28,10 +28,10 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.utils.decorators import method_decorator
 from django.views.generic import View
+from lxml.builder import E  # @UnresolvedImport
+
 from initat.cluster.backbone.models import partition_table, image
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
-from initat.cluster.backbone.render import render_me
-from lxml.builder import E  # @UnresolvedImport
 from initat.tools import server_command
 
 logger = logging.getLogger("cluster.setup")
@@ -56,7 +56,7 @@ class validate_partition(View):
                 E.problem(
                     p_str,
                     g_problem="1" if g_problem else "0",
-                    level="%d" % (cur_lev)
+                    level="{:d}".format(cur_lev)
                 ) for cur_lev, p_str, g_problem in prob_list
             ]
         )
@@ -83,7 +83,8 @@ class scan_for_images(View):
                                 present="1" if f_image.text in present_img_names else "0",
                                 name=f_image.text,
                                 pk="{:d}".format(f_num + 1),
-                                **f_image.attrib)
+                                **f_image.attrib
+                            )
                         )
                     request.xml_response["response"] = f_img_list
                 else:
