@@ -119,9 +119,9 @@
                     from repo <span class="caret"></span>
                 </button>
                 <ul class="dropdown-menu">
-                    <li><a href="#" ng-click="obj.target_repo=null">ignore</a></li>
+                    <li><a ng-click="obj.target_repo=null">ignore</a></li>
                     <li ng-repeat="repo in repos">
-                        <a href="#" ng-click="obj.target_repo=repo.idx">
+                        <a ng-click="obj.target_repo=repo.idx">
                             <span ng-show="repo.idx == obj.package_repo">(*) </span>
                             {{ repo.name }}
                         </a>

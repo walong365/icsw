@@ -30,7 +30,7 @@
     <td>{{ obj.architecture | array_lookup:architectures:'architecture':'---' }}</td>
     <td>{{ obj.sys_vendor }}, {{ obj.sys_version || "?" }}.{{ obj.sys_release || "?" }}</td>
     <td class="text-center">
-        <a href="#" tooltip="{{obj.usecount_tooltip}}" tooltip-trigger="mouseenter">
+        <a tooltip="{{obj.usecount_tooltip}}" tooltip-trigger="mouseenter">
             {{ obj.imagedevicehistory_set.length }} / {{ obj.new_image.length }}
         </a>
     </td>

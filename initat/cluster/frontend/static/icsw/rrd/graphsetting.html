@@ -199,7 +199,7 @@
     <div class="form-group">
         <div class="input-group">
             <ui-select ng-disabled="timeframes.length == 0" ng-change="change_tf()" ng-model="val.current" style="width:160px;" title="choose graphing timeframe">
-                <ui-select-match>{{ $select.selected.name }}&nbsp;&nbsp;&nbsp;</ui-select-match>
+                <ui-select-match class="ui-select-match">{{ $select.selected.name }}&nbsp;&nbsp;&nbsp;</ui-select-match>
                 <ui-select-choices class="ui-select-choices" repeat="entry in timeframes">
                     <div ng-bind-html="entry.name"></div>
                 </ui-select-choices>

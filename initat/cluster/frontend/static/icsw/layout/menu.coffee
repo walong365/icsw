@@ -425,12 +425,14 @@ menu_module = angular.module(
                 for state in $state.get()
                     if state.data? and state.data.menuHeader?
                         _hdr = state.data.menuHeader
-                        menus.push(new MenuHeader(
-                            _hdr.key
-                            _hdr.name
-                            _hdr.icon
-                            _hdr.ordering
-                        ))
+                        menus.push(
+                            new MenuHeader(
+                                _hdr.key
+                                _hdr.name
+                                _hdr.icon
+                                _hdr.ordering
+                            )
+                        )
                 for state in $state.get()
                     if state.data? and state.data.menuEntry?
                         # find menu

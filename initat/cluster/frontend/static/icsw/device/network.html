@@ -113,7 +113,7 @@
                 Copy network from<span class="caret"></span>
             </button>
             <ul class="dropdown-menu">
-                <li ng-click="copy_network(obj, $event)" ng-repeat="obj in devices"><a href="#">{{ obj.full_name }}</a></li>
+                <li ng-click="copy_network(obj, $event)" ng-repeat="obj in devices"><a>{{ obj.full_name }}</a></li>
             </ul>
             <input type="button" ng-class="copy_com_class()" ng-value="copy_com_value()" ng-click="toggle_copy_com()"></input>
         </div>
@@ -181,9 +181,9 @@
                     Create new
                 </button>
                 <ul class="dropdown-menu">
-                    <li ng-click="create_netdevice(ndip_obj, $event)"><a href="#">Netdevice</a></li>
-                    <li ng-show="ndip_obj.netdevice_set.length && networks.length" ng-click="create_netip_dev(ndip_obj, $event)"><a href="#">IP Address</a></li>
-                    <li ng-show="ndip_obj.netdevice_set.length && nd_peers.length" ng-click="create_peer_information_dev(ndip_obj, $event)"><a href="#">Network topology connection</a></li>
+                    <li ng-click="create_netdevice(ndip_obj, $event)"><a>Netdevice</a></li>
+                    <li ng-show="ndip_obj.netdevice_set.length && networks.length" ng-click="create_netip_dev(ndip_obj, $event)"><a>IP Address</a></li>
+                    <li ng-show="ndip_obj.netdevice_set.length && nd_peers.length" ng-click="create_peer_information_dev(ndip_obj, $event)"><a>Network topology connection</a></li>
                 </ul>
             </div>
             <icsw-tools-button type="reload" value="update network" size="xs"
@@ -268,8 +268,8 @@
                 Create new <span class="caret"></span>
             </button>
             <ul class="dropdown-menu">
-                <li ng-show="networks.length" ng-click="create_netip_nd(ndip_obj, $event)"><a href="#">IP Address</a></li>
-                <li ng-click="create_peer_information_nd(ndip_obj, $event)"><a href="#">Network topology connection</a></li>
+                <li ng-show="networks.length" ng-click="create_netip_nd(ndip_obj, $event)"><a>IP Address</a></li>
+                <li ng-click="create_peer_information_nd(ndip_obj, $event)"><a>Network topology connection</a></li>
             </ul>
         </div>
     </td>

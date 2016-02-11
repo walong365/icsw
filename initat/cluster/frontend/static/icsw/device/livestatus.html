@@ -5,7 +5,7 @@
                 Layout ({{ cur_layout}})<span class="caret"></span>
             </button>
             <ul class="dropdown-menu">
-                <li ng-click="activate_layout(lo)" ng-repeat="lo in layouts"><a href="#">{{ lo }}</a></li>
+                <li ng-click="activate_layout(lo)" ng-repeat="lo in layouts"><a>{{ lo }}</a></li>
             </ul>
         </div>
         <icsw-device-livestatus-filter ls-filter="ls_filter"></icsw-device-livestatus-filter>

@@ -5,7 +5,7 @@
 
         <ul class="nav navbar-nav">
             <li>
-                <a href="#" ui-sref="main.dashboard"><span class="fa fa-home fa-lg" title="Dashboard"></span></a>
+                <a ui-sref="main.dashboard"><span class="fa fa-home fa-lg" title="Dashboard"></span></a>
             </li>
         </ul>
 
@@ -26,13 +26,13 @@
                 </a>
                 <ul class="dropdown-menu">
                     <li>
-                        <a href="#" ui-sref="main.useraccount">
+                        <a ui-sref="main.useraccount">
                             <span class="fa fa-info-circle fa_icsw"></span>
                             Account Info
                         </a>
                     </li>
                     <li ng-show="has_menu_permission('backbone.user.admin')"><a href="{{ ICSW_URLS.ADMIN_INDEX }}"><span class="fa fa-wrench fa_icsw"></span>Admin</a></li>
-                    <li><a href="#" ui-sref="logout"><span class="fa fa-sign-out fa_icsw"></span>Logout</a></li>
+                    <li><a ui-sref="logout"><span class="fa fa-sign-out fa_icsw"></span>Logout</a></li>
                     <li class="divider"></li>
                     <li>
                         <a ui-sref="main.serverinfo">

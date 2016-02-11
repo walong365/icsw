@@ -4,18 +4,18 @@
             <div class="form-group">
                 <ul class="pagination pagination-sm" ng-show="pagSettings.conf.num_pages > 1 && pagSettings.conf.num_pages < 11"  style="margin-top:0px; margin-bottom:0px;">
                     <li ng-repeat="pag_num in pagSettings.conf.page_list track by $index" ng-class="pagSettings.get_li_class(pag_num)">
-                        <a href="#" ng-click="activate_page(pag_num)">{{ pag_num }}</a>
+                        <a ng-click="activate_page(pag_num)">{{ pag_num }}</a>
                     </li>
                 </ul>
                 <ul class="pagination pagination-sm" ng-show="pagSettings.conf.num_pages > 1 && pagSettings.conf.num_pages > 10"  style="margin-top:0px; margin-bottom:0px;">
                     <li ng-class="pagSettings.get_laquo_class()">
-                        <a href="#" ng-click="pagSettings.page_back()">&laquo;</a>
+                        <a ng-click="pagSettings.page_back()">&laquo;</a>
                     </li>
                     <li ng-class="pagSettings.get_raquo_class()">
-                        <a href="#" ng-click="pagSettings.page_forward()">&raquo;</a>
+                        <a ng-click="pagSettings.page_forward()">&raquo;</a>
                     </li>
                     <li ng-repeat="pag_num in pagSettings.get_filtered_pl() track by $index" ng-class="pagSettings.get_li_class(pag_num)">
-                        <a href="#" ng-click="activate_page(pag_num)">{{ pag_num }}</a>
+                        <a ng-click="activate_page(pag_num)">{{ pag_num }}</a>
                     </li>
                 </ul>
             </div>

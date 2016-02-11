@@ -211,13 +211,13 @@
             </button>
             <ul class="dropdown-menu">
                 <li ng-show="enable_ok(queue.state.value)" ng-click="queue_control('enable', queue)">
-                    <a href="#">Enable {{ queue.name }}@{{ queue.host.host.value }}</a>
+                    <a>Enable {{ queue.name }}@{{ queue.host.host.value }}</a>
                 </li>
                 <li ng-show="disable_ok(queue.state.value)" ng-click="queue_control('disable', queue)">
-                    <a href="#">Disable {{ queue.name }}@{{ queue.host.host.value }}</a>
+                    <a>Disable {{ queue.name }}@{{ queue.host.host.value }}</a>
                 </li>
                 <li ng-show="clear_error_ok(queue.state.value)" ng-click="queue_control('clear_error', queue)">
-                    <a href="#">Clear error on {{ queue.name }}@{{ queue.host.host.value }}</a>
+                    <a>Clear error on {{ queue.name }}@{{ queue.host.host.value }}</a>
                 </li>
             </ul>
         </div>
@@ -243,13 +243,13 @@
             </button>
             <ul class="dropdown-menu">
                 <li ng-click="job_control('delete', false)">
-                    <a href="#">Delete</a>
+                    <a>Delete</a>
                 </li>
                 <li ng-click="job_control('delete', true)">
-                    <a href="#">force Delete</a>
+                    <a>force Delete</a>
                 </li>
                 <li ng-show="mode=='w'" ng-click="change_priority()">
-                    <a href="#">change priority</a>
+                    <a>change priority</a>
                 </li>
             </ul>
         </div>

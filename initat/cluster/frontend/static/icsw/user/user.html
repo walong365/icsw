@@ -288,7 +288,9 @@
                             {{ last_jobinfo_timedelta.name }} <span class="caret"></span>
                         </button>
                         <ul class="dropdown-menu">
-                            <li ng-repeat="ts in all_timedeltas" ng-click="set_jobinfo_timedelta(ts)"><a href="#">{{ ts.name }}</a></li>
+                            <li ng-repeat="ts in all_timedeltas" ng-click="set_jobinfo_timedelta(ts)">
+                                <a>{{ ts.name }}</a>
+                            </li>
                         </ul>
                      </div>
                 </td>

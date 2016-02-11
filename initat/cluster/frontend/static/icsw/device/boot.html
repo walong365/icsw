@@ -60,9 +60,9 @@
                             action ({{ num_selected }})<span class="caret"></span>
                         </button>
                         <ul class="dropdown-menu">
-                            <li ng-click="soft_control('', 'reboot')"><a href="#">reboot</a></li>
-                            <li ng-click="soft_control('', 'halt')"><a href="#">halt</a></li>
-                            <li ng-click="soft_control('', 'poweroff')"><a href="#">poweroff</a></li>
+                            <li ng-click="soft_control('', 'reboot')"><a>reboot</a></li>
+                            <li ng-click="soft_control('', 'halt')"><a>halt</a></li>
+                            <li ng-click="soft_control('', 'poweroff')"><a>poweroff</a></li>
                         </ul>
                     </div>
                 </td>
@@ -72,9 +72,9 @@
                             control ({{ num_selected_hc() }}) <span class="caret"></span>
                         </button>
                         <ul class="dropdown-menu">
-                            <li ng-click="hard_control('', 'cycle')"><a href="#">cycle</a></li>
-                            <li ng-click="hard_control('', 'on')"><a href="#">on</a></li>
-                            <li ng-click="hard_control('', 'off')"><a href="#">off</a></li>
+                            <li ng-click="hard_control('', 'cycle')"><a>cycle</a></li>
+                            <li ng-click="hard_control('', 'on')"><a>on</a></li>
+                            <li ng-click="hard_control('', 'off')"><a>off</a></li>
                         </ul>
                     </div>
                 </td>
@@ -163,9 +163,9 @@
                 action <span class="caret"></span>
             </button>
             <ul class="dropdown-menu">
-                <li ng-click="soft_control(dev, 'reboot')"><a href="#">reboot</a></li>
-                <li ng-click="soft_control(dev, 'halt')"><a href="#">halt</a></li>
-                <li ng-click="soft_control(dev, 'poweroff')"><a href="#">poweroff</a></li>
+                <li ng-click="soft_control(dev, 'reboot')"><a>reboot</a></li>
+                <li ng-click="soft_control(dev, 'halt')"><a>halt</a></li>
+                <li ng-click="soft_control(dev, 'poweroff')"><a>poweroff</a></li>
             </ul>
         </div>
         <span class='label label-danger' ng-show="!valid_net_state()"><span class='glyphicon glyphicon-ban-circle'></span></span>
@@ -176,9 +176,9 @@
                 {{ get_hc_info(cd_con) }} <span class="caret"></span>
             </button>
             <ul class="dropdown-menu">
-                <li ng-click="hard_control(cd_con, 'cycle')"><a href="#">cycle</a></li>
-                <li ng-click="hard_control(cd_con, 'on')"><a href="#">on</a></li>
-                <li ng-click="hard_control(cd_con, 'off')"><a href="#">off</a></li>
+                <li ng-click="hard_control(cd_con, 'cycle')"><a>cycle</a></li>
+                <li ng-click="hard_control(cd_con, 'on')"><a>on</a></li>
+                <li ng-click="hard_control(cd_con, 'off')"><a>off</a></li>
             </ul>
             <span ng-show="!$last">,</span>
         </div>
