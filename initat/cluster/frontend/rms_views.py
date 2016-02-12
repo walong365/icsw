@@ -40,7 +40,6 @@ from django.views.generic import View
 from lxml.builder import E
 
 from initat.cluster.backbone.models import device, user_variable, rms_job_run
-from initat.cluster.backbone.render import render_me
 from initat.cluster.backbone.routing import SrvTypeRouting
 from initat.cluster.backbone.serializers import rms_job_run_serializer
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper

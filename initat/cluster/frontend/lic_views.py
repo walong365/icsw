@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -22,7 +22,7 @@
 
 """ License views """
 
-import json  # @UnusedImport
+import json
 import logging
 import collections
 
@@ -34,7 +34,6 @@ from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListExtLicense
-from initat.cluster.backbone.render import render_me
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.backbone.models import ext_license_version_state_coarse, ext_license_usage_coarse, \
     ext_license_state_coarse
@@ -44,12 +43,6 @@ from initat.cluster.frontend.common import duration_utils
 from initat.tools import server_command
 
 logger = logging.getLogger("cluster.license")
-
-
-class overview(View):
-    @method_decorator(login_required)
-    def get(self, request):
-        return render_me(request, "lic_overview.html")()
 
 
 def _dump_xml(s_node):
@@ -65,10 +58,6 @@ def _dump_xml(s_node):
 
 
 class license_liveview(View):
-    @method_decorator(login_required)
-    def get(self, request):
-        return render_me(request, "rms_license_liveview.html")
-
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):

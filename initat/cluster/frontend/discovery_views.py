@@ -1,4 +1,4 @@
-# Copyright (C) 2015 Bernhard Mallinger, init.at
+# Copyright (C) 2015-2016 Bernhard Mallinger, init.at
 #
 # Send feedback to: <mallinger@init.at>
 #
@@ -32,21 +32,8 @@ from django.views.generic import View
 from pymongo.errors import PyMongoError
 
 from initat.cluster.backbone.models import device
-from initat.cluster.backbone.render import render_me
 from initat.cluster.frontend.rest_views import rest_logging
 from initat.tools.mongodb import MongoDbConnector
-
-
-class DiscoveryOverview(View):
-    @method_decorator(login_required)
-    def get(self, request, *args, **kwargs):
-        return render_me(request, "discovery_overview.html")()
-
-
-class EventLogOverview(View):
-    @method_decorator(login_required)
-    def get(self, request, *args, **kwargs):
-        return render_me(request, "event_log.html")()
 
 
 class GetEventLogDeviceInfo(View):

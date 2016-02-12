@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -36,29 +36,11 @@ from django.views.generic import View
 from networkx.readwrite import json_graph
 
 from initat.cluster.backbone.models import device, peer_information, network, network_type
-from initat.cluster.backbone.render import permission_required_mixin, render_me
+from initat.cluster.backbone.render import permission_required_mixin
 from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.tools import config_tools, ipvx_tools, logging_tools
 
 logger = logging.getLogger("cluster.network")
-
-
-#class device_network(View):
-#    @method_decorator(login_required)
-#    def get(self, request):
-#        return render_me(
-#            request, "device_network.html", {
-#                "device_object_level_permission": "backbone.device.change_network",
-#            }
-#        )()
-
-
-class show_cluster_networks(permission_required_mixin, View):
-    all_required_permissions = ["backbone.network.modify_network"]
-
-    def get(self, request):
-        return render_me(request, "cluster_networks.html", {
-        })()
 
 
 class json_network(View):
@@ -245,13 +227,6 @@ class copy_network(View):
             )
         else:
             request.xml_response.error("no target_devices", logger)
-
-
-# class get_domain_name_tree(permission_required_mixin, View):
-#    all_required_permissions = ["backbone.user.modify_domain_name_tree"]
-#
-#    def get(self, request):
-#        return render_me(request, "domain_name_tree.html", {})()
 
 
 class get_network_clusters(permission_required_mixin, View):

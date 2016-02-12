@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -17,6 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+""" url definitions for ICSW """
 
 import os
 
@@ -56,8 +57,8 @@ rms_patterns = [
 
 # license overview
 lic_patterns = [
-    url(r"overview$", lic_views.overview.as_view(), name="overview"),
-    url(r"license_liveview$", lic_views.license_liveview.as_view(), name="license_liveview"),
+    # url(r"overview$", lic_views.overview.as_view(), name="overview"),
+    # url(r"license_liveview$", lic_views.license_liveview.as_view(), name="license_liveview"),
     url(r"get_license_overview_steps$", lic_views.get_license_overview_steps.as_view(),
         name="get_license_overview_steps"),
     url("^license_state_coarse_list$", lic_views.license_state_coarse_list.as_view(), name="license_state_coarse_list"),
@@ -124,7 +125,6 @@ device_patterns = [
     url("^manual_connection", device_views.manual_connection.as_view(), name="manual_connection"),
     url("^change_devices$", device_views.change_devices.as_view(), name="change_devices"),
     url("^scan_device_network$", device_views.scan_device_network.as_view(), name="scan_device_network"),
-    url("^device_info/(?P<device_pk>\d+)/(?P<mode>\S+)$", device_views.device_info.as_view(), name="device_info"),
     url("^get_device_locations$", device_views.get_device_location.as_view(), name="get_device_location"),
     url("^GetMatchingDevices$", device_views.GetMatchingDevices.as_view(), name="GetMatchingDevices"),
 ]
@@ -138,7 +138,7 @@ icsw_lic_patterns = [
 ]
 
 network_patterns = [
-    url("^network$", network_views.show_cluster_networks.as_view(), name="show_networks"),
+    # url("^network$", network_views.show_cluster_networks.as_view(), name="show_networks"),
     # url("^dev_network$", network_views.device_network.as_view(), name="device_network"),
     url("^copy_network$", network_views.copy_network.as_view(), name="copy_network"),
     url("^json_network$", network_views.json_network.as_view(), name="json_network"),
@@ -210,7 +210,7 @@ pack_patterns = [
 ]
 
 main_patterns = [
-    url(r"^permission$", main_views.permissions_denied.as_view(), name="permission_denied"),
+    # url(r"^permission$", main_views.permissions_denied.as_view(), name="permission_denied"),
     url(r"^server_info$", main_views.get_server_info.as_view(), name="get_server_info"),
     url(r"^server_control$", main_views.server_control.as_view(), name="server_control"),
     url(r"^virtual_desktop_viewer$", main_views.virtual_desktop_viewer.as_view(), name="virtual_desktop_viewer"),
@@ -227,8 +227,8 @@ rrd_patterns = [
 ]
 
 discovery_patterns = [
-    url(r"^Overview$", discovery_views.DiscoveryOverview.as_view(), name="Overview"),
-    url(r"^EventLogOverview$", discovery_views.EventLogOverview.as_view(), name="EventLogOverview"),
+    # url(r"^Overview$", discovery_views.DiscoveryOverview.as_view(), name="Overview"),
+    # url(r"^EventLogOverview$", discovery_views.EventLogOverview.as_view(), name="EventLogOverview"),
     url(r"^GetEventLog$", discovery_views.GetEventLog.as_view(), name="GetEventLog"),
     url(r"^GetEventLogDeviceInfo$", discovery_views.GetEventLogDeviceInfo.as_view(), name="GetEventLogDeviceInfo"),
 ]
@@ -265,7 +265,7 @@ rest_patterns = rpl
 
 dyndoc_patterns = [
     # "initat.cluster.frontend",
-    url(r"^hb/root$", doc_views.test_page.as_view(), name="doc_root"),
+    # url(r"^hb/root$", doc_views.test_page.as_view(), name="doc_root"),
     # TODO: fix handbook prefix in accordance with actual handbook html
     url(r"^(?P<page>.*)$", doc_views.doc_page.as_view(), name="doc_page"),
 ]
@@ -282,11 +282,6 @@ doc_patterns = [
 ]
 
 system_patterns = [
-    url(
-        r"^history_overview$",
-        model_history_views.history_overview.as_view(),
-        name="history_overview"
-    ),
     url(
         r"^get_historical_data$",
         model_history_views.get_historical_data.as_view(),

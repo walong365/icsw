@@ -36,7 +36,6 @@ from django.views.generic import View
 from initat.cluster.backbone.models import device_group, device, \
     cd_connection, domain_tree_node, category
 from initat.cluster.backbone.models.functions import can_delete_obj
-from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from initat.tools import logging_tools, server_command, process_tools
 
@@ -143,16 +142,6 @@ class select_parents(View):
             "new_selection": list(set(cur_sel) | set(cd_pks))
         }
         return HttpResponse(json.dumps(_res), content_type="application/json")
-
-
-class show_configs(View):
-    @method_decorator(login_required)
-    def get(self, request):
-        return render_me(
-            request, "device_configs.html", {
-                "device_object_level_permission": "backbone.device.change_config",
-            }
-        )()
 
 
 class manual_connection(View):
@@ -298,21 +287,6 @@ class scan_device_network(View):
             request.xml_response.error("invalid scan type {}".format(_sm))
         if srv_com is not None:
             _result = contact_server(request, "discovery", srv_com, timeout=30)
-
-
-class device_info(View):
-    @method_decorator(login_required)
-    def get(self, request, **kwargs):
-        # set selection list
-        request.session["sel_list"] = ["dev__{}".format(kwargs["device_pk"])]
-        request.session.save()
-        return render_me(
-            request,
-            "index.html",
-            {
-                "DEVICE_MODE": kwargs.get("mode", "")
-            }
-        )()
 
 
 class get_device_location(View):

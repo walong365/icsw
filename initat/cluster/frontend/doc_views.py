@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2014-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2014-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -28,7 +28,6 @@ import os
 from django.conf import settings
 from django.http.response import HttpResponse
 from django.views.generic import View
-from initat.cluster.backbone.render import render_me
 
 logger = logging.getLogger("cluster.doc")
 
@@ -53,6 +52,6 @@ class doc_page(View):
             # return HttpResponse(file(settings.HANDBOOK_CHUNKS[page], "r").read())
 
 
-class test_page(View):
-    def get(self, request):
-        return render_me(request, "docu_root.html", {"chunk_name": "index.xhtml"})
+# class test_page(View):
+#    def get(self, request):
+#        return render_me(request, "docu_root.html", {"chunk_name": "index.xhtml"})

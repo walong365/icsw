@@ -1,4 +1,4 @@
-# Copyright (C) 2015 Bernhard Mallinger, init.at
+# Copyright (C) 2015-2016 Bernhard Mallinger, init.at
 #
 # Send feedback to: <mallinger@init.at>
 #
@@ -36,15 +36,8 @@ from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParam
 from initat.cluster.backbone.models import device
 from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListDeviceService
 from initat.cluster.backbone.models.model_history import icsw_deletion_record, icsw_register
-from initat.cluster.backbone.render import render_me
 from initat.cluster.frontend.ext.diff_match_patch import diff_match_patch
 from initat.cluster.frontend.rest_views import rest_logging
-
-
-class history_overview(View):
-    @method_decorator(login_required)
-    def get(self, request, *args, **kwargs):
-        return render_me(request, "history_overview.html")()
 
 
 class get_models_with_history(RetrieveAPIView):

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2012-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2012-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -36,17 +36,10 @@ from django.views.generic import View
 
 from initat.cluster.backbone import routing
 from initat.cluster.backbone.models import background_job, device_variable
-from initat.cluster.backbone.render import render_me
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.tools import server_command
 
 logger = logging.getLogger("cluster.main")
-
-
-class permissions_denied(View):
-    @method_decorator(login_required)
-    def get(self, request):
-        return render_me(request, "permission_denied.html")()
 
 
 class get_number_of_background_jobs(View):

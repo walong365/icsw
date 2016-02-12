@@ -437,18 +437,21 @@ menu_module = angular.module(
                     if state.data? and state.data.menuEntry?
                         # find menu
                         _entry = state.data.menuEntry
-                        menu = (entry for entry in menus when entry.key == _entry.menukey)[0]
-                        menu.add_entry(
-                            new MenuEntry(
-                                _entry.name or state.data.pageTitle
-                                state.data.rights
-                                state.data.licenses
-                                state.data.service_types
-                                _entry.icon
-                                _entry.ordering
-                                $state.href(state)
+                        menu = (entry for entry in menus when entry.key == _entry.menukey)
+                        if menu.length
+                            menu[0].add_entry(
+                                new MenuEntry(
+                                    _entry.name or state.data.pageTitle
+                                    state.data.rights
+                                    state.data.licenses
+                                    state.data.service_types
+                                    _entry.icon
+                                    _entry.ordering
+                                    $state.href(state)
+                                )
                             )
-                        )
+                        else
+                            console.error("No menu with name #{_entry.menukey} found")
                 # todo: check for service_type
                 user = @props.user
                 acls = @props.acls

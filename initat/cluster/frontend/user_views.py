@@ -37,7 +37,6 @@ from initat.cluster.backbone.models import group, user, user_variable, csw_permi
     csw_object_permission, group_object_permission, device, \
     user_object_permission, device, License, device_variable
 from initat.cluster.backbone.serializers import group_object_permission_serializer, user_object_permission_serializer
-from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.backbone import routing
 from initat.cluster.backbone.license_file_reader import LicenseFileReader
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
@@ -49,17 +48,6 @@ from initat.tools import config_tools, server_command
 from initat.cluster.frontend.rest_views import rest_logging
 
 logger = logging.getLogger("cluster.user")
-
-
-class overview(permission_required_mixin, View):
-    any_required_permissions = (
-        "backbone.user.admin",
-        "backbone.group.group_admin"
-    )
-
-    @method_decorator(login_required)
-    def get(self, request, *args, **kwargs):
-        return render_me(request, "user_overview_tree.html")()
 
 
 class get_num_quota_servers(View):
