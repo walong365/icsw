@@ -103,24 +103,6 @@ menu_module = angular.module(
         restrict: "EA"
         template: $templateCache.get("icsw.layout.menubar")
     }
-]).factory("icswLayoutMenuAddon", () ->
-    addons = []
-    return addons
-).directive("icswLayoutMenubarAddons", ["$templateCache", "$compile", "$window", "icswLayoutMenuAddon", ($templateCache, $compile, $window, icswLayoutMenuAddon) ->
-    return {
-        restrict: "EA"
-        compile: (tElement, tAttr) ->
-            return (scope, el, attrs) ->
-
-                new_elems = []
-
-                for addon in icswLayoutMenuAddon
-                    _template_str = "<#{addon}></#{addon}>"
-                    _new_el = $compile(_template_str)(scope).children()
-                    new_elems.push(_new_el)
-
-                el.replaceWith(new_elems)
-    }
 ]).factory("icswMenuProgressService", [() ->
     return {
         "start_reload": 0
