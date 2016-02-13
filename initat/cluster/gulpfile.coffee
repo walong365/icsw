@@ -166,24 +166,6 @@ sources = {
         "html"
         false
     )
-    "icsw_cs_liebherr": new SourceMap(
-        "icsw_cs_liebherr"
-        "partd1.js"
-        [
-            "liebherr/static/icsw/**/*.coffee"
-        ]
-        "coffee"
-        false
-    )
-    "icsw_html_liebherr": new SourceMap(
-        "icsw_html_liebherr"
-        "icswc0.html"
-        [
-            "liebherr/static/icsw/**/*.html"
-        ]
-        "html"
-        false
-    )
 }
 
 known_options = {
@@ -315,11 +297,28 @@ gulp.task("appinject", ["app"], () ->
     # modify app.js with additional modules
     return gulp.src(
         "#{DEPLOY_DIR}/app.js",
-        {read:false}
+        {read: false}
     ).pipe(
         exec(
             [
                 "./manage.py inject_addons --srcfile=#{DEPLOY_DIR}/app.js --modify",
+            ]
+            {
+                pipeStdout: true
+            }
+        )
+    )
+)
+
+gulp.task("maininject", ["main"], () ->
+    # modify app.js with additional modules
+    return gulp.src(
+        "#{DEPLOY_DIR}/main.html",
+        {read: false}
+    ).pipe(
+        exec(
+            [
+                "./manage.py inject_addons --srcfile=#{DEPLOY_DIR}/main.html --modify",
             ]
             {
                 pipeStdout: true
@@ -448,13 +447,30 @@ gulp.task("dummyindex", ["clean"], ()->
     )
 )
 
-gulp.task("index", ["dummyindex", "js", "appinject", "media"], () ->
+gulp.task("addons", ["clean"], () ->
+    return gulp.src(
+        [
+            "addons/liebherr/initat/cluster/work/icsw/*.js",
+        ]
+    ).pipe(
+        gulp.dest(
+            DEPLOY_DIR
+        )
+    )
+)
+
+index_deps = ["dummyindex", "js", "appinject", "media"]
+if not options.production
+    index_deps.push("addons")
+
+gulp.task("main", index_deps, () ->
     target = gulp.src("frontend/templates/main.html")
     return target.pipe(
         inject(
             gulp.src(
                 [
                     "*.js",
+                    "!ext_*.js",
                     "!app.js",
                     "static/*.css",
                     "*.html",
@@ -467,8 +483,6 @@ gulp.task("index", ["dummyindex", "js", "appinject", "media"], () ->
             )
             {
                 addRootSlash: false
-                # relative: true
-                # addSuffix: "icsw"
             }
         )
     ).pipe(
@@ -511,13 +525,13 @@ gulp.task("index", ["dummyindex", "js", "appinject", "media"], () ->
 
 )
 
-gulp.task("watch", ["index"], () ->
+gulp.task("watch", ["maininject"], () ->
     gulp.watch(
         [
             "frontend/static/icsw/*/*.coffee",
             "frontend/static/icsw/*/*.html",
         ]
-        ["index"]
+        ["maininject"]
     )
 )
 
@@ -548,3 +562,5 @@ gulp.task("serve", ["watch", "django", "staticbuild"], () ->
         }
     )
 )
+
+gulp.task("default", ["serve"])

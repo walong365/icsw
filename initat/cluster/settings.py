@@ -259,7 +259,8 @@ AUTOCOMMIT = True
 INSTALLED_APPS = list(INSTALLED_APPS)
 ADDITIONAL_ANGULAR_APPS = []
 # ADDITIONAL_URLS = []
-ADDITIONAL_JS = []
+ICSW_ADDITIONAL_JS = []
+ICSW_ADDITIONAL_HTML = []
 
 # my authentication backend
 AUTHENTICATION_BACKENDS = (
@@ -287,15 +288,19 @@ for sub_dir in os.listdir(dir_name):
                         ADDITIONAL_ANGULAR_APPS.extend(
                             [_el.attrib["name"] for _el in _tree.findall(".//app")]
                         )
-                        js_full_paths = glob.glob(os.path.join(full_path, "static", "js", "*.js"))
-                        ADDITIONAL_JS.extend(
+                        js_full_paths = glob.glob(os.path.join(dir_name, "addons", sub_dir, "initat", "cluster", "work", "icsw", "*.js"))
+                        ICSW_ADDITIONAL_JS.extend(
                             [
-                                os.path.join("js", os.path.basename(js_file)) for js_file in js_full_paths
+                                js_file for js_file in js_full_paths
+                            ]
+                        )
+                        html_full_paths = glob.glob(os.path.join(dir_name, "addons", sub_dir, "initat", "cluster", "work", "icsw", "*.html"))
+                        ICSW_ADDITIONAL_HTML.extend(
+                            [
+                                html_file for html_file in html_full_paths
                             ]
                         )
                 INSTALLED_APPS.append(add_app)
-
-ADDITIONAL_JS = tuple(ADDITIONAL_JS)
 
 _show_apps = False
 for rem_app_key in [key for key in os.environ.keys() if key.startswith("INIT_REMOVE_APP_NAME")]:

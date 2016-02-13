@@ -70,10 +70,23 @@ class FileModify(object):
                     )
                 )
                 _injected = 0
-                if marker_type == "MODULES":
-                    for _app in settings.ADDITIONAL_ANGULAR_APPS:
-                        _injected += 1
-                        new_content.append("        \"{}\",".format(_app))
+                if in_marker:
+                    if marker_type == "MODULES":
+                        for _app in settings.ADDITIONAL_ANGULAR_APPS:
+                            _injected += 1
+                            new_content.append("        \"{}\",".format(_app))
+                    elif marker_type == "JAVASCRIPT":
+                        for _js in settings.ICSW_ADDITIONAL_JS:
+                            _injected += 1
+                            new_content.append(
+                                "        <script src='{}'></script>".format(
+                                    os.path.basename(_js)
+                                )
+                            )
+                    elif marker_type == "HTML":
+                        for _html in settings.ICSW_ADDITIONAL_HTML:
+                            _injected += 1
+                            new_content.append(file(_html, "r").read())
                 self.debug("injected {:d} lines".format(_injected))
             elif in_marker:
                 # ignore everything inside marker (i.e. replace with new content)
