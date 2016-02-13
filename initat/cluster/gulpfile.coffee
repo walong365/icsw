@@ -166,6 +166,24 @@ sources = {
         "html"
         false
     )
+    "icsw_cs_liebherr": new SourceMap(
+        "icsw_cs_liebherr"
+        "partd1.js"
+        [
+            "liebherr/static/icsw/**/*.coffee"
+        ]
+        "coffee"
+        false
+    )
+    "icsw_html_liebherr": new SourceMap(
+        "icsw_html_liebherr"
+        "icswc0.html"
+        [
+            "liebherr/static/icsw/**/*.html"
+        ]
+        "html"
+        false
+    )
 }
 
 known_options = {
@@ -293,6 +311,23 @@ gulp.task("app", ["dynamicbuild", "staticbuild", "allurls"], () ->
 
 )
 
+gulp.task("appinject", ["app"], () ->
+    # modify app.js with additional modules
+    return gulp.src(
+        "#{DEPLOY_DIR}/app.js",
+        {read:false}
+    ).pipe(
+        exec(
+            [
+                "./manage.py inject_addons --srcfile=#{DEPLOY_DIR}/app.js --modify",
+            ]
+            {
+                pipeStdout: true
+            }
+        )
+    )
+)
+
 gulp.task("allurls", () ->
     return gulp.src("all_urls.html", {read: false}).pipe(
         exec(
@@ -332,7 +367,7 @@ gulp.task("css",  ["dynamicbuild"], () ->
     )
 )
 
-gulp.task("js", ["app", "css"], () ->
+gulp.task("js", ["appinject", "css"], () ->
     return gulp.src(
         ["#{COMPILE_DIR}/*.js", "#{COMPILE_DIR}/*.html"],
     # ).pipe(
@@ -413,7 +448,7 @@ gulp.task("dummyindex", ["clean"], ()->
     )
 )
 
-gulp.task("index", ["dummyindex", "js", "app", "media"], () ->
+gulp.task("index", ["dummyindex", "js", "appinject", "media"], () ->
     target = gulp.src("frontend/templates/main.html")
     return target.pipe(
         inject(

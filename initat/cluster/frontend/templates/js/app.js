@@ -103,6 +103,8 @@ icsw_app = angular.module(
         "icsw.rms",
         "icsw.history",
         "icsw.discovery",
+        // <!-- ICSWAPPS:MODULES:START -->
+        // <!-- ICSWAPPS:MODULES:END -->
         "icsw.discovery.event_log"
     ]
 ).config(
