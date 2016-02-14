@@ -36,7 +36,7 @@ import cairosvg
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
 from django.db.models import Q
-from django.http import HttpResponseRedirect, HttpResponse
+from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from lxml import etree
