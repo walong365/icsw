@@ -334,9 +334,6 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.template.context_processors.media",
                 "django.template.context_processors.debug",
-                "initat.cluster.backbone.context_processors.add_session",
-                "initat.cluster.backbone.context_processors.add_settings",
-                "initat.cluster.backbone.context_processors.add_csw_permissions",
             ],
             "debug": DEBUG,
             "loaders": [

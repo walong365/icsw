@@ -45,8 +45,7 @@ from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParam
 from initat.cluster.backbone.models.functions import check_empty_string, check_integer, \
     get_vnc_enc
 from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListUser
-from initat.cluster.backbone.signals import user_changed, group_changed, \
-    virtual_desktop_user_setting_changed
+from initat.cluster.backbone.signals import UserChanged, GroupChanged, VirtualDesktopUserSettingChanged
 from initat.constants import GEN_CS_NAME
 from initat.tools import config_store
 
@@ -298,14 +297,14 @@ class group_permission(models.Model):
 def group_permission_save(sender, **kwargs):
     if not kwargs["raw"] and "instance" in kwargs:
         _cur_inst = kwargs["instance"]
-        group_changed.send(sender=_cur_inst, group=_cur_inst.group, cause="global_permission_create")
+        GroupChanged.send(sender=_cur_inst, group=_cur_inst.group, cause="global_permission_create")
 
 
 @receiver(signals.post_delete, sender=group_permission)
 def group_permission_delete(sender, **kwargs):
     if "instance" in kwargs:
         _cur_inst = kwargs["instance"]
-        group_changed.send(sender=_cur_inst, group=_cur_inst.group, cause="global_permission_delete")
+        GroupChanged.send(sender=_cur_inst, group=_cur_inst.group, cause="global_permission_delete")
 
 
 class group_object_permission(models.Model):
@@ -320,14 +319,14 @@ class group_object_permission(models.Model):
 def group_object_permission_save(sender, **kwargs):
     if not kwargs["raw"] and "instance" in kwargs:
         _cur_inst = kwargs["instance"]
-        group_changed.send(sender=_cur_inst, group=_cur_inst.group, cause="object_permission_create")
+        GroupChanged.send(sender=_cur_inst, group=_cur_inst.group, cause="object_permission_create")
 
 
 @receiver(signals.post_delete, sender=group_object_permission)
 def group_object_permission_delete(sender, **kwargs):
     if "instance" in kwargs:
         _cur_inst = kwargs["instance"]
-        group_changed.send(sender=_cur_inst, group=_cur_inst.group, cause="object_permission_delete")
+        GroupChanged.send(sender=_cur_inst, group=_cur_inst.group, cause="object_permission_delete")
 
 
 class user_permission(models.Model):
@@ -348,14 +347,14 @@ class user_permission(models.Model):
 def user_permission_save(sender, **kwargs):
     if not kwargs["raw"] and "instance" in kwargs:
         _cur_inst = kwargs["instance"]
-        user_changed.send(sender=_cur_inst, user=_cur_inst.user, cause="global_permission_create")
+        UserChanged.send(sender=_cur_inst, user=_cur_inst.user, cause="global_permission_create")
 
 
 @receiver(signals.post_delete, sender=user_permission)
 def user_permission_delete(sender, **kwargs):
     if "instance" in kwargs:
         _cur_inst = kwargs["instance"]
-        user_changed.send(sender=_cur_inst, user=_cur_inst.user, cause="global_permission_delete")
+        UserChanged.send(sender=_cur_inst, user=_cur_inst.user, cause="global_permission_delete")
 
 AC_MASK_READ = 0
 AC_MASK_MODIFY = 1
@@ -393,14 +392,14 @@ class user_object_permission(models.Model):
 def user_object_permission_save(sender, **kwargs):
     if not kwargs["raw"] and "instance" in kwargs:
         _cur_inst = kwargs["instance"]
-        user_changed.send(sender=_cur_inst, user=_cur_inst.user, cause="object_permission_create")
+        UserChanged.send(sender=_cur_inst, user=_cur_inst.user, cause="object_permission_create")
 
 
 @receiver(signals.post_delete, sender=user_object_permission)
 def user_object_permission_delete(sender, **kwargs):
     if "instance" in kwargs:
         _cur_inst = kwargs["instance"]
-        user_changed.send(sender=_cur_inst, user=_cur_inst.user, cause="object_permission_delete")
+        UserChanged.send(sender=_cur_inst, user=_cur_inst.user, cause="object_permission_delete")
 
 
 def get_label_codename(perm):
@@ -889,14 +888,14 @@ def user_pre_save(sender, **kwargs):
 def user_post_save(sender, **kwargs):
     if not kwargs["raw"] and "instance" in kwargs:
         _cur_inst = kwargs["instance"]
-        user_changed.send(sender=_cur_inst, user=_cur_inst, cause="save")
+        UserChanged.send(sender=_cur_inst, user=_cur_inst, cause="save")
 
 
 @receiver(signals.post_delete, sender=user)
 def user_post_delete(sender, **kwargs):
     if "instance" in kwargs:
         _cur_inst = kwargs["instance"]
-        user_changed.send(sender=_cur_inst, user=_cur_inst, cause="delete")
+        UserChanged.send(sender=_cur_inst, user=_cur_inst, cause="delete")
 
 
 class group(models.Model):
@@ -1011,14 +1010,14 @@ def group_pre_save(sender, **kwargs):
 def group_post_save(sender, **kwargs):
     if not kwargs["raw"] and "instance" in kwargs:
         _cur_inst = kwargs["instance"]
-        group_changed.send(sender=_cur_inst, group=_cur_inst, cause="save")
+        GroupChanged.send(sender=_cur_inst, group=_cur_inst, cause="save")
 
 
 @receiver(signals.post_delete, sender=group)
 def group_post_delete(sender, **kwargs):
     if "instance" in kwargs:
         _cur_inst = kwargs["instance"]
-        group_changed.send(sender=_cur_inst, group=_cur_inst, cause="delete")
+        GroupChanged.send(sender=_cur_inst, group=_cur_inst, cause="delete")
 
 
 @receiver(signals.m2m_changed, sender=group.perms.through)
@@ -1287,7 +1286,7 @@ def virtual_desktop_user_setting_post_save(sender, **kwargs):
     if not kwargs["raw"] and "instance" in kwargs:
         _cur_inst = kwargs["instance"]
         if _cur_inst._send_signals:
-            virtual_desktop_user_setting_changed.send(sender=_cur_inst, vdus=_cur_inst, cause="vdus_save")
+            VirtualDesktopUserSettingChanged.send(sender=_cur_inst, vdus=_cur_inst, cause="vdus_save")
 
         if _cur_inst.is_running and not _cur_inst.to_delete:
             LicenseUsage.log_usage(LicenseEnum.virtual_desktop, LicenseParameterTypeEnum.user, _cur_inst.user)

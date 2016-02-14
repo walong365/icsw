@@ -22,24 +22,25 @@
 
 """ License views """
 
+import collections
 import json
 import logging
-import collections
 
 from django.contrib.auth.decorators import login_required
+from django.http.response import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from django.http.response import HttpResponse
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
+
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
-from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListExtLicense
-from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.backbone.models import ext_license_version_state_coarse, ext_license_usage_coarse, \
     ext_license_state_coarse
+from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListExtLicense
 from initat.cluster.backbone.serializers import ext_license_state_coarse_serializer, \
     ext_license_version_state_coarse_serializer
 from initat.cluster.frontend.common import duration_utils
+from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.tools import server_command
 
 logger = logging.getLogger("cluster.license")

@@ -34,7 +34,7 @@ from initat.cluster.backbone.exceptions import NoMatchingNetworkFoundError, \
     NoMatchingNetworkDeviceTypeFoundError
 from initat.cluster.backbone.models.functions import check_empty_string, \
     check_integer
-from initat.cluster.backbone.signals import bootsettings_changed
+from initat.cluster.backbone.signals import BootsettingsChanged
 from initat.constants import GEN_CS_NAME
 from initat.tools import ipvx_tools, logging_tools, process_tools, config_store
 
@@ -590,9 +590,9 @@ def net_ip_post_save(sender, **kwargs):
                 else:
                     raise ValidationError("too many IP-adresses in a boot network defined")
             if cur_inst.netdevice.device.bootserver_id:
-                bootsettings_changed.send(sender=cur_inst, device=cur_inst.netdevice.device, cause="net_ip_changed")
+                BootsettingsChanged.send(sender=cur_inst, device=cur_inst.netdevice.device, cause="net_ip_changed")
         if cur_inst.netdevice.device.bootserver_id:
-            bootsettings_changed.send(sender=cur_inst, device=cur_inst.netdevice.device, cause="netdevice_changed")
+            BootsettingsChanged.send(sender=cur_inst, device=cur_inst.netdevice.device, cause="netdevice_changed")
 
 
 class NetDeviceDesiredStateEnum(Enum):
@@ -875,7 +875,7 @@ def netdevice_post_save(sender, **kwargs):
     if "instance" in kwargs:
         _cur_inst = kwargs["instance"]
         if _cur_inst.device.bootserver_id:
-            bootsettings_changed.send(sender=_cur_inst, device=_cur_inst.device, cause="netdevice update")
+            BootsettingsChanged.send(sender=_cur_inst, device=_cur_inst.device, cause="netdevice update")
 
 
 @receiver(signals.post_delete, sender=netdevice)

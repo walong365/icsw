@@ -19,64 +19,19 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+""" permission decorated for views """
+
 
 import logging
 
-import django
-import django.template
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ImproperlyConfigured
 from django.core.urlresolvers import reverse
-from django.shortcuts import render_to_response, redirect
-from django.template.loader import render_to_string
+from django.shortcuts import redirect
 from django.utils.decorators import method_decorator
 
 logger = logging.getLogger("cluster.render")
-
-
-class render_me(object):
-    def __init__(self, request, template, *args, **kwargs):
-        self.request = request
-        self.template = template
-        self.my_dict = {}
-        for add_dict in args:
-            self.my_dict.update(add_dict)
-        for key, value in kwargs.iteritems():
-            self.my_dict[key] = value
-        # just for debug purposes
-
-    def update(self, in_dict):
-        self.my_dict.update(in_dict)
-
-    def __call__(self, *args):
-        return self.render(*args)
-
-    def render(self, *args):
-        in_dict = {}
-        for add_dict in args:
-            in_dict.update(add_dict)
-        self.my_dict.update(in_dict)
-        # self.my_dict["GOOGLE_MAPS_KEY"] = settings.GOOGLE_MAPS_KEY
-        # store as json for angular
-        # store as dict for django templates
-        self.my_dict["ADDITIONAL_ANGULAR_APPS"] = settings.ADDITIONAL_ANGULAR_APPS
-        return render_to_response(
-            self.template,
-            self.my_dict,
-            context_instance=django.template.RequestContext(self.request)
-        )
-
-
-def render_string(request, template_name, in_dict=None):
-    return unicode(
-        render_to_string(
-            template_name,
-            in_dict if in_dict is not None else {},
-            # was: context_instance = ...
-            django.template.RequestContext(request)
-        )
-    )
 
 
 class permission_required_mixin(object):

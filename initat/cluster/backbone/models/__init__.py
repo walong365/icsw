@@ -67,8 +67,8 @@ from initat.cluster.backbone.models.selection import *  # @UnusedWildImport
 from initat.cluster.backbone.models.kpi import *  # @UnusedWildImport
 from initat.cluster.backbone.models.license import *  # @UnusedWildImport
 from initat.cluster.backbone.models.status_history import *  # @UnusedWildImport
-from initat.cluster.backbone.signals import user_changed, group_changed, \
-    bootsettings_changed, virtual_desktop_user_setting_changed, SensorThresholdChanged
+from initat.cluster.backbone.signals import UserChanged, GroupChanged, \
+    BootsettingsChanged, VirtualDesktopUserSettingChanged, SensorThresholdChanged
 from initat.cluster.backbone.models.discovery import *  # @UnusedWildImport
 import initat.cluster.backbone.models.model_history
 
@@ -90,17 +90,17 @@ def bg_req_finished(*args, **kwargs):
         signal_localhost()
 
 
-@receiver(user_changed)
+@receiver(UserChanged)
 def user_changed(*args, **kwargs):
     _insert_bg_job("sync_users", kwargs["cause"], kwargs["user"])
 
 
-@receiver(group_changed)
+@receiver(GroupChanged)
 def group_changed(*args, **kwargs):
     _insert_bg_job("sync_users", kwargs["cause"], kwargs["group"])
 
 
-@receiver(virtual_desktop_user_setting_changed)
+@receiver(VirtualDesktopUserSettingChanged)
 def vdus_changed(*args, **kwargs):
     _insert_bg_job("reload_virtual_desktop_dispatcher", kwargs["cause"], kwargs["vdus"])
 
@@ -110,7 +110,7 @@ def sensor_threshold_changed(*args, **kwargs):
     _insert_bg_job("sync_sensor_threshold", kwargs["cause"], kwargs["sensor_threshold"])
 
 
-@receiver(bootsettings_changed)
+@receiver(BootsettingsChanged)
 def rcv_bootsettings_changed(*args, **kwargs):
     # not signal when bootserver is not set
     if kwargs["device"].bootserver_id:

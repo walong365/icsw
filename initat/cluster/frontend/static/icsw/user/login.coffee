@@ -94,6 +94,7 @@ angular.module(
                 }
             ).then(
                 (xml) ->
+                    console.log xml
                     # blockUI.stop()
                     if $(xml).find("value[name='redirect']").length
                         _val = $(xml).find("value[name='redirect']").text()
