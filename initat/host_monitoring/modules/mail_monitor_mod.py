@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2008,2013-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2013-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -75,7 +75,12 @@ class file_object(object):
                 try:
                     lines = self.__fd.readlines()
                 except IOError, _what:
-                    self.log("error reading maillines: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                    self.log(
+                        "error reading maillines: {}".format(
+                            process_tools.get_except_info()
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
                 else:
                     if not lines:
                         fd_results = os.fstat(self.__fd.fileno())
@@ -106,7 +111,7 @@ class file_object(object):
                 self.__where = self.__fd.tell()
 
 
-class mail_log_object(file_object):
+class MailLogObject(file_object):
     def __init__(self, mod, name="/var/log/mail", **args):
         self.__mod = mod
         file_object.__init__(self, name, **args)
@@ -198,7 +203,7 @@ class mail_log_object(file_object):
         if not act_prog.count("/") and not act_prog.endswith(":") and first_text.count("/") and first_text.endswith(":"):
             # first_text is our program, act_prog may be the host name
             act_prog = first_text
-            act_text = act_text[len(act_prog) + 1:]
+            act_text = act_text[len(act_prog) + 1:].strip()
         if act_prog.count("["):
             act_prog, prog_pid = act_prog.split("[")
             prog_pid = int(prog_pid.split("]")[0])
@@ -233,6 +238,10 @@ class mail_log_object(file_object):
                         act_event = event(self.__act_year, act_month, act_day, act_hms_str, "received.net")
                 elif act_text.count("blocked using"):
                     act_event = event(self.__act_year, act_month, act_day, act_hms_str, "blocked")
+                elif act_text.clount("disconnect"):
+                    act_event = event(self.__act_year, act_month, act_day, act_hms_str, "connections.stop")
+                elif act_text.clount("connect"):
+                    act_event = event(self.__act_year, act_month, act_day, act_hms_str, "connections.start")
             elif sub_prog == "error":
                 if act_text.count("status=bounced"):
                     act_event = event(self.__act_year, act_month, act_day, act_hms_str, "bounced")
@@ -266,7 +275,7 @@ class _general(hm_classes.hm_module):
         priority = 10
 
     def init_module(self):
-        self.__maillog_object = mail_log_object(self)
+        self.__maillog_object = MailLogObject(self)
         self.__maillog_object.parse_lines()
         self.__mailq_command = process_tools.find_file("mailq")
 
@@ -327,7 +336,7 @@ class _general(hm_classes.hm_module):
                                 ret_dict["num_mails"] = 666
                         else:
                             self.log(
-                                "need 6 parts for kaspersky format, got %d" % (len(line_parts)),
+                                "need 6 parts for kaspersky format, got {:d}".format(len(line_parts)),
                                 logging_tools.LOG_LEVEL_ERROR
                             )
                     else:

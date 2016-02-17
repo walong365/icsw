@@ -96,6 +96,10 @@ menu_module = angular.module(
                 $scope.CURRENT_USER = icswUserService.get()
                 # console.log to_params, $scope
         )
+        $scope.$on("$stateChangeError", (event, to_state, to_params) ->
+            console.log "error moving to #{to_state.name}"
+            $state.go("login")
+        )
         $scope.device_selection = () ->
             icswLayoutSelectionDialogService.show_dialog($scope)
 ]).directive("icswLayoutMenubar", ["$templateCache", ($templateCache) ->
