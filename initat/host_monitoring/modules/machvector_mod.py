@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2008,2010,2012-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2008,2010,2012-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -19,7 +19,6 @@
 #
 """ machine vector stuff """
 
-from lxml import etree
 import copy
 import json
 import os
@@ -27,13 +26,12 @@ import re
 import shutil
 import time
 
+from lxml import etree
+from lxml.builder import E
+
 from initat.host_monitoring import hm_classes, limits
-from lxml.builder import E  # @UnresolvedImports
 from initat.tools import logging_tools, process_tools, server_command, config_store
-
 from ..constants import MACHVECTOR_CS_NAME
-
-COLLECTOR_PORT = 8002
 
 
 class _general(hm_classes.hm_module):
