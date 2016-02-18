@@ -715,7 +715,8 @@ class device_tree_list(
                 ).values_list(
                     "pk",
                     "device_group",
-                    "device_group__device"
+                    "device_group__device",
+                    "device_group__device__is_meta_device"
                 )
             )
             # meta_list, device group selected

@@ -2,7 +2,7 @@
 #
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2012-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2012-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -25,27 +25,27 @@
 import json
 import logging
 
+from django.apps import apps
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
-from django.apps import apps
+from django.http.response import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from django.http.response import HttpResponse
-from rest_framework.response import Response
+from lxml.builder import E  # @UnresolvedImport
 from rest_framework.generics import RetrieveAPIView
-from initat.cluster.backbone.models import group, user, user_variable, csw_permission, \
-    csw_object_permission, group_object_permission, device, \
-    user_object_permission, device, License, device_variable
-from initat.cluster.backbone.serializers import group_object_permission_serializer, user_object_permission_serializer
+from rest_framework.response import Response
+
 from initat.cluster.backbone import routing
 from initat.cluster.backbone.license_file_reader import LicenseFileReader
-from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
+from initat.cluster.backbone.models import group, user, user_variable, csw_permission, \
+    csw_object_permission, group_object_permission, user_object_permission, device, License, device_variable
 from initat.cluster.backbone.models.functions import db_t2000_limit
-from lxml.builder import E  # @UnresolvedImport
+from initat.cluster.backbone.serializers import group_object_permission_serializer, user_object_permission_serializer
+from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.frontend.license_views import login_required_rest
+from initat.cluster.frontend.rest_views import rest_logging
 from initat.server_version import VERSION_STRING, VERSION_MAJOR, BUILD_MACHINE
 from initat.tools import config_tools, server_command
-from initat.cluster.frontend.rest_views import rest_logging
 
 logger = logging.getLogger("cluster.user")
 
@@ -152,7 +152,10 @@ class change_object_permission(View):
         obj_pk = int(_post["obj_idx"])
         add = True if int(_post["set"]) else False
         level = int(_post["level"])
-        perm_model = apps.get_model(set_perm.content_type.app_label, set_perm.content_type.model_class().__name__).objects.get(Q(pk=obj_pk))
+        perm_model = apps.get_model(
+            set_perm.content_type.app_label,
+            set_perm.content_type.model_class().__name__
+        ).objects.get(Q(pk=obj_pk))
         # print perm_model, auth_obj, set_perm
         if add:
             if not auth_obj.has_object_perm(set_perm, perm_model, ask_parent=False):
@@ -167,23 +170,39 @@ class change_object_permission(View):
                         csw_permission=set_perm,
                         object_pk=perm_model.pk,
                     )
-                    logger.info("created new csw_object_permission {}".format(unicode(csw_objp)))
+                    request.xml_response.info(
+                        "created new csw_object_permission {}".format(unicode(csw_objp)),
+                        logger=logger
+                    )
                 if auth_obj._meta.model_name == "user":
-                    new_obj = user_object_permission.objects.create(user=auth_obj, csw_object_permission=csw_objp, level=level)
-                    new_obj.date = 0
+                    new_obj = user_object_permission.objects.create(
+                        user=auth_obj,
+                        csw_object_permission=csw_objp,
+                        level=level
+                    )
                     request.xml_response["new_obj"] = json.dumps(user_object_permission_serializer(new_obj).data)
                 else:
-                    new_obj = group_object_permission.objects.create(group=auth_obj, csw_object_permission=csw_objp, level=level)
-                    new_obj.date = 0
+                    new_obj = group_object_permission.objects.create(
+                        group=auth_obj,
+                        csw_object_permission=csw_objp,
+                        level=level
+                    )
                     request.xml_response["new_obj"] = json.dumps(group_object_permission_serializer(new_obj).data)
-                logger.info(
+                request.xml_response.info(
                     "added csw_object_permission {} to {}".format(
                         unicode(csw_objp),
                         unicode(auth_obj),
-                    )
+                    ),
+                    logger=logger
                 )
             else:
-                logger.info("permission '{}' for '{}' already set".format(unicode(set_perm), unicode(perm_model)))
+                request.xml_response.warn(
+                    "permission '{}' for '{}' already set".format(
+                        unicode(set_perm),
+                        unicode(perm_model)
+                    ),
+                    logger=logger
+                )
         else:
             if auth_obj.has_object_perm(set_perm, perm_model, ask_parent=False):
                 try:
@@ -194,12 +213,13 @@ class change_object_permission(View):
                         )
                     )
                 except csw_object_permission.MultipleObjectsReturned:
-                    logger.critical(
+                    request.xml_response.critical(
                         "multiple objects returned for csw_object_permission (perm=%s, pk=%d, auth_obj=%s)" % (
                             unicode(set_perm),
                             perm_model.pk,
                             unicode(auth_obj),
-                        )
+                        ),
+                        logger=logger
                     )
                     csw_object_permission.objects.filter(
                         Q(
@@ -208,22 +228,26 @@ class change_object_permission(View):
                         )
                     ).delete()
                 except csw_object_permission.DoesNotExist:
-                    logger.error(
-                        "csw_object_permission doest not exist (perm=%s, pk=%d, auth_obj=%s)" % (
+                    request.xml_response.error(
+                        "csw_object_permission doest not exist (perm={}, pk={:d}, auth_obj={})".format(
                             unicode(set_perm),
                             perm_model.pk,
                             unicode(auth_obj),
-                        )
+                        ),
+                        logger=logger
                     )
                 else:
                     if auth_obj._meta.model_name == "user":
                         user_object_permission.objects.filter(Q(csw_object_permission=csw_objp) & Q(user=auth_obj)).delete()
                     else:
                         group_object_permission.objects.filter(Q(csw_object_permission=csw_objp) & Q(group=auth_obj)).delete()
-                    logger.info("removed csw_object_permission %s from %s" % (
-                        unicode(csw_objp),
-                        unicode(auth_obj),
-                    ))
+                    request.xml_response.info(
+                        "removed csw_object_permission {} from {}".format(
+                            unicode(csw_objp),
+                            unicode(auth_obj),
+                        ),
+                        logger=logger
+                    )
             else:
                 # print "not there"
                 pass

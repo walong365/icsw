@@ -598,7 +598,7 @@
                 </div>
             </div>
         </fieldset>
-        <fieldset ng-show="_edit_obj.user_quota_setting_set.length &amp;&amp; !_edit_obj.only_webfrontend">
+        <fieldset ng-show="_edit_obj.user_quota_setting_set.length && !_edit_obj.only_webfrontend">
             <legend>Quota settings</legend>
             <div class="form-group">
                 <div class="col-sm-12">
@@ -606,12 +606,12 @@
                 </div>
             </div>
         </fieldset>
-        <fieldset ng-show="!_edit_obj.only_webfrontend &amp;&amp; _edit_obj.export">
+        <fieldset ng-show="!_edit_obj.only_webfrontend && _edit_obj.export">
             <legend>/home scan settings</legend>
             <div class="form-group">
                 <label class="control-label col-sm-2">Scan Home dir</label>
                 <div class="controls col-sm-8">
-                    <input type="button" ng-class='_edit_obj.scan_user_home &amp;&amp; "btn btn-sm btn-success" || "btn btn-sm"' ng-click="_edit_obj.scan_user_home = !_edit_obj.scan_user_home" ng-value='_edit_obj.scan_user_home &amp;&amp; "yes" || "no"'></input>
+                    <input type="button" ng-class='_edit_obj.scan_user_home && "btn btn-sm btn-success" || "btn btn-sm"' ng-click="_edit_obj.scan_user_home = !_edit_obj.scan_user_home" ng-value='_edit_obj.scan_user_home && "yes" || "no"'></input>
                 </div>
             </div>
             <div class="form-group" ng_show="_edit_obj.scan_user_home">
@@ -659,7 +659,7 @@
                     </div>
                 </div>
             </div>
-            <div class="form-group" ng_show="!create_mode &amp;&amp; _edit_obj.permission">
+            <div class="form-group" ng_show="!create_mode && _edit_obj.permission && csw_permission_lut[_edit_obj.permission].valid_for_object_level ">
                 <label class="control-label col-sm-2">
                     Object
                 </label>
@@ -692,8 +692,9 @@
                     </ui-select>
                 </div>
             </div>
-            <input type="button" name="" value="create global permission" class="btn btn btn-sm btn-success" id="button-id-" ng-click="create_permission()" ng-show="!create_mode &amp;&amp; _edit_obj.permission"></input>
-            &#160;<input type="button" name="" value="create object permission" class="btn btn btn-sm btn-primary" id="button-id-" ng-click="create_object_permission()" ng-show="!create_mode &amp;&amp; _edit_obj.permission &amp;&amp; _edit_obj.object"></input>
+            <input type="button" value="create global permission" class="btn btn btn-sm btn-success" ng-click="create_permission()" ng-show="!create_mode && _edit_obj.permission" />
+            &nbsp;
+            <input type="button" value="create object permission" class="btn btn btn-sm btn-primary" ng-click="create_object_permission()" ng-show="!create_mode && _edit_obj.permission && _edit_obj.object"/>
             <div class="col-sm-12">
                 <div icsw-user-permissions="" ng_if="!create_mode" object="_edit_obj" type="user" action="true"></div>
             </div>
@@ -704,10 +705,14 @@
             </div>
         </div>
         <div class="form-actions">
-            <input type="submit" name="modify" value="modify" class="btn btn-primary btn-success" id="submit-id-modify" ng-show="!create_mode"></input> <input type="submit" name="create" value="create" class="btn btn-primary btn-success" id="submit-id-create" ng-disabled="!_edit_obj.password" ng-show="create_mode"></input>
-            &#160;<input type="button" name="close" value="close" class="btn btn-primary" id="button-id-close" ng-click="user_edit.close_modal()" ng-show="!create_mode"></input>
-            &#160;<input type="button" name="delete" value="delete" class="btn btn-danger" id="button-id-delete" ng-click="user_edit.delete_obj(_edit_obj)" ng-show="!create_mode"></input>
-            &#160;<input type="button" name="change-password" value="change password" class="btn btn-warning" id="button-id-change-password" ng-click="change_password()" ng-show="!create_mode"></input> <input type="button" name="set-password" value="set password" class="btn btn-warning" id="button-id-set-password" ng-click="change_password()" ng-show="create_mode &amp;&amp; !_edit_obj.password"></input> <input type="button" name="change-password" value="change password" class="btn btn-warning" id="button-id-change-password" ng-click="change_password()" ng-show="create_mode &amp;&amp; _edit_obj.password"></input>
+            <input type="submit" name="modify" value="modify" class="btn btn-primary btn-success" ng-show="!create_mode" />
+            <input type="submit" name="create" value="create" class="btn btn-primary btn-success" ng-disabled="!_edit_obj.password" ng-show="create_mode"/>
+            &nbsp;
+            <input type="button" name="close" value="close" class="btn btn-primary" ng-click="user_edit.close_modal()" ng-show="!create_mode" />
+            &nbsp;
+            <input type="button" name="delete" value="delete" class="btn btn-danger" ng-click="user_edit.delete_obj(_edit_obj)" ng-show="!create_mode" />
+            &nbsp;
+            <input type="button" name="change-password" value="change password" class="btn btn-warning" ng-click="change_password()" ng-show="!create_mode"></input> <input type="button" name="set-password" value="set password" class="btn btn-warning" id="button-id-set-password" ng-click="change_password()" ng-show="create_mode && !_edit_obj.password"></input> <input type="button" name="change-password" value="change password" class="btn btn-warning" id="button-id-change-password" ng-click="change_password()" ng-show="create_mode && _edit_obj.password" />
         </div>
     </form>
 </script>
@@ -850,7 +855,7 @@
                     </div>
                 </div>
             </div>
-            <div class="form-group" ng_show="!create_mode &amp;&amp; _edit_obj.permission">
+            <div class="form-group" ng_show="!create_mode && _edit_obj.permission">
                 <label class="control-label col-sm-2">
                     Object
                 </label>
@@ -883,8 +888,8 @@
                     </ui-select>
                 </div>
             </div>
-            <input type="button" name="" value="create global permission" class="btn btn btn-sm btn-success" id="button-id-" ng-click="create_permission()" ng-show="!create_mode &amp;&amp; _edit_obj.permission"></input>
-            &#160;<input type="button" name="" value="create object permission" class="btn btn btn-sm btn-primary" id="button-id-" ng-click="create_object_permission()" ng-show="!create_mode &amp;&amp; _edit_obj.permission &amp;&amp; _edit_obj.object"></input>
+            <input type="button" name="" value="create global permission" class="btn btn btn-sm btn-success" id="button-id-" ng-click="create_permission()" ng-show="!create_mode && _edit_obj.permission"></input>
+            &#160;<input type="button" name="" value="create object permission" class="btn btn btn-sm btn-primary" id="button-id-" ng-click="create_object_permission()" ng-show="!create_mode && _edit_obj.permission && _edit_obj.object"></input>
             <div class="col-sm-12">
                 <div icsw-user-permissions="" ng_if="!create_mode" object="_edit_obj" type="group" action="true"></div>
             </div>

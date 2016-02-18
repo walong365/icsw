@@ -117,7 +117,7 @@ class auth_cache(object):
         self.__model_perm_dict = {}
         for _key, _value in self.__perm_dict.iteritems():
             self.__model_perm_dict.setdefault(model_key(_key), {})[_key] = _value
-        pprint.pprint(self.__model_perm_dict)
+        # pprint.pprint(self.__model_perm_dict)
         # pprint.pprint(self.__perm_dict)
         # print self.__perm_dict.keys()
         if self.has_all_perms:
@@ -141,6 +141,7 @@ class auth_cache(object):
         ).select_related("csw_object_permission__csw_permission__content_type"):
             _icsw_key = icsw_key(perm.csw_object_permission.csw_permission)
             _model_key = model_key(_icsw_key)
+            self.__obj_perms.setdefault(_icsw_key, {})[perm.csw_object_permission.object_pk] = perm.level
             self.__model_obj_perms.setdefault(
                 _model_key,
                 {}
@@ -255,7 +256,9 @@ class auth_cache(object):
     def get_object_access_levels(self, obj, is_superuser):
         obj_type = obj._meta.model_name
         # returns a dict with all access levels for the given object
-        obj_perms = [key for key, value in self.__perm_dict.iteritems() if value.content_type.model_class().__name__ == obj_type]
+        obj_perms = [
+            key for key, value in self.__perm_dict.iteritems() if value.content_type.model_class().__name__ == obj_type
+        ]
         if is_superuser:
             ac_dict = {key: AC_FULL for key in obj_perms}
         else:
@@ -499,8 +502,6 @@ def check_content_permission(auth_obj, app_label, content_name):
             force_text(i.model_class()._meta.verbose_name) for i in content_type_objects
         ]
         return content_name in names
-
-    print "ccp", app_label, content_name
 
     objects = auth_obj.perms.filter(content_type__app_label=app_label)
     content_types = [i.content_type for i in objects]
@@ -1099,7 +1100,6 @@ def group_post_delete(sender, **kwargs):
 @receiver(signals.m2m_changed, sender=group.perms.through)
 def group_perms_changed(sender, *args, **kwargs):
     if kwargs.get("action") == "pre_add" and "instance" in kwargs:
-        print "***", kwargs.get("pk_set")
         for add_pk in kwargs.get("pk_set"):
             if csw_permission.objects.get(Q(pk=add_pk)).codename in ["admin", "group_admin"]:
                 raise ValidationError("right not allowed for group")
