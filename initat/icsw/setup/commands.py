@@ -657,7 +657,7 @@ def create_version_entries():
 @SetupLogger
 def create_fixtures():
     call_manage(["create_fixtures"])
-    call_manage(["init_csw_permissions"])
+    call_manage(["init_icsw_permissions"])
 
 
 @SetupLogger

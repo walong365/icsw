@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2012-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2012-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -577,9 +577,14 @@ class csw_object_list(viewsets.ViewSet):
         _q = cur_model.objects
         _key = "{}.{}".format(cur_ct.app_label, cur_ct.model_class().__name__)
         if _key == "backbone.device":
-            _q = _q.select_related("device_group"). \
-                filter(Q(enabled=True, device_group__enabled=True)). \
-                order_by("-device_group__cluster_device_group", "device_group__name", "-is_meta_device", "name")
+            _q = _q.select_related("device_group").filter(
+                Q(enabled=True, device_group__enabled=True)
+            ).order_by(
+                "-device_group__cluster_device_group",
+                "device_group__name",
+                "-is_meta_device",
+                "name"
+            )
         if _key == "backbone.user":
             _q = _q.select_related("group")
         return [csw_object(cur_obj.pk, self._get_name(_key, cur_obj), self._get_group(_key, cur_obj), self._tr_class(_key, cur_obj)) for cur_obj in _q.all()]
@@ -702,28 +707,31 @@ class device_tree_list(
         _q = device.objects
         # permission handling
         if not self.request.user.is_superuser:
-            if self.request.query_params.get("olp", ""):
-                # object permissions needed for devices, get a list of all valid pks
-                allowed_pks = self.request.user.get_allowed_object_list(self.request.query_params["olp"])
-                dg_list = list(
-                    device.objects.filter(
-                        Q(pk__in=allowed_pks)
-                    ).values_list("pk", "device_group", "device_group__device")
+            # get all pks for device model
+            allowed_pks = self.request.user.get_allowed_object_list_model("backbone.device")
+            dg_list = list(
+                device.objects.filter(
+                    Q(pk__in=allowed_pks)
+                ).values_list(
+                    "pk",
+                    "device_group",
+                    "device_group__device"
                 )
-                # meta_list, device group selected
-                meta_list = Q(device_group__in=[devg_idx for dev_idx, devg_idx, md_idx, dt in dg_list if dt])
-                # device list, direct selected
-                device_list = Q(
-                    pk__in=set(
-                        sum(
-                            [
-                                [dev_idx, md_idx] for dev_idx, devg_idx, md_idx, dt in dg_list if not dt
-                            ],
-                            []
-                        )
+            )
+            # meta_list, device group selected
+            meta_list = Q(device_group__in=[devg_idx for dev_idx, devg_idx, md_idx, dt in dg_list if dt])
+            # device list, direct selected
+            device_list = Q(
+                pk__in=set(
+                    sum(
+                        [
+                            [dev_idx, md_idx] for dev_idx, devg_idx, md_idx, dt in dg_list if not dt
+                        ],
+                        []
                     )
                 )
-                _q = _q.filter(meta_list | device_list)
+            )
+            _q = _q.filter(meta_list | device_list)
             if not self.request.user.has_perm("backbone.device.all_devices"):
                 _q = _q.filter(Q(device_group__in=self.request.user.allowed_device_groups.all()))
         if self._get_post_boolean("monitor_server_type", False):

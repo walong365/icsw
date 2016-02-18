@@ -1,7 +1,26 @@
 # -*- coding: utf-8 -*-
-"""
-scan all apps in backbone for new CSW rights
-"""
+#
+# Copyright (C) 2014-2016 Andreas Lang-Nevyjel
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of cluster-backbone-sql
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+
+""" scan all apps in backbone for new ICSW rights """
 
 import pprint
 import time
@@ -18,9 +37,8 @@ from initat.tools import logging_tools
 
 class Command(BaseCommand):
     help = ("Scan the installed models for new CSW permissions.")
-    args = '[appname appname.ModelName ...]'
 
-    def handle(self, *app_labels, **options):
+    def handle(self, **options):
         excludes = options.get('exclude')
         verbosity = int(options.get("verbosity"))
 
@@ -70,7 +88,12 @@ class Command(BaseCommand):
                             p_dict[(new_perm.content_type.app_label, new_perm.codename)] = new_perm
                             full_dict[(new_perm.content_type.app_label, new_perm.codename, new_perm.content_type.model)] = new_perm
                             created += 1
-                            print "Created '{}' for model {}".format(unicode(new_perm), cur_ct.model)
+                            print(
+                                "Created '{}' for model {}".format(
+                                    unicode(new_perm),
+                                    cur_ct.model
+                                )
+                            )
                         else:
                             if valid_for_object_level != p_dict[(app_label, code_name)].valid_for_object_level:
                                 print(
@@ -82,8 +105,17 @@ class Command(BaseCommand):
                                 p_dict[(app_label, code_name)].valid_for_object_level = valid_for_object_level
                                 p_dict[(app_label, code_name)].save()
                 if created:
-                    print("creation of {:d} took {:7.2f} seconds".format(created, time.time() - start_time))
-                    print("found {:7d} error(s)".format(len(errors)))
+                    print(
+                        "creation of {:d} took {:7.2f} seconds".format(
+                            created,
+                            time.time() - start_time
+                        )
+                    )
+                    print(
+                        "found {}".format(
+                            logging_tools.get_plural("error", len(errors))
+                        )
+                    )
                     if verbosity > 1:
                         pprint.pprint(errors)
         dup_keys = {key for key in found_perms if found_perms_list.count(key) > 1}

@@ -66,7 +66,7 @@ angular.module(
                 "all_devices" : true
                 "with_categories" : true
                 "ignore_disabled": true
-                "olp" : $window.DEVICE_OBJECT_LEVEL_PERMISSION
+                # "olp" : $window.DEVICE_OBJECT_LEVEL_PERMISSION
             }
         ]
         [
