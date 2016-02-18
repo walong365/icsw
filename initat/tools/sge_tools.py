@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2008,2012-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2012-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -30,9 +30,9 @@ import time
 import uuid
 from StringIO import StringIO
 
-import zmq  # @UnresolvedImport
+import zmq
 from lxml import etree
-from lxml.builder import E  # @UnresolvedImport
+from lxml.builder import E
 
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import logging_tools, process_tools, server_command
@@ -950,7 +950,11 @@ class sge_info(object):
         return self.__queue_lut.itervalues()
 
     def get_job(self, j_id, default=None):
-        return self.__job_lut.get(j_id, default)
+        # for strange errors happening at LWN
+        if hasattr(self, "__job_lut"):
+            return self.__job_lut.get(j_id, default)
+        else:
+            return default
 
     def build_luts(self):
         # build look up tables for fast processing

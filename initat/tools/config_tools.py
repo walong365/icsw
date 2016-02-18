@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2008,2012-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2007-2008,2012-2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #
@@ -641,13 +641,13 @@ class server_check(object):
         # ).values_list("ip", flat=True))
         ipv4_dict = {
             cur_if_name: [
-                ip_tuple["addr"] for ip_tuple in value[2]
+                ip_tuple["addr"] for ip_tuple in value[netifaces.AF_INET]
             ] for cur_if_name, value in [
                 (
                     if_name,
                     netifaces.ifaddresses(if_name)
                 ) for if_name in netifaces.interfaces()
-            ] if 2 in value
+            ] if netifaces.AF_INET in value
         }
         my_ips = set(sum(ipv4_dict.values(), []))
         # check for virtual-device
