@@ -79,7 +79,7 @@ angular.module(
                 )
 
             scope.do_select = () ->
-                icswLayoutSelectionDialogService.quick_dialog(scope)
+                icswLayoutSelectionDialogService.quick_dialog()
     }
 ]).directive('icswToolsAddAclFunctions', ["icswAcessLevelService", (icswAcessLevelService) ->
     restrict: 'A'

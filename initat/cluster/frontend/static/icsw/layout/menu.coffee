@@ -71,7 +71,7 @@ menu_module = angular.module(
         $scope.$on("$stateChangeStart", (event, to_state, to_params, from_state, from_params) ->
             to_main = if to_state.name.match(/^main/) then true else false
             from_main = if from_state.name.match(/^main/) then true else false
-            console.log "start", to_state.name, to_main, from_state.name, from_main
+            console.log "state_cs", to_state.name, to_main, from_state.name, from_main
             if to_main and not from_main
                 true
             else if to_state.name == "login"
@@ -100,8 +100,9 @@ menu_module = angular.module(
             console.log "error moving to #{to_state.name}"
             $state.go("login")
         )
-        $scope.device_selection = () ->
-            icswLayoutSelectionDialogService.show_dialog($scope)
+        # $scope.device_selection = () ->
+        #    console.log "SHOW_DIALOG"
+        #     icswLayoutSelectionDialogService.show_dialog()
 ]).directive("icswLayoutMenubar", ["$templateCache", ($templateCache) ->
     return {
         restrict: "EA"
@@ -123,11 +124,11 @@ menu_module = angular.module(
             scope.quicksel = false
             scope.progress_iters = 0
             scope.cur_gauges = {}
-            scope.device_quicksel = (onoff) ->
+            scope.device_quickselection = (onoff) ->
                 if onoff != scope.quicksel
                     scope.quicksel = onoff
                     if scope.quicksel
-                        icswLayoutSelectionDialogService.quick_dialog(scope)
+                        icswLayoutSelectionDialogService.quick_dialog()
             scope.$watch(
                 () ->
                     return icswMenuProgressService.start_reload
@@ -406,7 +407,7 @@ menu_module = angular.module(
             propTypes:
                 React.PropTypes.object.isRequired
             render: () ->
-                console.log "render"
+                console.log "render menu"
                 menus = []
                 for state in $state.get()
                     if state.data? and state.data.menuHeader?

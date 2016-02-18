@@ -383,11 +383,11 @@ angular.module(
 [
     "$scope", "icswSelectionService", "icswLayoutSelectionTreeService", "$timeout", "msgbus",
     "icswSelection", "icswActiveSelectionService", "$q", "icswSavedSelectionService", "icswToolsSimpleModalService",
-    "DeviceOverviewService", "ICSW_URLS", 'icswSimpleAjaxCall', "blockUI",
+    "DeviceOverviewService", "ICSW_URLS", 'icswSimpleAjaxCall', "blockUI", "$rootScope",
 (
     $scope, icswSelectionService, icswLayoutSelectionTreeService, $timeout, msgbus,
     icswSelection, icswActiveSelectionService, $q, icswSavedSelectionService, icswToolsSimpleModalService,
-    DeviceOverviewService, ICSW_URLS, icswSimpleAjaxCall, blockUI,
+    DeviceOverviewService, ICSW_URLS, icswSimpleAjaxCall, blockUI, $rootScope,
 ) ->
     # search settings
     $scope.search_ok = true
@@ -413,6 +413,10 @@ angular.module(
     $scope.selection_dict = {"d": 0, "g": 0, "c": 0}
     $q.all([icswSelectionService.load($scope.$id), icswActiveSelectionService.load_selection()]).then((data) ->
         $scope.got_rest_data([data[0][0], data[0][1], data[1]])
+    )
+    console.log "start"
+    $rootScope.$on("icsw.devsel.show", (event, cur_state) ->
+        console.log "show_devsel", event, cur_state
     )
     $scope.got_rest_data = (data) ->
         $scope.tc_devices.clear_root_nodes()
@@ -729,19 +733,15 @@ angular.module(
             $scope.activate_tab("d")
             blockUI.stop()
         )
-]).service("icswLayoutSelectionDialogService", ["$q", "$compile", "$templateCache", "Restangular", "ICSW_URLS", "icswToolsSimpleModalService", ($q, $compile, $templateCache, Restangular, ICSW_URLS, icswToolsSimpleModalService) ->
-    show_dialog = (scope) ->
-        sel_scope = scope.$new()
-        dialog_div = $compile($templateCache.get("icsw.layout.selection.modify"))(sel_scope)
-        BootstrapDialog.show
-            message: dialog_div
-            draggable: true
-            animate: true
-            onhidden: () ->
-                sel_scope.$destroy()
-    quick_dialog = (scope) ->
-        sel_scope = scope.$new()
-        dialog_div = $compile($templateCache.get("icsw.layout.selection.modify"))(sel_scope)
+]).service("icswLayoutSelectionDialogService", ["$q", "$compile", "$templateCache", "$state", "icswToolsSimpleModalService", "$rootScope", ($q, $compile, $templateCache, $state, icswToolsSimpleModalService, $rootScope) ->
+    sel_scope = $rootScope.$new()
+    dialog_div = $compile($templateCache.get("icsw.layout.selection.modify"))(sel_scope)
+    prev_left = undefined
+    prev_top = undefined
+    quick_dialog = () ->
+        state_name = $state.current.name
+        console.log state_name
+        $rootScope.$emit("icsw.devsel.show", state_name)
         BootstrapDialog.show
             message: dialog_div
             title: "Device Selection"
@@ -752,10 +752,17 @@ angular.module(
                 # hack to position to the left
                 _tw = ref.getModal().width()
                 _diag = ref.getModalDialog()
-                $(_diag[0]).css("left", - (_tw - 600)/2)
+                if prev_left?
+                    $(_diag[0]).css("left", prev_left)
+                    $(_diag[0]).css("top", prev_top)
+                else
+                    $(_diag[0]).css("left", - (_tw - 600)/2)
                 sel_scope.modal = ref
-            onhidden: () ->
-                sel_scope.$destroy()
+            onhidden: (ref) ->
+                _diag = ref.getModalDialog()
+                prev_left = $(_diag[0]).css("left")
+                prev_top = $(_diag[0]).css("top")
+            #     sel_scope.$destroy()
             buttons: [
                 {
                     icon: "glyphicon glyphicon-ok"
@@ -766,7 +773,6 @@ angular.module(
                 }
             ]
     return {
-        "show_dialog": show_dialog
         "quick_dialog": quick_dialog
     }
 ]).service("icswLayoutSelectionTreeService", ["DeviceOverviewService", "icswSelectionService", "icswTreeConfig", (DeviceOverviewService, icswSelectionService, icswTreeConfig) ->
