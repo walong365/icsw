@@ -31,7 +31,7 @@ from django.db.models import Q
 from django.http.response import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from lxml.builder import E  # @UnresolvedImport
+from lxml.builder import E
 from rest_framework.generics import RetrieveAPIView
 from rest_framework.response import Response
 

@@ -42,6 +42,7 @@ bg = require("gulp-bg")
 rename = require("gulp-rename")
 clean_dest = require("gulp-clean-dest")
 del = require("del")
+wait = require("gulp-wait")
 
 class SourceMap
     constructor: (@name, @dest, @sources, @type, @static) ->
@@ -219,7 +220,10 @@ create_task = (key) ->
                     (error) ->
                         console.log "an Coffee-error happed"
                         console.log error.stack
-                        gulp.start("stop")
+                        # not working
+                        # wait(60000).pipe(
+                        #     gulp.start("stop")
+                        # )
                 )
             )
         ).pipe(

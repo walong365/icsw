@@ -125,7 +125,7 @@ class update_device(APIView):
             "i": "change_new_image",
             "k": "change_new_kernel",
         }
-        dev_data = request.DATA
+        dev_data = request.data
         # import pprint
         # pprint.pprint(dev_data)
         _en = dev_data["bo_enabled"]
