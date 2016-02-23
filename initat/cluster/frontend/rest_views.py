@@ -838,18 +838,9 @@ class device_tree_list(
             )
         # ordering: at first cluster device group, then by group / is_meta_device / name
         _q = _q.order_by("-device_group__cluster_device_group", "device_group__name", "-is_meta_device", "name")
+        logger.info("device_tree_list has {}".format(logging_tools.get_plural("entry", _q.count())))
         # print _q.count(), self.request.query_params, self.request.session.get("sel_list", [])
         return _q
-
-
-class device_selection_session_list(APIView):
-    authentication_classes = (SessionAuthentication,)
-    permission_classes = (IsAuthenticated,)
-
-    @rest_logging
-    def get(self, request):
-        ser = device_selection_serializer([device_selection(cur_sel) for cur_sel in request.session.get("sel_list", [])], many=True)
-        return Response(ser.data)
 
 
 class device_com_capabilities(APIView):

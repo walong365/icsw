@@ -51,12 +51,31 @@ angular.module(
             @enabled_lut = icswTools.build_lut(@enabled_list)
             @disabled_lut = icswTools.build_lut(@disabled_list)
             @all_lut = icswTools.build_lut(@all_list)
+            @group_lut = icswTools.build_lut(@group_list)
+            @cat_lut = icswTools.build_lut(@cat_list)
             # console.log @enabled_list.length, @disabled_list.length, @all_list.length
             @link()
         link: () =>
+            for group in @group_list
+                group.devices = []
+            for cat in @cat_list
+                cat.devices = []
+            for entry in @all_list
+                @group_lut[entry.device_group].devices.push(entry.idx)
+                for cat in entry.categories
+                    @cat_lut[cat].devices.push(entry.idx)
             # create helper structures
             # console.log "link"
-]).service("icswDeviceTreeService", ["$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall", "icswTools", "icswDeviceTree", ($q, Restangular, ICSW_URLS, $window, icswCachingCall, icswTools, icswDeviceTree) ->
+        get_meta_device: (dev) =>
+            return @all_lut[@group_lut[dev.device_group].device]
+        get_group: (dev) =>
+            return @group_lut[dev.device_group]
+        get_category: (cat) =>
+            return @cat_lut[cat]
+        get_num_devices: (group) =>
+            # return all enabled devices in group
+            return (entry for entry in @enabled_list when entry.device_group == group.idx).length - 1
+]).service("icswDeviceTreeService", ["$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall", "icswTools", "icswDeviceTree", "$rootScope", ($q, Restangular, ICSW_URLS, $window, icswCachingCall, icswTools, icswDeviceTree, $rootScope) ->
     rest_map = [
         [
             ICSW_URLS.REST_DEVICE_TREE_LIST
@@ -66,7 +85,6 @@ angular.module(
                 "all_devices" : true
                 "with_categories" : true
                 "ignore_disabled": true
-                # "olp" : $window.DEVICE_OBJECT_LEVEL_PERMISSION
             }
         ]
         [
@@ -92,6 +110,7 @@ angular.module(
             for client of _fetch_dict
                 # resolve clients
                 _fetch_dict[client].resolve(_result)
+            $rootScope.$emit("icsw.tree.loaded", _result)
             # reset fetch_dict
             _fetch_dict = {}
         )
@@ -115,6 +134,8 @@ angular.module(
                 return fetch_data(client).promise
             else
                 return load_data(client).promise
+        "current": () ->
+            return _result
     }
 ]).service("icswSelectionGetDeviceService", ["icswDeviceTreeService", "$q", (icswDeviceTreeService, $q) ->
     id = Math.random()
@@ -135,40 +156,38 @@ angular.module(
             defer.resolve(dev_pk of new_data.all_lut)
         )
         return defer.promise
-]).service("icswActiveSelectionService", ["$q", "Restangular", "msgbus", "$rootScope", "ICSW_URLS", "icswSelection", "icswSelectionService", ($q, Restangular, msgbus, $rootScope, ICSW_URLS, icswSelection, icswSelectionService) ->
+]).service("icswActiveSelectionService", ["$q", "Restangular", "msgbus", "$rootScope", "ICSW_URLS", "icswSelection",  ($q, Restangular, msgbus, $rootScope, ICSW_URLS, icswSelection) ->
     # used by menu.coffee (menu_base)
     _receivers = 0
-    load_selection = () ->
-        defer = $q.defer()
-        Restangular.all(ICSW_URLS.REST_DEVICE_SELECTION_SESSION_LIST.slice(1)).getList().then((data) ->
-            cur_sel = new icswSelection([], [], [], (entry.idx for entry in data when entry.sel_type == "d"))
-            defer.resolve(cur_sel)
-        )
-        return defer.promise
+    cur_selection = new icswSelection([], [], [], [])
     msgbus.receive("devselreceiver", $rootScope, (name, args) ->
         # args is an optional sender name to find errors
-        _receivers++
-        load_selection().then((cur_sel) ->
-            # send selection
-            set_selection(cur_sel)
-        )
+        _receivers += 1
+        console.log "register dsr"
+        $rootScope.$emit("icsw.dsr.registered")
+        send_selection()
     )
     set_selection = (new_sel) ->
-        icswSelectionService.load().then((data) ->
-            # the icswSelectionService must be valid in order to resolve the devices
-            msgbus.emit("devicelist", new_sel.get_devsel_list())
-        )
+        # cur_selection.sync(new_sel)
+        send_selection()
+    send_selection = () ->
+        msgbus.emit("devicelist", cur_selection.get_devsel_list())
     return {
-        "receivers": () ->
+        "num_receivers": () ->
             return _receivers
-        "load_selection": () ->
-            return load_selection()
+        "get_selection": () ->
+            return cur_selection
         "set_selection": (new_sel) ->
             set_selection(new_sel)
     }
-]).service("icswSelection", ["icswSelectionService", "$q", "icswSimpleAjaxCall", "ICSW_URLS", (icswSelectionService, $q, icswSimpleAjaxCall, ICSW_URLS) ->
+]).service("icswSelection", ["icswDeviceTreeService", "$q", "icswSimpleAjaxCall", "ICSW_URLS", "$rootScope", (icswDeviceTreeService, $q, icswSimpleAjaxCall, ICSW_URLS, $rootScope) ->
     class Selection
         constructor: (@cat_sel, @devg_sel, @dev_sel, @tot_dev_sel, @db_idx=0) ->
+            @tree = undefined
+            $rootScope.$on("icsw.tree.loaded", (event, tree) =>
+                @tree = tree
+                console.log "tree set", @tree
+            )
         update: (@cat_sel, @devg_sel, @dev_sel, @tot_dev_sel) ->
         any_selected: () ->
             return if @cat_sel.length + @devg_sel.length + @dev_sel.length + @tot_dev_sel.length then true else false
@@ -177,52 +196,52 @@ angular.module(
         resolve_lazy_selection: () ->
             # categories
             for _cat in @cat_sel
-                for _cs in icswSelectionService.resolve_category(_cat).devices
+                for _cs in @tree.cat_lut[_cat].devices
                     @tot_dev_sel.push(_cs)
             @cat_sel = []
             # groups
             for _group in @devg_sel
-                for _gs in icswSelectionService.resolve_device_group(_group).devices
+                for _gs in @tree.group_lut[_group].devices
                     @dev_sel.push(_gs)
                     @tot_dev_sel.push(_gs)
             @devg_sel = []
             @tot_dev_sel = _.uniq(@tot_dev_sel)
             @dev_sel = _.uniq(@dev_sel)
-        resolve_dev_name: (dev_idx) ->
-            _dev = icswSelectionService.resolve_device(dev_idx)
+        resolve_dev_name: (dev_idx) =>
+            _dev = @tree.all_lut[dev_idx]
             if _dev.is_meta_device
                 return "[M] " + _dev.full_name.substring(8)
             else
                 return _dev.full_name
-        resolve_devices: () ->
+        resolve_devices: () =>
             if @dev_sel.length
                 _list = ((@resolve_dev_name(_ds) for _ds in @dev_sel))
                 _list.sort()
                 return _list.join(", ")
             else
                 return "---"
-        resolve_total_devices: () ->
+        resolve_total_devices: () =>
             if @tot_dev_sel.length
                 _list = ((@resolve_dev_name(_ds) for _ds in @tot_dev_sel))
                 _list.sort()
                 return _list.join(", ")
             else
                 return "---"
-        resolve_device_groups: () ->
+        resolve_device_groups: () =>
             if @devg_sel.length
-                _list = ((icswSelectionService.resolve_device_group(_dg).name.substring(8) for _dg in @devg_sel))
+                _list = ((@tree.group_lut[_dg].name.substring(8) for _dg in @devg_sel))
                 _list.sort()
                 return _list.join(", ")
             else
                 return "---"
         resolve_categories: () ->
             if @cat_sel.length
-                _list = ((icswSelectionService.resolve_category(_cs).full_name for _cs in @cat_sel))
+                _list = ((@tree.cat_lut[_cs].full_name for _cs in @cat_sel))
                 _list.sort()
                 return _list.join(", ")
             else
                 return "---"
-        get_devsel_list: () ->
+        get_devsel_list: () =>
             # all device pks
             dev_pk_list = @tot_dev_sel
             # all non-meta device pks
@@ -232,7 +251,7 @@ angular.module(
             # all meta device pks
             dev_pk_md_list = []
             for _pk in @tot_dev_sel
-                _dev = icswSelectionService.resolve_device(_pk)
+                _dev = @tree.all_lut[_pk]
                 if _dev
                     if _dev.is_meta_device
                         devg_pk_list.push(_dev.device_group)
@@ -257,7 +276,8 @@ angular.module(
                 data    : {
                     "angular_sel" : angular.toJson(@tot_dev_sel)
                 }
-            ).then((xml) ->
+            ).then(
+                (xml) ->
             )
         select_parent: () ->
             defer = $q.defer()
@@ -267,56 +287,12 @@ angular.module(
                     "angular_sel" : angular.toJson(@tot_dev_sel)
                 }
                 dataType: "json"
-            ).then((data) =>
-                @tot_dev_sel = data["new_selection"]
-                defer.resolve(data)
+            ).then(
+                (data) =>
+                    @tot_dev_sel = data["new_selection"]
+                    defer.resolve(data)
             )
-
             return defer.promise
-]).service("icswSelectionService", ["icswDeviceTreeService", "$q", (icswDeviceTreeService, $q) ->
-    load_data = (client) ->
-        _defer = $q.defer()
-        icswDeviceTreeService.fetch(client).then(
-            (data) ->
-                # move to icswDeviceTree object, TODO, FIXME
-                # categories
-                # console.log data
-                for cat in data.cat_list
-                    cat.devices = []
-                    cat_lut[cat.idx] = cat
-                # device groups
-                for dev in data.enabled_list
-                    if dev.is_meta_device
-                        dev.devices = []
-                        devg_lut[dev.device_group] = dev
-                # devices
-                for dev in data.enabled_list
-                    if not dev.is_meta_device
-                        devg_lut[dev.device_group].devices.push(dev.idx)
-                    dev_lut[dev.idx] = dev
-                    if dev.categories
-                        for t_cat in dev.categories
-                            cat_lut[t_cat].devices.push(dev.idx)
-                _defer.resolve([data.enabled_list, data.enabled_lut])
-        )
-        return _defer.promise
-    # lookup objects
-    # category index -> category
-    cat_lut = {}
-    # device index -> device
-    dev_lut = {}
-    # group index -> meta device (with devices list [as idx])
-    devg_lut = {}
-    return {
-        "load" : (client) ->
-            return load_data(client)
-        "resolve_category": (cat_idx) ->
-            return cat_lut[cat_idx]
-        "resolve_device": (dev_idx) ->
-            return dev_lut[dev_idx]
-        "resolve_device_group": (devg_idx) ->
-            return devg_lut[devg_idx]
-    }
 ]).service("icswSavedSelectionService", ["Restangular", "$q", "ICSW_URLS", "icswUserService", (Restangular, $q, ICSW_URLS, icswUserService) ->
     enrich_selection = (entry) ->
         _created = moment(entry.date)
@@ -347,11 +323,13 @@ angular.module(
             json_sel.changed = true
     load_selections = () ->
         defer = $q.defer()
-        icswUserService.load().then((user) ->
-            Restangular.all(ICSW_URLS.REST_DEVICE_SELECTION_LIST.slice(1)).getList({"user": user.idx}).then((data) ->
-                (enrich_selection(entry) for entry in data)
-                defer.resolve(data)
-            )
+        icswUserService.load().then(
+            (user) ->
+                Restangular.all(ICSW_URLS.REST_DEVICE_SELECTION_LIST.slice(1)).getList({"user": user.idx}).then(
+                    (data) ->
+                        (enrich_selection(entry) for entry in data)
+                        defer.resolve(data)
+                )
         )
         return defer.promise
     save_selection = (name, sel) ->
@@ -365,9 +343,10 @@ angular.module(
                 "device_groups": sel.devg_sel
             }
             # console.log "save", _sel
-            Restangular.all(ICSW_URLS.REST_DEVICE_SELECTION_LIST.slice(1)).post(_sel).then((data) ->
-                enrich_selection(data)
-                defer.resolve(data)
+            Restangular.all(ICSW_URLS.REST_DEVICE_SELECTION_LIST.slice(1)).post(_sel).then(
+                (data) ->
+                    enrich_selection(data)
+                    defer.resolve(data)
             )
         )
         return defer.promise
@@ -381,13 +360,13 @@ angular.module(
     }
 ]).controller("icswLayoutSelectionController",
 [
-    "$scope", "icswSelectionService", "icswLayoutSelectionTreeService", "$timeout", "msgbus",
+    "$scope", "icswLayoutSelectionTreeService", "$timeout", "msgbus", "icswDeviceTreeService",
     "icswSelection", "icswActiveSelectionService", "$q", "icswSavedSelectionService", "icswToolsSimpleModalService",
-    "DeviceOverviewService", "ICSW_URLS", 'icswSimpleAjaxCall', "blockUI", "$rootScope",
+    "DeviceOverviewService", "ICSW_URLS", 'icswSimpleAjaxCall', "blockUI", "$rootScope", "icswUserService",
 (
-    $scope, icswSelectionService, icswLayoutSelectionTreeService, $timeout, msgbus,
+    $scope, icswLayoutSelectionTreeService, $timeout, msgbus, icswDeviceTreeService
     icswSelection, icswActiveSelectionService, $q, icswSavedSelectionService, icswToolsSimpleModalService,
-    DeviceOverviewService, ICSW_URLS, icswSimpleAjaxCall, blockUI, $rootScope,
+    DeviceOverviewService, ICSW_URLS, icswSimpleAjaxCall, blockUI, $rootScope, icswUserService,
 ) ->
     # search settings
     $scope.search_ok = true
@@ -395,7 +374,15 @@ angular.module(
     $scope.active_tab = "d"
     $scope.show_selection = false
     $scope.saved_selections = []
-    $scope.devsel_receivers = icswActiveSelectionService.receivers()
+    $scope.devsel_receivers = 0
+    $scope.selection_valid = false
+    stop_listen = []
+    stop_listen.push(
+        $rootScope.$on("icsw.dsr.registered", (event) ->
+            $scope.devsel_receivers = icswActiveSelectionService.num_receivers()
+            console.log "****", $scope.devsel_receivers, $scope
+        )
+    )
     # for saved selections
     $scope.vars = {
         "name": "new selection"
@@ -403,7 +390,7 @@ angular.module(
         "current": {}
         "search_str": ""
     }
-    $scope.selection = new icswSelection([], [], [], [])
+    console.log "new ctrl", $scope.$id
     # treeconfig for devices
     $scope.tc_devices = new icswLayoutSelectionTreeService($scope, {show_tree_expand_buttons : false, show_descendants : true})
     # treeconfig for groups
@@ -411,23 +398,50 @@ angular.module(
     # treeconfig for categories
     $scope.tc_categories = new icswLayoutSelectionTreeService($scope, {show_selection_buttons : true, show_descendants : true})
     $scope.selection_dict = {"d": 0, "g": 0, "c": 0}
-    $q.all([icswSelectionService.load($scope.$id), icswActiveSelectionService.load_selection()]).then((data) ->
-        $scope.got_rest_data([data[0][0], data[0][1], data[1]])
+    stop_listen.push(
+        $rootScope.$on("icsw.user.changed", (event, new_user) ->
+            console.log "new user", new_user
+            if new_user and new_user.idx
+                icswDeviceTreeService.load($scope.$id).then(
+                    (new_tree) ->
+                        $scope.got_rest_data(new_tree, icswActiveSelectionService.get_selection())
+                )
+        )
     )
+    $scope.tree = undefined
     console.log "start"
-    $rootScope.$on("icsw.devsel.show", (event, cur_state) ->
-        console.log "show_devsel", event, cur_state
+    stop_listen.push(
+        $rootScope.$on("icsw.devsel.show", (event, cur_state) ->
+            console.log "show_devsel", event, cur_state, $scope
+            if icswUserService.user_present()
+                icswDeviceTreeService.load($scope.$id).then(
+                    (new_tree) ->
+                        $scope.got_rest_data(new_tree, icswActiveSelectionService.get_selection())
+                )
+            else
+                console.log "No user user"
+        )
     )
-    $scope.got_rest_data = (data) ->
+    stop_listen.push(
+        $scope.$on("$destroy", (event) ->
+            console.log "Destroy", stop_listen
+            (stop_func() for stop_func in stop_listen)
+        )
+    )
+    $scope.got_rest_data = (tree, selection) ->
         $scope.tc_devices.clear_root_nodes()
         $scope.tc_groups.clear_root_nodes()
         $scope.tc_categories.clear_root_nodes()
-        $scope.selection = data[2]
+        $scope.selection = selection
+        $scope.selection_valid = true
+        console.log "sv"
         # build category tree
         # tree category lut
         # id -> category entry from tree (with devices)
         t_cat_lut = {}
-        for entry in data[1]
+        $scope.tree = tree
+        console.log tree
+        for entry in tree.cat_list
             t_entry = $scope.tc_categories.new_node(
                 {
                     folder: true
@@ -445,7 +459,7 @@ angular.module(
                 $scope.tc_categories.add_root_node(t_entry)
         # build device group tree and top level of device tree
         dg_lut = {}
-        for entry in data[0]
+        for entry in tree.enabled_list
             if entry.is_meta_device
                 g_entry = $scope.tc_groups.new_node(
                     {
@@ -467,7 +481,7 @@ angular.module(
                 $scope.tc_devices.add_root_node(d_entry)
                 dg_lut[entry.device_group] = d_entry
         # build devices tree
-        for entry in data[0]
+        for entry in tree.enabled_list
             if ! entry.is_meta_device
                 # copy selection state to device selection (the selection state of the meta devices is keeped in sync with the selection states of the devicegroups )
                 d_entry = $scope.tc_devices.new_node(
@@ -534,7 +548,7 @@ angular.module(
                     cur_tree.iter(
                         (entry) ->
                             if entry._node_type == "d"
-                                _sel = icswSelectionService.resolve_device(entry.obj).idx in matching_device_pks
+                                _sel = $scope.tree.all_lut[entry.obj].idx in matching_device_pks
                                 entry.set_selected(_sel)
                                 if _sel
                                     num_found++
@@ -555,17 +569,17 @@ angular.module(
             cur_tree.iter(
                 (entry, cur_re) ->
                     if entry._node_type == "d"
-                        _sel = if icswSelectionService.resolve_device(entry.obj).full_name.match(cur_re) then true else false
+                        _sel = if $scope.tree.all_lut[entry.obj].full_name.match(cur_re) then true else false
                         entry.set_selected(_sel)
                         if _sel
                             num_found++
                     else if entry._node_type == "g"
-                        _sel = if icswSelectionService.resolve_device_group(entry.obj).full_name.match(cur_re) then true else false
+                        _sel = if $scope.tree.group_lut[entry.obj].full_name.match(cur_re) then true else false
                         entry.set_selected(_sel)
                         if _sel
                             num_found++
                     else if entry._node_type == "c"
-                        _sel = if icswSelectionService.resolve_category(entry.obj).name.match(cur_re) then true else false
+                        _sel = if $scope.tree.cat_lut[entry.obj].name.match(cur_re) then true else false
                         entry.set_selected(_sel)
                         if _sel
                             num_found++
@@ -635,10 +649,10 @@ angular.module(
             tot_dev_sel.push(_ds)
         for _gs in group_sel_nodes
             devg_sel.push(_gs)
-            for _group_dev in icswSelectionService.resolve_device_group(_gs).devices
+            for _group_dev in $scope.tree.group_lut[_gs].devices
                 tot_dev_sel.push(_group_dev)
         for _cs in cat_sel_nodes
-            for _cat_dev in icswSelectionService.resolve_category(_cs).devices
+            for _cat_dev in $scope.tree.get_category(_cs).devices
                 tot_dev_sel.push(_cat_dev)
         $scope.selection.update(cat_sel_nodes, devg_sel, dev_sel, _.uniq(tot_dev_sel))
         if $scope.vars.current and $scope.vars.current.idx == $scope.selection.db_idx
@@ -681,6 +695,7 @@ angular.module(
         )
     $scope.use_selection = (new_sel, b) ->
         $scope.vars.current = new_sel
+        console.log "use_selection"
         $scope.selection = new icswSelection(new_sel.categories, new_sel.device_groups, new_sel.devices, [], new_sel.idx)
         for cur_tc in [$scope.tc_devices, $scope.tc_groups, $scope.tc_categories]
             cur_tc.clear_selected()
@@ -716,7 +731,7 @@ angular.module(
 
     $scope.show_current_selection_in_overlay = () ->
         devsel_list = $scope.selection.get_devsel_list()
-        selected_devices = (icswSelectionService.resolve_device(_pk) for _pk in devsel_list[0])
+        selected_devices = ($scope.tree.all_lut[_pk] for _pk in devsel_list[0])
         DeviceOverviewService.NewOverview(event, selected_devices)
     $scope.select_parents = () ->
         blockUI.start()
@@ -734,13 +749,15 @@ angular.module(
             blockUI.stop()
         )
 ]).service("icswLayoutSelectionDialogService", ["$q", "$compile", "$templateCache", "$state", "icswToolsSimpleModalService", "$rootScope", ($q, $compile, $templateCache, $state, icswToolsSimpleModalService, $rootScope) ->
-    sel_scope = $rootScope.$new()
-    dialog_div = $compile($templateCache.get("icsw.layout.selection.modify"))(sel_scope)
+    # dialog_div =
     prev_left = undefined
     prev_top = undefined
     quick_dialog = () ->
         state_name = $state.current.name
-        console.log state_name
+        sel_scope = $rootScope.$new()
+        dialog_div = $compile($templateCache.get("icsw.layout.selection.modify"))(sel_scope)
+        console.log "SelectionDialog", state_name
+        # signal controller
         $rootScope.$emit("icsw.devsel.show", state_name)
         BootstrapDialog.show
             message: dialog_div
@@ -762,7 +779,7 @@ angular.module(
                 _diag = ref.getModalDialog()
                 prev_left = $(_diag[0]).css("left")
                 prev_top = $(_diag[0]).css("top")
-            #     sel_scope.$destroy()
+                sel_scope.$destroy()
             buttons: [
                 {
                     icon: "glyphicon glyphicon-ok"
@@ -775,19 +792,25 @@ angular.module(
     return {
         "quick_dialog": quick_dialog
     }
-]).service("icswLayoutSelectionTreeService", ["DeviceOverviewService", "icswSelectionService", "icswTreeConfig", (DeviceOverviewService, icswSelectionService, icswTreeConfig) ->
+]).service("icswLayoutSelectionTreeService", ["DeviceOverviewService", "icswTreeConfig", "icswDeviceTreeService", (DeviceOverviewService, icswTreeConfig, icswDeviceTreeService) ->
     class selection_tree extends icswTreeConfig
         constructor: (@scope, args) ->
             super(args)
+            @current = undefined
+        ensure_current: () =>
+            if not @current
+                @current = icswDeviceTreeService.current()
         handle_click: (entry, event) =>
+            @ensure_current()
             if entry._node_type == "d"
-                dev = icswSelectionService.resolve_device(entry.obj)
+                dev = @current.all_lut[entry.obj]
                 DeviceOverviewService.NewOverview(event, [dev])
             else
                 entry.set_selected(not entry.selected)
             # need $apply() here, $digest is not enough
             @scope.$apply()
-        get_name: (t_entry) ->
+        get_name: (t_entry) =>
+            @ensure_current()
             entry = @get_dev_entry(t_entry)
             if t_entry._node_type == "f"
                 if entry.parent
@@ -797,15 +820,15 @@ angular.module(
             else if t_entry._node_type == "c"
                 if entry.depth
                     _res = entry.name
-                    cat = icswSelectionService.resolve_category(t_entry.obj)
+                    cat = @current.cat_lut[t_entry.obj]
                     if cat.devices.length
                         _res = "#{_res} (#{cat.devices.length} devices)"
                 else
                     _res = "[TOP]"
                 return _res
             else if t_entry._node_type == "g"
-                _res = entry.name.slice(8)
-                group = icswSelectionService.resolve_device_group(t_entry.obj)
+                _res = entry.name
+                group = @current.group_lut[t_entry.obj]
                 if group.devices.length
                     _res = "#{_res} (#{group.devices.length} devices)"
                 return _res
@@ -831,11 +854,11 @@ angular.module(
                 return "dynatree-icon"
         get_dev_entry: (t_entry) =>
             if t_entry._node_type == "g"
-                return icswSelectionService.resolve_device_group(t_entry.obj)
+                return @scope.tree.group_lut[t_entry.obj]
             else if t_entry._node_type == "c"
-                return icswSelectionService.resolve_category(t_entry.obj)
+                return @scope.tree.cat_lut[t_entry.obj]
             else
-                return icswSelectionService.resolve_device(t_entry.obj)
+                return @scope.tree.all_lut[t_entry.obj]
         selection_changed: () =>
             @scope.selection_changed()
             @scope.$digest()

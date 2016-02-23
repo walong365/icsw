@@ -1,6 +1,6 @@
 <script type="text/ng-template" id="icsw.layout.selection.modify">
     <div ng-controller="icswLayoutSelectionController">
-        <uib-tabset>
+        <uib-tabset ng-if="selection_valid">
             <uib-tab heading="current selection">
                 <dov class="input-group">
                     <div ng-class="search_ok && 'form-group' || 'form-group has-error'">
