@@ -69,6 +69,7 @@ sources = {
             "frontend/static/css/bootstrap-dialog.css",
             "frontend/static/css/angular-gridster.min.css",
             "frontend/static/css/main.css",
+            "frontend/static/css/hotkeys.css",
         ]
         "css"
         true
@@ -109,6 +110,7 @@ sources = {
             "frontend/static/js/angular-promise-extras.js",
             "frontend/static/js/react-0.14.7.js",
             "frontend/static/js/react-dom-0.14.7.js",
+            "frontend/static/js/hotkeys.js",
         ]
         "js"
         true

@@ -106,22 +106,6 @@ class change_devices(View):
             request.xml_response.info("changed settings of {}".format(logging_tools.get_plural("device", dev_changes)))
 
 
-class set_selection(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        dev_list = json.loads(_post["angular_sel"])
-        devg_list = device_group.objects.filter(Q(device__in=dev_list)).values_list("pk", flat=True)
-        cur_list = [
-            "dev__{:d}".format(cur_pk) for cur_pk in dev_list
-        ] + [
-            "devg__{:d}".format(cur_pk) for cur_pk in devg_list
-        ]
-        request.session["sel_list"] = cur_list
-        request.session.save()
-
-
 class select_parents(View):
     @method_decorator(login_required)
     def post(self, request):

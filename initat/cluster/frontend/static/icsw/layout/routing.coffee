@@ -62,6 +62,18 @@ menu_module = angular.module(
                         )
                         return _defer.promise
                     ]
+                hotkeys: [
+                    ["s", "Show device selection", "show devsel"]
+                ]
+                controller: ["$scope", "hotkeys", "icswLayoutSelectionDialogService", ($scope, hotkeys, icswLayoutSelectionDialogService) ->
+                    console.log "mainScope", $scope
+                    hotkeys.bindTo($scope).add(
+                        combo: "s"
+                        description: "Show device selection"
+                        callback: () ->
+                            icswLayoutSelectionDialogService.quick_dialog()
+                    )
+                ]
             }
         ).state(
             "simple1"

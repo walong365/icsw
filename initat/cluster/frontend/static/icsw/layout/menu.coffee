@@ -121,14 +121,10 @@ menu_module = angular.module(
         link: (scope, el, attrs) ->
             scope.initProduct = initProduct
             scope.num_gauges = 0
-            scope.quicksel = false
             scope.progress_iters = 0
             scope.cur_gauges = {}
             scope.device_quickselection = (onoff) ->
-                if onoff != scope.quicksel
-                    scope.quicksel = onoff
-                    if scope.quicksel
-                        icswLayoutSelectionDialogService.quick_dialog()
+                icswLayoutSelectionDialogService.quick_dialog(onoff)
             scope.$watch(
                 () ->
                     return icswMenuProgressService.start_reload

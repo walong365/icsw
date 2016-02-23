@@ -56,6 +56,7 @@ icsw_app = angular.module(
         "blockUI",
         "toaster",
         "gridster",
+        "cfp.hotkeys",
         "init.csw.filters",
         "icsw.tools.tree",
         "icsw.layout.menu",
@@ -117,6 +118,11 @@ icsw_app = angular.module(
             blockUIConfig.autoInjectBodyBlock = false;
         }
     ]
+).config(
+    function(hotkeysProvider) {
+        hotkeysProvider.templateHeader = "<h1>ICSW Key help</h1>"
+        hotkeysProvider.includeCheatSheet = true;
+    }
 ).constant(
     "ICSW_URLS", {
         <!-- inject:urls:html -->
