@@ -75,7 +75,7 @@ angular.module(
         get_num_devices: (group) =>
             # return all enabled devices in group
             return (entry for entry in @enabled_list when entry.device_group == group.idx).length - 1
-]).service("icswDeviceTreeService", ["$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall", "icswTools", "icswDeviceTree", "$rootScope", ($q, Restangular, ICSW_URLS, $window, icswCachingCall, icswTools, icswDeviceTree, $rootScope) ->
+]).service("icswDeviceTreeService", ["$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall", "icswTools", "icswDeviceTree", "$rootScope", "ICSW_SIGNALS", ($q, Restangular, ICSW_URLS, $window, icswCachingCall, icswTools, icswDeviceTree, $rootScope, ICSW_SIGNALS) ->
     rest_map = [
         [
             ICSW_URLS.REST_DEVICE_TREE_LIST
@@ -110,7 +110,7 @@ angular.module(
             for client of _fetch_dict
                 # resolve clients
                 _fetch_dict[client].resolve(_result)
-            $rootScope.$emit("icsw.tree.loaded", _result)
+            $rootScope.$emit(ICSW_SIGNALS("ICSW_TREE_LOADED"), _result)
             # reset fetch_dict
             _fetch_dict = {}
         )
@@ -156,7 +156,7 @@ angular.module(
             defer.resolve(dev_pk of new_data.all_lut)
         )
         return defer.promise
-]).service("icswActiveSelectionService", ["$q", "Restangular", "msgbus", "$rootScope", "ICSW_URLS", "icswSelection",  ($q, Restangular, msgbus, $rootScope, ICSW_URLS, icswSelection) ->
+]).service("icswActiveSelectionService", ["$q", "Restangular", "msgbus", "$rootScope", "ICSW_URLS", "icswSelection",  "ICSW_SIGNALS", ($q, Restangular, msgbus, $rootScope, ICSW_URLS, icswSelection, ICSW_SIGNALS) ->
     # used by menu.coffee (menu_base)
     _receivers = 0
     cur_selection = new icswSelection([], [], [], [])
@@ -164,7 +164,7 @@ angular.module(
         # args is an optional sender name to find errors
         _receivers += 1
         console.log "register dsr"
-        $rootScope.$emit("icsw.dsr.registered")
+        $rootScope.$emit(ICSW_SIGNALS("ICSW_DSR_REGISTERED"))
         send_selection()
     )
     sync_selection = (new_sel) ->
@@ -188,11 +188,11 @@ angular.module(
         "send_selection": () ->
             send_selection()
     }
-]).service("icswSelection", ["icswDeviceTreeService", "$q", "icswSimpleAjaxCall", "ICSW_URLS", "$rootScope", "Restangular", "icswSavedSelectionService", (icswDeviceTreeService, $q, icswSimpleAjaxCall, ICSW_URLS, $rootScope, Restangular, icswSavedSelectionService) ->
+]).service("icswSelection", ["icswDeviceTreeService", "$q", "icswSimpleAjaxCall", "ICSW_URLS", "$rootScope", "Restangular", "icswSavedSelectionService", "ICSW_SIGNALS", (icswDeviceTreeService, $q, icswSimpleAjaxCall, ICSW_URLS, $rootScope, Restangular, icswSavedSelectionService, ICSW_SIGNALS) ->
     class Selection
         # only instantiated once (for now), also handles saved selections
         constructor: (@cat_sel, @devg_sel, @dev_sel, @tot_dev_sel) ->
-            $rootScope.$on("icsw.tree.loaded", (event, tree) =>
+            $rootScope.$on(ICSW_SIGNALS("ICSW_TREE_LOADED"), (event, tree) =>
                 @tree = tree
                 console.log "tree set for icswSelection", @tree
             )
@@ -429,11 +429,11 @@ angular.module(
     }
 ]).controller("icswLayoutSelectionController",
 [
-    "$scope", "icswLayoutSelectionTreeService", "$timeout", "msgbus", "icswDeviceTreeService",
+    "$scope", "icswLayoutSelectionTreeService", "$timeout", "msgbus", "icswDeviceTreeService", "ICSW_SIGNALS",
     "icswSelection", "icswActiveSelectionService", "$q", "icswSavedSelectionService", "icswToolsSimpleModalService",
     "DeviceOverviewService", "ICSW_URLS", 'icswSimpleAjaxCall', "blockUI", "$rootScope", "icswUserService",
 (
-    $scope, icswLayoutSelectionTreeService, $timeout, msgbus, icswDeviceTreeService
+    $scope, icswLayoutSelectionTreeService, $timeout, msgbus, icswDeviceTreeService, ICSW_SIGNALS,
     icswSelection, icswActiveSelectionService, $q, icswSavedSelectionService, icswToolsSimpleModalService,
     DeviceOverviewService, ICSW_URLS, icswSimpleAjaxCall, blockUI, $rootScope, icswUserService,
 ) ->
@@ -468,13 +468,13 @@ angular.module(
     # list of receivers
     stop_listen = []
     stop_listen.push(
-        $rootScope.$on("icsw.dsr.registered", (event) ->
+        $rootScope.$on(ICSW_SIGNALS("ICSW_DSR_REGISTERED"), (event) ->
             $scope.devsel_receivers = icswActiveSelectionService.num_receivers()
             console.log "****", $scope.devsel_receivers, $scope
         )
     )
     stop_listen.push(
-        $rootScope.$on("icsw.user.changed", (event, new_user) ->
+        $rootScope.$on(ICSW_SIGNALS("ICSW_USER_CHANGED"), (event, new_user) ->
             console.log "new user", new_user
             if new_user and new_user.idx
                 icswDeviceTreeService.load($scope.$id).then(
@@ -484,7 +484,7 @@ angular.module(
         )
     )
     stop_listen.push(
-        $rootScope.$on("icsw.devsel.show", (event, cur_state) ->
+        $rootScope.$on(ICSW_SIGNALS("ICSW_SELECTOR_SHOW"), (event, cur_state) ->
             # call when the requester is shown
             console.log "show_devsel", event, cur_state, $scope
             if icswUserService.user_present()
@@ -500,11 +500,6 @@ angular.module(
         $scope.$on("$destroy", (event) ->
             console.log "Destroy", stop_listen
             (stop_func() for stop_func in stop_listen)
-        )
-    )
-    stop_listen.push(
-        $rootScope.$on("icsw.keypress", (event, kp_event) ->
-            console.log "kp", kp_event
         )
     )
     # get current devsel_receivers
@@ -842,7 +837,7 @@ angular.module(
             $scope.activate_tab("d")
             blockUI.stop()
         )
-]).service("icswLayoutSelectionDialogService", ["$q", "$compile", "$templateCache", "$state", "icswToolsSimpleModalService", "$rootScope", ($q, $compile, $templateCache, $state, icswToolsSimpleModalService, $rootScope) ->
+]).service("icswLayoutSelectionDialogService", ["$q", "$compile", "$templateCache", "$state", "icswToolsSimpleModalService", "$rootScope", "ICSW_SIGNALS", ($q, $compile, $templateCache, $state, icswToolsSimpleModalService, $rootScope, ICSW_SIGNALS) ->
     # dialog_div =
     prev_left = undefined
     prev_top = undefined
@@ -855,7 +850,7 @@ angular.module(
             dialog_div = $compile($templateCache.get("icsw.layout.selection.modify"))(sel_scope)
             console.log "SelectionDialog", state_name
             # signal controller
-            $rootScope.$emit("icsw.devsel.show", state_name)
+            $rootScope.$emit(ICSW_SIGNALS("ICSW_SELECTOR_SHOW"), state_name)
             BootstrapDialog.show
                 message: dialog_div
                 title: "Device Selection"

@@ -23,8 +23,8 @@ menu_module = angular.module(
     [
         "ngSanitize", "ui.bootstrap", "icsw.layout.selection", "icsw.user",
     ]
-).controller("menu_base", ["$scope", "$timeout", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswAcessLevelService", "initProduct", "icswLayoutSelectionDialogService", "icswActiveSelectionService", "$q", "icswUserService", "blockUI", "$state",
-    ($scope, $timeout, $window, ICSW_URLS, icswSimpleAjaxCall, icswAcessLevelService, initProduct, icswLayoutSelectionDialogService, icswActiveSelectionService, $q, icswUserService, blockUI, $state) ->
+).controller("menu_base", ["$scope", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswAcessLevelService", "initProduct", "icswLayoutSelectionDialogService", "icswActiveSelectionService", "$q", "icswUserService", "blockUI", "$state",
+    ($scope, $window, ICSW_URLS, icswSimpleAjaxCall, icswAcessLevelService, initProduct, icswLayoutSelectionDialogService, icswActiveSelectionService, $q, icswUserService, blockUI, $state) ->
         # init service types
         $scope.ICSW_URLS = ICSW_URLS
         $scope.initProduct = initProduct
@@ -467,17 +467,20 @@ menu_module = angular.module(
             $rootScope.$on("icsw.user.changed", (event, user) ->
                 # console.log "uc", user
                 _user = user
+                console.log "user_render"
                 _render()
             )
             $rootScope.$on("icsw.acls.changed", (event, acls) ->
                 # console.log "ac", acls
                 _acls = acls
+                console.log "acls_render"
                 _render()
             )
             scope.$watch(
                 () ->
                     return icswMenuProgressService
                 (new_val) ->
+                    console.log "mps"
                     _render()
                 true
             )

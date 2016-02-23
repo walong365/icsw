@@ -180,7 +180,7 @@ user_module = angular.module(
             else
                 return "fa fa-group"
 ]).service("icswDiskUsageTree", ["icswTreeConfig", (icswTreeConfig) ->
-    class icww_disk_usage_tree extends icswTreeConfig
+    class icsw_disk_usage_tree extends icswTreeConfig
         constructor: (@scope, args) ->
             super(args)
             @show_selection_buttons = false

@@ -66,7 +66,6 @@ menu_module = angular.module(
                     ["s", "Show device selection", "show devsel"]
                 ]
                 controller: ["$scope", "hotkeys", "icswLayoutSelectionDialogService", ($scope, hotkeys, icswLayoutSelectionDialogService) ->
-                    console.log "mainScope", $scope
                     hotkeys.bindTo($scope).add(
                         combo: "s"
                         description: "Show device selection"

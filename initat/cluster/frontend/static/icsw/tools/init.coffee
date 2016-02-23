@@ -290,7 +290,20 @@ angular.module(
                 fn.assign(scope, new_val)
             true
         )
-]).factory("icswTools", [() ->
+]).service("ICSW_SIGNALS", () ->
+    _dict = {
+        "ICSW_ACLS_CHANGED": "icsw.acls.changed"
+        "ICSW_USER_CHANGED": "icsw.user.changed"
+        "ICSW_DSR_REGISTERED": "icsw.dsr.registered"
+        "ICSW_SELECTOR_SHOW": "icsw.selector.show"
+        "ICSW_TREE_LOADED": "icsw.tree.loaded"
+    }
+    return (name) ->
+        if name not of _dict
+            throw new Error("unknown signal '#{name}'")
+        else
+            return _dict[name]
+).factory("icswTools", [() ->
     return {
         "get_size_str" : (size, factor, postfix) ->
             f_idx = 0
@@ -423,10 +436,10 @@ angular.module(
         _icswCallAjaxService(in_dict)
 
         return _def.promise
-]).service("icswAcessLevelService", ["ICSW_URLS", "Restangular", "$q", "$rootScope", (ICSW_URLS, Restangular, $q, $rootScope) ->
+]).service("icswAcessLevelService", ["ICSW_URLS", "ICSW_SIGNALS", "Restangular", "$q", "$rootScope", (ICSW_URLS, ICSW_SIGNALS, Restangular, $q, $rootScope) ->
     data = {}
     _changed = () ->
-        $rootScope.$emit("icsw.acls.changed", data)
+        $rootScope.$emit(ICSW_SIGNALS("ICSW_ACLS_CHANGED"), data)
     _reset = () ->
         data.global_permissions = {}
         # these are not permissions for single objects, but the merged permission set of all objects
@@ -436,13 +449,16 @@ angular.module(
         # routing info
         data.routing_info = {}
         data.acls_are_valid = false
-        _changed()
     _last_load = 0
+    _reload_pending = false
+    _acls_loaded = false
     reload = (force) ->
+        if _reload_pending
+            return
         cur_time = moment().unix()
         if Math.abs(cur_time - _last_load) < 5 and not force
             return
-        _reset()
+        _reload_pending = true
         $q.all(
             [
                 Restangular.all(ICSW_URLS.USER_GET_GLOBAL_PERMISSIONS.slice(1)).customGET()
@@ -452,6 +468,8 @@ angular.module(
             ]
         ).then(
             (r_data) ->
+                _reload_pending = false
+                _acls_loaded = true
                 _last_load = moment().unix()
                 data.global_permissions = r_data[0]
                 data.license_data = r_data[1]
@@ -459,9 +477,13 @@ angular.module(
                 data.routing_info = r_data[3]
                 # console.log data.routing_info.service_types
                 data.acls_are_valid = true
+                console.log "Acls set, sending signal"
+                _changed()
+            (error) ->
+                _reset()
                 _changed()
         )
-    $rootScope.$on("icsw.user.changed", (event, user) ->
+    $rootScope.$on(ICSW_SIGNALS("ICSW_USER_CHANGED"), (event, user) ->
         reload(true)
     )
     _reset()
