@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2008,2012-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2012-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -207,7 +207,7 @@ def do_nets(conf):
                 glob_nf += "      netmask {}".format(cur_net.netmask)
                 glob_nf += "    broadcast {}".format(cur_net.broadcast)
                 if cur_nd.devname == boot_dev:
-                    glob_nf += "      gateway {}".formatt(def_ip)
+                    glob_nf += "      gateway {}".format(def_ip)
                 if not cur_nd.fake_macaddr:
                     pass
                 elif int(cur_nd.fake_macaddr.replace(":", ""), 16) != 0:
