@@ -324,7 +324,7 @@ angular.module(
         $scope.ls_devsel = new icswLivestatusDevSelFactory()
         $scope.activate_layout = (name) ->
             $scope.cur_layout = name
-            $state.go($scope.cur_layout)
+            # $state.go($scope.cur_layout)
         $scope.activate_layout($scope.layouts[0])
         $scope.data_timeout = undefined
         $scope.$watch(

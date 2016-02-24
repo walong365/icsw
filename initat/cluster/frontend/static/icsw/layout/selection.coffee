@@ -477,7 +477,7 @@ angular.module(
         $rootScope.$on(ICSW_SIGNALS("ICSW_USER_CHANGED"), (event, new_user) ->
             console.log "new user", new_user
             if new_user and new_user.idx
-                icswDeviceTreeService.load($scope.$id).then(
+                icswDeviceTreeService.fetch($scope.$id).then(
                     (new_tree) ->
                         $scope.got_rest_data(new_tree, icswActiveSelectionService.get_selection())
                 )
@@ -488,7 +488,7 @@ angular.module(
             # call when the requester is shown
             console.log "show_devsel", event, cur_state, $scope
             if icswUserService.user_present()
-                icswDeviceTreeService.load($scope.$id).then(
+                icswDeviceTreeService.fetch($scope.$id).then(
                     (new_tree) ->
                         $scope.got_rest_data(new_tree, icswActiveSelectionService.get_selection())
                 )
@@ -899,10 +899,11 @@ angular.module(
             if entry._node_type == "d"
                 dev = @current.all_lut[entry.obj]
                 DeviceOverviewService.NewOverview(event, [dev])
+                @scope.$apply()
             else
                 entry.set_selected(not entry.selected)
+                @scope.$digest()
             # need $apply() here, $digest is not enough
-            # @scope.$apply()
         get_name: (t_entry) =>
             @ensure_current()
             entry = @get_dev_entry(t_entry)
