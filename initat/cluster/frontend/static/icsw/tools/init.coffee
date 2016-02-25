@@ -297,6 +297,7 @@ angular.module(
         "ICSW_DSR_REGISTERED": "icsw.dsr.registered"
         "ICSW_SELECTOR_SHOW": "icsw.selector.show"
         "ICSW_TREE_LOADED": "icsw.tree.loaded"
+        "ICSW_DTREE_FILTER_CHANGED": "icsw.dtree.filter.changed"
     }
     return (name) ->
         if name not of _dict
@@ -786,16 +787,72 @@ angular.module(
         template : $templateCache.get("icsw.tools.old.paginator")
         link     : link
     }
+]).service("icswToolsComplexModalService", ["$q", ($q) ->
+    return (in_dict) ->
+        # build buttons list
+        buttons = []
+        if in_dict.ok_callback
+            buttons.push(
+                {
+                    label: if in_dict.ok_label? then in_dict.ok_label else "Modify"
+                    icon: "fa fa-save"
+                    cssClass: "btn-success"
+                    action: (modal) ->
+                        in_dict.ok_callback(modal).then(
+                            (ok) ->
+                                console.log "cms/modify/ok returned #{ok}"
+                                modal.close()
+                            (notok) ->
+                                console.log "cms/modify/notok returned #{notok}"
+                        )
+                        return false
+                }
+            )
+        if in_dict.cancel_callback
+            buttons.push(
+                {
+                    label: "Cancel"
+                    hotkey: 27
+                    icon: "fa fa-undo"
+                    cssClass: "btn-warning"
+                    action: (modal) ->
+                        in_dict.cancel_callback(modal).then(
+                            (ok) ->
+                                console.log "cms/cancel/ok returned #{ok}"
+                                modal.close()
+                            (notok) ->
+                                console.log "cms/cancel/notok returned #{notok}"
+                        )
+                        return false
+                }
+            )
+        d = $q.defer()
+        BootstrapDialog.show
+            message: in_dict.message
+            draggable: true
+            size: BootstrapDialog.SIZE_WIDE
+            animate: false
+            title: in_dict.title?"ComplexModalDialog"
+            cssClass: "modal-tall"
+            closable: false
+            onshow: (modal) =>
+                height = $(window).height() - 100
+                modal.getModal().find(".modal-body").css("max-height", height)
+            onhidden: (modal) =>
+                d.resolve("closed")
+            buttons: buttons
+        return d.promise
+
 ]).service("icswToolsSimpleModalService", ["$q", ($q) ->
     return (question) ->
         d = $q.defer()
         BootstrapDialog.show
             message: question
             draggable: true
+            animate: false
             size: BootstrapDialog.SIZE_SMALL
             title: "Please confirm"
-            closable: true
-            closeByBackdrop: false
+            closable: false
             buttons: [
                 {
                      icon: "glyphicon glyphicon-ok"
@@ -808,6 +865,7 @@ angular.module(
                 {
                     icon: "glyphicon glyphicon-remove"
                     label: "No"
+                    keycode: 20
                     cssClass: "btn-danger"
                     action: (dialog) ->
                         dialog.close()

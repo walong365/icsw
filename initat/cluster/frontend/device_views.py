@@ -117,8 +117,7 @@ class select_parents(View):
                 (
                     Q(com_capability_list__matchcode="ipmi") |
                     Q(snmp_schemes__power_control=True)
-                ) &
-                Q(master_connections__in=devs)
+                ) & Q(master_connections__in=devs)
             ).values_list("pk", flat=True)
         )
         _res = {

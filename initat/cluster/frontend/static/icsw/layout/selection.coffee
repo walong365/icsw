@@ -25,18 +25,78 @@ angular.module(
         "init.csw.filters", "restangular", "noVNC", "ui.select", "icsw.tools",
         "icsw.device.info", "icsw.tools.tree", "icsw.user",
     ]
-).service("icswDeviceTree", ["icswTools", (icswTools) ->
+).service("icswBackupDefinition", [() ->
+    class backup_def
+        constructor: () ->
+            @simple_attributes = []
+            @list_attributes = []
+        create_backup: (obj) =>
+            _bu = {}
+            @pre_backup(obj)
+            for _entry in @simple_attributes
+                _bu[_entry] = obj[_entry]
+            for _entry in @list_attributes
+                _bu[_entry] = _.cloneDeep(obj[_entry])
+            @post_backup(obj, _bu)
+            obj._ICSW_backup = _bu
+        restore_backup: (obj) =>
+            if obj._ICSW_backup?
+                _bu = obj._ICSW_backup
+                @pre_restore(obj, _bu)
+                for _entry in @simple_attributes
+                    obj[_entry] = _bu[_entry]
+                for _entry in @list_attributes
+                    obj[_entry] = _.cloneDeep(_bu[_entry])
+                @post_restore(obj, _bu)
+                delete obj._ICSW_backup
+        pre_backup: (obj) =>
+            # called before backup
+        post_backup: (obj, bu) =>
+            # called after backuop
+        pre_restore: (obj, bu) =>
+            # called before restore
+        post_restore: (obj, bu) =>
+            # called after restore
+
+]).service("icswDeviceBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+    class device_backup_def extends icswBackupDefinition
+        constructor: () ->
+            super()
+            @simple_attributes = ["name", "comment", "device_group", "domain_tree_node"]
+]).service("icswDeviceTree", ["icswTools", (icswTools) ->
     class icswDeviceTree
         constructor: (full_list, cat_list, group_list) ->
-            @all_list = []
-            @enabled_list = []
             @cat_list = cat_list
             @group_list = group_list
+            @all_list = []
+            @enabled_list = []
             @disabled_list = []
+            @build_luts(full_list)
+
+        reorder: () =>
+            # device/group names or device <-> group relationships might have changed, sort
+            for dev in @all_list
+                group = @group_lut[dev.device_group]
+                if dev.device_group_name != group.name
+                    console.log "group changed", dev
+                dev.device_group_name = group.name
+            # see code in rest_views
+            @build_luts(
+                _.orderBy(
+                    @all_list
+                    ["is_cluster_device_group", "device_group_name", "is_meta_device", "name"]
+                    ["desc", "asc", "desc", "asc"]
+                )
+            )
+
+        build_luts: (full_list) =>
+            console.log (entry.name for entry in full_list)
+            # build luts and create enabled / disabled lists
+            @all_list.length = 0
+            @enabled_list.length = 0
+            @disabled_list.length = 0
             @enabled_lut = {}
             @disabled_lut = {}
-            _enabled = []
-            _disabled = []
             _disabled_groups = []
             for _entry in full_list
                 @all_list.push(_entry)
@@ -55,25 +115,37 @@ angular.module(
             @cat_lut = icswTools.build_lut(@cat_list)
             # console.log @enabled_list.length, @disabled_list.length, @all_list.length
             @link()
+
         link: () =>
+            # create links between groups and devices
             for group in @group_list
+                # reference to all devices
                 group.devices = []
             for cat in @cat_list
                 cat.devices = []
             for entry in @all_list
+                entry.group_object = @group_lut[entry.device_group]
                 @group_lut[entry.device_group].devices.push(entry.idx)
                 for cat in entry.categories
                     @cat_lut[cat].devices.push(entry.idx)
+            for group in @group_list
+                # num of all devices (enabled and disabled)
+                group.num_devices = group.devices.length
             # create helper structures
             # console.log "link"
+
         get_meta_device: (dev) =>
             return @all_lut[@group_lut[dev.device_group].device]
+
         get_group: (dev) =>
             return @group_lut[dev.device_group]
+
         get_category: (cat) =>
             return @cat_lut[cat]
+
         get_num_devices: (group) =>
-            # return all enabled devices in group
+            # return all enabled devices in group, not working ... ?
+            console.log("DO NOT USE: get_num_devices()")
             return (entry for entry in @enabled_list when entry.device_group == group.idx).length - 1
 ]).service("icswDeviceTreeService", ["$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall", "icswTools", "icswDeviceTree", "$rootScope", "ICSW_SIGNALS", ($q, Restangular, ICSW_URLS, $window, icswCachingCall, icswTools, icswDeviceTree, $rootScope, ICSW_SIGNALS) ->
     rest_map = [
@@ -104,15 +176,17 @@ angular.module(
         load_called = true
         _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in rest_map)
         _defer = $q.defer()
-        $q.all(_wait_list).then((data) ->
-            _result = new icswDeviceTree(data[0], data[1], data[2])
-            _defer.resolve(_result)
-            for client of _fetch_dict
-                # resolve clients
-                _fetch_dict[client].resolve(_result)
-            $rootScope.$emit(ICSW_SIGNALS("ICSW_TREE_LOADED"), _result)
-            # reset fetch_dict
-            _fetch_dict = {}
+        $q.all(_wait_list).then(
+            (data) ->
+                console.log "*** device tree loaded ***"
+                _result = new icswDeviceTree(data[0], data[1], data[2])
+                _defer.resolve(_result)
+                for client of _fetch_dict
+                    # resolve clients
+                    _fetch_dict[client].resolve(_result)
+                $rootScope.$emit(ICSW_SIGNALS("ICSW_TREE_LOADED"), _result)
+                # reset fetch_dict
+                _fetch_dict = {}
         )
         return _defer
     fetch_data = (client) ->
@@ -177,6 +251,8 @@ angular.module(
     return {
         "num_receivers": () ->
             return _receivers
+        "current": () ->
+            return cur_selection
         "get_selection": () ->
             return cur_selection
         "sync_selection": (new_sel) ->
@@ -233,6 +309,34 @@ angular.module(
             icswSavedSelectionService.enrich_selection(@db_obj)
             if @changed
                 @db_obj.info = "(*) #{@db_obj.info}"
+
+        toggle_selection: (obj) =>
+            # toggle selection of object
+            _selected = obj.idx in @dev_sel
+            if _selected
+                @remove_selection(obj)
+            else
+                @add_selection(obj)
+
+        add_selection: (obj) =>
+            # add selection
+            if obj.idx not in @dev_sel
+                @dev_sel.push(obj.idx)
+                @tot_dev_sel.push(obj.idx)
+
+        remove_selection: (obj) =>
+            # remove selection
+            if obj.idx in @dev_sel
+                _.pull(@dev_sel, obj.idx)
+                _.pull(@tot_dev_sel, obj.idx)
+
+        device_is_selected: (obj) =>
+            # only works for devices
+            return obj.idx in @dev_sel
+
+        deselect_all_devices: (obj) =>
+            @dev_sel = []
+            @tot_dev_sel = []
 
         selection_saved: () =>
             # database object saved

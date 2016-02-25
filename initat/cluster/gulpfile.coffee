@@ -43,6 +43,7 @@ rename = require("gulp-rename")
 clean_dest = require("gulp-clean-dest")
 del = require("del")
 wait = require("gulp-wait")
+strip_debug = require("gulp-strip-debug")
 
 class SourceMap
     constructor: (@name, @dest, @sources, @type, @static) ->
@@ -227,6 +228,11 @@ create_task = (key) ->
                         #     gulp.start("stop")
                         # )
                 )
+            )
+        ).pipe(
+            gulpif(
+                # remove console.log calls when in production
+                (_is_coffee or _is_js) and options.production, strip_debug()
             )
         ).pipe(
             concat(

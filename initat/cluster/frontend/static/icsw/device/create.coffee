@@ -133,9 +133,10 @@ angular.module(
                 data : {
                     "device_data" : angular.toJson(d_dict)
                 }
-            ).then((xml) ->
-                blockUI.stop()
-                $scope.reload()
+            ).then(
+                (xml) ->
+                    blockUI.stop()
+                    $scope.reload()
             )
         $scope.reload()
 ]).directive("icswDeviceCreateMask", ["$templateCache", ($templateCache) ->

@@ -449,7 +449,7 @@ menu_module = angular.module(
         )
         return menu_comp
     ]
-).directive("icswMenuDirective", ["icswReactMenuFactory", "icswAcessLevelService", "icswMenuProgressService", "$rootScope", (icswReactMenuFactory, icswAcessLevelService, icswMenuProgressService, $rootScope) ->
+).directive("icswMenuDirective", ["icswReactMenuFactory", "icswAcessLevelService", "icswMenuProgressService", "$rootScope", "ICSW_SIGNALS", (icswReactMenuFactory, icswAcessLevelService, icswMenuProgressService, $rootScope, ICSW_SIGNALS) ->
     return {
         restrict: "EA"
         replace: true
@@ -464,13 +464,13 @@ menu_module = angular.module(
                         React.createElement(icswReactMenuFactory, {"user": _user, "acls": _acls})
                         el[0]
                     )
-            $rootScope.$on("icsw.user.changed", (event, user) ->
+            $rootScope.$on(ICSW_SIGNALS("ICSW_USER_CHANGED"), (event, user) ->
                 # console.log "uc", user
                 _user = user
                 console.log "user_render"
                 _render()
             )
-            $rootScope.$on("icsw.acls.changed", (event, acls) ->
+            $rootScope.$on(ICSW_SIGNALS("ICSW_ACLS_CHANGED"), (event, acls) ->
                 # console.log "ac", acls
                 _acls = acls
                 console.log "acls_render"
