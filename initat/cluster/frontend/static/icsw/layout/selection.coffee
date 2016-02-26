@@ -65,32 +65,35 @@ angular.module(
             @simple_attributes = ["name", "comment", "device_group", "domain_tree_node"]
 ]).service("icswDeviceTree", ["icswTools", (icswTools) ->
     class icswDeviceTree
-        constructor: (full_list, cat_list, group_list) ->
+        constructor: (full_list, cat_list, group_list, domain_tree) ->
             @cat_list = cat_list
             @group_list = group_list
             @all_list = []
             @enabled_list = []
             @disabled_list = []
+            @domain_tree = domain_tree
             @build_luts(full_list)
 
         reorder: () =>
             # device/group names or device <-> group relationships might have changed, sort
             for dev in @all_list
                 group = @group_lut[dev.device_group]
-                if dev.device_group_name != group.name
-                    console.log "group changed", dev
                 dev.device_group_name = group.name
+                dev._nc_device_group_name = _.toLower(dev.device_group_name)
+                dev.full_name = @domain_tree.get_full_name(dev)
+                dev._nc_name = _.toLower(dev.name)
             # see code in rest_views
             @build_luts(
                 _.orderBy(
                     @all_list
-                    ["is_cluster_device_group", "device_group_name", "is_meta_device", "name"]
+                    ["is_cluster_device_group", "_nc_device_group_name", "is_meta_device", "_nc_name"]
                     ["desc", "asc", "desc", "asc"]
                 )
             )
 
         build_luts: (full_list) =>
             console.log (entry.name for entry in full_list)
+            console.log full_list[0]
             # build luts and create enabled / disabled lists
             @all_list.length = 0
             @enabled_list.length = 0
@@ -147,7 +150,7 @@ angular.module(
             # return all enabled devices in group, not working ... ?
             console.log("DO NOT USE: get_num_devices()")
             return (entry for entry in @enabled_list when entry.device_group == group.idx).length - 1
-]).service("icswDeviceTreeService", ["$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall", "icswTools", "icswDeviceTree", "$rootScope", "ICSW_SIGNALS", ($q, Restangular, ICSW_URLS, $window, icswCachingCall, icswTools, icswDeviceTree, $rootScope, ICSW_SIGNALS) ->
+]).service("icswDeviceTreeService", ["$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall", "icswTools", "icswDeviceTree", "$rootScope", "ICSW_SIGNALS", "icswDomainTreeService", ($q, Restangular, ICSW_URLS, $window, icswCachingCall, icswTools, icswDeviceTree, $rootScope, ICSW_SIGNALS, icswDomainTreeService) ->
     rest_map = [
         [
             ICSW_URLS.REST_DEVICE_TREE_LIST
@@ -175,11 +178,12 @@ angular.module(
     load_data = (client) ->
         load_called = true
         _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in rest_map)
+        _wait_list.push(icswDomainTreeService.fetch(client))
         _defer = $q.defer()
         $q.all(_wait_list).then(
             (data) ->
                 console.log "*** device tree loaded ***"
-                _result = new icswDeviceTree(data[0], data[1], data[2])
+                _result = new icswDeviceTree(data[0], data[1], data[2], data[3])
                 _defer.resolve(_result)
                 for client of _fetch_dict
                     # resolve clients

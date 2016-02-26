@@ -1035,14 +1035,6 @@ angular.module(
         else
             # in case user is undefined
             return "???"
-).filter("show_dtn", () ->
-    return (cur_dtn) ->
-        r_str = if cur_dtn.node_postfix then "#{cur_dtn.node_postfix}" else ""
-        if cur_dtn.depth
-            r_str = "#{r_str}.#{cur_dtn.full_name}"
-        else
-            r_str = "#{r_str} [TLN]"
-        return r_str
 ).filter("datetime1", () ->
     return (cur_dt) ->
         return moment(cur_dt).format("ddd, D. MMM YYYY, HH:mm:ss") + ", " + moment(cur_dt).fromNow()

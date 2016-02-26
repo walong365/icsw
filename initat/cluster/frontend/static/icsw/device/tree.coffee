@@ -40,13 +40,13 @@ angular.module(
     )
 ]).controller("icswDeviceTreeCtrl",
     ["$scope", "$compile", "$filter", "$templateCache", "Restangular",  "restDataSource", "$q", "$timeout", "icswToolsComplexModalService",
-     "$uibModal", "array_lookupFilter", "show_dtnFilter", "msgbus", "blockUI", "icswTools", "ICSW_URLS", "icswToolsButtonConfigService",
+     "$uibModal", "array_lookupFilter", "msgbus", "blockUI", "icswTools", "ICSW_URLS", "icswToolsButtonConfigService",
      "icswSimpleAjaxCall", "icswToolsSimpleModalService", "toaster", "icswDialogDeleteObjects", "icswDeviceBackup",
-     "icswDeviceTreeService", "icswDomainNameService", "ICSW_SIGNALS", "$rootScope", "icswActiveSelectionService",
+     "icswDeviceTreeService", "icswDomainTreeService", "ICSW_SIGNALS", "$rootScope", "icswActiveSelectionService",
     ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $timeout, icswToolsComplexModalService,
-    $uibModal, array_lookupFilter, show_dtnFilter, msgbus, blockUI, icswTools, ICSW_URLS, icswToolsButtonConfigService,
+    $uibModal, array_lookupFilter, msgbus, blockUI, icswTools, ICSW_URLS, icswToolsButtonConfigService,
     icswSimpleAjaxCall, icswToolsSimpleModalService, toaster, icswDialogDeleteObjects, icswDeviceBackup,
-    icswDeviceTreeService, icswDomainNameService, ICSW_SIGNALS, $rootScope, icswActiveSelectionService) ->
+    icswDeviceTreeService, icswDomainTreeService, ICSW_SIGNALS, $rootScope, icswActiveSelectionService) ->
         $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
         $scope.initial_load = true
         $scope.rest_data = {}
@@ -83,11 +83,16 @@ angular.module(
             $scope.update_filtered()
         )
         $scope.entries_filtered = []
+        $scope.trigger_redraw = 0
         $scope.update_filtered = () ->
+            # add search and filter fields
+            $scope.update_entries_st_attrs()
             $scope.entries_filtered.length = 0
             for entry in $scope.device_tree.all_list
                 if entry._show
                     $scope.entries_filtered.push(entry)
+            # force redraw
+            $scope.trigger_redraw++
             console.log "length / filtered length: #{$scope.device_tree.all_list.length} / #{$scope.entries_filtered.length}"
 
         $scope.new_devsel = (_dev_sel) ->
@@ -104,7 +109,6 @@ angular.module(
                 $scope.rest_data[value.short] = restDataSource.reload([value.url, value.options])
                 wait_list.push($scope.rest_data[value.short])
             wait_list.push(icswDeviceTreeService.fetch($scope.$id))
-            wait_list.push(icswDomainNameService.fetch($scope.$id))
             $q.all(wait_list).then(
                 (data) ->
                     $scope.device_tree_valid = true
@@ -112,17 +116,11 @@ angular.module(
                     $scope.rest_data["mother_server"] = data[0]
                     $scope.rest_data["monitor_server"] = data[1]
                     $scope.device_tree = data[2]
-                    $scope.domain_tree = data[3]
-                    # $scope.rest_data["domain_tree_node"] = data[2]
-                    # $scope.rest_data["device_sel"] = data[3]
-                    # $scope.rest_data.device_group = data[4].group_list
-                    # $scope.entries = data[4].all_list
+                    $scope.domain_tree = $scope.device_tree.domain_tree
                     $scope.entries = $scope.device_tree.all_list
-                    # console.log data[4]
                     if block_ui
                         blockUI.stop()
                     $scope.rest_data_set()
-                    $scope.update_entries_st_attrs()  # this depends on rest data
                     $scope.update_filtered()
             )
         $scope.dg_present = () ->
@@ -357,16 +355,15 @@ angular.module(
                     if $scope.device_tree.get_meta_device(obj).is_cluster_device_group
                         st_attrs['enabled'] = null
                         st_attrs['type'] = null
-                        st_attrs['tln'] = show_dtnFilter(array_lookupFilter(group.domain_tree_node, $scope.domain_tree))
                     else
                         st_attrs['enabled'] = group.enabled
                         st_attrs['type'] = obj.num_devices
-                        st_attrs['tln'] = show_dtnFilter(array_lookupFilter(group.domain_tree_node, $scope.domain_tree))
+                    st_attrs['tln'] = $scope.domain_tree.show_dtn(group)
                 else
                     st_attrs['name'] = obj.name
                     st_attrs['description'] = obj.comment
                     st_attrs['enabled'] = obj.enabled
-                    st_attrs['tln'] = show_dtnFilter(array_lookupFilter(obj.domain_tree_node, $scope.domain_tree))
+                    st_attrs['tln'] = $scope.domain_tree.show_dtn(obj)
                     st_attrs['rrd_store'] = obj.store_rrd_data
                     st_attrs['passwd'] = obj.root_passwd_set
                     st_attrs['mon_master'] = array_lookupFilter(obj.monitor_server, $scope.rest_data.monitor_server, "full_name_wt")

@@ -1275,7 +1275,7 @@ angular.module(
         object_created      : (new_obj) -> new_obj.description = ""
         network_types       : nw_types_dict  # for create/edit dialog
     }
-]).service('icswNetworkService', ["Restangular", "$q", "icswTools", "ICSW_URLS", "icswDomainNameService", "icswSimpleAjaxCall", "blockUI", (Restangular, $q, icswTools, ICSW_URLS, icswDomainNameService, icswSimpleAjaxCall, blockUI) ->
+]).service('icswNetworkService', ["Restangular", "$q", "icswTools", "ICSW_URLS", "icswDomainTreeService", "icswSimpleAjaxCall", "blockUI", (Restangular, $q, icswTools, ICSW_URLS, icswDomainTreeService, icswSimpleAjaxCall, blockUI) ->
 
     networks_rest = Restangular.all(ICSW_URLS.REST_NETWORK_LIST.slice(1)).getList({"_with_ip_info" : true}).$object
     network_types_rest = Restangular.all(ICSW_URLS.REST_NETWORK_TYPE_LIST.slice(1)).getList({"_with_ip_info" : true}).$object
@@ -1340,7 +1340,7 @@ angular.module(
         domain_tree_node_list: () ->
             return domain_tree_node_list
         refresh_domain_tree_node: () ->
-            icswDomainNameService.load("ins").then((data) ->
+            icswDomainTreeService.load("ins").then((data) ->
                 set_domain_tree_node(data)
             )
         init_fn             : (scope) ->
@@ -1395,7 +1395,7 @@ angular.module(
                 if domain_tree_node_list.length
                     return domain_tree_node_dict[edit_obj.preferred_domain_tree_node].full_name
                 else
-                    icswDomainNameService.fetch("ins").then((data) ->
+                    icswDomainTreeService.fetch("ins").then((data) ->
                         set_domain_tree_node(data)
                     )
             else

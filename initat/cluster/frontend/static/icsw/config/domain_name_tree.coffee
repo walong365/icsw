@@ -37,34 +37,65 @@ angular.module(
                     ordering: 45
         }
     )
-]).service('icswDomainNameService', ["Restangular", "$q", "icswTools", "icswCachingCall", "ICSW_URLS", (Restangular, $q, icswTools, icswCachingCall, ICSW_URLS) ->
+]).service("icswDomainTree", ["icswTools", (icswTools) ->
+    class icswDomainTree
+        constructor: () ->
+            @data_set = false
+            @list = []
+            @lut = {}
+
+        update: (new_list) =>
+            @data_set = true
+            @list.length = 0
+            for entry in new_list
+                @list.push(entry)
+            @lut = icswTools.build_lut(@list)
+            # set top level node
+            @tln = (entry for entry in @list when entry.depth == 0)[0]
+
+        get_full_name: (dev) =>
+            if dev.domain_tree_node
+                node = @lut[dev.domain_tree_node]
+                _name = "#{dev.name}#{node.node_postfix}"
+                if node.depth
+                    _name = "#{_name}.#{node.full_name}"
+                return _name
+            else
+                return dev.name
+
+        show_dtn: (dev) =>
+            if dev.domain_tree_node
+                node = @lut[dev.domain_tree_node]
+            else
+                node = @tln
+            r_str = if node.node_postfix then "#{node.node_postfix}" else ""
+            if node.depth
+                r_str = "#{r_str}.#{node.full_name}"
+            else
+                r_str = "#{r_str} [TLN]"
+            return r_str
+
+
+]).service('icswDomainTreeService', ["Restangular", "$q", "icswTools", "icswCachingCall", "ICSW_URLS", "icswDomainTree", (Restangular, $q, icswTools, icswCachingCall, ICSW_URLS, icswDomainTree) ->
     domain_rest = Restangular.all(ICSW_URLS.REST_DOMAIN_TREE_NODE_LIST.slice(1)).getList().$object
     _fetch_dict = {}
-    _result = undefined
+    _result = new icswDomainTree()
     load_called = false
     load_data = (client) ->
         load_called = true
-        _wait_list = [icswCachingCall.fetch(client, ICSW_URLS.REST_DOMAIN_TREE_NODE_LIST, [], [])]
+        _wait_list = []
         if client
             _defer = $q.defer()
-        $q.all(_wait_list).then((data) ->
-            if _result is undefined
-                _result = data
-            else
-                for _zip in _.zip(_result, data)
-                    _old = _zip[0]
-                    _new = _zip[1]
-                    _old.length = 0
-                    # also the code below does not work if we execute it immediately, but this works:
-                    for entry in _new
-                        _old.push(entry)
-            if client
-                _defer.resolve(_result[0])
-            for client of _fetch_dict
-                # resolve clients
-                _fetch_dict[client].resolve(_result[0])
-            # reset fetch_dict
-            _fetch_dict = {}
+        icswCachingCall.fetch(client, ICSW_URLS.REST_DOMAIN_TREE_NODE_LIST, [], []).then(
+            (data) ->
+                _result.update(data)
+                if client
+                    _defer.resolve(_result)
+                for client of _fetch_dict
+                    # resolve clients
+                    _fetch_dict[client].resolve(_result)
+                # reset fetch_dict
+                _fetch_dict = {}
         )
         if client
             return _defer
@@ -72,13 +103,13 @@ angular.module(
         # this code works in principle but is not recommended because we will overwrite all local settings
         load_data(null)
     fetch_data = (client) ->
-        if client not of _fetch_dict
+        if client not of _fsetch_dict
             # register client
             _defer = $q.defer()
             _fetch_dict[client] = _defer
-        if _result? and _result.length
+        if _result.data_set
             # resolve immediately
-            _fetch_dict[client].resolve(_result[0])
+            _fetch_dict[client].resolve(_result)
         return _fetch_dict[client]
     return {
         "load": (client) ->
@@ -93,8 +124,8 @@ angular.module(
             else
                 return load_data(client).promise
     }
-]).controller("icswConfigDomainNameTreeCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "$q", "$uibModal", "icswAcessLevelService", "ICSW_URLS", "icswConfigDomainNameTreeService", "icswDomainNameService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, $q, $uibModal, icswAcessLevelService, ICSW_URLS, icswConfigDomainNameTreeService, icswDomainNameService) ->
+]).controller("icswConfigDomainNameTreeCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "$q", "$uibModal", "icswAcessLevelService", "ICSW_URLS", "icswConfigDomainNameTreeService", "icswDomainTreeService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, $q, $uibModal, icswAcessLevelService, ICSW_URLS, icswConfigDomainNameTreeService, icswDomainTreeService) ->
         $scope.dnt = new icswConfigDomainNameTreeService($scope, {})
         $scope.pagSettings = paginatorSettings.get_paginator("dtn_base", $scope)
         $scope.entries = []
@@ -112,7 +143,7 @@ angular.module(
         $scope.edit_mixin.edit_template = "icsw.config.domain.tree.node"
         $scope.form = {}
         $scope.reload = () ->
-            icswDomainNameService.load($scope.$id).then((data) ->
+            icswDomainTreeService.load($scope.$id).then((data) ->
                 $scope.entries = data
                 $scope.edit_mixin.create_list = $scope.entries
                 $scope.edit_mixin.delete_list = $scope.entries
