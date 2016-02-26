@@ -42,11 +42,11 @@ angular.module(
     ["$scope", "$compile", "$filter", "$templateCache", "Restangular",  "restDataSource", "$q", "$timeout", "icswToolsComplexModalService",
      "$uibModal", "array_lookupFilter", "msgbus", "blockUI", "icswTools", "ICSW_URLS", "icswToolsButtonConfigService",
      "icswSimpleAjaxCall", "icswToolsSimpleModalService", "toaster", "icswDialogDeleteObjects", "icswDeviceBackup",
-     "icswDeviceTreeService", "icswDomainTreeService", "ICSW_SIGNALS", "$rootScope", "icswActiveSelectionService",
+     "icswDeviceTreeService", "icswDomainTreeService", "ICSW_SIGNALS", "$rootScope", "icswActiveSelectionService", "icswDeviceGroupBackup",
     ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $timeout, icswToolsComplexModalService,
     $uibModal, array_lookupFilter, msgbus, blockUI, icswTools, ICSW_URLS, icswToolsButtonConfigService,
     icswSimpleAjaxCall, icswToolsSimpleModalService, toaster, icswDialogDeleteObjects, icswDeviceBackup,
-    icswDeviceTreeService, icswDomainTreeService, ICSW_SIGNALS, $rootScope, icswActiveSelectionService) ->
+    icswDeviceTreeService, icswDomainTreeService, ICSW_SIGNALS, $rootScope, icswActiveSelectionService, icswDeviceGroupBackup) ->
         $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
         $scope.initial_load = true
         $scope.rest_data = {}
@@ -79,11 +79,14 @@ angular.module(
             $scope.hide_lut[entry[0]] = entry[2]
         # hack, FIXME
         $scope.entries = []
+        $scope.entries_filtered = []
+        $scope.trigger_redraw = 0
+        $scope.device_tree_valid = false
+
         $rootScope.$on(ICSW_SIGNALS("ICSW_DTREE_FILTER_CHANGED"), () ->
             $scope.update_filtered()
         )
-        $scope.entries_filtered = []
-        $scope.trigger_redraw = 0
+
         $scope.update_filtered = () ->
             # add search and filter fields
             $scope.update_entries_st_attrs()
@@ -95,10 +98,17 @@ angular.module(
             $scope.trigger_redraw++
             console.log "length / filtered length: #{$scope.device_tree.all_list.length} / #{$scope.entries_filtered.length}"
 
+
+        msgbus.emit("devselreceiver")
+
+        msgbus.receive("devicelist", $scope, (name, args) ->
+            $scope.new_devsel(args[0])
+        )
+
         $scope.new_devsel = (_dev_sel) ->
             $scope.initial_load = true
             $scope.reload()
-        $scope.device_tree_valid = false
+
         $scope.reload = (block_ui=true) ->
             $scope.device_tree_valid = false
             if block_ui
@@ -153,9 +163,17 @@ angular.module(
         $scope.delete_device = (obj) ->
             icswDialogDeleteObjects(
                 [obj]
-                a_name
-                () -> $scope.reload(false)   # set blocking to false because it might happen in background of the delete dialog
+                "device"
+                (arg) ->
+                    console.log "after device delete", arg
+                    if arg?
+                        $scope.handle_device_delete(arg.del_pks)
             )
+
+        $scope.handle_device_delete = (pks) ->
+            for pk in pks
+                $scope.device_tree.delete_device(pk)
+            $rootScope.$emit(ICSW_SIGNALS("ICSW_FORCE_TREE_FILTER"))
 
         # device group related calls
 
@@ -174,13 +192,48 @@ angular.module(
         $scope.delete_device_group = (obj) ->
             icswDialogDeleteObjects(
                 [obj]
-                a_name
-                () -> $scope.reload(false)   # set blocking to false because it might happen in background of the delete dialog
+                "device_group"
+                (arg) ->
+                    console.log "after device_group delete", arg
+                    if arg?
+                        $scope.handle_device_group_delete(arg.del_pks)
             )
 
-        $scope.create_or_edit = (event, create_or_edit, obj, single_instance, is_group) ->
+        $scope.handle_device_group_delete = (pks) ->
+            for pk in pks
+                $scope.device_tree.delete_device_group(pk)
+            $rootScope.$emit(ICSW_SIGNALS("ICSW_FORCE_TREE_FILTER"))
+
+        # many device edit
+
+        $scope.edit_many = (event) ->
+            $scope._array_name = "device_many"
+            edit_obj = {
+                "many_form"          : true
+                "device_group"       : (entry.idx for entry in $scope.device_tree.group_list when entry.cluster_device_group == false)[0]
+                "domain_tree_node"   : (entry.idx for entry in $scope.domain_tree when entry.depth == 0)[0]
+                "root_passwd"        : ""
+            }
+            $scope.create_or_edit(event, false, edit_obj, false, false)
+
+        $scope.delete_many = (event) ->
+            sel_list = icswActiveSelectionService.current().get_devsel_list()[1]
+            to_delete_list = (entry for entry in $scope.device_tree.all_list when entry.is_meta_device == false and entry.idx in sel_list)
+            icswDialogDeleteObjects(
+                to_delete_list
+                "device"
+                (arg) ->
+                    console.log "after man device delete", arg
+                    if arg?
+                        $scope.handle_device_delete(arg.del_pks)
+            )
+
+        $scope.create_or_edit = (event, create_mode, obj, single_instance, is_group) ->
             if single_instance
-                dbu = new icswDeviceBackup()
+                if is_group
+                    dbu = new icswDeviceGroupBackup()
+                else
+                    dbu = new icswDeviceBackup()
                 dbu.create_backup(obj)
             $scope.edit_obj = obj
             obj.root_passwd = ""
@@ -195,14 +248,72 @@ angular.module(
             icswToolsComplexModalService(
                 {
                     message: $compile($templateCache.get(template_name))($scope)
-                    ok_label: if create_or_edit then "Create" else "Modify"
+                    ok_label: if create_mode then "Create" else "Modify"
                     ok_callback: (modal) ->
                         d = $q.defer()
-                        d.resolve("save")
-                        $scope.device_tree.reorder()
+                        if $scope.form_data.$invalid
+                            toaster.pop("warning", "form validation problem", "", 0)
+                            d.reject("form not valid")
+                        else
+                            if create_mode
+                                if is_group
+                                    $scope.device_tree.create_device_group($scope.edit_obj).then(
+                                        (ok) ->
+                                            d.resolve("device_group created")
+                                        (notok) ->
+                                            d.reject("device_group not created")
+                                    )
+                                else
+                                    $scope.device_tree.create_device($scope.edit_obj).then(
+                                        (ok) ->
+                                            # device createed, force refiltering
+                                            $rootScope.$emit(ICSW_SIGNALS("ICSW_FORCE_TREE_FILTER"))
+                                            # rewrite name for next device
+                                            node_re = new RegExp(/^(.*?)(\d+)(.*)$/)
+                                            name_m = node_re.exec(obj.name)
+                                            if name_m
+                                                new_name = ("0" for _idx in [0..name_m[2].length]).join("") + String(parseInt(name_m[2]) + 1)
+                                                $scope.edit_obj.name = name_m[1] + new_name.substr(new_name.length - name_m[2].length) + name_m[3]
+                                            d.reject("device created")
+                                        (notok) ->
+                                            d.reject("device not created")
+                                    )
+                            else
+                                if single_instance
+                                    $scope.edit_obj.put().then(
+                                        (data) ->
+                                            # ToDo, FIXME, handle change (test?), move to DeviceTreeService
+                                            # icswTools.handle_reset(data, cur_f, $scope.edit_obj.idx)
+                                            console.log "data", data
+                                            if $scope.edit_obj.root_passwd
+                                                # ToDo, FIXME, to be improved
+                                                $scope.edit_obj.root_passwd_set = true
+                                            d.resolve("save")
+                                            # update device ordering in tree
+                                            $scope.device_tree.reorder()
+                                        (reject) ->
+                                            # ToDo, FIXME, handle rest (test?)
+                                            # icswTools.handle_reset(resp.data, cur_f, $scope.edit_obj.idx)
+                                            d.resolve("not saved")
+                                    )
+                                else
+                                    # multi instance modify
+                                    icswSimpleAjaxCall(
+                                        url     : ICSW_URLS.DEVICE_CHANGE_DEVICES
+                                        data    : {
+                                            "change_dict" : angular.toJson($scope.edit_obj)
+                                            "device_list" : angular.toJson(icswActiveSelectionService.current().get_devsel_list()[1])
+                                        }
+                                    ).then(
+                                        (xml) ->
+                                            changes = angular.fromJson($(xml).find("value[name='json_changes']").text())
+                                            $scope.device_tree.apply_json_changes(changes)
+                                            d.resolve("many changed")
+                                    )
                         return d.promise
                     cancel_callback: (modal) ->
-                        dbu.restore_backup(obj)
+                        if single_instance
+                            dbu.restore_backup(obj)
                         d = $q.defer()
                         d.resolve("cancel")
                         return d.promise
@@ -210,69 +321,10 @@ angular.module(
             ).then(
                 (fin) ->
                     console.log "DeviceTree requester closed, trigger redraw"
-                    # trigger redraw
-                    $rootScope.$emit(ICSW_SIGNALS("ICSW_DTREE_FILTER_CHANGED"))
+                    # trigger refiltering of list
+                    $rootScope.$emit(ICSW_SIGNALS("ICSW_FORCE_TREE_FILTER"))
             )
-        $scope.modify = () ->
-            if not $scope.form.$invalid
-                # console.log $scope._array_name
-                # rest_entry = (entry for entry in $scope.rest_map when entry.short == $scope._array_name)[0]
-                if $scope._array_name == "device"
-                    _url = ICSW_URLS.REST_DEVICE_TREE_LIST
-                else
-                    _url = ICSW_URLS.REST_DEVICE_GROUP_LIST
-                if $scope.create_mode
-                    Restangular.all(_url.slice(1)).post($scope.new_obj).then(
-                        (new_data) ->
-                            if $scope.new_obj.root_passwd
-                                new_data.root_passwd_set = true
-                        $scope.object_created(new_data)
-                    )
-                else
-                    if $scope._array_name == "device"
-                        cur_f = $scope.entries
-                    else
-                        cur_f = $scope.rest_data.device_group
-                    $scope.edit_obj.put().then(
-                        (data) ->
-                            $scope.my_modal.close()
-                            icswTools.handle_reset(data, cur_f, $scope.edit_obj.idx)
-                            if $scope.edit_obj.root_passwd
-                                # hm, fixme
-                                data.root_passwd_set = true
-                                $scope.edit_obj.root_passwd_set = true
-                            $scope.object_modified(data)
-                        (resp) ->
-                            icswTools.handle_reset(resp.data, cur_f, $scope.edit_obj.idx)
-                    )
-            else
-                toaster.pop("warning", "form validation problem", "", 0)
-        $scope.edit_many = (event) ->
-            $scope._array_name = "device_many"
-            edit_obj = {
-                "many_form"          : true
-                "device_group"       : (entry.idx for entry in $scope.device_tree.group_list when entry.cluster_device_group == false)[0]
-                "domain_tree_node"   : (entry.idx for entry in $scope.domain_tree when entry.depth == 0)[0]
-                "root_passwd"        : ""
-            }
-            $scope.create_or_edit(event, false, edit_obj, false, false)
-        $scope.modify_many = () ->
-            #console.log "mm", $scope.edit_obj
-            icswSimpleAjaxCall(
-                url     : ICSW_URLS.DEVICE_CHANGE_DEVICES
-                data    : {
-                    "change_dict" : angular.toJson($scope.edit_obj)
-                    "device_list" : angular.toJson((entry.idx for entry in $scope.entries when entry.is_meta_device == false and entry.selected))
-                }
-            ).then(
-                (xml) ->
-                    if parseInt($(xml).find("value[name='changed']").text())
-                        $scope.my_modal.close()
-                        $scope.reload()
-            )
-        $scope.delete_many = (event) ->
-            to_delete_list = (entry for entry in $scope.entries when entry.is_meta_device == false and entry.selected)
-            icswDialogDeleteObjects(to_delete_list, "device", () -> $scope.reload(false)) # set blocking to false because it might happen in background of the delete dialog
+
         $scope.rest_data_set = () ->
             # $scope.device_lut = icswTools.build_lut($scope.entries)
             # $scope.device_group_lut = icswTools.build_lut($scope.rest_data.device_group)
@@ -288,56 +340,20 @@ angular.module(
             for entry in $scope.rest_data.monitor_server
                 entry.full_name_wt = "#{entry.full_name} (#{entry.monitor_type})"
             $scope.initial_load = false
+
         $scope.num_selected = () ->
             act_sel = icswActiveSelectionService.get_selection()
             return act_sel.tot_dev_sel.length
+
         $scope.get_tr_class = (obj) ->
             return if obj.is_meta_device then "success" else ""
+
         $scope.ignore_md = (entry) ->
             return entry.identifier != "MD"
+
         $scope.ignore_cdg = (group) ->
             return not group.cluster_device_group
-        $scope.object_modified = (mod_obj) ->
-            mod_obj.device_group_obj = $scope.device_group_lut[mod_obj.device_group]
-            if mod_obj.is_meta_device
-                # copy enabled flag
-                mod_obj.device_group_obj.enabled = mod_obj.enabled
-            if mod_obj.device_group != $scope.pre_edit_obj.device_group
-                # device group has changed, reload to fix all dependencies
-                $scope.reload()
-                # FIXME, TODO
-                # reload_sidebar_tree()
-        $scope.object_created = (new_obj) ->
-            if $scope._array_name == "device"
-                new_obj.selected = true
-                md_obj = _.find($scope.entries, (obj) ->
-                    return (obj.is_meta_device == true) and (obj.device_group == new_obj.device_group)
-                )
-                # hm, fishy code, sometimes strange behaviour
-                $scope.entries.splice(_.indexOf($scope.entries, md_obj) + 1, 0, new_obj)
-                $scope.device_lut[new_obj.idx] = new_obj
-                $scope.device_group_lut[new_obj.device_group].num_devices++
 
-                # increase postfix of device name
-                node_re = new RegExp(/^(.*?)(\d+)(.*)$/)
-                name_m = node_re.exec(new_obj.name)
-                if name_m
-                    new_name = ("0" for _idx in [0..name_m[2].length]).join("") + String(parseInt(name_m[2]) + 1)
-                    $scope.edit_obj.name = name_m[1] + new_name.substr(new_name.length - name_m[2].length) + name_m[3]
-                # FIXME, TODO
-                # reload_sidebar_tree()
-                $scope.update_entries_st_attrs()
-                new_obj._show = true
-                $scope.filter_change_iter++
-            else if $scope._array_name == "device_group"
-                # $scope.reload()
-                # FIXME, TODO
-                # reload_sidebar_tree()
-                true
-        msgbus.emit("devselreceiver")
-        msgbus.receive("devicelist", $scope, (name, args) ->
-            $scope.new_devsel(args[0])
-        )
         $scope.update_entries_st_attrs = () ->
             # use same keys as in $scope.column_list
             # create sort entries
@@ -357,6 +373,7 @@ angular.module(
                         st_attrs['type'] = null
                     else
                         st_attrs['enabled'] = group.enabled
+                        # do not count the meta device
                         st_attrs['type'] = obj.num_devices
                     st_attrs['tln'] = $scope.domain_tree.show_dtn(group)
                 else
@@ -388,7 +405,6 @@ angular.module(
                 if scope.device_tree.get_group(device).cluster_device_group
                     new_el = $compile($templateCache.get("icsw.device.tree.cdg.row"))
                 else
-                    # scope.device_tree.get_group(device).num_devices = (entry for entry in scope.entries when entry.device_group == device.device_group).length - 1
                     new_el = $compile($templateCache.get("icsw.device.tree.meta.row"))
             else
                 new_el = $compile($templateCache.get("icsw.device.tree.row"))
@@ -498,6 +514,10 @@ angular.module(
                 true
             )
             $rootScope.$on(ICSW_SIGNALS("ICSW_TREE_LOADED"), () ->
+                filter_changed()
+            )
+
+            $rootScope.$on(ICSW_SIGNALS("ICSW_FORCE_TREE_FILTER"), () ->
                 filter_changed()
             )
 

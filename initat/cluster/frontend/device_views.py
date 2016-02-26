@@ -70,26 +70,34 @@ class change_devices(View):
                 "monitor_server": None,
                 "enabled": False,
                 "store_rrd_data": False,
+                "enable_perfdata": False,
             }
             # build change_dict
-            c_dict = {key[7:]: c_dict.get(key[7:], def_dict.get(key[7:], None)) for key in c_dict.iterkeys() if key.startswith("change_") and c_dict[key]}
+            c_dict = {
+                key[7:]: c_dict.get(key[7:], def_dict.get(key[7:], None)) for key in c_dict.iterkeys() if key.startswith("change_") and c_dict[key]
+            }
             # resolve foreign keys
-            c_dict = {key: {
-                "device_group": device_group,
-                "domain_tree_node": domain_tree_node,
-                "bootserver": device,
-                "monitor_server": device,
-            }[key].objects.get(Q(pk=value)) if type(value) == int else value for key, value in c_dict.iteritems()}
-            logger.info("change_dict has {}".format(logging_tools.get_plural("key", len(c_dict))))
-            for key in sorted(c_dict):
+            res_c_dict = {
+                key: {
+                    "device_group": device_group,
+                    "domain_tree_node": domain_tree_node,
+                    "bootserver": device,
+                    "monitor_server": device,
+                }[key].objects.get(
+                    Q(pk=value)
+                ) if type(value) == int else value for key, value in c_dict.iteritems()
+            }
+            logger.info("change_dict has {}".format(logging_tools.get_plural("key", len(res_c_dict))))
+            for key in sorted(res_c_dict):
                 if key == "root_passwd":
-                    logger.info(" %s: %s" % (key, "****"))
+                    logger.info(" {}: {}".format(key, "****"))
                 else:
-                    logger.info(" %s: %s" % (key, unicode(c_dict.get(key))))
+                    logger.info(" {}: {}".format(key, unicode(res_c_dict.get(key))))
             dev_changes = 0
+            changes_json = []
             for cur_dev in device.objects.filter(Q(pk__in=pk_list)):
                 changed = False
-                for c_key, c_value in c_dict.iteritems():
+                for c_key, c_value in res_c_dict.iteritems():
                     if getattr(cur_dev, c_key) != c_value:
                         if c_key == "root_passwd":
                             c_value = cur_dev.crypt(c_value)
@@ -98,11 +106,20 @@ class change_devices(View):
                                 changed = True
                         else:
                             setattr(cur_dev, c_key, c_value)
+                            changes_json.append(
+                                {
+                                    "device": cur_dev.pk,
+                                    "attribute": c_key,
+                                    "value": c_dict[c_key],
+                                }
+                            )
                             changed = True
+
                 if changed:
                     cur_dev.save()
                     dev_changes += 1
             request.xml_response["changed"] = dev_changes
+            request.xml_response["json_changes"] = json.dumps(changes_json)
             request.xml_response.info("changed settings of {}".format(logging_tools.get_plural("device", dev_changes)))
 
 

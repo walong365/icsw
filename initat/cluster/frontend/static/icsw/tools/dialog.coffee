@@ -47,7 +47,8 @@ angular.module(
                                 obj_pks: JSON.stringify([obj_pk])
                                 delete_strategies: delete_strategies
                             }
-                        ).then((xml) ->
+                        ).then(
+                            (xml) ->
                         )
 
                 if regular_deletion_pks.length > 0
@@ -60,7 +61,8 @@ angular.module(
                             obj_pks: JSON.stringify(regular_deletion_pks)
                             delete_strategies: delete_strategies
                         }
-                    ).then((xml) ->
+                    ).then(
+                        (xml) ->
                     )
 
                 icswDialogDeleteCheckDeletionService.add_to_check_list(del_pks, model, async, after_delete)
@@ -224,35 +226,34 @@ angular.module(
                 url: ICSW_URLS.BASE_CHECK_DELETION_STATUS
                 data:
                     del_requests: JSON.stringify(request_params)
-            ).then((xml) ->
-                remove_list = []
-                for k, check_list_entry of check_list
-                    # handle msg
-                    msg = $(xml).find("value[name='msg_#{k}']").text()
-                    if msg != ""  # this is "" if the msg is not defined in case check_list here is not current
-                        if check_list_entry.async
-                            if check_list_entry.last_msg != msg
-                                toaster.pop("success", "", msg)
-                        else
-                            blockUI.message(msg)
-                        check_list_entry.last_msg = msg
-                        # check if we are done
-                        num_remaining = parseInt($(xml).find("value[name='num_remaining_#{k}']").text())
-                        # this is Nan on invalid entry, and NaN != 0, which we want here
-                        if num_remaining == 0
-                            if check_list_entry.after_delete?
-                                console.log "a0"
-                                $rootScope.$apply(
-                                    check_list_entry.after_delete()
-                                )
-                                console.log "a1"
-                            if !check_list_entry.async
-                                blockUI.stop()
-                            remove_list.push(k)
-                for k in remove_list
-                    delete check_list[k]
-                if Object.keys(check_list).length == 0
-                    $interval.cancel(interval_promise)
+            ).then(
+                (xml) ->
+                    remove_list = []
+                    for k, check_list_entry of check_list
+                        # handle msg
+                        msg = $(xml).find("value[name='msg_#{k}']").text()
+                        if msg != ""  # this is "" if the msg is not defined in case check_list here is not current
+                            if check_list_entry.async
+                                if check_list_entry.last_msg != msg
+                                    toaster.pop("success", "", msg)
+                            else
+                                blockUI.message(msg)
+                            check_list_entry.last_msg = msg
+                            # check if we are done
+                            num_remaining = parseInt($(xml).find("value[name='num_remaining_#{k}']").text())
+                            # this is Nan on invalid entry, and NaN != 0, which we want here
+                            if num_remaining == 0
+                                if check_list_entry.after_delete?
+                                    console.log "a0"
+                                    check_list_entry.after_delete(check_list_entry)
+                                    console.log "a1"
+                                if !check_list_entry.async
+                                    blockUI.stop()
+                                remove_list.push(k)
+                    for k in remove_list
+                        delete check_list[k]
+                    if Object.keys(check_list).length == 0
+                        $interval.cancel(interval_promise)
             )
         return {
             add_to_check_list: add_to_check_list

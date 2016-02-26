@@ -735,7 +735,7 @@ def device_post_save(sender, **kwargs):
     if "instance" in kwargs:
         _cur_inst = kwargs["instance"]
         if _cur_inst.bootserver_id:
-            bootsettings_changed.send(sender=_cur_inst, device=_cur_inst, cause="device_changed")
+            BootsettingsChanged.send(sender=_cur_inst, device=_cur_inst, cause="device_changed")
         if _cur_inst.is_meta_device:
             _stripped = strip_metadevice_name(_cur_inst.name)
             if _stripped != _cur_inst.device_group.name:

@@ -59,11 +59,16 @@ angular.module(
             # called after restore
 
 ]).service("icswDeviceBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
-    class device_backup_def extends icswBackupDefinition
+    class icswDeviceBackupDefinition extends icswBackupDefinition
         constructor: () ->
             super()
-            @simple_attributes = ["name", "comment", "device_group", "domain_tree_node"]
-]).service("icswDeviceTree", ["icswTools", (icswTools) ->
+            @simple_attributes = ["name", "comment", "device_group", "domain_tree_node", "enabled"]
+]).service("icswDeviceGroupBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+    class icswDeviceGroupBackupDefinition extends icswBackupDefinition
+        constructor: () ->
+            super()
+            @simple_attributes = ["name", "comment", "domain_tree_node", "enabled"]
+]).service("icswDeviceTree", ["icswTools", "ICSW_URLS", "$q", "Restangular", (icswTools, ICSW_URLS, $q, Restangular) ->
     class icswDeviceTree
         constructor: (full_list, cat_list, group_list, domain_tree) ->
             @cat_list = cat_list
@@ -93,7 +98,6 @@ angular.module(
 
         build_luts: (full_list) =>
             console.log (entry.name for entry in full_list)
-            console.log full_list[0]
             # build luts and create enabled / disabled lists
             @all_list.length = 0
             @enabled_list.length = 0
@@ -132,8 +136,9 @@ angular.module(
                 for cat in entry.categories
                     @cat_lut[cat].devices.push(entry.idx)
             for group in @group_list
-                # num of all devices (enabled and disabled)
-                group.num_devices = group.devices.length
+                # num of all devices (enabled and disabled, also with md)
+                group.num_devices_with_meta = group.devices.length
+                group.num_devices = group.num_devices_with_meta - 1
             # create helper structures
             # console.log "link"
 
@@ -150,6 +155,68 @@ angular.module(
             # return all enabled devices in group, not working ... ?
             console.log("DO NOT USE: get_num_devices()")
             return (entry for entry in @enabled_list when entry.device_group == group.idx).length - 1
+
+        create_device_group: (new_dg) =>
+            # create new device_group
+            defer = $q.defer()
+            Restangular.all(ICSW_URLS.REST_DEVICE_GROUP_LIST.slice(1)).post(new_dg).then(
+                (new_obj) =>
+                    # add new device_group to group_list
+                    @group_list.push(new_obj)
+                    # update group_lut
+                    @group_lut[new_obj.idx] = new_obj
+                    # fetch corresponding meta_device
+                    @_fetch_device(new_obj.device, defer, "created device_group")
+                (not_ok) ->
+                    defer.reject("not created")
+            )
+            return defer.promise
+
+        delete_device_group: (dg_pk) =>
+            group = @group_lut[dg_pk]
+            _.remove(@all_list, (entry) -> return entry.idx == group.device)
+            _.remove(@group_list, (entry) -> return entry.idx == dg_pk)
+            @reorder()
+
+        create_device: (new_dev) =>
+            # create new device
+            defer = $q.defer()
+            Restangular.all(ICSW_URLS.REST_DEVICE_TREE_LIST.slice(1)).post(new_dev).then(
+                (new_obj) =>
+                    @_fetch_device(new_obj.idx, defer, "created device")
+                (not_ok) ->
+                    defer.object("not created")
+            )
+            return defer.promise
+
+        delete_device: (d_pk) =>
+            _.remove(@all_list, (entry) -> return entry.idx == d_pk)
+            @reorder()
+
+        _fetch_device: (pk, defer, msg) =>
+            Restangular.all(ICSW_URLS.REST_DEVICE_TREE_LIST.slice(1)).getList(
+                {
+                    "ignore_cdg": false
+                    "tree_mode" : true
+                    "with_categories" : true
+                    "ignore_disabled": true
+                    "pks": angular.toJson([pk])
+                }
+            ).then(
+                (dev_list) =>
+                    dev = dev_list[0]
+                    @all_list.push(dev)
+                    @reorder()
+                    defer.resolve(msg)
+            )
+
+        apply_json_changes: (json) =>
+            # apply changes from json changedict
+            for entry in json
+                dev = @all_lut[entry.device]
+                dev[entry.attribute] = entry.value
+            @reorder()
+
 ]).service("icswDeviceTreeService", ["$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall", "icswTools", "icswDeviceTree", "$rootScope", "ICSW_SIGNALS", "icswDomainTreeService", ($q, Restangular, ICSW_URLS, $window, icswCachingCall, icswTools, icswDeviceTree, $rootScope, ICSW_SIGNALS, icswDomainTreeService) ->
     rest_map = [
         [
@@ -346,12 +413,16 @@ angular.module(
             # database object saved
             console.log "resync", @db_obj
             @sync_with_db(@db_obj)
+
         is_synced: () =>
             return if @db_idx then true else false
+
         any_selected: () ->
             return if @cat_sel.length + @devg_sel.length + @dev_sel.length + @tot_dev_sel.length then true else false
+
         any_lazy_selected: () ->
             return if @cat_sel.length + @devg_sel.length then true else false
+
         resolve_lazy_selection: () ->
             # categories
             for _cat in @cat_sel
@@ -366,12 +437,14 @@ angular.module(
             @devg_sel = []
             @tot_dev_sel = _.uniq(@tot_dev_sel)
             @dev_sel = _.uniq(@dev_sel)
+
         resolve_dev_name: (dev_idx) =>
             _dev = @tree.all_lut[dev_idx]
             if _dev.is_meta_device
                 return "[M] " + _dev.full_name.substring(8)
             else
                 return _dev.full_name
+
         resolve_devices: () =>
             if @dev_sel.length
                 _list = ((@resolve_dev_name(_ds) for _ds in @dev_sel))
@@ -379,6 +452,7 @@ angular.module(
                 return _list.join(", ")
             else
                 return "---"
+
         resolve_total_devices: () =>
             if @tot_dev_sel.length
                 _list = ((@resolve_dev_name(_ds) for _ds in @tot_dev_sel))
@@ -386,6 +460,7 @@ angular.module(
                 return _list.join(", ")
             else
                 return "---"
+
         resolve_device_groups: () =>
             if @devg_sel.length
                 _list = (@tree.group_lut[_dg].name.substring(8) for _dg in @devg_sel)
@@ -393,6 +468,7 @@ angular.module(
                 return _list.join(", ")
             else
                 return "---"
+
         resolve_categories: () ->
             if @cat_sel.length
                 _list = ((@tree.cat_lut[_cs].full_name for _cs in @cat_sel))
@@ -400,6 +476,7 @@ angular.module(
                 return _list.join(", ")
             else
                 return "---"
+
         get_devsel_list: () =>
             # all device pks
             dev_pk_list = @tot_dev_sel
@@ -1032,8 +1109,9 @@ angular.module(
             else if t_entry._node_type == "g"
                 _res = entry.name
                 group = @current.group_lut[t_entry.obj]
-                if group.devices.length
-                    _res = "#{_res} (#{group.devices.length} devices)"
+                # ignore meta device
+                if group.num_devices
+                    _res = "#{_res} (#{group.num_devices} devices)"
                 return _res
             else
                 info_f = []

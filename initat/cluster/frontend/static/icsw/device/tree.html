@@ -87,8 +87,8 @@
             <input type="button" class="btn btn-warning" ng-click="change_dg_sel(-1)" value="C"/>
         </div>
     </td>
-    <td>{{ obj.device_group_obj.description }}</td>
-    <td>{{ obj.device_group_obj.enabled | yesno1 }}</td>
+    <td>{{ group.description }}</td>
+    <td>{{ group.enabled | yesno1 }}</td>
     <td>
         <b ng-show="group.num_devices">{{ group.num_devices }}</b>
         <b ng-show="!group.num_devices">---</b>
@@ -197,7 +197,7 @@
 </script>
 
 <script type="text/ng-template" id="device.tree.many.form">
-    <form id="form" class="form-horizontal" ng-submit="modify_many()" name="form">
+    <form id="form" class="form-horizontal" ng-submit="modify_many()" name="form_data">
         <h2>Change settings of {{ num_selected() }} devices</h2>
         <fieldset>
             <legend>Basic settings</legend>
@@ -485,7 +485,7 @@
 </script>
 
 <script type="text/ng-template" id="device.group.tree.form">
-    <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
+    <form id="form" class="form-horizontal" name="form_data">
         <h2>Settings for devicegroup {{ edit_obj.name }}</h2>
         <fieldset>
             <legend>Basic settings</legend>
@@ -576,7 +576,7 @@
 </script> -->
 
 <script type="text/ng-template" id="device.tree.form">
-    <form class="form-horizontal" ng-submit="modify()" name="form_data">
+    <form class="form-horizontal" name="form_data">
         <h2>Device settings for {{ edit_obj.name }}</h2>
         <fieldset>
             <legend>Basic settings</legend>
