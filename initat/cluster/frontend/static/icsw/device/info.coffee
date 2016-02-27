@@ -46,20 +46,23 @@ angular.module(
             # create new modal for device
             # device object with access_levels
             sub_scope = $rootScope.$new()
+            console.log "devlist", devicelist
             icswAcessLevelService.install(sub_scope)
+            # pk list of devices
             sub_scope.dev_pk_list = (dev.idx for dev in devicelist)
+            # pk list of devices without meta-devices
             sub_scope.dev_pk_nmd_list = (dev.idx for dev in devicelist when !dev.is_meta_device)
-            if !sub_scope.dev_pk_nmd_list?
-                sub_scope.dev_pk_nmd_list = []
-            sub_scope.devicepklist = sub_scope.dev_pk_list
-            sub_scope.popupmode = 1
             icswComplexModalSevice(
                 {
-                    message: $compile("<icsw-device-overview devicepklist='devicepklist'></icsw-device-overview>")(sub_scope)
+                    message: $compile("<icsw-device-overview></icsw-device-overview>")(sub_scope)
                     title: "Device Info"
                     css_class: "modal-wide"
-
+                    closable: true
                 }
+            ).then(
+                (closeinfo) ->
+                    console.log "close deviceoverview #{closeinfo}"
+                    sub_scope.$destroy()
             )
             # my_mixin.edit(null, devicelist[0])
             # todo: destroy sub_scope
@@ -67,20 +70,18 @@ angular.module(
     # default value
     def_mode = "general"
     return {
-        "get_mode" : () ->
+        get_mode : () ->
             return def_mode
-        "set_mode": (mode) ->
+        set_mode: (mode) ->
             def_mode = mode
     }
 ]).directive("icswDeviceOverview", ["$compile", "DeviceOverviewSettings", "$templateCache", ($compile, DeviceOverviewSettings, $templateCache) ->
     return {
         restrict: "EA"
         replace: true
+        scope: false
         compile: (element, attrs) ->
             return (scope, iElement, Attrs) ->
-                if attrs["popupmode"]?
-                    scope.popupmode = parseInt(attrs["popupmode"])
-                scope.current_subscope = undefined
                 scope.pk_list = {
                     "general": []
                     "network": []
@@ -92,48 +93,27 @@ angular.module(
                 }
                 for key of scope.pk_list
                     scope["#{key}_active"] = false
-                if DeviceOverviewSettings.get_mode()
-                    _mode = DeviceOverviewSettings.get_mode()
-                    scope["#{_mode}_active"] = true
-                if scope.popupmode
-                    scope.$watch(attrs["devicepklist"], (new_val) ->
-                        if new_val
-                            scope.devicepk = new_val[0]
-                            scope.new_device_sel()
-                    )
-                else
-                    # possibly multi-device view
-                    scope.$watch("dev_pk_list", (new_val) ->
-                        if new_val and new_val.length
-                            scope.devicepk = new_val[0]
-                            scope.new_device_sel()
-                    )
-                scope.new_device_sel = () ->
-                    if scope.dev_pk_list.length > 1
-                        scope.addon_text = " (#{scope.dev_pk_list.length})"
-                    else
-                        scope.addon_text = ""
-                    if scope.dev_pk_nmd_list.length > 1
-                        scope.addon_text_nmd = " (#{scope.dev_pk_nmd_list.length})"
-                    else
-                        scope.addon_text_nmd = ""
-                    # destroy old subscope, important
-                    if scope.current_subscope
-                        # check for active div
-                        if DeviceOverviewSettings.get_mode()
-                            scope.activate(DeviceOverviewSettings.get_mode())
-                    else
-                        new_scope = scope.$new()
-                        new_el = $compile($templateCache.get("icsw.device.info"))(new_scope)
-                        iElement.children().remove()
-                        iElement.append(new_el)
-                        scope.current_subscope = new_scope
+                _cur_mode = DeviceOverviewSettings.get_mode()
+                scope["#{_cur_mode}_active"] = true
                 scope.activate = (name) ->
                     DeviceOverviewSettings.set_mode(name)
                     if name in ["network", "status_history", "livestatus", "category"]
                         scope.pk_list[name] = scope.dev_pk_nmd_list
                     else if name in ["config", "graphing", "device_variable"]
                         scope.pk_list[name] = scope.dev_pk_list
+                if scope.dev_pk_list.length > 1
+                    scope.addon_text = " (#{scope.dev_pk_list.length})"
+                else
+                    scope.addon_text = ""
+                if scope.dev_pk_nmd_list.length > 1
+                    scope.addon_text_nmd = " (#{scope.dev_pk_nmd_list.length})"
+                else
+                    scope.addon_text_nmd = ""
+                # destroy old subscope, important
+                scope.$on("$destroy", () -> console.log "Destroy Device-overview scope")
+                new_el = $compile($templateCache.get("icsw.device.info"))(scope)
+                iElement.children().remove()
+                iElement.append(new_el)
     }
 ]).controller("deviceinfo_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$uibModal", "icswAcessLevelService", "toaster",
     ($scope, $compile, $filter, $templateCache, Restangular, $q, $uibModal, icswAcessLevelService, toaster) ->
@@ -196,20 +176,7 @@ angular.module(
                         if scope._edit_obj.is_meta_device
                             scope._edit_obj.name = scope._edit_obj.name.substr(8)
                         element.children().remove()
-                        element.append($compile($templateCache.get("device.info.form"))(scope))
-                        element.append($compile("""
-                        <div ng-show="show_uuid">
-                            <h4>Copy the following snippet to <code>/opt/cluster/etc/cstores.d/icsw.device_config.xml</code> :</h4>
-                            <pre><code>&lt;?xml version='1.0' encoding='ASCII'?&gt;
-&lt;config-store name="icsw.device"&gt;
-  &lt;key-list&gt;
-    &lt;key type="str" name="cluster.device.uuid"&gt;urn:uuid:{{ _edit_obj.uuid }}&lt;/key&gt;
-  &lt;/key-list&gt;
-&lt;/config-store&gt;
-</code></pre>
-                            <h4>and restart host-monitoring with <code>icsw service restart host-monitoring</code></h4>
-                        </div>
-                        """)(scope))
+                        element.append($compile($templateCache.get("icsw.device.info.form"))(scope))
                     )
                 else
                     element.children().remove()

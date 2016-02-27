@@ -67,7 +67,7 @@
     </uib-tabset>
 </script>
 
-<script type="text/ng-template" id="device.info.form">
+<script type="text/ng-template" id="icsw.device.info.form">
     <form class="form-horizontal" ng-submit="modify()" name="form">
         <div>
             <h2>Details for '{{ get_full_name() }}'
@@ -252,6 +252,16 @@
                 </div>
             </fieldset>
         </div>
+        <div ng-show="show_uuid">
+            <h4>Copy the following snippet to <code>/opt/cluster/etc/cstores.d/icsw.device_config.xml</code> :</h4>
+            <pre><code>&lt;?xml version='1.0' encoding='ASCII'?&gt;
+&lt;config-store name="icsw.device"&gt;
+&lt;key-list&gt;
+&lt;key type="str" name="cluster.device.uuid"&gt;urn:uuid:{{ _edit_obj.uuid }}&lt;/key&gt;
+&lt;/key-list&gt;
+&lt;/config-store&gt;
+</code></pre>
+            <h4>and restart host-monitoring with <code>icsw service restart host-monitoring</code></h4>
+        </div>
     </form>
 </script>
-

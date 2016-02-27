@@ -624,9 +624,11 @@ angular.module(
         return scope.pagSettings.apply_filter(arr)
 ]).run(["Restangular", "toaster",
     (Restangular, toaster) ->
-        Restangular.setRestangularFields({
-            "id" : "idx"
-        })
+        Restangular.setRestangularFields(
+            {
+                "id" : "idx"
+            }
+        )
         Restangular.setResponseInterceptor((data, operation, what, url, response, deferred) ->
             if data.log_lines
                 for entry in data.log_lines
@@ -828,20 +830,25 @@ angular.module(
                 }
             )
         d = $q.defer()
-        BootstrapDialog.show
+        bs_dict = {
             message: in_dict.message
             draggable: true
             size: BootstrapDialog.SIZE_WIDE
             animate: false
             title: in_dict.title or "ComplexModalDialog"
             cssClass: in_dict.css_class or "modal-tall"
-            closable: false
             onshow: (modal) =>
                 height = $(window).height() - 100
                 modal.getModal().find(".modal-body").css("max-height", height)
             onhidden: (modal) =>
                 d.resolve("closed")
             buttons: buttons
+        }
+        if in_dict.closable?
+            bs_dict.closable = true
+        else
+            bs_dict.closable = false
+        BootstrapDialog.show bs_dict
         return d.promise
 
 ]).service("icswToolsSimpleModalService", ["$q", ($q) ->
