@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2015 init.at
+# Copyright (C) 2012-2016 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -39,53 +39,30 @@ angular.module(
                     ordering: 10
         }
     )
-]).service(
-    "DeviceOverviewService",
-    [
-        "Restangular", "$rootScope", "$templateCache", "$compile", "$uibModal", "$q", "icswAcessLevelService", "msgbus",
-        (Restangular, $rootScope, $templateCache, $compile, $uibModal, $q, icswAcessLevelService, msgbus) ->
-            return {
-                "NewSingleSelection" : (dev) ->
-                    if dev.is_meta_device
-                        msgbus.emit("devicelist", [[dev.idx], [], [], [dev.idx]])
-                    else
-                        msgbus.emit("devicelist", [[dev.idx], [dev.idx], [], []])
-                "NewOverview" : (event, devicelist) ->
-                    # dev can also be a structure from a devicemap (where only name and id/idx are defined)
-                    # create new modal for device
-                    # device object with access_levels
-                    sub_scope = $rootScope.$new()
-                    icswAcessLevelService.install(sub_scope)
+]).service("DeviceOverviewService", ["Restangular", "$rootScope", "$templateCache", "$compile", "$uibModal", "$q", "icswAcessLevelService", "icswComplexModalSevice",
+    (Restangular, $rootScope, $templateCache, $compile, $uibModal, $q, icswAcessLevelService, icswComplexModalSevice) ->
+        return (event, devicelist) ->
+            # devicelist is a list of fully populated devices
+            # create new modal for device
+            # device object with access_levels
+            sub_scope = $rootScope.$new()
+            icswAcessLevelService.install(sub_scope)
+            sub_scope.dev_pk_list = (dev.idx for dev in devicelist)
+            sub_scope.dev_pk_nmd_list = (dev.idx for dev in devicelist when !dev.is_meta_device)
+            if !sub_scope.dev_pk_nmd_list?
+                sub_scope.dev_pk_nmd_list = []
+            sub_scope.devicepklist = sub_scope.dev_pk_list
+            sub_scope.popupmode = 1
+            icswComplexModalSevice(
+                {
+                    message: $compile("<icsw-device-overview devicepklist='devicepklist'></icsw-device-overview>")(sub_scope)
+                    title: "Device Info"
+                    css_class: "modal-wide"
 
-                    sub_scope.dev_pk_list = (dev.idx for dev in devicelist)
-                    sub_scope.dev_pk_nmd_list = (dev.idx for dev in devicelist when !dev.is_meta_device)
-                    if !sub_scope.dev_pk_nmd_list?
-                        sub_scope.dev_pk_nmd_list = []
-                    sub_scope.devicepklist = sub_scope.dev_pk_list
-                    sub_scope.popupmode = 1
-
-                    my_mixin = new angular_modal_mixin(
-                        sub_scope,
-                        $templateCache,
-                        $compile
-                        $q
-                        "Device Info"
-                    )
-                    my_mixin.cssClass = "modal-wide"
-                    my_mixin.template = "DeviceOverviewTemplate"
-                    my_mixin.edit(null, devicelist[0])
-                    # todo: destroy sub_scope
-            }
-    ]
-).run(["$templateCache", ($templateCache) ->
-    $templateCache.put(
-        "DeviceOverviewTemplate",
-        """
-<div style=\"font-size: 12px">
-    <deviceoverview devicepklist='devicepklist'></deviceoverview>
-</div>
-"""
-    )
+                }
+            )
+            # my_mixin.edit(null, devicelist[0])
+            # todo: destroy sub_scope
 ]).service("DeviceOverviewSettings", [() ->
     # default value
     def_mode = "general"
@@ -95,12 +72,12 @@ angular.module(
         "set_mode": (mode) ->
             def_mode = mode
     }
-]).directive("deviceoverview", ["$compile", "DeviceOverviewSettings", "$templateCache", ($compile, DeviceOverviewSettings, $templateCache) ->
+]).directive("icswDeviceOverview", ["$compile", "DeviceOverviewSettings", "$templateCache", ($compile, DeviceOverviewSettings, $templateCache) ->
     return {
         restrict: "EA"
         replace: true
         compile: (element, attrs) ->
-            return (scope, iElement, iAttrs) ->
+            return (scope, iElement, Attrs) ->
                 if attrs["popupmode"]?
                     scope.popupmode = parseInt(attrs["popupmode"])
                 scope.current_subscope = undefined

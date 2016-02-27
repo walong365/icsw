@@ -788,7 +788,7 @@ angular.module(
         template : $templateCache.get("icsw.tools.old.paginator")
         link     : link
     }
-]).service("icswToolsComplexModalService", ["$q", ($q) ->
+]).service("icswComplexModalSevice", ["$q", ($q) ->
     return (in_dict) ->
         # build buttons list
         buttons = []
@@ -833,8 +833,8 @@ angular.module(
             draggable: true
             size: BootstrapDialog.SIZE_WIDE
             animate: false
-            title: in_dict.title?"ComplexModalDialog"
-            cssClass: "modal-tall"
+            title: in_dict.title or "ComplexModalDialog"
+            cssClass: in_dict.css_class or "modal-tall"
             closable: false
             onshow: (modal) =>
                 height = $(window).height() - 100

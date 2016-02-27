@@ -89,10 +89,10 @@ class device_selection_serializer(serializers.Serializer):
 
 
 class device_group_serializer(serializers.ModelSerializer):
-    def validate(self, in_dict):
-        if "description" not in in_dict:
-            in_dict["description"] = ""
-        return in_dict
+    # def validate(self, in_dict):
+    #    if "description" not in in_dict:
+    #        in_dict["description"] = ""
+    #    return in_dict
 
     class Meta:
         model = device_group

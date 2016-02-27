@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2015 init.at
+# Copyright (C) 2012-2016 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -44,6 +44,9 @@ angular.module(
             @list = []
             @lut = {}
 
+        link: () =>
+            # create helper entries
+
         update: (new_list) =>
             @data_set = true
             @list.length = 0
@@ -52,6 +55,7 @@ angular.module(
             @lut = icswTools.build_lut(@list)
             # set top level node
             @tln = (entry for entry in @list when entry.depth == 0)[0]
+            @link()
 
         get_full_name: (dev) =>
             if dev.domain_tree_node
@@ -75,9 +79,8 @@ angular.module(
                 r_str = "#{r_str} [TLN]"
             return r_str
 
-
 ]).service('icswDomainTreeService', ["Restangular", "$q", "icswTools", "icswCachingCall", "ICSW_URLS", "icswDomainTree", (Restangular, $q, icswTools, icswCachingCall, ICSW_URLS, icswDomainTree) ->
-    domain_rest = Restangular.all(ICSW_URLS.REST_DOMAIN_TREE_NODE_LIST.slice(1)).getList().$object
+    # domain_rest = Restangular.all(ICSW_URLS.REST_DOMAIN_TREE_NODE_LIST.slice(1)).getList().$object
     _fetch_dict = {}
     _result = new icswDomainTree()
     load_called = false

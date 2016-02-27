@@ -694,7 +694,7 @@ angular.module(
         $scope.tc_categories.clear_root_nodes()
         $scope.selection = selection
         $scope.selection_valid = true
-        console.log "sv"
+        console.log "got_rest_data (selection)"
         # build category tree
         # tree category lut
         # id -> category entry from tree (with devices)
@@ -1006,21 +1006,22 @@ angular.module(
     $scope.show_current_selection_in_overlay = () ->
         devsel_list = $scope.selection.get_devsel_list()
         selected_devices = ($scope.tree.all_lut[_pk] for _pk in devsel_list[0])
-        DeviceOverviewService.NewOverview(event, selected_devices)
+        DeviceOverviewService(event, selected_devices)
     $scope.select_parents = () ->
-        blockUI.start()
-        $scope.selection.select_parent().then(() ->
-            $scope.tc_devices.iter(
-                (node, data) ->
-                    node.selected = node.obj in $scope.selection.tot_dev_sel
-            )
-            $scope.tc_devices.recalc()
-            $scope.tc_groups.show_selected(false)
-            $scope.tc_categories.show_selected(false)
-            $scope.tc_devices.show_selected(false)
-            $scope.selection_changed()
-            $scope.activate_tab("d")
-            blockUI.stop()
+        blockUI.start("Selecting parents...")
+        $scope.selection.select_parent().then(
+            () ->
+                $scope.tc_devices.iter(
+                    (node, data) ->
+                        node.selected = node.obj in $scope.selection.tot_dev_sel
+                )
+                $scope.tc_devices.recalc()
+                $scope.tc_groups.show_selected(false)
+                $scope.tc_categories.show_selected(false)
+                $scope.tc_devices.show_selected(false)
+                $scope.selection_changed()
+                $scope.activate_tab("d")
+                blockUI.stop()
         )
 ]).service("icswLayoutSelectionDialogService", ["$q", "$compile", "$templateCache", "$state", "icswToolsSimpleModalService", "$rootScope", "ICSW_SIGNALS", ($q, $compile, $templateCache, $state, icswToolsSimpleModalService, $rootScope, ICSW_SIGNALS) ->
     # dialog_div =
@@ -1083,7 +1084,7 @@ angular.module(
             @ensure_current()
             if entry._node_type == "d"
                 dev = @current.all_lut[entry.obj]
-                DeviceOverviewService.NewOverview(event, [dev])
+                DeviceOverviewService(event, [dev])
                 @scope.$apply()
             else
                 entry.set_selected(not entry.selected)

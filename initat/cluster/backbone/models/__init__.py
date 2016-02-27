@@ -439,8 +439,8 @@ class device(models.Model):
     name = models.CharField(max_length=192)
     # FIXME
     device_group = models.ForeignKey("device_group", related_name="device_group")
-    alias = models.CharField(max_length=384, blank=True)
-    comment = models.CharField(max_length=384, blank=True)
+    alias = models.CharField(max_length=384, blank=True, default="")
+    comment = models.CharField(max_length=384, blank=True, default="")
     mon_device_templ = models.ForeignKey("backbone.mon_device_templ", null=True, blank=True)
     mon_device_esc_templ = models.ForeignKey("backbone.mon_device_esc_templ", null=True, blank=True)
     mon_ext_host = models.ForeignKey("backbone.mon_ext_host", null=True, blank=True)
@@ -882,6 +882,7 @@ def cd_connection_pre_save(sender, **kwargs):
 class device_group(models.Model):
     idx = models.AutoField(db_column="device_group_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192, blank=False)
+    # will be copied to comment of meta-device
     description = models.CharField(max_length=384, default="")
     # device = models.ForeignKey("device", null=True, blank=True, related_name="group_device")
     # must be an IntegerField, otherwise we have a cycle reference
@@ -961,6 +962,9 @@ def device_group_post_save(sender, **kwargs):
             for c_field in ["enabled", "domain_tree_node"]:
                 if getattr(cur_inst.device, c_field) != getattr(cur_inst, c_field):
                     setattr(cur_inst.device, c_field, getattr(cur_inst, c_field))
+                    save_meta = True
+                if cur_inst.device.comment != cur_inst.description:
+                    cur_inst.device.comment = cur_inst.description
                     save_meta = True
             if save_meta:
                 cur_inst.device.save()

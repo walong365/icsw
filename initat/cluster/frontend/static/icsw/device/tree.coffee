@@ -39,11 +39,11 @@ angular.module(
         }
     )
 ]).controller("icswDeviceTreeCtrl",
-    ["$scope", "$compile", "$filter", "$templateCache", "Restangular",  "restDataSource", "$q", "$timeout", "icswToolsComplexModalService",
+    ["$scope", "$compile", "$filter", "$templateCache", "Restangular",  "restDataSource", "$q", "$timeout", "icswComplexModalSevice",
      "$uibModal", "array_lookupFilter", "msgbus", "blockUI", "icswTools", "ICSW_URLS", "icswToolsButtonConfigService",
      "icswSimpleAjaxCall", "icswToolsSimpleModalService", "toaster", "icswDialogDeleteObjects", "icswDeviceBackup",
      "icswDeviceTreeService", "icswDomainTreeService", "ICSW_SIGNALS", "$rootScope", "icswActiveSelectionService", "icswDeviceGroupBackup",
-    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $timeout, icswToolsComplexModalService,
+    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $timeout, icswComplexModalSevice,
     $uibModal, array_lookupFilter, msgbus, blockUI, icswTools, ICSW_URLS, icswToolsButtonConfigService,
     icswSimpleAjaxCall, icswToolsSimpleModalService, toaster, icswDialogDeleteObjects, icswDeviceBackup,
     icswDeviceTreeService, icswDomainTreeService, ICSW_SIGNALS, $rootScope, icswActiveSelectionService, icswDeviceGroupBackup) ->
@@ -52,13 +52,13 @@ angular.module(
         $scope.rest_data = {}
         $scope.rest_map = [
             # TODO: replace with specialized REST call
-            {"short" : "mother_server", "url" : ICSW_URLS.REST_DEVICE_TREE_LIST, "options" : {"all_mother_servers" : true}}
+            {"short" : "mother_server", "url" : ICSW_URLS.REST_DEVICE_TREE_LIST, "options": {"all_mother_servers": true}}
             # TODO: replace with specialized REST call
-            {"short" : "monitor_server", "url" : ICSW_URLS.REST_DEVICE_TREE_LIST, "options" : {"monitor_server_type" : true}}
+            {"short" : "monitor_server", "url" : ICSW_URLS.REST_DEVICE_TREE_LIST, "options": {"monitor_server_type": true}}
         ]
         $scope.hide_list = [
             # short, full, default
-            ["tln", "TLN", false, "Show top level node"]
+            ["tln", "DTN", false, "Show top level node"]
             ["rrd_store", "RRD store", false, "Show if sensor data is store on disk"]
             ["passwd", "Password", false, "Show if a password is set"]
             ["mon_master", "MonMaster", false, "Show monitoring master"]
@@ -245,7 +245,7 @@ angular.module(
             else
                 template_name = "device.tree.many.form"
             # init form
-            icswToolsComplexModalService(
+            icswComplexModalSevice(
                 {
                     message: $compile($templateCache.get(template_name))($scope)
                     ok_label: if create_mode then "Create" else "Modify"
@@ -294,7 +294,9 @@ angular.module(
                                         (reject) ->
                                             # ToDo, FIXME, handle rest (test?)
                                             # icswTools.handle_reset(resp.data, cur_f, $scope.edit_obj.idx)
-                                            d.resolve("not saved")
+                                            # two possibilites: restore and continue or reject, right now we use the second path
+                                            # dbu.restore_backup(obj)
+                                            d.reject("not saved")
                                     )
                                 else
                                     # multi instance modify
