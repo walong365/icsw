@@ -167,10 +167,10 @@ angular.module(
 ]).directive("icswSimpleDeviceInfo",
 [
     "$templateCache", "$compile", "$uibModal", "Restangular", "restDataSource", "$q", "ICSW_URLS",
-    "$rootScope", "ICSW_SIGNALS", "icswDomainTreeService", "icswDeviceTreeService",
+    "$rootScope", "ICSW_SIGNALS", "icswDomainTreeService", "icswDeviceTreeService", "icswMonitoringTreeService",
 (
     $templateCache, $compile, $uibModal, Restangular, restDataSource, $q, ICSW_URLS,
-    $rootScope, ICSW_SIGNALS, icswDomainTreeService, icswDeviceTreeService
+    $rootScope, ICSW_SIGNALS, icswDomainTreeService, icswDeviceTreeService, icswMonitoringTreeService
 ) ->
     return {
         restrict : "EA"
@@ -186,19 +186,15 @@ angular.module(
                 if in_list.length > 0
                     scope.edit_obj = in_list[0]
                     dev_tree = icswDeviceTreeService.current()
-                    wait_list = [
-                        restDataSource.reload([ICSW_URLS.REST_DOMAIN_TREE_NODE_LIST, {}])
-                        restDataSource.reload([ICSW_URLS.REST_MON_DEVICE_TEMPL_LIST, {}])
-                        restDataSource.reload([ICSW_URLS.REST_MON_EXT_HOST_LIST, {}])
-                        restDataSource.reload([ICSW_URLS.REST_DEVICE_TREE_LIST, {"with_network" : true, "with_monitoring_hint" : true, "with_disk_info" : true, "pks" : angular.toJson([scope.device_pk]), "ignore_cdg" : false, "with_com_info": true}])
-                    ]
                     $q.all(
                         [
                             icswDomainTreeService.fetch(scope.$id)
+                            icswMonitoringTreeService.fetch(scope.$id)
                             dev_tree.enrich_devices([scope.edit_obj], ["network_info", "monitoring_hint_info", "disk_info", "com_info"])
                         ]
                     ).then(
                         (data) ->
+
                             console.log "******", data
                             #form = data[0][0].form
                             scope.domain_tree_node = data[0]

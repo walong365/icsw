@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2015 init.at
+# Copyright (C) 2012-2016 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -19,9 +19,10 @@
 #
 
 monitoring_basic_module = angular.module("icsw.monitoring.monitoring_basic",
-        ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select",
-         "icsw.tools.table", "icsw.tools.button"]
-).directive("icswMonitoringBasic", () ->
+[
+    "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select",
+    "icsw.tools.table", "icsw.tools.button"
+]).directive("icswMonitoringBasic", () ->
     return {
         restrict:"EA"
         templateUrl: "icsw.monitoring.basic"
@@ -163,6 +164,82 @@ monitoring_basic_module = angular.module("icsw.monitoring.monitoring_basic",
                 ]
         }
     )
+]).service("icswMonitoringTree", ["$q", "Restangular", "ICSW_URLS", "ICSW_SIGNALS", "icswTools", ($q, Restangular, ICSW_URLS, ICSW_SIGNALS, icswTools) ->
+    class icswMonitoringTree
+        constructor: (@mon_period_list, @mon_notification_list, @host_check_command_list, @mon_service_templ_list, @mon_device_templ_list, @mon_contact_list, @mon_contactgroup_list) ->
+            @link()
+
+        link: () =>
+            for entry in ["mon_period", "mon_notification", "host_check_command", "mon_service_templ", "mon_device_templ", "mon_contact", "mon_contactgroup"]
+                @["#{entry}_lut"] = icswTools.build_lut(@["#{entry}_list"])
+]).service("icswMonitoringTreeService", ["$q", "Restangular", "ICSW_URLS", "icswCachingCall", "icswTools", "$rootScope", "ICSW_SIGNALS", "icswMonitoringTree", ($q, Restangular, ICSW_URLS, icswCachingCall, icswTools, $rootScope, ICSW_SIGNALS, icswMonitoringTree) ->
+    # loads the monitoring tree
+    rest_map = [
+        [
+            ICSW_URLS.REST_MON_PERIOD_LIST, {}
+        ]
+        [
+            ICSW_URLS.REST_MON_NOTIFICATION_LIST, {}
+        ]
+        [
+            ICSW_URLS.REST_HOST_CHECK_COMMAND_LIST, {}
+        ]
+        [
+            ICSW_URLS.REST_MON_SERVICE_TEMPL_LIST, {}
+        ]
+        [
+            ICSW_URLS.REST_MON_DEVICE_TEMPL_LIST, {}
+        ]
+        [
+            ICSW_URLS.REST_MON_CONTACT_LIST, {}
+        ]
+        [
+            ICSW_URLS.REST_MON_CONTACTGROUP_LIST, {}
+        ]
+    ]
+    _fetch_dict = {}
+    _result = undefined
+    # load called
+    load_called = false
+    load_data = (client) ->
+        load_called = true
+        _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in rest_map)
+        _defer = $q.defer()
+        $q.all(_wait_list).then(
+            (data) ->
+                console.log "*** monitoring tree loaded ***"
+                _result = new icswMonitoringTree(data[0], data[1], data[2], data[3], data[4], data[5], data[6])
+                _defer.resolve(_result)
+                for client of _fetch_dict
+                    # resolve clients
+                    _fetch_dict[client].resolve(_result)
+                $rootScope.$emit(ICSW_SIGNALS("ICSW_MON_TREE_LOADED"), _result)
+                # reset fetch_dict
+                _fetch_dict = {}
+        )
+        return _defer
+    fetch_data = (client) ->
+        if client not of _fetch_dict
+            # register client
+            _defer = $q.defer()
+            _fetch_dict[client] = _defer
+        if _result
+            # resolve immediately
+            _fetch_dict[client].resolve(_result)
+        return _fetch_dict[client]
+    return {
+        "load": (client) ->
+            # loads from server
+            return load_data(client).promise
+        "fetch": (client) ->
+            if load_called
+                # fetch when data is present (after sidebar)
+                return fetch_data(client).promise
+            else
+                return load_data(client).promise
+        "current": () ->
+            return _result
+    }
 ]).service('icswMonitoringUtilService', () ->
     return {
         get_data_incomplete_error: (data, tables) ->
@@ -172,10 +249,11 @@ monitoring_basic_module = angular.module("icsw.monitoring.monitoring_basic",
                 if not data[model_name].length
                     missing.push(human_name)
 
-            ret = ""
             if missing.length
                 missing_str = ("a #{n}" for n in missing).join(" and ")
                 ret = "Please add #{missing_str}"
+            else
+                ret = ""
             return ret
     }
 ).service('icswMonitoringBasicRestService', ["ICSW_URLS", "Restangular", (ICSW_URLS, Restangular) ->
@@ -194,15 +272,21 @@ monitoring_basic_module = angular.module("icsw.monitoring.monitoring_basic",
     return data
 ]).service('icswMonitoringBasicService', ["ICSW_URLS", "icswMonitoringBasicRestService", (ICSW_URLS, icswMonitoringBasicRestService) ->
     get_use_count =  (obj) ->
-            return obj.service_check_period.length   # + obj.mon_device_templ_set.length
+        return obj.service_check_period.length   # + obj.mon_device_templ_set.length
     return {
         rest_handle        : icswMonitoringBasicRestService.mon_period
         delete_confirm_str : (obj) ->
             return "Really delete monitoring period '#{obj.name}' ?"
         edit_template      : "mon.period.form"
         new_object         : {
-            "alias" : "new period", "mon_range" : "00:00-24:00", "tue_range" : "00:00-24:00", "sun_range" : "00:00-24:00",
-            "wed_range" : "00:00-24:00", "thu_range" : "00:00-24:00", "fri_range" : "00:00-24:00", "sat_range" : "00:00-24:00"
+            "alias": "new period"
+            "mon_range": "00:00-24:00"
+            "tue_range": "00:00-24:00"
+            "sun_range": "00:00-24:00",
+            "wed_range": "00:00-24:00"
+            "thu_range": "00:00-24:00"
+            "fri_range": "00:00-24:00"
+            "sat_range": "00:00-24:00"
         }
         object_created     : (new_obj) -> new_obj.name = ""
         get_use_count      : get_use_count

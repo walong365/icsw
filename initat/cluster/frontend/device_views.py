@@ -354,7 +354,7 @@ class ComCapabilityEnrichment(object):
         }
         # manually unroll n2m relations
         _data = [
-            self.serializer(
+            ComCapabilitySerializer(
                 _result[_ref["pk"]],
                 context={"device": _ref["device__pk"]}
             ).data for _ref in _ref_list

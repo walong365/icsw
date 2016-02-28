@@ -320,8 +320,8 @@ angular.module(
                     (dev._enrichment_info.clear_infos(en_list) for dev in dev_list)
                     console.log "set new enrichment values"
                     @enricher.feed_results(result)
-                    # console.log "ER", result
-                    # defer.resolve("done")
+                    # resolve with device list
+                    defer.resolve(dev_list)
             )
             return defer.promise
 

@@ -298,6 +298,7 @@ angular.module(
         "ICSW_DTREE_FILTER_CHANGED": "icsw.dtree.filter.changed"
         "ICSW_FORCE_TREE_FILTER": "icsw.tree.force.filter"
         "ICSW_OVERVIEW_SELECTION_CHANGED": "icsw.overview.selection.changed"
+        "ICSW_MON_TREE_LOADED": "icsw.mon.tree.loaded"
     }
     return (name) ->
         if name not of _dict
