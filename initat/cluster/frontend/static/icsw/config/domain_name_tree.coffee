@@ -106,7 +106,7 @@ angular.module(
         # this code works in principle but is not recommended because we will overwrite all local settings
         load_data(null)
     fetch_data = (client) ->
-        if client not of _fsetch_dict
+        if client not of _fetch_dict
             # register client
             _defer = $q.defer()
             _fetch_dict[client] = _defer

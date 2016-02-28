@@ -68,7 +68,84 @@ angular.module(
         constructor: () ->
             super()
             @simple_attributes = ["name", "comment", "domain_tree_node", "enabled"]
-]).service("icswDeviceTree", ["icswTools", "ICSW_URLS", "$q", "Restangular", (icswTools, ICSW_URLS, $q, Restangular) ->
+]).service("icswEnrichmentInfo", [() ->
+    # stores info about already fetched additional info from server
+    class icswEnrichmentInfo
+        constructor: (@device) ->
+            # device may be the device_tree for global instance
+            @loaded = []
+
+        is_scalar: (req) =>
+            return req in ["disk_info"]
+
+        get_attr_name: (req) =>
+            _lut = {
+                "network_info": "netdevice_set"
+                "monitoring_hint_info": "monitoring_hint_set"
+                "disk_info": "act_partition_table"
+                "com_info": "com_capability_list"
+            }
+            if req of _lut
+                return _lut[req]
+            else
+                throw new Error("Unknown EnrichmentKey #{req}")
+
+        clear_infos: (req_list) =>
+            # clear already present infos
+            for req in req_list
+                if @is_scalar(req)
+                    @device[@get_attr_name(req)] = undefined
+                else
+                    @device[@get_attr_name(req)].length = 0
+
+        build_request: (req_list) =>
+            # returns a list (dev_pk, enrichments_to_load)
+            fetch_list = []
+            for req in req_list
+                if req not in @loaded
+                    fetch_list.push(req)
+                    if @is_scalar(req)
+                        @device[@get_attr_name(req)] = undefined
+                    else
+                        @device[@get_attr_name(req)] = []
+            return [@device.idx, fetch_list]
+
+        feed_result: (key, result) =>
+            if key not in @loaded
+                @loaded.push(key)
+            # store info
+            if @is_scalar(key)
+                @device[@get_attr_name(key)] = result
+            else
+                @device[@get_attr_name(key)].push(result)
+
+        merge_requests: (req_list) =>
+            # merges all requests from build_request
+            to_load = {}
+            for d_req in req_list
+                for req in d_req[1]
+                    if req not of to_load
+                        to_load[req] = []
+                    to_load[req].push(d_req[0])
+            return to_load
+
+        feed_results: (result) =>
+            # feed result into device_tree
+            for key, obj_list of result
+                for obj in obj_list
+                    if obj.device?
+                        _pk = obj.device
+                        @device.all_lut[_pk]._enrichment_info.feed_result(key, obj)
+                    else
+                        consoel.log obj
+                        throw new Error("No device attribute found in object")
+
+]).service("icswDeviceTree",
+[
+    "icswTools", "ICSW_URLS", "$q", "Restangular", "icswEnrichmentInfo", "icswSimpleAjaxCall",
+(
+    icswTools, ICSW_URLS, $q, Restangular, icswEnrichmentInfo, icswSimpleAjaxCall
+) ->
     class icswDeviceTree
         constructor: (full_list, cat_list, group_list, domain_tree) ->
             @cat_list = cat_list
@@ -77,6 +154,7 @@ angular.module(
             @enabled_list = []
             @disabled_list = []
             @domain_tree = domain_tree
+            @enricher = new icswEnrichmentInfo(@)
             @build_luts(full_list)
 
         reorder: () =>
@@ -131,6 +209,9 @@ angular.module(
             for cat in @cat_list
                 cat.devices = []
             for entry in @all_list
+                # add enrichment info
+                if not entry._enrichment_info?
+                    entry._enrichment_info = new icswEnrichmentInfo(entry)
                 entry.group_object = @group_lut[entry.device_group]
                 @group_lut[entry.device_group].devices.push(entry.idx)
                 for cat in entry.categories
@@ -216,6 +297,33 @@ angular.module(
                 dev = @all_lut[entry.device]
                 dev[entry.attribute] = entry.value
             @reorder()
+
+        # enrichment functions
+        enrich_devices: (dev_list, en_list) =>
+            defer  = $q.defer()
+            # build request
+            en_req = @enricher.merge_requests(
+                (
+                    dev._enrichment_info.build_request(en_list) for dev in dev_list
+                )
+            )
+            icswSimpleAjaxCall(
+                "url": ICSW_URLS.DEVICE_ENRICH_DEVICES
+                "data": {
+                    "enrich_request": angular.toJson(en_req)
+                }
+                dataType: "json"
+            ).then(
+                (result) =>
+                    # clear previous values
+                    console.log "clear previous enrichment values"
+                    (dev._enrichment_info.clear_infos(en_list) for dev in dev_list)
+                    console.log "set new enrichment values"
+                    @enricher.feed_results(result)
+                    # console.log "ER", result
+                    # defer.resolve("done")
+            )
+            return defer.promise
 
 ]).service("icswDeviceTreeService", ["$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall", "icswTools", "icswDeviceTree", "$rootScope", "ICSW_SIGNALS", "icswDomainTreeService", ($q, Restangular, ICSW_URLS, $window, icswCachingCall, icswTools, icswDeviceTree, $rootScope, ICSW_SIGNALS, icswDomainTreeService) ->
     rest_map = [
@@ -614,13 +722,15 @@ angular.module(
     }
 ]).controller("icswLayoutSelectionController",
 [
-    "$scope", "icswLayoutSelectionTreeService", "$timeout", "msgbus", "icswDeviceTreeService", "ICSW_SIGNALS",
+    "$scope", "icswLayoutSelectionTreeService", "$timeout", "icswDeviceTreeService", "ICSW_SIGNALS",
     "icswSelection", "icswActiveSelectionService", "$q", "icswSavedSelectionService", "icswToolsSimpleModalService",
     "DeviceOverviewService", "ICSW_URLS", 'icswSimpleAjaxCall', "blockUI", "$rootScope", "icswUserService",
+    "DeviceOverviewSelection",
 (
-    $scope, icswLayoutSelectionTreeService, $timeout, msgbus, icswDeviceTreeService, ICSW_SIGNALS,
+    $scope, icswLayoutSelectionTreeService, $timeout, icswDeviceTreeService, ICSW_SIGNALS,
     icswSelection, icswActiveSelectionService, $q, icswSavedSelectionService, icswToolsSimpleModalService,
     DeviceOverviewService, ICSW_URLS, icswSimpleAjaxCall, blockUI, $rootScope, icswUserService,
+    DeviceOverviewSelection
 ) ->
     # search settings
     $scope.search_ok = true
@@ -1006,7 +1116,9 @@ angular.module(
     $scope.show_current_selection_in_overlay = () ->
         devsel_list = $scope.selection.get_devsel_list()
         selected_devices = ($scope.tree.all_lut[_pk] for _pk in devsel_list[0])
+        DeviceOverviewSelection.set_selection(selected_devices)
         DeviceOverviewService(event, selected_devices)
+        console.log "show_current_selection"
     $scope.select_parents = () ->
         blockUI.start("Selecting parents...")
         $scope.selection.select_parent().then(
@@ -1072,7 +1184,7 @@ angular.module(
         "quick_dialog": () ->
             return quick_dialog()
     }
-]).service("icswLayoutSelectionTreeService", ["DeviceOverviewService", "icswTreeConfig", "icswDeviceTreeService", (DeviceOverviewService, icswTreeConfig, icswDeviceTreeService) ->
+]).service("icswLayoutSelectionTreeService", ["DeviceOverviewService", "icswTreeConfig", "icswDeviceTreeService", "DeviceOverviewSelection", (DeviceOverviewService, icswTreeConfig, icswDeviceTreeService, DeviceOverviewSelection) ->
     class selection_tree extends icswTreeConfig
         constructor: (@scope, args) ->
             super(args)
@@ -1084,7 +1196,8 @@ angular.module(
             @ensure_current()
             if entry._node_type == "d"
                 dev = @current.all_lut[entry.obj]
-                DeviceOverviewService(event, [dev])
+                DeviceOverviewSelection.set_selection([dev])
+                DeviceOverviewService(event)
                 @scope.$apply()
             else
                 entry.set_selected(not entry.selected)

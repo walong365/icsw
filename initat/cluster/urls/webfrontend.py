@@ -121,6 +121,7 @@ device_patterns = [
     # url("^device_tree$", device_views.device_tree.as_view(), name="tree"),
     # url("^device_tree_smart$", device_views.device_tree_smart.as_view(), name="tree_smart"),
     url("^select_parents$", device_views.select_parents.as_view(), name="select_parents"),
+    url("^enrich_devices$", device_views.EnrichDevices.as_view(), name="enrich_devices"),
     url("^manual_connection", device_views.manual_connection.as_view(), name="manual_connection"),
     url("^change_devices$", device_views.change_devices.as_view(), name="change_devices"),
     url("^scan_device_network$", device_views.scan_device_network.as_view(), name="scan_device_network"),

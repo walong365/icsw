@@ -232,7 +232,7 @@ angular.module(
         CATEGORY_CHANGED: "icsw.tools.msg_bus.1"  # called when any category (membership or category itself) is changed
     }
     return bus
-]).directive("icswSelMan", ["msgbus", (msgbus) ->
+]).directive("icswSelMan", ["$rootScope", "ICSW_SIGNALS", "DeviceOverviewSelection", ($rootScope, ICSW_SIGNALS, DeviceOverviewService) ->
     # selection manager directive
     # selman=1 ... popup mode (show devices defined by attribute)
     # selman=0 ... single or multi device mode, depend on sidebar selection
@@ -249,32 +249,30 @@ angular.module(
             else
                 # console.log "actsm", attrs
                 # is there a devicepk in the attributes ?
-                if attrs["devicepk"]?
-                    # yes, watch for changes
-                    scope.$watch(attrs["devicepk"], (new_val) ->
-                        if new_val
-                            if angular.isArray(new_val)
-                                if new_val.length
-                                    scope.new_devsel(new_val)
-                            else
-                                scope.new_devsel([new_val])
-                    )
-                else
-                    # console.log "register on sidebar ?"
-                    msgbus.emit("devselreceiver", "selman")
-                    msgbus.receive("devicelist", scope, (name, args) ->
-                        # check selman selection mode, can be
-                        # d ... report all device pks
-                        # D ... report all device pks with meta devices
-                        # ........ more to come
-                        selman_mode = attrs["icswSelManSelMode"] || "d"
-                        if selman_mode == "d"
-                            scope.new_devsel(args[1])
-                        else if selman_mode == "D"
-                            scope.new_devsel(args[0])
-                        else
-                            console.log "unknown selman selection mode '#{selman_mode}'"
-                    )
+                # if attrs["devicepk"]?
+                #    # yes, watch for changes
+                #    scope.$watch(attrs["devicepk"], (new_val) ->
+                #        if new_val
+                #            if angular.isArray(new_val)
+                #                if new_val.length
+                #                    scope.new_devsel(new_val)
+                #            else
+                #                scope.new_devsel([new_val])
+                #    )
+                # else
+                # console.log "register on sidebar ?"
+                _new_sel = (sel) ->
+                    selman_mode = attrs["icswSelManSelMode"] || "d"
+                    console.log "SelMan new selection (mode #{selman_mode})", sel
+                    selman_mode = attrs["icswSelManSelMode"] || "d"
+                    if scope.new_devsel?
+                        scope.new_devsel(sel)
+                    else
+                        console.log "no devsel_defined"
+                $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_SELECTION_CHANGED"), (event, new_sel) ->
+                    _new_sel(new_sel)
+                )
+                _new_sel(DeviceOverviewService.get_selection())
     }
 ]).directive("icswElementSize", ["$parse", ($parse) ->
     # save size of element in scope (specified via icswElementSize)
@@ -299,6 +297,7 @@ angular.module(
         "ICSW_TREE_LOADED": "icsw.tree.loaded"
         "ICSW_DTREE_FILTER_CHANGED": "icsw.dtree.filter.changed"
         "ICSW_FORCE_TREE_FILTER": "icsw.tree.force.filter"
+        "ICSW_OVERVIEW_SELECTION_CHANGED": "icsw.overview.selection.changed"
     }
     return (name) ->
         if name not of _dict
@@ -840,6 +839,8 @@ angular.module(
             onshow: (modal) =>
                 height = $(window).height() - 100
                 modal.getModal().find(".modal-body").css("max-height", height)
+                if in_dict.show_callback?
+                    in_dict.show_callback(modal)
             onhidden: (modal) =>
                 d.resolve("closed")
             buttons: buttons

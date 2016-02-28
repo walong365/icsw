@@ -39,12 +39,26 @@ angular.module(
                     ordering: 10
         }
     )
-]).service("DeviceOverviewService", ["Restangular", "$rootScope", "$templateCache", "$compile", "$uibModal", "$q", "icswAcessLevelService", "icswComplexModalSevice",
-    (Restangular, $rootScope, $templateCache, $compile, $uibModal, $q, icswAcessLevelService, icswComplexModalSevice) ->
-        return (event, devicelist) ->
-            # devicelist is a list of fully populated devices
+]).service("DeviceOverviewSelection", ["$rootScope", "ICSW_SIGNALS", ($rootScope, ICSW_SIGNALS) ->
+    _selection = []
+    set_selection = (sel) ->
+        _selection = sel
+        $rootScope.$emit(ICSW_SIGNALS("ICSW_OVERVIEW_SELECTION_CHANGED"), _selection)
+    get_selection = (sel) ->
+        return _selection
+    return {
+        set_selection: (sel) ->
+            set_selection(sel)
+        get_selection: (sel) ->
+            return get_selection()
+    }
+]).service("DeviceOverviewService", ["Restangular", "$rootScope", "$templateCache", "$compile", "$uibModal", "$q", "icswAcessLevelService", "icswComplexModalSevice", "DeviceOverviewSelection",
+    (Restangular, $rootScope, $templateCache, $compile, $uibModal, $q, icswAcessLevelService, icswComplexModalSevice, DeviceOverviewSelection) ->
+        return (event) ->
             # create new modal for device
             # device object with access_levels
+            _defer = $q.defer()
+            devicelist = DeviceOverviewSelection.get_selection()
             sub_scope = $rootScope.$new()
             console.log "devlist", devicelist
             icswAcessLevelService.install(sub_scope)
@@ -58,12 +72,15 @@ angular.module(
                     title: "Device Info"
                     css_class: "modal-wide"
                     closable: true
+                    show_callback: (modal) ->
+                        _defer.resolve("show")
                 }
             ).then(
                 (closeinfo) ->
                     console.log "close deviceoverview #{closeinfo}"
                     sub_scope.$destroy()
             )
+            return _defer.promise
             # my_mixin.edit(null, devicelist[0])
             # todo: destroy sub_scope
 ]).service("DeviceOverviewSettings", [() ->
@@ -114,6 +131,7 @@ angular.module(
                 new_el = $compile($templateCache.get("icsw.device.info"))(scope)
                 iElement.children().remove()
                 iElement.append(new_el)
+                console.log "Overview init"
     }
 ]).controller("deviceinfo_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$uibModal", "icswAcessLevelService", "toaster",
     ($scope, $compile, $filter, $templateCache, Restangular, $q, $uibModal, icswAcessLevelService, toaster) ->
@@ -146,51 +164,65 @@ angular.module(
                     )
             else
                 toaster.pop("warning", "form validation problem", "", 0)
-]).directive("icswSimpleDeviceInfo", ["$templateCache", "$compile", "$uibModal", "Restangular", "restDataSource", "$q", "ICSW_URLS", ($templateCache, $compile, $uibModal, Restangular, restDataSource, $q, ICSW_URLS) ->
+]).directive("icswSimpleDeviceInfo",
+[
+    "$templateCache", "$compile", "$uibModal", "Restangular", "restDataSource", "$q", "ICSW_URLS",
+    "$rootScope", "ICSW_SIGNALS", "icswDomainTreeService", "icswDeviceTreeService",
+(
+    $templateCache, $compile, $uibModal, Restangular, restDataSource, $q, ICSW_URLS,
+    $rootScope, ICSW_SIGNALS, icswDomainTreeService, icswDeviceTreeService
+) ->
     return {
         restrict : "EA"
         controller: "deviceinfo_ctrl"
         link : (scope, element, attrs) ->
-            scope._edit_obj = null
-            scope.device_pk = null
+            scope.edit_obj = null
             scope.$on("$destroy", () ->
             )
             scope.toggle_uuid = () ->
                 scope.show_uuid = !scope.show_uuid
+            console.log "SDI init"
             scope.new_devsel = (in_list) ->
                 if in_list.length > 0
-                    new_val = in_list[0]
-                    scope.device_pk = new_val
+                    scope.edit_obj = in_list[0]
+                    dev_tree = icswDeviceTreeService.current()
                     wait_list = [
                         restDataSource.reload([ICSW_URLS.REST_DOMAIN_TREE_NODE_LIST, {}])
                         restDataSource.reload([ICSW_URLS.REST_MON_DEVICE_TEMPL_LIST, {}])
                         restDataSource.reload([ICSW_URLS.REST_MON_EXT_HOST_LIST, {}])
                         restDataSource.reload([ICSW_URLS.REST_DEVICE_TREE_LIST, {"with_network" : true, "with_monitoring_hint" : true, "with_disk_info" : true, "pks" : angular.toJson([scope.device_pk]), "ignore_cdg" : false, "with_com_info": true}])
                     ]
-                    $q.all(wait_list).then((data) ->
-                        #form = data[0][0].form
-                        scope.domain_tree_node = data[0]
-                        scope.mon_device_templ_list = data[1]
-                        scope.mon_ext_host_list = data[2]
-                        scope._edit_obj = data[3][0]
-                        if scope._edit_obj.is_meta_device
-                            scope._edit_obj.name = scope._edit_obj.name.substr(8)
-                        element.children().remove()
-                        element.append($compile($templateCache.get("icsw.device.info.form"))(scope))
+                    $q.all(
+                        [
+                            icswDomainTreeService.fetch(scope.$id)
+                            dev_tree.enrich_devices([scope.edit_obj], ["network_info", "monitoring_hint_info", "disk_info", "com_info"])
+                        ]
+                    ).then(
+                        (data) ->
+                            console.log "******", data
+                            #form = data[0][0].form
+                            scope.domain_tree_node = data[0]
+                            scope.mon_device_templ_list = data[1]
+                            scope.mon_ext_host_list = data[2]
+                            scope._edit_obj = data[3][0]
+                            if scope._edit_obj.is_meta_device
+                                scope._edit_obj.name = scope._edit_obj.name.substr(8)
+                            element.children().remove()
+                            element.append($compile($templateCache.get("icsw.device.info.form"))(scope))
                     )
                 else
                     element.children().remove()
                     element.append($compile('<h2>Details</h2><alert type="warning" style="max-width: 500px">No devices selected.</alert>')(scope))
             scope.is_device = () ->
-                return not scope._edit_obj.is_meta_device
+                return not scope.edit_obj.is_meta_device
             scope.get_monitoring_hint_info = () ->
-                if scope._edit_obj.monitoring_hint_set.length
-                    mhs = scope._edit_obj.monitoring_hint_set
+                if scope.edit_obj.monitoring_hint_set.length
+                    mhs = scope.edit_obj.monitoring_hint_set
                     return "#{mhs.length} (#{(entry for entry in mhs when entry.check_created).length} used for service checks)"
                 else
                     return "---"
             scope.get_ip_info = () ->
-                if scope._edit_obj?
+                if scope.edit_obj?
                     ip_list = []
                     for _nd in scope._edit_obj.netdevice_set
                         for _ip in _nd.net_ip_set
@@ -202,8 +234,8 @@ angular.module(
                 else
                     return "---"
             scope.get_snmp_scheme_info = () ->
-                if scope._edit_obj?
-                    _sc = scope._edit_obj.snmp_schemes
+                if scope.edit_obj?
+                    _sc = scope.edit_obj.snmp_schemes
                     if _sc.length
                         return ("#{_entry.snmp_scheme_vendor.name}.#{_entry.name}" for _entry in _sc).join(", ")
                     else
@@ -211,8 +243,8 @@ angular.module(
                 else
                     return "---"
             scope.get_snmp_info = () ->
-                if scope._edit_obj?
-                    _sc = scope._edit_obj.DeviceSNMPInfo
+                if scope.edit_obj?
+                    _sc = scope.edit_obj.DeviceSNMPInfo
                     if _sc
                         return _sc.description
                     else

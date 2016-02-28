@@ -23,6 +23,7 @@
 """ device views """
 
 import json
+import pprint
 import logging
 import re
 
@@ -34,7 +35,10 @@ from django.utils.decorators import method_decorator
 from django.views.generic import View
 
 from initat.cluster.backbone.models import device_group, device, \
-    cd_connection, domain_tree_node, category
+    cd_connection, domain_tree_node, category, netdevice, ComCapability, \
+    partition_table, monitoring_hint
+from initat.cluster.backbone.serializers import netdevice_serializer, ComCapabilitySerializer, \
+    partition_table_serializer, monitoring_hint_serializer
 from initat.cluster.backbone.models.functions import can_delete_obj
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from initat.tools import logging_tools, server_command, process_tools
@@ -301,11 +305,92 @@ class get_device_location(View):
 
 
 class GetMatchingDevices(View):
-    """Search for device by ip or mac"""
+    """ Search for device by ip or mac """
     @method_decorator(login_required)
     def post(self, request):
         search_str = request.POST['search_str']
         result = device.objects.filter(
             Q(netdevice__macaddr__startswith=search_str) | Q(netdevice__net_ip__ip__startswith=search_str)
         ).values_list('pk', flat=True)
-        return HttpResponse(json.dumps(list(result)))
+        return HttpResponse(json.dumps(list(result)), content_type="application/json")
+
+
+class EnrichmentObject(object):
+    def __init__(self, base_object, serializer, related_name="device", prefetch_list=[], related_list=[]):
+        self.base_object = base_object
+        self.serializer = serializer
+        self.related_name = related_name
+        self.prefetch_list = prefetch_list
+        self.related_list = related_list
+
+    def fetch(self, pk_list):
+        _result = self.base_object.objects.filter(
+            Q(
+                **{
+                    "{}__in".format(self.related_name): pk_list
+                }
+            )
+        ).prefetch_related(
+            *self.prefetch_list
+        ).select_related(
+            *self.related_list
+        )
+        # create data
+        _data = self.serializer(_result, many=True).data
+        return _data
+
+
+class ComCapabilityEnrichment(object):
+    def fetch(self, pk_list):
+        # get reference list
+        _ref_list = ComCapability.objects.filter(
+            Q(device__in=pk_list)
+        ).values("pk", "device__pk")
+        # simple result
+        _result = {
+            _el.pk: _el for _el in ComCapability.objects.filter(
+                Q(device__in=pk_list)
+            )
+        }
+        # manually unroll n2m relations
+        _data = [
+            self.serializer(
+                _result[_ref["pk"]],
+                context={"device": _ref["device__pk"]}
+            ).data for _ref in _ref_list
+        ]
+        return _data
+
+
+class EnrichmentHelper(object):
+    def __init__(self):
+        self._all = {}
+        self._all["network_info"] = EnrichmentObject(netdevice, netdevice_serializer)
+        self._all["disk_info"] = EnrichmentObject(partition_table, partition_table_serializer, related_name="act_partition_table")
+        self._all["com_info"] = ComCapabilityEnrichment()
+        self._all["monitoring_hint_info"] = EnrichmentObject(monitoring_hint, monitoring_hint_serializer)
+
+    def create(self, key, pk_list):
+        if key not in self._all:
+            _error = "Unknown Enrichment type {}".format(key)
+            raise KeyError(_error)
+        else:
+            return self._all[key].fetch(pk_list)
+
+
+_my_en_helper = EnrichmentHelper()
+
+
+class EnrichDevices(View):
+    """ Returns enrichment info for the webfrontend """
+
+    @method_decorator(login_required)
+    def post(self, request):
+        _req = json.loads(request.POST["enrich_request"])
+        # pprint.pprint(_req)
+        result = {}
+        for en_key, pk_list in _req.iteritems():
+            # iterate over enrichment info
+            result[en_key] = _my_en_helper.create(en_key, pk_list)
+        # pprint.pprint(result)
+        return HttpResponse(json.dumps(result), content_type="application/json")

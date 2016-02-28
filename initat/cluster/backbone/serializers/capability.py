@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of cluster-backbone-sql
 #
@@ -51,6 +51,13 @@ class snmp_scheme_serializer(serializers.ModelSerializer):
 
 
 class ComCapabilitySerializer(serializers.ModelSerializer):
+    device = serializers.SerializerMethodField()
+
+    def get_device(self, obj):
+        if self.context and "device" in self.context:
+            return self.context["device"]
+        else:
+            return 0
 
     class Meta:
         model = ComCapability
