@@ -133,84 +133,59 @@ angular.module(
                 iElement.append(new_el)
                 console.log "Overview init"
     }
-]).controller("deviceinfo_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$uibModal", "icswAcessLevelService", "toaster",
-    ($scope, $compile, $filter, $templateCache, Restangular, $q, $uibModal, icswAcessLevelService, toaster) ->
-        icswAcessLevelService.install($scope)
-        $scope.show_uuid = false
-        $scope.image_url = ""
-        $scope.get_image_src = () ->
-            img_url = ""
-            if $scope._edit_obj.mon_ext_host
-                for entry in $scope.mon_ext_host_list
-                    if entry.idx == $scope._edit_obj.mon_ext_host
-                        img_url = entry.data_image
-            return img_url
-        $scope.get_full_name = () ->
-            if $scope._edit_obj.is_meta_device
-                return $scope._edit_obj.full_name.substr(8)
-            else
-                return $scope._edit_obj.full_name
-        $scope.modify = () ->
-            if not $scope.form.$invalid
-                if $scope.acl_modify($scope._edit_obj, "backbone.device.change_basic")
-                    if $scope._edit_obj.is_meta_device
-                        $scope._edit_obj.name = "METADEV_" + $scope._edit_obj.name
-                    $scope._edit_obj.put().then(() ->
-                        if $scope._edit_obj.is_meta_device
-                            $scope._edit_obj.name = $scope._edit_obj.name.substr(8)
-                        # selectively reload sidebar tree
-                        # FIXME, TODO
-                        # reload_sidebar_tree([$scope._edit_obj.idx])
-                    )
-            else
-                toaster.pop("warning", "form validation problem", "", 0)
 ]).directive("icswSimpleDeviceInfo",
 [
     "$templateCache", "$compile", "$uibModal", "Restangular", "restDataSource", "$q", "ICSW_URLS",
     "$rootScope", "ICSW_SIGNALS", "icswDomainTreeService", "icswDeviceTreeService", "icswMonitoringTreeService",
+    "icswAcessLevelService",
 (
     $templateCache, $compile, $uibModal, Restangular, restDataSource, $q, ICSW_URLS,
-    $rootScope, ICSW_SIGNALS, icswDomainTreeService, icswDeviceTreeService, icswMonitoringTreeService
+    $rootScope, ICSW_SIGNALS, icswDomainTreeService, icswDeviceTreeService, icswMonitoringTreeService,
+    icswAcessLevelService
 ) ->
     return {
         restrict : "EA"
-        controller: "deviceinfo_ctrl"
+        # controller: "deviceinfo_ctrl"
         link : (scope, element, attrs) ->
-            scope.edit_obj = null
+            icswAcessLevelService.install(scope)
+            scope.data_valid = false
             scope.$on("$destroy", () ->
             )
             scope.toggle_uuid = () ->
                 scope.show_uuid = !scope.show_uuid
             console.log "SDI init"
+            scope.show_uuid = false
+            scope.image_url = ""
             scope.new_devsel = (in_list) ->
                 if in_list.length > 0
-                    scope.edit_obj = in_list[0]
+                    edit_obj = in_list[0]
                     dev_tree = icswDeviceTreeService.current()
                     $q.all(
                         [
                             icswDomainTreeService.fetch(scope.$id)
                             icswMonitoringTreeService.fetch(scope.$id)
-                            dev_tree.enrich_devices([scope.edit_obj], ["network_info", "monitoring_hint_info", "disk_info", "com_info"])
+                            dev_tree.enrich_devices([edit_obj], ["network_info", "monitoring_hint_info", "disk_info", "com_info"])
                         ]
                     ).then(
                         (data) ->
-
                             console.log "******", data
-                            #form = data[0][0].form
-                            scope.domain_tree_node = data[0]
-                            scope.mon_device_templ_list = data[1]
-                            scope.mon_ext_host_list = data[2]
-                            scope._edit_obj = data[3][0]
-                            if scope._edit_obj.is_meta_device
-                                scope._edit_obj.name = scope._edit_obj.name.substr(8)
+                            scope.data_valid = true
+                            scope.domain_tree = data[0]
+                            scope.monitoring_tree = data[1]
+                            edit_obj = data[2][0]
+                            if edit_obj.is_meta_device
+                                scope.edit_obj = dev_tree.get_group(edit_obj)
+                                template_name = "icsw.devicegroup.info.form"
+                            else
+                                scope.edit_obj = edit_obj
+                                template_name = "icsw.device.info.form"
                             element.children().remove()
-                            element.append($compile($templateCache.get("icsw.device.info.form"))(scope))
+                            element.append($compile($templateCache.get(template_name))(scope))
                     )
                 else
+                    template_name = "icsw.deviceempty.info.form"
                     element.children().remove()
-                    element.append($compile('<h2>Details</h2><alert type="warning" style="max-width: 500px">No devices selected.</alert>')(scope))
-            scope.is_device = () ->
-                return not scope.edit_obj.is_meta_device
+                    element.append($compile($templateCache.get(template_name))(scope))
             scope.get_monitoring_hint_info = () ->
                 if scope.edit_obj.monitoring_hint_set.length
                     mhs = scope.edit_obj.monitoring_hint_set
@@ -220,7 +195,7 @@ angular.module(
             scope.get_ip_info = () ->
                 if scope.edit_obj?
                     ip_list = []
-                    for _nd in scope._edit_obj.netdevice_set
+                    for _nd in scope.edit_obj.netdevice_set
                         for _ip in _nd.net_ip_set
                             ip_list.push(_ip.ip)
                     if ip_list.length
@@ -247,5 +222,28 @@ angular.module(
                         return "none"
                 else
                     return "---"
+            scope.get_image_src = () ->
+                img_url = ""
+                if scope.edit_obj.mon_ext_host
+                    for entry in scope.mon_ext_host_list
+                        if entry.idx == scope.edit_obj.mon_ext_host
+                            img_url = entry.data_image
+                return img_url
+            scope.get_full_name = () ->
+                if scope.edit_obj.is_meta_device
+                    return scope.edit_obj.full_name.substr(8)
+                else
+                    return scope.edit_obj.full_name
+            scope.modify = () ->
+                if not scope.form.$invalid
+                    if scope.acl_modify(scope._edit_obj, "backbone.device.change_basic")
+                        if scope.edit_obj.is_meta_device
+                            scope.edit_obj.name = "METADEV_" + scope.edit_obj.name
+                        scope.edit_obj.put().then(() ->
+                            if scope.edit_obj.is_meta_device
+                                scope.edit_obj.name = scope.edit_obj.name.substr(8)
+                        )
+                else
+                    toaster.pop("warning", "form validation problem", "", 0)
     }
 ])

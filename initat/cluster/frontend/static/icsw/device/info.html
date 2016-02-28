@@ -67,11 +67,16 @@
     </uib-tabset>
 </script>
 
+<script type="text/ng-template" id="icsw.deviceempty.info.form">
+    <h2>Details</h2>
+    <alert type="warning" style="max-width:500px;">No devices selected</alert>
+</script>
+
 <script type="text/ng-template" id="icsw.device.info.form">
     <form class="form-horizontal" ng-submit="modify()" name="form">
         <div>
             <h2>Details for '{{ get_full_name() }}'
-                <img ng-if="_edit_obj.mon_ext_host" ng-src="{{ get_image_src() }}" width="16"></img>
+                <img ng-if="edit_obj.mon_ext_host" ng-src="{{ get_image_src() }}" width="16"></img>
             </h2>
             <fieldset>
                 <legend>Basic settings</legend>
@@ -80,7 +85,7 @@
                         Name<span class="asteriskField">*</span>
                     </label>
                     <div class="controls col-sm-9">
-                        <input class="textinput textInput form-control" maxlength="192" ng-model="_edit_obj.name" required="True" type="text"/>
+                        <input class="textinput textInput form-control" maxlength="192" ng-model="edit_obj.name" required="True" type="text"/>
                     </div>
                 </div>
                 <div class="form-group">
@@ -88,11 +93,11 @@
                         Domain tree node<span class="asteriskField">*</span>
                     </label>
                     <div class="controls col-sm-9">
-                        <ui-select ng-model="_edit_obj.domain_tree_node" style="max-width:400px; min-width:240px;">
+                        <ui-select ng-model="edit_obj.domain_tree_node" style="max-width:400px; min-width:240px;">
                             <ui-select-match class="ui-select-match" placeholder="Select a domain tree node for this device">
                                 {{ $select.selected.tree_info }}
                             </ui-select-match>
-                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in domain_tree_node| props_filter:{tree_info:$select.search}">
+                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in domain_tree.list | props_filter:{tree_info:$select.search}">
                                 <div ng-bind-html="value.tree_info | highlight: $select.search"></div>
                             </ui-select-choices>
                         </ui-select>
@@ -103,26 +108,26 @@
                         Comment
                     </label>
                     <div class="controls col-sm-9">
-                        <input class="textinput textInput form-control" maxlength="384" ng-model="_edit_obj.comment" type="text"/>
+                        <input class="textinput textInput form-control" maxlength="384" ng-model="edit_obj.comment" type="text"/>
                     </div>
                 </div>
-                <div class="form-group" ng_show="is_device()">
+                <div class="form-group">
                     <label class="control-label col-sm-3">
                         Alias
                     </label>
                     <div class="controls col-sm-9">
-                        <input class="textinput textInput form-control" maxlength="384"  ng-model="_edit_obj.alias" type="text"/>
+                        <input class="textinput textInput form-control" maxlength="384"  ng-model="edit_obj.alias" type="text"/>
                     </div>
                 </div>
-                <div class="form-group" ng-show="is_device()">
+                <div class="form-group">
                     <label class="control-label col-sm-3">
                         ComCapabilities
                     </label>
                     <div class="col-sm-9 form-control-static">
-                        <icsw-device-com-capabilities device="_edit_obj" detail="1"></icsw-device-com-capabilities>
+                        <icsw-device-com-capabilities device="edit_obj" detail="1"></icsw-device-com-capabilities>
                     </div>
                 </div>
-                <div class="form-group" ng-show="is_device()">
+                <div class="form-group">
                     <label class="control-label col-sm-3">
                         IP Info
                     </label>
@@ -130,7 +135,7 @@
                         {{ get_ip_info() }}
                     </div>
                 </div>
-                <div class="form-group" ng-show="is_device()">
+                <div class="form-group">
                     <label class="control-label col-sm-3">
                         SNMP scheme
                     </label>
@@ -138,7 +143,7 @@
                         {{ get_snmp_scheme_info() }}
                     </div>
                 </div>
-                <div class="form-group" ng-show="is_device()">
+                <div class="form-group">
                     <label class="control-label col-sm-3">
                         SNMP Info
                     </label>
@@ -147,7 +152,7 @@
                     </div>
                 </div>
             </fieldset>
-            <fieldset ng-show="is_device()">
+            <fieldset>
                 <legend>Monitor settings</legend>
                 <div class="form-group" ng_show="mon_device_templ_list">
                     <label class="control-label col-sm-3">
@@ -156,23 +161,23 @@
 
                     <div class="controls col-sm-9">
                         <div class="input-group" style="max-width:400px; min-width:240px;">
-                            <ui-select ng-model="_edit_obj.mon_device_templ" ng-disabled="false">
+                            <ui-select ng-model="edit_obj.mon_device_templ" ng-disabled="false">
                                 <ui-select-match class="ui-select-match" placeholder="Select a monitoring device template for this device">
                                     {{ $select.selected.name }}
                                 </ui-select-match>
-                                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in mon_device_templ_list| props_filter:{name:$select.search}">
+                                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in monitoring_tree.mon_device_templ_list| props_filter:{name:$select.search}">
                                     <div ng-bind-html="value.name | highlight: $select.search"></div>
                                 </ui-select-choices>
                             </ui-select>
                             <span class="input-group-btn">
-                                <button type="button" ng-click="_edit_obj.mon_device_templ = undefined" class="btn btn-default">
+                                <button type="button" ng-click="edit_obj.mon_device_templ = undefined" class="btn btn-default">
                                     <span class="glyphicon glyphicon-trash"/>
                                 </button>
                             </span>
                         </div>
                     </div>
                 </div>
-                <div class="form-group" ng-show="is_device()">
+                <div class="form-group">
                     <label class="control-label col-sm-3">
                         Monitoring hints
                     </label>
@@ -186,7 +191,7 @@
                             <div class="checkbox">
                                 <div class="controls col-lg-offset-0 col-sm-9">
                                     <label>
-                                        <input checked="checked" class="checkboxinput checkbox" ng-model="_edit_obj.monitor_checks" type="checkbox"/>
+                                        <input checked="checked" class="checkboxinput checkbox" ng-model="edit_obj.monitor_checks" type="checkbox"/>
                                         Checks enabled
                                     </label>
                                 </div>
@@ -196,7 +201,7 @@
                             <div class="checkbox">
                                 <div class="controls col-lg-offset-0 col-sm-9">
                                     <label>
-                                        <input checked="checked" class="checkboxinput checkbox" ng-model="_edit_obj.enable_perfdata" type="checkbox"/>
+                                        <input checked="checked" class="checkboxinput checkbox" ng-model="edit_obj.enable_perfdata" type="checkbox"/>
                                         Enable perfdata, check IPMI and SNMP
                                     </label>
                                 </div>
@@ -208,7 +213,7 @@
                             <div class="checkbox">
                                 <div class="controls col-lg-offset-0 col-sm-9">
                                     <label>
-                                        <input checked="checked" class="checkboxinput checkbox" ng-model="_edit_obj.flap_detection_enabled" type="checkbox"/>
+                                        <input checked="checked" class="checkboxinput checkbox" ng-model="edit_obj.flap_detection_enabled" type="checkbox"/>
                                         Flap detection enabled
                                     </label>
                                 </div>
@@ -218,7 +223,7 @@
                             <div class="checkbox">
                                 <div class="controls col-lg-offset-0 col-sm-9">
                                     <label>
-                                        <input checked="checked" class="checkboxinput checkbox" ng-model="_edit_obj.mon_resolve_name" type="checkbox"/>
+                                        <input checked="checked" class="checkboxinput checkbox" ng-model="edit_obj.mon_resolve_name" type="checkbox"/>
                                         Resolve to IP for monitoring
                                     </label>
                                 </div>
@@ -233,7 +238,7 @@
                     <div class="checkbox">
                         <div class="controls col-lg-offset-0 col-sm-9">
                             <label>
-                                <input checked="checked" class="checkboxinput checkbox" ng-model="_edit_obj.store_rrd_data" type="checkbox"/>
+                                <input checked="checked" class="checkboxinput checkbox" ng-model="edit_obj.store_rrd_data" type="checkbox"/>
                                 Store rrd data
                             </label>
                         </div>
@@ -243,11 +248,11 @@
             <fieldset>
                 <legend>Info</legend>
                 <div class="row">
-                    <div class="col-md-6" ng-show="is_device()">
+                    <div class="col-md-6">
                         <input type="button" value="UUID info" class="btn btn-info" ng-click="toggle_uuid()"></input>
                     </div>
                     <div>
-                        <icsw-tools-button type="modify" button-type="submit" ng-show="acl_modify(_edit_obj, 'backbone.device.change_basic')"></icsw-tools-button>
+                        <icsw-tools-button type="modify" button-type="submit" ng-show="acl_modify(edit_obj, 'backbone.device.change_basic')"></icsw-tools-button>
                     </div>
                 </div>
             </fieldset>
@@ -257,11 +262,61 @@
             <pre><code>&lt;?xml version='1.0' encoding='ASCII'?&gt;
 &lt;config-store name="icsw.device"&gt;
 &lt;key-list&gt;
-&lt;key type="str" name="cluster.device.uuid"&gt;urn:uuid:{{ _edit_obj.uuid }}&lt;/key&gt;
+&lt;key type="str" name="cluster.device.uuid"&gt;urn:uuid:{{ edit_obj.uuid }}&lt;/key&gt;
 &lt;/key-list&gt;
 &lt;/config-store&gt;
 </code></pre>
             <h4>and restart host-monitoring with <code>icsw service restart host-monitoring</code></h4>
+        </div>
+    </form>
+</script>
+
+<script type="text/ng-template" id="icsw.devicegroup.info.form">
+    <form class="form-horizontal" ng-submit="modify()" name="form">
+        <div>
+            <h2>Details for Group '{{ edit_obj.name }}'</h2>
+            <fieldset>
+                <legend>Basic settings</legend>
+                <div class="form-group">
+                    <label class="control-label col-sm-3 requiredField">
+                        Name<span class="asteriskField">*</span>
+                    </label>
+                    <div class="controls col-sm-9">
+                        <input class="textinput textInput form-control" maxlength="192" ng-model="edit_obj.name" required="True" type="text"/>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="control-label col-sm-3 requiredField">
+                        Domain tree node<span class="asteriskField">*</span>
+                    </label>
+                    <div class="controls col-sm-9">
+                        <ui-select ng-model="edit_obj.domain_tree_node" style="max-width:400px; min-width:240px;">
+                            <ui-select-match class="ui-select-match" placeholder="Select a domain tree node for this device">
+                                {{ $select.selected.tree_info }}
+                            </ui-select-match>
+                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in domain_tree.list | props_filter:{tree_info:$select.search}">
+                                <div ng-bind-html="value.tree_info | highlight: $select.search"></div>
+                            </ui-select-choices>
+                        </ui-select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="control-label col-sm-3">
+                        Description
+                    </label>
+                    <div class="controls col-sm-9">
+                        <input class="textinput textInput form-control" maxlength="384" ng-model="edit_obj.description" type="text"/>
+                    </div>
+                </div>
+            </fieldset>
+            <fieldset>
+                <legend>Info</legend>
+                <div class="row">
+                    <div>
+                        <icsw-tools-button type="modify" button-type="submit" ng-show="acl_modify(_edit_obj, 'backbone.device.change_basic')"></icsw-tools-button>
+                    </div>
+                </div>
+            </fieldset>
         </div>
     </form>
 </script>

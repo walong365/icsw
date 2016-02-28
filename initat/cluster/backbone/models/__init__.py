@@ -883,7 +883,7 @@ class device_group(models.Model):
     idx = models.AutoField(db_column="device_group_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192, blank=False)
     # will be copied to comment of meta-device
-    description = models.CharField(max_length=384, default="")
+    description = models.CharField(max_length=384, default="", blank=True)
     # device = models.ForeignKey("device", null=True, blank=True, related_name="group_device")
     # must be an IntegerField, otherwise we have a cycle reference
     # device = models.IntegerField(null=True, blank=True)
@@ -911,6 +911,17 @@ class device_group(models.Model):
 
     def get_metadevice_name(self, name=None):
         return "METADEV_{}".format(name if name else self.name)
+
+    # not really needed
+    # @property
+    # def full_name(self):
+    #    if not self.domain_tree_node_id:
+    #        self.domain_tree_node = domain_tree_node.objects.get(Q(depth=0))
+    #        self.save()
+    #    if self.domain_tree_node.full_name:
+    #        return ".".join([self.name, self.domain_tree_node.full_name])
+    #    else:
+    #        return self.name
 
     class Meta:
         db_table = u'device_group'
