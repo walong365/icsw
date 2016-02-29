@@ -67,6 +67,8 @@ icsw_app = angular.module(
         "icsw.user.password",
         "icsw.user.dashboard",
         "icsw.user.license",
+        "icsw.background.devicetree",
+        "icsw.background.backup",
         "icsw.rrd.graph",
         "icsw.info.background",
         "icsw.server.info",
