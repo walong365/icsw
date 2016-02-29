@@ -59,15 +59,25 @@ angular.module(
             # called after restore
 
 ]).service("icswDeviceBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
     class icswDeviceBackupDefinition extends icswBackupDefinition
+
         constructor: () ->
             super()
-            @simple_attributes = ["name", "comment", "device_group", "domain_tree_node", "enabled"]
+            @simple_attributes = [
+                "name", "comment", "device_group", "domain_tree_node", "enabled",
+                "alias", "mon_device_templ", "monitor_checks", "enable_perfdata",
+                "flap_detection_enabled", "mon_resolve_name", "store_rrd_data"
+            ]
+
 ]).service("icswDeviceGroupBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
     class icswDeviceGroupBackupDefinition extends icswBackupDefinition
+
         constructor: () ->
             super()
             @simple_attributes = ["name", "comment", "domain_tree_node", "enabled"]
+
 ]).service("icswEnrichmentInfo", [() ->
     # stores info about already fetched additional info from server
     class icswEnrichmentInfo
@@ -137,7 +147,7 @@ angular.module(
                 for obj in obj_list
                     if obj.device?
                         _pk = obj.device
-                        @device.all_lut[_pk]._enrichment_info.feed_result(key, obj)
+                        @device.all_lut[_pk].$$_enrichment_info.feed_result(key, obj)
                     else
                         console.log obj
                         throw new Error("No device attribute found in object")
@@ -212,9 +222,10 @@ angular.module(
                 cat.devices = []
             for entry in @all_list
                 # add enrichment info
-                if not entry._enrichment_info?
-                    entry._enrichment_info = new icswEnrichmentInfo(entry)
-                entry.group_object = @group_lut[entry.device_group]
+                if not entry.$$_enrichment_info?
+                    entry.$$_enrichment_info = new icswEnrichmentInfo(entry)
+                # do not set group here to prevent circular dependencies in serializer
+                # entry.group_object = @group_lut[entry.device_group]
                 @group_lut[entry.device_group].devices.push(entry.idx)
                 for cat in entry.categories
                     @cat_lut[cat].devices.push(entry.idx)
@@ -227,6 +238,10 @@ angular.module(
 
         get_meta_device: (dev) =>
             return @all_lut[@group_lut[dev.device_group].device]
+
+        ignore_cdg: (group) =>
+            # return true when group is not the CDG
+            return !group.cluster_device_group
 
         get_group: (dev) =>
             return @group_lut[dev.device_group]
@@ -306,7 +321,7 @@ angular.module(
             # build request
             en_req = @enricher.merge_requests(
                 (
-                    dev._enrichment_info.build_request(en_list) for dev in dev_list
+                    dev.$$_enrichment_info.build_request(en_list) for dev in dev_list
                 )
             )
             icswSimpleAjaxCall(
@@ -319,7 +334,7 @@ angular.module(
                 (result) =>
                     # clear previous values
                     console.log "clear previous enrichment values"
-                    (dev._enrichment_info.clear_infos(en_list) for dev in dev_list)
+                    (dev.$$_enrichment_info.clear_infos(en_list) for dev in dev_list)
                     console.log "set new enrichment values"
                     @enricher.feed_results(result)
                     # resolve with device list
@@ -425,6 +440,7 @@ angular.module(
     )
     register_receiver = () ->
         _receivers += 1
+        console.log "registered receiver"
         $rootScope.$emit(ICSW_SIGNALS("ICSW_DSR_REGISTERED"))
         send_selection()
     sync_selection = (new_sel) ->

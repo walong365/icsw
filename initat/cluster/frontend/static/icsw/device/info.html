@@ -115,6 +115,21 @@
                     </div>
                 </div>
                 <div class="form-group">
+                    <label class="control-label col-sm-3 requiredField">
+                        DeviceGroup<span class="asteriskField">*</span>
+                    </label>
+                    <div class="controls col-sm-9">
+                        <ui-select ng-model="edit_obj.device_group" style="max-width:400px; min-width:240px;">
+                            <ui-select-match class="ui-select-match" placeholder="Select a DeviceGroup for this device">
+                                {{ $select.selected.name }}
+                            </ui-select-match>
+                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in dev_tree.group_list | filter:dev_tree.ignore_cdg | props_filter:{name:$select.search}">
+                                <div ng-bind-html="value.name | highlight: $select.search"></div>
+                            </ui-select-choices>
+                        </ui-select>
+                    </div>
+                </div>
+                <div class="form-group">
                     <label class="control-label col-sm-3">
                         Comment
                     </label>
@@ -198,46 +213,38 @@
                 </div>
                 <div class="row">
                     <div class="col-md-6">
-                        <div class="form-group">
-                            <div class="checkbox">
-                                <div class="controls col-lg-offset-0 col-sm-9">
-                                    <label>
-                                        <input checked="checked" class="checkboxinput checkbox" ng-model="edit_obj.monitor_checks" type="checkbox"/>
-                                        Checks enabled
-                                    </label>
-                                </div>
+                        <div class="form-group row">
+                            <div class="col-md-9 control-label">
+                                <label>Monitoringchecks enabled</label>
+                            </div>
+                            <div class="col-md-3 controls">
+                                <icsw-tools-yes-no flag="edit_obj.monitor_checks"></icsw-tools-yes-no>
                             </div>
                         </div>
-                        <div class="form-group">
-                            <div class="checkbox">
-                                <div class="controls col-lg-offset-0 col-sm-9">
-                                    <label>
-                                        <input checked="checked" class="checkboxinput checkbox" ng-model="edit_obj.enable_perfdata" type="checkbox"/>
-                                        Enable perfdata, check IPMI and SNMP
-                                    </label>
-                                </div>
+                        <div class="form-group row">
+                            <div class="col-md-9 control-label">
+                                <label>Enable perfdata, check IPMI and SNMP</label>
+                            </div>
+                            <div class="col-md-3 controls">
+                                <icsw-tools-yes-no flag="edit_obj.enable_perfdata"></icsw-tools-yes-no>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <div class="form-group">
-                            <div class="checkbox">
-                                <div class="controls col-lg-offset-0 col-sm-9">
-                                    <label>
-                                        <input checked="checked" class="checkboxinput checkbox" ng-model="edit_obj.flap_detection_enabled" type="checkbox"/>
-                                        Flap detection enabled
-                                    </label>
-                                </div>
+                        <div class="form-group row">
+                            <div class="col-md-9 control-label">
+                                <label>Flap detection enabled</label>
+                            </div>
+                            <div class="col-md-3 controls">
+                                <icsw-tools-yes-no flag="edit_obj.flap_detection_enabled"></icsw-tools-yes-no>
                             </div>
                         </div>
-                        <div class="form-group">
-                            <div class="checkbox">
-                                <div class="controls col-lg-offset-0 col-sm-9">
-                                    <label>
-                                        <input checked="checked" class="checkboxinput checkbox" ng-model="edit_obj.mon_resolve_name" type="checkbox"/>
-                                        Resolve to IP for monitoring
-                                    </label>
-                                </div>
+                        <div class="form-group row">
+                            <div class="col-md-9 control-label">
+                                <label>Resolve to IP for monitoring</label>
+                            </div>
+                            <div class="col-md-3 controls">
+                                <icsw-tools-yes-no flag="edit_obj.mon_resolve_name"></icsw-tools-yes-no>
                             </div>
                         </div>
                     </div>
@@ -245,13 +252,15 @@
             </fieldset>
             <fieldset>
                 <legend>RRD / graph settings</legend>
-                <div class="form-group">
-                    <div class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-9">
-                            <label>
-                                <input checked="checked" class="checkboxinput checkbox" ng-model="edit_obj.store_rrd_data" type="checkbox"/>
-                                Store rrd data
-                            </label>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group row">
+                            <div class="col-md-9 control-label">
+                                <label>Store RRD data</label>
+                            </div>
+                            <div class="col-md-3 controls">
+                                <icsw-tools-yes-no flag="edit_obj.store_rrd_data"></icsw-tools-yes-no>
+                            </div>
                         </div>
                     </div>
                 </div>

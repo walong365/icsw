@@ -154,11 +154,11 @@ angular.module(
 [
     "$templateCache", "$compile", "$uibModal", "Restangular", "restDataSource", "$q", "ICSW_URLS",
     "$rootScope", "ICSW_SIGNALS", "icswDomainTreeService", "icswDeviceTreeService", "icswMonitoringTreeService",
-    "icswAcessLevelService", "icswActiveSelectionService",
+    "icswAcessLevelService", "icswActiveSelectionService", "icswDeviceBackup", "icswDeviceGroupBackup",
 (
     $templateCache, $compile, $uibModal, Restangular, restDataSource, $q, ICSW_URLS,
     $rootScope, ICSW_SIGNALS, icswDomainTreeService, icswDeviceTreeService, icswMonitoringTreeService,
-    icswAcessLevelService, icswActiveSelectionService
+    icswAcessLevelService, icswActiveSelectionService, icswDeviceBackup, icswDeviceGroupBackup
 ) ->
     return {
         restrict : "EA"
@@ -167,6 +167,9 @@ angular.module(
             icswAcessLevelService.install(scope)
             scope.data_valid = false
             scope.$on("$destroy", () ->
+                console.log "close req"
+                if scope.bu_obj
+                    scope.bu_obj.restore_backup(scope.edit_obj)
             )
             scope.toggle_uuid = () ->
                 scope.show_uuid = !scope.show_uuid
@@ -176,13 +179,12 @@ angular.module(
             scope.new_devsel = (in_list) ->
                 if in_list.length > 0
                     edit_obj = in_list[0]
-                    dev_tree = icswDeviceTreeService.current()
                     console.log "start enrichment"
                     $q.all(
                         [
                             icswDomainTreeService.fetch(scope.$id)
                             icswMonitoringTreeService.fetch(scope.$id)
-                            dev_tree.enrich_devices([edit_obj], ["network_info", "monitoring_hint_info", "disk_info", "com_info", "snmp_info", "snmp_schemes_info"])
+                            scope.dev_tree.enrich_devices([edit_obj], ["network_info", "monitoring_hint_info", "disk_info", "com_info", "snmp_info", "snmp_schemes_info"])
                         ]
                     ).then(
                         (data) ->
@@ -192,33 +194,66 @@ angular.module(
                             scope.monitoring_tree = data[1]
                             edit_obj = data[2][0]
                             if edit_obj.is_meta_device
-                                scope.edit_obj = dev_tree.get_group(edit_obj)
+                                edit_obj = scope.dev_tree.get_group(edit_obj)
+                                bu_obj = new icswDeviceGroupBackup()
                                 template_name = "icsw.devicegroup.info.form"
                             else
-                                scope.edit_obj = edit_obj
+                                bu_obj = new icswDeviceBackup()
                                 template_name = "icsw.device.info.form"
+                            scope.edit_obj = edit_obj
+                            scope.bu_obj = bu_obj
+                            # create backup
+                            scope.bu_obj.create_backup(scope.edit_obj)
                             console.log "*", template_name, element
                             element.children().remove()
                             element.append($compile($templateCache.get(template_name))(scope))
                     )
                 else
+                    scope.edit_obj = undefined
+                    scope.bu_obj = undefined
                     template_name = "icsw.deviceempty.info.form"
                     element.children().remove()
                     console.log "EMPTY"
                     element.append($compile($templateCache.get(template_name))(scope))
+
+            scope.modify = () ->
+                if not scope.form.$invalid
+                    if scope.acl_modify(scope.edit_obj, "backbone.device.change_basic")
+                        console.log scope.edit_obj
+                        scope.edit_obj.put().then(
+                            (recv) ->
+                                # overwrite current backup
+                                scope.bu_obj.create_backup(scope.edit_obj)
+                                # rebalance tree
+                                scope.dev_tree.reorder()
+                                console.log "saved", recv
+                        )
+                else
+                    toaster.pop("warning", "form validation problem", "", 0)
+
             # set from icsw-sel-man ?
+
             if scope.devicelist?
+                scope.dev_tree = icswDeviceTreeService.current()
                 scope.new_devsel(scope.devicelist)
-            scope.selection_changed = () ->
-                # called when run in full-screen mode (not overview)
-                console.log "C:", icswActiveSelectionService.current()
-                scope.new_devsel((icswDeviceTreeService.current().all_lut[pk] for pk in icswActiveSelectionService.current().tot_dev_sel))
+            else
+                # install receiver from icsw-sel-man
+                scope.selection_changed = () ->
+                    # called when run in full-screen mode (not overview)
+                    scope.dev_tree = icswDeviceTreeService.current()
+                    console.log "C:", icswActiveSelectionService.current(), scope.dev_tree
+                    scope.new_devsel((scope.dev_tree.all_lut[pk] for pk in icswActiveSelectionService.current().tot_dev_sel))
+                scope.register_receiver()
+
+            # helper functions
+
             scope.get_monitoring_hint_info = () ->
                 if scope.edit_obj.monitoring_hint_set.length
                     mhs = scope.edit_obj.monitoring_hint_set
                     return "#{mhs.length} (#{(entry for entry in mhs when entry.check_created).length} used for service checks)"
                 else
                     return "---"
+
             scope.get_ip_info = () ->
                 if scope.edit_obj?
                     ip_list = []
@@ -231,6 +266,7 @@ angular.module(
                         return "none"
                 else
                     return "---"
+
             scope.get_snmp_scheme_info = () ->
                 if scope.edit_obj?
                     _sc = scope.edit_obj.snmp_schemes
@@ -240,6 +276,7 @@ angular.module(
                         return "none"
                 else
                     return "---"
+
             scope.get_snmp_info = () ->
                 if scope.edit_obj?
                     _sc = scope.edit_obj.DeviceSNMPInfo
@@ -249,6 +286,7 @@ angular.module(
                         return "none"
                 else
                     return "---"
+
             scope.get_image_src = () ->
                 img_url = ""
                 if scope.edit_obj.mon_ext_host
@@ -256,21 +294,12 @@ angular.module(
                         if entry.idx == scope.edit_obj.mon_ext_host
                             img_url = entry.data_image
                 return img_url
+
             scope.get_full_name = () ->
                 if scope.edit_obj.is_meta_device
                     return scope.edit_obj.full_name.substr(8)
                 else
                     return scope.edit_obj.full_name
-            scope.modify = () ->
-                if not scope.form.$invalid
-                    if scope.acl_modify(scope._edit_obj, "backbone.device.change_basic")
-                        if scope.edit_obj.is_meta_device
-                            scope.edit_obj.name = "METADEV_" + scope.edit_obj.name
-                        scope.edit_obj.put().then(() ->
-                            if scope.edit_obj.is_meta_device
-                                scope.edit_obj.name = scope.edit_obj.name.substr(8)
-                        )
-                else
-                    toaster.pop("warning", "form validation problem", "", 0)
+
     }
 ])

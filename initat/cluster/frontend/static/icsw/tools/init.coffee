@@ -263,7 +263,6 @@ angular.module(
                 #    )
                 # else
                 # console.log "register on sidebar ?"
-                icswActiveSelectionService.register_receiver()
                 _new_sel = (sel) ->
                     selman_mode = attrs["icswSelManSelMode"] || "d"
                     console.log "SelMan new selection (mode #{selman_mode})", sel
@@ -272,15 +271,18 @@ angular.module(
                         scope.new_devsel(sel)
                     else
                         console.log "no devsel_defined"
-                $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"), (event) ->
-                    if DeviceOverviewSettings.is_active()
-                        console.log "ov is active"
-                    else
-                        if scope.selection_changed?
-                            scope.selection_changed()
+                scope.register_receiver = () ->
+                    $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"), (event) ->
+                        console.log "icsw_overivew_emit_selection received"
+                        if DeviceOverviewSettings.is_active()
+                            console.log "ov is active"
                         else
-                            console.log "no selection_changed defined in scope", scope
-                )
+                            if scope.selection_changed?
+                                scope.selection_changed()
+                            else
+                                console.log "no selection_changed defined in scope", scope
+                    )
+                    icswActiveSelectionService.register_receiver()
                 # _new_sel(DeviceOverviewService.get_selection())
     }
 ]).directive("icswElementSize", ["$parse", ($parse) ->
@@ -309,6 +311,7 @@ angular.module(
         "ICSW_OVERVIEW_SELECTION_CHANGED": "icsw.overview.selection.changed"
         "ICSW_MON_TREE_LOADED": "icsw.mon.tree.loaded"
         "ICSW_OVERVIEW_EMIT_SELECTION": "icws.overview.emit.selection"
+        # "ICSW_READY_TO_RECEIVE_SELECTION": "icsw.ready.to.receive.selection"
     }
     return (name) ->
         if name not of _dict

@@ -398,8 +398,9 @@ angular.module(
     return {
         restrict : "EA"
         link : (scope, element, attrs) ->
+            tree = icswDeviceTreeService.current()
             device = scope.$eval(attrs.device)
-            group = device.group_object
+            group = tree.get_group(device)
             scope.device = device
             scope.group = group
             sel = icswActiveSelectionService.current()

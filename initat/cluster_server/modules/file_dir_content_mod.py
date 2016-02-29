@@ -1,4 +1,4 @@
-# Copyright (C) 2007,2013-2015 Lang-Nevyjel
+# Copyright (C) 2007,2013-2016 Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -17,9 +17,8 @@
 #
 """ fetches informations from files or directories """
 
-from initat.host_monitoring import filesys_tools
-
 import cs_base_class
+from initat.host_monitoring import filesys_tools
 
 
 class get_file_content(cs_base_class.server_com):

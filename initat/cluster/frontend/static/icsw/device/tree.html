@@ -69,18 +69,18 @@
 <script type="text/ng-template" id="icsw.device.tree.cdg.row">
     <td colspan="2"><strong><em>{{ obj.device_group_obj.name }}</em></strong>
     </td>
-    <td>{{ obj.group_object.description }}</td>
+    <td>{{ group.description }}</td>
     <td colspan="2"></td>
-    <td ng-show="hide_lut['tln']">{{ domain_tree.show_dtn(obj.domain_tree_node) }}</td>
+    <td ng-show="hide_lut['tln']">{{ domain_tree.show_dtn(group.domain_tree_node) }}</td>
     <td ng-show="num_shown(['tln'])" colspan="{{ num_shown(['tln']) }}"></td>
     <td>
-        <icsw-tools-button type="modify" size="sm" ng-click="edit_device_group($event, obj.group_object)"></icsw-tools-button>
+        <icsw-tools-button type="modify" size="sm" ng-click="edit_device_group($event, group)"></icsw-tools-button>
     </td>
     <td></td>
 </script> 
 
 <script type="text/ng-template" id="icsw.device.tree.meta.row">
-    <td colspan="2"><strong>{{ obj.group_object.name }}</strong>
+    <td colspan="2"><strong>{{ group.name }}</strong>
         <div class="btn-group btn-group-xs pull-right" ng-show="group.num_devices">
             <input type="button" class="btn btn-success" ng-click="change_dg_sel(1)" value="S"/>
             <input type="button" class="btn btn-primary" ng-click="change_dg_sel(0)" value="T"/>
@@ -96,7 +96,7 @@
     <td ng-show="hide_lut['tln']">{{ domain_tree.show_dtn(obj) }}</td>
     <td ng-show="num_shown(['tln'])" colspan="{{ num_shown(['tln']) }}"></td>
     <td>
-        <icsw-tools-button type="modify" size="xs" ng-click="edit_device_group($event, obj.group_object)"></icsw-tools-button>
+        <icsw-tools-button type="modify" size="xs" ng-click="edit_device_group($event, group)"></icsw-tools-button>
     </td>
     <td>
         <icsw-tools-button ng-show="!group.num_devices" type="delete" size="xs" ng-click="delete_device_group(group)"></icsw-tools-button>
