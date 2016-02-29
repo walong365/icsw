@@ -147,10 +147,10 @@ angular.module(
 ]).controller("icswDeviceNetworkCtrl",
     ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource",
      "$q", "$uibModal", "icswAcessLevelService", "$rootScope", "$timeout", "blockUI", "icswTools", "icswToolsButtonConfigService", "ICSW_URLS",
-    "icswSimpleAjaxCall", "icswToolsSimpleModalService",
+    "icswSimpleAjaxCall", "icswToolsSimpleModalService", "icswDeviceTreeService",
     ($scope, $compile, $filter, $templateCache, Restangular, restDataSource,
      $q, $uibModal, icswAcessLevelService, $rootScope, $timeout, blockUI, icswTools, icswToolsButtonConfigService, ICSW_URLS,
-     icswSimpleAjaxCall, icswToolsSimpleModalService
+     icswSimpleAjaxCall, icswToolsSimpleModalService, icswDeviceTreeService
     ) ->
         $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
         icswAcessLevelService.install($scope)
@@ -256,6 +256,19 @@ angular.module(
                 $scope.snt = data[7]
                 $scope.snt_lut = icswTools.build_lut($scope.snt)
             )
+        # new selection
+        if $scope.devicelist?
+            $scope.dev_tree = icswDeviceTreeService.current()
+            console.log "nwsel"
+            $scope.new_devsel($scope.devicelist)
+        else
+            # install receiver from icsw-sel-man
+            $scope.selection_changed = () ->
+                # called when run in full-screen mode (not overview)
+                $scope.dev_tree = icswDeviceTreeService.current()
+                $scope.new_devsel((scope.dev_tree.all_lut[pk] for pk in icswActiveSelectionService.current().tot_dev_sel))
+            $scope.register_receiver()
+
         $scope.build_luts = () ->
             $scope.dev_lut = {}
             $scope.nd_lut = {}

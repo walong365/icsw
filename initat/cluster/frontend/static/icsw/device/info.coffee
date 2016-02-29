@@ -127,20 +127,21 @@ angular.module(
                 scope.dev_pk_list = (dev.idx for dev in scope.devicelist)
                 # pk list of devices without meta-devices
                 scope.dev_pk_nmd_list = (dev.idx for dev in scope.devicelist when !dev.is_meta_device)
+                scope.device_nmd_list = (dev for dev in scope.devicelist when !dev.is_meta_device)
                 _cur_mode = DeviceOverviewSettings.get_mode()
                 scope["#{_cur_mode}_active"] = true
                 scope.activate = (name) ->
                     DeviceOverviewSettings.set_mode(name)
                     if name in ["network", "status_history", "livestatus", "category"]
-                        scope.pk_list[name] = scope.dev_pk_nmd_list
+                        scope.pk_list[name] = scope.device_nmd_list
                     else if name in ["config", "graphing", "device_variable"]
-                        scope.pk_list[name] = scope.dev_pk_list
+                        scope.pk_list[name] = scope.devicelist
                 if scope.dev_pk_list.length > 1
-                    scope.addon_text = " (#{scope.dev_pk_list.length})"
+                    scope.addon_text = " (#{scope.devicelist.length})"
                 else
                     scope.addon_text = ""
                 if scope.dev_pk_nmd_list.length > 1
-                    scope.addon_text_nmd = " (#{scope.dev_pk_nmd_list.length})"
+                    scope.addon_text_nmd = " (#{scope.device_nmd_list.length})"
                 else
                     scope.addon_text_nmd = ""
                 # destroy old subscope, important

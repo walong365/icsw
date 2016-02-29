@@ -1,4 +1,4 @@
-/*! angular-ladda 0.3.4 */
+/*! angular-ladda 0.3.1 */
 /**!
  * AngularJS Ladda directive
  * @author Chungsub Kim <subicura@subicura.com>
@@ -14,7 +14,7 @@
     define(['angular', 'ladda'], factory);
   } else if (typeof module !== 'undefined' && typeof module.exports === 'object') {
     // CommonJS support (for us webpack/browserify/ComponentJS folks)
-    module.exports = factory(window.angular || require('angular'), require('ladda'));
+    module.exports = factory(require('angular'), require('ladda'));
   } else {
     // in the case of no module loading system
     return factory(root.angular, root.Ladda);
@@ -47,12 +47,6 @@
           if(angular.isUndefined(element.attr('data-style'))) {
             element.attr('data-style', laddaOption.style || 'zoom-in');
           }
-          if(angular.isUndefined(element.attr('data-spinner-size')) && laddaOption.spinnerSize) {
-            element.attr('data-spinner-size', laddaOption.spinnerSize);
-          }
-          if(angular.isUndefined(element.attr('data-spinner-color')) && laddaOption.spinnerColor) {
-            element.attr('data-spinner-color', laddaOption.spinnerColor);
-          }
 
           // ladda breaks childNode's event property.
           // because ladda use innerHTML instead of append node
@@ -83,11 +77,6 @@
             if(angular.isNumber(loading)) {
               ladda.setProgress(loading);
             }
-          });
-          
-          // use remove on scope destroy to stop memory leaks 
-          scope.$on('$destroy', function () {
-              ladda.remove();
           });
         }
       };

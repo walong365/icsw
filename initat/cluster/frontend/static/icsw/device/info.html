@@ -6,6 +6,12 @@
             </uib-tab-heading>
             <icsw-simple-device-info icsw-sel-man="{{ popupmode }}" icsw-device-list="devicelist"></icsw-simple-device-info>
         </uib-tab>
+        <uib-tab ng-if="acl_read(null, 'backbone.device.change_network') && dev_pk_nmd_list.length" select="activate('network')" active="network_active">
+            <uib-tab-heading>
+                Network{{ addon_text_nmd }}
+            </uib-tab-heading>
+            <icsw-device-network-overview icsw-sel-man="{{ popupmode }}" icsw-device-list="pk_list['network']"></icsw-device-network-overview>
+        </uib-tab>
     </uib-tabset>
 </script>
 
