@@ -61,7 +61,7 @@ sources = {
             "frontend/static/css/angular-datetimepicker.css",
             "frontend/static/css/angular-block-ui.css",
             "frontend/static/css/select.css",
-            "frontend/static/css/ladda.min.css",
+            "frontend/static/css/ladda-themeless.min.css",
             "frontend/static/css/tooltip.css",
             "frontend/static/css/smart-table.css",
             "frontend/static/css/font-awesome.min.css",

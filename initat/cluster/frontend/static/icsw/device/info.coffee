@@ -212,8 +212,7 @@ angular.module(
             scope.selection_changed = () ->
                 # called when run in full-screen mode (not overview)
                 console.log "C:", icswActiveSelectionService.current()
-                dev_tree = icswDeviceTreeService.current()
-                scope.new_devsel((dev_tree.all_lut[pk] for pk in icswActiveSelectionService.current().tot_dev_sel))
+                scope.new_devsel((icswDeviceTreeService.current().all_lut[pk] for pk in icswActiveSelectionService.current().tot_dev_sel))
             scope.get_monitoring_hint_info = () ->
                 if scope.edit_obj.monitoring_hint_set.length
                     mhs = scope.edit_obj.monitoring_hint_set

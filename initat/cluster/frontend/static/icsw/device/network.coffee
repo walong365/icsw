@@ -856,6 +856,7 @@ angular.module(
             device: "=device"
             detail: "=detail"
         link: (scope, el, attrs) ->
+            console.log scope.device
             scope.com_class = () ->
                 if scope.pending
                     return "btn-warning"
@@ -874,18 +875,20 @@ angular.module(
             update_com_cap = () ->
                 el.find("span.ladda-label").text("...")
                 scope.pending = true
-                icswCachingCall.fetch(scope.$id, ICSW_URLS.REST_DEVICE_COM_CAPABILITIES, {"devices": "<PKS>"}, [scope.device.idx]).then((data) ->
-                    scope.com_caps = if data[0]? then data[0] else []
-                    scope.pending = false
-                    if scope.com_caps.length
-                        scope.device.com_caps = (_entry.matchcode for _entry in scope.com_caps)
-                        scope.device.com_cap_names = (_entry.name for _entry in scope.com_caps)
-                        if scope.detail?
-                            el.find("span.ladda-label").text(scope.device.com_cap_names.join(", "))
+                icswCachingCall.fetch(scope.$id, ICSW_URLS.REST_DEVICE_COM_CAPABILITIES, {"devices": "<PKS>"}, [scope.device.idx]).then(
+                    (data) ->
+                        console.log "***", data
+                        scope.com_caps = if data[0]? then data[0] else []
+                        scope.pending = false
+                        if scope.com_caps.length
+                            scope.device.com_caps = (_entry.matchcode for _entry in scope.com_caps)
+                            scope.device.com_cap_names = (_entry.name for _entry in scope.com_caps)
+                            if scope.detail?
+                                el.find("span.ladda-label").text(scope.device.com_cap_names.join(", "))
+                            else
+                                el.find("span.ladda-label").text(scope.device.com_caps.join(", "))
                         else
-                            el.find("span.ladda-label").text(scope.device.com_caps.join(", "))
-                    else
-                        el.find("span.ladda-label").text("N/A")
+                            el.find("span.ladda-label").text("N/A")
                 )
             update_com_cap()
     }
