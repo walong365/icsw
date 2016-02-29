@@ -29,7 +29,7 @@ angular.module(
     $stateProvider.state(
         "main.deviceinfo", {
             url: "/deviceinfo"
-            template: '<icsw-simple-device-info icsw-sel-man="0" icsw-sel-man-sel-mode="D"></icsw-simple-device-info>'
+            template: '<icsw-simple-device-info icsw-sel-man="0"></icsw-simple-device-info>'
             data:
                 pageTitle: "Device info"
                 rights: ["user.modify_tree"]
@@ -52,41 +52,54 @@ angular.module(
         get_selection: (sel) ->
             return get_selection()
     }
-]).service("DeviceOverviewService", ["Restangular", "$rootScope", "$templateCache", "$compile", "$uibModal", "$q", "icswAcessLevelService", "icswComplexModalSevice", "DeviceOverviewSelection",
-    (Restangular, $rootScope, $templateCache, $compile, $uibModal, $q, icswAcessLevelService, icswComplexModalSevice, DeviceOverviewSelection) ->
-        return (event) ->
-            # create new modal for device
-            # device object with access_levels
-            _defer = $q.defer()
-            devicelist = DeviceOverviewSelection.get_selection()
-            sub_scope = $rootScope.$new()
-            console.log "devlist", devicelist
-            icswAcessLevelService.install(sub_scope)
-            # pk list of devices
-            sub_scope.dev_pk_list = (dev.idx for dev in devicelist)
-            # pk list of devices without meta-devices
-            sub_scope.dev_pk_nmd_list = (dev.idx for dev in devicelist when !dev.is_meta_device)
-            icswComplexModalSevice(
-                {
-                    message: $compile("<icsw-device-overview></icsw-device-overview>")(sub_scope)
-                    title: "Device Info"
-                    css_class: "modal-wide"
-                    closable: true
-                    show_callback: (modal) ->
-                        _defer.resolve("show")
-                }
-            ).then(
-                (closeinfo) ->
-                    console.log "close deviceoverview #{closeinfo}"
-                    sub_scope.$destroy()
-            )
-            return _defer.promise
-            # my_mixin.edit(null, devicelist[0])
-            # todo: destroy sub_scope
+]).service("DeviceOverviewService",
+[
+    "Restangular", "$rootScope", "$templateCache", "$compile", "$uibModal", "$q", "icswAcessLevelService",
+    "icswComplexModalSevice", "DeviceOverviewSelection", "DeviceOverviewSettings",
+(
+    Restangular, $rootScope, $templateCache, $compile, $uibModal, $q, icswAcessLevelService,
+    icswComplexModalSevice, DeviceOverviewSelection, DeviceOverviewSettings
+) ->
+    return (event) ->
+        # create new modal for device
+        # device object with access_levels
+        _defer = $q.defer()
+        devicelist = DeviceOverviewSelection.get_selection()
+        sub_scope = $rootScope.$new()
+        console.log "devlist", devicelist
+        icswAcessLevelService.install(sub_scope)
+        sub_scope.popupmode = 1
+        sub_scope.devicelist = devicelist
+        icswComplexModalSevice(
+            {
+                message: $compile("<icsw-device-overview></icsw-device-overview>")(sub_scope)
+                title: "Device Info"
+                css_class: "modal-wide"
+                closable: true
+                show_callback: (modal) ->
+                    DeviceOverviewSettings.open()
+                    _defer.resolve("show")
+            }
+        ).then(
+            (closeinfo) ->
+                console.log "close deviceoverview #{closeinfo}"
+                DeviceOverviewSettings.close()
+                sub_scope.$destroy()
+        )
+        return _defer.promise
+        # my_mixin.edit(null, devicelist[0])
+        # todo: destroy sub_scope
 ]).service("DeviceOverviewSettings", [() ->
     # default value
     def_mode = "general"
+    is_active = false
     return {
+        is_active: () ->
+            return is_active
+        open: () ->
+            is_active = true
+        close: () ->
+            is_active = false
         get_mode : () ->
             return def_mode
         set_mode: (mode) ->
@@ -110,6 +123,10 @@ angular.module(
                 }
                 for key of scope.pk_list
                     scope["#{key}_active"] = false
+                # pk list of devices
+                scope.dev_pk_list = (dev.idx for dev in scope.devicelist)
+                # pk list of devices without meta-devices
+                scope.dev_pk_nmd_list = (dev.idx for dev in scope.devicelist when !dev.is_meta_device)
                 _cur_mode = DeviceOverviewSettings.get_mode()
                 scope["#{_cur_mode}_active"] = true
                 scope.activate = (name) ->
@@ -137,11 +154,11 @@ angular.module(
 [
     "$templateCache", "$compile", "$uibModal", "Restangular", "restDataSource", "$q", "ICSW_URLS",
     "$rootScope", "ICSW_SIGNALS", "icswDomainTreeService", "icswDeviceTreeService", "icswMonitoringTreeService",
-    "icswAcessLevelService",
+    "icswAcessLevelService", "icswActiveSelectionService",
 (
     $templateCache, $compile, $uibModal, Restangular, restDataSource, $q, ICSW_URLS,
     $rootScope, ICSW_SIGNALS, icswDomainTreeService, icswDeviceTreeService, icswMonitoringTreeService,
-    icswAcessLevelService
+    icswAcessLevelService, icswActiveSelectionService
 ) ->
     return {
         restrict : "EA"
@@ -160,11 +177,12 @@ angular.module(
                 if in_list.length > 0
                     edit_obj = in_list[0]
                     dev_tree = icswDeviceTreeService.current()
+                    console.log "start enrichment"
                     $q.all(
                         [
                             icswDomainTreeService.fetch(scope.$id)
                             icswMonitoringTreeService.fetch(scope.$id)
-                            dev_tree.enrich_devices([edit_obj], ["network_info", "monitoring_hint_info", "disk_info", "com_info"])
+                            dev_tree.enrich_devices([edit_obj], ["network_info", "monitoring_hint_info", "disk_info", "com_info", "snmp_info", "snmp_schemes_info"])
                         ]
                     ).then(
                         (data) ->
@@ -179,13 +197,23 @@ angular.module(
                             else
                                 scope.edit_obj = edit_obj
                                 template_name = "icsw.device.info.form"
+                            console.log "*", template_name, element
                             element.children().remove()
                             element.append($compile($templateCache.get(template_name))(scope))
                     )
                 else
                     template_name = "icsw.deviceempty.info.form"
                     element.children().remove()
+                    console.log "EMPTY"
                     element.append($compile($templateCache.get(template_name))(scope))
+            # set from icsw-sel-man ?
+            if scope.devicelist?
+                scope.new_devsel(scope.devicelist)
+            scope.selection_changed = () ->
+                # called when run in full-screen mode (not overview)
+                console.log "C:", icswActiveSelectionService.current()
+                dev_tree = icswDeviceTreeService.current()
+                scope.new_devsel((dev_tree.all_lut[pk] for pk in icswActiveSelectionService.current().tot_dev_sel))
             scope.get_monitoring_hint_info = () ->
                 if scope.edit_obj.monitoring_hint_set.length
                     mhs = scope.edit_obj.monitoring_hint_set
@@ -225,7 +253,7 @@ angular.module(
             scope.get_image_src = () ->
                 img_url = ""
                 if scope.edit_obj.mon_ext_host
-                    for entry in scope.mon_ext_host_list
+                    for entry in scope.monitoring_tree.mon_ext_host_list
                         if entry.idx == scope.edit_obj.mon_ext_host
                             img_url = entry.data_image
                 return img_url

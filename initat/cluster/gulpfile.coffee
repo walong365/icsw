@@ -176,7 +176,9 @@ known_options = {
     default: {
         "deploy-dir": "work/icsw"
         "compile-dir": "work/compile"
+        "django": false
     }
+    boolean: ["django"]
 }
 
 options = minimist(process.argv.slice(2), known_options)
@@ -548,7 +550,11 @@ gulp.task("watch", ["maininject"], () ->
 )
 
 bgtask = bg("./runserver.sh")
-gulp.task("django", bgtask)
+
+if options.django
+    gulp.task("django", bgtask)
+else
+    gulp.task("django", () ->)
 
 gulp.task("stop", () ->
     bgtask.stop()

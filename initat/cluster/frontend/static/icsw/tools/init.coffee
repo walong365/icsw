@@ -232,7 +232,12 @@ angular.module(
         CATEGORY_CHANGED: "icsw.tools.msg_bus.1"  # called when any category (membership or category itself) is changed
     }
     return bus
-]).directive("icswSelMan", ["$rootScope", "ICSW_SIGNALS", "DeviceOverviewSelection", ($rootScope, ICSW_SIGNALS, DeviceOverviewService) ->
+]).directive("icswSelMan",
+[
+    "$rootScope", "ICSW_SIGNALS", "DeviceOverviewSelection", "DeviceOverviewSettings", "icswActiveSelectionService",
+(
+    $rootScope, ICSW_SIGNALS, DeviceOverviewService, DeviceOverviewSettings, icswActiveSelectionService
+) ->
     # selection manager directive
     # selman=1 ... popup mode (show devices defined by attribute)
     # selman=0 ... single or multi device mode, depend on sidebar selection
@@ -242,10 +247,7 @@ angular.module(
         link: (scope, el, attrs) ->
             if parseInt(attrs.icswSelMan)
                 # console.log "popup actsm", attrs
-                scope.$watch(attrs["devicepklist"], (new_val) ->
-                    if new_val and new_val.length
-                        scope.new_devsel(new_val)
-                )
+                scope.devicelist = scope.$eval(attrs["icswDeviceList"])
             else
                 # console.log "actsm", attrs
                 # is there a devicepk in the attributes ?
@@ -261,6 +263,7 @@ angular.module(
                 #    )
                 # else
                 # console.log "register on sidebar ?"
+                icswActiveSelectionService.register_receiver()
                 _new_sel = (sel) ->
                     selman_mode = attrs["icswSelManSelMode"] || "d"
                     console.log "SelMan new selection (mode #{selman_mode})", sel
@@ -269,10 +272,16 @@ angular.module(
                         scope.new_devsel(sel)
                     else
                         console.log "no devsel_defined"
-                $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_SELECTION_CHANGED"), (event, new_sel) ->
-                    _new_sel(new_sel)
+                $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"), (event) ->
+                    if DeviceOverviewSettings.is_active()
+                        console.log "ov is active"
+                    else
+                        if scope.selection_changed?
+                            scope.selection_changed()
+                        else
+                            console.log "no selection_changed defined in scope", scope
                 )
-                _new_sel(DeviceOverviewService.get_selection())
+                # _new_sel(DeviceOverviewService.get_selection())
     }
 ]).directive("icswElementSize", ["$parse", ($parse) ->
     # save size of element in scope (specified via icswElementSize)
@@ -299,6 +308,7 @@ angular.module(
         "ICSW_FORCE_TREE_FILTER": "icsw.tree.force.filter"
         "ICSW_OVERVIEW_SELECTION_CHANGED": "icsw.overview.selection.changed"
         "ICSW_MON_TREE_LOADED": "icsw.mon.tree.loaded"
+        "ICSW_OVERVIEW_EMIT_SELECTION": "icws.overview.emit.selection"
     }
     return (name) ->
         if name not of _dict

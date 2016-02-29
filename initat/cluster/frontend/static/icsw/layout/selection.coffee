@@ -76,7 +76,7 @@ angular.module(
             @loaded = []
 
         is_scalar: (req) =>
-            return req in ["disk_info"]
+            return req in ["disk_info", "snmp_info"]
 
         get_attr_name: (req) =>
             _lut = {
@@ -84,6 +84,8 @@ angular.module(
                 "monitoring_hint_info": "monitoring_hint_set"
                 "disk_info": "act_partition_table"
                 "com_info": "com_capability_list"
+                "snmp_info": "devicesnmpinfo"
+                "snmp_schemes_info": "snmp_schemes"
             }
             if req of _lut
                 return _lut[req]
@@ -137,7 +139,7 @@ angular.module(
                         _pk = obj.device
                         @device.all_lut[_pk]._enrichment_info.feed_result(key, obj)
                     else
-                        consoel.log obj
+                        console.log obj
                         throw new Error("No device attribute found in object")
 
 ]).service("icswDeviceTree",
@@ -415,18 +417,25 @@ angular.module(
     cur_selection = new icswSelection([], [], [], [])
     msgbus.receive("devselreceiver", $rootScope, (name, args) ->
         # args is an optional sender name to find errors
+        console.log "ignore old devselreciever"
+        # _receivers += 1
+        # console.log "register dsr"
+        # $rootScope.$emit(ICSW_SIGNALS("ICSW_DSR_REGISTERED"))
+        # send_selection()
+    )
+    register_receiver = () ->
         _receivers += 1
-        console.log "register dsr"
         $rootScope.$emit(ICSW_SIGNALS("ICSW_DSR_REGISTERED"))
         send_selection()
-    )
     sync_selection = (new_sel) ->
         cur_selection.update(new_sel.categories, new_sel.device_groups, new_sel.devices, [])
         cur_selection.sync_with_db(new_sel)
     unsync_selection = () ->
         cur_selection.sync_with_db(undefined)
     send_selection = () ->
-        msgbus.emit("devicelist", cur_selection.get_devsel_list())
+        console.log "emit current device selection"
+        $rootScope.$emit(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"))
+        # msgbus.emit("devicelist", )
     return {
         "num_receivers": () ->
             return _receivers
@@ -442,6 +451,8 @@ angular.module(
             unsync_selection()
         "send_selection": () ->
             send_selection()
+        "register_receiver": () ->
+            register_receiver()
     }
 ]).service("icswSelection", ["icswDeviceTreeService", "$q", "icswSimpleAjaxCall", "ICSW_URLS", "$rootScope", "Restangular", "icswSavedSelectionService", "ICSW_SIGNALS", (icswDeviceTreeService, $q, icswSimpleAjaxCall, ICSW_URLS, $rootScope, Restangular, icswSavedSelectionService, ICSW_SIGNALS) ->
     class Selection
@@ -605,10 +616,13 @@ angular.module(
                 else
                     console.log "device with pk #{_pk} is not resolvable"
             return [dev_pk_list, dev_pk_nmd_list, devg_pk_list, dev_pk_md_list]
+
         category_selected: (cat_idx) ->
             return cat_idx in @cat_sel
+
         device_group_selected: (devg_idx) ->
             return devg_idx in @devg_sel
+
         device_selected: (dev_idx) ->
             if dev_idx in @dev_sel or dev_idx in @tot_dev_sel
                 return true
@@ -643,6 +657,7 @@ angular.module(
                     defer.resolve(data)
             )
             return defer.promise
+
         delete_saved_selection: () =>
             defer = $q.defer()
             @db_obj.remove().then(
@@ -651,6 +666,7 @@ angular.module(
                     defer.resolve(true)
             )
             return defer.promise
+
         select_parent: () ->
             defer = $q.defer()
             icswSimpleAjaxCall(
@@ -665,6 +681,7 @@ angular.module(
                     defer.resolve(data)
             )
             return defer.promise
+
 ]).service("icswSavedSelectionService", ["Restangular", "$q", "ICSW_URLS", "icswUserService", (Restangular, $q, ICSW_URLS, icswUserService) ->
     enrich_selection = (entry) ->
         _created = moment(entry.date)
@@ -873,30 +890,39 @@ angular.module(
             cur_tc.show_selected()
         $scope.is_loading = false
         $scope.selection_changed()
+
     $scope.toggle_show_selection = () ->
         $scope.show_selection = !$scope.show_selection
+
     $scope.activate_tab = (t_type) ->
         $scope.active_tab = t_type
         for tab_key in ["d", "g", "c"]
             $scope.tabs[tab_key] = tab_key == $scope.active_tab
+
     $scope.tabs = {}
+
     $scope.activate_tab($scope.active_tab)
+
     $scope.get_tc = (short) ->
         return {"d" : $scope.tc_devices, "g": $scope.tc_groups, "c" : $scope.tc_categories}[short]
+
     $scope.clear_selection = (tab_name) ->
         _tree = $scope.get_tc(tab_name)
         _tree.clear_selected()
         $scope.search_ok = true
         $scope.selection_changed()
+
     $scope.clear_search = () ->
         if $scope.cur_search_to
             $timeout.cancel($scope.cur_search_to)
         $scope.vars.search_str = ""
         $scope.search_ok = true
+
     $scope.update_search = () ->
         if $scope.cur_search_to
             $timeout.cancel($scope.cur_search_to)
         $scope.cur_search_to = $timeout($scope.set_search_filter, 500)
+
     $scope.set_search_filter = () ->
         if $scope.vars.search_str == ""
             return
@@ -959,14 +985,19 @@ angular.module(
             $scope.search_ok = if num_found > 0 then true else false
             cur_tree.show_selected(false)
             $scope.selection_changed()
+
     $scope.resolve_devices = (sel) ->
         return sel.resolve_devices()
+
     $scope.resolve_total_devices = (sel) ->
         return sel.resolve_total_devices()
+
     $scope.resolve_device_groups = (sel) ->
         return sel.resolve_device_groups()
+
     $scope.resolve_categories = (sel) ->
         return sel.resolve_categories()
+
     $scope.resolve_lazy_selection = () ->
         $scope.selection.resolve_lazy_selection()
         $scope.tc_groups.clear_selected()
@@ -982,6 +1013,7 @@ angular.module(
         $scope.tc_devices.show_selected(false)
         $scope.selection_changed()
         $scope.activate_tab("d")
+
     $scope.selection_changed = () ->
         dev_sel_nodes = $scope.tc_devices.get_selected(
             (entry) ->
@@ -1034,15 +1066,18 @@ angular.module(
         else
             console.log "unsync"
             $scope.synced = false
+
     $scope.call_devsel_func = () ->
         icswActiveSelectionService.send_selection($scope.selection)
         $scope.modal.close()
+
     $scope.enable_saved_selections = () ->
         if not $scope.saved_selections.length
             icswSavedSelectionService.load_selections().then(
                 (data) ->
                     $scope.saved_selections = data
             )
+
     $scope.update_selection = () ->
         $scope.selection.save_db_obj()
     $scope.create_selection = () ->

@@ -36,9 +36,9 @@ from django.views.generic import View
 
 from initat.cluster.backbone.models import device_group, device, \
     cd_connection, domain_tree_node, category, netdevice, ComCapability, \
-    partition_table, monitoring_hint
+    partition_table, monitoring_hint, DeviceSNMPInfo, snmp_scheme
 from initat.cluster.backbone.serializers import netdevice_serializer, ComCapabilitySerializer, \
-    partition_table_serializer, monitoring_hint_serializer
+    partition_table_serializer, monitoring_hint_serializer, DeviceSNMPInfoSerializer, snmp_scheme_serializer
 from initat.cluster.backbone.models.functions import can_delete_obj
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from initat.tools import logging_tools, server_command, process_tools
@@ -362,12 +362,36 @@ class ComCapabilityEnrichment(object):
         return _data
 
 
+class SNMPSchemeEnrichment(object):
+    def fetch(self, pk_list):
+        # get reference list
+        _ref_list = snmp_scheme.objects.filter(
+            Q(device__in=pk_list)
+        ).values("pk", "device__pk")
+        # simple result
+        _result = {
+            _el.pk: _el for _el in snmp_scheme.objects.filter(
+                Q(device__in=pk_list)
+            )
+        }
+        # manually unroll n2m relations
+        _data = [
+            snmp_scheme_serializer(
+                _result[_ref["pk"]],
+                context={"device": _ref["device__pk"]}
+            ).data for _ref in _ref_list
+        ]
+        return _data
+
+
 class EnrichmentHelper(object):
     def __init__(self):
         self._all = {}
         self._all["network_info"] = EnrichmentObject(netdevice, netdevice_serializer)
         self._all["disk_info"] = EnrichmentObject(partition_table, partition_table_serializer, related_name="act_partition_table")
         self._all["com_info"] = ComCapabilityEnrichment()
+        self._all["snmp_info"] = EnrichmentObject(DeviceSNMPInfo, DeviceSNMPInfoSerializer)
+        self._all["snmp_schemes_info"] = SNMPSchemeEnrichment()
         self._all["monitoring_hint_info"] = EnrichmentObject(monitoring_hint, monitoring_hint_serializer)
 
     def create(self, key, pk_list):

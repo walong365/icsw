@@ -4,6 +4,17 @@
             <uib-tab-heading>
                 General
             </uib-tab-heading>
+            <icsw-simple-device-info icsw-sel-man="{{ popupmode }}" icsw-device-list="devicelist"></icsw-simple-device-info>
+        </uib-tab>
+    </uib-tabset>
+</script>
+
+<script type="text/ng-template" id="icsw.device.info.old">
+    <uib-tabset>
+        <uib-tab select="activate('general')" active="general_active">
+            <uib-tab-heading>
+                General
+            </uib-tab-heading>
             <icsw-simple-device-info icsw-sel-man="{{ popupmode }}" devicepklist="devicepklist"></icsw-simple-device-info>
         </uib-tab>
         <uib-tab ng-if="acl_read(null, 'backbone.device.change_network') && dev_pk_nmd_list.length" select="activate('network')" active="network_active">

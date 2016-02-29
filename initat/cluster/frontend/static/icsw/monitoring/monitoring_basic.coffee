@@ -166,11 +166,11 @@ monitoring_basic_module = angular.module("icsw.monitoring.monitoring_basic",
     )
 ]).service("icswMonitoringTree", ["$q", "Restangular", "ICSW_URLS", "ICSW_SIGNALS", "icswTools", ($q, Restangular, ICSW_URLS, ICSW_SIGNALS, icswTools) ->
     class icswMonitoringTree
-        constructor: (@mon_period_list, @mon_notification_list, @host_check_command_list, @mon_service_templ_list, @mon_device_templ_list, @mon_contact_list, @mon_contactgroup_list) ->
+        constructor: (@mon_period_list, @mon_notification_list, @host_check_command_list, @mon_service_templ_list, @mon_device_templ_list, @mon_contact_list, @mon_contactgroup_list, @mon_ext_host_list) ->
             @link()
 
         link: () =>
-            for entry in ["mon_period", "mon_notification", "host_check_command", "mon_service_templ", "mon_device_templ", "mon_contact", "mon_contactgroup"]
+            for entry in ["mon_period", "mon_notification", "host_check_command", "mon_service_templ", "mon_device_templ", "mon_contact", "mon_contactgroup", "mon_ext_host"]
                 @["#{entry}_lut"] = icswTools.build_lut(@["#{entry}_list"])
 ]).service("icswMonitoringTreeService", ["$q", "Restangular", "ICSW_URLS", "icswCachingCall", "icswTools", "$rootScope", "ICSW_SIGNALS", "icswMonitoringTree", ($q, Restangular, ICSW_URLS, icswCachingCall, icswTools, $rootScope, ICSW_SIGNALS, icswMonitoringTree) ->
     # loads the monitoring tree
@@ -196,6 +196,9 @@ monitoring_basic_module = angular.module("icsw.monitoring.monitoring_basic",
         [
             ICSW_URLS.REST_MON_CONTACTGROUP_LIST, {}
         ]
+        [
+            ICSW_URLS.REST_MON_EXT_HOST_LIST, {}
+        ]
     ]
     _fetch_dict = {}
     _result = undefined
@@ -208,7 +211,7 @@ monitoring_basic_module = angular.module("icsw.monitoring.monitoring_basic",
         $q.all(_wait_list).then(
             (data) ->
                 console.log "*** monitoring tree loaded ***"
-                _result = new icswMonitoringTree(data[0], data[1], data[2], data[3], data[4], data[5], data[6])
+                _result = new icswMonitoringTree(data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7])
                 _defer.resolve(_result)
                 for client of _fetch_dict
                     # resolve clients
