@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2015 init.at
+# Copyright (C) 2012-2016 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -82,7 +82,7 @@ angular.module(
                 icswLayoutSelectionDialogService.quick_dialog()
     }
 ]).directive('icswToolsAddAclFunctions', ["icswAcessLevelService", (icswAcessLevelService) ->
-    restrict: 'A'
+    restrict: "A"
     link: (scope, el, attrs) ->
         icswAcessLevelService.install(scope)
 ])

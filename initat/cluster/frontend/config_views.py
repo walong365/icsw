@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2012-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2012-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -45,7 +45,6 @@ from initat.cluster.backbone import serializers
 from initat.cluster.backbone.models import config, device, device_config, ConfigTreeNode, \
     get_related_models, mon_check_command, category, config_str, \
     config_script, config_bool, config_blob, config_int, config_catalog
-from initat.cluster.backbone.render import permission_required_mixin
 from initat.cluster.backbone.serializers import config_dump_serializer, mon_check_command_serializer
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.tools import logging_tools, process_tools, server_command
@@ -60,16 +59,29 @@ logger = logging.getLogger("cluster.config")
 def delete_object(request, del_obj, **kwargs):
     num_ref = get_related_models(del_obj)
     if num_ref:
-        request.xml_response.error("cannot delete {} '{}': {}".format(
-            del_obj._meta.object_name,
-            unicode(del_obj),
-            logging_tools.get_plural("reference", num_ref)), logger)
+        request.xml_response.error(
+            "cannot delete {} '{}': {}".format(
+                del_obj._meta.object_name,
+                unicode(del_obj),
+                logging_tools.get_plural("reference", num_ref)
+            ),
+            logger
+        )
     else:
         del_obj.delete()
         if kwargs.get("xml_log", True):
-            request.xml_response.info("deleted {}".format(del_obj._meta.object_name), logger)
+            request.xml_response.info(
+                "deleted {}".format(
+                    del_obj._meta.object_name
+                ),
+                logger
+            )
         else:
-            logger.info("deleted {}".format(del_obj._meta.object_name))
+            logger.info(
+                "deleted {}".format(
+                    del_obj._meta.object_name
+                )
+            )
 
 
 def _get_device_configs(sel_list, **kwargs):
@@ -200,14 +212,21 @@ class alter_config_cb(View):
                 try:
                     device_config.objects.get(Q(device=cur_dev) & Q(config=cur_conf))
                 except device_config.DoesNotExist:
-                    device_config(device=cur_dev,
-                                  config=cur_conf).save()
+                    device_config(
+                        device=cur_dev,
+                        config=cur_conf
+                    ).save()
                     request.xml_response.info("set config {}".format(unicode(cur_conf)), logger)
                 else:
                     request.xml_response.error("config {} already set".format(unicode(cur_conf)), logger)
             else:
                 try:
                     del_obj = device_config.objects.get(Q(device=cur_dev) & Q(config=cur_conf))
+                except device_config.MultipleObjectsReturned:
+                    del_objs = device_config.objects.filter(Q(device=cur_dev) & Q(config=cur_conf))
+                    for del_obj in del_objs:
+                        delete_object(request, del_obj, xml_log=False)
+                    request.xml_response.info("remove config {}".format(unicode(cur_conf)), logger)
                 except device_config.DoesNotExist:
                     if meta_dev:
                         # check if meta_device has config_set
@@ -224,11 +243,17 @@ class alter_config_cb(View):
                                 add_devs = 0
                                 for set_dev in all_devs.exclude(Q(pk=meta_dev.pk)).exclude(Q(pk=cur_dev.pk)):
                                     add_devs += 1
-                                    device_config(device=set_dev,
-                                                  config=cur_conf).save()
-                                request.xml_response.warn("removed meta conf {} and set {}".format(
-                                    unicode(cur_conf),
-                                    logging_tools.get_plural("device", add_devs)), logger)
+                                    device_config(
+                                        device=set_dev,
+                                        config=cur_conf
+                                    ).save()
+                                request.xml_response.warn(
+                                    "removed meta conf {} and set {}".format(
+                                        unicode(cur_conf),
+                                        logging_tools.get_plural("device", add_devs)
+                                    ),
+                                    logger
+                                )
 
                     else:
                         request.xml_response.warn("config {} already unset".format(unicode(cur_conf)), logger)

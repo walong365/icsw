@@ -55,10 +55,10 @@ angular.module(
 ]).service("DeviceOverviewService",
 [
     "Restangular", "$rootScope", "$templateCache", "$compile", "$uibModal", "$q", "icswAcessLevelService",
-    "icswComplexModalSevice", "DeviceOverviewSelection", "DeviceOverviewSettings",
+    "icswComplexModalService", "DeviceOverviewSelection", "DeviceOverviewSettings",
 (
     Restangular, $rootScope, $templateCache, $compile, $uibModal, $q, icswAcessLevelService,
-    icswComplexModalSevice, DeviceOverviewSelection, DeviceOverviewSettings
+    icswComplexModalService, DeviceOverviewSelection, DeviceOverviewSettings
 ) ->
     return (event) ->
         # create new modal for device
@@ -70,7 +70,7 @@ angular.module(
         icswAcessLevelService.install(sub_scope)
         sub_scope.popupmode = 1
         sub_scope.devicelist = devicelist
-        icswComplexModalSevice(
+        icswComplexModalService(
             {
                 message: $compile("<icsw-device-overview></icsw-device-overview>")(sub_scope)
                 title: "Device Info"
@@ -153,154 +153,150 @@ angular.module(
     }
 ]).directive("icswSimpleDeviceInfo",
 [
-    "$templateCache", "$compile", "$uibModal", "Restangular", "restDataSource", "$q", "ICSW_URLS",
+    "$templateCache", "$compile",
+(
+    $templateCache, $compile
+) ->
+    return {
+        restrict: "EA"
+        controller: "icswSimpleDeviceInfoCtrl"
+        link: (scope, element, attrs) ->
+            scope.$watch("template_name", (new_val) ->
+                if new_val
+                    element.children().remove()
+                    element.append($compile($templateCache.get(new_val))(scope))
+            )
+    }
+]).controller("icswSimpleDeviceInfoCtrl",
+[
+    "$scope", "$uibModal", "Restangular", "restDataSource", "$q", "ICSW_URLS",
     "$rootScope", "ICSW_SIGNALS", "icswDomainTreeService", "icswDeviceTreeService", "icswMonitoringTreeService",
     "icswAcessLevelService", "icswActiveSelectionService", "icswDeviceBackup", "icswDeviceGroupBackup",
 (
-    $templateCache, $compile, $uibModal, Restangular, restDataSource, $q, ICSW_URLS,
+    $scope, $uibModal, Restangular, restDataSource, $q, ICSW_URLS,
     $rootScope, ICSW_SIGNALS, icswDomainTreeService, icswDeviceTreeService, icswMonitoringTreeService,
     icswAcessLevelService, icswActiveSelectionService, icswDeviceBackup, icswDeviceGroupBackup
 ) ->
-    return {
-        restrict : "EA"
-        # controller: "deviceinfo_ctrl"
-        link : (scope, element, attrs) ->
-            icswAcessLevelService.install(scope)
-            scope.data_valid = false
-            scope.$on("$destroy", () ->
-                console.log "close req"
-                if scope.bu_obj
-                    scope.bu_obj.restore_backup(scope.edit_obj)
-            )
-            scope.toggle_uuid = () ->
-                scope.show_uuid = !scope.show_uuid
-            console.log "SDI init"
-            scope.show_uuid = false
-            scope.image_url = ""
-            scope.new_devsel = (in_list) ->
-                if in_list.length > 0
+    icswAcessLevelService.install($scope)
+    $scope.data_valid = false
+    $scope.$on("$destroy", () ->
+        console.log "close req"
+        if $scope.bu_obj
+            $scope.bu_obj.restore_backup($scope.edit_obj)
+    )
+    $scope.toggle_uuid = () ->
+        $scope.show_uuid = !$scope.show_uuid
+    console.log "SDI init"
+    $scope.show_uuid = false
+    $scope.image_url = ""
+    $scope.new_devsel = (in_list) ->
+        if in_list.length > 0
+            icswDeviceTreeService.fetch($scope.$id).then(
+                (tree) ->
+                    $scope.dev_tree = tree
                     edit_obj = in_list[0]
                     console.log "start enrichment"
                     $q.all(
                         [
-                            icswDomainTreeService.fetch(scope.$id)
-                            icswMonitoringTreeService.fetch(scope.$id)
-                            scope.dev_tree.enrich_devices([edit_obj], ["network_info", "monitoring_hint_info", "disk_info", "com_info", "snmp_info", "snmp_schemes_info"])
+                            icswDomainTreeService.fetch($scope.$id)
+                            icswMonitoringTreeService.fetch($scope.$id)
+                            $scope.dev_tree.enrich_devices([edit_obj], ["network_info", "monitoring_hint_info", "disk_info", "com_info", "snmp_info", "snmp_schemes_info"])
                         ]
                     ).then(
                         (data) ->
                             console.log "******", data
-                            scope.data_valid = true
-                            scope.domain_tree = data[0]
-                            scope.monitoring_tree = data[1]
+                            $scope.data_valid = true
+                            $scope.domain_tree = data[0]
+                            $scope.monitoring_tree = data[1]
                             edit_obj = data[2][0]
                             if edit_obj.is_meta_device
-                                edit_obj = scope.dev_tree.get_group(edit_obj)
+                                edit_obj = $scope.dev_tree.get_group(edit_obj)
                                 bu_obj = new icswDeviceGroupBackup()
                                 template_name = "icsw.devicegroup.info.form"
                             else
                                 bu_obj = new icswDeviceBackup()
                                 template_name = "icsw.device.info.form"
-                            scope.edit_obj = edit_obj
-                            scope.bu_obj = bu_obj
+                            $scope.edit_obj = edit_obj
+                            $scope.bu_obj = bu_obj
                             # create backup
-                            scope.bu_obj.create_backup(scope.edit_obj)
-                            console.log "*", template_name, element
-                            element.children().remove()
-                            element.append($compile($templateCache.get(template_name))(scope))
+                            $scope.bu_obj.create_backup($scope.edit_obj)
+                            $scope.template_name = template_name
                     )
-                else
-                    scope.edit_obj = undefined
-                    scope.bu_obj = undefined
-                    template_name = "icsw.deviceempty.info.form"
-                    element.children().remove()
-                    console.log "EMPTY"
-                    element.append($compile($templateCache.get(template_name))(scope))
+            )
+        else
+            $scope.edit_obj = undefined
+            $scope.bu_obj = undefined
+            $scope.template_name = "icsw.deviceempty.info.form"
 
-            scope.modify = () ->
-                if not scope.form.$invalid
-                    if scope.acl_modify(scope.edit_obj, "backbone.device.change_basic")
-                        console.log scope.edit_obj
-                        scope.edit_obj.put().then(
-                            (recv) ->
-                                # overwrite current backup
-                                scope.bu_obj.create_backup(scope.edit_obj)
-                                # rebalance tree
-                                scope.dev_tree.reorder()
-                                console.log "saved", recv
-                        )
-                else
-                    toaster.pop("warning", "form validation problem", "", 0)
+    $scope.modify = () ->
+        if not $scope.form.$invalid
+            if $scope.acl_modify($scope.edit_obj, "backbone.device.change_basic")
+                console.log $scope.edit_obj
+                $scope.edit_obj.put().then(
+                    (recv) ->
+                        # overwrite current backup
+                        $scope.bu_obj.create_backup($scope.edit_obj)
+                        # rebalance tree
+                        $scope.dev_tree.reorder()
+                        console.log "saved", recv
+                )
+        else
+            toaster.pop("warning", "form validation problem", "", 0)
 
-            # set from icsw-sel-man ?
+    # helper functions
 
-            if scope.devicelist?
-                scope.dev_tree = icswDeviceTreeService.current()
-                scope.new_devsel(scope.devicelist)
+    $scope.get_monitoring_hint_info = () ->
+        if $scope.edit_obj.monitoring_hint_set.length
+            mhs = $scope.edit_obj.monitoring_hint_set
+            return "#{mhs.length} (#{(entry for entry in mhs when entry.check_created).length} used for service checks)"
+        else
+            return "---"
+
+    $scope.get_ip_info = () ->
+        if $scope.edit_obj?
+            ip_list = []
+            for _nd in $scope.edit_obj.netdevice_set
+                for _ip in _nd.net_ip_set
+                    ip_list.push(_ip.ip)
+            if ip_list.length
+                return ip_list.join(", ")
             else
-                # install receiver from icsw-sel-man
-                scope.selection_changed = () ->
-                    # called when run in full-screen mode (not overview)
-                    scope.dev_tree = icswDeviceTreeService.current()
-                    console.log "C:", icswActiveSelectionService.current(), scope.dev_tree
-                    scope.new_devsel((scope.dev_tree.all_lut[pk] for pk in icswActiveSelectionService.current().tot_dev_sel))
-                scope.register_receiver()
+                return "none"
+        else
+            return "---"
 
-            # helper functions
+    $scope.get_snmp_scheme_info = () ->
+        if $scope.edit_obj?
+            _sc = $scope.edit_obj.snmp_schemes
+            if _sc.length
+                return ("#{_entry.snmp_scheme_vendor.name}.#{_entry.name}" for _entry in _sc).join(", ")
+            else
+                return "none"
+        else
+            return "---"
 
-            scope.get_monitoring_hint_info = () ->
-                if scope.edit_obj.monitoring_hint_set.length
-                    mhs = scope.edit_obj.monitoring_hint_set
-                    return "#{mhs.length} (#{(entry for entry in mhs when entry.check_created).length} used for service checks)"
-                else
-                    return "---"
+    $scope.get_snmp_info = () ->
+        if $scope.edit_obj?
+            _sc = $scope.edit_obj.DeviceSNMPInfo
+            if _sc
+                return _sc.description
+            else
+                return "none"
+        else
+            return "---"
 
-            scope.get_ip_info = () ->
-                if scope.edit_obj?
-                    ip_list = []
-                    for _nd in scope.edit_obj.netdevice_set
-                        for _ip in _nd.net_ip_set
-                            ip_list.push(_ip.ip)
-                    if ip_list.length
-                        return ip_list.join(", ")
-                    else
-                        return "none"
-                else
-                    return "---"
+    $scope.get_image_src = () ->
+        img_url = ""
+        if $scope.edit_obj.mon_ext_host
+            for entry in $scope.monitoring_tree.mon_ext_host_list
+                if entry.idx == $scope.edit_obj.mon_ext_host
+                    img_url = entry.data_image
+        return img_url
 
-            scope.get_snmp_scheme_info = () ->
-                if scope.edit_obj?
-                    _sc = scope.edit_obj.snmp_schemes
-                    if _sc.length
-                        return ("#{_entry.snmp_scheme_vendor.name}.#{_entry.name}" for _entry in _sc).join(", ")
-                    else
-                        return "none"
-                else
-                    return "---"
+    $scope.get_full_name = () ->
+        if $scope.edit_obj.is_meta_device
+            return $scope.edit_obj.full_name.substr(8)
+        else
+            return $scope.edit_obj.full_name
 
-            scope.get_snmp_info = () ->
-                if scope.edit_obj?
-                    _sc = scope.edit_obj.DeviceSNMPInfo
-                    if _sc
-                        return _sc.description
-                    else
-                        return "none"
-                else
-                    return "---"
-
-            scope.get_image_src = () ->
-                img_url = ""
-                if scope.edit_obj.mon_ext_host
-                    for entry in scope.monitoring_tree.mon_ext_host_list
-                        if entry.idx == scope.edit_obj.mon_ext_host
-                            img_url = entry.data_image
-                return img_url
-
-            scope.get_full_name = () ->
-                if scope.edit_obj.is_meta_device
-                    return scope.edit_obj.full_name.substr(8)
-                else
-                    return scope.edit_obj.full_name
-
-    }
 ])

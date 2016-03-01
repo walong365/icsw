@@ -234,10 +234,11 @@ angular.module(
     return bus
 ]).directive("icswSelMan",
 [
-    "$rootScope", "ICSW_SIGNALS", "DeviceOverviewSelection", "DeviceOverviewSettings", "icswActiveSelectionService",
+    "$rootScope", "ICSW_SIGNALS", "DeviceOverviewSelection", "DeviceOverviewSettings", "icswActiveSelectionService", "icswDeviceTreeService",
 (
-    $rootScope, ICSW_SIGNALS, DeviceOverviewService, DeviceOverviewSettings, icswActiveSelectionService
+    $rootScope, ICSW_SIGNALS, DeviceOverviewService, DeviceOverviewSettings, icswActiveSelectionService, icswDeviceTreeService
 ) ->
+    # important: for icsw-sel-man to work the controller has to be specified separatedly (and not via overloading the link-function)
     # selection manager directive
     # selman=1 ... popup mode (show devices defined by attribute)
     # selman=0 ... single or multi device mode, depend on sidebar selection
@@ -245,45 +246,28 @@ angular.module(
         restrict: "A"
         priority: -100
         link: (scope, el, attrs) ->
+            console.log "link selman to scope", scope
+            _new_sel = (sel) ->
+                selman_mode = attrs["icswSelManSelMode"] || "d"
+                console.log "SelMan new selection (mode #{selman_mode})", sel
+                selman_mode = attrs["icswSelManSelMode"] || "d"
+                if scope.new_devsel?
+                    scope.new_devsel(sel)
+                else
+                    console.log "no devsel_defined"
             if parseInt(attrs.icswSelMan)
-                # console.log "popup actsm", attrs
-                scope.devicelist = scope.$eval(attrs["icswDeviceList"])
+                # popup mode
+                _new_sel(scope.$eval(attrs["icswDeviceList"]))
             else
-                # console.log "actsm", attrs
-                # is there a devicepk in the attributes ?
-                # if attrs["devicepk"]?
-                #    # yes, watch for changes
-                #    scope.$watch(attrs["devicepk"], (new_val) ->
-                #        if new_val
-                #            if angular.isArray(new_val)
-                #                if new_val.length
-                #                    scope.new_devsel(new_val)
-                #            else
-                #                scope.new_devsel([new_val])
-                #    )
-                # else
-                # console.log "register on sidebar ?"
-                _new_sel = (sel) ->
-                    selman_mode = attrs["icswSelManSelMode"] || "d"
-                    console.log "SelMan new selection (mode #{selman_mode})", sel
-                    selman_mode = attrs["icswSelManSelMode"] || "d"
-                    if scope.new_devsel?
-                        scope.new_devsel(sel)
+                $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"), (event) ->
+                    console.log "icsw_overivew_emit_selection received"
+                    if DeviceOverviewSettings.is_active()
+                        console.log "ov is active"
                     else
-                        console.log "no devsel_defined"
-                scope.register_receiver = () ->
-                    $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"), (event) ->
-                        console.log "icsw_overivew_emit_selection received"
-                        if DeviceOverviewSettings.is_active()
-                            console.log "ov is active"
-                        else
-                            if scope.selection_changed?
-                                scope.selection_changed()
-                            else
-                                console.log "no selection_changed defined in scope", scope
-                    )
-                    icswActiveSelectionService.register_receiver()
-                # _new_sel(DeviceOverviewService.get_selection())
+                        _tree = icswDeviceTreeService.current()
+                        _new_sel((_tree.all_lut[pk] for pk in icswActiveSelectionService.current().tot_dev_sel))
+                )
+                icswActiveSelectionService.register_receiver()
     }
 ]).directive("icswElementSize", ["$parse", ($parse) ->
     # save size of element in scope (specified via icswElementSize)
@@ -306,6 +290,7 @@ angular.module(
         "ICSW_DSR_REGISTERED": "icsw.dsr.registered"
         "ICSW_SELECTOR_SHOW": "icsw.selector.show"
         "ICSW_TREE_LOADED": "icsw.tree.loaded"
+        "ICSW_NETWORK_TREE_LOADED": "icsw.network.tree.loaded"
         "ICSW_DTREE_FILTER_CHANGED": "icsw.dtree.filter.changed"
         "ICSW_FORCE_TREE_FILTER": "icsw.tree.force.filter"
         "ICSW_OVERVIEW_SELECTION_CHANGED": "icsw.overview.selection.changed"
@@ -803,7 +788,7 @@ angular.module(
         template : $templateCache.get("icsw.tools.old.paginator")
         link     : link
     }
-]).service("icswComplexModalSevice", ["$q", ($q) ->
+]).service("icswComplexModalService", ["$q", ($q) ->
     return (in_dict) ->
         # build buttons list
         buttons = []

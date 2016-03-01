@@ -41,7 +41,8 @@ angular.module(
         link: (scope, element, attrs, ctrl) ->
             scope.$watch(
                 ctrl.getFilteredCollection
-                (new_val) -> $parse(attrs.icswToolsTableLeakFiltered).assign(scope, new_val)
+                (new_val) ->
+                    $parse(attrs.icswToolsTableLeakFiltered).assign(scope, new_val)
             )
     }
 ]).directive('icswToolsTableNumSelected', ["$parse", ($parse) ->
@@ -51,7 +52,8 @@ angular.module(
         link: (scope, element, attrs, ctrl) ->
             scope.$watch(
                 ctrl.getNumberOfSelectedEntries
-                (new_val) -> $parse(attrs.icswToolsTableNumSelected).assign(scope, new_val)
+                (new_val) ->
+                    $parse(attrs.icswToolsTableNumSelected).assign(scope, new_val)
             )
     }
 ]).directive('icswToolsPagination', ["$templateCache", "$parse", ($templateCache, $parse) ->
@@ -341,6 +343,78 @@ angular.module(
                                 )
                     )
         }
+]).directive('icswToolsRestTableNew',
+[
+    "Restangular", "$parse", "$injector", "$compile", "$templateCache", "icswTools", "icswToolsSimpleModalService", "toaster", "$timeout",
+(
+    Restangular, $parse, $injector, $compile, $templateCache, icswTools, icswToolsSimpleModalService, toaster, $timeout
+) ->
+    return {
+        restrict: 'EA'
+        scope: true
+        link: (scope, element, attrs) ->
+            scope.config_service = $injector.get(attrs.configService)
+
+            # scope.config_service.use_modal ?= true
+
+            if scope.config_service.many_delete?
+                scope.many_delete = scope.config_service.many_delete
+            else
+                scope.many_delete = false
+
+            scope.data_received = (new_data) ->
+                $parse(attrs.targetList).assign(scope, new_data)
+                # behold, the recommended javascript implementation of list.clear():
+                # also the code below does not work if we execute it immediately, but this works:
+                # fn = () ->
+                #    if scope.config_service.post_reload_func?
+                #        scope.config_service.post_reload_func()
+
+                # $timeout(fn, 0)
+                # NOTE: this also makes the watch below work, see below before changing this
+
+
+            if scope.config_service.init_fn?
+                scope.config_service.init_fn(scope)
+
+            scope.config_service.fetch(scope).then(
+                (list) ->
+                    scope.data_received(list)
+            )
+
+            # interface functions to use in directive body
+            scope.edit = (event, obj) ->
+                scope.create_or_edit(event, false, obj)
+
+            scope.create = (event, parent_obj) ->
+                if typeof(scope.config_service.new_object) == "function"
+                    scope.new_obj = scope.config_service.new_object(parent_obj)
+                else
+                    scope.new_obj = scope.config_service.new_object
+                scope.create_or_edit(event, true, scope.new_obj)
+
+            scope.create_or_edit = (event, create, obj_or_parent) ->
+                scope.config_service.create_or_edit(scope, event, create, obj_or_parent)
+
+            scope.form_error = (field_name) ->
+                # temporary fix, FIXME
+                # scope.form should never be undefined
+                if scope.form?
+                    if scope.form[field_name]?
+                        if scope.form[field_name].$valid
+                            return ""
+                        else
+                            return "has-error"
+                    else
+                        return ""
+                else
+                    return ""
+
+            scope.delete = (obj, $event) ->
+                if $event
+                    $event.stopPropagation()
+                scope.config_service.delete(obj)
+    }
 ]).directive('icswToolsShowHideColumns', () ->
     return {
         restrict: 'EA'

@@ -479,131 +479,13 @@
         </uib-tab>
 
         <uib-tab heading="Networks">
-            <icsw-tools-rest-table target-list="entries" config-service="icswNetworkService">
-                <h3>
-                    Networks ({{entries.length}} entries),
-                    <div class="btn-group">
-                        <icsw-tools-button type="create" ng-click="create($event)" size="sm"></icsw-tools-button>
-                        <icsw-tools-button type="reload" ng-click="reload()" size="sm"></icsw-tools-button>
-                        <icsw-tools-button type="create" value="Scan networks" ng-if="!entries.length" ng-click="scan_networks()" size="sm"></icsw-tools-button>
-                    </div>
-                </h3>
-
-                <table st-table="entries_displayed" st-safe-src="entries" ng-show="entries.length"
-                       class="table table-hover table-condensed table-striped" style="width:auto;">
-
-                    <thead>
-                        <tr>
-                            <td colspan="99">
-                                <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
-                                     possible-items-by-page="10,20,50,100,200,500,1000">
-                                </div>
-                                <icsw-tools-show-hide-columns columns="network gateway autorange prefDTN" create-show-column="true">
-                                </icsw-tools-show-hide-columns>
-                            </td>
-                        </tr>
-                        <tr>
-                            <th st-sort="identifier" st-sort-default="true">Id</th>
-                            <th ng-show="show_column.network" st-sort="network">Network definition</th>
-                            <th ng-show="show_column.gateway" st-sort="gateway">Gateway</th>
-                            <th ng-show="show_column.gateway" st-sort="gw_pri">gw pri</th>
-                            <th ng-show="show_column.autorange">AutoRange</th>
-                            <th st-sort="num_ip">#IPs</th>
-                            <th st-sort="penalty">Penalty</th>
-                            <th st-sort="enforce_unique_ips">uniqueIP</th>
-                            <th st-sort="network_type">Type</th>
-                            <th st-sort="master_network">Master</th>
-                            <th ng-show="show_column.prefDTN">preferred DTN</th>
-                            <th st-sort="network_device_type">devtype(s)</th>
-                            <th colspan="2" class="text-center">action</th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
-                        <tr ng-repeat="obj in entries_displayed">
-                            <td>{{ obj.identifier }}</td>
-                            <td ng-show="show_column.network" style="font-family:monospace;">
-                                <span style="background-color:#ededed;" ng-bind-html="obj.network | ip_fixed_width"></span> /
-                                <span style="background-color:#ededed;" ng-bind-html="obj.netmask | ip_fixed_width"></span> /
-                                <span style="background-color:#ededed;" ng-bind-html="obj.broadcast | ip_fixed_width"></span>
-                            </td>
-                            <td ng-show="show_column.gateway" style="font-family:monospace;">
-                                <span style="background-color:#ededed;" ng-bind-html="obj.gateway | ip_fixed_width"></span>
-                            </td>
-                            <td ng-show="show_column.gateway" class="text-center">
-                                <span class="badge">{{ obj.gw_pri }}</span>
-                            </td>
-                            <td ng-show="show_column.autorange" style="font-family:monospace;">
-                                <span ng-switch="config_service.autorange_set(obj)">
-                                    <span ng-switch-when="true">
-                                        <span style="background-color:#ededed;" ng-bind-html="obj.start_range | ip_fixed_width"></span> -
-                                        <span style="background-color:#ededed;" ng-bind-html="obj.end_range | ip_fixed_width"></span>
-                                    </span>
-                                    <span ng-switch-default>
-                                        ----
-                                    </span>
-                                </span>
-                            </td>
-                            <td class="text-right">{{ obj.num_ip }}</td>
-                            <td class="text-center">{{ obj.penalty }}</td>
-                            <td class="text-center">{{ obj.enforce_unique_ips | yesno1 }}</td>
-                            <td>
-                                {{ obj.network_type | array_lookup:config_service.network_types:'description' }}
-                            </td>
-                            <td>
-                                {{ obj.master_network | array_lookup:entries:'identifier':'---' }}
-                            </td>
-                            <td ng-show="show_column.prefDTN">
-                                {{ config_service.preferred_dtn(obj) }}
-                            </td>
-                            <td>
-                                {{ obj.network_device_type | resolve_n2m:config_service.network_device_types:'identifier':'---' }}
-                            </td>
-                            <td>
-                                <icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"/>
-                            </td>
-                            <td>
-                                <icsw-tools-button type="delete" ng-show="obj.num_ip == 0" ng-click="delete(obj)" size="xs">
-                                </icsw-tools-button>
-                                <icsw-tools-button type="show" ng-show="obj.num_ip > 0" size="xs"
-                                                   is-show="config_service.network_display.active_network != obj "
-                                                   ng-click="config_service.show_network(obj)">
-                                </icsw-tools-button>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-
-                <div ng-show="config_service.network_display.active_network" >
-                    <h3>Network {{ config_service.network_display.active_network.identifier }}, {{ config_service.network_display.active_network.num_ip }} IP addresses</h3>
-                    <table st-table="network_entries_displayed" st-safe-src="config_service.network_display.iplist" class="table table-condensed table-hover" style="width:auto;">
-                        <thead>
-                            <tr>
-                                <td colspan="99">
-                                    <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th st-sort="ip">IP</th>
-                                <th st-sort="netdevice_name">Netdevice</th>
-                                <th st-sort="device_full_name">Device</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr ng-repeat="obj in network_entries_displayed">
-                               <td>{{ obj.ip }}</td>
-                               <td>{{ obj.netdevice_name }}</td>
-                               <td>{{ obj.device_full_name }}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </icsw-tools-rest-table>
+            <icsw-network-list></icsw-network-list>
         </uib-tab>
 
         <uib-tab heading="Network types">
-            <icsw-tools-rest-table target-list="entries" config-service="icswNetworkTypeService">
-                <h3>Network types ({{entries.length}} entries), <icsw-tools-button type="create" value="create new" ng-click="create($event)" size="sm"/></h3>
+            <icsw-tools-rest-table-new target-list="entries" config-service="icswNetworkTypeService">
+                <h3>Network types ({{entries.length}} entries)</h3>
+                <icsw-tools-button type="create" value="create new" ng-click="create($event)" size="sm"/>
                 <table st-table="entries_displayed" st-safe-src="entries"
                        class="table table-hover table-condensed table-striped" style="width:auto;">
                     <thead>
@@ -615,19 +497,20 @@
                     </thead>
                     <tbody>
                         <tr ng-repeat="obj in entries_displayed">
-                            <td>{{ obj.identifier }}</td>
+                            <td>{{ config_service.resolve_type(obj.identifier) }} ({{ obj.identifier }})</td>
                             <td>{{ obj.description }}</td>
                             <td><icsw-tools-button type="modify" ng-click="edit($event, obj)" size="xs"></icsw-tools-button></td>
                             <td><icsw-tools-button type="delete" ng-click="delete(obj)" size="xs"></icsw-tools-button></td>
                         </tr>
                     </tbody>
                 </table>
-            </icsw-tools-rest-table>
+            </icsw-tools-rest-table-new>
         </uib-tab>
 
         <uib-tab heading="Network device types">
-            <icsw-tools-rest-table target-list="entries" config-service="icswNetworkDeviceTypeService">
-                <h3>Network device types ({{entries.length}} entries), <icsw-tools-button type="create" ng-click="create($event)" size="sm"/></h3>
+            <icsw-tools-rest-table-new target-list="entries" config-service="icswNetworkDeviceTypeService">
+                <h3>Network device types ({{entries.length}} entries)</h3>
+                <icsw-tools-button type="create" ng-click="create($event)" size="sm"/>
                 <table st-table="entries_displayed" st-safe-src="entries"
                        class="table table-hover table-condensed table-striped" style="width:auto;">
                     <thead>
@@ -661,21 +544,143 @@
                         </tr>
                     </tbody>
                 </table>
-            </icsw-tools-rest-table>
+            </icsw-tools-rest-table-new>
         </uib-tab>
     </uib-tabset>
 </script>
 
+<script type="text/ng-template" id="icsw.network.list">
+    <icsw-tools-rest-table target-list="entries" config-service="icswNetworkListService">
+        <h3>
+            Networks ({{entries.length}} entries),
+            <div class="btn-group">
+                <icsw-tools-button type="create" ng-click="create($event)" size="sm"></icsw-tools-button>
+                <icsw-tools-button type="reload" ng-click="reload()" size="sm"></icsw-tools-button>
+                <icsw-tools-button type="create" value="Scan networks" ng-if="!entries.length" ng-click="scan_networks()" size="sm"></icsw-tools-button>
+            </div>
+        </h3>
+
+        <table st-table="entries_displayed" st-safe-src="entries" ng-show="entries.length"
+               class="table table-hover table-condensed table-striped" style="width:auto;">
+
+            <thead>
+                <tr>
+                    <td colspan="99">
+                        <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                             possible-items-by-page="10,20,50,100,200,500,1000">
+                        </div>
+                        <icsw-tools-show-hide-columns columns="network gateway autorange prefDTN" create-show-column="true">
+                        </icsw-tools-show-hide-columns>
+                    </td>
+                </tr>
+                <tr>
+                    <th st-sort="identifier" st-sort-default="true">Id</th>
+                    <th ng-show="show_column.network" st-sort="network">Network definition</th>
+                    <th ng-show="show_column.gateway" st-sort="gateway">Gateway</th>
+                    <th ng-show="show_column.gateway" st-sort="gw_pri">gw pri</th>
+                    <th ng-show="show_column.autorange">AutoRange</th>
+                    <th st-sort="num_ip">#IPs</th>
+                    <th st-sort="penalty">Penalty</th>
+                    <th st-sort="enforce_unique_ips">uniqueIP</th>
+                    <th st-sort="network_type">Type</th>
+                    <th st-sort="master_network">Master</th>
+                    <th ng-show="show_column.prefDTN">preferred DTN</th>
+                    <th st-sort="network_device_type">devtype(s)</th>
+                    <th colspan="2" class="text-center">action</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                <tr ng-repeat="obj in entries_displayed">
+                    <td>{{ obj.identifier }}</td>
+                    <td ng-show="show_column.network" style="font-family:monospace;">
+                        <span style="background-color:#ededed;" ng-bind-html="obj.network | ip_fixed_width"></span> /
+                        <span style="background-color:#ededed;" ng-bind-html="obj.netmask | ip_fixed_width"></span> /
+                        <span style="background-color:#ededed;" ng-bind-html="obj.broadcast | ip_fixed_width"></span>
+                    </td>
+                    <td ng-show="show_column.gateway" style="font-family:monospace;">
+                        <span style="background-color:#ededed;" ng-bind-html="obj.gateway | ip_fixed_width"></span>
+                    </td>
+                    <td ng-show="show_column.gateway" class="text-center">
+                        <span class="badge">{{ obj.gw_pri }}</span>
+                    </td>
+                    <td ng-show="show_column.autorange" style="font-family:monospace;">
+                        <span ng-switch="config_service.autorange_set(obj)">
+                            <span ng-switch-when="true">
+                                <span style="background-color:#ededed;" ng-bind-html="obj.start_range | ip_fixed_width"></span> -
+                                <span style="background-color:#ededed;" ng-bind-html="obj.end_range | ip_fixed_width"></span>
+                            </span>
+                            <span ng-switch-default>
+                                ----
+                            </span>
+                        </span>
+                    </td>
+                    <td class="text-right">{{ obj.num_ip }}</td>
+                    <td class="text-center">{{ obj.penalty }}</td>
+                    <td class="text-center">{{ obj.enforce_unique_ips | yesno1 }}</td>
+                    <td>
+                        {{ obj.network_type | array_lookup:config_service.network_types:'description' }}
+                    </td>
+                    <td>
+                        {{ obj.master_network | array_lookup:entries:'identifier':'---' }}
+                    </td>
+                    <td ng-show="show_column.prefDTN">
+                        config_service.preferred_dtn(obj)
+                    </td>
+                    <td>
+                        {{ obj.network_device_type }} <!-- | resolve_n2m:config_service.network_device_types:'identifier':'---' }} -->
+                    </td>
+                    <td>
+                        <icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"/>
+                    </td>
+                    <td>
+                        <icsw-tools-button type="delete" ng-show="obj.num_ip == 0" ng-click="delete(obj)" size="xs">
+                        </icsw-tools-button>
+                        <icsw-tools-button type="show" ng-show="obj.num_ip > 0" size="xs"
+                                           is-show="config_service.network_display.active_network != obj "
+                                           ng-click="config_service.show_network(obj)">
+                        </icsw-tools-button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div ng-show="config_service.network_display.active_network" >
+            <h3>Network {{ config_service.network_display.active_network.identifier }}, {{ config_service.network_display.active_network.num_ip }} IP addresses</h3>
+            <table st-table="network_entries_displayed" st-safe-src="config_service.network_display.iplist" class="table table-condensed table-hover" style="width:auto;">
+                <thead>
+                    <tr>
+                        <td colspan="99">
+                            <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th st-sort="ip">IP</th>
+                        <th st-sort="netdevice_name">Netdevice</th>
+                        <th st-sort="device_full_name">Device</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr ng-repeat="obj in network_entries_displayed">
+                       <td>{{ obj.ip }}</td>
+                       <td>{{ obj.netdevice_name }}</td>
+                       <td>{{ obj.device_full_name }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </icsw-tools-rest-table>
+</script>
+
 <script type="text/ng-template" id="network.device.type.form">
-    <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
-        <h2>Network device type</h2>
+    <form id="form" class="form-horizontal" name="form_data">
         <fieldset>
             <legend>Base data</legend>
             <div class="form-group ng-class:form_error('identifier')">
                 <label class="control-label col-sm-3 requiredField">
                     Identifier<span class="asteriskField">*</span></label>
                 <div class="controls col-sm-7">
-                    <input class="textinput textInput form-control" maxlength="48" name="identifier" ng-model="edit_obj.identifier" placeholder="Identifier" required="True" type="text"/>
+                    <input class="textinput textInput form-control" maxlength="48" ng-model="edit_obj.identifier" placeholder="Identifier" required="True" type="text"/>
                 </div>
             </div>
             <div class="form-group ng-class:form_error('description')">
@@ -683,14 +688,14 @@
                     Description<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
-                    <input class="textinput textInput form-control" maxlength="192" name="description" ng-model="edit_obj.description" placeholder="Description" required="True" type="text"/>
+                    <input class="textinput textInput form-control" maxlength="192" ng-model="edit_obj.description" placeholder="Description" required="True" type="text"/>
                 </div>
             </div>
             <div class="form-group ng-class:form_error('name_re')">
                 <label class="control-label col-sm-3 requiredField">
                     Name regexp<span class="asteriskField">*</span></label>
                 <div class="controls col-sm-7">
-                    <input class="textinput textInput form-control" maxlength="128" name="name_re" ng-model="edit_obj.name_re" placeholder="Regular expression" required="True" type="text" value="^.*$"/>
+                    <input class="textinput textInput form-control" maxlength="128" ng-model="edit_obj.name_re" placeholder="Regular expression" required="True" type="text" value="^.*$"/>
                 </div>
             </div>
             <div class="form-group">
@@ -698,7 +703,7 @@
                     #MAC bytes<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
-                    <input class="numberinput form-control" max="24" min="6" ng-model="edit_obj.mac_bytes" placeholder="MAC bytes" required="True" type="number" value="6"></input>
+                    <input class="numberinput form-control" max="24" min="6" ng-model="edit_obj.mac_bytes" placeholder="MAC bytes" required="True" type="number" value="6"/>
                 </div>
             </div>
         </fieldset>
@@ -725,7 +730,6 @@
                 </div>
             </div>
         </fieldset>
-        <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="get_action_string()"></input></div>
     </form>
 </script>
 
@@ -1214,7 +1218,7 @@
 </script>
 
 <script type="text/ng-template" id="network.type.form">
-    <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
+    <form id="form" class="form-horizontal" name="form_data">
         <fieldset>
             <legend>Base data</legend>
             <div class="form-group  ng-class:form_error('description')">
@@ -1222,7 +1226,7 @@
                     Description<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
-                    <input class="textinput textInput form-control" maxlength="192" name="description" ng-model="edit_obj.description" placeholder="Description" required="True" type="text"/>
+                    <input class="textinput textInput form-control" maxlength="192" ng-model="edit_obj.description" placeholder="Description" required="True" type="text"/>
                 </div>
             </div>
             <div class="form-group">
@@ -1239,9 +1243,6 @@
                 </div>
             </div>
         </fieldset>
-        <div class="form-actions">
-            <input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="get_action_string()"/>
-        </div>
     </form>
 </script>
 

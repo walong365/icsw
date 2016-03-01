@@ -147,10 +147,10 @@ angular.module(
 ]).controller("icswDeviceNetworkCtrl",
     ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource",
      "$q", "$uibModal", "icswAcessLevelService", "$rootScope", "$timeout", "blockUI", "icswTools", "icswToolsButtonConfigService", "ICSW_URLS",
-    "icswSimpleAjaxCall", "icswToolsSimpleModalService", "icswDeviceTreeService",
+    "icswSimpleAjaxCall", "icswToolsSimpleModalService", "icswDeviceTreeService", "icswNetworkTreeService",
     ($scope, $compile, $filter, $templateCache, Restangular, restDataSource,
      $q, $uibModal, icswAcessLevelService, $rootScope, $timeout, blockUI, icswTools, icswToolsButtonConfigService, ICSW_URLS,
-     icswSimpleAjaxCall, icswToolsSimpleModalService, icswDeviceTreeService
+     icswSimpleAjaxCall, icswToolsSimpleModalService, icswDeviceTreeService, icswNetworkTreeService
     ) ->
         $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
         icswAcessLevelService.install($scope)
@@ -220,20 +220,24 @@ angular.module(
         $scope.devices = []
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
             $scope.devsel_list = _dev_sel
-            $scope.reload()
+            console.log "devsel for network set", _dev_sel
+            # $scope.reload()
+        console.log "scope network", $scope
         $scope.reload= () ->
             wait_list = [
-                restDataSource.reload([ICSW_URLS.REST_DEVICE_TREE_LIST, {"with_network" : true, "with_com_info": true, "pks" : angular.toJson($scope.devsel_list), "olp" : "backbone.device.change_network"}]),
-                restDataSource.reload([ICSW_URLS.REST_PEER_INFORMATION_LIST, {}]),
+                icswDeviceTreeService.fetch($scope.$id)
+                icswNetworkTreeService.fetch($scope.$id)
+                # restDataSource.reload([ICSW_URLS.REST_DEVICE_TREE_LIST, {"with_network" : true, "with_com_info": true, "pks" : angular.toJson($scope.devsel_list), "olp" : "backbone.device.change_network"}]),
+                # restDataSource.reload([ICSW_URLS.REST_PEER_INFORMATION_LIST, {}]),
                 # 2
-                restDataSource.reload([ICSW_URLS.REST_NETDEVICE_SPEED_LIST, {}]),
-                restDataSource.reload([ICSW_URLS.REST_NETWORK_DEVICE_TYPE_LIST, {}])
+                # restDataSource.reload([ICSW_URLS.REST_NETDEVICE_SPEED_LIST, {}]),
+                # restDataSource.reload([ICSW_URLS.REST_NETWORK_DEVICE_TYPE_LIST, {}])
                 # 4
-                restDataSource.reload([ICSW_URLS.REST_NETWORK_LIST, {}])
-                restDataSource.reload([ICSW_URLS.REST_DOMAIN_TREE_NODE_LIST, {}])
+                # restDataSource.reload([ICSW_URLS.REST_NETWORK_LIST, {}])
+                # restDataSource.reload([ICSW_URLS.REST_DOMAIN_TREE_NODE_LIST, {}])
                 # 6
-                restDataSource.reload([ICSW_URLS.REST_NETDEVICE_PEER_LIST, {}])
-                restDataSource.reload([ICSW_URLS.REST_SNMP_NETWORK_TYPE_LIST, {}])
+                # restDataSource.reload([ICSW_URLS.REST_NETDEVICE_PEER_LIST, {}])
+                # restDataSource.reload([ICSW_URLS.REST_SNMP_NETWORK_TYPE_LIST, {}])
             ]
             $q.all(wait_list).then((data) ->
                 $scope.devices = (dev for dev in data[0])
@@ -256,18 +260,6 @@ angular.module(
                 $scope.snt = data[7]
                 $scope.snt_lut = icswTools.build_lut($scope.snt)
             )
-        # new selection
-        if $scope.devicelist?
-            $scope.dev_tree = icswDeviceTreeService.current()
-            console.log "nwsel"
-            $scope.new_devsel($scope.devicelist)
-        else
-            # install receiver from icsw-sel-man
-            $scope.selection_changed = () ->
-                # called when run in full-screen mode (not overview)
-                $scope.dev_tree = icswDeviceTreeService.current()
-                $scope.new_devsel((scope.dev_tree.all_lut[pk] for pk in icswActiveSelectionService.current().tot_dev_sel))
-            $scope.register_receiver()
 
         $scope.build_luts = () ->
             $scope.dev_lut = {}
@@ -787,6 +779,7 @@ angular.module(
                     return "btn-success"
                 else
                     return "btn-danger"
+
         $scope.get_num_bootips = (obj) ->
             num_bootips = 0
             for net_dev in obj.netdevice_set
@@ -794,6 +787,7 @@ angular.module(
                     if $scope.network_lut[net_ip.network].network_type_identifier == "b"
                         num_bootips++
             return num_bootips
+
         $scope.get_boot_value = (obj) ->
             num_bootips = $scope.get_num_bootips(obj)
             r_val = "#{num_bootips} IPs (" + (if obj.dhcp_write then "write" else "no write") + " / " + (if obj.dhcp_mac then "greedy" else "not greedy") + ")"
@@ -802,6 +796,7 @@ angular.module(
             if obj.dhcp_write != obj.dhcp_written
                 r_val = "#{r_val}, DHCP is " + (if obj.dhcp_written then "" else "not") + " written"
             return r_val
+
         $scope.network_changed = (obj) ->
             if obj.ip == "0.0.0.0" or not obj._changed_by_user_
                 $scope.get_free_ip(obj)
@@ -921,7 +916,7 @@ angular.module(
         restrict : "EA"
         template: $templateCache.get("icsw.device.network.peer.row")
     }
-]).directive("icswDeviceNetworkOverview", ["$templateCache", "msgbus", ($templateCache, msgbus) ->
+]).directive("icswDeviceNetworkOverview", ["$templateCache", ($templateCache) ->
     return {
         scope: true
         restrict : "EA"
@@ -931,7 +926,7 @@ angular.module(
         template : $templateCache.get("icsw.device.network.overview")
         controller: "icswDeviceNetworkCtrl"
     }
-]).directive("icswDeviceNetworkTotal", ["$templateCache", "msgbus", ($templateCache, msgbus) ->
+]).directive("icswDeviceNetworkTotal", ["$templateCache", ($templateCache) ->
     return {
         restrict: "EA"
         template: $templateCache.get("icsw.device.network.total")
@@ -950,8 +945,9 @@ angular.module(
             icswSimpleAjaxCall(
                 url      : ICSW_URLS.NETWORK_GET_CLUSTERS
                 dataType : "json"
-            ).then((json) ->
-                $scope.clusters = json
+            ).then(
+                (json) ->
+                    $scope.clusters = json
             )
         $scope.is_selected = (cluster) ->
             _sel = _.intersection(cluster.device_pks, $scope.devices)
@@ -1260,21 +1256,95 @@ angular.module(
                     scope.redraw_nodes++
                 )
     }
-]).service('icswNetworkDeviceTypeService', ["ICSW_URLS", (ICSW_URLS) ->
+]).service('icswNetworkDeviceTypeService',
+[
+    "ICSW_URLS", "icswNetworkTreeService", "$q", "icswComplexModalService", "$compile", "$templateCache",
+    "toaster", "icswNetworkDeviceTypeBackup", "icswToolsSimpleModalService",
+(
+    ICSW_URLS, icswNetworkTreeService, $q, icswComplexModalService, $compile, $templateCache,
+    toaster, icswNetworkDeviceTypeBackup, icswToolsSimpleModalService
+) ->
+    nw_tree = undefined
     return {
-        rest_url           : ICSW_URLS.REST_NETWORK_DEVICE_TYPE_LIST
-        delete_confirm_str : (obj) ->
-            return "Really delete Network type '#{obj.description}' ?"
-        edit_template      : "network.device.type.form"
-        new_object: {
-                "identifier"  : "eth"
-                "description" : "new network device type"
-                "name_re"     : "^eth.*$"
-                "mac_bytes"   : 6
-                "allow_virtual_interfaces" : true
-        }
+        fetch: (scope) ->
+            console.log "start fetch"
+            defer = $q.defer()
+            icswNetworkTreeService.fetch(scope.$id).then(
+                (net_tree) ->
+                    nw_tree = net_tree
+                    defer.resolve(net_tree.nw_device_type_list)
+            )
+            return defer.promise
+
+        create_or_edit: (scope, event, create, obj_or_parent) ->
+            if create
+                obj_or_parent = {
+                    "identifier"  : "eth"
+                    "description" : "new network device type"
+                    "name_re"     : "^eth.*$"
+                    "mac_bytes"   : 6
+                    "allow_virtual_interfaces" : true
+                }
+            else
+                dbu = new icswNetworkDeviceTypeBackup()
+                dbu.create_backup(obj_or_parent)
+            scope.edit_obj = obj_or_parent
+            icswComplexModalService(
+                {
+                    message: $compile($templateCache.get("network.device.type.form"))(scope)
+                    title: "Network device type"
+                    css_class: "modal-wide"
+                    ok_label: if create then "Create" else "Modify"
+                    closable: true
+                    ok_callback: (modal) ->
+                        d = $q.defer()
+                        if scope.form_data.$invalid
+                            toaster.pop("warning", "form validation problem", "", 0)
+                            d.reject("form not valid")
+                        else
+                            if create
+                                nw_tree.create_network_device_type(scope.edit_obj).then(
+                                    (ok) ->
+                                        d.resolve("created")
+                                    (notok) ->
+                                        d.reject("not created")
+                                )
+                            else
+                                scope.edit_obj.put().then(
+                                    (ok) ->
+                                        nw_tree.reorder()
+                                        d.resolve("updated")
+                                    (not_ok) ->
+                                        d.reject("not updated")
+                                )
+                        return d.promise
+                    cancel_callback: (modal) ->
+                        if not create
+                            dbu.restore_backup(obj_or_parent)
+                        d = $q.defer()
+                        d.resolve("cancel")
+                        return d.promise
+                }
+            ).then(
+                (fin) ->
+                    console.log "finish"
+            )
+        delete: (obj) ->
+            icswToolsSimpleModalService("Really delete Network DeviceType '#{obj.description}' ?").then(
+                (ok) ->
+                    nw_tree.delete_network_device_type(obj).then(
+                        (ok) ->
+                    )
+            )
     }
-]).service('icswNetworkTypeService', ["ICSW_URLS", (ICSW_URLS) ->
+]).service('icswNetworkTypeService',
+[
+    "ICSW_URLS", "icswNetworkTreeService", "$q", "icswComplexModalService", "$compile", "$templateCache",
+    "toaster", "icswNetworkTypeBackup", "icswToolsSimpleModalService",
+(
+    ICSW_URLS, icswNetworkTreeService, $q, icswComplexModalService, $compile, $templateCache,
+    toaster, icswNetworkTypeBackup, icswToolsSimpleModalService
+) ->
     nw_types_dict = [
         {"value":"b", "name":"boot"}
         {"value":"p", "name":"prod"}
@@ -1282,16 +1352,96 @@ angular.module(
         {"value":"o", "name":"other"}
         {"value":"l", "name":"local"}
     ]
+    # will be set below
+    nw_tree = undefined
     return {
-        rest_url            : ICSW_URLS.REST_NETWORK_TYPE_LIST
-        edit_template       : "network.type.form"
-        modal_title         : "Network Type"
-        delete_confirm_str  : (obj) -> return "Really delete Network type '#{obj.description}' ?"
-        new_object          : {"identifier" : "p", description : ""}
-        object_created      : (new_obj) -> new_obj.description = ""
+        fetch: (scope) ->
+            console.log "start fetch"
+            defer = $q.defer()
+            icswNetworkTreeService.fetch(scope.$id).then(
+                (net_tree) ->
+                    nw_tree = net_tree
+                    defer.resolve(net_tree.nw_type_list)
+            )
+            return defer.promise
+        create_or_edit: (scope, event, create, obj_or_parent) ->
+            if create
+                obj_or_parent = {
+                    "identifier": "p"
+                    "description": "new Network type"
+                }
+            else
+                dbu = new icswNetworkTypeBackup()
+                dbu.create_backup(obj_or_parent)
+            scope.edit_obj = obj_or_parent
+            icswComplexModalService(
+                {
+                    message: $compile($templateCache.get("network.type.form"))(scope)
+                    title: "Network type"
+                    css_class: "modal-wide"
+                    ok_label: if create then "Create" else "Modify"
+                    closable: true
+                    ok_callback: (modal) ->
+                        d = $q.defer()
+                        if scope.form_data.$invalid
+                            toaster.pop("warning", "form validation problem", "", 0)
+                            d.reject("form not valid")
+                        else
+                            if create
+                                nw_tree.create_network_type(scope.edit_obj).then(
+                                    (ok) ->
+                                        d.resolve("created")
+                                    (notok) ->
+                                        d.reject("not created")
+                                )
+                            else
+                                scope.edit_obj.put().then(
+                                    (ok) ->
+                                        nw_tree.reorder()
+                                        d.resolve("updated")
+                                    (not_ok) ->
+                                        d.reject("not updated")
+                                )
+                        return d.promise
+                    cancel_callback: (modal) ->
+                        if not create
+                            dbu.restore_backup(obj_or_parent)
+                        d = $q.defer()
+                        d.resolve("cancel")
+                        return d.promise
+                }
+            ).then(
+                (fin) ->
+                    console.log "finish"
+            )
+        delete: (obj) ->
+            icswToolsSimpleModalService("Really delete NetworkType '#{obj.description}' ?").then(
+                (ok) ->
+                    nw_tree.delete_network_type(obj).then(
+                        (ok) ->
+                    )
+            )
         network_types       : nw_types_dict  # for create/edit dialog
+        resolve_type: (id) ->
+            return (val for val in nw_types_dict when val.value == id)[0].name
     }
-]).service('icswNetworkService', ["Restangular", "$q", "icswTools", "ICSW_URLS", "icswDomainTreeService", "icswSimpleAjaxCall", "blockUI", (Restangular, $q, icswTools, ICSW_URLS, icswDomainTreeService, icswSimpleAjaxCall, blockUI) ->
+]).directive("icswNetworkList", [
+    "Restangular", "$templateCache",
+(
+    Restangular, $templateCache
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.network.list")
+        controller: "icswNetworkListCtrl"
+    }
+]).controller("icswNetworkListCtrl", [
+    "$scope",
+(
+    $scope
+) ->
+    console.log "icswnetworklistctrl", $scope
+]).service('icswNetworkListService', ["Restangular", "$q", "icswTools", "ICSW_URLS", "icswDomainTreeService", "icswSimpleAjaxCall", "blockUI", (Restangular, $q, icswTools, ICSW_URLS, icswDomainTreeService, icswSimpleAjaxCall, blockUI) ->
 
     networks_rest = Restangular.all(ICSW_URLS.REST_NETWORK_LIST.slice(1)).getList({"_with_ip_info" : true}).$object
     network_types_rest = Restangular.all(ICSW_URLS.REST_NETWORK_TYPE_LIST.slice(1)).getList({"_with_ip_info" : true}).$object

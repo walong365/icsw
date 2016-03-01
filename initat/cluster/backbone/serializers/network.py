@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 
 
 class network_device_type_serializer(serializers.ModelSerializer):
-    info_string = serializers.CharField()
+    info_string = serializers.CharField(read_only=True)
 
     class Meta:
         model = network_device_type

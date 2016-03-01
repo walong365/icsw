@@ -22,12 +22,12 @@ angular.module(
 
     # module for handling object backup and restore
 
-    "icsw.background.backup",
+    "icsw.backend.backup",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap",
         "init.csw.filters", "restangular", "noVNC", "ui.select", "icsw.tools",
         "icsw.device.info", "icsw.tools.tree", "icsw.user",
-        "icsw.background.devicetree",
+        "icsw.backend.devicetree",
     ]
 ).service("icswBackupDefinition", [() ->
     class backup_def
@@ -81,5 +81,21 @@ angular.module(
         constructor: () ->
             super()
             @simple_attributes = ["name", "comment", "domain_tree_node", "enabled"]
+
+]).service("icswNetworkTypeBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswNetworkTypeBackupDefinition extends icswBackupDefinition
+
+        constructor: () ->
+            super()
+            @simple_attributes = ["identifier", "description"]
+
+]).service("icswNetworkDeviceTypeBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswNetworkDeviceTypeBackupDefinition extends icswBackupDefinition
+
+        constructor: () ->
+            super()
+            @simple_attributes = ["identifier", "description", "name_re", "mac_bytes", "allow_virtual_interfaces", "for_matching"]
 
 ])

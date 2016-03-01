@@ -22,7 +22,7 @@ angular.module(
 
     # device tree handling (including device enrichment)
 
-    "icsw.background.devicetree",
+    "icsw.backend.devicetree",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap",
         "init.csw.filters", "restangular", "noVNC", "ui.select", "icsw.tools",

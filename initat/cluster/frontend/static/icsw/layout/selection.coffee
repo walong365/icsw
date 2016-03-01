@@ -24,7 +24,7 @@ angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap",
         "init.csw.filters", "restangular", "noVNC", "ui.select", "icsw.tools",
         "icsw.device.info", "icsw.tools.tree", "icsw.user",
-        "icsw.background.devicetree",
+        "icsw.backend.devicetree",
     ]
 ).service("icswSelectionGetDeviceService", ["icswDeviceTreeService", "$q", (icswDeviceTreeService, $q) ->
     id = Math.random()
