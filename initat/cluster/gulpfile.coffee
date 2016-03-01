@@ -44,6 +44,7 @@ clean_dest = require("gulp-clean-dest")
 del = require("del")
 wait = require("gulp-wait")
 strip_debug = require("gulp-strip-debug")
+run_sequence = require("run-sequence")
 
 class SourceMap
     constructor: (@name, @dest, @sources, @type, @static) ->
@@ -177,8 +178,9 @@ known_options = {
         "deploy-dir": "work/icsw"
         "compile-dir": "work/compile"
         "django": false
+        "onlydev": false
     }
-    boolean: ["django"]
+    boolean: ["django", "onlydev"]
 }
 
 options = minimist(process.argv.slice(2), known_options)
@@ -199,7 +201,7 @@ gulp.task("clean", () ->
 )
 
 create_task = (key) ->
-    gulp.task(key, ["clean"], () ->
+    gulp.task(key, () ->
         _map = sources[key]
         _sources = _map.sources
         _dest = _map.dest
@@ -272,16 +274,14 @@ create_task = (key) ->
     )
     return key
 
-gulp.task(
-    "staticbuild", (
-        create_task(key) for key of sources when sources[key].static
-    )
+gulp.task("staticbuild", (cb) ->
+    static_list = (create_task(key) for key of sources when sources[key].static)
+    return run_sequence("clean", static_list, cb)
 )
 
-gulp.task(
-    "dynamicbuild", (
-        create_task(key) for key of sources when not sources[key].static
-    )
+gulp.task("dynamicbuild", (cb) ->
+    dynamic_list = (create_task(key) for key of sources when not sources[key].static)
+    return run_sequence("clean", dynamic_list, cb)
 )
 
 gulp.task("app", ["dynamicbuild", "staticbuild", "allurls"], () ->
@@ -358,47 +358,54 @@ gulp.task("allurls", () ->
     )
 )
 
-gulp.task("css",  ["dynamicbuild"], () ->
+gulp.task("deploy_css", ["clean", "staticbuild"], () ->
+    _is_prod = options.production
     return gulp.src(
         ["#{COMPILE_DIR}/*.css"],
     # ).pipe(
-    #      gzip()
+    #     gzip()
     ).pipe(
-        rev()
+        gulpif(_is_prod, rev())
     ).pipe(
-        gulp.dest(
-            DEPLOY_DIR + "/static/"
-        )
+        gulp.dest(DEPLOY_DIR + "/static/")
     ).pipe(
-        rev.manifest(
-            merge: true
-        )
+        rev.manifest(merge: true)
     ).pipe(
-        gulp.dest(
-            DEPLOY_DIR
-        )
+        gulp.dest(DEPLOY_DIR)
     )
 )
 
-gulp.task("js", ["appinject", "css"], () ->
+gulp.task("deploy_js", ["appinject", "deploy_css", "staticbuild", "dynamicbuild"], () ->
+    _is_prod = options.production
     return gulp.src(
-        ["#{COMPILE_DIR}/*.js", "#{COMPILE_DIR}/*.html"],
+        ["#{COMPILE_DIR}/*.js"],
     # ).pipe(
-    #      gzip()
+    #     gzip()
     ).pipe(
-        rev()
+        gulpif(_is_prod, rev())
     ).pipe(
-        gulp.dest(
-            DEPLOY_DIR
-        )
+        gulp.dest(DEPLOY_DIR)
     ).pipe(
-        rev.manifest(
-            merge: true
-        )
+        rev.manifest(merge: true)
     ).pipe(
-        gulp.dest(
-            DEPLOY_DIR
-        )
+        gulp.dest(DEPLOY_DIR)
+    )
+)
+
+gulp.task("deploy_html", ["appinject", "deploy_js", "staticbuild", "dynamicbuild"], () ->
+    _is_prod = options.production
+    return gulp.src(
+        ["#{COMPILE_DIR}/*.html"],
+    # ).pipe(
+    #     gzip()
+    ).pipe(
+        gulpif(_is_prod, rev())
+    ).pipe(
+        gulp.dest(DEPLOY_DIR)
+    ).pipe(
+        rev.manifest(merge: true)
+    ).pipe(
+        gulp.dest(DEPLOY_DIR)
     )
 )
 
@@ -473,7 +480,7 @@ gulp.task("addons", ["clean"], () ->
     )
 )
 
-index_deps = ["dummyindex", "js", "appinject", "media"]
+index_deps = ["dummyindex", "deploy_html", "appinject", "media"]
 if not options.production
     index_deps.push("addons")
 
@@ -540,6 +547,7 @@ gulp.task("main", index_deps, () ->
 )
 
 gulp.task("watch", ["maininject"], () ->
+    options.onlydev = true
     gulp.watch(
         [
             "frontend/static/icsw/*/*.coffee",

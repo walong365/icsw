@@ -48,7 +48,7 @@ angular.module(
                 )
             )
     }
-]).directive('icswToolsEnsureDeviceSelection', ["icswLayoutSelectionDialogService", "blockUI", (icswLayoutSelectionDialogService, blockUI) ->
+]).directive("icswToolsEnsureDeviceSelection", ["icswLayoutSelectionDialogService", "blockUI", (icswLayoutSelectionDialogService, blockUI) ->
     return {
         template: """
 <div ng-if="listReady == undefined || listReady">

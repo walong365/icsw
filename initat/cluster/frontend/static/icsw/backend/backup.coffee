@@ -98,4 +98,14 @@ angular.module(
             super()
             @simple_attributes = ["identifier", "description", "name_re", "mac_bytes", "allow_virtual_interfaces", "for_matching"]
 
+]).service("icswNetworkBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswNetworkBackupDefinition extends icswBackupDefinition
+
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "identifier", "nework", "netmask", "gateway", "broadcast", "penalty", "force_unique_ips"
+            ]
+
 ])

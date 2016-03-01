@@ -550,15 +550,13 @@
 </script>
 
 <script type="text/ng-template" id="icsw.network.list">
-    <icsw-tools-rest-table target-list="entries" config-service="icswNetworkListService">
-        <h3>
-            Networks ({{entries.length}} entries),
-            <div class="btn-group">
-                <icsw-tools-button type="create" ng-click="create($event)" size="sm"></icsw-tools-button>
-                <icsw-tools-button type="reload" ng-click="reload()" size="sm"></icsw-tools-button>
-                <icsw-tools-button type="create" value="Scan networks" ng-if="!entries.length" ng-click="scan_networks()" size="sm"></icsw-tools-button>
-            </div>
-        </h3>
+    <icsw-tools-rest-table-new target-list="entries" config-service="icswNetworkListService">
+        <h3>Networks ({{entries.length}} entries)</h3>
+        <div class="btn-group">
+            <icsw-tools-button type="create" ng-click="create($event)" size="sm"></icsw-tools-button>
+            <icsw-tools-button type="reload" ng-click="reload()" size="sm"></icsw-tools-button>
+            <icsw-tools-button type="create" value="Scan networks" ng-if="!entries.length" ng-click="scan_networks()" size="sm"></icsw-tools-button>
+        </div>
 
         <table st-table="entries_displayed" st-safe-src="entries" ng-show="entries.length"
                class="table table-hover table-condensed table-striped" style="width:auto;">
@@ -669,7 +667,7 @@
                 </tbody>
             </table>
         </div>
-    </icsw-tools-rest-table>
+    </icsw-tools-rest-table-new>
 </script>
 
 <script type="text/ng-template" id="network.device.type.form">

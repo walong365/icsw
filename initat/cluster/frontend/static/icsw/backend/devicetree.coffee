@@ -231,7 +231,7 @@ angular.module(
             defer = $q.defer()
             Restangular.all(ICSW_URLS.REST_DEVICE_TREE_LIST.slice(1)).post(new_dev).then(
                 (new_obj) =>
-                    @_fetch_device(new_obj.idx, defer, "created device")
+                    @_fetch_device(new_obj.idx, defer, "created device ")
                 (not_ok) ->
                     defer.object("not created")
             )

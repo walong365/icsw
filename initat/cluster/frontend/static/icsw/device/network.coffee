@@ -1441,7 +1441,14 @@ angular.module(
     $scope
 ) ->
     console.log "icswnetworklistctrl", $scope
-]).service('icswNetworkListService', ["Restangular", "$q", "icswTools", "ICSW_URLS", "icswDomainTreeService", "icswSimpleAjaxCall", "blockUI", (Restangular, $q, icswTools, ICSW_URLS, icswDomainTreeService, icswSimpleAjaxCall, blockUI) ->
+]).service('icswNetworkListService',
+[
+    "Restangular", "$q", "icswTools", "ICSW_URLS", "icswDomainTreeService", "icswSimpleAjaxCall", "blockUI",
+    "icswNetworkTreeService",
+(
+    Restangular, $q, icswTools, ICSW_URLS, icswDomainTreeService, icswSimpleAjaxCall, blockUI,
+    icswNetworkTreeService
+) ->
 
     networks_rest = Restangular.all(ICSW_URLS.REST_NETWORK_LIST.slice(1)).getList({"_with_ip_info" : true}).$object
     network_types_rest = Restangular.all(ICSW_URLS.REST_NETWORK_TYPE_LIST.slice(1)).getList({"_with_ip_info" : true}).$object
@@ -1499,8 +1506,18 @@ angular.module(
                 (xml) ->
                     blockUI.stop()
             )
+    nw_tree = undefined
     return {
-        rest_handle         : networks_rest
+        fetch: (scope) ->
+            console.log "start fetch"
+            defer = $q.defer()
+            icswNetworkTreeService.fetch(scope.$id).then(
+                (net_tree) ->
+                    nw_tree = net_tree
+                    defer.resolve(net_tree.nw_list)
+            )
+            return defer.promise
+
         edit_template       : "network.form"
         modal_title         : "Network definition"
         domain_tree_node_list: () ->
