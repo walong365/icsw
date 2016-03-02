@@ -115,7 +115,7 @@ function get_conf_str() {
     echo "$num_retries $ret"
 }
 
-fix_uuid() {
+function fix_uuid() {
     if [ -d /etc/sysconfig/cluster/ ] ; then
         cat /opt/cluster/etc/cstores.d/icsw.device_config.xml | grep uuid |cut -d ">" -f 2 |cut -d "<" -f 1  > /etc/sysconfig/cluster/.cluster_device_uuid
     fi
