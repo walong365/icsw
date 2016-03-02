@@ -37,6 +37,7 @@ config_module = angular.module(
                         name: "Configurations"
                         icon: "fa-check-square-o"
                         ordering: 10
+                        preSpacer: true
             }
     )
     $stateProvider.state(

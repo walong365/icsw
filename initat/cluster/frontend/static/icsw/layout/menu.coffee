@@ -312,38 +312,42 @@ menu_module = angular.module(
             render: () ->
                 _items = []
                 _idx = 0
-                add_divider = false
+                # flag for last entry was a valid one
+                valid_entry = false
                 for entry in @props.entries
                     _idx++
                     _key = "item#{_idx}"
-                    if entry.name?
-                        if not entry.disable?
-                            _add = true
-                            if entry.rights?
-                                if angular.isFunction(entry.rights)
-                                    _add = entry.rights(@props.user, @props.acls)
-                                else
-                                    _add = icswAcessLevelService.has_all_menu_permissions(entry.rights)
-                            if entry.licenses? and _add
-                                _add = icswAcessLevelService.has_all_valid_licenses(entry.licenses)
-                            if entry.service_types? and _add
-                                _add = icswAcessLevelService.has_all_service_types(entry.service_types)
-                            if _add
-                                if add_divider
-                                    add_divider = false
-                                    _items.push(
-                                        li({className: "divider", key: _key})
-                                    )
-                                if angular.isFunction(entry.name)
-                                    _items.push(
-                                        React.createElement(entry.name, {key: _key})
-                                    )
-                                else
-                                    _items.push(
-                                        React.createElement(menu_line, entry)
-                                    )
-                    else
-                        add_divider = true
+                    if entry.name? and not entry.disable?
+                        _add = true
+                        if entry.rights?
+                            if angular.isFunction(entry.rights)
+                                _add = entry.rights(@props.user, @props.acls)
+                            else
+                                _add = icswAcessLevelService.has_all_menu_permissions(entry.rights)
+                        if entry.licenses? and _add
+                            _add = icswAcessLevelService.has_all_valid_licenses(entry.licenses)
+                        if entry.service_types? and _add
+                            _add = icswAcessLevelService.has_all_service_types(entry.service_types)
+                        if _add
+                            if entry.preSpacer and valid_entry
+                                _items.push(
+                                    li({className: "divider", key: _key + "_pre"})
+                                )
+
+                            if angular.isFunction(entry.name)
+                                _items.push(
+                                    React.createElement(entry.name, {key: _key})
+                                )
+                            else
+                                _items.push(
+                                    React.createElement(menu_line, entry)
+                                )
+                            valid_entry = true
+                            if entry.postSpacer and valid_entry
+                                _items.push(
+                                    li({className: "divider", key: _key + "_post"})
+                                )
+                                valid_entry = false
                 if _items.length
 
                     _res = li(
@@ -387,7 +391,7 @@ menu_module = angular.module(
                 )
 
         class MenuEntry
-            constructor: (@name, @rights, @licenses, @service_types, @icon, @ordering, @sref) ->
+            constructor: (@name, @rights, @licenses, @service_types, @icon, @ordering, @sref, @preSpacer, @postSpacer) ->
             get_react: () =>
                 return {
                     name: @name
@@ -396,6 +400,8 @@ menu_module = angular.module(
                     sref: @sref
                     licenses: @licenses
                     service_types: @service_types
+                    preSpacer: @preSpacer
+                    postSpacer: @postSpacer
                 }
 
         menu_comp = React.createClass(
@@ -422,6 +428,7 @@ menu_module = angular.module(
                         _entry = state.data.menuEntry
                         menu = (entry for entry in menus when entry.key == _entry.menukey)
                         if menu.length
+
                             menu[0].add_entry(
                                 new MenuEntry(
                                     _entry.name or state.data.pageTitle
@@ -431,6 +438,8 @@ menu_module = angular.module(
                                     _entry.icon
                                     _entry.ordering
                                     $state.href(state)
+                                    _entry.preSpacer?
+                                    _entry.postSpacer?
                                 )
                             )
                         else

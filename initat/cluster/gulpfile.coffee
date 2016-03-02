@@ -18,6 +18,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+""" gulpfile for icsw """
+
 gulp = require("gulp")
 del = require("del")
 concat = require("gulp-concat")
@@ -213,13 +215,9 @@ create_task = (key) ->
         _el = gulp.src(
             _sources
         ).pipe(
-            changed(
-                COMPILE_DIR
-            )
+            changed(COMPILE_DIR)
         ).pipe(
-            gulpif(
-                _is_coffee and ! options.production, sourcemaps.init()
-            )
+            gulpif(_is_coffee and ! options.production, sourcemaps.init())
         ).pipe(
             gulpif(
                 _is_coffee, coffee().on(
@@ -239,9 +237,7 @@ create_task = (key) ->
                 (_is_coffee or _is_js) and options.production, strip_debug()
             )
         ).pipe(
-            concat(
-                _dest
-            )
+            concat(_dest)
         ).pipe(
             gulpif(
                 _is_prod and (_is_coffee or _is_js), uglify(
@@ -250,9 +246,7 @@ create_task = (key) ->
                 )
             )
         ).pipe(
-            gulpif(
-                _is_prod and _is_css, cssnano()
-            )
+            gulpif(_is_prod and _is_css, cssnano())
         ).pipe(
             gulpif(
                 _is_prod and _is_html, htmlmin(
@@ -266,9 +260,7 @@ create_task = (key) ->
                 _is_coffee and ! options.production, sourcemaps.write()
             )
         ).pipe(
-            gulp.dest(
-                COMPILE_DIR
-            )
+            gulp.dest(COMPILE_DIR)
         )
         return _el
     )
@@ -300,9 +292,7 @@ gulp.task("app", ["dynamicbuild", "staticbuild", "allurls"], () ->
             }
         )
     ).pipe(
-        gulp.dest(
-            "#{DEPLOY_DIR}"
-        )
+        gulp.dest(DEPLOY_DIR)
     )
 
 )
@@ -317,9 +307,7 @@ gulp.task("appinject", ["app"], () ->
             [
                 "./manage.py inject_addons --srcfile=#{DEPLOY_DIR}/app.js --modify",
             ]
-            {
-                pipeStdout: true
-            }
+            {pipeStdout: true}
         )
     )
 )
@@ -334,27 +322,24 @@ gulp.task("maininject", ["main"], () ->
             [
                 "./manage.py inject_addons --srcfile=#{DEPLOY_DIR}/main.html --modify",
             ]
-            {
-                pipeStdout: true
-            }
+            {pipeStdout: true}
         )
     )
 )
 
 gulp.task("allurls", () ->
-    return gulp.src("all_urls.html", {read: false}).pipe(
+    return gulp.src(
+        "all_urls.html",
+        {read: false}
+    ).pipe(
         exec(
             [
                 "./manage.py show_icsw_urls",
             ]
-            {
-                pipeStdout: true
-            }
+            {pipeStdout: true}
         )
     ).pipe(
-        gulp.dest(
-            "frontend/templates"
-        )
+        gulp.dest("frontend/templates")
     )
 )
 
@@ -415,9 +400,7 @@ gulp.task("fonts", ["clean"], () ->
     return gulp.src(
         "frontend/static/fonts/*"
     ).pipe(
-        gulp.dest(
-            DEPLOY_DIR + "/fonts"
-        )
+        gulp.dest(DEPLOY_DIR + "/fonts")
     )
 )
 
@@ -428,9 +411,7 @@ gulp.task("d3", ["clean"], () ->
             "frontend/static/js/dimple.v2.1.6.min.js"
         ]
     ).pipe(
-        gulp.dest(
-            DEPLOY_DIR + "/static/"
-        )
+        gulp.dest(DEPLOY_DIR + "/static/")
     )
 )
 
@@ -438,9 +419,7 @@ gulp.task("images", ["clean"], () ->
     return gulp.src(
         "frontend/static/images/product/*.png"
     ).pipe(
-        gulp.dest(
-            DEPLOY_DIR + "/static/"
-        )
+        gulp.dest(DEPLOY_DIR + "/static/")
     )
 )
 
@@ -448,23 +427,15 @@ gulp.task("gifs", ["clean"], () ->
     return gulp.src(
         "frontend/static/css/*.gif"
     ).pipe(
-        gulp.dest(
-            DEPLOY_DIR + "/static/"
-        )
+        gulp.dest(DEPLOY_DIR + "/static/")
     )
 )
 
 gulp.task("dummyindex", ["clean"], ()->
     return gulp.src("frontend/templates/main_reload.html").pipe(
-        rename(
-            {
-                basename: "main"
-            }
-        )
+        rename({basename: "main"})
     ).pipe(
-        gulp.dest(
-            DEPLOY_DIR
-        )
+        gulp.dest(DEPLOY_DIR)
     )
 )
 
@@ -474,9 +445,7 @@ gulp.task("addons", ["clean"], () ->
             "addons/liebherr/initat/cluster/work/icsw/*.js",
         ]
     ).pipe(
-        gulp.dest(
-            DEPLOY_DIR
-        )
+        gulp.dest(DEPLOY_DIR)
     )
 )
 
@@ -535,13 +504,9 @@ gulp.task("main", index_deps, () ->
             }
         )
     ).pipe(
-        clean_dest(
-            DEPLOY_DIR
-        )
+        clean_dest(DEPLOY_DIR)
     ).pipe(
-        gulp.dest(
-            DEPLOY_DIR
-        )
+        gulp.dest(DEPLOY_DIR)
     )
 
 )

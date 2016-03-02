@@ -34,9 +34,11 @@ angular.module(
                 pageTitle: "Device info"
                 rights: ["user.modify_tree"]
                 menuEntry:
+                    preSpacer: true
                     menukey: "dev"
                     icon: "fa-bars"
                     ordering: 10
+                    postSpacer: true
         }
     )
 ]).service("DeviceOverviewSelection", ["$rootScope", "ICSW_SIGNALS", ($rootScope, ICSW_SIGNALS) ->
