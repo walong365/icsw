@@ -865,9 +865,9 @@ set_hoststat "Requesting modules (pci_str has ${#pci_str} bytes)"
 
 mods=$(get_conf_str get_autodetect_mods base | cut -d " " -f 3- )
 
-mods="${mods} $(get_conf_str get_autodetect_mods disk ${pci_str} | cut -d " " -f 3- )" 
+mods="${mods} $(get_conf_str get_autodetect_mods disk ${pci_str} | cut -d ' ' -f 3- )"
 
-mods="${mods} $(get_conf_str get_init_mods | cut -d " " -f 3- )"
+mods="${mods} $(get_conf_str get_init_mods | cut -d ' ' -f 3- )"
 
 echo -e "Loading modules: '${mods}'"
 
