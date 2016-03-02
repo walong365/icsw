@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 2001-2008,2013,2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2013,2015-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -115,7 +115,15 @@ function get_conf_str() {
     echo "$num_retries $ret"
 }
 
+fix_uuid() {
+    if [ -d /etc/sysconfig/cluster/ ] ; then
+        cat /opt/cluster/etc/cstores.d/icsw.device_config.xml | grep uuid |cut -d ">" -f 2 |cut -d "<" -f 1  > /etc/sysconfig/cluster/.cluster_device_uuid
+    fi
+}
+
 export PATH=$PATH:/sbin:/usr/sbin:/usr/local/bin:/usr/local/sbin
+
+fix_uuid
 
 [ -f /etc/motherserver ] || { echo "No motherserver defined, exiting ..." ; exit -1  ; }
 FNAME=/tmp/.hoststat
