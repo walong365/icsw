@@ -1289,9 +1289,10 @@ angular.module(
                 dbu = new icswNetworkDeviceTypeBackup()
                 dbu.create_backup(obj_or_parent)
             scope.edit_obj = obj_or_parent
+            sub_scope = scope.$new(false)
             icswComplexModalService(
                 {
-                    message: $compile($templateCache.get("network.device.type.form"))(scope)
+                    message: $compile($templateCache.get("network.device.type.form"))(sub_scope)
                     title: "Network device type"
                     css_class: "modal-wide"
                     ok_label: if create then "Create" else "Modify"
@@ -1328,6 +1329,7 @@ angular.module(
             ).then(
                 (fin) ->
                     console.log "finish"
+                    sub_scope.$destroy()
             )
         delete: (obj) ->
             icswToolsSimpleModalService("Really delete Network DeviceType '#{obj.description}' ?").then(
@@ -1374,9 +1376,10 @@ angular.module(
                 dbu = new icswNetworkTypeBackup()
                 dbu.create_backup(obj_or_parent)
             scope.edit_obj = obj_or_parent
+            sub_scope = scope.$new(false)
             icswComplexModalService(
                 {
-                    message: $compile($templateCache.get("network.type.form"))(scope)
+                    message: $compile($templateCache.get("network.type.form"))(sub_scope)
                     title: "Network type"
                     css_class: "modal-wide"
                     ok_label: if create then "Create" else "Modify"
@@ -1413,6 +1416,7 @@ angular.module(
             ).then(
                 (fin) ->
                     console.log "finish"
+                    sub_scope.$destroy()
             )
         delete: (obj) ->
             icswToolsSimpleModalService("Really delete NetworkType '#{obj.description}' ?").then(
@@ -1549,9 +1553,10 @@ angular.module(
                 dbu = new icswNetworkBackup()
                 dbu.create_backup(obj_or_parent)
             scope.edit_obj = obj_or_parent
+            sub_scope = scope.$new(false)
             icswComplexModalService(
                 {
-                    message: $compile($templateCache.get("network.form"))(scope)
+                    message: $compile($templateCache.get("network.form"))(sub_scope)
                     title: "Network"
                     css_class: "modal-wide"
                     ok_label: if create then "Create" else "Modify"
@@ -1588,6 +1593,7 @@ angular.module(
             ).then(
                 (fin) ->
                     console.log "finish"
+                    sub_scope.$destroy()
             )
 
         get_production_networks : () ->

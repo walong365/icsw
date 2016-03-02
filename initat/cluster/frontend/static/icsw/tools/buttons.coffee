@@ -143,7 +143,7 @@ angular.module(
     return {
         restrict: "EA",
         template: """
-    <button ng-attr-type="{{button_type}}" name="button" class="btn {{css_class}} {{additional_class}} {{icon_class}}"
+    <button ng-attr-type="{{ button_type }}" name="button" class="btn {{ css_class }} {{ additional_class }} {{ icon_class }}"
             ng-disabled="is_disabled">
         {{ button_value }}
     </button>

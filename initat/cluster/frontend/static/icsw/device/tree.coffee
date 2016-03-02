@@ -246,10 +246,11 @@ angular.module(
             template_name = "device.tree.form"
         else
             template_name = "device.tree.many.form"
+        sub_scope = $scope.$new(false)
         # init form
         icswComplexModalService(
             {
-                message: $compile($templateCache.get(template_name))($scope)
+                message: $compile($templateCache.get(template_name))(sub_scope)
                 ok_label: if create_mode then "Create" else "Modify"
                 ok_callback: (modal) ->
                     d = $q.defer()
@@ -325,6 +326,7 @@ angular.module(
         ).then(
             (fin) ->
                 console.log "DeviceTree requester closed, trigger redraw"
+                sub_scope.$destroy()
                 # trigger refiltering of list
                 $rootScope.$emit(ICSW_SIGNALS("ICSW_FORCE_TREE_FILTER"))
         )
