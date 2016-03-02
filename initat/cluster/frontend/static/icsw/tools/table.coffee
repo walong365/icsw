@@ -343,7 +343,7 @@ angular.module(
                                 )
                     )
         }
-]).directive('icswToolsRestTableNew',
+]).directive("icswToolsRestTableNew",
 [
     "Restangular", "$parse", "$injector", "$compile", "$templateCache", "icswTools", "icswToolsSimpleModalService", "toaster", "$timeout",
 (
@@ -399,9 +399,9 @@ angular.module(
             scope.form_error = (field_name) ->
                 # temporary fix, FIXME
                 # scope.form should never be undefined
-                if scope.form?
-                    if scope.form[field_name]?
-                        if scope.form[field_name].$valid
+                if scope.form_data?
+                    if scope.form_data[field_name]?
+                        if scope.form_data[field_name].$valid
                             return ""
                         else
                             return "has-error"

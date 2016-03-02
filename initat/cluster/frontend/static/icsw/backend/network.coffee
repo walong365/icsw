@@ -38,6 +38,22 @@ angular.module(
         constructor: (@nw_list, @nw_speed_list, @nw_type_list, @nw_device_type_list, @nw_snmp_type_list) ->
             @build_luts()
 
+        update_all: (nw_list, nw_speed_list, nw_type_list, nw_device_type_list, nw_snmp_type_list) =>
+            # overwrite all entries
+            console.log "Overwrite all networktree entries"
+            _dict = {
+                "nw_list": nw_list
+                "nw_speed_list": nw_speed_list
+                "nw_type_list": nw_type_list
+                "nw_device_type_list": nw_device_type_list
+                "nw_snmp_type_list": nw_snmp_type_list
+            }
+            for key, val of _dict
+                @[key].length = 0
+                for entry in val
+                    @[key].push(entry)
+            @build_luts()
+
         build_luts: () =>
             for entry in ["nw", "nw_speed", "nw_type", "nw_device_type", "nw_snmp_type"]
                 @["#{entry}_lut"] = icswTools.build_lut(@["#{entry}_list"])
@@ -76,6 +92,18 @@ angular.module(
             )
             return d.promise
 
+        create_network: (obj_def) =>
+            d = $q.defer()
+            Restangular.all(ICSW_URLS.REST_NETWORK_LIST.slice(1)).post(obj_def).then(
+                (new_obj) =>
+                    @nw_list.push(new_obj)
+                    @reorder()
+                    d.resolve("created")
+                (not_ok) =>
+                    d.reject("create error")
+            )
+            return d.promise
+
         # delete functions
 
         delete_network_type: (obj) =>
@@ -94,7 +122,19 @@ angular.module(
             d = $q.defer()
             obj.remove().then(
                 (ok) =>
-                    _.remove(@nw_devic_type_list, (entry) -> return entry.idx == obj.idx)
+                    _.remove(@nw_device_type_list, (entry) -> return entry.idx == obj.idx)
+                    @reorder()
+                    d.resolve("deleted")
+                (notok) =>
+                    d.reject("not deleted")
+            )
+            return d.promise
+
+        delete_network: (obj) =>
+            d = $q.defer()
+            obj.remove().then(
+                (ok) =>
+                    _.remove(@nw_list, (entry) -> return entry.idx == obj.idx)
                     @reorder()
                     d.resolve("deleted")
                 (notok) =>
@@ -135,7 +175,10 @@ angular.module(
         $q.all(_wait_list).then(
             (data) ->
                 console.log "*** network tree loaded ***"
-                _result = new icswNetworkTree(data[0], data[1], data[2], data[3], data[4])
+                if _result?
+                    _result.update_all(data[0], data[1], data[2], data[3], data[4])
+                else
+                    _result = new icswNetworkTree(data[0], data[1], data[2], data[3], data[4])
                 _defer.resolve(_result)
                 for client of _fetch_dict
                     # resolve clients

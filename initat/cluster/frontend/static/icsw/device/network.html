@@ -448,9 +448,8 @@
         </uib-tab>
         <uib-tab heading="Clusters" ng-if="acl_read(null, 'backbone.network.show_clusters')">
             <div ng-controller="icswDeviceNetworkClusterCtrl">
-                <h3>
-                    Network clusters ({{ clusters.length }}), <icsw-tools-button type="reload" value="reload" size="sm" ng-click="reload()"></icsw-tools-button>
-                </h3>
+                <h3>Network clusters ({{ clusters.length }})</h3>
+                <icsw-tools-button type="reload" value="reload" size="sm" ng-click="reload()"></icsw-tools-button>
                 <table class="table table-condensed table-hover table-striped" style="width:auto;">
                     <thead>
                         <tr>
@@ -554,8 +553,8 @@
         <h3>Networks ({{entries.length}} entries)</h3>
         <div class="btn-group">
             <icsw-tools-button type="create" ng-click="create($event)" size="sm"></icsw-tools-button>
-            <icsw-tools-button type="reload" ng-click="reload()" size="sm"></icsw-tools-button>
-            <icsw-tools-button type="create" value="Scan networks" ng-if="!entries.length" ng-click="scan_networks()" size="sm"></icsw-tools-button>
+            <icsw-tools-button type="reload" ng-click="config_service.reload_networks()" size="sm"></icsw-tools-button>
+            <icsw-tools-button type="create" value="Scan networks" ng-if="!entries.length" ng-click="config_service.rescan_networks()" size="sm"></icsw-tools-button>
         </div>
 
         <table st-table="entries_displayed" st-safe-src="entries" ng-show="entries.length"
@@ -617,16 +616,16 @@
                     <td class="text-center">{{ obj.penalty }}</td>
                     <td class="text-center">{{ obj.enforce_unique_ips | yesno1 }}</td>
                     <td>
-                        {{ obj.network_type | array_lookup:config_service.network_types:'description' }}
+                        {{ config_service.nw_tree().nw_type_lut[obj.network_type].description }}
                     </td>
                     <td>
-                        {{ obj.master_network | array_lookup:entries:'identifier':'---' }}
+                        {{ config_service.get_master_network_id(obj) }}
                     </td>
                     <td ng-show="show_column.prefDTN">
-                        config_service.preferred_dtn(obj)
+                        {{ config_service.preferred_dtn(obj) }}
                     </td>
                     <td>
-                        {{ obj.network_device_type }} <!-- | resolve_n2m:config_service.network_device_types:'identifier':'---' }} -->
+                        {{ config_service.get_network_device_types(obj) }}
                     </td>
                     <td>
                         <icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"/>
@@ -1031,7 +1030,7 @@
 </script>
 
 <script type="text/ng-template" id="network.form">
-    <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
+    <form id="form" class="form-horizontal" name="form_data">
         <uib-tabset>
             <uib-tab heading="Base data">
                 <fieldset>
@@ -1084,9 +1083,9 @@
                             Network type<span class="asteriskField">*</span>
                         </label>
                         <div class="controls col-sm-7">
-                            <ui-select ng-model="edit_obj.network_type" style="max-width:400px; min-width:240px;" ng-disabled="has_master_network(edit_obj)">
+                            <ui-select ng-model="edit_obj.network_type" style="max-width:400px; min-width:240px;" ng-disabled="config_service.has_master_network(edit_obj)">
                                 <ui-select-match class="ui-select-match" placeholder="network type">{{$select.selected.description}}</ui-select-match>
-                                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.network_types| props_filter:{description:$select.search}">
+                                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.nw_tree().nw_type_list | props_filter:{description:$select.search}">
                                     <div ng-bind-html="value.description | highlight: $select.search"></div>
                                 </ui-select-choices>
                             </ui-select>
@@ -1106,7 +1105,7 @@
                                     </ui-select-choices>
                                 </ui-select>
                                 <span class="input-group-btn">
-                                    <button type="button" ng-click="edit_obj.master_network = undefined" class="btn btn-default">
+                                    <button type="button" ng-click="edit_obj.master_network = null" class="btn btn-default">
                                         <span class="glyphicon glyphicon-trash"></span>
                                     </button>
                                 </span>
@@ -1140,16 +1139,14 @@
                         <label class="control-label col-sm-3">
                             Preferred domain tree node
                         </label>
-                        {{  config_service.domain_tree_node_list }}
                         <div class="controls col-sm-7">
                             <div class="input-group" style="max-width:400px; min-width:240px;">
                                 <ui-select ng-model="edit_obj.preferred_domain_tree_node">
-                                    <ui-select-match class="ui-select-match" placeholder="preferred DTN">{{$select.selected.info}}</ui-select-match>
+                                    <ui-select-match class="ui-select-match" placeholder="preferred DTN">{{ $select.selected.full_name }}</ui-select-match>
                                     <ui-select-choices
-                                        repeat="value.idx as value in config_service.domain_tree_node_list() | props_filter:{full_name:$select.search}"
-                                        refresh="config_service.refresh_domain_tree_node()"
+                                        repeat="value.idx as value in config_service.domain_tree().list | props_filter:{full_name:$select.search}"
                                     >
-                                        <div ng-bind-html="value.info | highlight: $select.search"></div>
+                                        <div ng-bind-html="value.full_name | highlight: $select.search"></div>
                                     </ui-select-choices>
                                 </ui-select>
                                 <span class="input-group-btn">
@@ -1167,7 +1164,7 @@
                         <div class="controls col-sm-7">
                             <ui-select multiple="multiple" ng-model="edit_obj.network_device_type" style="max-width:400px; min-width:240px;" ng-disabled="false">
                                 <ui-select-match class="ui-select-match" placeholder="network device types">{{$item.identifier}}</ui-select-match>
-                                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.network_device_types| props_filter:{identifier:$select.search}">
+                                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.nw_tree().nw_device_type_list | props_filter:{identifier:$select.search}">
                                     <div ng-bind-html="value.identifier | highlight: $select.search"></div>
                                 </ui-select-choices>
                             </ui-select>
@@ -1177,10 +1174,10 @@
                 <fieldset>
                     <legend>Range</legend>
                     <div class="form-group ng-class:form_error('start_range')">
-                        <label class="control-label col-sm-5 requiredField">
+                        <label class="control-label col-sm-3 requiredField">
                             Range Start (incl.)
                         </label>
-                        <div class="controls col-sm-6">
+                        <div class="controls col-sm-7">
                             <div class="input-group">
                                 <input class="textinput textInput form-control" ng-focus="config_service.enter_range(edit_obj)" ng-blur="config_service.range_check(edit_obj)" ng-model="edit_obj.start_range" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Range start"  type="text"/>
                                 <span class="input-group-btn">
@@ -1192,10 +1189,10 @@
                         </div>
                     </div>
                     <div class="form-group ng-class:form_error('end_range')">
-                        <label class="control-label col-sm-5 requiredField">
+                        <label class="control-label col-sm-3 requiredField">
                             Range End (incl.)
                         </label>
-                        <div class="controls col-sm-6">
+                        <div class="controls col-sm-7">
                             <div class="input-group">
                                 <input class="textinput textInput form-control" ng-focus="config_service.enter_range(edit_obj)" ng-blur="config_service.range_check(edit_obj)" ng-model="edit_obj.end_range" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Range end" type="text"/>
                                 <span class="input-group-btn">
@@ -1209,9 +1206,6 @@
                 </fieldset>
             </uib-tab>
         </uib-tabset>
-        <div class="form-actions">
-            <input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="get_action_string()"/>
-        </div>
     </form>
 </script>
 

@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001-2010,2012,2015 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2010,2012,2015-2016 Andreas Lang-Nevyjel
 #
 # this file is part of cluster-backbone
 #
@@ -19,6 +19,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+
 """ generates the inital ramdisk for clusterboot """
 
 import os
@@ -1111,7 +1112,7 @@ class arg_parser(argparse.ArgumentParser):
 def copy_stage_file(src_dir, stage_name, stage_dest):
     src_file = os.path.join(src_dir, stage_name)
     content = file(src_file, "r").read()
-    if os.path.isfile("/usr/bin/bash") and not os.path.islink("/bin"):
+    if os.path.isfile("/usr/bin/bash") and os.path.islink("/bin"):
         # rewrite shebang
         content = "\n".join(["#!/usr/bin/bash"] + content.split("\n")[1:])
     file(stage_dest, "w").write(content)

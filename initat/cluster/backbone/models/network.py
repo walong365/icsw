@@ -1,4 +1,4 @@
-# Copyright (C) 2011-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2011-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -1039,4 +1039,3 @@ class snmp_network_type(models.Model):
     if_type = models.IntegerField(default=0)
     if_label = models.CharField(max_length=128, default="")
     date = models.DateTimeField(auto_now_add=True)
-

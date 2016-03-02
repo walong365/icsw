@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -47,7 +47,7 @@ class partition_serializer(serializers.ModelSerializer):
 
 
 class partition_fs_serializer(serializers.ModelSerializer):
-    need_mountpoint = serializers.Field(source="need_mountpoint")
+    need_mountpoint = serializers.ReadOnlyField(source="need_mountpoint")
 
     class Meta:
         model = partition_fs

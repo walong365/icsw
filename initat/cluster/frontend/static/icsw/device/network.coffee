@@ -1444,19 +1444,20 @@ angular.module(
 ]).service('icswNetworkListService',
 [
     "Restangular", "$q", "icswTools", "ICSW_URLS", "icswDomainTreeService", "icswSimpleAjaxCall", "blockUI",
-    "icswNetworkTreeService",
+    "icswNetworkTreeService", "icswNetworkBackup", "icswComplexModalService", "$compile", "$templateCache",
+    "toaster",
 (
     Restangular, $q, icswTools, ICSW_URLS, icswDomainTreeService, icswSimpleAjaxCall, blockUI,
-    icswNetworkTreeService
+    icswNetworkTreeService, icswNetworkBackup, icswComplexModalService, $compile, $templateCache,
+    toaster
 ) ->
 
-    networks_rest = Restangular.all(ICSW_URLS.REST_NETWORK_LIST.slice(1)).getList({"_with_ip_info" : true}).$object
-    network_types_rest = Restangular.all(ICSW_URLS.REST_NETWORK_TYPE_LIST.slice(1)).getList({"_with_ip_info" : true}).$object
-    network_device_types_rest = Restangular.all(ICSW_URLS.REST_NETWORK_DEVICE_TYPE_LIST.slice(1)).getList({"_with_ip_info" : true}).$object
-    domain_tree_node_list = []
-    domain_tree_node_dict = {}
+    # networks_rest = Restangular.all(ICSW_URLS.REST_NETWORK_LIST.slice(1)).getList({"_with_ip_info" : true}).$object
+    # network_types_rest = Restangular.all(ICSW_URLS.REST_NETWORK_TYPE_LIST.slice(1)).getList({"_with_ip_info" : true}).$object
+    # network_device_types_rest = Restangular.all(ICSW_URLS.REST_NETWORK_DEVICE_TYPE_LIST.slice(1)).getList({"_with_ip_info" : true}).$object
+    # domain_tree_node_list = []
+    # domain_tree_node_dict = {}
 
-    network_display = {}
     get_defer = (q_type) ->
         d = $q.defer()
         result = q_type.then(
@@ -1484,64 +1485,149 @@ angular.module(
             if byte < 0 or byte > 255 then throw new Error("Invalid byte: #{byte}")
         return ((b[0] or 0) << 24 | (b[1] or 0) << 16 | (b[2] or 0) << 8 | (b[3] or 0)) >>> 0
 
-    set_domain_tree_node = (data) ->
-        domain_tree_node_dict = {}
-        for entry in data
-            _name = if entry.depth then entry.full_name else "[TLN]"
-            entry.info = _name
-            domain_tree_node_dict[entry.idx] = entry
-        domain_tree_node_list = data
+    reload_networks = (scope) ->
+        # blockUI
+        blockUI.start()
+        icswNetworkTreeService.load("rescan").then(
+            (done) ->
+                blockUI.stop()
+        )
 
-    scan_networks = (scope) ->
-        return () ->
-            # blockUI
-            blockUI.start()
-            icswSimpleAjaxCall(
-                url     : ICSW_URLS.NETWORK_RESCAN_NETWORKS
-                title   : "scanning for networks"
-            ).then(
-                (xml) ->
-                    blockUI.stop()
-                    scope.reload()
-                (xml) ->
-                    blockUI.stop()
-            )
+    # network currently displayed
+    network_display = {}
+
+    # trees
     nw_tree = undefined
+    domain_tree = undefined
+
     return {
         fetch: (scope) ->
             console.log "start fetch"
             defer = $q.defer()
-            icswNetworkTreeService.fetch(scope.$id).then(
-                (net_tree) ->
-                    nw_tree = net_tree
-                    defer.resolve(net_tree.nw_list)
+            $q.all(
+                [
+                    icswNetworkTreeService.fetch(scope.$id)
+                    icswDomainTreeService.fetch(scope.$id)
+                ]
+            ).then(
+                (data) ->
+                    nw_tree = data[0]
+                    domain_tree = data[1]
+                    defer.resolve(nw_tree.nw_list)
             )
             return defer.promise
 
-        edit_template       : "network.form"
-        modal_title         : "Network definition"
-        domain_tree_node_list: () ->
-            return domain_tree_node_list
-        refresh_domain_tree_node: () ->
-            icswDomainTreeService.load("ins").then((data) ->
-                set_domain_tree_node(data)
+        # reload
+
+        reload_networks: () ->
+            reload_networks()
+            hide_network()
+
+        # rescan
+
+        rescan_networks: () ->
+            console.log "reimplement rescan"
+
+        # access functions
+
+        nw_tree: () ->
+            return nw_tree
+
+        domain_tree: () ->
+            return domain_tree
+
+        create_or_edit: (scope, event, create, obj_or_parent) ->
+            if create
+                obj_or_parent = {
+                    "identifier"   : "new network",
+                    "network_type" : (entry.idx for entry in nw_tree.nw_type_list when entry.identifier == "o")[0]
+                    "enforce_unique_ips" : true
+                    "num_ip"       : 0
+                    "gw_pri"       : 1
+                }
+            else
+                dbu = new icswNetworkBackup()
+                dbu.create_backup(obj_or_parent)
+            scope.edit_obj = obj_or_parent
+            icswComplexModalService(
+                {
+                    message: $compile($templateCache.get("network.form"))(scope)
+                    title: "Network"
+                    css_class: "modal-wide"
+                    ok_label: if create then "Create" else "Modify"
+                    closable: true
+                    ok_callback: (modal) ->
+                        d = $q.defer()
+                        if scope.form_data.$invalid
+                            toaster.pop("warning", "form validation problem", "", 0)
+                            d.reject("form not valid")
+                        else
+                            if create
+                                nw_tree.create_network(scope.edit_obj).then(
+                                    (ok) ->
+                                        d.resolve("created")
+                                    (notok) ->
+                                        d.reject("not created")
+                                )
+                            else
+                                scope.edit_obj.put().then(
+                                    (ok) ->
+                                        nw_tree.reorder()
+                                        d.resolve("updated")
+                                    (not_ok) ->
+                                        d.reject("not updated")
+                                )
+                        return d.promise
+                    cancel_callback: (modal) ->
+                        if not create
+                            dbu.restore_backup(obj_or_parent)
+                        d = $q.defer()
+                        d.resolve("cancel")
+                        return d.promise
+                }
+            ).then(
+                (fin) ->
+                    console.log "finish"
             )
-        init_fn             : (scope) ->
-            # install salteed scan_networks function
-            scope.scan_networks = scan_networks(scope)
-        networks            : networks_rest
-        network_types       : network_types_rest
-        network_device_types: network_device_types_rest
+
+        get_production_networks : () ->
+            prod_idx = (entry for entry in nw_tree.nw_type_list when entry.identifier == "p")[0].idx
+            return (entry for entry in nw_tree.nw_list when entry.network_type == prod_idx)
+
+        is_slave_network : (nw_type) ->
+            if nw_type
+                return nw_tree.nw_type_lut[nw_type].identifier == "s"
+            else
+                return false
+
+        has_master_network : (edit_obj) ->
+            return if edit_obj.master_network then true else false
+
+        get_master_network_id: (edit_obj) ->
+            if edit_obj.master_network
+                return nw_tree.nw_lut[edit_obj.master_network].identifier
+            else
+                return "---"
+
+        preferred_dtn: (edit_obj) ->
+            if edit_obj.preferred_domain_tree_node
+                return domain_tree.lut[edit_obj.preferred_domain_tree_node].full_name
+            else
+                return "---"
+
+        get_network_device_types: (edit_obj) ->
+            if edit_obj.network_device_type.length
+                return (nw_tree.nw_device_type_lut[nd].identifier for nd in edit_obj.network_device_type).join(", ")
+            else
+                return "---"
+
         delete_confirm_str  : (obj) -> return "Really delete Network '#{obj.identifier}' ?"
-        new_object          : () ->
-            return {
-                "identifier"   : "new network",
-                "network_type" : (entry["idx"] for key, entry of network_types_rest when typeof(entry) == "object" and entry and entry["identifier"] == "o")[0]
-                "enforce_unique_ips" : true
-                "num_ip"       : 0
-                "gw_pri"       : 1
-            }
+
         network_display     : network_display
+
+        hide_network : () ->
+            return hide_network()
+
         show_network        : (obj) ->
             if network_display.active_network == obj
                 hide_network()
@@ -1552,44 +1638,25 @@ angular.module(
                     get_defer(Restangular.all(ICSW_URLS.REST_NETDEVICE_LIST.slice(1)).getList({"net_ip__network" : obj.idx}))
                     get_defer(Restangular.all(ICSW_URLS.REST_DEVICE_LIST.slice(1)).getList({"netdevice__net_ip__network" : obj.idx}))
                 ]
-                $q.all(q_list).then((data) ->
-                    iplist = data[0]
-                    netdevices = icswTools.build_lut(data[1])
-                    devices = icswTools.build_lut(data[2])
-                    for entry in iplist
-                        nd = netdevices[entry.netdevice]
-                        entry.netdevice_name = nd.devname
-                        entry.device_full_name = devices[nd.device].full_name
-                    network_display.iplist = iplist
+                $q.all(q_list).then(
+                    (data) ->
+                        iplist = data[0]
+                        netdevices = icswTools.build_lut(data[1])
+                        devices = icswTools.build_lut(data[2])
+                        for entry in iplist
+                            nd = netdevices[entry.netdevice]
+                            entry.netdevice_name = nd.devname
+                            entry.device_full_name = devices[nd.device].full_name
+                        network_display.iplist = iplist
                 )
-        hide_network : hide_network
-        after_reload : () ->
-            hide_network()
-        get_production_networks : () ->
-            prod_idx = (entry for key, entry of network_types_rest when typeof(entry) == "object" and entry and entry["identifier"] == "p")[0].idx
-            return (entry for key, entry of networks_rest when typeof(entry) == "object" and entry and entry.network_type == prod_idx)
-        is_slave_network : (nw_type) ->
-            if nw_type
-                return (entry for key, entry of network_types_rest when typeof(entry) == "object" and entry and entry["idx"] == nw_type)[0].identifier == "s"
-            else
-                return false
-        preferred_dtn: (edit_obj) ->
-            if edit_obj.preferred_domain_tree_node
-                if domain_tree_node_list.length
-                    return domain_tree_node_dict[edit_obj.preferred_domain_tree_node].full_name
-                else
-                    icswDomainTreeService.fetch("ins").then((data) ->
-                        set_domain_tree_node(data)
-                    )
-            else
-                return "---"
+
+        # range functions
+
         autorange_set : (edit_obj) ->
             if edit_obj.start_range == "0.0.0.0" and edit_obj.end_range == "0.0.0.0"
                 return false
             else
                 return true
-        has_master_network : (edit_obj) ->
-            return if edit_obj.master_network then true else false
 
         clear_range : (edit_obj) ->
             edit_obj.start_range = "0.0.0.0"
@@ -1617,6 +1684,8 @@ angular.module(
                 min = ip2long(edit_obj.network) + 1
                 max = ip2long(edit_obj.network) + (4294967295 - ip2long(edit_obj.netmask)) - 1
                 # todo, improve checks
+
+        # autocomplete network settings
 
         network_or_netmask_blur : (edit_obj) ->
             # calculate broadcast and gateway automatically

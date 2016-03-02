@@ -105,7 +105,11 @@ angular.module(
         constructor: () ->
             super()
             @simple_attributes = [
-                "identifier", "nework", "netmask", "gateway", "broadcast", "penalty", "force_unique_ips"
+                "identifier", "nework", "netmask", "gateway", "broadcast", "penalty", "enforce_unique_ips",
+                "preferred_domain_tree_node", "start_range", "end_range", "master_network", "network_type"
+            ]
+            @list_attributes = [
+                "network_device_type"
             ]
 
 ])
