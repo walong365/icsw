@@ -310,8 +310,9 @@ menu_module = angular.module(
             displayName: "menuheader"
             getDefaultProps: () ->
             render: () ->
-                _items = []
                 _idx = 0
+                _items = []
+                # _idx = 0
                 # flag for last entry was a valid one
                 valid_entry = false
                 for entry in @props.entries
@@ -329,6 +330,7 @@ menu_module = angular.module(
                         if entry.service_types? and _add
                             _add = icswAcessLevelService.has_all_service_types(entry.service_types)
                         if _add
+                            # console.log _key
                             if entry.preSpacer and valid_entry
                                 _items.push(
                                     li({className: "divider", key: _key + "_pre"})
@@ -340,7 +342,7 @@ menu_module = angular.module(
                                 )
                             else
                                 _items.push(
-                                    React.createElement(menu_line, entry)
+                                    React.createElement(menu_line, entry, {key: _key})
                                 )
                             valid_entry = true
                             if entry.postSpacer and valid_entry
@@ -353,12 +355,10 @@ menu_module = angular.module(
                     _res = li(
                         {key: "menu"}
                         a(
-                            {className: "dropdown-toggle", "data-toggle": "dropdown", key: "a"}
+                            {className: "dropdown-toggle", "data-toggle": "dropdown", key: "menu.head"}
                             [
-                                span(
-                                    {className: "fa #{@props.icon} fa-lg fa_top", key: "span"}
-                                )
-                                span({key: "text"}, @props.name)
+                                span({className: "fa #{@props.icon} fa-lg fa_top", key: "span"})
+                                span({key: "text#{_idx}"}, @props.name)
                             ]
                         )
                         ul(

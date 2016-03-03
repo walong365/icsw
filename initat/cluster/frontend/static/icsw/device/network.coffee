@@ -926,60 +926,77 @@ angular.module(
         template : $templateCache.get("icsw.device.network.overview")
         controller: "icswDeviceNetworkCtrl"
     }
-]).directive("icswDeviceNetworkTotal", ["$templateCache", ($templateCache) ->
+]).directive("icswDeviceNetworkTotal", ["$templateCache", "$rootScope", "ICSW_SIGNALS", ($templateCache, $rootScope, ICSW_SIGNALS) ->
     return {
         restrict: "EA"
         template: $templateCache.get("icsw.device.network.total")
+        link: (scope, element, attrs) ->
+            scope.select_tab = (name) ->
+                $rootScope.$emit(ICSW_SIGNALS("ICSW_NETWORK_TAB_SELECTED"), name)
     }
-]).controller("icswDeviceNetworkClusterCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$uibModal", "icswAcessLevelService", "msgbus", "ICSW_URLS", "icswSimpleAjaxCall",
-    ($scope, $compile, $filter, $templateCache, Restangular, $q, $uibModal, icswAcessLevelService, msgbus, ICSW_URLS, icswSimpleAjaxCall) ->
-        icswAcessLevelService.install($scope)
-        msgbus.receive("devicelist", $scope, (name, args) ->
-            $scope.devices = args[1] 
-        )
-        $scope.clusters = []
-        $scope.devices = []
-        $scope.new_devsel = (_dev_sel, _devg_sel) ->
-            $scope.devices = _dev_sel
-        $scope.reload = () ->
-            icswSimpleAjaxCall(
-                url      : ICSW_URLS.NETWORK_GET_CLUSTERS
-                dataType : "json"
-            ).then(
-                (json) ->
-                    $scope.clusters = json
-            )
-        $scope.is_selected = (cluster) ->
-            _sel = _.intersection(cluster.device_pks, $scope.devices)
-            return if _sel.length then "yes (#{_sel.length})" else "no"
-        $scope.show_cluster = (cluster) ->
-            child_scope = $scope.$new()
-            child_scope.cluster = cluster
-            child_scope.devices = []
-            Restangular.all(ICSW_URLS.REST_DEVICE_TREE_LIST.slice(1)).getList({"pks" : angular.toJson(cluster.device_pks), "ignore_meta_devices" : true}).then(
-                (data) ->
-                    child_scope.devices = data
-            )
-            msg = $compile($templateCache.get("icsw.device.network.cluster.info"))(child_scope)
-            child_scope.modal = BootstrapDialog.show
-                title: "Devices in cluster (#{child_scope.cluster.device_pks.length})"
-                message: msg
-                draggable: true
-                closable: true
-                closeByBackdrop: false
-                buttons: [
-                    {
-                         cssClass: "btn-primary"
-                         label: "Close"
-                         action: (dialog) ->
-                             dialog.close()
-                    },
-                    ]
-                onshow: (modal) =>
-                    height = $(window).height() - 100
-                    modal.getModal().find(".modal-body").css("max-height", height)
+]).controller("icswDeviceNetworkClusterCtrl",
+[
+    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "icswAcessLevelService", "ICSW_URLS", "icswSimpleAjaxCall",
+    "blockUI", "ICSW_SIGNALS", "$rootScope", "icswComplexModalService",
+(
+    $scope, $compile, $filter, $templateCache, Restangular, $q, icswAcessLevelService, ICSW_URLS, icswSimpleAjaxCall,
+    blockUI, ICSW_SIGNALS, $rootScope, icswComplexModalService
+) ->
+    icswAcessLevelService.install($scope)
+    # msgbus.receive("devicelist", $scope, (name, args) ->
+    #     $scope.devices = args[1]
+    # )
+    $scope.clusters = []
+    $scope.devices = []
 
-        $scope.reload()
+    $scope.new_devsel = (_dev_sel, _devg_sel) ->
+        $scope.devices = _dev_sel
+
+    $scope.reload = () ->
+        blockUI.start("loading NetworkClusters")
+        icswSimpleAjaxCall(
+            url      : ICSW_URLS.NETWORK_GET_CLUSTERS
+            dataType : "json"
+        ).then(
+            (json) ->
+                blockUI.stop()
+                $scope.clusters = json
+        )
+
+    $scope.is_selected = (cluster) ->
+        _sel = _.intersection(cluster.device_pks, $scope.devices)
+        return if _sel.length then "yes (#{_sel.length})" else "no"
+
+    $scope.show_cluster = (cluster) ->
+        Restangular.all(ICSW_URLS.REST_DEVICE_TREE_LIST.slice(1)).getList({"pks" : angular.toJson(cluster.device_pks), "ignore_meta_devices" : true}).then(
+            (data) ->
+                child_scope = $scope.$new(false)
+                child_scope.cluster = cluster
+                child_scope.devices = []
+                child_scope.devices = data
+                icswComplexModalService(
+                    {
+                        message: $compile($templateCache.get("icsw.device.network.cluster.info"))(child_scope)
+                        title: "Devices in cluster (#{child_scope.cluster.device_pks.length})"
+                        # css_class: "modal-wide"
+                        ok_label: "Close"
+                        closable: true
+                        ok_callback: (modal) ->
+                            d = $q.defer()
+                            d.resolve("ok")
+                            return d.promise
+                    }
+                ).then(
+                    (fin) ->
+                        console.log "finish"
+                        child_scope.$destroy()
+                )
+        )
+
+    $rootScope.$on(ICSW_SIGNALS("ICSW_NETWORK_TAB_SELECTED"), (event, name) ->
+        if name == "cluster"
+            $scope.reload()
+    )
 ]).controller("icswDeviceNetworkGraphCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$uibModal", "icswAcessLevelService", "icswLivestatusFilterFactory",
     ($scope, $compile, $filter, $templateCache, Restangular, $q, $uibModal, icswAcessLevelService, icswLivestatusFilterFactory) ->
         icswAcessLevelService.install($scope)

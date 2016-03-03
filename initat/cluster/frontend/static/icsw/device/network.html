@@ -446,7 +446,7 @@
                 <icsw-device-network-graph ls-filter="ls_filter"></icsw-device-network-graph>
             </div>
         </uib-tab>
-        <uib-tab heading="Clusters" ng-if="acl_read(null, 'backbone.network.show_clusters')">
+        <uib-tab heading="Clusters" ng-if="acl_read(null, 'backbone.network.show_clusters')" select="select_tab('cluster')">
             <div ng-controller="icswDeviceNetworkClusterCtrl">
                 <h3>Network clusters ({{ clusters.length }})</h3>
                 <icsw-tools-button type="reload" value="reload" size="sm" ng-click="reload()"></icsw-tools-button>
