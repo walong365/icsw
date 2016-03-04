@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2015 init.at
+# Copyright (C) 2012-2016 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -41,6 +41,7 @@ angular.module(
     _set_version = 0
     _active = undefined
     _user = undefined
+    console.log "init gss"
     $q.all(
         [
             icswCachingCall.fetch("graphsize", _size_url, {}, [])
@@ -48,25 +49,26 @@ angular.module(
             icswCachingCall.fetch("graphsize", _forecast_url, {}, [])
             icswCachingCall.fetch("graphsize", _timeframe_url, {}, [])
         ]
-    ).then((data) ->
-        sizes = data[0]
-        shifts = data[1]
-        forecasts = data[2]
-        timeframes = data[3]
-        for size in sizes
-            size.info = "#{size.name} (#{size.width} x #{size.height})"
-        for waiter in size_waiters
-            waiter.resolve(sizes)
-        size_waiters = []
-        for waiter in shift_waiters
-            waiter.resolve(shifts)
-        shift_waiters = []
-        for waiter in forecast_waiters
-            waiter.resolve(forecasts)
-        forecast_waiters = []
-        for waiter in timeframe_waiters
-            waiter.resolve(timeframes)
-        timeframe_waiters = []
+    ).then(
+        (data) ->
+            sizes = data[0]
+            shifts = data[1]
+            forecasts = data[2]
+            timeframes = data[3]
+            for size in sizes
+                size.info = "#{size.name} (#{size.width} x #{size.height})"
+            for waiter in size_waiters
+                waiter.resolve(sizes)
+            size_waiters = []
+            for waiter in shift_waiters
+                waiter.resolve(shifts)
+            shift_waiters = []
+            for waiter in forecast_waiters
+                waiter.resolve(forecasts)
+            forecast_waiters = []
+            for waiter in timeframe_waiters
+                waiter.resolve(timeframes)
+            timeframe_waiters = []
     )
     get_sizes = () ->
         _defer = $q.defer()

@@ -424,7 +424,7 @@ LOGGING = {
             'level': 'WARN',
         },
         'cluster': {
-            'handlers': ["init_unified", 'init', "init_mail"],
+            'handlers': ["init_unified", "init", "init_mail"],
             'propagate': True,
             'level': 'INFO' if DEBUG else "WARN",
         },

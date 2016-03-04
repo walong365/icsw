@@ -47,7 +47,7 @@ monitoring_cluster_module = angular.module(
 ]).service('icswMonitoringEscalationRestService', ["ICSW_URLS", "Restangular", (ICSW_URLS, Restangular) ->
     get_rest = (url, opts={}) -> return Restangular.all(url).getList(opts).$object
     data = {
-        mon_period  : get_rest(ICSW_URLS.REST_MON_PERIOD_LIST.slice(1))
+        # mon_period  : get_rest(ICSW_URLS.REST_MON_PERIOD_LIST.slice(1))
         mon_device_esc_templ    : get_rest(ICSW_URLS.REST_MON_DEVICE_ESC_TEMPL_LIST.slice(1))
         mon_service_esc_templ   : get_rest(ICSW_URLS.REST_MON_SERVICE_ESC_TEMPL_LIST.slice(1))
     }

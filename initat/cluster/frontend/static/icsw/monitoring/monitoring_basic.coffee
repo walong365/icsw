@@ -205,6 +205,7 @@ monitoring_basic_module = angular.module("icsw.monitoring.monitoring_basic",
     # load called
     load_called = false
     load_data = (client) ->
+        console.log "load called from", client
         load_called = true
         _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in rest_map)
         _defer = $q.defer()
@@ -260,7 +261,9 @@ monitoring_basic_module = angular.module("icsw.monitoring.monitoring_basic",
             return ret
     }
 ).service('icswMonitoringBasicRestService', ["ICSW_URLS", "Restangular", (ICSW_URLS, Restangular) ->
-    get_rest = (url) -> return Restangular.all(url).getList().$object
+    get_rest = (url) ->
+        console.log "get url (monitoringbasicrestservice)", url
+        return Restangular.all(url).getList().$object
     data = {
         mon_period         : get_rest(ICSW_URLS.REST_MON_PERIOD_LIST.slice(1))
         user               : get_rest(ICSW_URLS.REST_USER_LIST.slice(1))

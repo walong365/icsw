@@ -177,8 +177,11 @@ class rest_logging(object):
                 self.log(u"  {}".format(line))
             raise
         e_time = time.time()
-        self.log("call took {}".format(
-            logging_tools.get_diff_time_str(e_time - s_time)))
+        self.log(
+            "call took {}".format(
+                logging_tools.get_diff_time_str(e_time - s_time)
+            )
+        )
         return result
 
 

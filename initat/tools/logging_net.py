@@ -39,7 +39,13 @@ CONTEXT_KEY = "__ctx__"
 
 
 def debug(msg):
-    file("/tmp/.icsw_log_debug", "a").write("[{}/{:d}] {}\n".format(time.ctime(), os.getpid(), msg))
+    file("/tmp/.icsw_log_debug", "a").write(
+        "[{}/{:d}] {}\n".format(
+            time.ctime(),
+            os.getpid(),
+            msg
+        )
+    )
 
 
 def get_logger(name, destination, **kwargs):
@@ -133,6 +139,7 @@ class log_adapter(logging.LoggerAdapter):
 
 class ZMQHandler(logging.Handler):
     def __init__(self, logger_struct, **kwargs):
+        # print "***", kwargs, logger_struct
         self._pid = os.getpid()
         ZMQHandler.register_pid(self._pid)
         if "zmq_context" in kwargs:
@@ -309,21 +316,6 @@ class initat_formatter(object):
             delattr(record, "request")
 
 
-class init_handler(ZMQHandler):
-    def __init__(self, filename=None):
-        ZMQHandler.__init__(
-            self,
-            None,
-            destination=rewrite_log_destination("uds:/var/lib/logging-server/py_log_zmq")
-        )
-
-    def emit(self, record):
-        if not record.name.startswith("init.at."):
-            record.name = "init.at.{}".format(record.name)
-        self.format(record)
-        ZMQHandler.emit(self, record)
-
-
 class init_email_handler(ZMQHandler):
     def __init__(self, filename=None, *args, **kwargs):
         ZMQHandler.__init__(
@@ -347,6 +339,23 @@ class init_email_handler(ZMQHandler):
         ZMQHandler.emit(self, record)
 
 
+class init_handler(ZMQHandler):
+    def __init__(self, filename=None):
+        ZMQHandler.__init__(
+            self,
+            None,
+            destination=rewrite_log_destination("uds:/var/lib/logging-server/py_log_zmq")
+        )
+
+    def emit(self, record):
+        # ensure init.at prefix
+        if record.name.startswith("init.at."):
+            record.name = record.name[8:]
+        record.name = "init.at.{}".format(record.name)
+        self.format(record)
+        ZMQHandler.emit(self, record)
+
+
 class init_handler_unified(ZMQHandler):
     def __init__(self, filename=None, *args, **kwargs):
         ZMQHandler.__init__(
@@ -356,13 +365,18 @@ class init_handler_unified(ZMQHandler):
         )
 
     def emit(self, record):
+        # ensure init.at prefix
         if record.name.startswith("init.at."):
             record.name = record.name[8:]
-        self.format(record)
         form_str = "{:<s}/{}[{:d}]"
         record.threadName = form_str.format(record.name, record.threadName, record.lineno)
+        # save record.name
+        _rec_name = record.name
         record.name = "init.at.{}".format(UNIFIED_NAME)
+        self.format(record)
         ZMQHandler.emit(self, record)
+        # restore record.name
+        record.name = _rec_name
 
 
 class queue_handler(logging.Handler):

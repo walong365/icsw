@@ -49,7 +49,7 @@ monitoring_cluster_module.directive('icswMonitoringCluster', () ->
         device              : get_rest(ICSW_URLS.REST_DEVICE_TREE_LIST.slice(1), {"ignore_meta_devices" : true, "ignore_selection" : true})
         mon_service_templ   : get_rest(ICSW_URLS.REST_MON_SERVICE_TEMPL_LIST.slice(1))
         mon_check_command   : get_rest(ICSW_URLS.REST_MON_CHECK_COMMAND_LIST.slice(1))
-        mon_period          : get_rest(ICSW_URLS.REST_MON_PERIOD_LIST.slice(1))
+        # mon_period          : get_rest(ICSW_URLS.REST_MON_PERIOD_LIST.slice(1))
         mon_host_cluster    : get_rest(ICSW_URLS.REST_MON_HOST_CLUSTER_LIST.slice(1))
         mon_check_command   : get_rest(ICSW_URLS.REST_MON_CHECK_COMMAND_LIST.slice(1))
         mon_service_cluster : get_rest(ICSW_URLS.REST_MON_SERVICE_CLUSTER_LIST.slice(1))

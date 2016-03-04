@@ -31,8 +31,8 @@ import re
 import stat
 import string
 import sys
-import time
 import syslog
+import time
 
 LOG_LEVEL_OK = 20
 LOG_LEVEL_WARN = 30

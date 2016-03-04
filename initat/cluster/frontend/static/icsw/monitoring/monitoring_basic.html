@@ -1,4 +1,3 @@
-
 <script type="text/ng-template" id="mon.notification.form">
     <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
         <h2>Monitoring Notification</h2>
@@ -8,7 +7,7 @@
                 <label for="id_name" class="control-label col-sm-3 requiredField">
                     Name<span class="asteriskField">*</span></label>
 
-                <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="128" name="name" ng-model="edit_obj.name" placeholder="Name" required="True" type="text"></input></div>
+                <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="128" name="name" ng-model="edit_obj.name" placeholder="Name" required="True" type="text"/></div>
             </div>
             <div id="div_id_channel" class="form-group">
                 <label for="id_channel" class="control-label col-sm-3 requiredField">
@@ -33,9 +32,12 @@
             <legend>Flags and text</legend>
             <div class="form-group">
                 <div id="div_id_enabled" class="checkbox">
-                    <div class="controls col-lg-offset-0 col-sm-7"><label for="id_enabled"><input checked="checked" class="checkboxinput checkbox" id="id_enabled" name="enabled" ng-model="edit_obj.enabled" type="checkbox"></input>
-                        Enabled
-                    </label></div>
+                    <div class="controls col-lg-offset-0 col-sm-7">
+                        <label for="id_enabled">
+                            <input checked="checked" class="checkboxinput checkbox" id="id_enabled" name="enabled" ng-model="edit_obj.enabled" type="checkbox"/>
+                            Enabled
+                        </label>
+                    </div>
                 </div>
             </div>
             <div id="div_id_subject" class="form-group" ng_show="edit_obj.channel == 'mail'">
@@ -43,7 +45,9 @@
                     Subject
                 </label>
 
-                <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_subject" maxlength="140" name="subject" ng-model="edit_obj.subject" type="text"></input></div>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" id="id_subject" maxlength="140" name="subject" ng-model="edit_obj.subject" type="text"/>
+                </div>
             </div>
             <div id="div_id_content" class="form-group">
                 <label for="id_content" class="control-label col-sm-3 requiredField">
