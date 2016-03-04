@@ -145,122 +145,139 @@ angular.module(
         }
     )
 ]).controller("icswDeviceNetworkCtrl",
-    ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource",
-     "$q", "$uibModal", "icswAcessLevelService", "$rootScope", "$timeout", "blockUI", "icswTools", "icswToolsButtonConfigService", "ICSW_URLS",
+[
+    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource",
+    "$q", "$uibModal", "icswAcessLevelService", "$rootScope", "$timeout", "blockUI", "icswTools", "icswToolsButtonConfigService", "ICSW_URLS",
     "icswSimpleAjaxCall", "icswToolsSimpleModalService", "icswDeviceTreeService", "icswNetworkTreeService",
-    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource,
-     $q, $uibModal, icswAcessLevelService, $rootScope, $timeout, blockUI, icswTools, icswToolsButtonConfigService, ICSW_URLS,
-     icswSimpleAjaxCall, icswToolsSimpleModalService, icswDeviceTreeService, icswNetworkTreeService
-    ) ->
-        $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
-        icswAcessLevelService.install($scope)
-        # copy flags
-        $scope.show_copy_button = false
-        # accordion flags
-        $scope.device_open = true
-        $scope.netdevice_open = true
-        $scope.netip_open = false
-        $scope.peer_open = false
-        $scope.copy_coms = false
-        # mixins
-        $scope.netdevice_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q, "nd")
-        $scope.netdevice_edit.create_template = "netdevice.form"
-        $scope.netdevice_edit.edit_template = "netdevice.form"
-        $scope.netdevice_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_NETDEVICE_LIST.slice(1))
-        $scope.netdevice_edit.modify_rest_url = ICSW_URLS.REST_NETDEVICE_DETAIL.slice(1).slice(0, -2)
-        $scope.netdevice_edit.new_object_at_tail = false
-        $scope.netdevice_edit.use_promise = true
+    "icswDomainTreeService",
+(
+    $scope, $compile, $filter, $templateCache, Restangular, restDataSource,
+    $q, $uibModal, icswAcessLevelService, $rootScope, $timeout, blockUI, icswTools, icswToolsButtonConfigService, ICSW_URLS,
+    icswSimpleAjaxCall, icswToolsSimpleModalService, icswDeviceTreeService, icswNetworkTreeService,
+    icswDomainTreeService
+) ->
+    $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
+    icswAcessLevelService.install($scope)
+    # copy flags
+    $scope.show_copy_button = false
+    # accordion flags
+    $scope.device_open = true
+    $scope.netdevice_open = true
+    $scope.netip_open = false
+    $scope.peer_open = false
+    $scope.copy_coms = false
+    # mixins
+    $scope.netdevice_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q, "nd")
+    $scope.netdevice_edit.create_template = "netdevice.form"
+    $scope.netdevice_edit.edit_template = "netdevice.form"
+    $scope.netdevice_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_NETDEVICE_LIST.slice(1))
+    $scope.netdevice_edit.modify_rest_url = ICSW_URLS.REST_NETDEVICE_DETAIL.slice(1).slice(0, -2)
+    $scope.netdevice_edit.new_object_at_tail = false
+    $scope.netdevice_edit.use_promise = true
 
-        $scope.netip_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q, "ni")
-        $scope.netip_edit.create_template = "net.ip.form"
-        $scope.netip_edit.edit_template = "net.ip.form"
-        $scope.netip_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_NET_IP_LIST.slice(1))
-        $scope.netip_edit.modify_rest_url = ICSW_URLS.REST_NET_IP_DETAIL.slice(1).slice(0, -2)
-        $scope.netip_edit.new_object_at_tail = false
-        $scope.netip_edit.use_promise = true
+    $scope.netip_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q, "ni")
+    $scope.netip_edit.create_template = "net.ip.form"
+    $scope.netip_edit.edit_template = "net.ip.form"
+    $scope.netip_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_NET_IP_LIST.slice(1))
+    $scope.netip_edit.modify_rest_url = ICSW_URLS.REST_NET_IP_DETAIL.slice(1).slice(0, -2)
+    $scope.netip_edit.new_object_at_tail = false
+    $scope.netip_edit.use_promise = true
 
-        $scope.peer_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q, "np")
-        $scope.peer_edit.create_template = "peer.information.form"
-        $scope.peer_edit.edit_template = "peer.information.form"
-        #$scope.peer_edit.edit_template = "netip_template.html"
-        $scope.peer_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_PEER_INFORMATION_LIST.slice(1))
-        $scope.peer_edit.modify_rest_url = ICSW_URLS.REST_PEER_INFORMATION_DETAIL.slice(1).slice(0, -2)
-        $scope.peer_edit.new_object_at_tail = false
-        $scope.peer_edit.use_promise = true
+    $scope.peer_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q, "np")
+    $scope.peer_edit.create_template = "peer.information.form"
+    $scope.peer_edit.edit_template = "peer.information.form"
+    #$scope.peer_edit.edit_template = "netip_template.html"
+    $scope.peer_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_PEER_INFORMATION_LIST.slice(1))
+    $scope.peer_edit.modify_rest_url = ICSW_URLS.REST_PEER_INFORMATION_DETAIL.slice(1).slice(0, -2)
+    $scope.peer_edit.new_object_at_tail = false
+    $scope.peer_edit.use_promise = true
 
-        $scope.boot_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q, "nb")
-        $scope.boot_edit.edit_template = "device.boot.form"
-        $scope.boot_edit.put_parameters = {"only_boot" : true}
-        $scope.boot_edit.modify_rest_url = ICSW_URLS.REST_DEVICE_TREE_DETAIL.slice(1).slice(0, -2)
-        $scope.boot_edit.new_object_at_tail = false
-        $scope.boot_edit.use_promise = true
+    $scope.boot_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q, "nb")
+    $scope.boot_edit.edit_template = "device.boot.form"
+    $scope.boot_edit.put_parameters = {"only_boot" : true}
+    $scope.boot_edit.modify_rest_url = ICSW_URLS.REST_DEVICE_TREE_DETAIL.slice(1).slice(0, -2)
+    $scope.boot_edit.new_object_at_tail = false
+    $scope.boot_edit.use_promise = true
 
-        $scope.scan_mixin = new angular_modal_mixin($scope, $templateCache, $compile, $q, "Scan network")
-        $scope.scan_mixin.template = "device.network.scan.form"
-        $scope.scan_mixin.cssClass = "modal-tall"
+    $scope.scan_mixin = new angular_modal_mixin($scope, $templateCache, $compile, $q, "Scan network")
+    $scope.scan_mixin.template = "device.network.scan.form"
+    $scope.scan_mixin.cssClass = "modal-tall"
 
-        $scope.ethtool_autoneg = [
-            {"id": 0, "option": "default"},
-            {"id": 1, "option": "on"},
-            {"id": 2, "option": "off"},
+    $scope.ethtool_autoneg = [
+        {"id": 0, "option": "default"},
+        {"id": 1, "option": "on"},
+        {"id": 2, "option": "off"},
+    ]
+    $scope.ethtool_duplex = [
+        {"id": 0, "option": "default"},
+        {"id": 1, "option": "on"},
+        {"id": 2, "option": "off"},
+    ]
+    $scope.ethtool_speed = [
+        {"id": 0, "option": "default"},
+        {"id": 1, "option": "10 MBit"},
+        {"id": 2, "option": "100 MBit"},
+        {"id": 3, "option": "1 GBit"},
+        {"id": 4, "option": "10 GBit"},
+    ]
+    $scope.desired_stati = [
+        {"short": "i", "info_string": "ignore"}
+        {"short": "u", "info_string": "must be up"}
+        {"short": "d", "info_string": "must be down"}
+    ]
+    $scope.devsel_list = []
+    $scope.devices = []
+    $scope.new_devsel = (_dev_sel, _devg_sel) ->
+        $scope.devices = _dev_sel
+        $scope.reload()
+        # console.log "devsel for network set", _dev_sel
+        # $scope.reload()
+    console.log "scope network", $scope
+    $scope.reload= () ->
+        wait_list = [
+            icswDeviceTreeService.fetch($scope.$id)
+            icswNetworkTreeService.fetch($scope.$id)
+            icswDomainTreeService.fetch($scope.$id)
+            # restDataSource.reload([ICSW_URLS.REST_DEVICE_TREE_LIST, {"with_network" : true, "with_com_info": true, "pks" : angular.toJson($scope.devsel_list), "olp" : "backbone.device.change_network"}]),
+            # restDataSource.reload([ICSW_URLS.REST_PEER_INFORMATION_LIST, {}]),
+            # 2
+            # restDataSource.reload([ICSW_URLS.REST_NETDEVICE_SPEED_LIST, {}]),
+            # restDataSource.reload([ICSW_URLS.REST_NETWORK_DEVICE_TYPE_LIST, {}])
+            # 4
+            # restDataSource.reload([ICSW_URLS.REST_NETWORK_LIST, {}])
+            # restDataSource.reload([ICSW_URLS.REST_DOMAIN_TREE_NODE_LIST, {}])
+            # 6
+            # restDataSource.reload([ICSW_URLS.REST_NETDEVICE_PEER_LIST, {}])
+            # restDataSource.reload([ICSW_URLS.REST_SNMP_NETWORK_TYPE_LIST, {}])
         ]
-        $scope.ethtool_duplex = [
-            {"id": 0, "option": "default"},
-            {"id": 1, "option": "on"},
-            {"id": 2, "option": "off"},
-        ]
-        $scope.ethtool_speed = [
-            {"id": 0, "option": "default"},
-            {"id": 1, "option": "10 MBit"},
-            {"id": 2, "option": "100 MBit"},
-            {"id": 3, "option": "1 GBit"},
-            {"id": 4, "option": "10 GBit"},
-        ]
-        $scope.devsel_list = []
-        $scope.devices = []
-        $scope.new_devsel = (_dev_sel, _devg_sel) ->
-            $scope.devsel_list = _dev_sel
-            console.log "devsel for network set", _dev_sel
-            # $scope.reload()
-        console.log "scope network", $scope
-        $scope.reload= () ->
-            wait_list = [
-                icswDeviceTreeService.fetch($scope.$id)
-                icswNetworkTreeService.fetch($scope.$id)
-                # restDataSource.reload([ICSW_URLS.REST_DEVICE_TREE_LIST, {"with_network" : true, "with_com_info": true, "pks" : angular.toJson($scope.devsel_list), "olp" : "backbone.device.change_network"}]),
-                # restDataSource.reload([ICSW_URLS.REST_PEER_INFORMATION_LIST, {}]),
-                # 2
-                # restDataSource.reload([ICSW_URLS.REST_NETDEVICE_SPEED_LIST, {}]),
-                # restDataSource.reload([ICSW_URLS.REST_NETWORK_DEVICE_TYPE_LIST, {}])
-                # 4
-                # restDataSource.reload([ICSW_URLS.REST_NETWORK_LIST, {}])
-                # restDataSource.reload([ICSW_URLS.REST_DOMAIN_TREE_NODE_LIST, {}])
-                # 6
-                # restDataSource.reload([ICSW_URLS.REST_NETDEVICE_PEER_LIST, {}])
-                # restDataSource.reload([ICSW_URLS.REST_SNMP_NETWORK_TYPE_LIST, {}])
-            ]
-            $q.all(wait_list).then((data) ->
-                $scope.devices = (dev for dev in data[0])
-                $scope.peers = data[1]
-                $scope.netdevice_speeds = data[2]
-                $scope.desired_stati = [
-                    {"short": "i", "info_string": "ignore"}
-                    {"short": "u", "info_string": "must be up"}
-                    {"short": "d", "info_string": "must be down"}
-                ]
-                $scope.network_device_types = data[3]
-                $scope.ndt_lut = icswTools.build_lut($scope.network_device_types)
-                $scope.networks = data[4]
-                $scope.network_lut = icswTools.build_lut($scope.networks)
-                $scope.domain_tree_node = data[5]
-                $scope.dtn_lut = icswTools.build_lut($scope.domain_tree_node)
-                $scope.nd_peers = data[6]
-                $scope.build_luts()
-                # snmp network types
-                $scope.snt = data[7]
-                $scope.snt_lut = icswTools.build_lut($scope.snt)
-            )
+        $q.all(wait_list).then(
+            (data) ->
+                $scope.device_tree = data[0]
+                $scope.network_tree = data[1]
+                $scope.domain_tree = data[2]
+                $scope.device_tree.enrich_devices($scope.devices, ["network_info"]).then(
+                    (done) ->
+                        console.log "done"
+                )
 
+                # if false
+                #    $scope.devices = (dev for dev in data[0])
+                #    $scope.peers = data[1]
+                #    $scope.netdevice_speeds = data[2]
+                #    $scope.network_device_types = data[3]
+                #    $scope.ndt_lut = icswTools.build_lut($scope.network_device_types)
+                #    $scope.networks = data[4]
+                #    $scope.network_lut = icswTools.build_lut($scope.networks)
+                #    $scope.domain_tree_node = data[5]
+                #    $scope.dtn_lut = icswTools.build_lut($scope.domain_tree_node)
+                #    $scope.nd_peers = data[6]
+                #    $scope.build_luts()
+                #    # snmp network types
+                #    $scope.snt = data[7]
+                #    $scope.snt_lut = icswTools.build_lut($scope.snt)
+        )
+    # should reside in service
+    if false
         $scope.build_luts = () ->
             $scope.dev_lut = {}
             $scope.nd_lut = {}
@@ -284,540 +301,540 @@ angular.module(
                     $scope.nd_lut[peer.s_netdevice].peers.push({"peer" : peer, "netdevice" : peer.s_netdevice, "target" : peer.d_netdevice})
                 if peer.d_netdevice of $scope.nd_lut and peer.s_netdevice != peer.d_netdevice
                     $scope.nd_lut[peer.d_netdevice].peers.push({"peer" : peer, "netdevice" : peer.d_netdevice, "target" : peer.s_netdevice})
-        $scope.get_flags = (nd) ->
-            _f = []
-            if nd.routing
-                _f.push("extrouting")
-            if nd.inter_device_routing
-                _f.push("introuting")
-            if !nd.enabled
-                _f.push("disabled")
-            return _f.join(", ")
-        $scope.get_bridge_info = (nd) ->
-            dev = $scope.dev_lut[nd.device]
-            if nd.is_bridge
-                slaves = (sub_nd.devname for sub_nd in dev.netdevice_set when sub_nd.bridge_device == nd.idx)
-                if slaves.length
-                    return "bridge" + " (" + slaves.join(", ") + ")"
-                else
-                    return "bridge"
-            else if nd.bridge_device
-                return "slave (" + $scope.nd_lut[nd.bridge_device].devname + ")"
+    $scope.get_flags = (nd) ->
+        _f = []
+        if nd.routing
+            _f.push("extrouting")
+        if nd.inter_device_routing
+            _f.push("introuting")
+        if !nd.enabled
+            _f.push("disabled")
+        return _f.join(", ")
+    $scope.get_bridge_info = (nd) ->
+        dev = $scope.dev_lut[nd.device]
+        if nd.is_bridge
+            slaves = (sub_nd.devname for sub_nd in dev.netdevice_set when sub_nd.bridge_device == nd.idx)
+            if slaves.length
+                return "bridge" + " (" + slaves.join(", ") + ")"
             else
-                return ""
-        $scope.get_bond_info = (nd) ->
-            dev = $scope.dev_lut[nd.device]
-            if nd.is_bond
-                slaves = (sub_nd.devname for sub_nd in dev.netdevice_set when sub_nd.bond_master == nd.idx)
-                if slaves.length
-                    return "master" + " (" + slaves.join(", ") + ")"
-                else
-                    return "master"
-            else if nd.bond_master
-                return "slave (" + $scope.nd_lut[nd.bond_master].devname + ")"
+                return "bridge"
+        else if nd.bridge_device
+            return "slave (" + $scope.nd_lut[nd.bridge_device].devname + ")"
+        else
+            return ""
+    $scope.get_bond_info = (nd) ->
+        dev = $scope.dev_lut[nd.device]
+        if nd.is_bond
+            slaves = (sub_nd.devname for sub_nd in dev.netdevice_set when sub_nd.bond_master == nd.idx)
+            if slaves.length
+                return "master" + " (" + slaves.join(", ") + ")"
             else
-                return ""
-        $scope.has_bridge_slaves = (nd) ->
-            dev = $scope.dev_lut[nd.device]
-            if nd.is_bridge
-                return if (sub_nd.devname for sub_nd in dev.netdevice_set when sub_nd.bridge_device == nd.idx).length then true else false
+                return "master"
+        else if nd.bond_master
+            return "slave (" + $scope.nd_lut[nd.bond_master].devname + ")"
+        else
+            return ""
+    $scope.has_bridge_slaves = (nd) ->
+        dev = $scope.dev_lut[nd.device]
+        if nd.is_bridge
+            return if (sub_nd.devname for sub_nd in dev.netdevice_set when sub_nd.bridge_device == nd.idx).length then true else false
+        else
+            return false
+    $scope.has_bond_slaves = (nd) ->
+        dev = $scope.dev_lut[nd.device]
+        if nd.is_bond
+            return if (sub_nd.devname for sub_nd in dev.netdevice_set when sub_nd.bond_master == nd.idx).length then true else false
+        else
+            return false
+    $scope.get_netdevice_name = (nd) ->
+        if angular.isNumber(nd)
+            nd = $scope.nd_lut[nd]
+        nd_name = nd.devname
+        if nd.description
+            nd_name = "#{nd_name} (#{nd.description})"
+        if nd.vlan_id
+            if nd.master_device
+                nd_name = "#{nd_name}, VLAN #{nd.vlan_id} on " + String($scope.nd_lut[nd.master_device].devname)
             else
-                return false
-        $scope.has_bond_slaves = (nd) ->
-            dev = $scope.dev_lut[nd.device]
-            if nd.is_bond
-                return if (sub_nd.devname for sub_nd in dev.netdevice_set when sub_nd.bond_master == nd.idx).length then true else false
-            else
-                return false
-        $scope.get_netdevice_name = (nd) ->
-            if angular.isNumber(nd)
-                nd = $scope.nd_lut[nd]
-            nd_name = nd.devname
-            if nd.description
-                nd_name = "#{nd_name} (#{nd.description})"
-            if nd.vlan_id
-                if nd.master_device
-                    nd_name = "#{nd_name}, VLAN #{nd.vlan_id} on " + String($scope.nd_lut[nd.master_device].devname)
-                else
-                    nd_name = "#{nd_name}, VLAN #{nd.vlan_id}"
-            return nd_name
-        $scope.get_netdevice_boot_info = (nd) ->
-            num_boot = (true for net_ip in nd.net_ip_set when $scope.network_lut[net_ip.network].network_type_identifier == "b").length
-            if num_boot == 0
-                return ""
-            else if num_boot == 1
-                return "(b)"
-            else
-                return "(#{num_boot})"
-        $scope.get_num_netdevices = (dev) ->
-            return dev.netdevice_set.length
-        $scope.no_objects_defined = (dev) ->
-            return if (dev.netdevice_set.length == 0) then true else false
-        $scope.get_num_netips_nd = (nd) ->
-            return nd.net_ip_set.length
-        $scope.get_num_netips_dev = (dev) ->
-            _n = 0
-            for nd in dev.netdevice_set
-                _n += nd.net_ip_set.length
-            return _n
-        $scope.get_num_peers_nd = (nd) ->
-            return nd.peers.length
-        $scope.get_num_peers_dev = (dev) ->
-            _n = 0
-            for nd in dev.netdevice_set
-                _n += nd.peers.length
-            return _n
-        $scope.get_route_peers =() ->
-            return (entry for entry in $scope.nd_peers when entry.routing)
-        $scope.get_ndip_objects = (dev) ->
-            r_list = []
+                nd_name = "#{nd_name}, VLAN #{nd.vlan_id}"
+        return nd_name
+    $scope.get_netdevice_boot_info = (nd) ->
+        num_boot = (true for net_ip in nd.net_ip_set when $scope.network_lut[net_ip.network].network_type_identifier == "b").length
+        if num_boot == 0
+            return ""
+        else if num_boot == 1
+            return "(b)"
+        else
+            return "(#{num_boot})"
+    $scope.get_num_netdevices = (dev) ->
+        return dev.netdevice_set.length
+    $scope.no_objects_defined = (dev) ->
+        return if (dev.netdevice_set.length == 0) then true else false
+    $scope.get_num_netips_nd = (nd) ->
+        return nd.net_ip_set.length
+    $scope.get_num_netips_dev = (dev) ->
+        _n = 0
+        for nd in dev.netdevice_set
+            _n += nd.net_ip_set.length
+        return _n
+    $scope.get_num_peers_nd = (nd) ->
+        return nd.peers.length
+    $scope.get_num_peers_dev = (dev) ->
+        _n = 0
+        for nd in dev.netdevice_set
+            _n += nd.peers.length
+        return _n
+    $scope.get_route_peers =() ->
+        return (entry for entry in $scope.nd_peers when entry.routing)
+    $scope.get_ndip_objects = (dev) ->
+        r_list = []
+        for ndev in dev.netdevice_set
+            r_list.push(ndev)
+            r_list = r_list.concat(ndev.net_ip_set)
+            r_list = r_list.concat(ndev.peers)
+        return r_list
+    $scope.get_ip_objects = (src_obj) ->
+        r_list = []
+        if src_obj and src_obj.devname?
+            r_list = src_obj.net_ip_set
+        else
+            for dev in $scope.devices
+                for ndev in dev.netdevice_set
+                    r_list = r_list.concat(ndev.net_ip_set)
+        return r_list
+    $scope.get_nd_objects = () ->
+        r_list = []
+        for dev in $scope.devices
             for ndev in dev.netdevice_set
                 r_list.push(ndev)
-                r_list = r_list.concat(ndev.net_ip_set)
-                r_list = r_list.concat(ndev.peers)
-            return r_list
-        $scope.get_ip_objects = (src_obj) ->
-            r_list = []
-            if src_obj and src_obj.devname?
-                r_list = src_obj.net_ip_set
-            else
-                for dev in $scope.devices
-                    for ndev in dev.netdevice_set
-                        r_list = r_list.concat(ndev.net_ip_set)
-            return r_list
-        $scope.get_nd_objects = () ->
-            r_list = []
-            for dev in $scope.devices
-                for ndev in dev.netdevice_set
-                    r_list.push(ndev)
-            return r_list
-        $scope.get_peer_objects = () ->
-            r_list = []
-            for dev in $scope.devices
-                for ndev in dev.netdevice_set
-                    r_list = r_list.concat(ndev.peers)
-            return r_list
-        $scope.set_scan_mode = (sm) ->
-            $scope.scan_device.scan_mode = sm
-            $scope.scan_device["scan_#{sm}_active"] = true
-        $scope.has_com_capability = (dev, cc) ->
-            return cc in dev.com_caps
-        $scope.scan_device_network = (dev, event) ->
-            $scope._current_dev = dev
-            $scope.scan_device = dev
-            network_type_names = []
-            ip_dict = {}
+        return r_list
+    $scope.get_peer_objects = () ->
+        r_list = []
+        for dev in $scope.devices
             for ndev in dev.netdevice_set
-                for ip in ndev.net_ip_set
-                    if ip.network of $scope.network_lut
-                        network = $scope.network_lut[ip.network]
-                        if network.network_type_identifier != "l" and not (network.netmask == "255.0.0.0" and network.network == "127.0.0.0")
-                            if network.network_type_name not of ip_dict
-                                ip_dict[network.network_type_name] = []
-                                network_type_names.push(network.network_type_name)
-                            ip_dict[network.network_type_name].push(ip.ip)
-            for key, value of ip_dict
-                ip_dict[key] = _.uniq(_.sortBy(value))
-            network_type_names = _.sortBy(network_type_names)
-            dev.ip_dict = ip_dict
-            dev.network_type_names = network_type_names
+                r_list = r_list.concat(ndev.peers)
+        return r_list
+    $scope.set_scan_mode = (sm) ->
+        $scope.scan_device.scan_mode = sm
+        $scope.scan_device["scan_#{sm}_active"] = true
+    $scope.has_com_capability = (dev, cc) ->
+        return cc in dev.com_caps
+    $scope.scan_device_network = (dev, event) ->
+        $scope._current_dev = dev
+        $scope.scan_device = dev
+        network_type_names = []
+        ip_dict = {}
+        for ndev in dev.netdevice_set
+            for ip in ndev.net_ip_set
+                if ip.network of $scope.network_lut
+                    network = $scope.network_lut[ip.network]
+                    if network.network_type_identifier != "l" and not (network.netmask == "255.0.0.0" and network.network == "127.0.0.0")
+                        if network.network_type_name not of ip_dict
+                            ip_dict[network.network_type_name] = []
+                            network_type_names.push(network.network_type_name)
+                        ip_dict[network.network_type_name].push(ip.ip)
+        for key, value of ip_dict
+            ip_dict[key] = _.uniq(_.sortBy(value))
+        network_type_names = _.sortBy(network_type_names)
+        dev.ip_dict = ip_dict
+        dev.network_type_names = network_type_names
 
-            dev.manual_address = ""
-            # set ip if there is only one
-            if Object.keys(ip_dict).length == 1
-                nw_ip_addresses = ip_dict[ Object.keys(ip_dict)[0] ]
-                if nw_ip_addresses.length == 1
-                    dev.manual_address = nw_ip_addresses[0]
+        dev.manual_address = ""
+        # set ip if there is only one
+        if Object.keys(ip_dict).length == 1
+            nw_ip_addresses = ip_dict[ Object.keys(ip_dict)[0] ]
+            if nw_ip_addresses.length == 1
+                dev.manual_address = nw_ip_addresses[0]
 
-            dev.snmp_community = "public"
-            if not dev.com_caps?
-                # init com_caps array if not already set
-                dev.com_caps = []
-            dev.snmp_version = "2c"
-            dev.remove_not_found = false
-            dev.strict_mode = true
-            dev.modify_peering = false
-            dev.wmi_username = "Administrator"
-            dev.wmi_password = ""
-            dev.wmi_discard_disabled_interfaces = true
-            dev.scan_base_active = false
-            dev.scan_hm_active = false
-            dev.scan_snmp_active = false
-            if not $scope.no_objects_defined(dev) and $scope.has_com_capability(dev, "snmp")
-                $scope.set_scan_mode("snmp")
+        dev.snmp_community = "public"
+        if not dev.com_caps?
+            # init com_caps array if not already set
+            dev.com_caps = []
+        dev.snmp_version = "2c"
+        dev.remove_not_found = false
+        dev.strict_mode = true
+        dev.modify_peering = false
+        dev.wmi_username = "Administrator"
+        dev.wmi_password = ""
+        dev.wmi_discard_disabled_interfaces = true
+        dev.scan_base_active = false
+        dev.scan_hm_active = false
+        dev.scan_snmp_active = false
+        if not $scope.no_objects_defined(dev) and $scope.has_com_capability(dev, "snmp")
+            $scope.set_scan_mode("snmp")
+        else
+            $scope.set_scan_mode("base")
+        $scope.scan_mixin.edit(dev, event).then(
+            (mod_obj) ->
+                true
+        )
+    $scope.fetch_device_network = () ->
+        blockUI.start()
+        _dev = $scope._current_dev
+        _dev.scan_address = _dev.manual_address
+        # intermediate state to trigger reload
+        _dev.active_scan = "waiting"
+        icswSimpleAjaxCall(
+            url     : ICSW_URLS.DEVICE_SCAN_DEVICE_NETWORK
+            data    :
+                "dev" : angular.toJson($scope.scan_device)
+        ).then((xml) ->
+            blockUI.stop()
+            $scope.scan_mixin.close_modal()
+            $scope.update_scans()
+        )
+    $scope.update_scans = () ->
+        Restangular.all(ICSW_URLS.NETWORK_GET_ACTIVE_SCANS.slice(1)).getList({"pks" : angular.toJson($scope.devsel_list)}).then(
+            (data) ->
+                any_scans_running = false
+                for obj in data
+                    dev = $scope.dev_lut[obj["pk"]]
+                    dev.previous_scan = dev.active_scan
+                    dev.active_scan = obj.active_scan
+                    if dev.active_scan != dev.previous_scan
+                        if not dev.active_scan
+                            # scan finished
+                            $q.all(
+                                [
+                                    Restangular.all(ICSW_URLS.REST_DEVICE_TREE_LIST.slice(1)).getList({"with_network" : true, "pks" : angular.toJson([dev.idx]), "olp" : "backbone.device.change_network"})
+                                    Restangular.all(ICSW_URLS.REST_PEER_INFORMATION_LIST.slice(1)).getList(),
+                                    Restangular.all(ICSW_URLS.REST_NETWORK_LIST.slice(1)).getList(),
+                                ]
+                            ).then((data) ->
+                                $scope.networks = data[2]
+                                $scope.peers = data[1]
+                                $scope.network_lut = icswTools.build_lut($scope.networks)
+                                $scope.update_device(data[0][0])
+                            )
+                    if obj.active_scan
+                        any_scans_running = true
+                if any_scans_running
+                    $timeout($scope.update_scans, 5000)
+        )
+    $scope.update_device = (new_dev) ->
+        cur_devs = []
+        for dev in $scope.devices
+            if dev.idx == new_dev.idx
+                cur_devs.push(new_dev)
             else
-                $scope.set_scan_mode("base")
-            $scope.scan_mixin.edit(dev, event).then(
-                (mod_obj) ->
+                cur_devs.push(dev)
+        $scope.devices = cur_devs
+        $scope.build_luts()
+    $scope.create_netdevice = (obj, event) ->
+        $scope.netdevice_edit.create_list = obj.netdevice_set
+        $scope.netdevice_edit.title = "New Netdevice"
+        $scope.netdevice_edit.new_object = (scope) ->
+            _dev = {
+                "device" : obj.idx
+                "devname" : "eth0"
+                "enabled" : true
+                "netdevice_speed" : (entry.idx for entry in $scope.netdevice_speeds when entry.speed_bps == 1000000000 and entry.full_duplex)[0]
+                "ignore_netdevice_speed": false
+                "desired_status": "i"
+                "penalty" : 1
+                "net_ip_set" : []
+                "ethtool_options" : 0
+                "ethtool_autoneg" : 0
+                "ethtool_speed" : 0
+                "ethtool_duplex" : 0
+                "mtu": 1500
+                # dummy value
+                "network_device_type" : $scope.network_device_types[0].idx
+            }
+            return _dev
+        $scope.netdevice_edit.create(event).then(
+            (new_obj) ->
+                if new_obj != false
+                    new_obj.net_ip_set = []
+                    new_obj.peers = []
+                    $scope.nd_lut[new_obj.idx] = new_obj
+                    $scope.check_for_peer_change(new_obj)
+        )
+    $scope.edit_netdevice = (ndev, event) ->
+        $scope.netdevice_edit.title = "Netdevice '#{ndev.devname}'"
+        $scope.netdevice_edit.edit(ndev, event).then(
+            (mod_ndev) ->
+                if mod_ndev != false
+                    $scope.check_for_peer_change(mod_ndev)
+        )
+    $scope.edit_boot_settings = (obj, event) ->
+        $scope.boot_edit.edit(obj, event).then(
+            (mod_dev) ->
+                true
+        )
+    $scope.check_for_peer_change = (ndev) ->
+        # at first remove from list
+        $scope.nd_peers = (entry for entry in $scope.nd_peers when entry.idx != ndev.idx)
+        if ndev.routing
+            _cd = $scope.dev_lut[ndev.device]
+            ndev.fqdn = _cd.full_name
+            ndev.device_name = _cd.name
+            ndev.device_group_name = _cd.device_group_name
+            $scope.nd_peers.push(ndev)
+        $scope.build_luts()
+    $scope.get_vlan_masters = (cur_nd) ->
+        _cd = $scope.dev_lut[cur_nd.device]
+        return (entry for entry in _cd.netdevice_set when entry.idx != cur_nd.idx and not entry.is_bridge and not entry.is_bond)
+    $scope.get_bridge_masters = (cur_nd) ->
+        _cd = $scope.dev_lut[cur_nd.device]
+        return (entry for entry in _cd.netdevice_set when entry.idx != cur_nd.idx and entry.is_bridge)
+    $scope.get_bond_masters = (cur_nd) ->
+        _cd = $scope.dev_lut[cur_nd.device]
+        return (entry for entry in _cd.netdevice_set when entry.idx != cur_nd.idx and entry.is_bond)
+    $scope.create_netip_dev = (obj, event) ->
+        $scope._current_dev = obj
+        $scope.netip_edit.create_list = undefined
+        $scope.netip_edit.title = "New IP"
+        $scope.netip_edit.new_object = (scope) ->
+            return {
+                "netdevice" : (entry.idx for entry in obj.netdevice_set)[0]
+                "ip" : "0.0.0.0"
+                "_changed_by_user_": false
+                "network" : $scope.networks[0].idx
+                # copy domain tree node from device
+                "domain_tree_node" : obj.domain_tree_node
+            }
+        $scope.netip_edit.create(event).then(
+            (new_obj) ->
+                if new_obj != false
+                    $scope.nd_lut[new_obj.netdevice].net_ip_set.push(new_obj)
+                    $scope.ip_lut[new_obj.idx] = new_obj
+        )
+    $scope.create_netip_nd = (obj, event) ->
+        $scope._current_dev = $scope.dev_lut[obj.device]
+        $scope.netip_edit.create_list = undefined
+        $scope.netip_edit.title = "New IP"
+        $scope.netip_edit.new_object = (scope) ->
+            return {
+                "netdevice" : obj.idx
+                "ip" : "0.0.0.0"
+                "_changed_by_user_": false
+                "network" : $scope.networks[0].idx
+                # take first domain tree node
+                "domain_tree_node" : $scope.domain_tree_node[0].idx
+            }
+        $scope.netip_edit.create(event).then(
+            (new_obj) ->
+                if new_obj != false
+                    $scope.nd_lut[new_obj.netdevice].net_ip_set.push(new_obj)
+                    $scope.ip_lut[new_obj.idx] = new_obj
+        )
+    $scope.edit_netip = (ip, event) ->
+        $scope._current_dev = $scope.dev_lut[$scope.nd_lut[ip.netdevice].device]
+        $scope.netip_edit.title = "Edit IP '#{ip.ip}'"
+        $scope.netip_edit.edit(ip, event).then(
+            (mod_ip) ->
+                if mod_ip != false
                     true
-            )
-        $scope.fetch_device_network = () ->
-            blockUI.start()
-            _dev = $scope._current_dev
-            _dev.scan_address = _dev.manual_address
-            # intermediate state to trigger reload
-            _dev.active_scan = "waiting"
-            icswSimpleAjaxCall(
-                url     : ICSW_URLS.DEVICE_SCAN_DEVICE_NETWORK
-                data    :
-                    "dev" : angular.toJson($scope.scan_device)
-            ).then((xml) ->
-                blockUI.stop()
-                $scope.scan_mixin.close_modal()
-                $scope.update_scans()
-            )
-        $scope.update_scans = () ->
-            Restangular.all(ICSW_URLS.NETWORK_GET_ACTIVE_SCANS.slice(1)).getList({"pks" : angular.toJson($scope.devsel_list)}).then(
-                (data) ->
-                    any_scans_running = false
-                    for obj in data
-                        dev = $scope.dev_lut[obj["pk"]]
-                        dev.previous_scan = dev.active_scan
-                        dev.active_scan = obj.active_scan
-                        if dev.active_scan != dev.previous_scan
-                            if not dev.active_scan
-                                # scan finished
-                                $q.all(
-                                    [
-                                        Restangular.all(ICSW_URLS.REST_DEVICE_TREE_LIST.slice(1)).getList({"with_network" : true, "pks" : angular.toJson([dev.idx]), "olp" : "backbone.device.change_network"})
-                                        Restangular.all(ICSW_URLS.REST_PEER_INFORMATION_LIST.slice(1)).getList(),
-                                        Restangular.all(ICSW_URLS.REST_NETWORK_LIST.slice(1)).getList(),
-                                    ]
-                                ).then((data) ->
-                                    $scope.networks = data[2]
-                                    $scope.peers = data[1]
-                                    $scope.network_lut = icswTools.build_lut($scope.networks)
-                                    $scope.update_device(data[0][0])
-                                )
-                        if obj.active_scan
-                            any_scans_running = true
-                    if any_scans_running
-                        $timeout($scope.update_scans, 5000)
-            )
-        $scope.update_device = (new_dev) ->
-            cur_devs = []
-            for dev in $scope.devices
-                if dev.idx == new_dev.idx
-                    cur_devs.push(new_dev)
-                else
-                    cur_devs.push(dev)
-            $scope.devices = cur_devs
-            $scope.build_luts()
-        $scope.create_netdevice = (obj, event) ->
-            $scope.netdevice_edit.create_list = obj.netdevice_set
-            $scope.netdevice_edit.title = "New Netdevice"
-            $scope.netdevice_edit.new_object = (scope) ->
-                _dev = {
-                    "device" : obj.idx
-                    "devname" : "eth0"
-                    "enabled" : true
-                    "netdevice_speed" : (entry.idx for entry in $scope.netdevice_speeds when entry.speed_bps == 1000000000 and entry.full_duplex)[0]
-                    "ignore_netdevice_speed": false
-                    "desired_status": "i"
-                    "penalty" : 1
-                    "net_ip_set" : []
-                    "ethtool_options" : 0
-                    "ethtool_autoneg" : 0
-                    "ethtool_speed" : 0
-                    "ethtool_duplex" : 0
-                    "mtu": 1500
-                    # dummy value
-                    "network_device_type" : $scope.network_device_types[0].idx
-                } 
-                return _dev
-            $scope.netdevice_edit.create(event).then(
-                (new_obj) ->
-                    if new_obj != false
-                        new_obj.net_ip_set = []
-                        new_obj.peers = []
-                        $scope.nd_lut[new_obj.idx] = new_obj
-                        $scope.check_for_peer_change(new_obj)
-            )
-        $scope.edit_netdevice = (ndev, event) ->
-            $scope.netdevice_edit.title = "Netdevice '#{ndev.devname}'"
-            $scope.netdevice_edit.edit(ndev, event).then(
-                (mod_ndev) ->
-                    if mod_ndev != false
-                        $scope.check_for_peer_change(mod_ndev)
-            )
-        $scope.edit_boot_settings = (obj, event) ->
-            $scope.boot_edit.edit(obj, event).then(
-                (mod_dev) ->
+        )
+    $scope.get_peer_src_info = (_edit_obj) ->
+        if $scope.source_is_local
+            _nd = $scope.nd_lut[$scope._edit_obj.s_netdevice]
+        else
+            _nd = $scope.nd_lut[$scope._edit_obj.d_netdevice]
+        if _nd
+            return _nd.devname + " on " + $scope.dev_lut[_nd.device].name
+        else
+            return "???"
+    $scope.edit_peer_information = (peer, event) ->
+        if peer.peer.s_netdevice == peer.netdevice
+            $scope.source_is_local = true
+        else
+            $scope.source_is_local = false
+        $scope.peer_edit.edit(peer.peer, event).then(
+            (mod_peer) ->
+                if mod_peer != false
+                    # rebuild luts
+                    $scope.build_luts()
+        )
+    $scope.delete_peer_information = (ndip_obj, event) ->
+        # find device / netdevice
+        peer = ndip_obj.peer
+        $scope.peer_edit.delete_list = undefined
+        $scope.peer_edit.delete_obj(peer).then(
+            (res) ->
+                if res
+                    if peer.s_netdevice of $scope.nd_lut
+                        $scope.nd_lut[peer.s_netdevice].peers = (entry for entry in $scope.nd_lut[peer.s_netdevice].peers when entry.peer.idx != peer.idx)
+                    if peer.d_netdevice of $scope.nd_lut
+                        $scope.nd_lut[peer.d_netdevice].peers = (entry for entry in $scope.nd_lut[peer.d_netdevice].peers when entry.peer.idx != peer.idx)
+                    delete $scope.peer_lut[peer.idx]
+        )
+    $scope.create_peer_information_dev = (obj, event) ->
+        $scope._current_dev = obj
+        $scope.source_is_local = true
+        $scope.peer_edit.create_list = undefined
+        $scope.peer_edit.new_object = (scope) ->
+            return {
+                "s_netdevice" : (entry.idx for entry in obj.netdevice_set)[0]
+                "penalty" : 1
+            }
+        $scope.create_peer_information(event)
+    $scope.create_peer_information_nd = (obj, event) ->
+        $scope._current_dev = $scope.dev_lut[obj.device]
+        $scope.source_is_local = true
+        $scope.peer_edit.create_list = undefined
+        $scope.peer_edit.new_object = (scope) ->
+            return {
+                "s_netdevice" : obj.idx
+                "penalty" : 1
+            }
+        $scope.create_peer_information(event)
+    $scope.create_peer_information = (event) ->
+        $scope.peer_edit.create(event).then(
+            (peer) ->
+                if peer != false
+                    $scope.peer_lut[peer.idx] = peer
+                    if peer.s_netdevice of $scope.nd_lut
+                        $scope.nd_lut[peer.s_netdevice].peers.push({"peer" : peer, "netdevice" : peer.s_netdevice, "target" : peer.d_netdevice})
+                    if peer.d_netdevice of $scope.nd_lut and peer.s_netdevice != peer.d_netdevice
+                        $scope.nd_lut[peer.d_netdevice].peers.push({"peer" : peer, "netdevice" : peer.d_netdevice, "target" : peer.s_netdevice})
+        )
+    $scope.delete_netip = (ip, event) ->
+        # find device / netdevice
+        $scope.netip_edit.delete_list = $scope.nd_lut[ip.netdevice].net_ip_set
+        $scope.netip_edit.delete_obj(ip).then(
+            (res) ->
+                if res
                     true
-            )
-        $scope.check_for_peer_change = (ndev) ->
-            # at first remove from list
-            $scope.nd_peers = (entry for entry in $scope.nd_peers when entry.idx != ndev.idx)
-            if ndev.routing
-                _cd = $scope.dev_lut[ndev.device]
-                ndev.fqdn = _cd.full_name
-                ndev.device_name = _cd.name
-                ndev.device_group_name = _cd.device_group_name
-                $scope.nd_peers.push(ndev)
-            $scope.build_luts()
-        $scope.get_vlan_masters = (cur_nd) ->
-            _cd = $scope.dev_lut[cur_nd.device]
-            return (entry for entry in _cd.netdevice_set when entry.idx != cur_nd.idx and not entry.is_bridge and not entry.is_bond)
-        $scope.get_bridge_masters = (cur_nd) ->
-            _cd = $scope.dev_lut[cur_nd.device]
-            return (entry for entry in _cd.netdevice_set when entry.idx != cur_nd.idx and entry.is_bridge)
-        $scope.get_bond_masters = (cur_nd) ->
-            _cd = $scope.dev_lut[cur_nd.device]
-            return (entry for entry in _cd.netdevice_set when entry.idx != cur_nd.idx and entry.is_bond)
-        $scope.create_netip_dev = (obj, event) ->
-            $scope._current_dev = obj
-            $scope.netip_edit.create_list = undefined
-            $scope.netip_edit.title = "New IP"
-            $scope.netip_edit.new_object = (scope) ->
-                return {
-                    "netdevice" : (entry.idx for entry in obj.netdevice_set)[0]
-                    "ip" : "0.0.0.0"
-                    "_changed_by_user_": false
-                    "network" : $scope.networks[0].idx
-                    # copy domain tree node from device
-                    "domain_tree_node" : obj.domain_tree_node
-                } 
-            $scope.netip_edit.create(event).then(
-                (new_obj) ->
-                    if new_obj != false
-                        $scope.nd_lut[new_obj.netdevice].net_ip_set.push(new_obj)
-                        $scope.ip_lut[new_obj.idx] = new_obj
-            )
-        $scope.create_netip_nd = (obj, event) ->
-            $scope._current_dev = $scope.dev_lut[obj.device]
-            $scope.netip_edit.create_list = undefined
-            $scope.netip_edit.title = "New IP"
-            $scope.netip_edit.new_object = (scope) ->
-                return {
-                    "netdevice" : obj.idx
-                    "ip" : "0.0.0.0"
-                    "_changed_by_user_": false
-                    "network" : $scope.networks[0].idx
-                    # take first domain tree node
-                    "domain_tree_node" : $scope.domain_tree_node[0].idx
-                } 
-            $scope.netip_edit.create(event).then(
-                (new_obj) ->
-                    if new_obj != false
-                        $scope.nd_lut[new_obj.netdevice].net_ip_set.push(new_obj)
-                        $scope.ip_lut[new_obj.idx] = new_obj
-            )
-        $scope.edit_netip = (ip, event) ->
-            $scope._current_dev = $scope.dev_lut[$scope.nd_lut[ip.netdevice].device]
-            $scope.netip_edit.title = "Edit IP '#{ip.ip}'"
-            $scope.netip_edit.edit(ip, event).then(
-                (mod_ip) ->
-                    if mod_ip != false
-                        true
-            )
-        $scope.get_peer_src_info = (_edit_obj) ->
-            if $scope.source_is_local
-                _nd = $scope.nd_lut[$scope._edit_obj.s_netdevice]
+        )
+    $scope.delete_netdevice = (nd, event) ->
+        # find device / netdevice
+        $scope.netdevice_edit.delete_list = $scope.dev_lut[nd.device].netdevice_set
+        $scope.netdevice_edit.delete_obj(nd).then(
+            (res) ->
+                if res
+                    true
+        )
+    $scope.ethtool_options = (ndip_obj, type) ->
+        if type == "a"
+            eth_opt = ndip_obj.ethtool_options & 3
+            return {0 : "default", 1 : "on", 2 : "off"}[eth_opt]
+        else if type == "d"
+            eth_opt = (ndip_obj.ethtool_options >> 2) & 3
+            return {0 : "default", 1 : "on", 2 : "off"}[eth_opt]
+        else if type == "s"
+            eth_opt = (ndip_obj.ethtool_options >> 4) & 7
+            return {0 : "default", 1 : "10 MBit", 2 : "100 MBit", 3 : "1 GBit", 4 : "10 GBit"}[eth_opt]
+    $scope.update_ethtool = (ndip_obj) ->
+        ndip_obj.ethtool_options = (parseInt(ndip_obj.ethtool_speed) << 4) | (parseInt(ndip_obj.ethtool_duplex) << 2) < (parseInt(ndip_obj.ethtool_autoneg))
+    $scope.get_peer_cost = (ndip_obj) ->
+        if ndip_obj.target of $scope.nd_lut
+            t_cost = $scope.nd_lut[ndip_obj.target].penalty
+        else
+            if ndip_obj.target of $scope.nd_peer_lut
+                t_cost = $scope.nd_peer_lut[ndip_obj.target].penalty
             else
-                _nd = $scope.nd_lut[$scope._edit_obj.d_netdevice]
-            if _nd
-                return _nd.devname + " on " + $scope.dev_lut[_nd.device].name
+                return "N/A"
+        return t_cost + ndip_obj.peer.penalty + $scope.nd_lut[ndip_obj.netdevice].penalty
+    $scope.get_peer_target = (ndip_obj) ->
+        if ndip_obj.target of $scope.nd_lut
+            peer = $scope.nd_lut[ndip_obj.target]
+            _dev = $scope.dev_lut[peer.device]
+            if _dev.domain_tree_node of $scope.dtn_lut
+                _domain = "." + $scope.dtn_lut[_dev.domain_tree_node].full_name
             else
-                return "???"
-        $scope.edit_peer_information = (peer, event) ->
-            if peer.peer.s_netdevice == peer.netdevice
-                $scope.source_is_local = true
+                _domain = ""
+            return "#{peer.devname} (#{peer.penalty}) on " + String(_dev.name) + _domain
+        else
+            if ndip_obj.target of $scope.nd_peer_lut
+                peer = $scope.nd_peer_lut[ndip_obj.target]
+                return "#{peer.devname} (#{peer.penalty}) on #{peer.fqdn}"
             else
-                $scope.source_is_local = false
-            $scope.peer_edit.edit(peer.peer, event).then(
-                (mod_peer) ->
-                    if mod_peer != false
-                        # rebuild luts
-                        $scope.build_luts()
-            )
-        $scope.delete_peer_information = (ndip_obj, event) ->
-            # find device / netdevice
-            peer = ndip_obj.peer
-            $scope.peer_edit.delete_list = undefined
-            $scope.peer_edit.delete_obj(peer).then(
-                (res) ->
-                    if res
-                        if peer.s_netdevice of $scope.nd_lut
-                            $scope.nd_lut[peer.s_netdevice].peers = (entry for entry in $scope.nd_lut[peer.s_netdevice].peers when entry.peer.idx != peer.idx)
-                        if peer.d_netdevice of $scope.nd_lut
-                            $scope.nd_lut[peer.d_netdevice].peers = (entry for entry in $scope.nd_lut[peer.d_netdevice].peers when entry.peer.idx != peer.idx)
-                        delete $scope.peer_lut[peer.idx]
-            )
-        $scope.create_peer_information_dev = (obj, event) ->
-            $scope._current_dev = obj
-            $scope.source_is_local = true
-            $scope.peer_edit.create_list = undefined
-            $scope.peer_edit.new_object = (scope) ->
-                return {
-                    "s_netdevice" : (entry.idx for entry in obj.netdevice_set)[0]
-                    "penalty" : 1
-                } 
-            $scope.create_peer_information(event)
-        $scope.create_peer_information_nd = (obj, event) ->
-            $scope._current_dev = $scope.dev_lut[obj.device]
-            $scope.source_is_local = true
-            $scope.peer_edit.create_list = undefined
-            $scope.peer_edit.new_object = (scope) ->
-                return {
-                    "s_netdevice" : obj.idx
-                    "penalty" : 1
-                } 
-            $scope.create_peer_information(event)
-        $scope.create_peer_information = (event) ->
-            $scope.peer_edit.create(event).then(
-                (peer) ->
-                    if peer != false
-                        $scope.peer_lut[peer.idx] = peer
-                        if peer.s_netdevice of $scope.nd_lut
-                            $scope.nd_lut[peer.s_netdevice].peers.push({"peer" : peer, "netdevice" : peer.s_netdevice, "target" : peer.d_netdevice})
-                        if peer.d_netdevice of $scope.nd_lut and peer.s_netdevice != peer.d_netdevice
-                            $scope.nd_lut[peer.d_netdevice].peers.push({"peer" : peer, "netdevice" : peer.d_netdevice, "target" : peer.s_netdevice})
-            )
-        $scope.delete_netip = (ip, event) ->
-            # find device / netdevice
-            $scope.netip_edit.delete_list = $scope.nd_lut[ip.netdevice].net_ip_set
-            $scope.netip_edit.delete_obj(ip).then(
-                (res) ->
-                    if res
-                        true
-            )
-        $scope.delete_netdevice = (nd, event) ->
-            # find device / netdevice
-            $scope.netdevice_edit.delete_list = $scope.dev_lut[nd.device].netdevice_set
-            $scope.netdevice_edit.delete_obj(nd).then(
-                (res) ->
-                    if res
-                        true
-            )
-        $scope.ethtool_options = (ndip_obj, type) ->
-            if type == "a"
-                eth_opt = ndip_obj.ethtool_options & 3
-                return {0 : "default", 1 : "on", 2 : "off"}[eth_opt]
-            else if type == "d"
-                eth_opt = (ndip_obj.ethtool_options >> 2) & 3
-                return {0 : "default", 1 : "on", 2 : "off"}[eth_opt]
-            else if type == "s"
-                eth_opt = (ndip_obj.ethtool_options >> 4) & 7
-                return {0 : "default", 1 : "10 MBit", 2 : "100 MBit", 3 : "1 GBit", 4 : "10 GBit"}[eth_opt]
-        $scope.update_ethtool = (ndip_obj) ->
-            ndip_obj.ethtool_options = (parseInt(ndip_obj.ethtool_speed) << 4) | (parseInt(ndip_obj.ethtool_duplex) << 2) < (parseInt(ndip_obj.ethtool_autoneg))
-        $scope.get_peer_cost = (ndip_obj) ->
-            if ndip_obj.target of $scope.nd_lut
-                t_cost = $scope.nd_lut[ndip_obj.target].penalty
+                return "N/A (disabled device ?)"
+    $scope.get_peer_type = (peer) ->
+        source = peer.netdevice
+        dest = peer.target
+        if source of $scope.nd_lut
+            source = $scope.nd_lut[source]
+        else
+            source = undefined
+        if dest of $scope.nd_lut
+            dest = $scope.nd_lut[dest]
+        else
+            dest = undefined
+        if source and dest
+            return if source.device == dest.device then "local" else "remote"
+        else
+            return "---"
+    $scope.toggle_copy_com = () ->
+        $scope.copy_coms = !$scope.copy_coms
+    $scope.copy_com_class = () ->
+        if $scope.copy_coms
+            return "btn btn-sm btn-success"
+        else
+            return "btn btn-sm btn-default"
+    $scope.copy_com_value = () ->
+        if $scope.copy_coms
+            return "Copy Coms and Schemes"
+        else
+            return "start with empty Coms and Schemes"
+    $scope.copy_network = (src_obj, event) ->
+        icswToolsSimpleModalService("Overwrite all networks with the one from #{src_obj.full_name} ?").then(
+            () ->
+                blockUI.start()
+                icswSimpleAjaxCall(
+                    url     : ICSW_URLS.NETWORK_COPY_NETWORK
+                    data    : {
+                        "source_dev" : src_obj.idx
+                        "copy_coms"  : $scope.copy_coms
+                        "all_devs"   : angular.toJson($scope.devsel_list)
+                    }
+                ).then((xml) ->
+                    blockUI.stop()
+                    $scope.reload()
+                )
+        )
+    $scope.get_bootdevice_info_class = (obj) ->
+        num_bootips = $scope.get_num_bootips(obj)
+        if obj.dhcp_error
+            return "btn-danger"
+        else
+            if num_bootips == 0
+                return "btn-warning"
+            else if num_bootips == 1
+                return "btn-success"
             else
-                if ndip_obj.target of $scope.nd_peer_lut
-                    t_cost = $scope.nd_peer_lut[ndip_obj.target].penalty
-                else
-                    return "N/A"
-            return t_cost + ndip_obj.peer.penalty + $scope.nd_lut[ndip_obj.netdevice].penalty
-        $scope.get_peer_target = (ndip_obj) ->
-            if ndip_obj.target of $scope.nd_lut
-                peer = $scope.nd_lut[ndip_obj.target]
-                _dev = $scope.dev_lut[peer.device]
-                if _dev.domain_tree_node of $scope.dtn_lut
-                    _domain = "." + $scope.dtn_lut[_dev.domain_tree_node].full_name
-                else
-                    _domain = ""
-                return "#{peer.devname} (#{peer.penalty}) on " + String(_dev.name) + _domain
-            else
-                if ndip_obj.target of $scope.nd_peer_lut
-                    peer = $scope.nd_peer_lut[ndip_obj.target]
-                    return "#{peer.devname} (#{peer.penalty}) on #{peer.fqdn}"
-                else
-                    return "N/A (disabled device ?)"
-        $scope.get_peer_type = (peer) ->
-            source = peer.netdevice
-            dest = peer.target
-            if source of $scope.nd_lut
-                source = $scope.nd_lut[source]
-            else
-                source = undefined
-            if dest of $scope.nd_lut
-                dest = $scope.nd_lut[dest]
-            else
-                dest = undefined
-            if source and dest
-                return if source.device == dest.device then "local" else "remote"
-            else
-                return "---"
-        $scope.toggle_copy_com = () ->
-            $scope.copy_coms = !$scope.copy_coms
-        $scope.copy_com_class = () ->
-            if $scope.copy_coms
-                return "btn btn-sm btn-success"
-            else
-                return "btn btn-sm btn-default"
-        $scope.copy_com_value = () ->
-            if $scope.copy_coms
-                return "Copy Coms and Schemes"
-            else
-                return "start with empty Coms and Schemes"
-        $scope.copy_network = (src_obj, event) ->
-            icswToolsSimpleModalService("Overwrite all networks with the one from #{src_obj.full_name} ?").then(
-                () ->
-                    blockUI.start()
-                    icswSimpleAjaxCall(
-                        url     : ICSW_URLS.NETWORK_COPY_NETWORK
-                        data    : {
-                            "source_dev" : src_obj.idx
-                            "copy_coms"  : $scope.copy_coms
-                            "all_devs"   : angular.toJson($scope.devsel_list)
-                        }
-                    ).then((xml) ->
-                        blockUI.stop()
-                        $scope.reload()
-                    )
-            )
-        $scope.get_bootdevice_info_class = (obj) ->
-            num_bootips = $scope.get_num_bootips(obj)
-            if obj.dhcp_error
                 return "btn-danger"
-            else
-                if num_bootips == 0
-                    return "btn-warning"
-                else if num_bootips == 1
-                    return "btn-success"
-                else
-                    return "btn-danger"
 
-        $scope.get_num_bootips = (obj) ->
-            num_bootips = 0
-            for net_dev in obj.netdevice_set
-                for net_ip in net_dev.net_ip_set
-                    if $scope.network_lut[net_ip.network].network_type_identifier == "b"
-                        num_bootips++
-            return num_bootips
+    $scope.get_num_bootips = (obj) ->
+        num_bootips = 0
+        for net_dev in obj.netdevice_set
+            for net_ip in net_dev.net_ip_set
+                if $scope.network_lut[net_ip.network].network_type_identifier == "b"
+                    num_bootips++
+        return num_bootips
 
-        $scope.get_boot_value = (obj) ->
-            num_bootips = $scope.get_num_bootips(obj)
-            r_val = "#{num_bootips} IPs (" + (if obj.dhcp_write then "write" else "no write") + " / " + (if obj.dhcp_mac then "greedy" else "not greedy") + ")"
-            if obj.dhcp_error
-                r_val = "#{r_val}, #{obj.dhcp_error}"
-            if obj.dhcp_write != obj.dhcp_written
-                r_val = "#{r_val}, DHCP is " + (if obj.dhcp_written then "" else "not") + " written"
-            return r_val
+    $scope.get_boot_value = (obj) ->
+        num_bootips = $scope.get_num_bootips(obj)
+        r_val = "#{num_bootips} IPs (" + (if obj.dhcp_write then "write" else "no write") + " / " + (if obj.dhcp_mac then "greedy" else "not greedy") + ")"
+        if obj.dhcp_error
+            r_val = "#{r_val}, #{obj.dhcp_error}"
+        if obj.dhcp_write != obj.dhcp_written
+            r_val = "#{r_val}, DHCP is " + (if obj.dhcp_written then "" else "not") + " written"
+        return r_val
 
-        $scope.network_changed = (obj) ->
-            if obj.ip == "0.0.0.0" or not obj._changed_by_user_
-                $scope.get_free_ip(obj)
-            if not obj._changed_by_user_
-                _nw = $scope.network_lut[obj.network]
-                if _nw.preferred_domain_tree_node
-                    obj.domain_tree_node = _nw.preferred_domain_tree_node
+    $scope.network_changed = (obj) ->
+        if obj.ip == "0.0.0.0" or not obj._changed_by_user_
+            $scope.get_free_ip(obj)
+        if not obj._changed_by_user_
+            _nw = $scope.network_lut[obj.network]
+            if _nw.preferred_domain_tree_node
+                obj.domain_tree_node = _nw.preferred_domain_tree_node
 
-        $scope.get_free_ip = (obj) ->
-            blockUI.start("requesting free IP...")
-            icswSimpleAjaxCall(
-                url: ICSW_URLS.NETWORK_GET_FREE_IP
-                data: {
-                    "netip": angular.toJson(obj)
-                }
-                dataType: "json"
-            ).then((json) ->
-                blockUI.stop()
-                if json["ip"]?
-                    obj.ip = json["ip"]
-            )
+    $scope.get_free_ip = (obj) ->
+        blockUI.start("requesting free IP...")
+        icswSimpleAjaxCall(
+            url: ICSW_URLS.NETWORK_GET_FREE_IP
+            data: {
+                "netip": angular.toJson(obj)
+            }
+            dataType: "json"
+        ).then((json) ->
+            blockUI.stop()
+            if json["ip"]?
+                obj.ip = json["ip"]
+        )
 ]).directive("icswDeviceNetworkNetdeviceRow", ["$templateCache", "$compile", ($templateCache, $compile) ->
     return {
         restrict : "EA"
