@@ -311,7 +311,7 @@ angular.module(
             _f.push("disabled")
         return _f.join(", ")
     $scope.get_bridge_info = (nd) ->
-        dev = $scope.dev_lut[nd.device]
+        dev = $scope.device_tree.all_lut[nd.device]
         if nd.is_bridge
             slaves = (sub_nd.devname for sub_nd in dev.netdevice_set when sub_nd.bridge_device == nd.idx)
             if slaves.length
@@ -319,11 +319,11 @@ angular.module(
             else
                 return "bridge"
         else if nd.bridge_device
-            return "slave (" + $scope.nd_lut[nd.bridge_device].devname + ")"
+            return "slave (" + dev.netdevice_lut[nd.bridge_device].devname + ")"
         else
             return ""
     $scope.get_bond_info = (nd) ->
-        dev = $scope.dev_lut[nd.device]
+        dev = $scope.device_tree.all_lut[nd.device]
         if nd.is_bond
             slaves = (sub_nd.devname for sub_nd in dev.netdevice_set when sub_nd.bond_master == nd.idx)
             if slaves.length
@@ -331,7 +331,7 @@ angular.module(
             else
                 return "master"
         else if nd.bond_master
-            return "slave (" + $scope.nd_lut[nd.bond_master].devname + ")"
+            return "slave (" + dev.netdevice_lut[nd.bond_master].devname + ")"
         else
             return ""
     $scope.has_bridge_slaves = (nd) ->
@@ -347,8 +347,11 @@ angular.module(
         else
             return false
     $scope.get_netdevice_name = (nd) ->
+        # FIXME
+        return "???"
         if angular.isNumber(nd)
-            nd = $scope.nd_lut[nd]
+            console.log "IS_NUMBER", nd
+        # dev = $scope.dev_lut[nd.device]
         nd_name = nd.devname
         if nd.description
             nd_name = "#{nd_name} (#{nd.description})"
@@ -378,8 +381,12 @@ angular.module(
             _n += nd.net_ip_set.length
         return _n
     $scope.get_num_peers_nd = (nd) ->
+        # FIXME
+        return 0
         return nd.peers.length
     $scope.get_num_peers_dev = (dev) ->
+        # FIXME
+        return 0
         _n = 0
         for nd in dev.netdevice_set
             _n += nd.peers.length
@@ -798,12 +805,7 @@ angular.module(
                 return "btn-danger"
 
     $scope.get_num_bootips = (obj) ->
-        num_bootips = 0
-        for net_dev in obj.netdevice_set
-            for net_ip in net_dev.net_ip_set
-                if $scope.network_lut[net_ip.network].network_type_identifier == "b"
-                    num_bootips++
-        return num_bootips
+        return obj.$$_enrichment_info.num_boot_ips
 
     $scope.get_boot_value = (obj) ->
         num_bootips = $scope.get_num_bootips(obj)
@@ -841,11 +843,13 @@ angular.module(
         template: $templateCache.get("icsw.device.network.netdevice.row")
         link : (scope, element, attrs) ->
             scope.get_network_type = (ndip_obj) ->
+                return "nwt"
                 if ndip_obj.snmp_network_type
                     return scope.snt_lut[ndip_obj.snmp_network_type].if_label
                 else
                     return scope.ndt_lut[ndip_obj.network_device_type].info_string
             scope.get_snmp_ao_status = (ndip_obj) ->
+                return "..."
                 as = ndip_obj.snmp_admin_status
                 os = ndip_obj.snmp_oper_status
                 if as == 0 and os == 0

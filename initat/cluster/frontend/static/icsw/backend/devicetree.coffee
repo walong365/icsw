@@ -28,15 +28,35 @@ angular.module(
         "init.csw.filters", "restangular", "noVNC", "ui.select", "icsw.tools",
         "icsw.device.info", "icsw.tools.tree", "icsw.user",
     ]
-).service("icswEnrichmentInfo", [() ->
+).service("icswEnrichmentInfo", ["icswNetworkTreeService", "icswTools", (icswNetworkTreeService, icswTools) ->
     # stores info about already fetched additional info from server
     class icswEnrichmentInfo
         constructor: (@device) ->
             # device may be the device_tree for global instance
             @loaded = []
+            @device.num_boot_ips = 0
 
         is_scalar: (req) =>
             return req in ["disk_info", "snmp_info"]
+
+        clear_global_infos: (req_list) =>
+            # clear global infos
+            for req in req_list
+                cgi_name = "pre_g_#{req}"
+                if @[cgi_name]?
+                    @[cgi_name]()
+
+        # global pre calls
+        pre_g_network_info: () =>
+            @netdevice_lut = {}
+
+        # global post calls
+        post_g_network_info: (local_en) =>
+            console.log local_en.device
+            for nd in local_en.device.netdevice_set
+                console.log nd
+                @netdevice_lut[nd.idx] = nd
+            console.log "S", @netdevice_lut
 
         get_attr_name: (req) =>
             _lut = {
@@ -59,6 +79,30 @@ angular.module(
                     @device[@get_attr_name(req)] = undefined
                 else
                     @device[@get_attr_name(req)].length = 0
+
+        build_luts: (req_list, g_en) =>
+            # build luts
+            for req in req_list
+                _call_name = "post_#{req}"
+                if @[_call_name]?
+                    @[_call_name]()
+                _gp_name = "post_g_#{req}"
+                if g_en[_gp_name]?
+                    g_en[_gp_name](@)
+
+        # post calls
+
+        post_network_info: () =>
+            _net = icswNetworkTreeService.current()
+            @device.netdevice_lut = icswTools.build_lut(@device.netdevice_set)
+            num_bootips = 0
+            # set values
+            for net_dev in @device.netdevice_set
+                for net_ip in net_dev.net_ip_set
+                    if _net.nw_lut[net_ip.network].network_type_identifier == "b"
+                        num_bootips++
+            @device.num_boot_ips = num_bootips
+            # console.log "blni", @device.full_name, num_bootips
 
         build_request: (req_list) =>
             # returns a list (dev_pk, enrichments_to_load)
@@ -274,6 +318,7 @@ angular.module(
                     dev.$$_enrichment_info.build_request(en_list) for dev in dev_list
                 )
             )
+            console.log "***", en_req
             icswSimpleAjaxCall(
                 "url": ICSW_URLS.DEVICE_ENRICH_DEVICES
                 "data": {
@@ -284,9 +329,11 @@ angular.module(
                 (result) =>
                     # clear previous values
                     console.log "clear previous enrichment values"
+                    @enricher.clear_global_infos(en_list)
                     (dev.$$_enrichment_info.clear_infos(en_list) for dev in dev_list)
                     console.log "set new enrichment values"
                     @enricher.feed_results(result)
+                    (dev.$$_enrichment_info.build_luts(en_list, @enricher) for dev in dev_list)
                     # resolve with device list
                     defer.resolve(dev_list)
             )
