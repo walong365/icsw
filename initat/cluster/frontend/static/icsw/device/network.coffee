@@ -397,6 +397,8 @@ angular.module(
         return (entry for entry in $scope.nd_peers when entry.routing)
 
     $scope.get_ndip_objects = (dev) ->
+        # FIXME
+        return []
         r_list = []
         for ndev in dev.netdevice_set
             r_list.push(ndev)
@@ -404,6 +406,8 @@ angular.module(
             r_list = r_list.concat(ndev.peers)
         return r_list
     $scope.get_ip_objects = (src_obj) ->
+        # FIXME
+        return []
         r_list = []
         if src_obj and src_obj.devname?
             r_list = src_obj.net_ip_set
@@ -413,12 +417,16 @@ angular.module(
                     r_list = r_list.concat(ndev.net_ip_set)
         return r_list
     $scope.get_nd_objects = () ->
+        # FIXME
+        return []
         r_list = []
         for dev in $scope.devices
             for ndev in dev.netdevice_set
                 r_list.push(ndev)
         return r_list
     $scope.get_peer_objects = () ->
+        # FIXME
+        return []
         r_list = []
         for dev in $scope.devices
             for ndev in dev.netdevice_set

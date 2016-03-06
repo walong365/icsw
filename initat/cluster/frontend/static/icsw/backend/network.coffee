@@ -224,9 +224,16 @@ angular.module(
 (
     $q, Restangular, ICSW_URLS, $window, icswCachingCall, icswTools, icswPeerInformation, $rootScope, ICSW_SIGNALS,
 ) ->
-    load_data = (client) ->
+    load_data = (client, dev_list) ->
         _defer = $q.defer()
-        icswCachingCall.fetch(client, ICSW_URLS.REST_NETDEVICE_PEER_LIST, {}, []).then(
+        icswCachingCall.fetch(
+            client
+            ICSW_URLS.REST_NETDEVICE_PEER_LIST
+            {
+                "primary_dev_pks": angular.toJson((dev.idx for dev in dev_list))
+            }
+            []
+        ).then(
             (data) ->
                 console.log "*** peer information loaded ***"
                 _defer.resolve(new icswPeerInformation(data))
@@ -235,6 +242,6 @@ angular.module(
     return {
         "load": (client, dev_list) ->
             # loads from server
-            return load_data(client).promise
+            return load_data(client, dev_list).promise
     }
 ])
