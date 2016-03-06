@@ -210,4 +210,31 @@ angular.module(
         "current": () ->
             return _result
     }
+]).service("icswPeerInformation",
+[
+    "icswTools", "ICSW_URLS", "$q", "Restangular", "icswSimpleAjaxCall",
+(
+    icswTools, ICSW_URLS, $q, Restangular, icswSimpleAjaxCall
+) ->
+    class icswPeerInformation
+        constructor: () ->
+
+]).service("icswPeerInformationService", [
+    "$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall", "icswTools", "icswPeerInformation", "$rootScope", "ICSW_SIGNALS",
+(
+    $q, Restangular, ICSW_URLS, $window, icswCachingCall, icswTools, icswPeerInformation, $rootScope, ICSW_SIGNALS,
+) ->
+    load_data = (client) ->
+        _defer = $q.defer()
+        icswCachingCall.fetch(client, ICSW_URLS.REST_NETDEVICE_PEER_LIST, {}, []).then(
+            (data) ->
+                console.log "*** peer information loaded ***"
+                _defer.resolve(new icswPeerInformation(data))
+        )
+        return _defer
+    return {
+        "load": (client, dev_list) ->
+            # loads from server
+            return load_data(client).promise
+    }
 ])

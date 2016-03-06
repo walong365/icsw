@@ -149,13 +149,13 @@
         <!--<button class="btn btn-primary btn-xs" ladda="true" data-style="expand-left">xxx</button>-->
     </td>
     <td>
-        {{ get_num_netdevices(ndip_obj) }}
+        {{ ndip_obj.num_netdevices }}
     </td>
     <td>
-        {{ get_num_netips_dev(ndip_obj) }}
+        {{ ndip_obj.num_netips }}
     </td>
     <td>
-        {{ get_num_peers_dev(ndip_obj) }}
+        {{ ndip_obj.num_peers }}
     </td>
     <td>
         <span ng-repeat="obj in ndip_obj.snmp_schemes">
@@ -208,7 +208,7 @@
         </span>
     </td>
     <td ng-show="show_column.ips">
-        {{ get_num_netips_nd(ndip_obj) }}
+        {{ ndip_obj.num_netips }}
     </td>
     <td ng-show="show_column.peers">
         {{ get_num_peers_nd(ndip_obj) }}

@@ -149,12 +149,12 @@ angular.module(
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource",
     "$q", "$uibModal", "icswAcessLevelService", "$rootScope", "$timeout", "blockUI", "icswTools", "icswToolsButtonConfigService", "ICSW_URLS",
     "icswSimpleAjaxCall", "icswToolsSimpleModalService", "icswDeviceTreeService", "icswNetworkTreeService",
-    "icswDomainTreeService",
+    "icswDomainTreeService", "icswPeerInformationService",
 (
     $scope, $compile, $filter, $templateCache, Restangular, restDataSource,
     $q, $uibModal, icswAcessLevelService, $rootScope, $timeout, blockUI, icswTools, icswToolsButtonConfigService, ICSW_URLS,
     icswSimpleAjaxCall, icswToolsSimpleModalService, icswDeviceTreeService, icswNetworkTreeService,
-    icswDomainTreeService
+    icswDomainTreeService, icswPeerInformationService
 ) ->
     $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
     icswAcessLevelService.install($scope)
@@ -227,8 +227,8 @@ angular.module(
     ]
     $scope.devsel_list = []
     $scope.devices = []
-    $scope.new_devsel = (_dev_sel, _devg_sel) ->
-        $scope.devices = _dev_sel
+    $scope.new_devsel = (_dev_sel) ->
+        $scope.devices = (dev for dev in _dev_sel when not dev.is_meta_device)
         $scope.reload()
         # console.log "devsel for network set", _dev_sel
         # $scope.reload()
@@ -238,6 +238,7 @@ angular.module(
             icswDeviceTreeService.fetch($scope.$id)
             icswNetworkTreeService.fetch($scope.$id)
             icswDomainTreeService.fetch($scope.$id)
+            icswPeerInformationService.load($scope.$id, $scope.devices)
             # restDataSource.reload([ICSW_URLS.REST_DEVICE_TREE_LIST, {"with_network" : true, "with_com_info": true, "pks" : angular.toJson($scope.devsel_list), "olp" : "backbone.device.change_network"}]),
             # restDataSource.reload([ICSW_URLS.REST_PEER_INFORMATION_LIST, {}]),
             # 2
@@ -255,6 +256,7 @@ angular.module(
                 $scope.device_tree = data[0]
                 $scope.network_tree = data[1]
                 $scope.domain_tree = data[2]
+                console.log "****", data[3]
                 $scope.device_tree.enrich_devices($scope.devices, ["network_info"]).then(
                     (done) ->
                         console.log "done"
@@ -301,6 +303,7 @@ angular.module(
                     $scope.nd_lut[peer.s_netdevice].peers.push({"peer" : peer, "netdevice" : peer.s_netdevice, "target" : peer.d_netdevice})
                 if peer.d_netdevice of $scope.nd_lut and peer.s_netdevice != peer.d_netdevice
                     $scope.nd_lut[peer.d_netdevice].peers.push({"peer" : peer, "netdevice" : peer.d_netdevice, "target" : peer.s_netdevice})
+
     $scope.get_flags = (nd) ->
         _f = []
         if nd.routing
@@ -310,6 +313,7 @@ angular.module(
         if !nd.enabled
             _f.push("disabled")
         return _f.join(", ")
+
     $scope.get_bridge_info = (nd) ->
         dev = $scope.device_tree.all_lut[nd.device]
         if nd.is_bridge
@@ -322,24 +326,27 @@ angular.module(
             return "slave (" + dev.netdevice_lut[nd.bridge_device].devname + ")"
         else
             return ""
+
     $scope.get_bond_info = (nd) ->
         dev = $scope.device_tree.all_lut[nd.device]
         if nd.is_bond
             slaves = (sub_nd.devname for sub_nd in dev.netdevice_set when sub_nd.bond_master == nd.idx)
             if slaves.length
-                return "master" + " (" + slaves.join(", ") + ")"
+                return "master (" + slaves.join(", ") + ")"
             else
                 return "master"
         else if nd.bond_master
             return "slave (" + dev.netdevice_lut[nd.bond_master].devname + ")"
         else
             return ""
+
     $scope.has_bridge_slaves = (nd) ->
         dev = $scope.dev_lut[nd.device]
         if nd.is_bridge
             return if (sub_nd.devname for sub_nd in dev.netdevice_set when sub_nd.bridge_device == nd.idx).length then true else false
         else
             return false
+
     $scope.has_bond_slaves = (nd) ->
         dev = $scope.dev_lut[nd.device]
         if nd.is_bond
@@ -361,25 +368,19 @@ angular.module(
             else
                 nd_name = "#{nd_name}, VLAN #{nd.vlan_id}"
         return nd_name
+
     $scope.get_netdevice_boot_info = (nd) ->
-        num_boot = (true for net_ip in nd.net_ip_set when $scope.network_lut[net_ip.network].network_type_identifier == "b").length
+        num_boot = nd.num_bootips
         if num_boot == 0
             return ""
         else if num_boot == 1
             return "(b)"
         else
             return "(#{num_boot})"
-    $scope.get_num_netdevices = (dev) ->
-        return dev.netdevice_set.length
+
     $scope.no_objects_defined = (dev) ->
         return if (dev.netdevice_set.length == 0) then true else false
-    $scope.get_num_netips_nd = (nd) ->
-        return nd.net_ip_set.length
-    $scope.get_num_netips_dev = (dev) ->
-        _n = 0
-        for nd in dev.netdevice_set
-            _n += nd.net_ip_set.length
-        return _n
+
     $scope.get_num_peers_nd = (nd) ->
         # FIXME
         return 0
@@ -391,8 +392,10 @@ angular.module(
         for nd in dev.netdevice_set
             _n += nd.peers.length
         return _n
-    $scope.get_route_peers =() ->
+
+    $scope.get_route_peers = () ->
         return (entry for entry in $scope.nd_peers when entry.routing)
+
     $scope.get_ndip_objects = (dev) ->
         r_list = []
         for ndev in dev.netdevice_set
@@ -726,6 +729,8 @@ angular.module(
     $scope.update_ethtool = (ndip_obj) ->
         ndip_obj.ethtool_options = (parseInt(ndip_obj.ethtool_speed) << 4) | (parseInt(ndip_obj.ethtool_duplex) << 2) < (parseInt(ndip_obj.ethtool_autoneg))
     $scope.get_peer_cost = (ndip_obj) ->
+        # FIXME
+        return "nix"
         if ndip_obj.target of $scope.nd_lut
             t_cost = $scope.nd_lut[ndip_obj.target].penalty
         else
@@ -735,6 +740,8 @@ angular.module(
                 return "N/A"
         return t_cost + ndip_obj.peer.penalty + $scope.nd_lut[ndip_obj.netdevice].penalty
     $scope.get_peer_target = (ndip_obj) ->
+        # FIXME
+        return "peer_target"
         if ndip_obj.target of $scope.nd_lut
             peer = $scope.nd_lut[ndip_obj.target]
             _dev = $scope.dev_lut[peer.device]
@@ -750,6 +757,9 @@ angular.module(
             else
                 return "N/A (disabled device ?)"
     $scope.get_peer_type = (peer) ->
+        # FIXME
+        return "peer_type"
+
         source = peer.netdevice
         dest = peer.target
         if source of $scope.nd_lut

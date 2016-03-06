@@ -35,6 +35,9 @@ angular.module(
             # device may be the device_tree for global instance
             @loaded = []
             @device.num_boot_ips = 0
+            @device.num_netdevices = 0
+            @device.num_netips = 0
+            @device.num_peers = -1
 
         is_scalar: (req) =>
             return req in ["disk_info", "snmp_info"]
@@ -52,11 +55,8 @@ angular.module(
 
         # global post calls
         post_g_network_info: (local_en) =>
-            console.log local_en.device
             for nd in local_en.device.netdevice_set
-                console.log nd
                 @netdevice_lut[nd.idx] = nd
-            console.log "S", @netdevice_lut
 
         get_attr_name: (req) =>
             _lut = {
@@ -95,12 +95,20 @@ angular.module(
         post_network_info: () =>
             _net = icswNetworkTreeService.current()
             @device.netdevice_lut = icswTools.build_lut(@device.netdevice_set)
+            @device.num_netdevices = 0
+            @device.num_netips = 0
             num_bootips = 0
             # set values
             for net_dev in @device.netdevice_set
+                @device.num_netdevices++
+                net_dev.num_netips = 0
+                net_dev.num_bootips = 0
                 for net_ip in net_dev.net_ip_set
+                    @device.num_netips++
+                    net_dev.num_netips++
                     if _net.nw_lut[net_ip.network].network_type_identifier == "b"
                         num_bootips++
+                        net_dev.num_bootips++
             @device.num_boot_ips = num_bootips
             # console.log "blni", @device.full_name, num_bootips
 
