@@ -28,7 +28,23 @@ angular.module(
         "init.csw.filters", "restangular", "noVNC", "ui.select", "icsw.tools",
         "icsw.device.info", "icsw.tools.tree", "icsw.user",
     ]
-).service("icswEnrichmentInfo", ["icswNetworkTreeService", "icswTools", (icswNetworkTreeService, icswTools) ->
+).service("icswDeviceTreeHelper", [() ->
+    # helper service for global (== selection-wide) luts and lists
+    class icswDeviceTreeHelper
+        constructor: (@tree, @devices) ->
+            @netdevice_list = []
+            @netdevice_lut = {}
+            @net_ip_list = []
+            @net_ip_lut = {}
+
+]).service("icswDeviceTreeHelperService", ["icswDeviceTreeHelper", (icswDeviceTreeHelper) ->
+
+    return {
+        "create": (tree, devices) ->
+            return new icswDeviceTreeHelper(tree, devices)
+    }
+
+]).service("icswEnrichmentInfo", ["icswNetworkTreeService", "icswTools", (icswNetworkTreeService, icswTools) ->
     # stores info about already fetched additional info from server
     class icswEnrichmentInfo
         constructor: (@device) ->
@@ -37,26 +53,54 @@ angular.module(
             @device.num_boot_ips = 0
             @device.num_netdevices = 0
             @device.num_netips = 0
-            @device.num_peers = -1
+            @device.num_peers = 0
 
         is_scalar: (req) =>
             return req in ["disk_info", "snmp_info"]
 
-        clear_global_infos: (req_list) =>
-            # clear global infos
-            for req in req_list
+        clear_global_infos: (dth_obj, en_req) =>
+            # clear global infos for devices where we requested new info
+            for req, dev_pks of en_req
                 cgi_name = "pre_g_#{req}"
                 if @[cgi_name]?
-                    @[cgi_name]()
+                    @[cgi_name](dth_obj, dev_pks)
+
+        is_loaded: (req) =>
+            return req in @loaded
 
         # global pre calls
-        pre_g_network_info: () =>
-            @netdevice_lut = {}
+        pre_g_network_info: (dth_obj, dev_pks) =>
+            # remove all references to devices in dev_list from the global nd_lut
+            if dth_obj.netdevice_list?
+                dev_pks = (dev.idx for dev in dth_obj.devices when dev.idx in dev_pks)
+                _.remove(dth_obj.netdevice_list, (entry) -> return entry.device not in dev_pks)
+                nd_pks = (nd.idx for nd in dth_obj.netdevice_list)
+                _.remove(dth_obj.net_ip_list, (entry) -> return entry.netdevice not in nd_pks)
+                dth_obj.netdevice_lut = icswTools.build_lut(dth_obj.netdevice_list)
+                dth_obj.net_ip_lut = icswTools.build_lut(dth_obj.net_ip_list)
 
         # global post calls
-        post_g_network_info: (local_en) =>
+        post_g_network_info: (local_en, dth_obj) =>
+            # FIXME, todo: remove entries when a device gets delete
             for nd in local_en.device.netdevice_set
-                @netdevice_lut[nd.idx] = nd
+                nd.$$devicename = @device.all_lut[nd.device].full_name
+                dth_obj.netdevice_lut[nd.idx] = nd
+                dth_obj.netdevice_list.push(nd)
+                for ip in nd.net_ip_set
+                    ip.$$devicename = nd.$$devicename
+                    ip.$$devname = nd.devname
+                    dth_obj.net_ip_lut[ip.idx] = ip
+                    dth_obj.net_ip_list.push(ip)
+            dth_obj.netdevice_list = _.orderBy(
+                dth_obj.netdevice_list,
+                ["$$devicename", "devname"],
+                ["asc", "asc"],
+            )
+            dth_obj.net_ip_list = _.orderBy(
+                dth_obj.net_ip_list,
+                ["$$devicename", "$$devname", "ip"],
+                ["asc", "asc", "asc"],
+            )
 
         get_attr_name: (req) =>
             _lut = {
@@ -72,23 +116,24 @@ angular.module(
             else
                 throw new Error("Unknown EnrichmentKey #{req}")
 
-        clear_infos: (req_list) =>
+        clear_infos: (en_req) =>
             # clear already present infos
-            for req in req_list
-                if @is_scalar(req)
-                    @device[@get_attr_name(req)] = undefined
-                else
-                    @device[@get_attr_name(req)].length = 0
+            for req, dev_pks of en_req
+                if @device.idx in dev_pks
+                    if @is_scalar(req)
+                        @device[@get_attr_name(req)] = undefined
+                    else
+                        @device[@get_attr_name(req)].length = 0
 
-        build_luts: (req_list, g_en) =>
+        build_luts: (req_list, g_en, dth_obj) =>
             # build luts
             for req in req_list
                 _call_name = "post_#{req}"
                 if @[_call_name]?
                     @[_call_name]()
-                _gp_name = "post_g_#{req}"
-                if g_en[_gp_name]?
-                    g_en[_gp_name](@)
+                _gp_call_name = "post_g_#{req}"
+                if g_en[_gp_call_name]?
+                    g_en[_gp_call_name](@, dth_obj)
 
         # post calls
 
@@ -189,7 +234,6 @@ angular.module(
             )
 
         build_luts: (full_list) =>
-            console.log (entry.name for entry in full_list)
             # build luts and create enabled / disabled lists
             @all_list.length = 0
             @enabled_list.length = 0
@@ -318,32 +362,45 @@ angular.module(
             @reorder()
 
         # enrichment functions
-        enrich_devices: (dev_list, en_list) =>
+        enrich_devices: (dth, en_list) =>
+            # dth ... icswDeviceTreeHelper
+            # en_list .. enrichment list
             defer  = $q.defer()
             # build request
             en_req = @enricher.merge_requests(
                 (
-                    dev.$$_enrichment_info.build_request(en_list) for dev in dev_list
+                    dev.$$_enrichment_info.build_request(en_list) for dev in dth.devices
                 )
             )
-            console.log "***", en_req
-            icswSimpleAjaxCall(
-                "url": ICSW_URLS.DEVICE_ENRICH_DEVICES
-                "data": {
-                    "enrich_request": angular.toJson(en_req)
-                }
-                dataType: "json"
-            ).then(
+            _fetch = $q.defer()
+            if _.isEmpty(en_req)
+                # empty request, just feed to dth
+                _fetch.resolve({})
+            else
+                # non-empty request, fetch from server
+                icswSimpleAjaxCall(
+                    "url": ICSW_URLS.DEVICE_ENRICH_DEVICES
+                    "data": {
+                        "enrich_request": angular.toJson(en_req)
+                    }
+                    dataType: "json"
+                ).then(
+                    (result) =>
+                        _fetch.resolve(result)
+                )
+            _fetch.promise.then(
                 (result) =>
                     # clear previous values
                     console.log "clear previous enrichment values"
-                    @enricher.clear_global_infos(en_list)
-                    (dev.$$_enrichment_info.clear_infos(en_list) for dev in dev_list)
+                    @enricher.clear_global_infos(dth, en_req)
+                    (dev.$$_enrichment_info.clear_infos(en_req) for dev in dth.devices)
                     console.log "set new enrichment values"
+                    # feed results back to enricher
                     @enricher.feed_results(result)
-                    (dev.$$_enrichment_info.build_luts(en_list, @enricher) for dev in dev_list)
+                    # build results
+                    (dev.$$_enrichment_info.build_luts(en_list, @enricher, dth) for dev in dth.devices)
                     # resolve with device list
-                    defer.resolve(dev_list)
+                    defer.resolve(dth.devices)
             )
             return defer.promise
 
@@ -372,6 +429,7 @@ angular.module(
     _result = undefined
     # load called
     load_called = false
+
     load_data = (client) ->
         load_called = true
         _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in rest_map)
@@ -385,11 +443,12 @@ angular.module(
                 for client of _fetch_dict
                     # resolve clients
                     _fetch_dict[client].resolve(_result)
-                $rootScope.$emit(ICSW_SIGNALS("ICSW_TREE_LOADED"), _result)
+                $rootScope.$emit(ICSW_SIGNALS("ICSW_DEVICE_TREE_LOADED"), _result)
                 # reset fetch_dict
                 _fetch_dict = {}
         )
         return _defer
+
     fetch_data = (client) ->
         if client not of _fetch_dict
             # register client
@@ -399,6 +458,7 @@ angular.module(
             # resolve immediately
             _fetch_dict[client].resolve(_result)
         return _fetch_dict[client]
+
     return {
         "load": (client) ->
             # loads from server

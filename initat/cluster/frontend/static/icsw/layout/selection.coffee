@@ -48,7 +48,13 @@ angular.module(
 ]).service("icswActiveSelectionService", ["$q", "Restangular", "msgbus", "$rootScope", "ICSW_URLS", "icswSelection",  "ICSW_SIGNALS", ($q, Restangular, msgbus, $rootScope, ICSW_URLS, icswSelection, ICSW_SIGNALS) ->
     # used by menu.coffee (menu_base)
     _receivers = 0
-    cur_selection = new icswSelection([], [], [], [])
+    # for testing
+    cur_selection = new icswSelection([], [], [3, 5], [3, 5])
+    # cur_selection = new icswSelection([], [], [], [])
+    $rootScope.$on(ICSW_SIGNALS("ICSW_DEVICE_TREE_LOADED"), (event) ->
+        # tree loaded, re-emit selection
+        send_selection()
+    )
     msgbus.receive("devselreceiver", $rootScope, (name, args) ->
         # args is an optional sender name to find errors
         console.log "ignore old devselreciever"
@@ -90,16 +96,19 @@ angular.module(
             register_receiver()
     }
 ]).service("icswSelection", ["icswDeviceTreeService", "$q", "icswSimpleAjaxCall", "ICSW_URLS", "$rootScope", "Restangular", "icswSavedSelectionService", "ICSW_SIGNALS", (icswDeviceTreeService, $q, icswSimpleAjaxCall, ICSW_URLS, $rootScope, Restangular, icswSavedSelectionService, ICSW_SIGNALS) ->
-    class Selection
+
+    class icswSelection
         # only instantiated once (for now), also handles saved selections
         constructor: (@cat_sel, @devg_sel, @dev_sel, @tot_dev_sel) ->
-            $rootScope.$on(ICSW_SIGNALS("ICSW_TREE_LOADED"), (event, tree) =>
+            $rootScope.$on(ICSW_SIGNALS("ICSW_DEVICE_TREE_LOADED"), (event, tree) =>
                 @tree = tree
                 console.log "tree set for icswSelection", @tree
             )
             @tree = undefined
             @sync_with_db(undefined)
+
         update: (@cat_sel, @devg_sel, @dev_sel, @tot_dev_sel) ->
+
         sync_with_db: (@db_obj=undefined) =>
             if @db_obj
                 @db_idx = @db_obj.idx
@@ -122,6 +131,7 @@ angular.module(
                 # is disabled on the drop-down selection list
                 # selection has changed, dummy flag, should never be used
                 @changed = true
+
         compare_with_db: () =>
             @changed = false
             # compare current selection with _db instances
@@ -130,6 +140,7 @@ angular.module(
                 if _.sum(@[_entry]) != _.sum(@[_db_entry]) or @[_entry].length != @[_db_entry].length
                     @changed = true
             @create_info()
+
         create_info: () =>
             icswSavedSelectionService.enrich_selection(@db_obj)
             if @changed
@@ -715,6 +726,7 @@ angular.module(
 
     $scope.update_selection = () ->
         $scope.selection.save_db_obj()
+
     $scope.create_selection = () ->
         _names = (sel.name for sel in $scope.saved_selections)
         # make name unique
@@ -745,6 +757,7 @@ angular.module(
         $scope.synced = false
         icswActiveSelectionService.unsync_selection()
         $scope.vars.selection_for_dropdown = undefined
+
     $scope.use_selection = (new_sel, b) ->
         console.log "use_selection"
         $scope.vars.selection_for_dropdown = new_sel
@@ -770,6 +783,7 @@ angular.module(
             cur_tc.recalc()
             cur_tc.show_selected()
         $scope.selection_changed()
+
     $scope.delete_selection = () ->
         if $scope.synced
             icswToolsSimpleModalService("Delete Selection #{$scope.selection.name} ?").then(
@@ -789,6 +803,7 @@ angular.module(
         DeviceOverviewSelection.set_selection(selected_devices)
         DeviceOverviewService(event, selected_devices)
         console.log "show_current_selection"
+
     $scope.select_parents = () ->
         blockUI.start("Selecting parents...")
         $scope.selection.select_parent().then(

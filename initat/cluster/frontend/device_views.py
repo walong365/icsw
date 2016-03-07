@@ -387,7 +387,11 @@ class SNMPSchemeEnrichment(object):
 class EnrichmentHelper(object):
     def __init__(self):
         self._all = {}
-        self._all["network_info"] = EnrichmentObject(netdevice, netdevice_serializer)
+        self._all["network_info"] = EnrichmentObject(
+            netdevice,
+            netdevice_serializer,
+            prefetch_list=["net_ip_set"]
+        )
         self._all["disk_info"] = EnrichmentObject(partition_table, partition_table_serializer, related_name="act_partition_table")
         self._all["com_info"] = ComCapabilityEnrichment()
         self._all["snmp_info"] = EnrichmentObject(DeviceSNMPInfo, DeviceSNMPInfoSerializer)

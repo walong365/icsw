@@ -174,10 +174,12 @@ angular.module(
     "$scope", "$uibModal", "Restangular", "restDataSource", "$q", "ICSW_URLS",
     "$rootScope", "ICSW_SIGNALS", "icswDomainTreeService", "icswDeviceTreeService", "icswMonitoringTreeService",
     "icswAcessLevelService", "icswActiveSelectionService", "icswDeviceBackup", "icswDeviceGroupBackup",
+    "icswDeviceTreeHelperService",
 (
     $scope, $uibModal, Restangular, restDataSource, $q, ICSW_URLS,
     $rootScope, ICSW_SIGNALS, icswDomainTreeService, icswDeviceTreeService, icswMonitoringTreeService,
-    icswAcessLevelService, icswActiveSelectionService, icswDeviceBackup, icswDeviceGroupBackup
+    icswAcessLevelService, icswActiveSelectionService, icswDeviceBackup, icswDeviceGroupBackup,
+    icswDeviceTreeHelperService
 ) ->
     icswAcessLevelService.install($scope)
     $scope.data_valid = false
@@ -198,11 +200,12 @@ angular.module(
                     $scope.dev_tree = tree
                     edit_obj = in_list[0]
                     console.log "start enrichment"
+                    dt_hs = icswDeviceTreeHelperService.create($scope.dev_tree, [edit_obj])
                     $q.all(
                         [
                             icswDomainTreeService.fetch($scope.$id)
                             icswMonitoringTreeService.fetch($scope.$id)
-                            $scope.dev_tree.enrich_devices([edit_obj], ["network_info", "monitoring_hint_info", "disk_info", "com_info", "snmp_info", "snmp_schemes_info"])
+                            $scope.dev_tree.enrich_devices(dt_hs, ["network_info", "monitoring_hint_info", "disk_info", "com_info", "snmp_info", "snmp_schemes_info"])
                         ]
                     ).then(
                         (data) ->

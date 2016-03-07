@@ -405,10 +405,14 @@ function copy_config() {
     tot_req=$(($num_req + $num_ack))
     send_info "got config for network $1 after $tot_req request(s)"
     set_hoststat "${COPY_CONF} $1 network"
-    if [ -f /conf/.config_files -a "$2" = "0" ] ; then
-        while read file ; do
-            rm -f /$basedir/$file ;
-        done < /conf/.config_files
+    if [ "$do_install" = "1" ] ; then
+        echo "installing, not removing old config"
+    else
+        if [ -f /conf/.config_files -a "$2" = "0" ] ; then
+            while read file ; do
+                rm -f /$basedir/$file ;
+            done < /conf/.config_files
+        fi
     fi
     rm -f /conf/.config_files
     if [ -f /conf/config_dirs_${1} ] ; then

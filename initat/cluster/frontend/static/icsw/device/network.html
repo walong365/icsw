@@ -1,6 +1,6 @@
 <script type="text/ng-template" id="icsw.device.network.overview">
     <h3>
-        Network config for {{ devices.length }} devices ({{ get_nd_objects().length }} netdevices, {{ get_ip_objects().length }} IPs, {{ get_peer_objects().length }} peers)
+        Network config for {{ devices.length }} devices ({{ local_helper_obj.netdevice_list.length }} netdevices, {{ local_helper_obj.net_ip_list.length }} IPs, {{ local_helper_obj.peer_list.length }} peers)
     </h3>
     <uib-accordion close-others="no">
         <uib-accordion-group is-open="device_open">
@@ -30,7 +30,7 @@
         <uib-accordion-group is-open="netdevice_open">
             <uib-accordion-heading>
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': netdevice_open, 'glyphicon-chevron-right': !netdevice_open}"></i>
-                {{ get_nd_objects().length }} netdevices
+                {{ local_helper_obj.netdevice_list.length }} netdevices
             </uib-accordion-heading>
             <icsw-tools-show-hide-columns ng-show="devices.length" columns="idx port ips peers bridge bond mac devtype mtu speed penalty flags status desired" create-show-column="true">
             </icsw-tools-show-hide-columns>
@@ -56,14 +56,14 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr icsw-device-network-netdevice-row ng-repeat="ndip_obj in get_nd_objects()"></tr>
+                    <tr icsw-device-network-netdevice-row ng-repeat="ndip_obj in local_helper_obj.netdevice_list"></tr>
                 </tbody>
             </table>
         </uib-accordion-group>
         <uib-accordion-group is-open="netip_open">
             <uib-accordion-heading>
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': netip_open, 'glyphicon-chevron-right': !netip_open}"></i>
-                {{ get_ip_objects().length }} IPs
+                {{ local_helper_obj.net_ip_list.length }} IPs
             </uib-accordion-heading>
             <table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
                 <thead>
@@ -78,14 +78,14 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr icsw-device-network-ip-row ng-repeat="ndip_obj in get_ip_objects()"></tr>
+                    <tr icsw-device-network-ip-row ng-repeat="ndip_obj in local_helper_obj.net_ip_list"></tr>
                 </tbody>
             </table>
         </uib-accordion-group>
         <uib-accordion-group is-open="peer_open">
             <uib-accordion-heading>
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': peer_open, 'glyphicon-chevron-right': !peer_open}"></i>
-                {{ get_peer_objects().length }} peer connections
+                {{ local_helper_obj.peer_list.length }} peer connections
             </uib-accordion-heading>
             <table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
                 <thead>
@@ -94,7 +94,9 @@
                         <th>Port</th>
                         <th>IPs</th>
                         <th>cost</th>
-                        <th>Dest</th>
+                        <th>Device</th>
+                        <th>Port</th>
+                        <th>IPs</th>
                         <th>type</th>
                         <th>Autocreated</th>
                         <th>Info</th>
@@ -102,7 +104,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr icsw-device-network-peer-row ng-repeat="ndip_obj in get_peer_objects()"></tr>
+                    <tr icsw-device-network-peer-row ng-repeat="ndip_obj in local_helper_obj.peer_list track by $index"></tr>
                 </tbody>
             </table>
         </uib-accordion-group>
@@ -164,11 +166,8 @@
     </td>
     <td>
         <button type="button" class="btn btn-xs btn-success pull-right"
-            tooltip-placement="bottom"
-            tooltip-html-unsafe="<div class='text-left'>
-            devicegroup: {{ ndip_obj.device_group_name }}<br>
-            comment: {{ ndip_obj.comment }}<br>
-            </div>">
+            uib-tooltip-placement="bottom"
+            uib-tooltip-html="build_device_tooltip(ndip_obj)">
             <span class="glyphicon glyphicon-info-sign"></span>
         </button>
     </td>
@@ -181,8 +180,8 @@
                 </button>
                 <ul class="dropdown-menu">
                     <li ng-click="create_netdevice(ndip_obj, $event)"><a>Netdevice</a></li>
-                    <li ng-show="ndip_obj.netdevice_set.length && networks.length" ng-click="create_netip_dev(ndip_obj, $event)"><a>IP Address</a></li>
-                    <li ng-show="ndip_obj.netdevice_set.length && nd_peers.length" ng-click="create_peer_information_dev(ndip_obj, $event)"><a>Network topology connection</a></li>
+                    <li ng-show="create_netip_ok(ndip_obj)" ng-click="create_netip_dev(ndip_obj, $event)"><a>IP Address</a></li>
+                    <li ng-show="create_peer_ok(ndip_obj)" ng-click="create_peer_information_dev(ndip_obj, $event)"><a>Network topology connection</a></li>
                 </ul>
             </div>
             <icsw-tools-button type="reload" value="update network" size="xs"
@@ -195,7 +194,7 @@
 
 <script type="text/ng-template" id="icsw.device.network.netdevice.row">
     <td>
-        {{ dev_lut[ndip_obj.device].full_name }}
+        {{ device_tree.all_lut[ndip_obj.device].full_name }}
     </td>
     <td ng-show="show_column.idx">
         <span ng-show="ndip_obj.snmp_idx">{{ ndip_obj.snmp_idx }}</span>
@@ -219,35 +218,20 @@
     <td ng-show="show_column.devtype">{{ get_network_type(ndip_obj) }}</td>
     <td ng-show="show_column.mtu" class="text-right">{{ ndip_obj.mtu }}</td>
     <td ng-if="show_column.speed && ndip_obj.ignore_netdevice_speed" style="text-decoration: line-through;">
-        {{ ndip_obj.netdevice_speed | array_lookup:netdevice_speeds:'info_string':'-' }}
+        {{ get_netdevice_speed(ndip_obj) }}
     </td>
     <td ng-if="show_column.speed && !ndip_obj.ignore_netdevice_speed">
-        {{ ndip_obj.netdevice_speed | array_lookup:netdevice_speeds:'info_string':'-' }}
+        {{ get_netdevice_speed(ndip_obj) }}
     </td>
     <td ng-show="show_column.penalty" class="text-right">{{ ndip_obj.penalty }}</td>
-    <td ng-show="show_column.flags">{{ get_flags(ndip_obj) }}</td>
+    <td ng-show="show_column.flags">{{ get_nd_flags(ndip_obj) }}</td>
     <td ng-show="show_column.status" ng-class="get_snmp_ao_status_class(ndip_obj)">{{ get_snmp_ao_status(ndip_obj) }}</td>
     <td ng-show="show_column.desired" class="text-center">{{ get_desired_status(ndip_obj) }}</td>
     <td>
         <button type="button" class="btn btn-xs btn-success"
-         tooltip-placement="right"
-         tooltip-html-unsafe="<div class='text-left'>
-            device: {{ get_netdevice_name(ndip_obj) }}<br>
-            SNMP: {{ ndip_obj.snmp_idx && 'yes' || 'no' }}<span ng-show='ndip_obj.snmp'> ( {{ ndip_obj.snmp_idx }} )</span><br>
-            enabled: {{ ndip_obj.enabled | yesno2 }}<br>
-            <hr>
-            driver: {{ ndip_obj.driver }}<br>
-            driver options: {{ ndip_obj.driver_options }}<br>
-            fake MACAddress: {{ ndip_obj.fake_macaddr }}<br>
-            force write DHCP: {{ ndip_obj.dhcp_device | yesno2 }}
-            <hr>
-            Autonegotiation: {{ ethtool_options(ndip_obj, 'a')}}<br>
-            Duplex: {{ ethtool_options(ndip_obj, 'd')}}<br>
-            Speed: {{ ethtool_options(ndip_obj, 's')}}
-            <hr>
-            Monitoring: {{ ndip_obj.netdevice_speed | array_lookup:netdevice_speeds:'info_string':'-' }}
-         </div>">
-         <span class="glyphicon glyphicon-info-sign"></span>
+         uib-tooltip-placement="right"
+         uib-tooltip-html="build_netdevice_tooltip(ndip_obj)">
+             <span class="glyphicon glyphicon-info-sign"></span>
          </button>
     </td>
     <td>
@@ -267,7 +251,7 @@
                 Create new <span class="caret"></span>
             </button>
             <ul class="dropdown-menu">
-                <li ng-show="networks.length" ng-click="create_netip_nd(ndip_obj, $event)"><a>IP Address</a></li>
+                <li ng-show="network_tree.nw_list.length" ng-click="create_netip_nd(ndip_obj, $event)"><a>IP Address</a></li>
                 <li ng-click="create_peer_information_nd(ndip_obj, $event)"><a>Network topology connection</a></li>
             </ul>
         </div>
@@ -275,11 +259,11 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.network.ip.row">
-    <td>{{ dev_lut[nd_lut[ndip_obj.netdevice].device].full_name }}</td>
-    <td>{{ get_netdevice_name(ndip_obj.netdevice) }}</td>
+    <td>{{ get_devname_from_ip(ndip_obj) }}</td>
+    <td>{{ get_netdevice_name_from_ip(ndip_obj) }}</td>
     <td>{{ ndip_obj.ip }}</td>
-    <td>{{ ndip_obj.network | array_lookup:networks:'info_string':'-' }}</td>
-    <td>{{ ndip_obj.domain_tree_node | array_lookup:domain_tree_node:'tree_info':'-' }}</td>
+    <td>{{ get_network_name_from_ip(ndip_obj) }}</td>
+    <td>{{ get_domain_tree_name_from_ip(ndip_obj) }}</td>
     <td>
         <span ng-show="ndip_obj.alias">{{ ndip_obj.alias }} <span ng-show="ndip_obj.alias_excl">( exclusive )</span></span>
     </td>
@@ -296,18 +280,16 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.network.peer.row">
-    <td>{{ dev_lut[nd_lut[ndip_obj.netdevice].device].full_name }}</td>
-    <td>{{ get_netdevice_name(ndip_obj.netdevice) }} ({{ nd_lut[ndip_obj.netdevice].penalty }})</td>
+    <td>{{ get_devname_from_peer(ndip_obj, "s") }}</td>
+    <td>{{ get_netdevice_name_from_peer(ndip_obj, "s") }}</td>
+    <td>{{ get_ip_list_from_peer(ndip_obj, "s") }}</td>
     <td>
-        <span ng-repeat="ip in get_ip_objects(nd_lut[ndip_obj.netdevice])">{{ ip.ip }}&nbsp;</span>
-    </td>
-    <td>
-        with cost {{ ndip_obj.peer.penalty }}
+        with cost {{ ndip_obj.penalty }}
         &nbsp;<span class="label label-primary">{{ get_peer_cost(ndip_obj) }}</span>&nbsp;
     </td>
-    <td>
-        to {{ get_peer_target(ndip_obj) }}
-    </td>
+    <td>{{ get_devname_from_peer(ndip_obj, "d") }}</td>
+    <td>{{ get_netdevice_name_from_peer(ndip_obj, "d") }}</td>
+    <td>{{ get_ip_list_from_peer(ndip_obj, "d") }}</td>
     <td>
         {{ get_peer_type(ndip_obj) }}
     </td>
@@ -730,8 +712,8 @@
     </form>
 </script>
 
-<script type="text/ng-template" id="netdevice.form">
-    <form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form">
+<script type="text/ng-template" id="icsw.netdevice.form">
+    <form class="form-horizontal" name="form_data">
         <uib-tabset>
             <uib-tab heading="Basic settings">
                 <fieldset>
@@ -740,7 +722,7 @@
                             Devname<span class="asteriskField">*</span>
                         </label>
                         <div class="controls col-sm-8">
-                            <input class="textinput textInput form-control" maxlength="64" ng-model="_edit_obj.devname" placeholder="devicename" required="True" type="text"/>
+                            <input class="textinput textInput form-control" maxlength="64" ng-model="edit_obj.devname" placeholder="devicename" required="True" type="text"/>
                         </div>
                     </div>
                     <div class="form-group">
@@ -748,7 +730,7 @@
                             Description
                         </label>
                         <div class="controls col-sm-8">
-                            <input class="textinput textInput form-control" maxlength="765" ng-model="_edit_obj.description" type="text"/>
+                            <input class="textinput textInput form-control" maxlength="765" ng-model="edit_obj.description" type="text"/>
                         </div>
                     </div>
                     <div class="form-group">
@@ -756,7 +738,7 @@
                             MTU<span class="asteriskField">*</span>
                         </label>
                         <div class="controls col-sm-8">
-                            <input class="numberinput form-control" ng-model="_edit_obj.mtu" required="True" type="number" value="1500"/>
+                            <input class="numberinput form-control" ng-model="edit_obj.mtu" required="True" type="number" value="1500"/>
                         </div>
                     </div>
                     <div class="form-group">
@@ -764,9 +746,9 @@
                             Netdevice speed
                         </label>
                         <div class="controls col-sm-8">
-                            <ui-select ng-model="_edit_obj.netdevice_speed" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                            <ui-select ng-model="edit_obj.netdevice_speed" style="max-width:400px; min-width:240px;" ng-disabled="false">
                                 <ui-select-match class="ui-select-match" placeholder="select a target netdevice speed">{{$select.selected.info_string}}</ui-select-match>
-                                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in netdevice_speeds">
+                                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in network_tree.nw_speed_list">
                                     <div ng-bind-html="value.info_string | highlight: $select.search"></div>
                                 </ui-select-choices>
                             </ui-select>
@@ -776,7 +758,7 @@
                         <div class="checkbox">
                             <div class="controls col-lg-offset-0 col-sm-8">
                                 <label>
-                                    <input class="checkboxinput checkbox" ng-model="_edit_obj.ignore_netdevice_speed" type="checkbox"/>
+                                    <input class="checkboxinput checkbox" ng-model="edit_obj.ignore_netdevice_speed" type="checkbox"/>
                                     Ignore netdevice speed
                                 </label>
                             </div>
@@ -786,7 +768,7 @@
                         <div class="checkbox">
                             <div class="controls col-lg-offset-0 col-sm-8">
                                 <label>
-                                    <input class="checkboxinput checkbox" ng-model="_edit_obj.enabled" type="checkbox"/>
+                                    <input class="checkboxinput checkbox" ng-model="edit_obj.enabled" type="checkbox"/>
                                     Enabled
                                 </label>
                             </div>
@@ -797,7 +779,7 @@
                             Desired status
                         </label>
                         <div class="controls col-sm-8">
-                            <ui-select ng-model="_edit_obj.desired_status" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                            <ui-select ng-model="edit_obj.desired_status" style="max-width:400px; min-width:240px;" ng-disabled="false">
                                 <ui-select-match class="ui-select-match" placeholder="select the desired status">{{$select.selected.info_string}}</ui-select-match>
                                 <ui-select-choices class="ui-select-choices" repeat="value.short as value in desired_stati">
                                     <div ng-bind-html="value.info_string | highlight: $select.search"></div>
@@ -812,7 +794,7 @@
                         <div class="checkbox">
                             <div class="controls col-lg-offset-0 col-sm-8">
                                 <label>
-                                    <input class="checkboxinput checkbox" ng-model="_edit_obj.routing" type="checkbox"/>
+                                    <input class="checkboxinput checkbox" ng-model="edit_obj.routing" type="checkbox"/>
                                     network topology central node
                                 </label>
                             </div>
@@ -823,21 +805,21 @@
                             Cost
                         </label>
                         <div class="controls col-sm-8">
-                            <input class="numberinput form-control" max="128" min="1" name="penalty" ng-model="_edit_obj.penalty" type="number" value="1"/>
+                            <input class="numberinput form-control" max="128" min="1" name="penalty" ng-model="edit_obj.penalty" type="number" value="1"/>
                         </div>
                     </div>
                     <div class="form-group">
                         <div class="checkbox">
                             <div class="controls col-lg-offset-0 col-sm-8">
                                 <label>
-                                    <input class="checkboxinput checkbox" ng-model="_edit_obj.inter_device_routing" type="checkbox"/>
+                                    <input class="checkboxinput checkbox" ng-model="edit_obj.inter_device_routing" type="checkbox"/>
                                     Inter device routing
                                 </label>
                             </div>
                         </div>
                     </div>
                 </fieldset>
-                <fieldset ng-show="!_edit_obj.is_bridge && !_edit_obj.is_bond && !_edit_obj.bond_master && !_edit_obj.bridge_device && get_vlan_masters(_edit_obj).length">
+                <fieldset ng-show="!edit_obj.is_bridge && !edit_obj.is_bond && !edit_obj.bond_master && !edit_obj.bridge_device && get_vlan_masters(edit_obj).length">
                     <legend>VLAN settings</legend>
                     <div class="form-group">
                         <label class="control-label col-sm-3">
@@ -845,14 +827,14 @@
                         </label>
                         <div class="controls col-sm-8">
                             <div class="input-group" style="max-width:400px; min-width:240px;">
-                                <ui-select ng-model="_edit_obj.master_device" ng-disabled="false">
+                                <ui-select ng-model="_dit_obj.master_device" ng-disabled="false">
                                     <ui-select-match class="ui-select-match" placeholder="VLAN master device">{{$select.selected.devname}}</ui-select-match>
-                                    <ui-select-choices class="ui-select-choices" repeat="value.idx as value in get_vlan_masters(_edit_obj)">
+                                    <ui-select-choices class="ui-select-choices" repeat="value.idx as value in get_vlan_masters(edit_obj)">
                                         <div ng-bind-html="value.devname | highlight: $select.search"></div>
                                     </ui-select-choices>
                                 </ui-select>
                                 <span class="input-group-btn">
-                                    <button type="button" ng-click="_edit_obj.master_device = undefined" class="btn btn-default">
+                                    <button type="button" ng-click="edit_obj.master_device = undefined" class="btn btn-default">
                                         <span class="glyphicon glyphicon-trash"></span>
                                     </button>
                                 </span>
@@ -864,38 +846,38 @@
                             VLAN id
                         </label>
                         <div class="controls col-sm-8">
-                            <input class="numberinput form-control" max="255" min="0" ng-model="_edit_obj.vlan_id" type="number" value="0"/>
+                            <input class="numberinput form-control" max="255" min="0" ng-model="edit_obj.vlan_id" type="number" value="0"/>
                         </div>
                     </div>
                 </fieldset>
             </uib-tab>
             <uib-tab heading="Bridge / Bond">
-                <fieldset ng-show="!_edit_obj.vlan_id && !_edit_obj.bond_master && !_edit_obj.is_bond">
+                <fieldset ng-show="!edit_obj.vlan_id && !edit_obj.bond_master && !edit_obj.is_bond">
                     <legend>Bridge settings</legend>
                     <div class="form-group">
-                        <div class="checkbox" ng_show="!_edit_obj.bridge_device">
+                        <div class="checkbox" ng_show="!edit_obj.bridge_device">
                             <div class="controls col-lg-offset-0 col-sm-8">
                                 <label>
-                                    <input class="checkboxinput checkbox" ng-disabled="has_bridge_slaves(_edit_obj)" ng-model="_edit_obj.is_bridge" type="checkbox"/>
+                                    <input class="checkboxinput checkbox" ng-disabled="has_bridge_slaves(edit_obj)" ng-model="edit_obj.is_bridge" type="checkbox"/>
                                     Is bridge device
                                 </label>
                             </div>
                         </div>
                     </div>
-                    <div class="form-group" ng_show="!_edit_obj.is_bridge && get_bridge_masters(_edit_obj).length">
+                    <div class="form-group" ng_show="!edit_obj.is_bridge && get_bridge_masters(edit_obj).length">
                         <label class="control-label col-sm-3">
                             Bridge device
                         </label>
                         <div class="controls col-sm-8">
                             <div class="input-group" style="max-width:400px; min-width:240px;">
-                                <ui-select ng-model="_edit_obj.bridge_device" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                                <ui-select ng-model="edit_obj.bridge_device" style="max-width:400px; min-width:240px;" ng-disabled="false">
                                     <ui-select-match class="ui-select-match" placeholder="bridge master device">{{ $select.selected.devname }}</ui-select-match>
-                                    <ui-select-choices class="ui-select-choices" repeat="value.idx as value in get_bridge_masters(_edit_obj)">
+                                    <ui-select-choices class="ui-select-choices" repeat="value.idx as value in get_bridge_masters(edit_obj)">
                                         <div ng-bind-html="value.devname | highlight: $select.search"></div>
                                     </ui-select-choices>
                                 </ui-select>
                                 <span class="input-group-btn">
-                                    <button type="button" ng-click="_edit_obj.bridge_device = undefined" class="btn btn-default">
+                                    <button type="button" ng-click="edit_obj.bridge_device = undefined" class="btn btn-default">
                                         <span class="glyphicon glyphicon-trash"></span>
                                     </button>
                                 </span>
@@ -903,32 +885,32 @@
                         </div>
                     </div>
                 </fieldset>
-                <fieldset ng-show="!_edit_obj.vlan_id && !_edit_obj.bridge_device && !_edit_obj.is_bridge">
+                <fieldset ng-show="!edit_obj.vlan_id && !edit_obj.bridge_device && !edit_obj.is_bridge">
                     <legend>Bond settings</legend>
                     <div class="form-group">
-                        <div class="checkbox" ng_show="!_edit_obj.bond_master">
+                        <div class="checkbox" ng_show="!edit_obj.bond_master">
                             <div class="controls col-lg-offset-0 col-sm-8">
                                 <label>
-                                    <input class="checkboxinput checkbox" ng-disabled="has_bond_slaves(_edit_obj)" ng-model="_edit_obj.is_bond" type="checkbox"/>
+                                    <input class="checkboxinput checkbox" ng-disabled="has_bond_slaves(edit_obj)" ng-model="_edit_obj.is_bond" type="checkbox"/>
                                     Is bond master
                                 </label>
                             </div>
                         </div>
                     </div>
-                    <div class="form-group" ng_show="!_edit_obj.is_bond && get_bond_masters(_edit_obj).length">
+                    <div class="form-group" ng_show="!edit_obj.is_bond && get_bond_masters(edit_obj).length">
                         <label class="control-label col-sm-3">
                             Bond master
                         </label>
                         <div class="controls col-sm-8">
                             <div class="input-group" style="max-width:400px; min-width:240px;">
-                                <ui-select ng-model="_edit_obj.bond_master" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                                <ui-select ng-model="edit_obj.bond_master" style="max-width:400px; min-width:240px;" ng-disabled="false">
                                     <ui-select-match class="ui-select-match" placeholder="bond master device">{{ $select.selected.devname }}</ui-select-match>
-                                    <ui-select-choices class="ui-select-choices" repeat="value.idx as value in get_bond_masters(_edit_obj)">
+                                    <ui-select-choices class="ui-select-choices" repeat="value.idx as value in get_bond_masters(edit_obj)">
                                         <div ng-bind-html="value.devname | highlight: $select.search"></div>
                                     </ui-select-choices>
                                 </ui-select>
                                 <span class="input-group-btn">
-                                    <button type="button" ng-click="_edit_obj.bond_master = undefined" class="btn btn-default">
+                                    <button type="button" ng-click="edit_obj.bond_master = undefined" class="btn btn-default">
                                         <span class="glyphicon glyphicon-trash"></span>
                                     </button>
                                 </span>
@@ -944,7 +926,7 @@
                             Driver
                         </label>
                         <div class="controls col-sm-8">
-                            <input class="textinput textInput form-control" maxlength="384" ng-model="_edit_obj.driver" type="text" value="e1000e"/>
+                            <input class="textinput textInput form-control" maxlength="384" ng-model="edit_obj.driver" type="text" value="e1000e"/>
                         </div>
                     </div>
                     <div class="form-group">
@@ -952,7 +934,7 @@
                             Driver options
                         </label>
                         <div class="controls col-sm-8">
-                            <input class="textinput textInput form-control" maxlength="672" ng-model="_edit_obj.driver_options" type="text"/>
+                            <input class="textinput textInput form-control" maxlength="672" ng-model="edit_obj.driver_options" type="text"/>
                         </div>
                     </div>
                 </fieldset>
@@ -963,7 +945,7 @@
                             Ethtool autoneg<span class="asteriskField">*</span>
                         </label>
                         <div class="controls col-sm-8">
-                            <select class="select form-control" ng-change="update_ethtool(_edit_obj)" ng-model="_edit_obj.ethtool_autoneg" ng-options="a.id as a.option for a in ethtool_autoneg">
+                            <select class="select form-control" ng-change="update_ethtool(edit_obj)" ng-model="edit_obj.ethtool_autoneg" ng-options="a.id as a.option for a in ethtool_autoneg">
                             </select>
                         </div>
                     </div>
@@ -972,7 +954,7 @@
                             Ethtool duplex<span class="asteriskField">*</span>
                         </label>
                         <div class="controls col-sm-8">
-                            <select class="select form-control" ng-change="update_ethtool(_edit_obj)" ng-model="_edit_obj.ethtool_duplex" ng-options="a.id as a.option for a in ethtool_duplex">
+                            <select class="select form-control" ng-change="update_ethtool(edit_obj)" ng-model="edit_obj.ethtool_duplex" ng-options="a.id as a.option for a in ethtool_duplex">
                             </select>
                         </div>
                     </div>
@@ -981,7 +963,7 @@
                             Ethtool speed<span class="asteriskField">*</span>
                         </label>
                         <div class="controls col-sm-8">
-                            <select class="select form-control" ng-change="update_ethtool(_edit_obj)" ng-model="_edit_obj.ethtool_speed" ng-options="a.id as a.option for a in ethtool_speed">
+                            <select class="select form-control" ng-change="update_ethtool(edit_obj)" ng-model="edit_obj.ethtool_speed" ng-options="a.id as a.option for a in ethtool_speed">
                             </select>
                         </div>
                     </div>
@@ -995,7 +977,7 @@
                                     MAC-Address
                                 </label>
                                 <div class="controls col-sm-8">
-                                    <input class="textinput textInput form-control" maxlength="177" name="macaddr" ng-model="_edit_obj.macaddr" type="text"/>
+                                    <input class="textinput textInput form-control" maxlength="177" name="macaddr" ng-model="edit_obj.macaddr" type="text"/>
                                 </div>
                             </div>
                         </div>
@@ -1005,7 +987,7 @@
                                     Fake MAC-Address
                                 </label>
                                 <div class="controls col-sm-8">
-                                    <input class="textinput textInput form-control" maxlength="177" name="fake_macaddr" ng-model="_edit_obj.fake_macaddr" type="text"/>
+                                    <input class="textinput textInput form-control" maxlength="177" name="fake_macaddr" ng-model="edit_obj.fake_macaddr" type="text"/>
                                 </div>
                             </div>
                         </div>
@@ -1014,7 +996,7 @@
                         <div class="checkbox">
                             <div class="controls col-lg-offset-0 col-sm-8">
                                 <label>
-                                    <input class="checkboxinput checkbox" ng-model="_edit_obj.dhcp_device" type="checkbox"/>
+                                    <input class="checkboxinput checkbox" ng-model="edit_obj.dhcp_device" type="checkbox"/>
                                     force write DHCP address (greedy mode will not work)
                                 </label>
                             </div>
@@ -1023,9 +1005,6 @@
                 </fieldset>
             </uib-tab>
         </uib-tabset>
-        <div class="form-actions">
-            <input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="action_string"/>
-        </div>
     </form>
 </script>
 

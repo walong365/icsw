@@ -217,7 +217,65 @@ angular.module(
     icswTools, ICSW_URLS, $q, Restangular, icswSimpleAjaxCall
 ) ->
     class icswPeerInformation
-        constructor: () ->
+        constructor: (@list) ->
+            @build_luts()
+
+        build_luts: () =>
+            @lut = icswTools.build_lut(@list)
+            @nd_lut = {}
+            for entry in @list
+                if entry.s_netdevice not of @nd_lut
+                    @nd_lut[entry.s_netdevice] = []
+                @nd_lut[entry.s_netdevice].push(entry)
+                if entry.d_netdevice not of @nd_lut
+                    @nd_lut[entry.d_netdevice] = []
+                @nd_lut[entry.d_netdevice].push(entry)
+            # console.log @nd_lut
+
+        find_missing_devices: (dev_tree) =>
+            # return a list of device pks which are missing from the device tree or where the network_info is missing
+            _peer_list = _.union(
+                (entry.s_device for entry in @list)
+                (entry.d_device for entry in @list)
+            )
+            # console.log "1", _peer_list
+            _present_list = (entry.idx for entry in dev_tree.all_list when entry.$$_enrichment_info.is_loaded("network_info"))
+            # console.log "2", _present_list
+            _diff_list = _.difference(_peer_list, _present_list)
+            # console.log "3", _diff_list
+            return _diff_list
+
+        find_remote_devices: (dev_tree, local_devices) =>
+            _local_pks = (dev.idx for dev in local_devices)
+            # return the pks of all devices remote (== not local)
+            _peer_list = _.union(
+                (entry.s_device for entry in @list)
+                (entry.d_device for entry in @list)
+            )
+            _remote_list = _.difference(_peer_list, _local_pks)
+            return _remote_list
+
+        enrich_device_tree: (dev_tree, local_ho, remote_ho) =>
+            # set the peer information for all devices in dev_list
+            # type: (l)ocal or (r)remote (for local and remote helper objects)
+            # s/d_type: source / dest entries
+            for iter_obj in [{"ho": local_ho, "type": "l"}, {"ho": remote_ho, "type": "r"}]
+                ho = iter_obj.ho
+                ho.peer_list = []
+                peer_type = iter_obj.type
+                for dev in ho.devices
+                    dev.num_peers = 0
+                    for nd in dev.netdevice_set
+                        if nd.idx of @nd_lut
+                            # netdevice part of a peer table
+                            dev.num_peers += @nd_lut[nd.idx].length
+                            for peer in @nd_lut[nd.idx]
+                                ho.peer_list.push(peer)
+                                # set peer flags
+                                if peer.s_netdevice == nd.idx
+                                    peer.$$s_type = peer_type
+                                if peer.d_netdevice == nd.idx
+                                    peer.$$d_type = peer_type
 
 ]).service("icswPeerInformationService", [
     "$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall", "icswTools", "icswPeerInformation", "$rootScope", "ICSW_SIGNALS",

@@ -36,7 +36,7 @@ from initat.cluster.backbone.models import get_related_models, get_change_reset_
 from initat.cluster.backbone.serializers import device_serializer, \
     device_selection_serializer, partition_table_serializer_save, partition_disc_serializer_save, \
     partition_disc_serializer_create, device_config_help_serializer, device_serializer_only_boot, \
-    network_with_ip_serializer, ComCapabilitySerializer
+    network_with_ip_serializer, ComCapabilitySerializer, peer_information_serializer
 from rest_framework import mixins, generics, status, viewsets, serializers
 import rest_framework
 from rest_framework.authentication import SessionAuthentication
@@ -458,71 +458,14 @@ class netdevice_peer_list(viewsets.ViewSet):
     @rest_logging
     def list(self, request):
         _dev_pks = json.loads(request.GET.get("primary_dev_pks"))
-        print _dev_pks
-        ext_list = [
-            ext_peer_object(**_obj) for _obj in netdevice.objects.filter(
-                Q(device__enabled=True) & Q(device__device_group__enabled=True)
-            ).filter(
-                Q(enabled=True)
-            ).filter(
-                Q(peer_s_netdevice__gt=0) | Q(peer_d_netdevice__gt=0) | Q(routing=True)
-            ).distinct().order_by(
-                "device__device_group__name",
-                "device__name",
-                "devname",
-            ).select_related(
-                "device",
-                "device__device_group",
-                "device__domain_tree_node"
-            ).values(
-                "pk",
-                "devname",
-                "penalty",
-                "routing",
-                "device__name",
-                "device__device_group__name",
-                "device__domain_tree_node__full_name"
-            )
-        ]
-        import pprint
-        pprint.pprint(list(netdevice.objects.filter(
-            Q(device__enabled=True) & Q(device__device_group__enabled=True)
-        ).filter(
-            Q(enabled=True)
-        ).filter(
-            Q(peer_s_netdevice__gt=0) | Q(peer_d_netdevice__gt=0) | Q(routing=True)
-        ).distinct().order_by(
-            "device__device_group__name",
-            "device__name",
-            "devname",
+        _peers = peer_information.objects.filter(
+            Q(s_netdevice__device__in=_dev_pks) |
+            Q(d_netdevice__device__in=_dev_pks)
         ).select_related(
-            "device",
-            "device__device_group",
-            "device__domain_tree_node"
-        ).values(
-            "pk",
-            "devname",
-            "penalty",
-            "routing",
-            "device__name",
-            "device__device_group__name",
-            "device__domain_tree_node__full_name"
-        )))
-        pprint.pprint(
-            list(
-                peer_information.objects.filter(
-                    Q(s_netdevice__device__in=_dev_pks) |
-                    Q(d_netdevice__device__in=_dev_pks)
-                ).values_list(
-                    "penalty",
-                    "s_netdevice",
-                    "d_netdevice",
-                )
-            )
+            "s_netdevice",
+            "d_netdevice",
         )
-        # .filter(Q(net_ip__network__network_type__identifier="x") | Q(net_ip__network__network_type__identifier__in=["p", "o", "s", "b"])) \
-        _ser = ext_peer_serializer(ext_list, many=True)
-        print _ser.data
+        _ser = peer_information_serializer(_peers, many=True)
         return Response(_ser.data)
 
 

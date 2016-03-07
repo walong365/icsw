@@ -247,6 +247,7 @@ angular.module(
         priority: -100
         link: (scope, el, attrs) ->
             console.log "link selman to scope", scope
+
             _new_sel = (sel) ->
                 selman_mode = attrs["icswSelManSelMode"] || "d"
                 console.log "SelMan new selection (mode #{selman_mode})", sel
@@ -255,17 +256,24 @@ angular.module(
                     scope.new_devsel(sel)
                 else
                     console.log "no devsel_defined"
+
             if parseInt(attrs.icswSelMan)
                 # popup mode
                 _new_sel(scope.$eval(attrs["icswDeviceList"]))
             else
                 $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"), (event) ->
-                    console.log "icsw_overivew_emit_selection received"
+                    console.log "icsw_overview_emit_selection received"
                     if DeviceOverviewSettings.is_active()
                         console.log "ov is active"
                     else
                         _tree = icswDeviceTreeService.current()
-                        _new_sel((_tree.all_lut[pk] for pk in icswActiveSelectionService.current().tot_dev_sel))
+                        if _tree?
+                            _new_sel((_tree.all_lut[pk] for pk in icswActiveSelectionService.current().tot_dev_sel))
+                        else
+                            console.log "tree not valid, ignoring, triggering load"
+                            icswDeviceTreeService.fetch(scope.$id).then(
+                                (tree) ->
+                            )
                 )
                 icswActiveSelectionService.register_receiver()
     }
@@ -289,7 +297,7 @@ angular.module(
         "ICSW_USER_CHANGED": "icsw.user.changed"
         "ICSW_DSR_REGISTERED": "icsw.dsr.registered"
         "ICSW_SELECTOR_SHOW": "icsw.selector.show"
-        "ICSW_TREE_LOADED": "icsw.tree.loaded"
+        "ICSW_DEVICE_TREE_LOADED": "icsw.device.tree.loaded"
         "ICSW_NETWORK_TREE_LOADED": "icsw.network.tree.loaded"
         "ICSW_DTREE_FILTER_CHANGED": "icsw.dtree.filter.changed"
         "ICSW_FORCE_TREE_FILTER": "icsw.tree.force.filter"
@@ -1078,6 +1086,7 @@ angular.module(
             out = items
         return out
 ).service("icswCachingCall", ["$interval", "$timeout", "$q", "Restangular", ($inteval, $timeout, $q, Restangular) ->
+
     class LoadInfo
         constructor: (@key, @url, @options) ->
             @client_dict = {}
@@ -1121,6 +1130,7 @@ angular.module(
             )
     start_timeout = {}
     load_info = {}
+
     schedule_load = (key) ->
         # called when new listeners register
         # don't update immediately, wait until more controllers have registered
@@ -1133,11 +1143,13 @@ angular.module(
                     load_info[key].load()
                 1
             )
+
     add_client = (client, url, options, pk_list) ->
         url_key = _key(url, options, pk_list)
         if url_key not of load_info
             load_info[url_key] = new LoadInfo(url_key, url, options)
         return load_info[url_key].add_pk_list(client, pk_list)
+
     _key = (url, options, pk_list) ->
         url_key = url
         for key, value of options
@@ -1146,12 +1158,14 @@ angular.module(
             # distinguish calls with pk_list == null (all devices required)
             url_key = "#{url_key}Z"
         return url_key
+
     return {
         "fetch" : (client, url, options, pk_list) ->
             _defer = add_client(client, url, options, pk_list)
             schedule_load(_key(url, options, pk_list))
             return _defer.promise
     }
+
 ]).directive("icswLogDomCreation", [() ->
     return {
         restrict: 'A'

@@ -954,6 +954,12 @@ class peer_information(models.Model):
             self.d_netdevice.devname
         )
 
+    def get_s_device(self):
+        return self.s_netdevice.device_id
+
+    def get_d_device(self):
+        return self.d_netdevice.device_id
+
     def store_before_delete(self, del_device):
         if self.s_netdevice.device_id == del_device.pk:
             other_nd = self.d_netdevice

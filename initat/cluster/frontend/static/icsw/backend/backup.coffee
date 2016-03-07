@@ -80,7 +80,7 @@ angular.module(
 
         constructor: () ->
             super()
-            @simple_attributes = ["name", "comment", "domain_tree_node", "enabled"]
+            @simple_attributes = ["name", "comment", "domain_tree_node", "enabled", "description"]
 
 ]).service("icswNetworkTypeBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
 

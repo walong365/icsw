@@ -254,7 +254,7 @@ angular.module(
                 ok_label: if create_mode then "Create" else "Modify"
                 ok_callback: (modal) ->
                     d = $q.defer()
-                    if $scope.form_data.$invalid
+                    if sub_scope.form_data.$invalid
                         toaster.pop("warning", "form validation problem", "", 0)
                         d.reject("form not valid")
                     else
@@ -520,7 +520,7 @@ angular.module(
                     filter_changed()
                 true
             )
-            $rootScope.$on(ICSW_SIGNALS("ICSW_TREE_LOADED"), () ->
+            $rootScope.$on(ICSW_SIGNALS("ICSW_DEVICE_TREE_LOADED"), () ->
                 filter_changed()
             )
 
