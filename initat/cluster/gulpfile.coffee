@@ -315,12 +315,12 @@ gulp.task("appinject", ["app"], () ->
 gulp.task("maininject", ["main"], () ->
     # modify app.js with additional modules
     return gulp.src(
-        "#{DEPLOY_DIR}/main.html",
+        "#{COMPILE_DIR}/main.html",
         {read: false}
     ).pipe(
         exec(
             [
-                "./manage.py inject_addons --srcfile=#{DEPLOY_DIR}/main.html --modify",
+                "./manage.py inject_addons --srcfile=#{COMPILE_DIR}/main.html --modify --dstfile=#{DEPLOY_DIR}/main.html",
             ]
             {pipeStdout: true}
         )
@@ -504,9 +504,9 @@ gulp.task("main", index_deps, () ->
             }
         )
     ).pipe(
-        clean_dest(DEPLOY_DIR)
+        clean_dest(COMPILE_DIR)
     ).pipe(
-        gulp.dest(DEPLOY_DIR)
+        gulp.dest(COMPILE_DIR)
     )
 
 )

@@ -95,15 +95,16 @@ class FileModify(object):
                 new_content.append(line)
         self._content = "\n".join(new_content)
 
-    def write(self):
+    def write(self, new_file):
+        dest = new_file or self.name
         self.debug(
             "would wrote {} to {}".format(
                 logging_tools.get_size_str(len(self._content)),
-                self.name,
+                dest,
             )
         )
         if self.modify:
-            file(self.name, "w").write(self._content)
+            file(dest, "w").write(self._content)
 
 
 class Command(BaseCommand):
@@ -121,6 +122,12 @@ class Command(BaseCommand):
             default=False,
             help="rewrite file (and disable debug)",
         ),
+        make_option(
+            "--dstfile",
+            type=str,
+            default="",
+            help="alternate position for the dstfile (ignored by default)"
+        )
     )
     help = ("Inject module code in files.")
     args = ''
@@ -135,4 +142,4 @@ class Command(BaseCommand):
         for name in options["files"]:
             f_obj = FileModify(name, options["modify"])
             f_obj.inject()
-            f_obj.write()
+            f_obj.write(options["dstfile"])

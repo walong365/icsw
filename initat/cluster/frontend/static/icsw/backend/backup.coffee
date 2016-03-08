@@ -30,10 +30,12 @@ angular.module(
         "icsw.backend.devicetree",
     ]
 ).service("icswBackupDefinition", [() ->
+
     class backup_def
         constructor: () ->
             @simple_attributes = []
             @list_attributes = []
+
         create_backup: (obj) =>
             _bu = {}
             @pre_backup(obj)
@@ -42,23 +44,28 @@ angular.module(
             for _entry in @list_attributes
                 _bu[_entry] = _.cloneDeep(obj[_entry])
             @post_backup(obj, _bu)
-            obj._ICSW_backup = _bu
+            obj.$$_ICSW_backup = _bu
+
         restore_backup: (obj) =>
-            if obj._ICSW_backup?
-                _bu = obj._ICSW_backup
+            if obj.$$_ICSW_backup?
+                _bu = obj.$$_ICSW_backup
                 @pre_restore(obj, _bu)
                 for _entry in @simple_attributes
                     obj[_entry] = _bu[_entry]
                 for _entry in @list_attributes
                     obj[_entry] = _.cloneDeep(_bu[_entry])
                 @post_restore(obj, _bu)
-                delete obj._ICSW_backup
+                delete obj.$$_ICSW_backup
+
         pre_backup: (obj) =>
             # called before backup
+
         post_backup: (obj, bu) =>
             # called after backuop
+
         pre_restore: (obj, bu) =>
             # called before restore
+
         post_restore: (obj, bu) =>
             # called after restore
 
@@ -97,6 +104,32 @@ angular.module(
         constructor: () ->
             super()
             @simple_attributes = ["identifier", "description", "name_re", "mac_bytes", "allow_virtual_interfaces", "for_matching"]
+
+]).service("icswNetworkDeviceBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswNetworkDeviceBackupDefinition extends icswBackupDefinition
+
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "devname", "macaddr", "driver_options", "speed", "netdevice_speed",
+                "ignore_netdevice_speed", "driver", "routing", "inter_device_routing",
+                "penalty", "dhcp_device", "fake_macaddr", "network_device_type", "description",
+                "is_bridge", "is_bond", "bridge_device", "bond_master", "bridge_name", "vlan_id",
+                "master_device", "enabled", "mtu", "snmp_idx", "force_network_device_type_match",
+                "snmp_network_type", "snmp_admin_status", "snmp_oper_status", "desired_status",
+                "wmi_interface_index",
+            ]
+
+]).service("icswNetworkIPBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswNetworkIPBackupDefinition extends icswBackupDefinition
+
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "ip", "network", "netdevice", "penalty", "alias", "alias_excl", "domain_tree_node",
+            ]
 
 ]).service("icswNetworkBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
 

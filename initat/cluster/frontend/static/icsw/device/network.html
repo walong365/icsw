@@ -175,12 +175,12 @@
         <div ng-show="acl_create(ndip_obj, 'backbone.device.change_network') && !ndip_obj.active_scan">
             <div class="btn-group btn-xs">
 
-                <button type="button" ng-attr-class="btn btn-xs dropdown-toggle fa fa-chevron-down {{ icswToolsButtonConfigService.get_css_class('create') }}" data-toggle="dropdown">
-                    Create new
+                <button type="button" ng-attr-class="btn btn-xs dropdown-toggle {{ icswToolsButtonConfigService.get_css_class('create') }}" data-toggle="dropdown">
+                    Create new <span class="caret"></span>
                 </button>
                 <ul class="dropdown-menu">
-                    <li ng-click="create_netdevice(ndip_obj, $event)"><a>Netdevice</a></li>
-                    <li ng-show="create_netip_ok(ndip_obj)" ng-click="create_netip_dev(ndip_obj, $event)"><a>IP Address</a></li>
+                    <li ng-click="edit_netdevice(ndip_obj, $event, true)"><a>Netdevice</a></li>
+                    <li ng-show="create_netip_ok(ndip_obj)" ng-click="edit_netip(ndip_obj, 'dev', $event, true)"><a>IP Address</a></li>
                     <li ng-show="create_peer_ok(ndip_obj)" ng-click="create_peer_information_dev(ndip_obj, $event)"><a>Network topology connection</a></li>
                 </ul>
             </div>
@@ -236,7 +236,7 @@
     </td>
     <td>
         <div ng-show="!dev_lut[ndip_obj.device].active_scan">
-            <icsw-tools-button type="modify" ng-click="edit_netdevice(ndip_obj, $event)" size="xs"
+            <icsw-tools-button type="modify" ng-click="edit_netdevice(ndip_obj, $event, false)" size="xs"
                     ng-show="acl_modify(obj, 'backbone.device.change_network')"></icsw-tools-button>
         </div>
     </td>
@@ -251,7 +251,7 @@
                 Create new <span class="caret"></span>
             </button>
             <ul class="dropdown-menu">
-                <li ng-show="network_tree.nw_list.length" ng-click="create_netip_nd(ndip_obj, $event)"><a>IP Address</a></li>
+                <li ng-show="network_tree.nw_list.length" ng-click="edit_netip(ndip_obj, 'nd', $event, true)"><a>IP Address</a></li>
                 <li ng-click="create_peer_information_nd(ndip_obj, $event)"><a>Network topology connection</a></li>
             </ul>
         </div>
@@ -269,7 +269,7 @@
     </td>
     <td>
         <div ng-show="!dev_lut[nd_lut[ndip_obj.netdevice].device].active_scan">
-            <icsw-tools-button type="modify" size="xs" ng-click="edit_netip(ndip_obj, $event)" ng-show="acl_modify(obj, 'backbone.device.change_network')"/>
+            <icsw-tools-button type="modify" size="xs" ng-click="edit_netip(ndip_obj, 'ip', $event, false)" ng-show="acl_modify(obj, 'backbone.device.change_network')"/>
         </div>
     </td>
     <td>
@@ -1217,8 +1217,8 @@
     </form>
 </script>
 
-<script type="text/ng-template" id="net.ip.form">
-    <form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form">
+<script type="text/ng-template" id="icsw.net.ip.form">
+    <form class="form-horizontal" name="form_data">
         <fieldset>
             <legend>Basic settings</legend>
             <div class="form-group">
@@ -1226,9 +1226,9 @@
                     Netdevice<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-8">
-                    <ui-select ng-model="_edit_obj.netdevice" style="max-width:400px; min-width:240px;" ng-disabled="!create_mode">-->
+                    <ui-select ng-model="edit_obj.netdevice" style="max-width:400px; min-width:240px;" ng-disabled="!create_mode">-->
                         <ui-select-match class="ui-select-match" placeholder="netdevice">{{$select.selected.devname}}</ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in _current_dev.netdevice_set">
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in device.netdevice_set">
                             <div ng-bind-html="value.devname | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
@@ -1239,9 +1239,9 @@
                     Network<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-8">
-                    <ui-select ng-model="_edit_obj.network" ng-change="network_changed(_edit_obj)" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                    <ui-select ng-model="edit_obj.network" ng-change="network_changed(edit_obj)" style="max-width:400px; min-width:240px;" ng-disabled="false">
                         <ui-select-match class="ui-select-match" placeholder="network">{{$select.selected.info_string}}</ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in networks| props_filter:{info_string:$select.search}" position="down">
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in network_tree.nw_list | props_filter:{info_string:$select.search}" position="down">
                             <div ng-bind-html="value.info_string | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
@@ -1253,10 +1253,8 @@
                 </label>
                 <div class="controls col-sm-8">
                     <div class="input-group" style="max-width:400px; min-width:240px;">
-                        <input class="textinput textInput form-control" maxlength="16" name="ip" ng-model="_edit_obj.ip" placeholder="IP address" required="True" type="text"/>
-                        <span class="input-group-btn">
-                            <icsw-tools-button type="create" value="Get free IP" size="sm" ng-click="get_free_ip(_edit_obj)"></icsw-tools-button>
-                        </span>
+                        <input class="textinput textInput form-control" maxlength="16" name="ip" ng-model="edit_obj.ip" placeholder="IP address" required="True" type="text"/>
+                        <icsw-tools-button type="create" value="Get free IP" size="sm" ng-click="get_free_ip(edit_obj)"></icsw-tools-button>
                     </div>
                 </div>
             </div>
@@ -1265,9 +1263,9 @@
                     Domain tree node<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-8">
-                    <ui-select ng-model="_edit_obj.domain_tree_node" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                    <ui-select ng-model="edit_obj.domain_tree_node" style="max-width:400px; min-width:240px;" ng-disabled="false">
                         <ui-select-match class="ui-select-match" placeholder="Domain tree node">{{$select.selected.tree_info}}</ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in domain_tree_node| props_filter:{tree_info:$select.search}">
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in domain_tree.list | props_filter:{tree_info:$select.search}">
                             <div ng-bind-html="value.tree_info | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
@@ -1281,23 +1279,20 @@
                     Alias
                 </label>
                 <div class="controls col-sm-8">
-                    <input class="textinput textInput form-control" maxlength="765" name="alias" ng-model="_edit_obj.alias" type="text"/>
+                    <input class="textinput textInput form-control" maxlength="765" name="alias" ng-model="edit_obj.alias" type="text"/>
                 </div>
             </div>
             <div class="form-group">
                 <div class="checkbox">
                     <div class="controls col-sm-offset-4 col-sm-7">
                         <label>
-                            <input class="checkboxinput checkbox" name="alias_excl" ng-model="_edit_obj.alias_excl" type="checkbox"/>
+                            <input class="checkboxinput checkbox" name="alias_excl" ng-model="edit_obj.alias_excl" type="checkbox"/>
                             Alias is exclusive
                         </label>
                     </div>
                 </div>
             </div>
         </fieldset>
-        <div class="form-actions">
-            <input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="action_string"/>
-        </div>
     </form>
 </script>
 

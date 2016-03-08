@@ -17,6 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+
 angular.module(
     "icsw.svg_tools",
     []
@@ -150,11 +151,13 @@ angular.module(
     "$q", "$uibModal", "icswAcessLevelService", "$rootScope", "$timeout", "blockUI", "icswTools", "icswToolsButtonConfigService", "ICSW_URLS",
     "icswSimpleAjaxCall", "icswToolsSimpleModalService", "icswDeviceTreeService", "icswNetworkTreeService",
     "icswDomainTreeService", "icswPeerInformationService", "icswDeviceTreeHelperService", "icswComplexModalService",
+    "icswNetworkDeviceBackup", "toaster", "icswNetworkIPBackup",
 (
     $scope, $compile, $filter, $templateCache, Restangular, restDataSource,
     $q, $uibModal, icswAcessLevelService, $rootScope, $timeout, blockUI, icswTools, icswToolsButtonConfigService, ICSW_URLS,
     icswSimpleAjaxCall, icswToolsSimpleModalService, icswDeviceTreeService, icswNetworkTreeService,
-    icswDomainTreeService, icswPeerInformationService, icswDeviceTreeHelperService, icswComplexModalService
+    icswDomainTreeService, icswPeerInformationService, icswDeviceTreeHelperService, icswComplexModalService,
+    icswNetworkDeviceBackup, toaster, icswNetworkIPBackup
 ) ->
     $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
     icswAcessLevelService.install($scope)
@@ -167,21 +170,6 @@ angular.module(
     $scope.peer_open = false
     $scope.copy_coms = false
     # mixins
-    $scope.netdevice_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q, "nd")
-    $scope.netdevice_edit.create_template = "netdevice.form"
-    $scope.netdevice_edit.edit_template = "netdevice.form"
-    $scope.netdevice_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_NETDEVICE_LIST.slice(1))
-    $scope.netdevice_edit.modify_rest_url = ICSW_URLS.REST_NETDEVICE_DETAIL.slice(1).slice(0, -2)
-    $scope.netdevice_edit.new_object_at_tail = false
-    $scope.netdevice_edit.use_promise = true
-
-    $scope.netip_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q, "ni")
-    $scope.netip_edit.create_template = "net.ip.form"
-    $scope.netip_edit.edit_template = "net.ip.form"
-    $scope.netip_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_NET_IP_LIST.slice(1))
-    $scope.netip_edit.modify_rest_url = ICSW_URLS.REST_NET_IP_DETAIL.slice(1).slice(0, -2)
-    $scope.netip_edit.new_object_at_tail = false
-    $scope.netip_edit.use_promise = true
 
     $scope.peer_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q, "np")
     $scope.peer_edit.create_template = "peer.information.form"
@@ -413,44 +401,6 @@ angular.module(
         else
             return false
 
-    $scope.create_netdevice = (obj, event) ->
-        $scope.netdevice_edit.create_list = obj.netdevice_set
-        $scope.netdevice_edit.title = "New Netdevice"
-        $scope.netdevice_edit.new_object = (scope) ->
-            _dev = {
-                "device" : obj.idx
-                "devname" : "eth0"
-                "enabled" : true
-                "netdevice_speed" : (entry.idx for entry in $scope.netdevice_speeds when entry.speed_bps == 1000000000 and entry.full_duplex)[0]
-                "ignore_netdevice_speed": false
-                "desired_status": "i"
-                "penalty" : 1
-                "net_ip_set" : []
-                "ethtool_options" : 0
-                "ethtool_autoneg" : 0
-                "ethtool_speed" : 0
-                "ethtool_duplex" : 0
-                "mtu": 1500
-                # dummy value
-                "network_device_type" : $scope.network_device_types[0].idx
-            }
-            return _dev
-        $scope.netdevice_edit.create(event).then(
-            (new_obj) ->
-                if new_obj != false
-                    new_obj.net_ip_set = []
-                    new_obj.peers = []
-                    $scope.nd_lut[new_obj.idx] = new_obj
-                    $scope.check_for_peer_change(new_obj)
-        )
-    # $scope.edit_netdevice = (ndev, event) ->
-    #    $scope.netdevice_edit.title = "Netdevice '#{ndev.devname}'"
-    #    $scope.netdevice_edit.edit(ndev, event).then(
-    #        (mod_ndev) ->
-    #            if mod_ndev != false
-    #                $scope.check_for_peer_change(mod_ndev)
-    #    )
-
     $scope.edit_boot_settings = (obj, event) ->
         $scope.boot_edit.edit(obj, event).then(
             (mod_dev) ->
@@ -467,52 +417,6 @@ angular.module(
             $scope.nd_peers.push(ndev)
         $scope.build_luts()
 
-    $scope.create_netip_dev = (obj, event) ->
-        $scope._current_dev = obj
-        $scope.netip_edit.create_list = undefined
-        $scope.netip_edit.title = "New IP"
-        $scope.netip_edit.new_object = (scope) ->
-            return {
-                "netdevice" : (entry.idx for entry in obj.netdevice_set)[0]
-                "ip" : "0.0.0.0"
-                "_changed_by_user_": false
-                "network" : $scope.networks[0].idx
-                # copy domain tree node from device
-                "domain_tree_node" : obj.domain_tree_node
-            }
-        $scope.netip_edit.create(event).then(
-            (new_obj) ->
-                if new_obj != false
-                    $scope.nd_lut[new_obj.netdevice].net_ip_set.push(new_obj)
-                    $scope.ip_lut[new_obj.idx] = new_obj
-        )
-    $scope.create_netip_nd = (obj, event) ->
-        $scope._current_dev = $scope.dev_lut[obj.device]
-        $scope.netip_edit.create_list = undefined
-        $scope.netip_edit.title = "New IP"
-        $scope.netip_edit.new_object = (scope) ->
-            return {
-                "netdevice" : obj.idx
-                "ip" : "0.0.0.0"
-                "_changed_by_user_": false
-                "network" : $scope.networks[0].idx
-                # take first domain tree node
-                "domain_tree_node" : $scope.domain_tree_node[0].idx
-            }
-        $scope.netip_edit.create(event).then(
-            (new_obj) ->
-                if new_obj != false
-                    $scope.nd_lut[new_obj.netdevice].net_ip_set.push(new_obj)
-                    $scope.ip_lut[new_obj.idx] = new_obj
-        )
-    $scope.edit_netip = (ip, event) ->
-        $scope._current_dev = $scope.dev_lut[$scope.nd_lut[ip.netdevice].device]
-        $scope.netip_edit.title = "Edit IP '#{ip.ip}'"
-        $scope.netip_edit.edit(ip, event).then(
-            (mod_ip) ->
-                if mod_ip != false
-                    true
-        )
     $scope.get_peer_src_info = (_edit_obj) ->
         if $scope.source_is_local
             _nd = $scope.nd_lut[$scope._edit_obj.s_netdevice]
@@ -576,22 +480,6 @@ angular.module(
                     if peer.d_netdevice of $scope.nd_lut and peer.s_netdevice != peer.d_netdevice
                         $scope.nd_lut[peer.d_netdevice].peers.push({"peer" : peer, "netdevice" : peer.d_netdevice, "target" : peer.s_netdevice})
         )
-    $scope.delete_netip = (ip, event) ->
-        # find device / netdevice
-        $scope.netip_edit.delete_list = $scope.nd_lut[ip.netdevice].net_ip_set
-        $scope.netip_edit.delete_obj(ip).then(
-            (res) ->
-                if res
-                    true
-        )
-    $scope.delete_netdevice = (nd, event) ->
-        # find device / netdevice
-        $scope.netdevice_edit.delete_list = $scope.dev_lut[nd.device].netdevice_set
-        $scope.netdevice_edit.delete_obj(nd).then(
-            (res) ->
-                if res
-                    true
-        )
     $scope.ethtool_options = (ndip_obj, type) ->
         if type == "a"
             eth_opt = ndip_obj.ethtool_options & 3
@@ -654,6 +542,7 @@ angular.module(
             return "Copy Coms and Schemes"
         else
             return "start with empty Coms and Schemes"
+
     $scope.copy_network = (src_obj, event) ->
         icswToolsSimpleModalService("Overwrite all networks with the one from #{src_obj.full_name} ?").then(
             () ->
@@ -670,19 +559,171 @@ angular.module(
                     $scope.reload()
                 )
         )
-    $scope.network_changed = (obj) ->
-        if obj.ip == "0.0.0.0" or not obj._changed_by_user_
-            $scope.get_free_ip(obj)
-        if not obj._changed_by_user_
-            _nw = $scope.network_lut[obj.network]
-            if _nw.preferred_domain_tree_node
-                obj.domain_tree_node = _nw.preferred_domain_tree_node
+    $scope.edit_netip = (cur_obj, obj_type, $event, create_mode) ->
+        # cur_obj is device, netdevice of ip, obj_type is 'dev', 'nd' or 'ip'
+        # create or edit
+        if create_mode
+            edit_obj = {
+                "ip" : "0.0.0.0"
+                "_changed_by_user_": false
+                "network" : $scope.network_tree.nw_list[0].idx
+                # take first domain tree node
+                "domain_tree_node" : $scope.domain_tree.list[0].idx
+            }
+            if obj_type == "dev"
+                title = "Create new IP on device '#{cur_obj.full_name}'"
+                edit_obj.netdevice = cur_obj.netdevice_set[0].idx
+                dev = cur_obj
+            else if obj_type == "nd"
+                title = "Create new IP on netdevice '#{cur_obj.devname}'"
+                edit_obj.netdevice = cur_obj.idx
+                dev = $scope.device_tree.all_lut[cur_obj.device]
+        else
+            edit_obj = cur_obj
+            dbu = new icswNetworkIPBackup()
+            dbu.create_backup(edit_obj)
+            title = "Edit IP #{edit_obj.ip}"
+            dev = $scope.device_tree.all_lut[$scope.local_helper_obj.netdevice_lut[edit_obj.netdevice].device]
 
-    $scope.edit_netdevice = (nd_obj, $event) ->
+        # which template to use
+        template_name = "icsw.net.ip.form"
+        sub_scope = $scope.$new(false)
+        sub_scope.edit_obj = edit_obj
+        sub_scope.device = dev
+        sub_scope.create_mode = create_mode
+
+        # add functions
+
+        sub_scope.get_free_ip = (obj) ->
+            blockUI.start("requesting free IP...")
+            icswSimpleAjaxCall(
+                url: ICSW_URLS.NETWORK_GET_FREE_IP
+                data: {
+                    "netip": angular.toJson(obj)
+                }
+                dataType: "json"
+            ).then(
+                (json) ->
+                    blockUI.stop()
+                    if json["ip"]?
+                        obj.ip = json["ip"]
+            )
+
+        sub_scope.network_changed = (obj) ->
+            if obj.ip == "0.0.0.0" or not obj._changed_by_user_
+                sub_scope.get_free_ip(obj)
+            if not obj._changed_by_user_
+                _nw = $scope.network_tree.nw_lut[obj.network]
+                if _nw.preferred_domain_tree_node
+                    obj.domain_tree_node = _nw.preferred_domain_tree_node
+
+        # init form
+        icswComplexModalService(
+            {
+                message: $compile($templateCache.get(template_name))(sub_scope)
+                ok_label: if create_mode then "Create" else "Modify"
+                title: title
+                ok_callback: (modal) ->
+                    d = $q.defer()
+                    if sub_scope.form_data.$invalid
+                        toaster.pop("warning", "form validation problem", "", 0)
+                        d.reject("form not valid")
+                    else
+                        nd = $scope.local_helper_obj.netdevice_lut[sub_scope.edit_obj.netdevice]
+                        if create_mode
+                            $scope.device_tree.create_netip(sub_scope.edit_obj, nd).then(
+                                (ok) ->
+                                    d.resolve("netip created")
+                                (notok) ->
+                                    d.reject("netip not created")
+                            )
+                        else
+                            Restangular.restangularizeElement(null, sub_scope.edit_obj, ICSW_URLS.REST_NET_IP_DETAIL.slice(1).slice(0, -2))
+                            sub_scope.edit_obj.put().then(
+                                (data) ->
+                                    # ToDo, FIXME, handle change (test?), move to DeviceTreeService
+                                    # icswTools.handle_reset(data, cur_f, $scope.edit_obj.idx)
+                                    console.log "data", data
+                                    d.resolve("save")
+                                (reject) ->
+                                    # ToDo, FIXME, handle rest (test?)
+                                    # icswTools.handle_reset(resp.data, cur_f, $scope.edit_obj.idx)
+                                    # two possibilites: restore and continue or reject, right now we use the second path
+                                    # dbu.restore_backup(obj)
+                                    d.reject("not saved")
+                            )
+                    return d.promise
+                cancel_callback: (modal) ->
+                    if not create_mode
+                        dbu.restore_backup(edit_obj)
+                    d = $q.defer()
+                    d.resolve("cancel")
+                    return d.promise
+            }
+        ).then(
+            (fin) ->
+                console.log "NetIP requester closed, trigger redraw"
+                sub_scope.$destroy()
+                # trigger rebuild of lists
+                # $rootScope.$emit(ICSW_SIGNALS("ICSW_FORCE_TREE_FILTER"))
+                # recreate helper luts
+                $scope.device_tree.build_helper_luts(
+                    ["network_info"]
+                    $scope.local_helper_obj
+                )
+        )
+
+    $scope.delete_netip = (ip, event) ->
+        icswToolsSimpleModalService("Really delete IP #{ip.ip} ?").then(
+            () =>
+                nd = $scope.local_helper_obj.netdevice_lut[ip.netdevice]
+                $scope.device_tree.delete_netip(ip, nd).then(
+                    () ->
+                        $scope.device_tree.build_helper_luts(
+                            ["network_info"]
+                            $scope.local_helper_obj
+                        )
+                )
+        )
+
+    $scope.edit_netdevice = (nd_obj, $event, create_mode) ->
+        # create or edit
+        if create_mode
+            # nd_obj is the parent device
+            new_type = $scope.network_tree.nw_device_type_list[0]
+            mac_bytes = new_type.mac_bytes
+            default_ms = ("00" for idx in [0..mac_bytes]).join(":")
+            edit_obj = {
+                "device": nd_obj.idx
+                "devname" : "eth0"
+                "enabled" : true
+                "netdevice_speed" : (entry.idx for entry in $scope.network_tree.nw_speed_list when entry.speed_bps == 1000000000 and entry.full_duplex)[0]
+                "ignore_netdevice_speed": false
+                "desired_status": "i"
+                "penalty" : 1
+                "net_ip_set" : []
+                "ethtool_options" : 0
+                "ethtool_autoneg" : 0
+                "ethtool_speed" : 0
+                "ethtool_duplex" : 0
+                "mtu": 1500
+                "macaddr": default_ms
+                "fake_macaddr": default_ms
+                # dummy value
+                "network_device_type" : new_type.idx
+            }
+            title = "Create new netdevice on '#{nd_obj.full_name}'"
+        else
+            edit_obj = nd_obj
+            dbu = new icswNetworkDeviceBackup()
+            dbu.create_backup(edit_obj)
+            title = "Edit netdevice #{edit_obj.devname}"
         # which template to use
         template_name = "icsw.netdevice.form"
         sub_scope = $scope.$new(false)
-        sub_scope.edit_obj = nd_obj
+        sub_scope.edit_obj = edit_obj
+
+        # set helper functions and arrays
         sub_scope.desired_stati = [
             {"short": "i", "info_string": "ignore"}
             {"short": "u", "info_string": "must be up"}
@@ -717,13 +758,12 @@ angular.module(
             else
                 return false
 
-        create_mode = true
         # init form
         icswComplexModalService(
             {
                 message: $compile($templateCache.get(template_name))(sub_scope)
                 ok_label: if create_mode then "Create" else "Modify"
-                title: "Edit netdevice #{nd_obj.devname}"
+                title: title
                 ok_callback: (modal) ->
                     d = $q.defer()
                     if sub_scope.form_data.$invalid
@@ -731,40 +771,20 @@ angular.module(
                         d.reject("form not valid")
                     else
                         if create_mode
-                            if is_group
-                                $scope.device_tree.create_device_group($scope.edit_obj).then(
-                                    (ok) ->
-                                        d.resolve("device_group created")
-                                    (notok) ->
-                                        d.reject("device_group not created")
-                                )
-                            else
-                                $scope.device_tree.create_device($scope.edit_obj).then(
-                                    (ok) ->
-                                        # device createed, force refiltering
-                                        $rootScope.$emit(ICSW_SIGNALS("ICSW_FORCE_TREE_FILTER"))
-                                        # rewrite name for next device
-                                        node_re = new RegExp(/^(.*?)(\d+)(.*)$/)
-                                        name_m = node_re.exec(obj.name)
-                                        if name_m
-                                            new_name = ("0" for _idx in [0..name_m[2].length]).join("") + String(parseInt(name_m[2]) + 1)
-                                            $scope.edit_obj.name = name_m[1] + new_name.substr(new_name.length - name_m[2].length) + name_m[3]
-                                        d.reject("device created")
-                                    (notok) ->
-                                        d.reject("device not created")
-                                )
+                            $scope.device_tree.create_netdevice(sub_scope.edit_obj).then(
+                                (ok) ->
+                                    d.resolve("netdevice created")
+                                (notok) ->
+                                    d.reject("netdevice not created")
+                            )
                         else
-                            $scope.edit_obj.put().then(
+                            Restangular.restangularizeElement(null, sub_scope.edit_obj, ICSW_URLS.REST_NETDEVICE_DETAIL.slice(1).slice(0, -2))
+                            sub_scope.edit_obj.put().then(
                                 (data) ->
                                     # ToDo, FIXME, handle change (test?), move to DeviceTreeService
                                     # icswTools.handle_reset(data, cur_f, $scope.edit_obj.idx)
                                     console.log "data", data
-                                    if $scope.edit_obj.root_passwd
-                                        # ToDo, FIXME, to be improved
-                                        $scope.edit_obj.root_passwd_set = true
                                     d.resolve("save")
-                                    # update device ordering in tree
-                                    $scope.device_tree.reorder()
                                 (reject) ->
                                     # ToDo, FIXME, handle rest (test?)
                                     # icswTools.handle_reset(resp.data, cur_f, $scope.edit_obj.idx)
@@ -774,34 +794,37 @@ angular.module(
                             )
                     return d.promise
                 cancel_callback: (modal) ->
-                    if single_instance
-                        dbu.restore_backup(obj)
+                    if not create_mode
+                        dbu.restore_backup(edit_obj)
                     d = $q.defer()
                     d.resolve("cancel")
                     return d.promise
             }
         ).then(
             (fin) ->
-                console.log "DeviceTree requester closed, trigger redraw"
+                console.log "NetDevice requester closed, trigger redraw"
                 sub_scope.$destroy()
-                # trigger refiltering of list
+                # trigger rebuild of lists
                 # $rootScope.$emit(ICSW_SIGNALS("ICSW_FORCE_TREE_FILTER"))
+                # recreate helper luts
+                $scope.device_tree.build_helper_luts(
+                    ["network_info"]
+                    $scope.local_helper_obj
+                )
         )
 
-    $scope.get_free_ip = (obj) ->
-        blockUI.start("requesting free IP...")
-        icswSimpleAjaxCall(
-            url: ICSW_URLS.NETWORK_GET_FREE_IP
-            data: {
-                "netip": angular.toJson(obj)
-            }
-            dataType: "json"
-        ).then(
-            (json) ->
-                blockUI.stop()
-                if json["ip"]?
-                    obj.ip = json["ip"]
+    $scope.delete_netdevice = (nd, event) ->
+        icswToolsSimpleModalService("Really delete netdevice #{nd.devname} ?").then(
+            () ->
+                $scope.device_tree.delete_netdevice(nd).then(
+                    () ->
+                        $scope.device_tree.build_helper_luts(
+                            ["network_info"]
+                            $scope.local_helper_obj
+                        )
+                )
         )
+
 ]).controller("icswDeviceNetworkNetdeviceRowCtrl", ["$scope", ($scope) ->
     $scope.get_num_peers_nd = (nd) ->
         if nd.idx of $scope.peer_list.nd_lut

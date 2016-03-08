@@ -211,10 +211,10 @@ angular.module(
     $scope.edit_many = (event) ->
         $scope._array_name = "device_many"
         edit_obj = {
-            "many_form"          : true
-            "device_group"       : (entry.idx for entry in $scope.device_tree.group_list when entry.cluster_device_group == false)[0]
-            "domain_tree_node"   : (entry.idx for entry in $scope.domain_tree when entry.depth == 0)[0]
-            "root_passwd"        : ""
+            "many_form"       : true
+            "device_group"    : (entry.idx for entry in $scope.device_tree.group_list when entry.cluster_device_group == false)[0]
+            "domain_tree_node": (entry.idx for entry in $scope.domain_tree when entry.depth == 0)[0]
+            "root_passwd"     : ""
         }
         $scope.create_or_edit(event, false, edit_obj, false, false)
 
@@ -269,7 +269,7 @@ angular.module(
                             else
                                 $scope.device_tree.create_device($scope.edit_obj).then(
                                     (ok) ->
-                                        # device createed, force refiltering
+                                        # device created, force refiltering
                                         $rootScope.$emit(ICSW_SIGNALS("ICSW_FORCE_TREE_FILTER"))
                                         # rewrite name for next device
                                         node_re = new RegExp(/^(.*?)(\d+)(.*)$/)

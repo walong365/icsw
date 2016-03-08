@@ -28,7 +28,7 @@ angular.module(
         "init.csw.filters", "restangular", "noVNC", "ui.select", "icsw.tools",
         "icsw.device.info", "icsw.tools.tree", "icsw.user",
     ]
-).service("icswDeviceTreeHelper", [() ->
+).service("icswDeviceTreeHelper", ["icswTools", (icswTools) ->
     # helper service for global (== selection-wide) luts and lists
     class icswDeviceTreeHelper
         constructor: (@tree, @devices) ->
@@ -36,6 +36,32 @@ angular.module(
             @netdevice_lut = {}
             @net_ip_list = []
             @net_ip_lut = {}
+
+        # global post calls
+        post_g_network_info: () =>
+            # FIXME, todo: remove entries when a device gets delete
+            @netdevice_list.length = 0
+            @net_ip_list.length = 0
+            for dev in @devices
+                for nd in dev.netdevice_set
+                    nd.$$devicename = @tree.all_lut[nd.device].full_name
+                    @netdevice_list.push(nd)
+                    for ip in nd.net_ip_set
+                        ip.$$devicename = nd.$$devicename
+                        ip.$$devname = nd.devname
+                        @net_ip_list.push(ip)
+            @netdevice_lut = icswTools.build_lut(@netdevice_list)
+            @net_ip_lut = icswTools.build_lut(@net_ip_list)
+            @netdevice_list = _.orderBy(
+                @netdevice_list,
+                ["$$devicename", "devname"],
+                ["asc", "asc"],
+            )
+            @net_ip_list = _.orderBy(
+                @net_ip_list,
+                ["$$devicename", "$$devname", "ip"],
+                ["asc", "asc", "asc"],
+            )
 
 ]).service("icswDeviceTreeHelperService", ["icswDeviceTreeHelper", (icswDeviceTreeHelper) ->
 
@@ -58,17 +84,18 @@ angular.module(
         is_scalar: (req) =>
             return req in ["disk_info", "snmp_info"]
 
+        is_loaded: (req) =>
+            return req in @loaded
+
         clear_global_infos: (dth_obj, en_req) =>
             # clear global infos for devices where we requested new info
             for req, dev_pks of en_req
                 cgi_name = "pre_g_#{req}"
-                if @[cgi_name]?
-                    @[cgi_name](dth_obj, dev_pks)
-
-        is_loaded: (req) =>
-            return req in @loaded
+                #if @[cgi_name]?
+                #    @[cgi_name](dth_obj, dev_pks)
 
         # global pre calls
+        # no longer needed, REMOVE
         pre_g_network_info: (dth_obj, dev_pks) =>
             # remove all references to devices in dev_list from the global nd_lut
             if dth_obj.netdevice_list?
@@ -78,29 +105,6 @@ angular.module(
                 _.remove(dth_obj.net_ip_list, (entry) -> return entry.netdevice not in nd_pks)
                 dth_obj.netdevice_lut = icswTools.build_lut(dth_obj.netdevice_list)
                 dth_obj.net_ip_lut = icswTools.build_lut(dth_obj.net_ip_list)
-
-        # global post calls
-        post_g_network_info: (local_en, dth_obj) =>
-            # FIXME, todo: remove entries when a device gets delete
-            for nd in local_en.device.netdevice_set
-                nd.$$devicename = @device.all_lut[nd.device].full_name
-                dth_obj.netdevice_lut[nd.idx] = nd
-                dth_obj.netdevice_list.push(nd)
-                for ip in nd.net_ip_set
-                    ip.$$devicename = nd.$$devicename
-                    ip.$$devname = nd.devname
-                    dth_obj.net_ip_lut[ip.idx] = ip
-                    dth_obj.net_ip_list.push(ip)
-            dth_obj.netdevice_list = _.orderBy(
-                dth_obj.netdevice_list,
-                ["$$devicename", "devname"],
-                ["asc", "asc"],
-            )
-            dth_obj.net_ip_list = _.orderBy(
-                dth_obj.net_ip_list,
-                ["$$devicename", "$$devname", "ip"],
-                ["asc", "asc", "asc"],
-            )
 
         get_attr_name: (req) =>
             _lut = {
@@ -125,15 +129,19 @@ angular.module(
                     else
                         @device[@get_attr_name(req)].length = 0
 
-        build_luts: (req_list, g_en, dth_obj) =>
+        build_luts: (en_list, dth_obj) =>
             # build luts
-            for req in req_list
+            for req in en_list
                 _call_name = "post_#{req}"
                 if @[_call_name]?
                     @[_call_name]()
+
+        build_g_luts: (en_list, dth_obj) =>
+            # build luts
+            for req in en_list
                 _gp_call_name = "post_g_#{req}"
-                if g_en[_gp_call_name]?
-                    g_en[_gp_call_name](@, dth_obj)
+                if dth_obj[_gp_call_name]?
+                    dth_obj[_gp_call_name]()
 
         # post calls
 
@@ -168,6 +176,29 @@ angular.module(
                     else
                         @device[@get_attr_name(req)] = []
             return [@device.idx, fetch_list]
+
+        add_netdevice: (new_nd) =>
+            # insert the new netdevice nd to the local device
+            dev = @device
+            dev.netdevice_set.push(new_nd)
+            @post_network_info()
+
+        delete_netdevice: (del_nd) =>
+            # insert the new netdevice nd to the local device
+            dev = @device
+            _.remove(dev.netdevice_set, (entry) -> return entry.idx == del_nd.idx)
+            @post_network_info()
+
+        add_netip: (new_ip, cur_nd) =>
+            # insert the new IP new_ip to the local device
+            cur_nd.net_ip_set.push(new_ip)
+            console.log "***", new_ip, cur_nd
+            @post_network_info()
+
+        delete_netip: (del_ip, cur_nd) =>
+            # insert the new netdevice nd to the local device
+            _.remove(cur_nd.net_ip_set, (entry) -> return entry.idx == del_ip.idx)
+            @post_network_info()
 
         feed_result: (key, result) =>
             if key not in @loaded
@@ -300,6 +331,10 @@ angular.module(
             console.log("DO NOT USE: get_num_devices()")
             return (entry for entry in @enabled_list when entry.device_group == group.idx).length - 1
 
+        # create / delete functions
+
+        # for group
+
         create_device_group: (new_dg) =>
             # create new device_group
             defer = $q.defer()
@@ -321,6 +356,8 @@ angular.module(
             _.remove(@all_list, (entry) -> return entry.idx == group.device)
             _.remove(@group_list, (entry) -> return entry.idx == dg_pk)
             @reorder()
+
+        # for device
 
         create_device: (new_dev) =>
             # create new device
@@ -361,6 +398,78 @@ angular.module(
                 dev[entry.attribute] = entry.value
             @reorder()
 
+        # for netdevice
+
+        create_netdevice: (new_nd) =>
+            # create new netdevice
+            defer = $q.defer()
+            Restangular.all(ICSW_URLS.REST_NETDEVICE_LIST.slice(1)).post(new_nd).then(
+                (new_obj) =>
+                    @_fetch_netdevice(new_obj.idx, defer, "created netdevice ")
+                (not_ok) ->
+                    defer.object("nd not created")
+            )
+            return defer.promise
+
+        delete_netdevice: (del_nd) =>
+            # ensure REST hooks
+            Restangular.restangularizeElement(null, del_nd, ICSW_URLS.REST_NETDEVICE_DETAIL.slice(1).slice(0, -2))
+            defer = $q.defer()
+            del_nd.remove().then(
+                (ok) =>
+                    dev = @all_lut[del_nd.device]
+                    dev.$$_enrichment_info.delete_netdevice(del_nd)
+                    defer.resolve("deleted")
+                (error) ->
+                    defer.reject("not deleted")
+            )
+            return defer.promise
+
+        _fetch_netdevice: (pk, defer, msg) =>
+            Restangular.one(ICSW_URLS.REST_NETDEVICE_LIST.slice(1)).get({"idx": pk}).then(
+                (new_nd) =>
+                    new_nd = new_nd[0]
+                    dev = @all_lut[new_nd.device]
+                    dev.$$_enrichment_info.add_netdevice(new_nd)
+                    defer.resolve(msg)
+            )
+
+        # for netIP
+
+        create_netip: (new_ip, cur_nd) =>
+            # create new netIP
+            defer = $q.defer()
+            Restangular.all(ICSW_URLS.REST_NET_IP_LIST.slice(1)).post(new_ip).then(
+                (new_obj) =>
+                    @_fetch_netip(new_obj.idx, defer, "created netip ", cur_nd)
+                (not_ok) ->
+                    defer.reject("ip not created")
+            )
+            return defer.promise
+
+        delete_netip: (del_ip, cur_nd) =>
+            # ensure REST hooks
+            Restangular.restangularizeElement(null, del_ip, ICSW_URLS.REST_NET_IP_DETAIL.slice(1).slice(0, -2))
+            defer = $q.defer()
+            del_ip.remove().then(
+                (ok) =>
+                    dev = @all_lut[cur_nd.device]
+                    dev.$$_enrichment_info.delete_netip(del_ip, cur_nd)
+                    defer.resolve("deleted")
+                (error) ->
+                    defer.reject("not deleted")
+            )
+            return defer.promise
+
+        _fetch_netip: (pk, defer, msg, cur_nd) =>
+            Restangular.one(ICSW_URLS.REST_NET_IP_LIST.slice(1)).get({"idx": pk}).then(
+                (new_ip) =>
+                    new_ip = new_ip[0]
+                    dev = @all_lut[cur_nd.device]
+                    dev.$$_enrichment_info.add_netip(new_ip, cur_nd)
+                    defer.resolve(msg)
+            )
+
         # enrichment functions
         enrich_devices: (dth, en_list) =>
             # dth ... icswDeviceTreeHelper
@@ -391,18 +500,24 @@ angular.module(
             _fetch.promise.then(
                 (result) =>
                     # clear previous values
-                    console.log "clear previous enrichment values"
+                    # console.log "clear previous enrichment values"
                     @enricher.clear_global_infos(dth, en_req)
                     (dev.$$_enrichment_info.clear_infos(en_req) for dev in dth.devices)
-                    console.log "set new enrichment values"
+                    # console.log "set new enrichment values"
                     # feed results back to enricher
                     @enricher.feed_results(result)
-                    # build results
-                    (dev.$$_enrichment_info.build_luts(en_list, @enricher, dth) for dev in dth.devices)
+                    # build local luts
+                    (dev.$$_enrichment_info.build_luts(en_list, dth) for dev in dth.devices)
+                    # build global luts
+                    @build_helper_luts(en_list, dth)
                     # resolve with device list
                     defer.resolve(dth.devices)
             )
             return defer.promise
+
+        build_helper_luts: (en_list, dth) =>
+            @enricher.build_g_luts(en_list, dth)
+
 
 ]).service("icswDeviceTreeService", ["$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall", "icswTools", "icswDeviceTree", "$rootScope", "ICSW_SIGNALS", "icswDomainTreeService", ($q, Restangular, ICSW_URLS, $window, icswCachingCall, icswTools, icswDeviceTree, $rootScope, ICSW_SIGNALS, icswDomainTreeService) ->
     rest_map = [
