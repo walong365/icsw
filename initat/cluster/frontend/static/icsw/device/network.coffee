@@ -151,13 +151,13 @@ angular.module(
     "$q", "$uibModal", "icswAcessLevelService", "$rootScope", "$timeout", "blockUI", "icswTools", "icswToolsButtonConfigService", "ICSW_URLS",
     "icswSimpleAjaxCall", "icswToolsSimpleModalService", "icswDeviceTreeService", "icswNetworkTreeService",
     "icswDomainTreeService", "icswPeerInformationService", "icswDeviceTreeHelperService", "icswComplexModalService",
-    "icswNetworkDeviceBackup", "toaster", "icswNetworkIPBackup",
+    "icswNetworkDeviceBackup", "toaster", "icswNetworkIPBackup", "icswPeerInformationBackup",
 (
     $scope, $compile, $filter, $templateCache, Restangular, restDataSource,
     $q, $uibModal, icswAcessLevelService, $rootScope, $timeout, blockUI, icswTools, icswToolsButtonConfigService, ICSW_URLS,
     icswSimpleAjaxCall, icswToolsSimpleModalService, icswDeviceTreeService, icswNetworkTreeService,
     icswDomainTreeService, icswPeerInformationService, icswDeviceTreeHelperService, icswComplexModalService,
-    icswNetworkDeviceBackup, toaster, icswNetworkIPBackup
+    icswNetworkDeviceBackup, toaster, icswNetworkIPBackup, icswPeerInformationBackup
 ) ->
     $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
     icswAcessLevelService.install($scope)
@@ -426,17 +426,7 @@ angular.module(
             return _nd.devname + " on " + $scope.dev_lut[_nd.device].name
         else
             return "???"
-    $scope.edit_peer_information = (peer, event) ->
-        if peer.peer.s_netdevice == peer.netdevice
-            $scope.source_is_local = true
-        else
-            $scope.source_is_local = false
-        $scope.peer_edit.edit(peer.peer, event).then(
-            (mod_peer) ->
-                if mod_peer != false
-                    # rebuild luts
-                    $scope.build_luts()
-        )
+
     $scope.delete_peer_information = (ndip_obj, event) ->
         # find device / netdevice
         peer = ndip_obj.peer
@@ -559,6 +549,109 @@ angular.module(
                     $scope.reload()
                 )
         )
+
+    $scope.edit_peer = (cur_obj, obj_type, $event, create_mode) ->
+        # cur_obj is device, netdevice of ip, obj_type is 'dev', 'nd' or 'ip'
+        # create or edit
+        get_netdevice = (nd_idx, nd_type) ->
+            if nd_type == "l"
+                return $scope.local_helper_obj.netdevice_lut[nd_idx]
+            else
+                return $scope.remote_helper_obj.netdevice_lut[nd_idx]
+
+        if create_mode
+            edit_obj = {
+                "ip" : "0.0.0.0"
+                "_changed_by_user_": false
+                "network" : $scope.network_tree.nw_list[0].idx
+                # take first domain tree node
+                "domain_tree_node" : $scope.domain_tree.list[0].idx
+            }
+            if obj_type == "dev"
+                title = "Create new IP on device '#{cur_obj.full_name}'"
+                edit_obj.netdevice = cur_obj.netdevice_set[0].idx
+                dev = cur_obj
+            else if obj_type == "nd"
+                title = "Create new IP on netdevice '#{cur_obj.devname}'"
+                edit_obj.netdevice = cur_obj.idx
+                dev = $scope.device_tree.all_lut[cur_obj.device]
+        else
+            edit_obj = cur_obj
+            dbu = new icswPeerInformationBackup()
+            dbu.create_backup(edit_obj)
+            title = "Edit Peer Information"
+            # build peering lists
+
+
+        # which template to use
+        template_name = "icsw.peer.form"
+        sub_scope = $scope.$new(false)
+        sub_scope.edit_obj = edit_obj
+        # create link
+        sub_scope.s_netdevice = get_netdevice(edit_obj.s_netdevice, edit_obj.$$s_type)
+        sub_scope.d_netdevice = get_netdevice(edit_obj.d_netdevice, edit_obj.$$d_type)
+        sub_scope.s_device = $scope.device_tree.all_lut[sub_scope.s_netdevice.device]
+        sub_scope.d_device = $scope.device_tree.all_lut[sub_scope.d_netdevice.device]
+        sub_scope.create_mode = create_mode
+
+        # add functions
+
+        # init form
+        icswComplexModalService(
+            {
+                message: $compile($templateCache.get(template_name))(sub_scope)
+                ok_label: if create_mode then "Create" else "Modify"
+                title: title
+                ok_callback: (modal) ->
+                    d = $q.defer()
+                    if sub_scope.form_data.$invalid
+                        toaster.pop("warning", "form validation problem", "", 0)
+                        d.reject("form not valid")
+                    else
+                        nd = $scope.local_helper_obj.netdevice_lut[sub_scope.edit_obj.netdevice]
+                        if create_mode
+                            $scope.device_tree.create_netip(sub_scope.edit_obj, nd).then(
+                                (ok) ->
+                                    d.resolve("netip created")
+                                (notok) ->
+                                    d.reject("netip not created")
+                            )
+                        else
+                            Restangular.restangularizeElement(null, sub_scope.edit_obj, ICSW_URLS.REST_NET_IP_DETAIL.slice(1).slice(0, -2))
+                            sub_scope.edit_obj.put().then(
+                                (data) ->
+                                    # ToDo, FIXME, handle change (test?), move to DeviceTreeService
+                                    # icswTools.handle_reset(data, cur_f, $scope.edit_obj.idx)
+                                    console.log "data", data
+                                    d.resolve("save")
+                                (reject) ->
+                                    # ToDo, FIXME, handle rest (test?)
+                                    # icswTools.handle_reset(resp.data, cur_f, $scope.edit_obj.idx)
+                                    # two possibilites: restore and continue or reject, right now we use the second path
+                                    # dbu.restore_backup(obj)
+                                    d.reject("not saved")
+                            )
+                    return d.promise
+                cancel_callback: (modal) ->
+                    if not create_mode
+                        dbu.restore_backup(edit_obj)
+                    d = $q.defer()
+                    d.resolve("cancel")
+                    return d.promise
+            }
+        ).then(
+            (fin) ->
+                console.log "NetIP requester closed, trigger redraw"
+                sub_scope.$destroy()
+                # trigger rebuild of lists
+                # $rootScope.$emit(ICSW_SIGNALS("ICSW_FORCE_TREE_FILTER"))
+                # recreate helper luts
+                $scope.device_tree.build_helper_luts(
+                    ["network_info"]
+                    $scope.local_helper_obj
+                )
+        )
+
     $scope.edit_netip = (cur_obj, obj_type, $event, create_mode) ->
         # cur_obj is device, netdevice of ip, obj_type is 'dev', 'nd' or 'ip'
         # create or edit

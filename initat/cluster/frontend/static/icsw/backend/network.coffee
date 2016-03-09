@@ -217,11 +217,15 @@ angular.module(
     icswTools, ICSW_URLS, $q, Restangular, icswSimpleAjaxCall
 ) ->
     class icswPeerInformation
-        constructor: (@list) ->
+        constructor: (@list, @peer_list) ->
             @build_luts()
+            console.log @peer_list
 
         build_luts: () =>
+            # all peers
             @lut = icswTools.build_lut(@list)
+            # all peerable netdevices (may shadow the enriched devices from tree, use only as a fallback)
+            @peer_lut = icswTools.build_list(@peer_list)
             @nd_lut = {}
             for entry in @list
                 if entry.s_netdevice not of @nd_lut
@@ -284,19 +288,29 @@ angular.module(
 ) ->
     load_data = (client, dev_list) ->
         _defer = $q.defer()
-        icswCachingCall.fetch(
-            client
-            ICSW_URLS.REST_NETDEVICE_PEER_LIST
-            {
-                "primary_dev_pks": angular.toJson((dev.idx for dev in dev_list))
-            }
-            []
-        ).then(
+        w_list = [
+            icswCachingCall.fetch(
+                client
+                ICSW_URLS.REST_USED_PEER_LIST
+                {
+                    "primary_dev_pks": angular.toJson((dev.idx for dev in dev_list))
+                }
+                []
+            )
+            icswCachingCall.fetch(
+                client
+                ICSW_URLS.REST_PEERABLE_NETDEVICE_LIST
+                {}
+                []
+            )
+        ]
+        $q.all(w_list).then(
             (data) ->
                 console.log "*** peer information loaded ***"
-                _defer.resolve(new icswPeerInformation(data))
+                _defer.resolve(new icswPeerInformation(data[0], data[1]))
         )
         return _defer
+
     return {
         "load": (client, dev_list) ->
             # loads from server

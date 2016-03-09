@@ -256,7 +256,8 @@ rpl.extend([
     url("^device_com_cap_list$", rest_views.device_com_capabilities.as_view(), name="device_com_capabilities"),
     url("^home_export_list$", rest_views.rest_home_export_list.as_view(), name="home_export_list"),
     url("^csw_object_list$", rest_views.csw_object_list.as_view({"get": "list"}), name="csw_object_list"),
-    url("^netdevice_peer_list$", rest_views.netdevice_peer_list.as_view({"get": "list"}), name="netdevice_peer_list"),
+    url("^used_peer_list$", rest_views.used_peer_list.as_view({"get": "list"}), name="used_peer_list"),
+    url("^peerable_netdevice_list$", rest_views.peerable_netdevice_list.as_view({"get": "list"}), name="peerable_netdevice_list"),
     url("^min_access_levels$", rest_views.min_access_levels.as_view({"get": "list"}), name="min_access_levels"),
 ])
 

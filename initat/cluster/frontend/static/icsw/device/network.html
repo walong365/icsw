@@ -300,10 +300,10 @@
         {{ ndip_obj.peer.info }}
     </td>
     <td>
-        <icsw-tools-button type="modify" size="xs" ng-click="edit_peer_information(ndip_obj, $event)" ng-show="acl_modify(obj, 'backbone.device.change_network')"></icsw-tools-button>
+        <icsw-tools-button type="modify" size="xs" ng-click="edit_peer(ndip_obj, 'peer', $event, false)" ng-show="acl_modify(obj, 'backbone.device.change_network')"></icsw-tools-button>
     </td>
     <td>
-        <icsw-tools-button type="delete" size="xs" ng-click="delete_peer_information(ndip_obj, $event)" ng-show="acl_delete(obj, 'backbone.device.change_network')"></icsw-tools-button>
+        <icsw-tools-button type="delete" size="xs" ng-click="delete_peer(ndip_obj, $event)" ng-show="acl_delete(obj, 'backbone.device.change_network')"></icsw-tools-button>
     </td>
 </script>
 
@@ -1296,124 +1296,88 @@
     </form>
 </script>
 
-<script type="text/ng-template" id="peer.information.form">
-    <form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form">
+<script type="text/ng-template" id="icsw.peer.form">
+    <form class="form-horizontal" name="form_data">
         <h2>
             Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
-            (<span ng-show="source_is_local">source</span><span ng-show="!source_is_local">destination</span>)
+            (<span ng-show="source_is_local">source</span>
+            <span ng-show="!source_is_local">destination</span>)
         </h2>
         <fieldset>
             <legend>Settings</legend>
-            <div id="div_id_penalty" class="form-group">
-                <label for="id_penalty" class="control-label col-sm-2 requiredField">
+            <div class="form-group">
+                <label class="control-label col-sm-2 requiredField">
                     Cost<span class="asteriskField">*</span></label>
 
-                <div class="controls col-sm-9"><input class="numberinput form-control" id="id_penalty" max="128" min="1" name="penalty" ng-model="_edit_obj.penalty" required="True" type="number" value="0"></input></div>
-            </div>
-            <div ng-if="source_is_local">
-                <div class="form-group" ng-if="create_mode">
-                    <label class="control-label col-sm-2">
-                        Source
-                    </label>
-
-                    <div class="col-sm-9">
-                        <ui-select ng-model="_edit_obj.s_netdevice" ng-required="true">
-                            <ui-select-match class="ui-select-match" placeholder="select a netdevice">{{$select.selected.devname}}
-                            </ui-select-match>
-                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in _current_dev.netdevice_set | props_filter:{devname:$select.search}">
-                                <div ng-bind-html="value.devname | highlight: $select.search"></div>
-                            </ui-select-choices>
-                        </ui-select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="control-label col-sm-2">
-                        Network topology central node
-                    </label>
-
-                    <div class="col-sm-9">
-                        <ui-select ng-model="_edit_obj.d_netdevice" ng-required="true">
-                            <ui-select-match class="ui-select-match" placeholder="select a target device">{{$select.selected.info_string}}
-                            </ui-select-match>
-                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in get_route_peers() | props_filter:{info_string:$select.search}" group-by="'device_group_name'">
-                                <div ng-bind-html="value.info_string | highlight: $select.search"></div>
-                            </ui-select-choices>
-                        </ui-select>
-                    </div>
+                <div class="controls col-sm-9">
+                    <input class="numberinput form-control" max="128" min="1" name="penalty" ng-model="edit_obj.penalty" required="True" type="number" value="0"/>
                 </div>
             </div>
-            <div ng-if="!source_is_local">
-                <div class="form-group">
-                    <label class="control-label col-sm-2">
-                        Source
-                    </label>
+            <div class="form-group">
+                <label class="control-label col-sm-2">
+                    Source
+                </label>
 
-                    <div class="col-sm-9">
-                        <ui-select ng-model="_edit_obj.s_netdevice" ng-required="true">
-                            <ui-select-match class="ui-select-match" placeholder="select a target device">{{$select.selected.info_string}}
-                            </ui-select-match>
-                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in get_route_peers() | props_filter:{info_string:$select.search}" group-by="'device_group_name'">
-                                <div ng-bind-html="value.info_string | highlight: $select.search"></div>
-                            </ui-select-choices>
-                        </ui-select>
-                        <!--<select chosen="True" class="select form-control" ng-model="_edit_obj.s_netdevice"
-         ng-options="value.idx as value.info_string group by value.device_group_name for value in get_route_peers()"
-         required="required" ng-if="!source_is_local"></select>-->
-                    </div>
+                <div class="col-sm-9">
+                    <ui-select ng-model="edit_obj.s_netdevice">
+                        <ui-select-match class="ui-select-match" placeholder="select a netdevice">
+                            {{ $select.selected.devname }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in s_device.netdevice_set | props_filter:{devname:$select.search}">
+                            <div ng-bind-html="value.devname | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
                 </div>
             </div>
-            <div ng-if="!source_is_local">
-                <div class="form-group" ng-if="create_mode">
-                    <label class="control-label col-sm-2">
-                        Destination
-                    </label>
-
-                    <div class="col-sm-9">
-                        <ui-select ng-model="_edit_obj.d_netdevice" ng-required="true">
-                            <ui-select-match class="ui-select-match" placeholder="select a netdevice">{{$select.selected.devname}}
-                            </ui-select-match>
-                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in _current_dev.netdevice_set | props_filter:{devname:$select.search}">
-                                <div ng-bind-html="value.devname | highlight: $select.search"></div>
-                            </ui-select-choices>
-                        </ui-select>
-                        <!--<select chosen="True" class="select form-control" ng-model="_edit_obj.d_netdevice"
-         ng-options="value.idx as value.devname for value in _current_dev.netdevice_set"
-         required="required" ng-if="!source_is_local"></select>-->
-                    </div>
+            <div class="form-group">
+                <label class="control-label col-sm-2">
+                    Destination
+                </label>
+                <div class="col-sm-9">
+                    <ui-select ng-model="edit_obj.d_netdevice">
+                        <ui-select-match class="ui-select-match" placeholder="select a target device">
+                            {{$select.selected.info_string}}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in d_get_route_peers() | props_filter:{info_string:$select.search}" group-by="'device_group_name'">
+                            <div ng-bind-html="value.info_string | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
                 </div>
             </div>
             <div id="div_id_s_spec" class="form-group">
                 <label for="id_s_spec" class="control-label col-sm-2">
                     Source spec
                 </label>
-
-                <div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_s_spec" maxlength="128" name="s_spec" ng-model="_edit_obj.s_spec" type="text"></input></div>
+                <div class="controls col-sm-9">
+                    <input class="textinput textInput form-control" maxlength="128" name="s_spec" ng-model="edit_obj.s_spec" type="text"/>
+                </div>
             </div>
-            <div id="div_id_d_spec" class="form-group">
-                <label for="id_d_spec" class="control-label col-sm-2">
+            <div class="form-group">
+                <label class="control-label col-sm-2">
                     Dest spec
                 </label>
-
-                <div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_d_spec" maxlength="128" name="d_spec" ng-model="_edit_obj.d_spec" type="text"></input></div>
+                <div class="controls col-sm-9">
+                    <input class="textinput textInput form-control" maxlength="128" name="d_spec" ng-model="edit_obj.d_spec" type="text"/>
+                </div>
             </div>
-            <div id="div_id_info" class="form-group">
-                <label for="id_info" class="control-label col-sm-2">
+            <div class="form-group">
+                <label class="control-label col-sm-2">
                     Info
                 </label>
-
-                <div class="controls col-sm-9"><input class="textinput textInput form-control" id="id_info" maxlength="256" name="info" ng-model="_edit_obj.info" type="text"></input></div>
+                <div class="controls col-sm-9">
+                    <input class="textinput textInput form-control" maxlength="256" name="info" ng-model="edit_obj.info" type="text"/>
+                </div>
             </div>
             <div class="form-group" ng-if="!create_mode">
                 <label class="control-label col-sm-2">
                     Creation info
                 </label>
-
                 <div class="col-sm-9">
-                    <span ng-show="_edit_obj.autocreated" class="label label-warning">autocreated</span><span ng-show="!_edit_obj.autocreated" class="label label-success">manually created</span>
+                    <span ng-show="edit_obj.autocreated" class="label label-warning">autocreated</span>
+                    <span ng-show="!edit_obj.autocreated" class="label label-success">manually created</span>
                 </div>
             </div>
         </fieldset>
-        <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="action_string"></input></div>
     </form>
 </script>
 

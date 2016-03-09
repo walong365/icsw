@@ -452,8 +452,8 @@ class ext_peer_serializer(serializers.Serializer):
     fqdn = serializers.CharField()
 
 
-class netdevice_peer_list(viewsets.ViewSet):
-    display_name = "netdevice_peer_list"
+class used_peer_list(viewsets.ViewSet):
+    display_name = "used_peer_list"
 
     @rest_logging
     def list(self, request):
@@ -466,6 +466,40 @@ class netdevice_peer_list(viewsets.ViewSet):
             "d_netdevice",
         )
         _ser = peer_information_serializer(_peers, many=True)
+        return Response(_ser.data)
+
+
+class peerable_netdevice_list(viewsets.ViewSet):
+    display_name = "peerable_netdevice_list"
+
+    @rest_logging
+    def list(self, request):
+        peer_list = [
+            ext_peer_object(**_obj) for _obj in netdevice.objects.filter(
+                Q(device__enabled=True) & Q(device__device_group__enabled=True)
+            ).filter(
+                Q(enabled=True)
+            ).filter(
+                Q(routing=True)
+            ).distinct().order_by(
+                "device__device_group__name",
+                "device__name",
+                "devname",
+            ).select_related(
+                "device",
+                "device__device_group",
+                "device__domain_tree_node"
+            ).values(
+                "pk",
+                "devname",
+                "penalty",
+                "routing",
+                "device__name",
+                "device__device_group__name",
+                "device__domain_tree_node__full_name"
+            )
+        ]
+        _ser = ext_peer_serializer(peer_list, many=True)
         return Response(_ser.data)
 
 

@@ -145,4 +145,14 @@ angular.module(
                 "network_device_type"
             ]
 
+]).service("icswPeerInformationBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswPeerInformationBackupDefinition extends icswBackupDefinition
+
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "s_netdevice", "s_spec", "d_netdevice", "d_spec", "penalty", "autocreated", "info",
+            ]
+
 ])
