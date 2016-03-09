@@ -81,6 +81,16 @@ angular.module(
                 "flap_detection_enabled", "mon_resolve_name", "store_rrd_data"
             ]
 
+]).service("icswDeviceBootBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswDeviceBootBackupDefinition extends icswBackupDefinition
+
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "dhcp_mac", "dhcp_write",
+            ]
+
 ]).service("icswDeviceGroupBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
 
     class icswDeviceGroupBackupDefinition extends icswBackupDefinition

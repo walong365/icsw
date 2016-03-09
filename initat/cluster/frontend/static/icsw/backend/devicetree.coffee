@@ -82,6 +82,9 @@ angular.module(
             @device.num_peers = 0
 
         is_scalar: (req) =>
+            return req in ["scan_info"]
+
+        is_element: (req) =>
             return req in ["disk_info", "snmp_info"]
 
         is_loaded: (req) =>
@@ -106,6 +109,18 @@ angular.module(
                 dth_obj.netdevice_lut = icswTools.build_lut(dth_obj.netdevice_list)
                 dth_obj.net_ip_lut = icswTools.build_lut(dth_obj.net_ip_list)
 
+        get_setter_name: (req) =>
+            _lut = {
+                "scan_info": "set_scan_info"
+            }
+            if req of _lut
+                return _lut[req]
+            else
+                throw new Error("Unknown EnrichmentKey #{req}")
+
+        set_scan_info: (dev, scan_object) =>
+            dev.active_scan = scan_object.active_scan
+
         get_attr_name: (req) =>
             _lut = {
                 "network_info": "netdevice_set"
@@ -114,6 +129,7 @@ angular.module(
                 "com_info": "com_capability_list"
                 "snmp_info": "devicesnmpinfo"
                 "snmp_schemes_info": "snmp_schemes"
+                "scan_info": "active_scan"
             }
             if req of _lut
                 return _lut[req]
@@ -125,6 +141,8 @@ angular.module(
             for req, dev_pks of en_req
                 if @device.idx in dev_pks
                     if @is_scalar(req)
+                        @device[@get_attr_name(req)] = undefined
+                    else if @is_element(req)
                         @device[@get_attr_name(req)] = undefined
                     else
                         @device[@get_attr_name(req)].length = 0
@@ -173,6 +191,8 @@ angular.module(
                     fetch_list.push(req)
                     if @is_scalar(req)
                         @device[@get_attr_name(req)] = undefined
+                    else if @is_element(req)
+                        @device[@get_attr_name(req)] = undefined
                     else
                         @device[@get_attr_name(req)] = []
             return [@device.idx, fetch_list]
@@ -192,7 +212,6 @@ angular.module(
         add_netip: (new_ip, cur_nd) =>
             # insert the new IP new_ip to the local device
             cur_nd.net_ip_set.push(new_ip)
-            console.log "***", new_ip, cur_nd
             @post_network_info()
 
         delete_netip: (del_ip, cur_nd) =>
@@ -205,9 +224,15 @@ angular.module(
                 @loaded.push(key)
             # store info
             if @is_scalar(key)
+                @[@get_setter_name(key)](@device, result)
+            else if @is_element(key)
                 @device[@get_attr_name(key)] = result
             else
                 @device[@get_attr_name(key)].push(result)
+
+        feed_empty_result: (key) =>
+            if key not in @loaded
+                @loaded.push(key)
 
         merge_requests: (req_list) =>
             # merges all requests from build_request
@@ -219,16 +244,23 @@ angular.module(
                     to_load[req].push(d_req[0])
             return to_load
 
-        feed_results: (result) =>
+        feed_results: (result, en_req) =>
             # feed result into device_tree
             for key, obj_list of result
+                devices_set = []
                 for obj in obj_list
                     if obj.device?
                         _pk = obj.device
                         @device.all_lut[_pk].$$_enrichment_info.feed_result(key, obj)
+                        # remember devices with a valid result
+                        if _pk not in devices_set
+                            devices_set.push(_pk)
                     else
                         console.log obj
                         throw new Error("No device attribute found in object")
+                _missing = _.difference(en_req[key], devices_set)
+                for _pk in _missing
+                    @device.all_lut[_pk].$$_enrichment_info.feed_empty_result(key)
 
 ]).service("icswDeviceTree",
 [
@@ -484,8 +516,10 @@ angular.module(
             _fetch = $q.defer()
             if _.isEmpty(en_req)
                 # empty request, just feed to dth
+                console.log "enrichment:", en_list, "for", dth, "not needed"
                 _fetch.resolve({})
             else
+                console.log "*** enrichment:", en_list, "for", dth, "resulted in non-empty", en_req
                 # non-empty request, fetch from server
                 icswSimpleAjaxCall(
                     "url": ICSW_URLS.DEVICE_ENRICH_DEVICES
@@ -500,12 +534,12 @@ angular.module(
             _fetch.promise.then(
                 (result) =>
                     # clear previous values
-                    # console.log "clear previous enrichment values"
+                    console.log "clear previous enrichment values"
                     @enricher.clear_global_infos(dth, en_req)
                     (dev.$$_enrichment_info.clear_infos(en_req) for dev in dth.devices)
-                    # console.log "set new enrichment values"
+                    console.log "set new enrichment values"
                     # feed results back to enricher
-                    @enricher.feed_results(result)
+                    @enricher.feed_results(result, en_req)
                     # build local luts
                     (dev.$$_enrichment_info.build_luts(en_list, dth) for dev in dth.devices)
                     # build global luts
@@ -517,6 +551,18 @@ angular.module(
 
         build_helper_luts: (en_list, dth) =>
             @enricher.build_g_luts(en_list, dth)
+
+        # localised update functions
+        update_boot_settings: (dev) =>
+            defer = $q.defer()
+            Restangular.one(ICSW_URLS.BOOT_UPDATE_DEVICE_SETTINGS.slice(1).slice(0, -2)).post(dev.idx, dev).then(
+                (result) ->
+                    defer.resolve("saved")
+                () ->
+                    defer.reject("not saved")
+            )
+            return defer.promise
+
 
 
 ]).service("icswDeviceTreeService", ["$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall", "icswTools", "icswDeviceTree", "$rootScope", "ICSW_SIGNALS", "icswDomainTreeService", ($q, Restangular, ICSW_URLS, $window, icswCachingCall, icswTools, icswDeviceTree, $rootScope, ICSW_SIGNALS, icswDomainTreeService) ->

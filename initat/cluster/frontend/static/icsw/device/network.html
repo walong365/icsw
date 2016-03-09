@@ -143,12 +143,11 @@
             type="button"
             class="btn btn-xs"
             ng-class="get_bootdevice_info_class(ndip_obj)"
-            ng-show="get_num_bootips(ndip_obj)"
+            ng-show="ndip_obj.num_boot_ips"
             ng-value="get_boot_value(ndip_obj)"
             ng-click="edit_boot_settings(ndip_obj, $event)">
         </input>
-        <span ng-show="!get_num_bootips(ndip_obj)">N/A</span>
-        <!--<button class="btn btn-primary btn-xs" ladda="true" data-style="expand-left">xxx</button>-->
+        <span ng-show="!ndip_obj.num_boot_ips">N/A</span>
     </td>
     <td>
         {{ ndip_obj.num_netdevices }}

@@ -113,6 +113,20 @@ class get_boot_info_json(View):
         request.xml_response["response"] = _resp
 
 
+class update_device_bootsettings(APIView):
+    authentication_classes = (SessionAuthentication,)
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request, pk):
+        _data = request.data
+        cur_dev = device.objects.get(Q(pk=pk))
+        cur_dev.dhcp_mac = _data["dhcp_mac"]
+        cur_dev.dhcp_write = _data["dhcp_write"]
+        cur_dev.save(update_fields=["dhcp_mac", "dhcp_write"])
+        response = Response(["updated"])
+        return response
+
+
 class update_device(APIView):
     authentication_classes = (SessionAuthentication,)
     permission_classes = (IsAuthenticated,)
@@ -304,7 +318,7 @@ class soft_control(View):
         dev_pk_list = json.loads(_post["dev_pk_list"])
         cur_devs = {
             _dev.pk: _dev for _dev in device.objects.filter(Q(pk__in=dev_pk_list))
-            }
+        }
         soft_state = _post["command"]
         logger.info(
             "sending soft_control '{}' to {}: {}".format(

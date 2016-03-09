@@ -193,6 +193,7 @@ angular.module(
     console.log "SDI init"
     $scope.show_uuid = false
     $scope.image_url = ""
+
     $scope.new_devsel = (in_list) ->
         if in_list.length > 0
             icswDeviceTreeService.fetch($scope.$id).then(
@@ -205,7 +206,7 @@ angular.module(
                         [
                             icswDomainTreeService.fetch($scope.$id)
                             icswMonitoringTreeService.fetch($scope.$id)
-                            $scope.dev_tree.enrich_devices(dt_hs, ["network_info", "monitoring_hint_info", "disk_info", "com_info", "snmp_info", "snmp_schemes_info"])
+                            $scope.dev_tree.enrich_devices(dt_hs, ["network_info", "monitoring_hint_info", "disk_info", "com_info", "snmp_info", "snmp_schemes_info", "scan_info"])
                         ]
                     ).then(
                         (data) ->

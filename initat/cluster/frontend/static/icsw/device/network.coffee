@@ -151,13 +151,13 @@ angular.module(
     "$q", "$uibModal", "icswAcessLevelService", "$rootScope", "$timeout", "blockUI", "icswTools", "icswToolsButtonConfigService", "ICSW_URLS",
     "icswSimpleAjaxCall", "icswToolsSimpleModalService", "icswDeviceTreeService", "icswNetworkTreeService",
     "icswDomainTreeService", "icswPeerInformationService", "icswDeviceTreeHelperService", "icswComplexModalService",
-    "icswNetworkDeviceBackup", "toaster", "icswNetworkIPBackup", "icswPeerInformationBackup",
+    "icswNetworkDeviceBackup", "toaster", "icswNetworkIPBackup", "icswPeerInformationBackup", "icswDeviceBootBackup",
 (
     $scope, $compile, $filter, $templateCache, Restangular, restDataSource,
     $q, $uibModal, icswAcessLevelService, $rootScope, $timeout, blockUI, icswTools, icswToolsButtonConfigService, ICSW_URLS,
     icswSimpleAjaxCall, icswToolsSimpleModalService, icswDeviceTreeService, icswNetworkTreeService,
     icswDomainTreeService, icswPeerInformationService, icswDeviceTreeHelperService, icswComplexModalService,
-    icswNetworkDeviceBackup, toaster, icswNetworkIPBackup, icswPeerInformationBackup
+    icswNetworkDeviceBackup, toaster, icswNetworkIPBackup, icswPeerInformationBackup, icswDeviceBootBackup
 ) ->
     $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
     icswAcessLevelService.install($scope)
@@ -171,35 +171,10 @@ angular.module(
     $scope.copy_coms = false
     # mixins
 
-    $scope.boot_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q, "nb")
-    $scope.boot_edit.edit_template = "device.boot.form"
-    $scope.boot_edit.put_parameters = {"only_boot" : true}
-    $scope.boot_edit.modify_rest_url = ICSW_URLS.REST_DEVICE_TREE_DETAIL.slice(1).slice(0, -2)
-    $scope.boot_edit.new_object_at_tail = false
-    $scope.boot_edit.use_promise = true
-
     $scope.scan_mixin = new angular_modal_mixin($scope, $templateCache, $compile, $q, "Scan network")
     $scope.scan_mixin.template = "device.network.scan.form"
     $scope.scan_mixin.cssClass = "modal-tall"
 
-    $scope.ethtool_autoneg = [
-        {"id": 0, "option": "default"},
-        {"id": 1, "option": "on"},
-        {"id": 2, "option": "off"},
-    ]
-    $scope.ethtool_duplex = [
-        {"id": 0, "option": "default"},
-        {"id": 1, "option": "on"},
-        {"id": 2, "option": "off"},
-    ]
-    $scope.ethtool_speed = [
-        {"id": 0, "option": "default"},
-        {"id": 1, "option": "10 MBit"},
-        {"id": 2, "option": "100 MBit"},
-        {"id": 3, "option": "1 GBit"},
-        {"id": 4, "option": "10 GBit"},
-    ]
-    $scope.devsel_list = []
     $scope.devices = []
     $scope.local_helper_obj = undefined
     $scope.remote_helper_obj = undefined
@@ -218,7 +193,7 @@ angular.module(
                 $scope.domain_tree = data[2]
                 $scope.peer_list = data[3]
                 hs = icswDeviceTreeHelperService.create($scope.device_tree, dev_sel)
-                $scope.device_tree.enrich_devices(hs, ["network_info"]).then(
+                $scope.device_tree.enrich_devices(hs, ["network_info", "com_info"]).then(
                     (done) ->
                         # check if some devices have missing network_info
                         missing_list = $scope.peer_list.find_missing_devices($scope.device_tree)
@@ -380,56 +355,15 @@ angular.module(
         $scope.devices = cur_devs
         $scope.build_luts()
 
-    $scope.edit_boot_settings = (obj, event) ->
-        $scope.boot_edit.edit(obj, event).then(
-            (mod_dev) ->
-                true
-        )
-    $scope.delete_peer_information = (ndip_obj, event) ->
-        # find device / netdevice
-        peer = ndip_obj.peer
-        $scope.peer_edit.delete_list = undefined
-        $scope.peer_edit.delete_obj(peer).then(
-            (res) ->
-                if res
-                    if peer.s_netdevice of $scope.nd_lut
-                        $scope.nd_lut[peer.s_netdevice].peers = (entry for entry in $scope.nd_lut[peer.s_netdevice].peers when entry.peer.idx != peer.idx)
-                    if peer.d_netdevice of $scope.nd_lut
-                        $scope.nd_lut[peer.d_netdevice].peers = (entry for entry in $scope.nd_lut[peer.d_netdevice].peers when entry.peer.idx != peer.idx)
-                    delete $scope.peer_lut[peer.idx]
-        )
-    $scope.get_peer_target = (ndip_obj) ->
-        # FIXME
-        return "peer_target"
-        if ndip_obj.target of $scope.nd_lut
-            peer = $scope.nd_lut[ndip_obj.target]
-            _dev = $scope.dev_lut[peer.device]
-            if _dev.domain_tree_node of $scope.dtn_lut
-                _domain = "." + $scope.dtn_lut[_dev.domain_tree_node].full_name
-            else
-                _domain = ""
-            return "#{peer.devname} (#{peer.penalty}) on " + String(_dev.name) + _domain
-        else
-            if ndip_obj.target of $scope.nd_peer_lut
-                peer = $scope.nd_peer_lut[ndip_obj.target]
-                return "#{peer.devname} (#{peer.penalty}) on #{peer.fqdn}"
-            else
-                return "N/A (disabled device ?)"
-
-    $scope.get_peer_type = (peer) ->
-        _local_devs = (dev.idx for dev in $scope.devices)
-        r_list = []
-        for c_id in [peer.s_device, peer.d_device]
-            r_list.push(if (c_id in _local_devs) then "sel" else "N/S")
-        return r_list.join(", ")
-
     $scope.toggle_copy_com = () ->
         $scope.copy_coms = !$scope.copy_coms
+
     $scope.copy_com_class = () ->
         if $scope.copy_coms
             return "btn btn-sm btn-success"
         else
             return "btn btn-sm btn-default"
+
     $scope.copy_com_value = () ->
         if $scope.copy_coms
             return "Copy Coms and Schemes"
@@ -450,6 +384,49 @@ angular.module(
                 ).then((xml) ->
                     blockUI.stop()
                     $scope.reload()
+                )
+        )
+
+    $scope.edit_boot_settings = (obj, event) ->
+
+        dbu = new icswDeviceBootBackup()
+        dbu.create_backup(obj)
+
+        sub_scope = $scope.$new(false)
+        sub_scope.edit_obj = obj
+
+        icswComplexModalService(
+            {
+                message: $compile($templateCache.get("icsw.device.boot.form"))(sub_scope)
+                ok_label: "Update"
+                title: "Modify boot settings of #{obj.full_name}"
+                ok_callback: (modal) ->
+                    d = $q.defer()
+                    if sub_scope.form_data.$invalid
+                        toaster.pop("warning", "form validation problem", "", 0)
+                        d.reject("form not valid")
+                    else
+                        $scope.device_tree.update_boot_settings(obj).then(
+                            (data) ->
+                                console.log "data", data
+                                d.resolve("updated")
+                            (reject) ->
+                                d.reject("not saved")
+                        )
+                    return d.promise
+                cancel_callback: (modal) ->
+                    dbu.restore_backup(obj)
+                    d = $q.defer()
+                    d.resolve("cancel")
+                    return d.promise
+            }
+        ).then(
+            (fin) ->
+                console.log "Boot modifier closed"
+                sub_scope.$destroy()
+                $scope.device_tree.build_helper_luts(
+                    ["network_info"]
+                    $scope.local_helper_obj
                 )
         )
 
@@ -767,6 +744,26 @@ angular.module(
             else
                 return false
 
+        sub_scope.ethtool_autoneg = [
+            {"id": 0, "option": "default"},
+            {"id": 1, "option": "on"},
+            {"id": 2, "option": "off"},
+        ]
+
+        sub_scope.ethtool_duplex = [
+            {"id": 0, "option": "default"},
+            {"id": 1, "option": "on"},
+            {"id": 2, "option": "off"},
+        ]
+
+        sub_scope.ethtool_speed = [
+            {"id": 0, "option": "default"},
+            {"id": 1, "option": "10 MBit"},
+            {"id": 2, "option": "100 MBit"},
+            {"id": 3, "option": "1 GBit"},
+            {"id": 4, "option": "10 GBit"},
+        ]
+
         # init form
         icswComplexModalService(
             {
@@ -1007,7 +1004,12 @@ angular.module(
         scope: false
         controller: "icswDeviceNetworkNetdeviceRowCtrl"
     }
-]).directive("icswDeviceComCapabilities", ["$templateCache", "$compile", "icswCachingCall", "ICSW_URLS", ($templateCache, $compile, icswCachingCall, ICSW_URLS) ->
+]).directive("icswDeviceComCapabilities",
+[
+    "$templateCache", "$compile", "icswCachingCall", "ICSW_URLS", "icswDeviceTreeService", "icswDeviceTreeHelperService",
+(
+    $templateCache, $compile, icswCachingCall, ICSW_URLS, icswDeviceTreeService, icswDeviceTreeHelperService
+) ->
     return {
         restrict : "EA"
         template: $templateCache.get("icsw.device.com.capabilities")
@@ -1015,15 +1017,15 @@ angular.module(
             device: "=device"
             detail: "=detail"
         link: (scope, el, attrs) ->
-            console.log scope.device
+            scope.pending = true
+            _current = icswDeviceTreeService.current()
             scope.com_class = () ->
                 if scope.pending
                     return "btn-warning"
-                else if scope.com_caps.length
+                else if scope.device.com_capability_list.length
                     return "btn-success"
                 else
                     return "btn-danger"
-            scope.com_caps = []
             scope.$watch("device.active_scan", (new_val) ->
                 if new_val == "base"
                     el.find("span.ladda-label").text("...")
@@ -1032,20 +1034,17 @@ angular.module(
                     update_com_cap()
             )
             update_com_cap = () ->
-                el.find("span.ladda-label").text("...")
                 scope.pending = true
-                icswCachingCall.fetch(scope.$id, ICSW_URLS.REST_DEVICE_COM_CAPABILITIES, {"devices": "<PKS>"}, [scope.device.idx]).then(
-                    (data) ->
-                        console.log "update_com_cap ***", data
-                        scope.com_caps = if data[0]? then data[0] else []
+                el.find("span.ladda-label").text("...")
+                hs = icswDeviceTreeHelperService.create(_current, [scope.device])
+                _current.enrich_devices(hs, ["com_info"]).then(
+                    (set) ->
                         scope.pending = false
-                        if scope.com_caps.length
-                            scope.device.com_caps = (_entry.matchcode for _entry in scope.com_caps)
-                            scope.device.com_cap_names = (_entry.name for _entry in scope.com_caps)
+                        if scope.device.com_capability_list.length
                             if scope.detail?
-                                el.find("span.ladda-label").text(scope.device.com_cap_names.join(", "))
+                                el.find("span.ladda-label").text((entry.name for entry in scope.device.com_capability_list).join(", "))
                             else
-                                el.find("span.ladda-label").text(scope.device.com_caps.join(", "))
+                                el.find("span.ladda-label").text((entry.matchcode for entry in scope.device.com_capability_list).join(", "))
                         else
                             el.find("span.ladda-label").text("N/A")
                 )
@@ -1093,7 +1092,7 @@ angular.module(
             return false
 
     $scope.get_bootdevice_info_class = (obj) ->
-        num_bootips = $scope.get_num_bootips(obj)
+        num_bootips = obj.num_boot_ips
         if obj.dhcp_error
             return "btn-danger"
         else
@@ -1104,12 +1103,17 @@ angular.module(
             else
                 return "btn-danger"
 
-    $scope.get_num_bootips = (obj) ->
-        return obj.$$_enrichment_info.num_boot_ips
-
     $scope.get_boot_value = (obj) ->
-        num_bootips = $scope.get_num_bootips(obj)
-        r_val = "#{num_bootips} IPs (" + (if obj.dhcp_write then "write" else "no write") + " / " + (if obj.dhcp_mac then "greedy" else "not greedy") + ")"
+        num_bootips = obj.num_boot_ips
+        if obj.dhcp_write
+            w_state = "write"
+        else
+            w_state = "no write"
+        if obj.dhc_mac
+            g_state = "greedy"
+        else
+            g_state = "not greedy"
+        r_val = "#{num_bootips} IPs (#{w_state}) / #{g_state})"
         if obj.dhcp_error
             r_val = "#{r_val}, #{obj.dhcp_error}"
         if obj.dhcp_write != obj.dhcp_written
@@ -1142,6 +1146,13 @@ angular.module(
             # undefined, may happen during edit
             # use the other helper object
             return o_ho.netdevice_lut[_pk]
+
+    $scope.get_peer_type = (peer) ->
+        _local_devs = (dev.idx for dev in $scope.devices)
+        r_list = []
+        for c_id in [peer.s_device, peer.d_device]
+            r_list.push(if (c_id in _local_devs) then "sel" else "N/S")
+        return r_list.join(", ")
 
     $scope.get_peer_class = (peer_obj, ptype) ->
         nd = get_netdevice_from_peer(peer_obj, ptype)

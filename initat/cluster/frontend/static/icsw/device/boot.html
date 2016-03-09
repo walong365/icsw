@@ -222,31 +222,33 @@
     </table>
 </script>
 
-<script type="text/ng-template" id="device.boot.form">
-    <form id="id_dtn_detail_form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form">
+<script type="text/ng-template" id="icsw.device.boot.form">
+    <form class="form-horizontal" name="form_data">
         <div>
-            <h2>Boot / DHCP settings for '{{ _edit_obj.name }}'</h2>
+            <h2>Boot / DHCP settings for '{{ edit_obj.name }}'</h2>
             <fieldset>
                 <legend>DHCP settings</legend>
                 <div class="form-group">
-                    <div id="div_id_dhcp_mac" class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-9"><label for="id_dhcp_mac"><input class="checkboxinput checkbox" id="id_dhcp_mac" name="dhcp_mac" ng-model="_edit_obj.dhcp_mac" type="checkbox"></input>
-                            Greedy flag
-                        </label></div>
+                    <div class="checkbox">
+                        <div class="controls col-lg-offset-0 col-sm-9">
+                            <label>
+                                <input class="checkboxinput checkbox" name="dhcp_mac" ng-model="edit_obj.dhcp_mac" type="checkbox"/>
+                                Greedy flag
+                            </label>
+                        </div>
                     </div>
                 </div>
                 <div class="form-group">
-                    <div id="div_id_dhcp_write" class="checkbox">
+                    <div class="checkbox">
                         <div class="controls col-lg-offset-0 col-sm-9">
                             <label>
-                                <input class="checkboxinput checkbox" ng-model="_edit_obj.dhcp_write" type="checkbox"></input>
+                                <input class="checkboxinput checkbox" ng-model="edit_obj.dhcp_write" type="checkbox"/>
                                 write DHCP address (when valid)
                             </label>
                         </div>
                     </div>
                 </div>
             </fieldset>
-            <div class="form-actions"><input type="submit" name="submit" value="Modify" class="btn btn-primary primaryAction" id="submit-id-submit"></input></div>
         </div>
     </form>
 </script>

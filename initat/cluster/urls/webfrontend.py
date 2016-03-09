@@ -114,6 +114,7 @@ boot_patterns = [
     url("^soft_control$", boot_views.soft_control.as_view(), name="soft_control"),
     url("^hard_control$", boot_views.hard_control.as_view(), name="hard_control"),
     url("^update_device/(\d+)$", boot_views.update_device.as_view(), name="update_device"),
+    url("^update_device_settings/boot/(\d+)$", boot_views.update_device_bootsettings.as_view(), name="update_device_settings"),
     url("^modify_mbl$", boot_views.modify_mbl.as_view(), name="modify_mbl"),
 ]
 

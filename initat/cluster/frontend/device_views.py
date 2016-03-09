@@ -42,6 +42,8 @@ from initat.cluster.backbone.serializers import netdevice_serializer, ComCapabil
 from initat.cluster.backbone.models.functions import can_delete_obj
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from initat.tools import logging_tools, server_command, process_tools
+from rest_framework import serializers
+
 
 logger = logging.getLogger("cluster.device")
 
@@ -372,6 +374,10 @@ class SNMPSchemeEnrichment(object):
         _result = {
             _el.pk: _el for _el in snmp_scheme.objects.filter(
                 Q(device__in=pk_list)
+            ).prefetch_related(
+                "snmp_scheme_tl_oid_set",
+            ).select_related(
+                "snmp_scheme_vendor",
             )
         }
         # manually unroll n2m relations
@@ -384,6 +390,44 @@ class SNMPSchemeEnrichment(object):
         return _data
 
 
+class DiskEnrichment(object):
+    def fetch(self, pk_list):
+        # get reference list
+        _ref_list = partition_table.objects.filter(
+            Q(act_partition_table__in=pk_list)
+        ).values("pk", "act_partition_table__pk")
+        # simple result
+        _result = {
+            _el.pk: _el for _el in partition_table.objects.filter(
+                Q(act_partition_table__in=pk_list)
+            ).prefetch_related(
+                "partition_disc_set",
+                "partition_disc_set__partition_set",
+                "partition_disc_set__partition_set__partition_fs",
+                "sys_partition_set",
+            )
+        }
+        # manually unroll n2m relations
+        _data = [
+            partition_table_serializer(
+                _result[_ref["pk"]],
+                context={"device": _ref["act_partition_table__pk"]}
+            ).data for _ref in _ref_list
+        ]
+        return _data
+
+
+class ScanSerializer(serializers.Serializer):
+    device = serializers.IntegerField(source="pk")
+    active_scan = serializers.CharField()
+
+
+class ScanEnrichment(object):
+    def fetch(self, pk_list):
+        _res = device.objects.filter(Q(pk__in=pk_list)).values("pk", "active_scan")
+        return ScanSerializer(_res, many=True).data
+
+
 class EnrichmentHelper(object):
     def __init__(self):
         self._all = {}
@@ -392,11 +436,12 @@ class EnrichmentHelper(object):
             netdevice_serializer,
             prefetch_list=["net_ip_set"]
         )
-        self._all["disk_info"] = EnrichmentObject(partition_table, partition_table_serializer, related_name="act_partition_table")
+        self._all["disk_info"] = DiskEnrichment()
         self._all["com_info"] = ComCapabilityEnrichment()
         self._all["snmp_info"] = EnrichmentObject(DeviceSNMPInfo, DeviceSNMPInfoSerializer)
         self._all["snmp_schemes_info"] = SNMPSchemeEnrichment()
         self._all["monitoring_hint_info"] = EnrichmentObject(monitoring_hint, monitoring_hint_serializer)
+        self._all["scan_info"] = ScanEnrichment()
 
     def create(self, key, pk_list):
         if key not in self._all:
