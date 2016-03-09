@@ -436,9 +436,11 @@ class form_serializer(serializers.Serializer):
 class ext_peer_object(dict):
     def __init__(self, *args, **kwargs):
         dict.__init__(self, **kwargs)
-        self["fqdn"] = "{}{}".format(
+        self["full_name"] = "{}{}".format(
             self["device__name"],
-            ".{}".format(self["device__domain_tree_node__full_name"]) if self["device__domain_tree_node__full_name"] else "",
+            ".{}".format(
+                self["device__domain_tree_node__full_name"]
+            ) if self["device__domain_tree_node__full_name"] else "",
         )
 
 
@@ -449,7 +451,7 @@ class ext_peer_serializer(serializers.Serializer):
     device_group_name = serializers.CharField(source="device__device_group__name")
     devname = serializers.CharField()
     routing = serializers.BooleanField()
-    fqdn = serializers.CharField()
+    full_name = serializers.CharField()
 
 
 class used_peer_list(viewsets.ViewSet):

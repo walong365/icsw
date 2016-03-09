@@ -210,11 +210,29 @@ angular.module(
         "current": () ->
             return _result
     }
+]).service("icswPeerHelperObject", [() ->
+    class icswPeerHelperObject
+        constructor: () ->
+            @info = "not set"
+            @list = []
+            @pks = []
+
+        sort: () =>
+            @list = _.orderBy(
+                @list
+                ["device_group_name", "info_string"]
+                ["desc", "desc"]
+            )
+        feed: (obj) =>
+            if obj.idx not in @pks
+                @list.push(obj)
+                @pks.push(obj.idx)
+
 ]).service("icswPeerInformation",
 [
-    "icswTools", "ICSW_URLS", "$q", "Restangular", "icswSimpleAjaxCall",
+    "icswTools", "ICSW_URLS", "$q", "Restangular", "icswSimpleAjaxCall", "icswPeerHelperObject",
 (
-    icswTools, ICSW_URLS, $q, Restangular, icswSimpleAjaxCall
+    icswTools, ICSW_URLS, $q, Restangular, icswSimpleAjaxCall, icswPeerHelperObject
 ) ->
     class icswPeerInformation
         constructor: (@list, @peer_list) ->
@@ -225,7 +243,7 @@ angular.module(
             # all peers
             @lut = icswTools.build_lut(@list)
             # all peerable netdevices (may shadow the enriched devices from tree, use only as a fallback)
-            @peer_lut = icswTools.build_list(@peer_list)
+            @peer_lut = icswTools.build_lut(@peer_list)
             @nd_lut = {}
             for entry in @list
                 if entry.s_netdevice not of @nd_lut
@@ -280,6 +298,42 @@ angular.module(
                                     peer.$$s_type = peer_type
                                 if peer.d_netdevice == nd.idx
                                     peer.$$d_type = peer_type
+
+        build_peer_helper: (device_tree, cur_peer, local_ho, remote_ho, peer_side) =>
+            # returns a sorted peer list for the frontend
+            # peer_type : (s)ource or (d)estination
+            get_netdevice = (nd_side) ->
+                nd_idx = cur_peer["#{nd_side}_netdevice"]
+                if cur_peer["$$#{nd_side}_type"] == "l"
+                    return local_ho.netdevice_lut[nd_idx]
+                else
+                    return remote_ho.netdevice_lut[nd_idx]
+
+            helper = new icswPeerHelperObject()
+            # reference netdevice
+            ref_nd = get_netdevice(peer_side)
+            console.log "ref", ref_nd
+            if ref_nd.routing
+                # step 1: collect all peerable netdevices from the device tree
+                # (only if the reference netdevice is a routing node)
+                for dev in device_tree.enabled_list
+                    if dev.netdevice_set?
+                        for nd in dev.netdevice_set
+                            if nd.routing
+                                nd.device_group_name = dev.device_group_name
+                                nd.info_string = "#{nd.devname} (#{nd.penalty}) on #{dev.full_name}"
+                                helper.feed(nd)
+                # step 2: add possible peers for devices without the required enrichment info
+                for nd_pk, nd_info of @peer_lut
+                    nd_info.info_string = "#{nd_info.devname} (#{nd_info.penalty}) on #{nd_info.full_name}"
+                    helper.feed(nd_info)
+            # step 3: add reference netdevice
+            ref_dev = device_tree.all_lut[ref_nd.device]
+            ref_nd.device_group_name = ref_dev.device_group_name
+            ref_nd.info_string = "#{ref_nd.devname} (#{ref_nd.penalty}) on #{ref_dev.full_name}"
+            helper.feed(ref_nd)
+            helper.sort()
+            return helper
 
 ]).service("icswPeerInformationService", [
     "$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall", "icswTools", "icswPeerInformation", "$rootScope", "ICSW_SIGNALS",

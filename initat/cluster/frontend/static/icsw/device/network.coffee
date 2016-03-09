@@ -553,12 +553,6 @@ angular.module(
     $scope.edit_peer = (cur_obj, obj_type, $event, create_mode) ->
         # cur_obj is device, netdevice of ip, obj_type is 'dev', 'nd' or 'ip'
         # create or edit
-        get_netdevice = (nd_idx, nd_type) ->
-            if nd_type == "l"
-                return $scope.local_helper_obj.netdevice_lut[nd_idx]
-            else
-                return $scope.remote_helper_obj.netdevice_lut[nd_idx]
-
         if create_mode
             edit_obj = {
                 "ip" : "0.0.0.0"
@@ -580,6 +574,7 @@ angular.module(
             dbu = new icswPeerInformationBackup()
             dbu.create_backup(edit_obj)
             title = "Edit Peer Information"
+            peer_info = ""
             # build peering lists
 
 
@@ -588,10 +583,8 @@ angular.module(
         sub_scope = $scope.$new(false)
         sub_scope.edit_obj = edit_obj
         # create link
-        sub_scope.s_netdevice = get_netdevice(edit_obj.s_netdevice, edit_obj.$$s_type)
-        sub_scope.d_netdevice = get_netdevice(edit_obj.d_netdevice, edit_obj.$$d_type)
-        sub_scope.s_device = $scope.device_tree.all_lut[sub_scope.s_netdevice.device]
-        sub_scope.d_device = $scope.device_tree.all_lut[sub_scope.d_netdevice.device]
+        sub_scope.source_helper = $scope.peer_list.build_peer_helper($scope.device_tree, cur_obj, $scope.local_helper_obj, $scope.remote_helper_obj, "s")
+        sub_scope.dest_helper = $scope.peer_list.build_peer_helper($scope.device_tree, cur_obj, $scope.local_helper_obj, $scope.remote_helper_obj, "d")
         sub_scope.create_mode = create_mode
 
         # add functions
@@ -617,7 +610,7 @@ angular.module(
                                     d.reject("netip not created")
                             )
                         else
-                            Restangular.restangularizeElement(null, sub_scope.edit_obj, ICSW_URLS.REST_NET_IP_DETAIL.slice(1).slice(0, -2))
+                            Restangular.restangularizeElement(null, sub_scope.edit_obj, ICSW_URLS.REST_PEER_INFORMATION_DETAIL.slice(1).slice(0, -2))
                             sub_scope.edit_obj.put().then(
                                 (data) ->
                                     # ToDo, FIXME, handle change (test?), move to DeviceTreeService
@@ -641,11 +634,13 @@ angular.module(
             }
         ).then(
             (fin) ->
-                console.log "NetIP requester closed, trigger redraw"
+                console.log "Peer requester closed, trigger redraw"
                 sub_scope.$destroy()
                 # trigger rebuild of lists
                 # $rootScope.$emit(ICSW_SIGNALS("ICSW_FORCE_TREE_FILTER"))
                 # recreate helper luts
+                $scope.peer_list.build_luts()
+                $scope.peer_list.enrich_device_tree($scope.device_tree, $scope.local_helper_obj, $scope.remote_helper_obj)
                 $scope.device_tree.build_helper_luts(
                     ["network_info"]
                     $scope.local_helper_obj
@@ -1095,7 +1090,7 @@ angular.module(
                 scope.pending = true
                 icswCachingCall.fetch(scope.$id, ICSW_URLS.REST_DEVICE_COM_CAPABILITIES, {"devices": "<PKS>"}, [scope.device.idx]).then(
                     (data) ->
-                        console.log "***", data
+                        console.log "update_com_cap ***", data
                         scope.com_caps = if data[0]? then data[0] else []
                         scope.pending = false
                         if scope.com_caps.length
@@ -1175,24 +1170,39 @@ angular.module(
         controller: "icswDeviceNetworkDeviceRowCtrl"
     }
 ]).controller("icswDeviceNetworkPeerRowCtrl", ["$scope", ($scope) ->
-    $scope.get_netdevice_from_peer = (peer_obj, ptype) ->
+    get_netdevice_from_peer = (peer_obj, ptype) ->
         if peer_obj["$$#{ptype}_type"] == "l"
             ho = $scope.local_helper_obj
+            o_ho = $scope.remote_helper_obj
         else
             ho = $scope.remote_helper_obj
-        nd = ho.netdevice_lut[peer_obj["#{ptype}_netdevice"]]
+            o_ho = $scope.local_helper_obj
+        _pk = peer_obj["#{ptype}_netdevice"]
+        if _pk of ho.netdevice_lut
+            return ho.netdevice_lut[_pk]
+        else
+            # undefined, may happen during edit
+            # use the other helper object
+            return o_ho.netdevice_lut[_pk]
+
+    $scope.get_peer_class = (peer_obj, ptype) ->
+        nd = get_netdevice_from_peer(peer_obj, ptype)
+        if nd.routing
+            return "warning"
+        else
+            return ""
 
     $scope.get_devname_from_peer = (peer_obj, ptype) ->
-        nd = $scope.get_netdevice_from_peer(peer_obj, ptype)
+        nd = get_netdevice_from_peer(peer_obj, ptype)
         dev = $scope.device_tree.all_lut[nd.device]
         return dev.full_name
 
     $scope.get_netdevice_name_from_peer = (peer_obj, ptype) ->
-        nd = $scope.get_netdevice_from_peer(peer_obj, ptype)
+        nd = get_netdevice_from_peer(peer_obj, ptype)
         return "#{nd.devname} (#{nd.penalty})"
 
     $scope.get_ip_list_from_peer = (peer_obj, ptype) ->
-        nd = $scope.get_netdevice_from_peer(peer_obj, ptype)
+        nd = get_netdevice_from_peer(peer_obj, ptype)
         ip_list = (ip.ip for ip in nd.net_ip_set)
         if ip_list.length
             return ip_list.join(", ")
@@ -1200,8 +1210,8 @@ angular.module(
             return "---"
 
     $scope.get_peer_cost = (peer_obj) ->
-        s_nd = $scope.get_netdevice_from_peer(peer_obj, "s")
-        d_nd = $scope.get_netdevice_from_peer(peer_obj, "d")
+        s_nd = get_netdevice_from_peer(peer_obj, "s")
+        d_nd = get_netdevice_from_peer(peer_obj, "d")
         return s_nd.penalty + peer_obj.penalty + d_nd.penalty
 
 ]).directive("icswDeviceNetworkPeerRow", ["$templateCache", "$compile", ($templateCache, $compile) ->

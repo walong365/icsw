@@ -429,6 +429,7 @@ class mon_check_command(models.Model):
             "mon_icinga_log_raw_service_flapping_data",
             "mon_icinga_log_raw_service_notification_data",
             "mon_icinga_log_aggregated_service_data",
+            "mon_icinga_log_raw_service_downtime_data",
             "LicenseUsageDeviceService",
             "LicenseLockListDeviceService",
         ]

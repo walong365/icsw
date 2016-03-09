@@ -280,16 +280,16 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.network.peer.row">
-    <td>{{ get_devname_from_peer(ndip_obj, "s") }}</td>
-    <td>{{ get_netdevice_name_from_peer(ndip_obj, "s") }}</td>
-    <td>{{ get_ip_list_from_peer(ndip_obj, "s") }}</td>
+    <td ng-class="get_peer_class(ndip_obj, 's')">{{ get_devname_from_peer(ndip_obj, "s") }}</td>
+    <td ng-class="get_peer_class(ndip_obj, 's')">{{ get_netdevice_name_from_peer(ndip_obj, "s") }}</td>
+    <td ng-class="get_peer_class(ndip_obj, 's')">{{ get_ip_list_from_peer(ndip_obj, "s") }}</td>
     <td>
         with cost {{ ndip_obj.penalty }}
         &nbsp;<span class="label label-primary">{{ get_peer_cost(ndip_obj) }}</span>&nbsp;
     </td>
-    <td>{{ get_devname_from_peer(ndip_obj, "d") }}</td>
-    <td>{{ get_netdevice_name_from_peer(ndip_obj, "d") }}</td>
-    <td>{{ get_ip_list_from_peer(ndip_obj, "d") }}</td>
+    <td ng-class="get_peer_class(ndip_obj, 'd')">{{ get_devname_from_peer(ndip_obj, "d") }}</td>
+    <td ng-class="get_peer_class(ndip_obj, 'd')">{{ get_netdevice_name_from_peer(ndip_obj, "d") }}</td>
+    <td ng-class="get_peer_class(ndip_obj, 'd')">{{ get_ip_list_from_peer(ndip_obj, "d") }}</td>
     <td>
         {{ get_peer_type(ndip_obj) }}
     </td>
@@ -1299,7 +1299,7 @@
 <script type="text/ng-template" id="icsw.peer.form">
     <form class="form-horizontal" name="form_data">
         <h2>
-            Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
+            Network topology connection information from  get_peer_src_info(_edit_obj)
             (<span ng-show="source_is_local">source</span>
             <span ng-show="!source_is_local">destination</span>)
         </h2>
@@ -1321,10 +1321,10 @@
                 <div class="col-sm-9">
                     <ui-select ng-model="edit_obj.s_netdevice">
                         <ui-select-match class="ui-select-match" placeholder="select a netdevice">
-                            {{ $select.selected.devname }}
+                            {{ $select.selected.info_string }}
                         </ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in s_device.netdevice_set | props_filter:{devname:$select.search}">
-                            <div ng-bind-html="value.devname | highlight: $select.search"></div>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in source_helper.list | props_filter:{info_string:$select.search}" group-by="'device_group_name'">
+                            <div ng-bind-html="value.info_string | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
                 </div>
@@ -1338,7 +1338,7 @@
                         <ui-select-match class="ui-select-match" placeholder="select a target device">
                             {{$select.selected.info_string}}
                         </ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in d_get_route_peers() | props_filter:{info_string:$select.search}" group-by="'device_group_name'">
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in dest_helper.list | props_filter:{info_string:$select.search}" group-by="'device_group_name'">
                             <div ng-bind-html="value.info_string | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
