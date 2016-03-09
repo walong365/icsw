@@ -405,9 +405,9 @@ angular.module(
             defer = $q.defer()
             Restangular.all(ICSW_URLS.REST_NETDEVICE_LIST.slice(1)).post(new_nd).then(
                 (new_obj) =>
-                    @_fetch_netdevice(new_obj.idx, defer, "created netdevice ")
+                    @_fetch_netdevice(new_obj.idx, defer, "created netdevice")
                 (not_ok) ->
-                    defer.object("nd not created")
+                    defer.reject("nd not created")
             )
             return defer.promise
 

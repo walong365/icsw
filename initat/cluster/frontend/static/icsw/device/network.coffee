@@ -171,15 +171,6 @@ angular.module(
     $scope.copy_coms = false
     # mixins
 
-    $scope.peer_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q, "np")
-    $scope.peer_edit.create_template = "peer.information.form"
-    $scope.peer_edit.edit_template = "peer.information.form"
-    #$scope.peer_edit.edit_template = "netip_template.html"
-    $scope.peer_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_PEER_INFORMATION_LIST.slice(1))
-    $scope.peer_edit.modify_rest_url = ICSW_URLS.REST_PEER_INFORMATION_DETAIL.slice(1).slice(0, -2)
-    $scope.peer_edit.new_object_at_tail = false
-    $scope.peer_edit.use_promise = true
-
     $scope.boot_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q, "nb")
     $scope.boot_edit.edit_template = "device.boot.form"
     $scope.boot_edit.put_parameters = {"only_boot" : true}
@@ -389,44 +380,11 @@ angular.module(
         $scope.devices = cur_devs
         $scope.build_luts()
 
-    $scope.create_netip_ok = (obj) ->
-        if $scope.network_tree.nw_list.length and obj.netdevice_set.length
-            return true
-        else
-            return false
-
-    $scope.create_peer_ok = (obj) ->
-        if obj.netdevice_set.length
-            return true
-        else
-            return false
-
     $scope.edit_boot_settings = (obj, event) ->
         $scope.boot_edit.edit(obj, event).then(
             (mod_dev) ->
                 true
         )
-    $scope.check_for_peer_change = (ndev) ->
-        # at first remove from list
-        $scope.nd_peers = (entry for entry in $scope.nd_peers when entry.idx != ndev.idx)
-        if ndev.routing
-            _cd = $scope.dev_lut[ndev.device]
-            ndev.fqdn = _cd.full_name
-            ndev.device_name = _cd.name
-            ndev.device_group_name = _cd.device_group_name
-            $scope.nd_peers.push(ndev)
-        $scope.build_luts()
-
-    $scope.get_peer_src_info = (_edit_obj) ->
-        if $scope.source_is_local
-            _nd = $scope.nd_lut[$scope._edit_obj.s_netdevice]
-        else
-            _nd = $scope.nd_lut[$scope._edit_obj.d_netdevice]
-        if _nd
-            return _nd.devname + " on " + $scope.dev_lut[_nd.device].name
-        else
-            return "???"
-
     $scope.delete_peer_information = (ndip_obj, event) ->
         # find device / netdevice
         peer = ndip_obj.peer
@@ -440,61 +398,6 @@ angular.module(
                         $scope.nd_lut[peer.d_netdevice].peers = (entry for entry in $scope.nd_lut[peer.d_netdevice].peers when entry.peer.idx != peer.idx)
                     delete $scope.peer_lut[peer.idx]
         )
-    $scope.create_peer_information_dev = (obj, event) ->
-        $scope._current_dev = obj
-        $scope.source_is_local = true
-        $scope.peer_edit.create_list = undefined
-        $scope.peer_edit.new_object = (scope) ->
-            return {
-                "s_netdevice" : (entry.idx for entry in obj.netdevice_set)[0]
-                "penalty" : 1
-            }
-        $scope.create_peer_information(event)
-    $scope.create_peer_information_nd = (obj, event) ->
-        $scope._current_dev = $scope.dev_lut[obj.device]
-        $scope.source_is_local = true
-        $scope.peer_edit.create_list = undefined
-        $scope.peer_edit.new_object = (scope) ->
-            return {
-                "s_netdevice" : obj.idx
-                "penalty" : 1
-            }
-        $scope.create_peer_information(event)
-    $scope.create_peer_information = (event) ->
-        $scope.peer_edit.create(event).then(
-            (peer) ->
-                if peer != false
-                    $scope.peer_lut[peer.idx] = peer
-                    if peer.s_netdevice of $scope.nd_lut
-                        $scope.nd_lut[peer.s_netdevice].peers.push({"peer" : peer, "netdevice" : peer.s_netdevice, "target" : peer.d_netdevice})
-                    if peer.d_netdevice of $scope.nd_lut and peer.s_netdevice != peer.d_netdevice
-                        $scope.nd_lut[peer.d_netdevice].peers.push({"peer" : peer, "netdevice" : peer.d_netdevice, "target" : peer.s_netdevice})
-        )
-    $scope.ethtool_options = (ndip_obj, type) ->
-        if type == "a"
-            eth_opt = ndip_obj.ethtool_options & 3
-            return {
-                0: "default"
-                1: "on"
-                2: "off"
-            }[eth_opt]
-        else if type == "d"
-            eth_opt = (ndip_obj.ethtool_options >> 2) & 3
-            return {
-                0: "default"
-                1: "on"
-                2: "off"
-            }[eth_opt]
-        else if type == "s"
-            eth_opt = (ndip_obj.ethtool_options >> 4) & 7
-            return {
-                0: "default"
-                1: "10 MBit"
-                2: "100 MBit"
-                3: "1 GBit"
-                4: "10 GBit"
-            }[eth_opt]
-
     $scope.get_peer_target = (ndip_obj) ->
         # FIXME
         return "peer_target"
@@ -555,36 +458,41 @@ angular.module(
         # create or edit
         if create_mode
             edit_obj = {
-                "ip" : "0.0.0.0"
-                "_changed_by_user_": false
-                "network" : $scope.network_tree.nw_list[0].idx
-                # take first domain tree node
-                "domain_tree_node" : $scope.domain_tree.list[0].idx
+                "penalty": 1
+                "auto_created": false
+                "info": "new peer"
+                "s_spec": ""
+                "d_spec": ""
             }
             if obj_type == "dev"
-                title = "Create new IP on device '#{cur_obj.full_name}'"
-                edit_obj.netdevice = cur_obj.netdevice_set[0].idx
-                dev = cur_obj
+                title = "Create new peer on device '#{cur_obj.full_name}'"
+                edit_obj.s_netdevice = cur_obj.netdevice_set[0].idx
+                edit_obj.$$s_type = "l"
+                edit_obj.d_netdevice = cur_obj.netdevice_set[0].idx
+                edit_obj.$$d_type = "l"
+                helper_mode = "d"
+
             else if obj_type == "nd"
-                title = "Create new IP on netdevice '#{cur_obj.devname}'"
-                edit_obj.netdevice = cur_obj.idx
-                dev = $scope.device_tree.all_lut[cur_obj.device]
+                title = "Create new peer on netdevice '#{cur_obj.devname}'"
+                edit_obj.s_netdevice = cur_obj.idx
+                edit_obj.$$s_type = "l"
+                edit_obj.d_netdevice = cur_obj.idx
+                edit_obj.$$d_type = "l"
+                helper_mode = "n"
         else
             edit_obj = cur_obj
             dbu = new icswPeerInformationBackup()
             dbu.create_backup(edit_obj)
             title = "Edit Peer Information"
-            peer_info = ""
-            # build peering lists
-
+            helper_mode = "e"
 
         # which template to use
         template_name = "icsw.peer.form"
         sub_scope = $scope.$new(false)
         sub_scope.edit_obj = edit_obj
+        sub_scope.source_helper = $scope.peer_list.build_peer_helper($scope.device_tree, edit_obj, $scope.local_helper_obj, $scope.remote_helper_obj, "s", helper_mode)
+        sub_scope.dest_helper = $scope.peer_list.build_peer_helper($scope.device_tree, edit_obj, $scope.local_helper_obj, $scope.remote_helper_obj, "d", helper_mode)
         # create link
-        sub_scope.source_helper = $scope.peer_list.build_peer_helper($scope.device_tree, cur_obj, $scope.local_helper_obj, $scope.remote_helper_obj, "s")
-        sub_scope.dest_helper = $scope.peer_list.build_peer_helper($scope.device_tree, cur_obj, $scope.local_helper_obj, $scope.remote_helper_obj, "d")
         sub_scope.create_mode = create_mode
 
         # add functions
@@ -601,9 +509,8 @@ angular.module(
                         toaster.pop("warning", "form validation problem", "", 0)
                         d.reject("form not valid")
                     else
-                        nd = $scope.local_helper_obj.netdevice_lut[sub_scope.edit_obj.netdevice]
                         if create_mode
-                            $scope.device_tree.create_netip(sub_scope.edit_obj, nd).then(
+                            $scope.peer_list.create_peer(sub_scope.edit_obj, $scope.device_tree).then(
                                 (ok) ->
                                     d.resolve("netip created")
                                 (notok) ->
@@ -644,6 +551,20 @@ angular.module(
                 $scope.device_tree.build_helper_luts(
                     ["network_info"]
                     $scope.local_helper_obj
+                )
+        )
+
+    $scope.delete_peer = (peer, event) ->
+        icswToolsSimpleModalService("Really delete Peer ?").then(
+            () =>
+                $scope.peer_list.delete_peer(peer).then(
+                    () ->
+                        $scope.peer_list.build_luts()
+                        $scope.peer_list.enrich_device_tree($scope.device_tree, $scope.local_helper_obj, $scope.remote_helper_obj)
+                        $scope.device_tree.build_helper_luts(
+                            ["network_info"]
+                            $scope.local_helper_obj
+                        )
                 )
         )
 
@@ -914,6 +835,31 @@ angular.module(
         )
 
 ]).controller("icswDeviceNetworkNetdeviceRowCtrl", ["$scope", ($scope) ->
+    ethtool_options = (ndip_obj, type) ->
+        if type == "a"
+            eth_opt = ndip_obj.ethtool_options & 3
+            return {
+                0: "default"
+                1: "on"
+                2: "off"
+            }[eth_opt]
+        else if type == "d"
+            eth_opt = (ndip_obj.ethtool_options >> 2) & 3
+            return {
+                0: "default"
+                1: "on"
+                2: "off"
+            }[eth_opt]
+        else if type == "s"
+            eth_opt = (ndip_obj.ethtool_options >> 4) & 7
+            return {
+                0: "default"
+                1: "10 MBit"
+                2: "100 MBit"
+                3: "1 GBit"
+                4: "10 GBit"
+            }[eth_opt]
+
     $scope.get_num_peers_nd = (nd) ->
         if nd.idx of $scope.peer_list.nd_lut
             return $scope.peer_list.nd_lut[nd.idx].length
@@ -974,9 +920,9 @@ angular.module(
         info_f.push("fake MACAddress: #{ndev.fake_macaddr}<br>")
         info_f.push("force write DHCP: " + if ndev.dhcp_device then "yes" else "no")
         info_f.push("<hr>")
-        info_f.push("Autonegotiation: " + $scope.ethtool_options(ndev, "a") + "<br>")
-        info_f.push("Duplex: " + $scope.ethtool_options(ndev, "a") +  "<br>")
-        info_f.push("Speed: " + $scope.ethtool_options(ndev, "a") + "<br>")
+        info_f.push("Autonegotiation: " + ethtool_options(ndev, "a") + "<br>")
+        info_f.push("Duplex: " +ethtool_options(ndev, "d") +  "<br>")
+        info_f.push("Speed: " + ethtool_options(ndev, "s") + "<br>")
         info_f.push("<hr>")
         info_f.push("Monitoring: " + $scope.get_netdevice_speed(ndev))
         info_f.push("</div>")
@@ -1133,6 +1079,18 @@ angular.module(
         controller: "icswDeviceNetworkIpRowCtrl"
     }
 ]).controller("icswDeviceNetworkDeviceRowCtrl", ["$scope", ($scope) ->
+
+    $scope.create_netip_ok = (obj) ->
+        if $scope.network_tree.nw_list.length and obj.netdevice_set.length
+            return true
+        else
+            return false
+
+    $scope.create_peer_ok = (obj) ->
+        if obj.netdevice_set.length
+            return true
+        else
+            return false
 
     $scope.get_bootdevice_info_class = (obj) ->
         num_bootips = $scope.get_num_bootips(obj)

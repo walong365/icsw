@@ -299,9 +299,12 @@ angular.module(
                                 if peer.d_netdevice == nd.idx
                                     peer.$$d_type = peer_type
 
-        build_peer_helper: (device_tree, cur_peer, local_ho, remote_ho, peer_side) =>
+        build_peer_helper: (device_tree, cur_peer, local_ho, remote_ho, peer_side, helper_mode) =>
             # returns a sorted peer list for the frontend
             # peer_type : (s)ource or (d)estination
+            # helper_mode may be one of
+            # e ... edit existing peer
+            # d ... create new peer for device
             get_netdevice = (nd_side) ->
                 nd_idx = cur_peer["#{nd_side}_netdevice"]
                 if cur_peer["$$#{nd_side}_type"] == "l"
@@ -312,8 +315,31 @@ angular.module(
             helper = new icswPeerHelperObject()
             # reference netdevice
             ref_nd = get_netdevice(peer_side)
-            console.log "ref", ref_nd
-            if ref_nd.routing
+            # if helper_mode == "d"
+            if helper_mode == "e"
+                if ref_nd.routing
+                    # add netowrk topology central nodes
+                    _add_ntcn = true
+                    # add devices nodes
+                    _add_device = false
+                else
+                    _add_ntcn = false
+                    _add_device = false
+            else if helper_mode == "d"
+                if peer_side == "s"
+                    _add_ntcn = false
+                    _add_device = true
+                else
+                    _add_ntcn = true
+                    _add_device = false
+            else if helper_mode == "n"
+                if peer_side == "s"
+                    _add_ntcn = false
+                    _add_device = false
+                else
+                    _add_ntcn = true
+                    _add_device = false
+            if _add_ntcn
                 # step 1: collect all peerable netdevices from the device tree
                 # (only if the reference netdevice is a routing node)
                 for dev in device_tree.enabled_list
@@ -327,13 +353,54 @@ angular.module(
                 for nd_pk, nd_info of @peer_lut
                     nd_info.info_string = "#{nd_info.devname} (#{nd_info.penalty}) on #{nd_info.full_name}"
                     helper.feed(nd_info)
-            # step 3: add reference netdevice
             ref_dev = device_tree.all_lut[ref_nd.device]
+            if _add_device
+                # step 3: add device local netdevices
+                for nd in ref_dev.netdevice_set
+                    nd.info_string = "#{nd.devname} (#{nd.penalty}) on #{ref_dev.full_name}"
+                    helper.feed(nd)
+            # step 4: add reference netdevice
             ref_nd.device_group_name = ref_dev.device_group_name
             ref_nd.info_string = "#{ref_nd.devname} (#{ref_nd.penalty}) on #{ref_dev.full_name}"
             helper.feed(ref_nd)
             helper.sort()
             return helper
+
+    # peer creation / deletion
+        create_peer: (new_peer, device_tree) =>
+            # create new peer
+            defer = $q.defer()
+            Restangular.all(ICSW_URLS.REST_PEER_INFORMATION_LIST.slice(1)).post(new_peer).then(
+                (new_obj) =>
+                    @_fetch_peer(new_obj.idx, defer, "created peer")
+                (not_ok) ->
+                    defer.reject("peer not created")
+            )
+            return defer.promise
+
+        delete_peer: (del_peer) =>
+            # ensure REST hooks
+            Restangular.restangularizeElement(null, del_peer, ICSW_URLS.REST_PEER_INFORMATION_DETAIL.slice(1).slice(0, -2))
+            defer = $q.defer()
+            del_peer.remove().then(
+                (ok) =>
+                    _.remove(@list, (entry) -> return entry.idx == del_peer.idx)
+                    @build_luts()
+                    defer.resolve("deleted")
+                (error) ->
+                    defer.reject("not deleted")
+            )
+            return defer.promise
+
+        _fetch_peer: (pk, defer, msg) =>
+            Restangular.one(ICSW_URLS.REST_PEER_INFORMATION_LIST.slice(1)).get({"idx": pk}).then(
+                (new_peer) =>
+                    new_peer = new_peer[0]
+                    @list.push(new_peer)
+                    @build_luts()
+                    defer.resolve(msg)
+            )
+
 
 ]).service("icswPeerInformationService", [
     "$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall", "icswTools", "icswPeerInformation", "$rootScope", "ICSW_SIGNALS",

@@ -181,7 +181,7 @@
                 <ul class="dropdown-menu">
                     <li ng-click="edit_netdevice(ndip_obj, $event, true)"><a>Netdevice</a></li>
                     <li ng-show="create_netip_ok(ndip_obj)" ng-click="edit_netip(ndip_obj, 'dev', $event, true)"><a>IP Address</a></li>
-                    <li ng-show="create_peer_ok(ndip_obj)" ng-click="create_peer_information_dev(ndip_obj, $event)"><a>Network topology connection</a></li>
+                    <li ng-show="create_peer_ok(ndip_obj)" ng-click="edit_peer(ndip_obj, 'dev', $event, true)"><a>Network topology connection</a></li>
                 </ul>
             </div>
             <icsw-tools-button type="reload" value="update network" size="xs"
@@ -252,7 +252,7 @@
             </button>
             <ul class="dropdown-menu">
                 <li ng-show="network_tree.nw_list.length" ng-click="edit_netip(ndip_obj, 'nd', $event, true)"><a>IP Address</a></li>
-                <li ng-click="create_peer_information_nd(ndip_obj, $event)"><a>Network topology connection</a></li>
+                <li ng-click="edit_peer(ndip_obj, 'nd', $event, true)"><a>Network topology connection</a></li>
             </ul>
         </div>
     </td>
@@ -1299,16 +1299,14 @@
 <script type="text/ng-template" id="icsw.peer.form">
     <form class="form-horizontal" name="form_data">
         <h2>
-            Network topology connection information from  get_peer_src_info(_edit_obj)
-            (<span ng-show="source_is_local">source</span>
-            <span ng-show="!source_is_local">destination</span>)
+            Network topology connection (peer)
         </h2>
         <fieldset>
             <legend>Settings</legend>
             <div class="form-group">
                 <label class="control-label col-sm-2 requiredField">
-                    Cost<span class="asteriskField">*</span></label>
-
+                    Cost<span class="asteriskField">*</span>
+                </label>
                 <div class="controls col-sm-9">
                     <input class="numberinput form-control" max="128" min="1" name="penalty" ng-model="edit_obj.penalty" required="True" type="number" value="0"/>
                 </div>

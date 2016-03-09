@@ -103,8 +103,8 @@ class netdevice_speed_serializer(serializers.ModelSerializer):
 
 
 class peer_information_serializer(serializers.ModelSerializer):
-    s_device = serializers.IntegerField(source="get_s_device")
-    d_device = serializers.IntegerField(source="get_d_device")
+    s_device = serializers.IntegerField(source="get_s_device", read_only=True)
+    d_device = serializers.IntegerField(source="get_d_device", read_only=True)
     
     class Meta:
         model = peer_information
