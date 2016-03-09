@@ -51,12 +51,12 @@ def createFactor(unit):
     return options[unit]
 
 def getState(state):
-    options = {'T' : "Completed successfully",
-               'C' : "Created,not yet running",
-               'R': "Running",
-               'E': "Terminated with Errors",
-               'f': "Fatal error",
-               'A': "Canceled by user"}
+    options = {'T' : '"Completed successfully"',
+               'C' : '"Created,not yet running"',
+               'R': '"Running"',
+               'E': '"Terminated with Errors"',
+               'f': '"Fatal error"',
+               'A': '"Canceled by user"'}
     return options[state]
 
 def getUnit(time_unit):
@@ -87,10 +87,13 @@ def checkFailedBackups(courser, time, time_unit, unit, state, warning, critical)
         checkState["returnMessage"] = "CRITICAL - " + str(result) + " " + str(getState(state)) + " Backups in the past " + str(time) + " " + str(getUnit(time_unit))
     elif result >= int(warning):
         checkState["returnCode"] = 1
-        checkState["returnMessage"] = "WARNING - " + str(result) + " Backups failed/canceled last " + str(time) + " " + str(getUnit(time_unit))
+        checkState["returnMessage"] = "WARNING - " + str(result) +  " " + str(getState(state)) + " Backups in the past " + str(time) + " " + str(getUnit(time_unit))
     else:
         checkState["returnCode"] = 0
-        checkState["returnMessage"] = "OK - Only " + str(result) + " Backups failed in the last " + str(time) + " " + str(getUnit(time_unit))
+        if result == 0:
+            checkState["returnMessage"] = "OK - No Backups in state " + str(getState(state)) + " in the last " + str(time) + " " + str(getUnit(time_unit))
+        else:
+            checkState["returnMessage"] = "OK - Only " + str(result) + " Backups in state " + str(getState(state)) + " in the last " + str(time) + " " + str(getUnit(time_unit))
     checkState["performanceData"] = "Failed=" + str(result) + ";" + str(warning) + ";" + str(critical) + ";;"
 
     return checkState
@@ -185,16 +188,17 @@ def checkEmptyBackups(cursor, time, time_unit, kind, warning, critical):
             FROM Job
             Where Level in (""" + str(kind) + """) and JobBytes=0 and starttime > DATE_SUB(now(), INTERVAL  """ + str(time) + """  DAY) and JobStatus in ('T');
             """
+            print(query)
             cursor.execute(query)
             results = cursor.fetchall()  # Returns a value
             result = len(results) 
             
             if result >= int(critical):
                     checkState["returnCode"] = 2
-                    checkState["returnMessage"] = "CRITICAL - " + str(result) + " successful " + str(kind) + " backups are empty"
+                    checkState["returnMessage"] = "CRITICAL - " + str(result) + " successful " + str(kind) + " backups are empty for the past " + str(time) + " " + str(getUnit(time_unit))
             elif result >= int(warning):
                     checkState["returnCode"] = 1
-                    checkState["returnMessage"] = "WARNING - " + str(result) + " successful " + str(kind) + " backups are empty!"
+                    checkState["returnMessage"] = "WARNING - " + str(result) + " successful " + str(kind) + " backups are empty for the last " + str(time) + " " + str(getUnit(time_unit))
             else:
                     checkState["returnCode"] = 0
                     checkState["returnMessage"] = "OK - All " + str(kind) + " backups are fine"
