@@ -505,10 +505,10 @@ angular.module(
             _fetch = $q.defer()
             if _.isEmpty(en_req)
                 # empty request, just feed to dth
-                console.log "enrichment:", en_list, "for", dth, "not needed"
+                # console.log "enrichment:", en_list, "for", dth, "not needed"
                 _fetch.resolve({})
             else
-                console.log "*** enrichment:", en_list, "for", dth, "resulted in non-empty", en_req
+                # console.log "*** enrichment:", en_list, "for", dth, "resulted in non-empty", en_req
                 # non-empty request, fetch from server
                 icswSimpleAjaxCall(
                     "url": ICSW_URLS.DEVICE_ENRICH_DEVICES
@@ -523,9 +523,9 @@ angular.module(
             _fetch.promise.then(
                 (result) =>
                     # clear previous values
-                    console.log "clear previous enrichment values"
+                    # console.log "clear previous enrichment values"
                     (dev.$$_enrichment_info.clear_infos(en_req) for dev in dth.devices)
-                    console.log "set new enrichment values"
+                    # console.log "set new enrichment values"
                     # feed results back to enricher
                     @enricher.feed_results(result, en_req)
                     # build local luts
@@ -556,50 +556,46 @@ angular.module(
         init_device_scans: () =>
             # devices with scans running (pk => scan)
             @scans_running = {}
+            @scans_promise = {}
             @scan_timeout = undefined
 
         register_device_scan: (dev, scan_settings) =>
             defer = $q.defer()
+
             # register scan mode
+
             @set_device_scan(dev, scan_settings.scan_mode)
 
-            # start scan on server
+            if scan_settings.scan_mode != "base"
+                # save defer function for later reference
+                @scans_promise[dev.idx] = defer
 
+            # start scan on server
             icswSimpleAjaxCall(
                 url     : ICSW_URLS.DEVICE_SCAN_DEVICE_NETWORK
                 data    :
                     "settings" : angular.toJson(scan_settings)
             ).then(
                 (xml) =>
-                    # register device_scan
-                    # $scope.update_scans()
-                    if scan_settings.scan_mode != "base"
-                        # rescan device network
-                        @enrich_devices(new icswDeviceTreeHelper(@, [dev]), ["network_info"], true).then(
-                            (result) =>
-                                defer.resolve("scan done")
-                        )
-                    else
+                    # scan startet (or already done for base-scan because base-scan is synchronous)
+                    @check_scans_running()
+                    if scan_settings.scan_mode == "base"
                         defer.resolve("scan done")
                 (error) ->
                     defer.reject("scan not ok")
             )
 
-            # start check loop
-
-            @check_scans_running()
-
             return defer.promise
 
         set_device_scan: (dev, scan_type) =>
             _changed = false
+            dev.active_scan = scan_type
             if dev.idx not of @scans_running
                 prev_mode = ""
                 _changed = true
                 @scans_running[dev.idx] = scan_type
             else
                 prev_mode = @scans_running[dev.idx]
-                console.log ".", prev_mode
                 if @scans_running[dev.idx] != scan_type
                     @scans_running[dev.idx] = scan_type
                     _changed = true
@@ -607,11 +603,17 @@ angular.module(
                 # send no signal
                 if prev_mode == "base"
                     _changed = false
-                    en_type = if prev_mode == "base" then "com_info" else "network_info"
                     # force update of com_info
-                    @enrich_devices(new icswDeviceTreeHelper(@, [dev]), [en_type], true).then(
+                    @enrich_devices(new icswDeviceTreeHelper(@, [dev]), ["com_info"], true).then(
                         (result) =>
                             $rootScope.$emit(ICSW_SIGNALS("ICSW_DEVICE_SCAN_CHANGED"), dev.idx, "")
+                    )
+                else if @scans_promise[dev.idx]?
+                    # rescan device network
+                    @enrich_devices(new icswDeviceTreeHelper(@, [dev]), ["network_info"], true).then(
+                        (result) =>
+                            @scans_promise[dev.idx].resolve("scan done")
+                            delete @scans_promise[dev.idx]
                     )
                 delete @scans_running[dev.idx]
             if _changed
@@ -628,7 +630,7 @@ angular.module(
                     (result) =>
                         for _res in result
                             @set_device_scan(@all_lut[_res.pk], _res.active_scan)
-                        @scan_timeout = $timeout(@check_scans_running, 5000)
+                        @scan_timeout = $timeout(@check_scans_running, 1000)
                 )
 
 ]).service("icswDeviceTreeService", ["$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall", "icswTools", "icswDeviceTree", "$rootScope", "ICSW_SIGNALS", "icswDomainTreeService", ($q, Restangular, ICSW_URLS, $window, icswCachingCall, icswTools, icswDeviceTree, $rootScope, ICSW_SIGNALS, icswDomainTreeService) ->

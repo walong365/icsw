@@ -1,6 +1,7 @@
 <script type="text/ng-template" id="icsw.device.network.overview">
     <h3>
         Network config for {{ devices.length }} devices ({{ local_helper_obj.netdevice_list.length }} netdevices, {{ local_helper_obj.net_ip_list.length }} IPs, {{ local_helper_obj.peer_list.length }} peers)
+        <icsw-tools-button ng-if="show_copy_button" type="modify" size="xs" value="Copy networks" ng-click="copy_network()"></icsw-tools-button>
     </h3>
     <uib-accordion close-others="no">
         <uib-accordion-group is-open="device_open">
@@ -13,7 +14,6 @@
                     <tr>
                         <th>Device</th>
                         <th>Coms</th>
-                        <th>ScanInfo</th>
                         <th>BootInfo</th>
                         <th>#Ports</th>
                         <th>#IPs</th>
@@ -109,17 +109,22 @@
             </table>
         </uib-accordion-group>
     </uib-accordion>
-    <div class="input-group-btn" ng-show="devices.length > 1 && show_copy_button " ng-if="acl_create(null, 'backbone.device.change_network')">
-        <div class="btn-group">
-            <button type="button" class="btn btn-danger btn-md dropdown-toggle" data-toggle="dropdown">
-                Copy network from<span class="caret"></span>
-            </button>
-            <ul class="dropdown-menu">
-                <li ng-click="copy_network(obj, $event)" ng-repeat="obj in devices"><a>{{ obj.full_name }}</a></li>
-            </ul>
-            <input type="button" ng-class="copy_com_class()" ng-value="copy_com_value()" ng-click="toggle_copy_com()"></input>
-        </div>
-    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.device.network.copy">
+    <form class="form-horizontal" name="form_data">
+        Copy network from
+        <ui-select ng-model="settings.src_device" style="max-width:400px; min-width:240px;">
+            <ui-select-match class="ui-select-match" placeholder="select a target netdevice speed">{{$select.selected.full_name}}</ui-select-match>
+            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in devices">
+                <div ng-bind-html="value.full_name | highlight: $select.search"></div>
+            </ui-select-choices>
+        </ui-select>
+        <ul class="dropdown-menu">
+            <li ng-click="copy_network(obj, $event)" ng-repeat="obj in devices"><a>{{ obj.full_name }}</a></li>
+        </ul>
+        <input type="button" ng-class="copy_com_class()" ng-value="copy_com_value()" ng-click="toggle_copy_com()"></input>
+    </form>
 </script>
 
 <script type="text/ng-template" id="icsw.device.network.device.row">
@@ -128,11 +133,6 @@
     </td>
     <td>
         <icsw-device-com-capabilities device="ndip_obj"></icsw-device-com-capabilities>
-    </td>
-    <td>
-        <button type="button" class="btn btn-xs btn-warning" data-spinner-size="12" ng-show="ndip_obj.active_scan" ladda="ndip_obj.active_scan" data-style="expand-left">
-            <span>{{ ndip_obj.active_scan }}</span>
-        </button>
     </td>
     <td>
         <input
@@ -230,23 +230,24 @@
          </button>
     </td>
     <td>
-        <div ng-show="!dev_lut[ndip_obj.device].active_scan">
+        <div ng-show="no_scan_running(ndip_obj)">
             <icsw-tools-button type="modify" ng-click="edit_netdevice(ndip_obj, $event, false)" size="xs"
                     ng-show="acl_modify(obj, 'backbone.device.change_network')"></icsw-tools-button>
         </div>
     </td>
     <td>
-        <div ng-show="!dev_lut[ndip_obj.device].active_scan">
+        <div ng-show="no_scan_running(ndip_obj)">
             <icsw-tools-button type="delete" size="xs" ng-click="delete_netdevice(ndip_obj, $event)" ng-show="acl_delete(obj, 'backbone.device.change_network')"/>
         </div>
     </td>
     <td>
-        <div class="btn-group btn-xs" ng-show="acl_create(obj, 'backbone.device.change_network') && !dev_lut[ndip_obj.device].active_scan">
+        <div class="btn-group btn-xs" ng-show="acl_create(obj, 'backbone.device.change_network') && no_scan_running(ndip_obj)">
             <button type="button" class="btn {{ icswToolsButtonConfigService.get_css_class('create') }} btn-xs dropdown-toggle" data-toggle="dropdown">
                 Create new <span class="caret"></span>
             </button>
             <ul class="dropdown-menu">
-                <li ng-show="network_tree.nw_list.length" ng-click="edit_netip(ndip_obj, 'nd', $event, true)"><a>IP Address</a></li>
+                <li ng-show="network_tree.nw_list.length" ng-click="edit_netip(ndip_obj, 'nd', $event, true)">
+                    <a>IP Address</a></li>
                 <li ng-click="edit_peer(ndip_obj, 'nd', $event, true)"><a>Network topology connection</a></li>
             </ul>
         </div>
@@ -263,12 +264,12 @@
         <span ng-show="ndip_obj.alias">{{ ndip_obj.alias }} <span ng-show="ndip_obj.alias_excl">( exclusive )</span></span>
     </td>
     <td>
-        <div ng-show="!dev_lut[nd_lut[ndip_obj.netdevice].device].active_scan">
+        <div ng-show="no_scan_running(ndip_obj)">
             <icsw-tools-button type="modify" size="xs" ng-click="edit_netip(ndip_obj, 'ip', $event, false)" ng-show="acl_modify(obj, 'backbone.device.change_network')"/>
         </div>
     </td>
     <td>
-        <div ng-show="!dev_lut[nd_lut[ndip_obj.netdevice].device].active_scan">
+        <div ng-show="no_scan_running(ndip_obj)">
             <icsw-tools-button type="delete" size="xs" ng-click="delete_netip(ndip_obj, $event)" ng-show="acl_delete(obj, 'backbone.device.change_network')"/>
         </div>
     </td>
@@ -647,7 +648,7 @@
 </script>
 
 <script type="text/ng-template" id="network.device.type.form">
-    <form id="form" class="form-horizontal" name="form_data">
+    <form class="form-horizontal" name="form_data">
         <fieldset>
             <legend>Base data</legend>
             <div class="form-group ng-class:form_error('identifier')">

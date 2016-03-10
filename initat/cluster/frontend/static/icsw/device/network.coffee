@@ -168,7 +168,6 @@ angular.module(
     $scope.netdevice_open = true
     $scope.netip_open = false
     $scope.peer_open = false
-    $scope.copy_coms = false
 
     $scope.devices = []
     $scope.local_helper_obj = undefined
@@ -227,6 +226,58 @@ angular.module(
                         )
                 )
         )
+
+    $scope.reload_everything = (ss_id, force_network_info) ->
+        # reloads everything possible, for scan and copy network calls
+        d = $q.defer()
+        $q.all(
+            [
+                # new network tree
+                icswNetworkTreeService.reload(ss_id)
+                # new peer infos
+                icswPeerInformationService.reload(ss_id, $scope.peer_list)
+                # new network infos for all devices
+                $scope.device_tree.enrich_devices($scope.local_helper_obj, ["network_info"], force_network_info)
+            ]
+        ).then(
+            (done) ->
+                # maybe some new remote devices are to add
+                missing_list = $scope.peer_list.find_missing_devices($scope.device_tree)
+                defer = $q.defer()
+                if missing_list.length
+                    # enrich devices with missing peer info
+                    _en_devices = ($scope.device_tree.all_lut[pk] for pk in missing_list)
+                    # temoprary hs
+                    $scope.device_tree.enrich_devices(
+                        icswDeviceTreeHelperService.create($scope.device_tree, _en_devices)
+                        ["network_info"]
+                        force_network_info
+                    ).then(
+                        (done) ->
+                            defer.resolve("remote enriched")
+                    )
+                else
+                    defer.resolve("nothing missing")
+                defer.promise.then(
+                    (done) ->
+                        # every device in the device tree is now fully populated
+                        remote = $scope.peer_list.find_remote_devices($scope.device_tree, $scope.devices)
+                        temp_hs = icswDeviceTreeHelperService.create($scope.device_tree, ($scope.device_tree.all_lut[rem] for rem in remote))
+                        # dummy call to enrich_devices, only used to create the lists and luts
+                        $scope.device_tree.enrich_devices(
+                            temp_hs
+                            ["network_info"]
+                        ).then(
+                            (done) ->
+                                # everything is now in place
+                                $scope.remote_helper_obj = temp_hs
+                                $scope.peer_list.enrich_device_tree($scope.device_tree, $scope.local_helper_obj, $scope.remote_helper_obj)
+                                console.log "done reloading"
+                                d.resolve("scan ok")
+                        )
+                )
+        )
+        return d.promise
 
     $scope.scan_device_network = (dev, event) ->
 
@@ -310,49 +361,10 @@ angular.module(
                         blockUI.start("Starting scan")
                         $scope.device_tree.register_device_scan(dev, sub_scope.scan_settings).then(
                             (ok) ->
-                                # register device_scan
-                                $q.all(
-                                    [
-                                        icswNetworkTreeService.reload("rescan")
-                                        icswPeerInformationService.reload(sub_scope.$id, $scope.peer_list)
-                                    ]
-                                ).then(
-                                    (done) ->
-                                        # maybe some new remote devices are to add
-                                        missing_list = $scope.peer_list.find_missing_devices($scope.device_tree)
-                                        defer = $q.defer()
-                                        if missing_list.length
-                                            # enrich devices with missing peer info
-                                            _en_devices = ($scope.device_tree.all_lut[pk] for pk in missing_list)
-                                            # temoprary hs
-                                            $scope.device_tree.enrich_devices(
-                                                icswDeviceTreeHelperService.create($scope.device_tree, _en_devices)
-                                                ["network_info"]
-                                            ).then(
-                                                (done) ->
-                                                    defer.resolve("remote enriched")
-                                            )
-                                        else
-                                            defer.resolve("nothing missing")
-                                        defer.promise.then(
-                                            (done) ->
-                                                # every device in the device tree is now fully populated
-                                                remote = $scope.peer_list.find_remote_devices($scope.device_tree, $scope.devices)
-                                                temp_hs = icswDeviceTreeHelperService.create($scope.device_tree, ($scope.device_tree.all_lut[rem] for rem in remote))
-                                                # dummy call to enrich_devices, only used to create the lists and luts
-                                                $scope.device_tree.enrich_devices(
-                                                    temp_hs
-                                                    ["network_info"]
-                                                ).then(
-                                                    (done) ->
-                                                        # everything is now in place
-                                                        $scope.remote_helper_obj = temp_hs
-                                                        $scope.peer_list.enrich_device_tree($scope.device_tree, $scope.local_helper_obj, $scope.remote_helper_obj)
-                                                        console.log "done reloading"
-                                                        blockUI.stop()
-                                                        d.resolve("scan ok")
-                                                )
-                                        )
+                                $scope.reload_everything(sub_scope.$id, false).then(
+                                    (res) ->
+                                        blockUI.stop()
+                                        d.resolve("reloaded")
                                 )
                             (notok) ->
                                 blockUI.stop()
@@ -377,36 +389,70 @@ angular.module(
         )
         return
 
-    $scope.toggle_copy_com = () ->
-        $scope.copy_coms = !$scope.copy_coms
-
-    $scope.copy_com_class = () ->
-        if $scope.copy_coms
-            return "btn btn-sm btn-success"
-        else
-            return "btn btn-sm btn-default"
-
-    $scope.copy_com_value = () ->
-        if $scope.copy_coms
-            return "Copy Coms and Schemes"
-        else
-            return "start with empty Coms and Schemes"
-
     $scope.copy_network = (src_obj, event) ->
-        icswToolsSimpleModalService("Overwrite all networks with the one from #{src_obj.full_name} ?").then(
-            () ->
-                blockUI.start()
-                icswSimpleAjaxCall(
-                    url     : ICSW_URLS.NETWORK_COPY_NETWORK
-                    data    : {
-                        "source_dev" : src_obj.idx
-                        "copy_coms"  : $scope.copy_coms
-                        "all_devs"   : angular.toJson($scope.devsel_list)
-                    }
-                ).then((xml) ->
-                    blockUI.stop()
-                    $scope.reload()
-                )
+
+        sub_scope = $scope.$new(false)
+        sub_scope.copy_coms = false
+        sub_scope.settings = {
+            "copy_coms": false
+            "src_device": $scope.devices[0]
+        }
+        sub_scope.copy_com_class = () ->
+            if sub_scope.settings.copy_coms
+                return "btn btn-sm btn-success"
+            else
+                return "btn btn-sm btn-default"
+
+        sub_scope.toggle_copy_com = () ->
+            sub_scope.settings.copy_coms = !sub_scope.settings.copy_coms
+
+        sub_scope.copy_com_value = () ->
+            if sub_scope.settings.copy_coms
+                return "Copy ComCapabilities and Schemes"
+            else
+                return "start with empty ComCapabilitiess and Schemes"
+
+        icswComplexModalService(
+            {
+                message: $compile($templateCache.get("icsw.device.network.copy"))(sub_scope)
+                ok_label: "Copy"
+                title: "Copy network settings"
+                ok_callback: (modal) ->
+                    d = $q.defer()
+                    if sub_scope.form_data.$invalid
+                        toaster.pop("warning", "form validation problem", "", 0)
+                        d.reject("form not valid")
+                    else
+                        blockUI.start()
+                        icswSimpleAjaxCall(
+                            url     : ICSW_URLS.NETWORK_COPY_NETWORK
+                            data    : {
+                                "source_dev" : sub_scope.settings.src_device.idx
+                                "copy_coms"  : sub_scope.settings.copy_coms
+                                "all_devs"   : angular.toJson((dev.idx for dev in $scope.devices))
+                            }
+                        ).then(
+                            (xml) ->
+                                $scope.reload_everything(sub_scope.$id, true).then(
+                                    (res) ->
+                                        blockUI.stop()
+                                        d.resolve("reloaded")
+                                )
+                                d.resolve("copied")
+                            (xml) ->
+                                blockUI.stop()
+                                d.reject("not OK")
+                        )
+                    return d.promise
+                cancel_callback: (modal) ->
+                    d = $q.defer()
+                    d.resolve("cancel")
+                    return d.promise
+            }
+        ).then(
+            (fin) ->
+                console.log "Copy modifier closed"
+                sub_scope.$destroy()
         )
 
     $scope.edit_boot_settings = (obj, event) ->
@@ -878,6 +924,9 @@ angular.module(
                 4: "10 GBit"
             }[eth_opt]
 
+    $scope.no_scan_running = (nd) ->
+        return if $scope.device_tree.all_lut[nd.device].active_scan then false else true
+
     $scope.get_num_peers_nd = (nd) ->
         if nd.idx of $scope.peer_list.nd_lut
             return $scope.peer_list.nd_lut[nd.idx].length
@@ -1093,6 +1142,9 @@ angular.module(
             if nd.master_device
                 nd_name = "#{nd_name} on " + String($scope.local_helper_obj.netdevice_lut[nd.master_device].devname)
         return nd_name
+
+    $scope.no_scan_running = (ip_obj) ->
+        return if $scope.device_tree.all_lut[$scope.local_helper_obj.netdevice_lut[ip_obj.netdevice].device].active_scan then false else true
 
     $scope.get_devname_from_ip = (ip_obj) ->
         return $scope.device_tree.all_lut[$scope.local_helper_obj.netdevice_lut[ip_obj.netdevice].device].full_name

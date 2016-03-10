@@ -707,10 +707,13 @@ class netdevice(models.Model):
             vlan_id=self.vlan_id,
             enabled=self.enabled,
             mtu=self.mtu,
+            snmp_idx=self.snmp_idx,
             force_network_device_type_match=self.force_network_device_type_match,
             snmp_network_type=self.snmp_network_type,
             snmp_admin_status=self.snmp_admin_status,
             snmp_oper_status=self.snmp_oper_status,
+            desired_status=self.desired_status,
+            wmi_interface_index=self.wmi_interface_index,
             # hm ...
             # bridge_device=self.bridge_device,
         )
