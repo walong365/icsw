@@ -1,0 +1,77 @@
+<script type="text/ng-template" id="icsw.device.network.host.node">
+    <g class="node draggable" node_id="{{ node.id }}"
+        ng-mouseenter="mouse_enter()"
+        ng-mouseleave="mouse_leave()"
+        ng-click="mouse_click()"
+    >
+        <circle r="18" fill="{{ fill_color }}" stroke-width="{{ stroke_width }}" stroke="{{ stroke_color }}" cursor="crosshair"></circle>
+        <text text-anchor="middle" alignment-baseline="middle" cursor="crosshair">{{ node.name }}</text>
+    </g>
+</script>
+
+<script type="text/ng-template" id="icsw.device.network.host.livestatus">
+    <g class="node draggable" node_id="{{ node.id }}">
+        <newburst
+            ls-filter="ls_filter"
+            device-pk="devicepk"
+            innerradius="20"
+            outerradius="30"
+            noninteractive="true"
+            zoom-level="d"
+        ></newburst>
+        <text text-anchor="middle" alignment-baseline="middle" cursor="crosshair">{{ node.name }}</text>
+    </g>
+</script>
+
+<script type="text/ng-template" id="icsw.device.network.host.link">
+    <line stroke="#ff7788" stroke-width="2" opacity="1">
+    </line>
+</script>
+
+<script type="text/ng-template" id="icsw.device.network.graph">
+    <div>
+        <h4>{{ zoom.factor | number:2 }}@({{ offset.x | number:0 }}, {{ offset.y | number:0 }})</h4>
+        <icsw-device-network-graph2 icsw-mouse-capture></icsw-device-network-graph2>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.device.network.graph2">
+    <svg
+        class="draggable"
+        ng-attr-width="{{ size.width }}"
+        ng-attr-height="{{ size.height }}"
+        ng-attr-viewBox="0 0 {{ size.width }} {{ size.height }}"
+        preserveAspectRatio="xMidYMid"
+        pointer-events="all"
+        msd-wheel="mouse_wheel($event, $delta, $deltax, $deltay)"
+        ng-mousedown="mouse_down($event)"
+    >
+        <!-- translate before scale: no need to scale offsets -->
+        <rect style="stroke:black;stroke-width:2px;fill-opacity:0" x="0" y="0" ng-attr-width="{{ size.width }}" ng-attr-height="{{ size.height }}"></rect>
+        <g ng-attr-transform="translate({{ offset.x }}, {{ offset.y }}) scale({{ zoom.factor }})">
+            <icsw-device-network-host-link
+                ng-repeat="link in links"
+                link="link"
+                redraw="redraw_nodes"
+            ></icsw-device-network-host-link>
+            <icsw-device-network-host-livestatus
+                ng-if="show_livestatus"
+                devicepk="node.id"
+                icsw-device-network-node-transform="node"
+                icsw-device-network-node-dbl-click="node"
+                ng-repeat="node in nodes"
+                ls-filter="ls_filter"
+                redraw="redraw_nodes"
+                ng-dblclick="double_click($event)"
+            ></icsw-device-network-host-livestatus>
+            <icsw-device-network-host-node
+                icsw-device-network-node-transform="node"
+                icsw-device-network-node-dbl-click="node"
+                ng-repeat="node in nodes"
+                node="node"
+                redraw="redraw_nodes"
+                ng-dblclick="double_click($event)"
+            ></icsw-device-network-host-node>
+        </g>
+    </svg>
+</script>

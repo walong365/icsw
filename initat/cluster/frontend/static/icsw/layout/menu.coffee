@@ -23,11 +23,13 @@ menu_module = angular.module(
     [
         "ngSanitize", "ui.bootstrap", "icsw.layout.selection", "icsw.user",
     ]
-).controller("menu_base", ["$scope", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswAcessLevelService", "initProduct", "icswLayoutSelectionDialogService", "icswActiveSelectionService", "$q", "icswUserService", "blockUI", "$state",
+).controller("icswMenuBaseCtrl", ["$scope", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswAcessLevelService", "initProduct", "icswLayoutSelectionDialogService", "icswActiveSelectionService", "$q", "icswUserService", "blockUI", "$state",
     ($scope, $window, ICSW_URLS, icswSimpleAjaxCall, icswAcessLevelService, initProduct, icswLayoutSelectionDialogService, icswActiveSelectionService, $q, icswUserService, blockUI, $state) ->
         # init service types
         $scope.ICSW_URLS = ICSW_URLS
         $scope.initProduct = initProduct
+        # flag: show navbar
+        $scope.show_navbar = false
         $scope.CURRENT_USER = undefined
         $scope.HANDBOOK_PDF_PRESENT = false
         $scope.HANDBOOK_CHUNKS_PRESENT = false
@@ -47,7 +49,6 @@ menu_module = angular.module(
             (data) ->
                 $scope.HANDBOOK_PDF_PRESENT = data[0].HANDBOOK_PDF_PRESENT
                 $scope.HANDBOOK_CHUNKS_PRESENT = data[0].HANDBOOK_CHUNKS_PRESENT
-                $scope.CURRENT_USER = undefined
         )
         $scope.get_progress_style = (obj) ->
             return {"width" : "#{obj.value}%"}
@@ -64,10 +65,6 @@ menu_module = angular.module(
                     $scope.handbook_url = "/cluster/doc/#{new_val.name.toLowerCase()}_handbook.pdf"
             true
         )
-        $scope.$watch("navbar_size", (new_val) ->
-            if new_val and $scope.CURRENT_USER
-                $("body").css("padding-top", parseInt(new_val["height"]) + 1)
-        )
         $scope.$on("$stateChangeStart", (event, to_state, to_params, from_state, from_params) ->
             to_main = if to_state.name.match(/^main/) then true else false
             from_main = if from_state.name.match(/^main/) then true else false
@@ -80,6 +77,7 @@ menu_module = angular.module(
                     icswUserService.logout()
                 icswUserService.force_logout()
                 $scope.CURRENT_USER = undefined
+                $scope.show_navbar = false
         )
         $scope.$on("$stateChangeSuccess", (event, to_state, to_params, from_state, from_params) ->
             to_main = if to_state.name.match(/^main/) then true else false
@@ -94,6 +92,7 @@ menu_module = angular.module(
                 )
             else if not from_main and to_main
                 $scope.CURRENT_USER = icswUserService.get()
+                $scope.show_navbar = true
                 # console.log to_params, $scope
         )
         $scope.$on("$stateChangeError", (event, to_state, to_params) ->
@@ -108,12 +107,27 @@ menu_module = angular.module(
         restrict: "EA"
         template: $templateCache.get("icsw.layout.menubar")
     }
-]).factory("icswMenuProgressService", [() ->
-    return {
-        "start_reload": 0
+]).service("icswMenuProgressService", ["ICSW_SIGNALS", "$rootScope", (ICSW_SIGNALS, $rootScope) ->
+    _settings = {
+        # progress bar counter
         "rebuilding": 0
     }
-]).directive("icswMenuProgressBars", ["$templateCache", "ICSW_URLS", "$timeout", "icswSimpleAjaxCall", "initProduct", "icswMenuProgressService", "icswLayoutSelectionDialogService", ($templateCache, ICSW_URLS, $timeout, icswSimpleAjaxCall, initProduct, icswMenuProgressService, icswLayoutSelectionDialogService) ->
+    return {
+        "set_rebuilding": (count) ->
+            if count != _settings.rebuilding
+                _settings.rebuilding = count
+                $rootScope.$emit(ICSW_SIGNALS("ICSW_MENU_PROGRESS_BAR_CHANGED"), _settings)
+        "get_rebuilding": () ->
+            return _settings.rebuilding
+    }
+]).directive("icswMenuProgressBars",
+[
+    "$templateCache", "ICSW_URLS", "$timeout", "icswSimpleAjaxCall", "initProduct",
+    "icswMenuProgressService", "icswLayoutSelectionDialogService", "ICSW_SIGNALS", "$rootScope",
+(
+    $templateCache, ICSW_URLS, $timeout, icswSimpleAjaxCall, initProduct,
+    icswMenuProgressService, icswLayoutSelectionDialogService, ICSW_SIGNALS, $rootScope
+) ->
     return {
         restrict: "EA"
         template: $templateCache.get("icsw.layout.menubar.progress")
@@ -125,13 +139,8 @@ menu_module = angular.module(
             scope.cur_gauges = {}
             scope.device_quickselection = (onoff) ->
                 icswLayoutSelectionDialogService.quick_dialog(onoff)
-            scope.$watch(
-                () ->
-                    return icswMenuProgressService.start_reload
-                (new_data) ->
-                    if new_data
-                        scope.update_progress_bar()
-                    icswMenuProgressService.start_reload = 0
+            $rootScope.$on(ICSW_SIGNALS("ICSW_MENU_PROGRESS_BAR_CHANGED"), (event, settings) ->
+                scope.update_progress_bar()
             )
             scope.update_progress_bar = () ->
                 icswSimpleAjaxCall(
@@ -161,7 +170,7 @@ menu_module = angular.module(
                                 scope.progress_iters--
                             $timeout(scope.update_progress_bar, 1000)
                         if not cur_pb.length
-                            icswMenuProgressService.rebuilding = 0
+                            icswMenuProgressService.set_rebuilding(0)
                 )
     }
 ]).directive("icswBackgroundJobInfo", ["$templateCache", "ICSW_URLS", "icswSimpleAjaxCall", "$timeout", "$state", ($templateCache, ICSW_URLS, icswSimpleAjaxCall, $timeout, $state) ->
@@ -208,6 +217,7 @@ menu_module = angular.module(
     ["icswAcessLevelService", "ICSW_URLS", "icswSimpleAjaxCall", "blockUI", "icswMenuProgressService", "$state", (icswAcessLevelService, ICSW_URLS, icswSimpleAjaxCall, blockUI, icswMenuProgressService, $state) ->
         # console.log icswAcessLevelService
         {input, ul, li, a, span} = React.DOM
+        react_dom = ReactDOM
         rebuild_config = (cache_mode) ->
             blockUI.start()
             icswSimpleAjaxCall(
@@ -221,18 +231,17 @@ menu_module = angular.module(
             ).then(
                 (xml) ->
                     blockUI.stop()
-                    icswMenuProgressService.rebuilding = 1
-                    icswMenuProgressService.start_reload = 1
+                    icswMenuProgressService.set_rebuilding(1)
                     # make at least five iterations to catch slow startup of md-config-server
                     # $scope.progress_iters = 5
                     # $scope.update_progress_bar()
                 (xml) ->
                     blockUI.stop()
-                    icswMenuProgressService.start_reload = 1
+                    icswMenuProgressService.set_rebuilding(1)
             )
         menu_rebuild_mon_config = React.createClass(
             render: () ->
-                _disabled = if icswMenuProgressService.rebuilding then true else false
+                _disabled = if icswMenuProgressService.get_rebuilding() then true else false
                 return li(
                     {className: "text-left", key: "bmc"}
                     ul(
@@ -408,6 +417,10 @@ menu_module = angular.module(
             displayName: "menubar"
             propTypes:
                 React.PropTypes.object.isRequired
+            componentDidUpdate: () ->
+                mb_height = $(react_dom.findDOMNode(@)).height()
+                console.log "MENUBAR_HEIGHT=", mb_height
+                $("body").css("padding-top", mb_height + 1)
             render: () ->
                 console.log "render menu"
                 menus = []
@@ -458,7 +471,12 @@ menu_module = angular.module(
         )
         return menu_comp
     ]
-).directive("icswMenuDirective", ["icswReactMenuFactory", "icswAcessLevelService", "icswMenuProgressService", "$rootScope", "ICSW_SIGNALS", (icswReactMenuFactory, icswAcessLevelService, icswMenuProgressService, $rootScope, ICSW_SIGNALS) ->
+).directive("icswMenuDirective",
+[
+    "icswReactMenuFactory", "icswAcessLevelService", "icswMenuProgressService", "$rootScope", "ICSW_SIGNALS",
+(
+    icswReactMenuFactory, icswAcessLevelService, icswMenuProgressService, $rootScope, ICSW_SIGNALS
+) ->
     return {
         restrict: "EA"
         replace: true
@@ -485,13 +503,9 @@ menu_module = angular.module(
                 console.log "acls_render"
                 _render()
             )
-            scope.$watch(
-                () ->
-                    return icswMenuProgressService
-                (new_val) ->
-                    console.log "mps"
-                    _render()
-                true
+            $rootScope.$on(ICSW_SIGNALS("ICSW_MENU_PROGRESS_BAR_CHANGED"), (event, settings) ->
+                console.log "mps", settings
+                _render()
             )
 
     }

@@ -307,6 +307,7 @@ angular.module(
         "ICSW_OVERVIEW_EMIT_SELECTION": "icws.overview.emit.selection"
         "ICSW_NETWORK_TAB_SELECTED": "icsw.network.tab.selected"
         "ICSW_DEVICE_SCAN_CHANGED": "icsw.device.scan.changed"
+        "ICSW_MENU_PROGRESS_BAR_CHANGED": "icsw.menu.progress.bar.changed"
         # "ICSW_READY_TO_RECEIVE_SELECTION": "icsw.ready.to.receive.selection"
     }
     return (name) ->

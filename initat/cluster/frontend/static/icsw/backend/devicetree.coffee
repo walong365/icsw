@@ -29,9 +29,13 @@ angular.module(
         "icsw.device.info", "icsw.tools.tree", "icsw.user",
     ]
 ).service("icswDeviceTreeHelper", ["icswTools", (icswTools) ->
+    ref_ctr = 0
     # helper service for global (== selection-wide) luts and lists
     class icswDeviceTreeHelper
         constructor: (@tree, @devices) ->
+            # just for testing
+            ref_ctr++
+            @ref_ctr = ref_ctr
             @netdevice_list = []
             @netdevice_lut = {}
             @net_ip_list = []

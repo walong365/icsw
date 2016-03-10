@@ -85,7 +85,10 @@ class hs_node
     handle_clicked: () ->
         # find clicked entry
         _clicked = @get_childs((obj) -> return obj.clicked)[0]
-        @iter_childs((obj) -> obj.show = false)
+        @iter_childs(
+            (obj) ->
+                obj.show = false
+        )
         parent = _clicked
         while parent?
             parent.show = true
