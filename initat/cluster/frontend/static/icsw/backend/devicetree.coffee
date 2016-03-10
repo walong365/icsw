@@ -90,25 +90,6 @@ angular.module(
         is_loaded: (req) =>
             return req in @loaded
 
-        clear_global_infos: (dth_obj, en_req) =>
-            # clear global infos for devices where we requested new info
-            for req, dev_pks of en_req
-                cgi_name = "pre_g_#{req}"
-                #if @[cgi_name]?
-                #    @[cgi_name](dth_obj, dev_pks)
-
-        # global pre calls
-        # no longer needed, REMOVE
-        pre_g_network_info: (dth_obj, dev_pks) =>
-            # remove all references to devices in dev_list from the global nd_lut
-            if dth_obj.netdevice_list?
-                dev_pks = (dev.idx for dev in dth_obj.devices when dev.idx in dev_pks)
-                _.remove(dth_obj.netdevice_list, (entry) -> return entry.device not in dev_pks)
-                nd_pks = (nd.idx for nd in dth_obj.netdevice_list)
-                _.remove(dth_obj.net_ip_list, (entry) -> return entry.netdevice not in nd_pks)
-                dth_obj.netdevice_lut = icswTools.build_lut(dth_obj.netdevice_list)
-                dth_obj.net_ip_lut = icswTools.build_lut(dth_obj.net_ip_list)
-
         get_setter_name: (req) =>
             _lut = {
                 "scan_info": "set_scan_info"
@@ -183,7 +164,7 @@ angular.module(
             @device.num_boot_ips = num_bootips
             # console.log "blni", @device.full_name, num_bootips
 
-        build_request: (req_list) =>
+        build_request: (req_list, force) =>
             # returns a list (dev_pk, enrichments_to_load)
             fetch_list = []
             for req in req_list
@@ -195,6 +176,9 @@ angular.module(
                         @device[@get_attr_name(req)] = undefined
                     else
                         @device[@get_attr_name(req)] = []
+                else if force
+                    # add request but do not clear current settings
+                    fetch_list.push(req)
             return [@device.idx, fetch_list]
 
         add_netdevice: (new_nd) =>
@@ -264,9 +248,11 @@ angular.module(
 
 ]).service("icswDeviceTree",
 [
-    "icswTools", "ICSW_URLS", "$q", "Restangular", "icswEnrichmentInfo", "icswSimpleAjaxCall",
+    "icswTools", "ICSW_URLS", "$q", "Restangular", "icswEnrichmentInfo", "icswSimpleAjaxCall", "$rootScope", "$timeout",
+    "ICSW_SIGNALS", "icswDeviceTreeHelper",
 (
-    icswTools, ICSW_URLS, $q, Restangular, icswEnrichmentInfo, icswSimpleAjaxCall
+    icswTools, ICSW_URLS, $q, Restangular, icswEnrichmentInfo, icswSimpleAjaxCall, $rootScope, $timeout,
+    ICSW_SIGNALS, icswDeviceTreeHelper
 ) ->
     class icswDeviceTree
         constructor: (full_list, cat_list, group_list, domain_tree) ->
@@ -278,6 +264,9 @@ angular.module(
             @domain_tree = domain_tree
             @enricher = new icswEnrichmentInfo(@)
             @build_luts(full_list)
+
+            # init scan infrastructure
+            @init_device_scans()
 
         reorder: () =>
             # device/group names or device <-> group relationships might have changed, sort
@@ -503,14 +492,14 @@ angular.module(
             )
 
         # enrichment functions
-        enrich_devices: (dth, en_list) =>
+        enrich_devices: (dth, en_list, force=false) =>
             # dth ... icswDeviceTreeHelper
             # en_list .. enrichment list
             defer  = $q.defer()
             # build request
             en_req = @enricher.merge_requests(
                 (
-                    dev.$$_enrichment_info.build_request(en_list) for dev in dth.devices
+                    dev.$$_enrichment_info.build_request(en_list, force) for dev in dth.devices
                 )
             )
             _fetch = $q.defer()
@@ -535,7 +524,6 @@ angular.module(
                 (result) =>
                     # clear previous values
                     console.log "clear previous enrichment values"
-                    @enricher.clear_global_infos(dth, en_req)
                     (dev.$$_enrichment_info.clear_infos(en_req) for dev in dth.devices)
                     console.log "set new enrichment values"
                     # feed results back to enricher
@@ -563,7 +551,85 @@ angular.module(
             )
             return defer.promise
 
+        # device scan functions
 
+        init_device_scans: () =>
+            # devices with scans running (pk => scan)
+            @scans_running = {}
+            @scan_timeout = undefined
+
+        register_device_scan: (dev, scan_settings) =>
+            defer = $q.defer()
+            # register scan mode
+            @set_device_scan(dev, scan_settings.scan_mode)
+
+            # start scan on server
+
+            icswSimpleAjaxCall(
+                url     : ICSW_URLS.DEVICE_SCAN_DEVICE_NETWORK
+                data    :
+                    "settings" : angular.toJson(scan_settings)
+            ).then(
+                (xml) =>
+                    # register device_scan
+                    # $scope.update_scans()
+                    if scan_settings.scan_mode != "base"
+                        # rescan device network
+                        @enrich_devices(new icswDeviceTreeHelper(@, [dev]), ["network_info"], true).then(
+                            (result) =>
+                                defer.resolve("scan done")
+                        )
+                    else
+                        defer.resolve("scan done")
+                (error) ->
+                    defer.reject("scan not ok")
+            )
+
+            # start check loop
+
+            @check_scans_running()
+
+            return defer.promise
+
+        set_device_scan: (dev, scan_type) =>
+            _changed = false
+            if dev.idx not of @scans_running
+                prev_mode = ""
+                _changed = true
+                @scans_running[dev.idx] = scan_type
+            else
+                prev_mode = @scans_running[dev.idx]
+                console.log ".", prev_mode
+                if @scans_running[dev.idx] != scan_type
+                    @scans_running[dev.idx] = scan_type
+                    _changed = true
+            if not @scans_running[dev.idx]
+                # send no signal
+                if prev_mode == "base"
+                    _changed = false
+                    en_type = if prev_mode == "base" then "com_info" else "network_info"
+                    # force update of com_info
+                    @enrich_devices(new icswDeviceTreeHelper(@, [dev]), [en_type], true).then(
+                        (result) =>
+                            $rootScope.$emit(ICSW_SIGNALS("ICSW_DEVICE_SCAN_CHANGED"), dev.idx, "")
+                    )
+                delete @scans_running[dev.idx]
+            if _changed
+                # send signal if required
+                $rootScope.$emit(ICSW_SIGNALS("ICSW_DEVICE_SCAN_CHANGED"), dev.idx, scan_type)
+
+        check_scans_running: () =>
+            if not _.isEmpty(@scans_running)
+                Restangular.all(ICSW_URLS.NETWORK_GET_ACTIVE_SCANS.slice(1)).getList(
+                    {
+                        "pks" : angular.toJson(@scans_running)
+                    }
+                ).then(
+                    (result) =>
+                        for _res in result
+                            @set_device_scan(@all_lut[_res.pk], _res.active_scan)
+                        @scan_timeout = $timeout(@check_scans_running, 5000)
+                )
 
 ]).service("icswDeviceTreeService", ["$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall", "icswTools", "icswDeviceTree", "$rootScope", "ICSW_SIGNALS", "icswDomainTreeService", ($q, Restangular, ICSW_URLS, $window, icswCachingCall, icswTools, icswDeviceTree, $rootScope, ICSW_SIGNALS, icswDomainTreeService) ->
     rest_map = [

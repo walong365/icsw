@@ -306,6 +306,7 @@ angular.module(
         "ICSW_MON_TREE_LOADED": "icsw.mon.tree.loaded"
         "ICSW_OVERVIEW_EMIT_SELECTION": "icws.overview.emit.selection"
         "ICSW_NETWORK_TAB_SELECTED": "icsw.network.tab.selected"
+        "ICSW_DEVICE_SCAN_CHANGED": "icsw.device.scan.changed"
         # "ICSW_READY_TO_RECEIVE_SELECTION": "icsw.ready.to.receive.selection"
     }
     return (name) ->

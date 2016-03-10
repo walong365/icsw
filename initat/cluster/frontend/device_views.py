@@ -230,8 +230,10 @@ class scan_device_network(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
-        _json_dev = json.loads(request.POST["dev"])
-        _dev = device.objects.get(Q(pk=_json_dev["idx"]))
+        _json_dev = json.loads(request.POST["settings"])
+        # copy address
+        _json_dev["scan_address"] = _json_dev["manual_address"]
+        _dev = device.objects.get(Q(pk=_json_dev["device"]))
         _sm = _json_dev["scan_mode"]
         logger.info("scanning network settings of device {} via {}".format(unicode(_dev.full_name), _sm))
         if _sm == "hm":

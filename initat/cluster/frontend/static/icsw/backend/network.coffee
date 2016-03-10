@@ -198,8 +198,8 @@ angular.module(
             _fetch_dict[client].resolve(_result)
         return _fetch_dict[client]
     return {
-        "load": (client) ->
-            # loads from server
+        "reload": (client) ->
+            # reloads from server
             return load_data(client).promise
         "fetch": (client) ->
             if load_called
@@ -235,9 +235,17 @@ angular.module(
     icswTools, ICSW_URLS, $q, Restangular, icswSimpleAjaxCall, icswPeerHelperObject
 ) ->
     class icswPeerInformation
-        constructor: (@list, @peer_list) ->
+        constructor: (@list, @peer_list, @device_pk_list) ->
             @build_luts()
-            console.log @peer_list
+
+        update_all: (list, peer_list) =>
+            @list.length = 0
+            @peer_list.length = 0
+            for entry in list
+                @list.push(entry)
+            for entry in peer_list
+                @peer_list.push(entry)
+            @build_luts()
 
         build_luts: () =>
             # all peers
@@ -428,7 +436,33 @@ angular.module(
         $q.all(w_list).then(
             (data) ->
                 console.log "*** peer information loaded ***"
-                _defer.resolve(new icswPeerInformation(data[0], data[1]))
+                _defer.resolve(new icswPeerInformation(data[0], data[1], (dev.idx for dev in dev_list)))
+        )
+        return _defer
+
+    reload_data = (client, peer_info) ->
+        _defer = $q.defer()
+        w_list = [
+            icswCachingCall.fetch(
+                client
+                ICSW_URLS.REST_USED_PEER_LIST
+                {
+                    "primary_dev_pks": angular.toJson(peer_info.device_pk_list)
+                }
+                []
+            )
+            icswCachingCall.fetch(
+                client
+                ICSW_URLS.REST_PEERABLE_NETDEVICE_LIST
+                {}
+                []
+            )
+        ]
+        $q.all(w_list).then(
+            (data) ->
+                console.log "*** peer information reloaded ***"
+                peer_info.update_all(data[0], data[1])
+                _defer.resolve(peer_info)
         )
         return _defer
 
@@ -436,5 +470,7 @@ angular.module(
         "load": (client, dev_list) ->
             # loads from server
             return load_data(client, dev_list).promise
+        "reload": (client, peer_info) ->
+            return reload_data(client, peer_info).promise
     }
 ])

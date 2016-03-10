@@ -231,7 +231,8 @@ class copy_network(View):
 
 class get_network_clusters(permission_required_mixin, View):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        logger.log(log_level, "[jsn] %s" % (what))
+        logger.log(log_level, "[jsn] {}".format(what))
+
     all_required_permissions = []
 
     def post(self, request):

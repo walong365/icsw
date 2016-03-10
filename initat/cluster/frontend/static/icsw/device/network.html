@@ -8,7 +8,7 @@
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': device_open, 'glyphicon-chevron-right': !device_open}"></i>
                 {{ devices.length }} devices
             </uib-accordion-heading>
-            <table ng-show="devices".length" class="table table-condensed table-hover table-striped" style="width:auto;">
+            <table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
                 <thead>
                     <tr>
                         <th>Device</th>
@@ -120,10 +120,6 @@
             <input type="button" ng-class="copy_com_class()" ng-value="copy_com_value()" ng-click="toggle_copy_com()"></input>
         </div>
     </div>
-</script>
-
-<script type="text/ng-template" id="icsw.device.com.capabilities">
-    <button type="button" class="btn btn-xs" ng-class="com_class()" ladda="pending" data-style="expand-left"></button>
 </script>
 
 <script type="text/ng-template" id="icsw.device.network.device.row">
@@ -1378,74 +1374,84 @@
     </form>
 </script>
 
-<script type="text/ng-template" id="device.network.scan.form">
-    <form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form">
-        <h2>Scan network of settings
-            device {{ _current_dev.full_name }}</h2>
+<script type="text/ng-template" id="icsw.device.network.scan.form">
+    <form class="form-horizontal" name="form_data">
         <fieldset>
             <legend>Scan address, {{ _current_dev.ip_list.length }} non-local IPs defined</legend>
             <div>
                 <ul class="list-group">
-                    <li class="list-group-item" ng-repeat="name in _edit_obj.network_type_names">
+                    <li class="list-group-item" ng-repeat="name in network_type_names">
                         {{ name }}:
-                        <input ng-repeat="ip in _edit_obj.ip_dict[name]" type="button" class="btn btn-sm btn-primary" value="{{ ip }}" ng-click="_edit_obj.manual_address=ip"></input>
+                        <input ng-repeat="ip in ip_dict[name]" type="button" class="btn btn-sm btn-primary" value="{{ ip }}" ng-click="set_ip(ip)"></input>
                     </li>
                     <li class="list-group-item">
-                        IP: <input ng-model="_edit_obj.manual_address"></input>
+                        IP: <input ng-model="scan_settings.manual_address"/>
                     </li>
                 </ul>
             </div>
         </fieldset>
         <uib-tabset>
-            <uib-tab heading="BaseScan" select='set_scan_mode("base")' active="_current_dev.scan_base_active"></uib-tab>
-            <uib-tab ng-show='has_com_capability(_edit_obj, "hm")' heading="Hostmonitor" select='set_scan_mode("hm")' active="_current_dev.scan_hm_active">
+            <uib-tab heading="BaseScan" select='set_scan_mode("base")' active="active_scan['base']">
+                <h3>
+                    Scan device for Communication capabilities
+                </h3>
+            </uib-tab>
+            <uib-tab ng-if='has_com_capability("hm")' heading="Hostmonitor" select='set_scan_mode("hm")' active="active_scan['hm']">
                 <fieldset>
                     <legend>Flags</legend>
                     <div class="form-group">
-                        <div id="div_id_strict_mode" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_strict_mode"><input class="checkboxinput checkbox" id="id_strict_mode" name="strict_mode" ng-model="_edit_obj.strict_mode" type="checkbox"></input>
-                                all netdevices must be recognizable and all existing peers must be conserverd
-                            </label></div>
+                        <div class="checkbox">
+                            <div class="controls col-lg-offset-0 col-sm-7">
+                                <label>
+                                    <input class="checkboxinput checkbox" ng-model="scan_settings.strict_mode" type="checkbox"/>
+                                    all netdevices must be recognizable and all existing peers must be conserverd
+                                </label>
+                            </div>
                         </div>
                     </div>
                     <div class="form-group checkbox">
                         <div class="controls col-lg-offset-0 col-sm-7">
                             <label>
-                                <input class="checkboxinput checkbox" ng-model="_edit_obj.modify_peering" type="checkbox"/>
+                                <input class="checkboxinput checkbox" ng-model="scan_settings.modify_peering" type="checkbox"/>
                                 Modify peering (dangerous)
                             </label>
                         </div>
                     </div>
-                    <div class="alert alert-danger" ng-show="!_edit_obj.strict_mode && _edit_obj.modify_peering">attention: peers might get lost
+                    <div class="alert alert-danger" ng-show="!scan_settings.strict_mode && scan_settings.modify_peering">
+                        attention: peers might get lost
                     </div>
                 </fieldset>
             </uib-tab>
-            <uib-tab ng-show='has_com_capability(_edit_obj, "snmp")' heading="SNMP" select='set_scan_mode("snmp")' active="_current_dev.scan_snmp_active">
+            <uib-tab ng-if='has_com_capability("snmp")' heading="SNMP" select='set_scan_mode("snmp")' active="active_scan['snmp']">
                 <fieldset>
                     <legend>SNMP Scan Settings</legend>
-                    <div id="div_id_snmp_community" class="form-group">
-                        <label for="id_snmp_community" class="control-label col-sm-3 requiredField">
+                    <div class="form-group">
+                        <label class="control-label col-sm-3 requiredField">
                             SNMP community<span class="asteriskField">*</span>
                         </label>
-                        <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_snmp_community" maxlength="128" name="snmp_community" ng-model="_edit_obj.snmp_community" required="True" type="text"></input></div>
+                        <div class="controls col-sm-7">
+                            <input class="textinput textInput form-control" maxlength="128" ng-model="scan_settings.snmp_community" required="True" type="text"/>
+                        </div>
                     </div>
-                    <div id="div_id_snmp_version" class="form-group">
-                        <label for="id_snmp_version" class="control-label col-sm-3 requiredField">
+                    <div class="form-group">
+                        <label class="control-label col-sm-3 requiredField">
                             SNMP version<span class="asteriskField">*</span>
                         </label>
-                        <div class="controls col-sm-7"><select class="select form-control" id="id_snmp_version" name="snmp_version" ng-model="_edit_obj.snmp_version" required="True">
-                            <option value="1">1</option>
-                            <option value="2c">2c</option>
-                        </select></div>
+                        <div class="controls col-sm-7">
+                            <select class="select form-control" ng-model="scan_settings.snmp_version" required="True">
+                                <option value="1">1</option>
+                                <option value="2c">2c</option>
+                            </select>
+                        </div>
                     </div>
                 </fieldset>
                 <fieldset>
                     <legend>Flags</legend>
                     <div class="form-group">
-                        <div id="div_id_remove_not_found" class="checkbox">
+                        <div class="checkbox">
                             <div class="controls col-lg-offset-0 col-sm-7">
-                                <label for="id_remove_not_found">
-                                    <input class="checkboxinput checkbox" id="id_remove_not_found" name="remove_not_found" ng-model="_edit_obj.remove_not_found" type="checkbox"/>
+                                <label>
+                                    <input class="checkboxinput checkbox" ng-model="scan_settings.remove_not_found" type="checkbox"/>
                                     Remove not found
                                 </label>
                             </div>
@@ -1454,32 +1460,36 @@
                     <div class="form-group checkbox">
                         <div class="controls col-lg-offset-0 col-sm-7">
                             <label>
-                                <input class="checkboxinput checkbox" ng-model="_edit_obj.modify_peering" type="checkbox"/>
+                                <input class="checkboxinput checkbox" ng-model="scan_settings.modify_peering" type="checkbox"/>
                                 Modify peering (dangerous)
                             </label>
                         </div>
                     </div>
                 </fieldset>
             </uib-tab>
-            <uib-tab ng-show='has_com_capability(_edit_obj, "wmi")' heading="WMI" select='set_scan_mode("wmi")' active="_current_dev.scan_wmi_active">
+            <uib-tab ng-if='has_com_capability("wmi")' heading="WMI" select='set_scan_mode("wmi")' active="active_scan['wmi']">
                 <fieldset>
                     <legend>WMI Scan Settings</legend>
-                    <div id="div_id_wmi_username" class="form-group">
-                        <label for="id_wmi_username" class="control-label col-sm-3">
+                    <div class="form-group">
+                        <label class="control-label col-sm-3">
                             Username
                         </label>
-                        <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_wmi_username" maxlength="256" name="wmi_username" ng-model="_edit_obj.wmi_username" type="text"></input></div>
+                        <div class="controls col-sm-7">
+                            <input class="textinput textInput form-control" maxlength="256" ng-model="scan_settings.wmi_username" type="text"/>
+                        </div>
                     </div>
-                    <div id="div_id_wmi_password" class="form-group">
-                        <label for="id_wmi_password" class="control-label col-sm-3">
+                    <div class="form-group">
+                        <label class="control-label col-sm-3">
                             Password
                         </label>
-                        <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_wmi_password" maxlength="256" name="wmi_password" ng-model="_edit_obj.wmi_password" type="password"></input></div>
+                        <div class="controls col-sm-7">
+                            <input class="textinput textInput form-control" maxlength="256" ng-model="scan_settings.wmi_password" type="password"/>
+                        </div>
                     </div>
                     <div class="form-group checkbox">
                         <div class="controls col-lg-offset-0 col-sm-7">
                             <label>
-                                <input class="checkboxinput checkbox" ng-model="_edit_obj.wmi_discard_disabled_interfaces" type="checkbox"/>
+                                <input class="checkboxinput checkbox" ng-model="scan_settings.wmi_discard_disabled_interfaces" type="checkbox"/>
                                 Ignore disabled interfaces
                             </label>
                         </div>
@@ -1487,7 +1497,7 @@
                     <div class="form-group checkbox">
                         <div class="controls col-lg-offset-0 col-sm-7">
                             <label>
-                                <input class="checkboxinput checkbox" ng-model="_edit_obj.modify_peering" type="checkbox"/>
+                                <input class="checkboxinput checkbox" ng-model="scan_settings.modify_peering" type="checkbox"/>
                                 Modify peering (dangerous)
                             </label>
                         </div>
@@ -1495,9 +1505,8 @@
                 </fieldset>
             </uib-tab>
         </uib-tabset>
-        <uib-alert type="warning" ng-show="!_current_dev.manual_address">Please enter or select an IP address</uib-alert>
-        <div class="form-actions">
-            <input type="button" name="scan" value="scan" class="btn btn btn-sm btn-primary" id="button-id-scan" ng-click="fetch_device_network()" ng-disabled="!_current_dev.manual_address"></input> <input type="submit" name="cancel" value="cancel" class="btn btn-primary btn btn-sm btn-warning" id="submit-id-cancel"></input>
-        </div>
+        <uib-alert type="warning" ng-show="!scan_settings.manual_address">
+            Please enter or select an IP address
+        </uib-alert>
     </form>
 </script>

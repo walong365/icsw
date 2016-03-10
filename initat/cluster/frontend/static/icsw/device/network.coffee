@@ -147,14 +147,14 @@ angular.module(
     )
 ]).controller("icswDeviceNetworkCtrl",
 [
-    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource",
-    "$q", "$uibModal", "icswAcessLevelService", "$rootScope", "$timeout", "blockUI", "icswTools", "icswToolsButtonConfigService", "ICSW_URLS",
+    "$scope", "$compile", "$filter", "$templateCache", "Restangular",
+    "$q", "icswAcessLevelService", "$rootScope", "$timeout", "blockUI", "icswTools", "icswToolsButtonConfigService", "ICSW_URLS",
     "icswSimpleAjaxCall", "icswToolsSimpleModalService", "icswDeviceTreeService", "icswNetworkTreeService",
     "icswDomainTreeService", "icswPeerInformationService", "icswDeviceTreeHelperService", "icswComplexModalService",
     "icswNetworkDeviceBackup", "toaster", "icswNetworkIPBackup", "icswPeerInformationBackup", "icswDeviceBootBackup",
 (
-    $scope, $compile, $filter, $templateCache, Restangular, restDataSource,
-    $q, $uibModal, icswAcessLevelService, $rootScope, $timeout, blockUI, icswTools, icswToolsButtonConfigService, ICSW_URLS,
+    $scope, $compile, $filter, $templateCache, Restangular,
+    $q, icswAcessLevelService, $rootScope, $timeout, blockUI, icswTools, icswToolsButtonConfigService, ICSW_URLS,
     icswSimpleAjaxCall, icswToolsSimpleModalService, icswDeviceTreeService, icswNetworkTreeService,
     icswDomainTreeService, icswPeerInformationService, icswDeviceTreeHelperService, icswComplexModalService,
     icswNetworkDeviceBackup, toaster, icswNetworkIPBackup, icswPeerInformationBackup, icswDeviceBootBackup
@@ -169,11 +169,6 @@ angular.module(
     $scope.netip_open = false
     $scope.peer_open = false
     $scope.copy_coms = false
-    # mixins
-
-    $scope.scan_mixin = new angular_modal_mixin($scope, $templateCache, $compile, $q, "Scan network")
-    $scope.scan_mixin.template = "device.network.scan.form"
-    $scope.scan_mixin.cssClass = "modal-tall"
 
     $scope.devices = []
     $scope.local_helper_obj = undefined
@@ -233,127 +228,154 @@ angular.module(
                 )
         )
 
-    $scope.get_netdevice_boot_info = (nd) ->
-        num_boot = nd.num_bootips
-        if num_boot == 0
-            return ""
-        else if num_boot == 1
-            return "(b)"
-        else
-            return "(#{num_boot})"
-
-    $scope.no_objects_defined = (dev) ->
-        return if (dev.netdevice_set.length == 0) then true else false
-
-    $scope.get_route_peers = () ->
-        return (entry for entry in $scope.nd_peers when entry.routing)
-
-    $scope.set_scan_mode = (sm) ->
-        $scope.scan_device.scan_mode = sm
-        $scope.scan_device["scan_#{sm}_active"] = true
-    $scope.has_com_capability = (dev, cc) ->
-        return cc in dev.com_caps
     $scope.scan_device_network = (dev, event) ->
-        $scope._current_dev = dev
-        $scope.scan_device = dev
+
+        sub_scope = $scope.$new(false)
+        sub_scope.edit_obj = dev
+
         network_type_names = []
         ip_dict = {}
         for ndev in dev.netdevice_set
             for ip in ndev.net_ip_set
-                if ip.network of $scope.network_lut
-                    network = $scope.network_lut[ip.network]
-                    if network.network_type_identifier != "l" and not (network.netmask == "255.0.0.0" and network.network == "127.0.0.0")
-                        if network.network_type_name not of ip_dict
-                            ip_dict[network.network_type_name] = []
-                            network_type_names.push(network.network_type_name)
-                        ip_dict[network.network_type_name].push(ip.ip)
+                nw = $scope.network_tree.nw_lut[ip.network]
+                nw_type = $scope.network_tree.nw_type_lut[nw.network_type]
+                if nw_type.identifier != "l" and not (nw.netmask == "255.0.0.0" and nw.network == "127.0.0.0")
+                    nwt_d = nw_type.description
+                    if nwt_d not of ip_dict
+                        ip_dict[nwt_d] = []
+                        network_type_names.push(nwt_d)
+                    ip_dict[nwt_d].push(ip.ip)
         for key, value of ip_dict
             ip_dict[key] = _.uniq(_.sortBy(value))
         network_type_names = _.sortBy(network_type_names)
-        dev.ip_dict = ip_dict
-        dev.network_type_names = network_type_names
 
-        dev.manual_address = ""
-        # set ip if there is only one
+        sub_scope.ip_dict = ip_dict
+        sub_scope.network_type_names = network_type_names
+
+        sub_scope.scan_settings = {
+            "manual_address": ""
+            # set snmp / wmi names
+            "snmp_community": "public"
+            "snmp_version": "2c"
+            "wmi_username": "Administrator"
+            "wmi_password": ""
+            "wmi_discard_disabled_interfaces": true
+            "remove_not_found": false
+            "strict_mode": true
+            "modify_peering": false
+            "scan_mode": "NOT_SET"
+            "device": dev.idx
+        }
         if Object.keys(ip_dict).length == 1
-            nw_ip_addresses = ip_dict[ Object.keys(ip_dict)[0] ]
+            nw_ip_addresses = ip_dict[Object.keys(ip_dict)[0]]
             if nw_ip_addresses.length == 1
-                dev.manual_address = nw_ip_addresses[0]
+                sub_scope.scan_settings.manual_address = nw_ip_addresses[0]
 
-        dev.snmp_community = "public"
-        if not dev.com_caps?
-            # init com_caps array if not already set
-            dev.com_caps = []
-        dev.snmp_version = "2c"
-        dev.remove_not_found = false
-        dev.strict_mode = true
-        dev.modify_peering = false
-        dev.wmi_username = "Administrator"
-        dev.wmi_password = ""
-        dev.wmi_discard_disabled_interfaces = true
-        dev.scan_base_active = false
-        dev.scan_hm_active = false
-        dev.scan_snmp_active = false
-        if not $scope.no_objects_defined(dev) and $scope.has_com_capability(dev, "snmp")
-            $scope.set_scan_mode("snmp")
+
+        sub_scope.active_scan = {
+            "base": false
+            "hm": false
+            "snmp": false
+        }
+        has_com_capability = (cc) ->
+            return if (entry for entry in dev.com_capability_list when entry.matchcode == cc).length then true else false
+
+        sub_scope.has_com_capability = (cc) ->
+            return has_com_capability(cc)
+
+        sub_scope.set_scan_mode = (sm) ->
+            # sub_scope.$scope.scan_device.scan_mode = sm
+            sub_scope.scan_settings.scan_mode = sm
+            sub_scope.active_scan[sm] = true
+
+        sub_scope.set_ip = (ip) ->
+            sub_scope.scan_settings.manual_address = ip
+
+        if dev.netdevice_set.length and has_com_capability("snmp")
+            sub_scope.set_scan_mode("snmp")
         else
-            $scope.set_scan_mode("base")
-        $scope.scan_mixin.edit(dev, event).then(
-            (mod_obj) ->
-                true
+            sub_scope.set_scan_mode("base")
+
+        icswComplexModalService(
+            {
+                message: $compile($templateCache.get("icsw.device.network.scan.form"))(sub_scope)
+                ok_label: "Scan"
+                title: "Scan network of device #{dev.full_name}"
+                ok_callback: (modal) ->
+                    d = $q.defer()
+                    if sub_scope.form_data.$invalid
+                        toaster.pop("warning", "form validation problem", "", 0)
+                        d.reject("form not valid")
+                    else
+                        blockUI.start("Starting scan")
+                        $scope.device_tree.register_device_scan(dev, sub_scope.scan_settings).then(
+                            (ok) ->
+                                # register device_scan
+                                $q.all(
+                                    [
+                                        icswNetworkTreeService.reload("rescan")
+                                        icswPeerInformationService.reload(sub_scope.$id, $scope.peer_list)
+                                    ]
+                                ).then(
+                                    (done) ->
+                                        # maybe some new remote devices are to add
+                                        missing_list = $scope.peer_list.find_missing_devices($scope.device_tree)
+                                        defer = $q.defer()
+                                        if missing_list.length
+                                            # enrich devices with missing peer info
+                                            _en_devices = ($scope.device_tree.all_lut[pk] for pk in missing_list)
+                                            # temoprary hs
+                                            $scope.device_tree.enrich_devices(
+                                                icswDeviceTreeHelperService.create($scope.device_tree, _en_devices)
+                                                ["network_info"]
+                                            ).then(
+                                                (done) ->
+                                                    defer.resolve("remote enriched")
+                                            )
+                                        else
+                                            defer.resolve("nothing missing")
+                                        defer.promise.then(
+                                            (done) ->
+                                                # every device in the device tree is now fully populated
+                                                remote = $scope.peer_list.find_remote_devices($scope.device_tree, $scope.devices)
+                                                temp_hs = icswDeviceTreeHelperService.create($scope.device_tree, ($scope.device_tree.all_lut[rem] for rem in remote))
+                                                # dummy call to enrich_devices, only used to create the lists and luts
+                                                $scope.device_tree.enrich_devices(
+                                                    temp_hs
+                                                    ["network_info"]
+                                                ).then(
+                                                    (done) ->
+                                                        # everything is now in place
+                                                        $scope.remote_helper_obj = temp_hs
+                                                        $scope.peer_list.enrich_device_tree($scope.device_tree, $scope.local_helper_obj, $scope.remote_helper_obj)
+                                                        console.log "done reloading"
+                                                        blockUI.stop()
+                                                        d.resolve("scan ok")
+                                                )
+                                        )
+                                )
+                            (notok) ->
+                                blockUI.stop()
+                                d.reject("scan not ok")
+                        )
+                    return d.promise
+                cancel_callback: (modal) ->
+                    d = $q.defer()
+                    d.resolve("cancel")
+                    return d.promise
+            }
+        ).then(
+            (fin) ->
+                console.log "Scan window closed"
+                sub_scope.$destroy()
+                $scope.peer_list.build_luts()
+                $scope.peer_list.enrich_device_tree($scope.device_tree, $scope.local_helper_obj, $scope.remote_helper_obj)
+                $scope.device_tree.build_helper_luts(
+                    ["network_info"]
+                    $scope.local_helper_obj
+                )
         )
-    $scope.fetch_device_network = () ->
-        blockUI.start()
-        _dev = $scope._current_dev
-        _dev.scan_address = _dev.manual_address
-        # intermediate state to trigger reload
-        _dev.active_scan = "waiting"
-        icswSimpleAjaxCall(
-            url     : ICSW_URLS.DEVICE_SCAN_DEVICE_NETWORK
-            data    :
-                "dev" : angular.toJson($scope.scan_device)
-        ).then((xml) ->
-            blockUI.stop()
-            $scope.scan_mixin.close_modal()
-            $scope.update_scans()
-        )
-    $scope.update_scans = () ->
-        Restangular.all(ICSW_URLS.NETWORK_GET_ACTIVE_SCANS.slice(1)).getList({"pks" : angular.toJson($scope.devsel_list)}).then(
-            (data) ->
-                any_scans_running = false
-                for obj in data
-                    dev = $scope.dev_lut[obj["pk"]]
-                    dev.previous_scan = dev.active_scan
-                    dev.active_scan = obj.active_scan
-                    if dev.active_scan != dev.previous_scan
-                        if not dev.active_scan
-                            # scan finished
-                            $q.all(
-                                [
-                                    Restangular.all(ICSW_URLS.REST_DEVICE_TREE_LIST.slice(1)).getList({"with_network" : true, "pks" : angular.toJson([dev.idx]), "olp" : "backbone.device.change_network"})
-                                    Restangular.all(ICSW_URLS.REST_PEER_INFORMATION_LIST.slice(1)).getList(),
-                                    Restangular.all(ICSW_URLS.REST_NETWORK_LIST.slice(1)).getList(),
-                                ]
-                            ).then((data) ->
-                                $scope.networks = data[2]
-                                $scope.peers = data[1]
-                                $scope.network_lut = icswTools.build_lut($scope.networks)
-                                $scope.update_device(data[0][0])
-                            )
-                    if obj.active_scan
-                        any_scans_running = true
-                if any_scans_running
-                    $timeout($scope.update_scans, 5000)
-        )
-    $scope.update_device = (new_dev) ->
-        cur_devs = []
-        for dev in $scope.devices
-            if dev.idx == new_dev.idx
-                cur_devs.push(new_dev)
-            else
-                cur_devs.push(dev)
-        $scope.devices = cur_devs
-        $scope.build_luts()
+        return
 
     $scope.toggle_copy_com = () ->
         $scope.copy_coms = !$scope.copy_coms
@@ -521,7 +543,6 @@ angular.module(
                 console.log "Peer requester closed, trigger redraw"
                 sub_scope.$destroy()
                 # trigger rebuild of lists
-                # $rootScope.$emit(ICSW_SIGNALS("ICSW_FORCE_TREE_FILTER"))
                 # recreate helper luts
                 $scope.peer_list.build_luts()
                 $scope.peer_list.enrich_device_tree($scope.device_tree, $scope.local_helper_obj, $scope.remote_helper_obj)
@@ -1006,48 +1027,59 @@ angular.module(
     }
 ]).directive("icswDeviceComCapabilities",
 [
-    "$templateCache", "$compile", "icswCachingCall", "ICSW_URLS", "icswDeviceTreeService", "icswDeviceTreeHelperService",
+    "$templateCache", "$compile", "icswCachingCall", "ICSW_URLS", "icswDeviceTreeService",
+    "icswDeviceTreeHelperService", "ICSW_SIGNALS", "$rootScope",
 (
-    $templateCache, $compile, icswCachingCall, ICSW_URLS, icswDeviceTreeService, icswDeviceTreeHelperService
+    $templateCache, $compile, icswCachingCall, ICSW_URLS, icswDeviceTreeService,
+    icswDeviceTreeHelperService, ICSW_SIGNALS, $rootScope
 ) ->
     return {
         restrict : "EA"
-        template: $templateCache.get("icsw.device.com.capabilities")
         scope:
             device: "=device"
             detail: "=detail"
-        link: (scope, el, attrs) ->
-            scope.pending = true
+        link: (scope, element, attrs) ->
             _current = icswDeviceTreeService.current()
-            scope.com_class = () ->
-                if scope.pending
-                    return "btn-warning"
-                else if scope.device.com_capability_list.length
-                    return "btn-success"
-                else
-                    return "btn-danger"
-            scope.$watch("device.active_scan", (new_val) ->
-                if new_val == "base"
-                    el.find("span.ladda-label").text("...")
-                    scope.pending = true
-                else
-                    update_com_cap()
+            element.children().remove()
+            new_el = $compile("<button type='button' class='btn btn-xs btn-warning' ladda='pending' data-style='expand-left'></button>")(scope)
+            element.append(new_el)
+
+            $rootScope.$on(ICSW_SIGNALS("ICSW_DEVICE_SCAN_CHANGED"), (event, pk, scan_mode) ->
+                if pk == scope.device.idx
+                    if scan_mode
+                        scope.pending = true
+                        # distinguish between base and other scans
+                        if scan_mode == "base"
+                            # base scan running
+                            update_button(scan_mode, "btn-warning")
+                        else
+                            # highlight running scan ?
+                            update_button(scan_mode, "btn-warning")
+                    else
+                        scope.pending = false
+                        update_com_cap()
             )
+
+            update_button = (text, cls) ->
+                new_el.removeClass("btn-warning btn-danger btn-success").addClass(cls)
+                new_el.find("span.ladda-label").text(text)
+
             update_com_cap = () ->
-                scope.pending = true
-                el.find("span.ladda-label").text("...")
                 hs = icswDeviceTreeHelperService.create(_current, [scope.device])
                 _current.enrich_devices(hs, ["com_info"]).then(
                     (set) ->
-                        scope.pending = false
                         if scope.device.com_capability_list.length
+                            _class = "btn-success"
                             if scope.detail?
-                                el.find("span.ladda-label").text((entry.name for entry in scope.device.com_capability_list).join(", "))
+                                _text = (entry.name for entry in scope.device.com_capability_list).join(", ")
                             else
-                                el.find("span.ladda-label").text((entry.matchcode for entry in scope.device.com_capability_list).join(", "))
+                                _text = (entry.matchcode for entry in scope.device.com_capability_list).join(", ")
                         else
-                            el.find("span.ladda-label").text("N/A")
+                            _class = "btn-danger"
+                            _text = "N/A"
+                        update_button(_text, _class)
                 )
+
             update_com_cap()
     }
 ]).controller("icswDeviceNetworkIpRowCtrl", ["$scope", ($scope) ->
@@ -1271,8 +1303,8 @@ angular.module(
         if name == "cluster"
             $scope.reload()
     )
-]).controller("icswDeviceNetworkGraphCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$uibModal", "icswAcessLevelService", "icswLivestatusFilterFactory",
-    ($scope, $compile, $filter, $templateCache, Restangular, $q, $uibModal, icswAcessLevelService, icswLivestatusFilterFactory) ->
+]).controller("icswDeviceNetworkGraphCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "icswAcessLevelService", "icswLivestatusFilterFactory",
+    ($scope, $compile, $filter, $templateCache, Restangular, $q, icswAcessLevelService, icswLivestatusFilterFactory) ->
         icswAcessLevelService.install($scope)
         $scope.graph_sel = "sel"
         $scope.show_livestatus = false
@@ -1788,7 +1820,7 @@ angular.module(
     reload_networks = (scope) ->
         # blockUI
         blockUI.start()
-        icswNetworkTreeService.load("rescan").then(
+        icswNetworkTreeService.reload("rescan").then(
             (done) ->
                 blockUI.stop()
         )
