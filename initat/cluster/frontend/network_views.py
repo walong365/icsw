@@ -51,7 +51,7 @@ class json_network(View):
     def post(self, request):
         _post = request.POST
         graph_mode = _post["graph_sel"]
-        dev_list = [int(value.split("__")[1]) for value in request.session.get("sel_list", [])]
+        dev_list = json.loads(_post["devices"])
         logger.info(
             "drawing network, mode is {}, {}".format(
                 graph_mode,

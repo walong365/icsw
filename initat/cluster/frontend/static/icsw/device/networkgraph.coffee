@@ -133,21 +133,74 @@ angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "icsw.d3", "ui.select",
         "angular-ladda", "icsw.dragging", "monospaced.mousewheel", "icsw.svg_tools", "icsw.tools", "icsw.tools.table",
     ]
-).controller("icswDeviceNetworkGraphCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "icswAcessLevelService", "icswLivestatusFilterFactory",
-    ($scope, $compile, $filter, $templateCache, Restangular, $q, icswAcessLevelService, icswLivestatusFilterFactory) ->
-        icswAcessLevelService.install($scope)
-        $scope.graph_sel = "sel"
-        $scope.show_livestatus = false
-        $scope.devices = []
-        $scope.new_devsel = (_dev_sel) ->
-            $scope.devices = _dev_sel
-        $scope.ls_filter = new icswLivestatusFilterFactory()
-]).directive("icswDeviceNetworkNodeTransform", [() ->
+).directive("icswDeviceNetworkTopology", ["$templateCache", ($templateCache) ->
+    return {
+        restrict: "E"
+        template: $templateCache.get("icsw.device.network.topology")
+        controller: "icswDeviceNetworkGraphCtrl"
+    }
+]).controller("icswDeviceNetworkGraphCtrl",
+[
+    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "icswAcessLevelService", "icswLivestatusFilterFactory",
+    "ICSW_SIGNALS", "$rootScope",
+(
+    $scope, $compile, $filter, $templateCache, Restangular, $q, icswAcessLevelService, icswLivestatusFilterFactory,
+    ICSW_SIGNALS, $rootScope
+) ->
+    icswAcessLevelService.install($scope)
+    $scope.settings = {
+        "draw_mode": "sel"
+        "show_livestatus": false
+        "devices": []
+        "size": {
+            width: 1200
+            height: 800
+        }
+        "zoom": {
+            factor: 1.0
+        }
+        "offset": {
+            x: 0
+            y: 0
+        }
+    }
+    $scope.raw_draw_selections = [
+        {"value": "none", "info": "None", "dr": false}
+        {"value": "all_with_peers", "info": "all peered", "dr": false}
+        {"value": "all", "info": "All devices", "dr": false}
+        {"value": "sel", "info": "selected", "dr": true}
+        {"value": "selp1", "info": "selected + 1 (next ring)", "dr": true}
+        {"value": "selp2", "info": "selected + 2", "dr": true}
+        {"value": "selp3", "info": "selected + 3", "dr": true}
+        {"value": "core", info: "Core network", "dr": false}
+    ]
+    update_draw_selections = () ->
+        sles = []
+        for entry in $scope.raw_draw_selections
+            _add = true
+            if entry.dr and not $scope.settings.devices.length
+                _add = false
+            if _add
+                sles.push(entry)
+        $scope.draw_selections = sles
+
+    $scope.new_devsel = (_dev_sel) ->
+        $scope.settings.devices = _dev_sel
+        update_draw_selections()
+        $scope.redraw_graph()
+
+    $scope.redraw_graph = () ->
+        $rootScope.$emit(ICSW_SIGNALS("ICSW_NETWORK_REDRAW_TOPOLOGY"))
+
+    update_draw_selections()
+
+    $scope.ls_filter = new icswLivestatusFilterFactory()
+]).directive("icswDeviceNetworkNodeTransform", ["$rootScope", "ICSW_SIGNALS", ($rootScope, ICSW_SIGNALS) ->
     return {
         restrict: "A"
         link: (scope, element, attrs) ->
             scope.$watch(attrs["icswDeviceNetworkNodeTransform"], (transform_node) ->
-                scope.$watch(attrs["redraw"], (new_val) ->
+                $rootScope.$on(ICSW_SIGNALS("ICSW_NETWORK_REDRAW_D3_ELEMENT"), (event) ->
                     if transform_node.x?
                         element.attr("transform", "translate(#{transform_node.x},#{transform_node.y})")
                 )
@@ -184,7 +237,6 @@ angular.module(
         replace: true
         scope:
             node: "=node"
-            redraw: "=redraw"
         template: $templateCache.get("icsw.device.network.host.node")
         link : (scope, element, attrs) ->
             scope.stroke_width = 1
@@ -210,14 +262,13 @@ angular.module(
                 scope.mousedown = false
                 scope.stroke_width--
     }
-]).directive("icswDeviceNetworkHostLink", ["$templateCache", ($templateCache) ->
+]).directive("icswDeviceNetworkHostLink", ["$templateCache", "$rootScope", "ICSW_SIGNALS", ($templateCache, $rootScope, ICSW_SIGNALS) ->
     return {
         restrict : "EA"
         templateNamespace: "svg"
         replace: true
         scope: 
             link: "=link"
-            redraw: "=redraw"
         template: $templateCache.get("icsw.device.network.host.link")
         link : (scope, element, attrs) ->
             scope.$watch("link", (new_val) ->
@@ -225,7 +276,7 @@ angular.module(
                 #scope.stroke_width = if new_val.num_nds then new_val.num_nds else 1
                 #scope.stroke_color = if new_val.num_nds then "grey" else "red"
             )
-            scope.$watch("redraw", () ->
+            $rootScope.$on(ICSW_SIGNALS("ICSW_NETWORK_REDRAW_D3_ELEMENT"), (event) ->
                 element.attr("x1", scope.link.x1c)
                 element.attr("y1", scope.link.y1c)
                 element.attr("x2", scope.link.x2c)
@@ -236,8 +287,12 @@ angular.module(
     return {
         restrict : "EA"
         replace: true
+        scope:
+            ls_filter: "=lsFilter"
+            draw_settings: "=drawSettings"
         template: $templateCache.get("icsw.device.network.graph")
         link: (scope, element, attrs) ->
+            console.log "XXX", scope.ls_filter, scope.draw_settings
             if not attrs["devicepk"]?
                 msgbus.emit("devselreceiver")
                 msgbus.receive("devicelist", scope, (name, args) ->
@@ -246,63 +301,65 @@ angular.module(
             scope.prev_size = {width:100, height:100}
             scope.get_element_dimensions = () ->
                 return {"h": element.height(), "w": element.width()}
-            scope.size = {
-                width: 1200
-                height: 800
-            }
-            scope.zoom = {
-                factor: 1.0
-            }
-            scope.offset = {
-                x: 0
-                y: 0
-            }
             scope.$watch(
                 scope.get_element_dimensions
                 (new_val) ->
-                    scope.prev_size = {width: scope.size.width, height:scope.size.height}
+                    # needed ? why ?
+                    scope.prev_size = {width: scope.draw_settings.size.width, height:scope.draw_settings.size.height}
                     #scope.size.width = new_val["w"]
                     #scope.size.height = new_val["h"]
                     #console.log scope.prev_size, scope.size
                 true
             )
             element.bind("resize", () ->
-                console.log "Resize"
+                console.log "Resize NetworkGraph"
                 scope.$apply()
             )
     }
-]).directive("icswDeviceNetworkGraph2", ["d3_service", "dragging", "svg_tools", "blockUI", "ICSW_URLS", "$templateCache", "icswSimpleAjaxCall", (d3_service, dragging, svg_tools, blockUI, ICSW_URLS, $templateCache, icswSimpleAjaxCall) ->
+]).directive("icswDeviceNetworkGraphInner",
+[
+    "d3_service", "dragging", "svg_tools", "blockUI", "ICSW_URLS", "$templateCache", "icswSimpleAjaxCall", "ICSW_SIGNALS", "$rootScope",
+(
+    d3_service, dragging, svg_tools, blockUI, ICSW_URLS, $templateCache, icswSimpleAjaxCall, ICSW_SIGNALS, $rootScope
+) ->
     return {
         restrict : "EA"
         templateNamespace: "svg"
         replace: true
-        template: $templateCache.get("icsw.device.network.graph2")
+        template: $templateCache.get("icsw.device.network.graph.inner")
+        scope:
+            ls_filter: "=lsFilter"
+            draw_settings: "=drawSettings"
         link : (scope, element, attrs) ->
             scope.cur_scale = 1.0
             scope.cur_trans = [0, 0]
             scope.nodes = []
             scope.links = []
-            scope.redraw_nodes = 0
-            d3_service.d3().then((d3) ->
-                scope.svg_el = element[0]
-                svg = d3.select(scope.svg_el)
-                #svg.attr("height", scope.size.height)
-                scope.force = d3.layout.force().charge(-220).gravity(0.02).linkDistance(150).size([scope.size.width, scope.size.height])
-                  .linkDistance((d) -> return 100).on("tick", scope.tick)
-                scope.fetch_data()
-            scope.fetch_data = () ->
+            d3_service.d3().then(
+                (d3) ->
+                    scope.svg_el = element[0]
+                    svg = d3.select(scope.svg_el)
+                    #svg.attr("height", scope.size.height)
+                    scope.force = d3.layout.force().charge(-220).gravity(0.02).linkDistance(150).size([scope.draw_settings.size.width, scope.draw_settings.size.height])
+                      .linkDistance((d) -> return 100).on("tick", scope.tick)
+                    # scope.fetch_data()
+            )
+            $rootScope.$on(ICSW_SIGNALS("ICSW_NETWORK_REDRAW_TOPOLOGY"), (event) ->
                 blockUI.start(
                     "loading, please wait..."
                 )
+                console.log scope.draw_settings
                 icswSimpleAjaxCall(
                     url      : ICSW_URLS.NETWORK_JSON_NETWORK
-                    data     : 
-                        "graph_sel" : scope.graph_sel
+                    data     :
+                        "graph_sel" : scope.draw_settings.draw_mode
+                        "devices": angular.toJson((dev.idx for dev in scope.draw_settings.devices))
                     dataType : "json"
-                ).then((json) ->
-                    blockUI.stop()
-                    scope.json_data = json
-                    scope.draw_graph()
+                ).then(
+                    (json) ->
+                        blockUI.stop()
+                        scope.json_data = json
+                        scope.draw_graph()
                 )
             )
             scope.draw_graph = () ->
@@ -316,7 +373,7 @@ angular.module(
                     node.dragging = false
                     node.ignore_click = false
                     scope.node_lut[node.id] = node
-                scope.redraw_nodes++
+                $rootScope.$emit(ICSW_SIGNALS("ICSW_NETWORK_REDRAW_D3_ELEMENT"))
                 scope.force.start()
             scope.find_element = (s_target) ->
                 if svg_tools.has_class_svg(s_target, "draggable")
@@ -337,10 +394,10 @@ angular.module(
                     if drag_el_tag == "svg"
                         dragging.start_drag(event, 0, {
                             dragStarted: (x, y, event) ->
-                                scope.sx = x - scope.offset.x
-                                scope.sy = y - scope.offset.y
+                                scope.sx = x - scope.draw_settings.offset.x
+                                scope.sy = y - scope.draw_settings.offset.y
                             dragging: (x, y) ->
-                                scope.offset = {
+                                scope.draw_settings.offset = {
                                    x: x - scope.sx
                                    y: y - scope.sy
                                 }
@@ -371,23 +428,23 @@ angular.module(
                                 drag_node.dragging = false
                         })
             scope.rescale = (point) ->
-                point.x -= scope.offset.x
-                point.y -= scope.offset.y
-                point.x /= scope.zoom.factor
-                point.y /= scope.zoom.factor
+                point.x -= scope.draw_settings.offset.x
+                point.y -= scope.draw_settings.offset.y
+                point.x /= scope.draw_settings.zoom.factor
+                point.y /= scope.draw_settings.zoom.factor
                 return point
             scope.iter = 0
             scope.mouse_wheel = (event, delta, deltax, deltay) ->
                 scale_point = scope.rescale(
                     svg_tools.get_abs_coordinate(scope.svg_el, event.originalEvent.clientX, event.originalEvent.clientY)
                 )
-                prev_factor = scope.zoom.factor
+                prev_factor = scope.draw_settings.zoom.factor
                 if delta > 0
-                    scope.zoom.factor *= 1.05
+                    scope.draw_settings.zoom.factor *= 1.05
                 else
-                    scope.zoom.factor /= 1.05
-                scope.offset.x += scale_point.x * (prev_factor - scope.zoom.factor)
-                scope.offset.y += scale_point.y * (prev_factor - scope.zoom.factor)
+                    scope.draw_settings.zoom.factor /= 1.05
+                scope.draw_settings.offset.x += scale_point.x * (prev_factor - scope.draw_settings.zoom.factor)
+                scope.draw_settings.offset.y += scale_point.y * (prev_factor - scope.draw_settings.zoom.factor)
                 event.stopPropagation()
                 event.preventDefault()
             scope.tick = () ->
@@ -406,12 +463,6 @@ angular.module(
                     link.y1c = s_node.y
                     link.x2c = d_node.x
                     link.y2c = d_node.y
-
-                scope.$apply(() ->
-                    #if true
-                    # FIXME, ToDo
-                    # console.log "REDRAW"
-                    scope.redraw_nodes++
-                )
+                $rootScope.$emit(ICSW_SIGNALS("ICSW_NETWORK_REDRAW_D3_ELEMENT"))
     }
 ])

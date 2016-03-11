@@ -9,6 +9,35 @@
     </g>
 </script>
 
+<script type="text/ng-template" id="icsw.device.network.topology">
+    <h3>
+        Network topology for {{ devices.length }} devices
+    </h3>
+    <form class="form-inline">
+        Show network topology for
+        <div class="form-group">
+            <ui-select ng-model="settings.draw_mode" style="max-width:300px; min-width:300px;">
+                <ui-select-match class="ui-select-match" placeholder="Select a drawing option">
+                    {{ $select.selected.info }}
+                </ui-select-match>
+                <ui-select-choices class="ui-select-choices" repeat="value.value as value in draw_selections">
+                    <div ng-bind-html="value.info | highlight: $select.search"></div>
+                </ui-select-choices>
+            </ui-select>
+        </div>
+        <div class="form-group">
+            <icsw-tools-button type="reload" value="Redraw" size="sm" ng-click="redraw_graph()"></icsw-tools-button>
+        </div>
+        <div class="form-group">,
+            <icsw-tools-button type="show" value="Show Livestatus" size="sm" is-show="!settings.show_livestatus" ng-click="settings.show_livestatus = !settings.show_livestatus">
+            </icsw-tools-button>
+            livestatus
+        </div>
+        <icsw-device-livestatus-filter ng-show="settings.show_livestatus" ls-filter="ls_filter"></icsw-device-livestatus-filter>
+    </form>
+    <icsw-device-network-graph ls-filter="ls_filter" draw-settings="settings"></icsw-device-network-graph>
+</script>
+
 <script type="text/ng-template" id="icsw.device.network.host.livestatus">
     <g class="node draggable" node_id="{{ node.id }}">
         <newburst
@@ -30,38 +59,44 @@
 
 <script type="text/ng-template" id="icsw.device.network.graph">
     <div>
-        <h4>{{ zoom.factor | number:2 }}@({{ offset.x | number:0 }}, {{ offset.y | number:0 }})</h4>
-        <icsw-device-network-graph2 icsw-mouse-capture></icsw-device-network-graph2>
+        <h4>Zoom = {{ draw_settings.zoom.factor | number:2 }}, offset = ({{ draw_settings.offset.x | number:0 }}, {{ draw_settings.offset.y | number:0 }})</h4>
+        <icsw-device-network-graph-inner draw-settings="draw_settings" ls-filter="ls_filter" icsw-mouse-capture></icsw-device-network-graph-inner>
     </div>
 </script>
 
-<script type="text/ng-template" id="icsw.device.network.graph2">
+<script type="text/ng-template" id="icsw.device.network.graph.inner">
     <svg
         class="draggable"
-        ng-attr-width="{{ size.width }}"
-        ng-attr-height="{{ size.height }}"
-        ng-attr-viewBox="0 0 {{ size.width }} {{ size.height }}"
+        ng-attr-width="{{ draw_settings.size.width }}"
+        ng-attr-height="{{ draw_settings.size.height }}"
+        ng-attr-viewBox="0 0 {{ draw_settings.size.width }} {{ draw_settings.size.height }}"
         preserveAspectRatio="xMidYMid"
         pointer-events="all"
         msd-wheel="mouse_wheel($event, $delta, $deltax, $deltay)"
         ng-mousedown="mouse_down($event)"
     >
         <!-- translate before scale: no need to scale offsets -->
-        <rect style="stroke:black;stroke-width:2px;fill-opacity:0" x="0" y="0" ng-attr-width="{{ size.width }}" ng-attr-height="{{ size.height }}"></rect>
-        <g ng-attr-transform="translate({{ offset.x }}, {{ offset.y }}) scale({{ zoom.factor }})">
+        <rect
+            style="stroke:black;stroke-width:2px;fill-opacity:0"
+            x="0"
+            y="0"
+            ng-attr-width="{{ draw_settings.size.width }}"
+            ng-attr-height="{{ draw_settings.size.height }}">
+        </rect>
+        <g
+            ng-attr-transform="translate({{ draw_settings.offset.x }}, {{ draw_settings.offset.y }}) scale({{ draw_settings.zoom.factor }})"
+        >
             <icsw-device-network-host-link
                 ng-repeat="link in links"
                 link="link"
-                redraw="redraw_nodes"
             ></icsw-device-network-host-link>
             <icsw-device-network-host-livestatus
-                ng-if="show_livestatus"
+                ng-if="draw_settings.show_livestatus"
                 devicepk="node.id"
                 icsw-device-network-node-transform="node"
                 icsw-device-network-node-dbl-click="node"
                 ng-repeat="node in nodes"
                 ls-filter="ls_filter"
-                redraw="redraw_nodes"
                 ng-dblclick="double_click($event)"
             ></icsw-device-network-host-livestatus>
             <icsw-device-network-host-node
@@ -69,7 +104,6 @@
                 icsw-device-network-node-dbl-click="node"
                 ng-repeat="node in nodes"
                 node="node"
-                redraw="redraw_nodes"
                 ng-dblclick="double_click($event)"
             ></icsw-device-network-host-node>
         </g>

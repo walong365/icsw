@@ -123,6 +123,15 @@ angular.module(
                     "graphing": []
                     "device_variable": []
                 }
+                scope.dev_list = {
+                    "general": []
+                    "network": []
+                    "config": []
+                    "status_history": []
+                    "livestatus": []
+                    "graphing": []
+                    "device_variable": []
+                }
                 for key of scope.pk_list
                     scope["#{key}_active"] = false
                 # pk list of devices
@@ -136,8 +145,10 @@ angular.module(
                     DeviceOverviewSettings.set_mode(name)
                     if name in ["network", "status_history", "livestatus", "category"]
                         scope.pk_list[name] = scope.device_nmd_list
+                        scope.dev_list[name] = scope.devicelist
                     else if name in ["config", "graphing", "device_variable"]
                         scope.pk_list[name] = scope.devicelist
+                        scope.dev_list[name] = scope.devicelist
                 if scope.dev_pk_list.length > 1
                     scope.addon_text = " (#{scope.devicelist.length})"
                 else

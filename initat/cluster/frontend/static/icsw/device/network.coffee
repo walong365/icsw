@@ -116,7 +116,7 @@ angular.module(
                                         $scope.local_helper_obj = hs
                                         $scope.remote_helper_obj = temp_hs
                                         $scope.peer_list.enrich_device_tree($scope.device_tree, $scope.local_helper_obj, $scope.remote_helper_obj)
-                                        console.log "done", $scope.local_helper_obj
+                                        console.log "network done, local_objs=", $scope.local_helper_obj.devices.length
                                 )
                         )
                 )

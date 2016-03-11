@@ -28,6 +28,7 @@ config_module = angular.module(
         "main.configoverview",
             {
                 url: "/configoverview"
+                # templateUrl: "icsw/main/device/config.html"
                 templateUrl: "icsw/main/config/overview.html"
                 data:
                     pageTitle: "Configuration Overview"

@@ -258,8 +258,11 @@ angular.module(
                     console.log "no devsel_defined"
 
             if parseInt(attrs.icswSelMan)
-                # popup mode
-                _new_sel(scope.$eval(attrs["icswDeviceList"]))
+                # popup mode, watch for changes (i.e. tab activation)
+                scope.$watch(attrs["icswDeviceList"], (new_val) ->
+                    if new_val?
+                        _new_sel(new_val)
+                )
             else
                 $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"), (event) ->
                     console.log "icsw_overview_emit_selection received"
@@ -308,6 +311,8 @@ angular.module(
         "ICSW_NETWORK_TAB_SELECTED": "icsw.network.tab.selected"
         "ICSW_DEVICE_SCAN_CHANGED": "icsw.device.scan.changed"
         "ICSW_MENU_PROGRESS_BAR_CHANGED": "icsw.menu.progress.bar.changed"
+        "ICSW_NETWORK_REDRAW_TOPOLOGY": "icsw.network.redraw.topology",
+        "ICSW_NETWORK_REDRAW_D3_ELEMENT": "icsw.network.redraw.d3.element",
         # "ICSW_READY_TO_RECEIVE_SELECTION": "icsw.ready.to.receive.selection"
     }
     return (name) ->
