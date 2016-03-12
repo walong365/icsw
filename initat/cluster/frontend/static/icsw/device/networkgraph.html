@@ -13,6 +13,7 @@
     <h3>
         Network topology for {{ devices.length }} devices
     </h3>
+    <icsw-test-g icsw-element-size="size"></icsw-test-g>
     <form class="form-inline">
         Show network topology for
         <div class="form-group">
@@ -60,11 +61,11 @@
 <script type="text/ng-template" id="icsw.device.network.graph">
     <div>
         <h4>Zoom = {{ draw_settings.zoom.factor | number:2 }}, offset = ({{ draw_settings.offset.x | number:0 }}, {{ draw_settings.offset.y | number:0 }})</h4>
-        <icsw-device-network-graph-inner draw-settings="draw_settings" ls-filter="ls_filter" icsw-mouse-capture></icsw-device-network-graph-inner>
+        <icsw-device-network-graph-inner draw-settings="draw_settings" ls-filter="ls_filter"></icsw-device-network-graph-inner>
     </div>
 </script>
 
-<script type="text/ng-template" id="icsw.device.network.graph.inner">
+<script type="text/ng-template" id="icsw.device.network.graph.inner2x">
     <svg
         class="draggable"
         ng-attr-width="{{ draw_settings.size.width }}"

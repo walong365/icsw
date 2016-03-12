@@ -246,11 +246,11 @@ angular.module(
         restrict: "A"
         priority: -100
         link: (scope, el, attrs) ->
-            console.log "link selman to scope", scope
+            # console.log "link selman to scope", scope
 
             _new_sel = (sel) ->
                 selman_mode = attrs["icswSelManSelMode"] || "d"
-                console.log "SelMan new selection (mode #{selman_mode})", sel
+                # console.log "SelMan new selection (mode #{selman_mode})", sel
                 selman_mode = attrs["icswSelManSelMode"] || "d"
                 if scope.new_devsel?
                     scope.new_devsel(sel)
@@ -265,7 +265,7 @@ angular.module(
                 )
             else
                 $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"), (event) ->
-                    console.log "icsw_overview_emit_selection received"
+                    # console.log "icsw_overview_emit_selection received"
                     if DeviceOverviewSettings.is_active()
                         console.log "ov is active"
                     else
@@ -494,7 +494,7 @@ angular.module(
                 data.routing_info = r_data[3]
                 # console.log data.routing_info.service_types
                 data.acls_are_valid = true
-                console.log "Acls set, sending signal"
+                # console.log "Acls set, sending signal"
                 _changed()
             (error) ->
                 _reset()

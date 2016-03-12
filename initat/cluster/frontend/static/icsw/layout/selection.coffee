@@ -57,7 +57,7 @@ angular.module(
     )
     msgbus.receive("devselreceiver", $rootScope, (name, args) ->
         # args is an optional sender name to find errors
-        console.log "ignore old devselreciever"
+        # console.log "ignore old devselreciever"
         # _receivers += 1
         # console.log "register dsr"
         # $rootScope.$emit(ICSW_SIGNALS("ICSW_DSR_REGISTERED"))
@@ -65,7 +65,7 @@ angular.module(
     )
     register_receiver = () ->
         _receivers += 1
-        console.log "registered receiver"
+        # console.log "registered receiver"
         $rootScope.$emit(ICSW_SIGNALS("ICSW_DSR_REGISTERED"))
         send_selection()
     sync_selection = (new_sel) ->
@@ -74,7 +74,7 @@ angular.module(
     unsync_selection = () ->
         cur_selection.sync_with_db(undefined)
     send_selection = () ->
-        console.log "emit current device selection"
+        # console.log "emit current device selection"
         $rootScope.$emit(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"))
         # msgbus.emit("devicelist", )
     return {
@@ -102,7 +102,7 @@ angular.module(
         constructor: (@cat_sel, @devg_sel, @dev_sel, @tot_dev_sel) ->
             $rootScope.$on(ICSW_SIGNALS("ICSW_DEVICE_TREE_LOADED"), (event, tree) =>
                 @tree = tree
-                console.log "tree set for icswSelection", @tree
+                # console.log "tree set for icswSelection", @tree
             )
             @tree = undefined
             @sync_with_db(undefined)
@@ -176,7 +176,7 @@ angular.module(
 
         selection_saved: () =>
             # database object saved
-            console.log "resync", @db_obj
+            # console.log "resync", @db_obj
             @sync_with_db(@db_obj)
 
         is_synced: () =>
@@ -409,7 +409,7 @@ angular.module(
         "search_str": ""
         "selection_for_dropdown": undefined
     }
-    console.log "new ctrl", $scope.$id
+    # console.log "new ctrl", $scope.$id
     # treeconfig for devices
     $scope.tc_devices = new icswLayoutSelectionTreeService($scope, {show_tree_expand_buttons : false, show_descendants : true})
     # treeconfig for groups
@@ -422,7 +422,7 @@ angular.module(
         "c": 0
     }
     $scope.tree = undefined
-    console.log "start"
+    # console.log "start"
     # list of receivers
     stop_listen = []
     stop_listen.push(

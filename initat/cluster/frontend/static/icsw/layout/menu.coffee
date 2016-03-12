@@ -417,12 +417,15 @@ menu_module = angular.module(
             displayName: "menubar"
             propTypes:
                 React.PropTypes.object.isRequired
+            componentDidMount: () ->
+                mb_height = $(react_dom.findDOMNode(@)).height()
+                console.log "fMENUBAR_HEIGHT=", mb_height
+                $("body").css("padding-top", mb_height + 1)
             componentDidUpdate: () ->
                 mb_height = $(react_dom.findDOMNode(@)).height()
-                console.log "MENUBAR_HEIGHT=", mb_height
+                console.log "uMENUBAR_HEIGHT=", mb_height
                 $("body").css("padding-top", mb_height + 1)
             render: () ->
-                console.log "render menu"
                 menus = []
                 for state in $state.get()
                     if state.data? and state.data.menuHeader?
@@ -494,17 +497,17 @@ menu_module = angular.module(
             $rootScope.$on(ICSW_SIGNALS("ICSW_USER_CHANGED"), (event, user) ->
                 # console.log "uc", user
                 _user = user
-                console.log "user_render"
+                # console.log "user_render"
                 _render()
             )
             $rootScope.$on(ICSW_SIGNALS("ICSW_ACLS_CHANGED"), (event, acls) ->
                 # console.log "ac", acls
                 _acls = acls
-                console.log "acls_render"
+                # console.log "acls_render"
                 _render()
             )
             $rootScope.$on(ICSW_SIGNALS("ICSW_MENU_PROGRESS_BAR_CHANGED"), (event, settings) ->
-                console.log "mps", settings
+                # console.log "mps", settings
                 _render()
             )
 

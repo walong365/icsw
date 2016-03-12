@@ -7,5 +7,5 @@
     gulp-cssnano gulp-htmlmin gulp-gzip gulp-inject gulp-angular-filesort \
     gulp-webserver connect-modrewrite http-proxy-middleware gulp-exec \
     gulp-changed gulp-remember gulp-cache gulp-bg gulp-rename gulp-clean-dest del \
-    gulp-wait gulp-strip-debug run-sequence
+    gulp-wait gulp-strip-debug run-sequence gulp-cached gulp-remember
 

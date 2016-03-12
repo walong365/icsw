@@ -371,7 +371,7 @@ angular.module(
                     else
                         $scope.device_tree.update_boot_settings(obj).then(
                             (data) ->
-                                console.log "data", data
+                                # console.log "data", data
                                 d.resolve("updated")
                             (reject) ->
                                 d.reject("not saved")
@@ -1261,7 +1261,7 @@ angular.module(
     nw_tree = undefined
     return {
         fetch: (scope) ->
-            console.log "start fetch"
+            # console.log "start fetch"
             defer = $q.defer()
             icswNetworkTreeService.fetch(scope.$id).then(
                 (net_tree) ->
@@ -1352,7 +1352,7 @@ angular.module(
     nw_tree = undefined
     return {
         fetch: (scope) ->
-            console.log "start fetch"
+            # console.log "start fetch"
             defer = $q.defer()
             icswNetworkTreeService.fetch(scope.$id).then(
                 (net_tree) ->
@@ -1438,7 +1438,6 @@ angular.module(
 (
     $scope
 ) ->
-    console.log "icswnetworklistctrl", $scope
 ]).service('icswNetworkListService',
 [
     "Restangular", "$q", "icswTools", "ICSW_URLS", "icswDomainTreeService", "icswSimpleAjaxCall", "blockUI",
@@ -1500,7 +1499,7 @@ angular.module(
 
     return {
         fetch: (scope) ->
-            console.log "start fetch"
+            # console.log "start fetch"
             defer = $q.defer()
             $q.all(
                 [

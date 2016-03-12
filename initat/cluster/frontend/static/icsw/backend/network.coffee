@@ -40,7 +40,7 @@ angular.module(
 
         update_all: (nw_list, nw_speed_list, nw_type_list, nw_device_type_list, nw_snmp_type_list) =>
             # overwrite all entries
-            console.log "Overwrite all networktree entries"
+            # console.log "Overwrite all networktree entries"
             _dict = {
                 "nw_list": nw_list
                 "nw_speed_list": nw_speed_list
@@ -174,7 +174,7 @@ angular.module(
         _defer = $q.defer()
         $q.all(_wait_list).then(
             (data) ->
-                console.log "*** network tree loaded ***"
+                # console.log "*** network tree loaded ***"
                 if _result?
                     _result.update_all(data[0], data[1], data[2], data[3], data[4])
                 else
@@ -435,7 +435,7 @@ angular.module(
         ]
         $q.all(w_list).then(
             (data) ->
-                console.log "*** peer information loaded ***"
+                # console.log "*** peer information loaded ***"
                 _defer.resolve(new icswPeerInformation(data[0], data[1], (dev.idx for dev in dev_list)))
         )
         return _defer
@@ -460,7 +460,7 @@ angular.module(
         ]
         $q.all(w_list).then(
             (data) ->
-                console.log "*** peer information reloaded ***"
+                # console.log "*** peer information reloaded ***"
                 peer_info.update_all(data[0], data[1])
                 _defer.resolve(peer_info)
         )

@@ -37,34 +37,30 @@ angular.module(
             svg_point.y = y
             first = svg_point.matrixTransform(screen_ctm.inverse())
             return first
-            glob_to_local = event.target.getTransformToElement(scope.svg_el)
-            second = first.matrixTransform(glob_to_local.inverse())
-            return second
     }
 )
 
 angular.module(
     "icsw.mouseCapture",
     []
-).factory('mouseCaptureFactory', ["$rootScope", ($rootScope) ->
+).factory('mouseCaptureFactory', [() ->
+    # mouseCaptureFactory for ReactJS, no $rootScope.$digest Cycles are triggered
     $element = document
     mouse_capture_config = null
     mouse_move = (event) ->
         if mouse_capture_config and mouse_capture_config.mouse_move
             mouse_capture_config.mouse_move(event)
-            $rootScope.$digest()
     mouse_up = (event) ->
         if mouse_capture_config and mouse_capture_config.mouse_up
             mouse_capture_config.mouse_up(event)
-            $rootScope.$digest()
     return {
         register_element: (element) ->
-            $element = element
+            $element = $(element)
         acquire: (event, config) ->
             this.release()
             mouse_capture_config = config
-            $element.mousemove(mouse_move)
-            $element.mouseup(mouse_up)
+            $element.bind("mousemove", mouse_move)
+            $element.bind("mouseup", mouse_up)
         release: () ->
             if mouse_capture_config
                 if mouse_capture_config.released
@@ -73,21 +69,23 @@ angular.module(
                 $element.unbind("mousemove", mouse_move)
                 $element.unbind("mouseup", mouse_up)
     }
-]).directive('icswMouseCapture', () ->
-    return {
-        restrict: "A"
-        controller: ["$scope", "$element", "mouseCaptureFactory", ($scope, $element, mouseCaptureFactory) ->
-            mouseCaptureFactory.register_element($element)
-        ]
-    }
-)
+])
+# no longer needed, handled via ReactJS
+# .directive('icswMouseCapture', () ->
+#    return {
+#        restrict: "A"
+#        controller: ["$scope", "$element", "mouseCaptureFactory", ($scope, $element, mouseCaptureFactory) ->
+#            mouseCaptureFactory.register_element($element)
+#        ]
+#    }
+#)
 
 angular.module(
     "icsw.dragging",
     [
         "icsw.mouseCapture"
     ]
-).factory("dragging", ["$rootScope", "mouseCaptureFactory", ($rootScope, mouseCaptureFactory) ->
+).factory("dragging", ["mouseCaptureFactory", (mouseCaptureFactory) ->
     return {
         start_drag: (event, threshold, config) ->
             dragging = false
@@ -292,7 +290,6 @@ angular.module(
             draw_settings: "=drawSettings"
         template: $templateCache.get("icsw.device.network.graph")
         link: (scope, element, attrs) ->
-            console.log "XXX", scope.ls_filter, scope.draw_settings
             if not attrs["devicepk"]?
                 msgbus.emit("devselreceiver")
                 msgbus.receive("devicelist", scope, (name, args) ->
@@ -363,7 +360,6 @@ angular.module(
                 )
             )
             scope.draw_graph = () ->
-                scope.iter = 0
                 scope.force.nodes(scope.json_data.nodes).links(scope.json_data.links)
                 scope.node_lut = {}
                 scope.nodes = scope.json_data.nodes
@@ -433,7 +429,6 @@ angular.module(
                 point.x /= scope.draw_settings.zoom.factor
                 point.y /= scope.draw_settings.zoom.factor
                 return point
-            scope.iter = 0
             scope.mouse_wheel = (event, delta, deltax, deltay) ->
                 scale_point = scope.rescale(
                     svg_tools.get_abs_coordinate(scope.svg_el, event.originalEvent.clientX, event.originalEvent.clientY)
@@ -448,7 +443,6 @@ angular.module(
                 event.stopPropagation()
                 event.preventDefault()
             scope.tick = () ->
-                scope.iter++
                 #console.log "t"
                 for node in scope.force.nodes()
                     t_node = scope.node_lut[node.id]
@@ -464,5 +458,319 @@ angular.module(
                     link.x2c = d_node.x
                     link.y2c = d_node.y
                 $rootScope.$emit(ICSW_SIGNALS("ICSW_NETWORK_REDRAW_D3_ELEMENT"))
+    }
+]).service("icswD3Element", ["svg_tools", (svg_tools) ->
+    class icswD3Element
+        constructor: () ->
+        create: (selector, data) ->
+            ds = selector.data(data, (d) -> return d.id)
+            ds.enter().append("circle").attr("class", "d3-point draggable")
+            ds.attr('cx', (d) -> return d.x)
+            .attr('cy', (d) -> return d.y)
+            .attr('r', (d) -> return d.r)
+            .attr("id", (d) -> return d.id)
+            return ds
+            # EXIT
+            # point.exit().remove()
+
+
+]).service("icswD3Test",
+[
+    "$templateCache", "d3_service", "svg_tools", "dragging", "mouseCaptureFactory", "icswTools", "icswD3Element",
+(
+    $templateCache, d3_service, svg_tools, dragging, mouseCaptureFactory, icswTools, icswD3Element
+) ->
+    class icswD3Test
+
+        constructor: () ->
+
+        create: (element, props, state, update_scale_fn) =>
+            draw_settings = state.settings
+            _lut = {}
+            for node in state.data
+                _lut[node.id] = node
+            d3_service.d3().then(
+                (d3) =>
+                    @d3 = d3
+                    svg = d3.select(element).append("svg")
+                    .attr('class', 'draggable')
+                    .attr('width', props.width)
+                    .attr('height', props.height)
+                    .attr("onStart", @_drag_start)
+                    .attr("pointer-events", "all")
+                    $(element).mousedown(
+                        (event) =>
+                            mouseCaptureFactory.register_element(element)
+                            console.log "msd"
+                            _find_element = (s_target) ->
+                                # iterative search
+                                if svg_tools.has_class_svg(s_target, "draggable")
+                                    return s_target
+                                s_target = s_target.parent()
+                                if s_target.length
+                                    return _find_element(s_target)
+                                else
+                                    return null
+                            drag_el = _find_element($(event.target))
+                            if drag_el? and drag_el.length
+                                el_scope = angular.element(drag_el[0]).scope()
+                            else
+                                el_scope = null
+                            if el_scope
+                                drag_el_tag = drag_el.prop("tagName")
+                                console.log drag_el_tag
+                                if drag_el_tag == "svg"
+                                    _sx = 0
+                                    _sy = 0
+                                    dragging.start_drag(event, 0, {
+                                        dragStarted: (x, y, event) =>
+                                            _sx = x - draw_settings.offset.x
+                                            _sy = y - draw_settings.offset.y
+                                        dragging: (x, y) =>
+                                            draw_settings.offset = {
+                                               x: x - _sx
+                                               y: y - _sy
+                                            }
+                                            @_update_transform(element, draw_settings, update_scale_fn)
+                                        dragEnded: () =>
+                                    })
+                                else
+                                    drag_node = drag_el[0]
+                                    start_drag_point = undefined
+                                    dragging.start_drag(event, 1, {
+                                        dragStarted: (x, y, event) =>
+                                            svg = $(element).find("svg")[0]
+                                            start_drag_point = @_rescale(
+                                                svg_tools.get_abs_coordinate(svg, x, y)
+                                                draw_settings
+                                            )
+                                            console.log start_drag_point
+                                        dragging: (x, y) =>
+                                            svg = $(element).find("svg")[0]
+                                            cur_point = @_rescale(
+                                                svg_tools.get_abs_coordinate(svg, x, y)
+                                                draw_settings
+                                            )
+                                            console.log start_drag_point, cur_point, drag_node
+                                            $(drag_node).attr("cx", cur_point.x)
+                                            $(drag_node).attr("cy", cur_point.y)
+                                            node = _lut[parseInt($(drag_node).attr("id"))]
+                                            node.x = cur_point.x
+                                            node.y = cur_point.y
+                                            node.px = cur_point.x
+                                            node.py = cur_point.y
+                                        dragEnded: () =>
+                                    })
+
+                                    console.log "DN", drag_el[0]
+                    )
+                    Hamster(element).wheel((event, delta, dx, dy) =>
+                        # console.log "msd", delta, dx, dy
+                        svg = $(element).find("svg")[0]
+                        scale_point = @_rescale(
+                            svg_tools.get_abs_coordinate(svg, event.originalEvent.clientX, event.originalEvent.clientY)
+                            draw_settings
+                        )
+                        prev_factor = draw_settings.zoom.factor
+                        if delta > 0
+                            draw_settings.zoom.factor *= 1.05
+                        else
+                            draw_settings.zoom.factor /= 1.05
+                        draw_settings.offset.x += scale_point.x * (prev_factor - draw_settings.zoom.factor)
+                        draw_settings.offset.y += scale_point.y * (prev_factor - draw_settings.zoom.factor)
+                        @_update_transform(element, draw_settings, update_scale_fn)
+                        event.stopPropagation()
+                        event.preventDefault()
+                    )
+                    force = undefined
+                    if draw_settings.force? and draw_settings.force.enabled?
+                        force = d3.layout.force().charge(-220).gravity(0.01).linkDistance(100).size(
+                            [
+                                400
+                                400
+                            ]
+                        ).linkDistance(
+                            (d) ->
+                                return 100
+                        ).on("tick", () =>
+                            # update coordinates
+                            g = @d3.select(element).selectAll(".d3-point").attr(
+                                "cx", (d) -> return d.x
+                            ).attr(
+                                "cy", (d) -> return d.y
+                            )
+                        )
+                        console.log state.data[0].x
+                        console.log state.data[0].y
+                    svg.append("rect").attr("x", "0").attr("y", "0")
+                    .attr("width", "100%")
+                    .attr("height", "100%")
+                    .attr("style", "stroke:black; stroke-width:2px; fill-opacity:0;")
+                    svg.append('g').attr('class', 'd3-points')
+                    @update(element, state, update_scale_fn)
+                    if draw_settings.force? and draw_settings.force.enabled?
+                        force.stop()
+                        force.nodes(state.data).links(state.links)
+                        force.start()
+            )
+
+        _drag_start: (event, ui) ->
+            console.log "ds", event, ui
+        _rescale: (point, settings) =>
+            point.x -= settings.offset.x
+            point.y -= settings.offset.y
+            point.x /= settings.zoom.factor
+            point.y /= settings.zoom.factor
+            return point
+
+        update: (element, state, update_scale_fn) =>
+            console.log "up", element, state
+            scales = @_scales(element, state.domain)
+            @_draw_points(element, scales, state.data)
+            @_update_transform(element, state.settings, update_scale_fn)
+
+        _scales: (element, domain) =>
+            # hm, to be improved ...
+            jq_el = $(element).find("svg")
+            width = jq_el.width()
+            height = jq_el.height()
+            x = @d3.scale.linear().range([0, width]).domain(domain.x)
+            y = @d3.scale.linear().range([height, 0]).domain(domain.y)
+            z = @d3.scale.linear().range([5, 20]).domain([1, 10])
+            return {x: x, y: y, z: z}
+
+        _update_transform: (element, settings, update_scale_fn) =>
+            g = $(element).find("g")
+            _t_str = "translate(#{settings.offset.x}, #{settings.offset.y}) scale(#{settings.zoom.factor})"
+            g.attr("transform", _t_str)
+            update_scale_fn()
+
+        _draw_points: (element, scales, data) =>
+            _pc = new icswD3Element()
+            # select g
+            g = @d3.select(element).selectAll(".d3-points")
+
+            ds_sel = _pc.create(g.selectAll(".d3-point"), data)
+            ds_sel.exit().remove()
+
+        destroy: (element) =>
+            console.log "destroy"
+]).factory("icswD3T2", ["icswD3Test", (icswD3Test) ->
+    my_test = new icswD3Test()
+    react_dom = ReactDOM
+    {div, h4} = React.DOM
+    test = React.createClass(
+        propTypes: {
+            # required types
+            data: React.PropTypes.array
+            domain: React.PropTypes.object
+            settings: React.PropTypes.object
+        }
+        componentDidMount: () ->
+            el = ReactDOM.findDOMNode(@)
+            my_test.create(
+                el
+                {
+                    width: "80%"
+                    height: "300px"
+                }
+                @get_chart_state()
+                @update_scale
+            )
+        componentDidUpdate: () ->
+            console.log "comp update"
+        update_scale: () ->
+            @forceUpdate()
+        get_chart_state: () ->
+            return {
+                data: @props.data
+                links: @props.links
+                domain: @props.domain
+                settings: @props.settings
+            }
+        componentWillUnmount: () ->
+            console.log "main_umount"
+            el = react_dom.findDOMNode(@)
+            my_test.destroy(el)
+        render: () ->
+            return div(
+                {key: "top"}
+                [
+                    h4(
+                        {key: "header"}
+                        "Header #{@props.settings.zoom.factor} #{@props.settings.offset.x} / #{@props.settings.offset.y}"
+                    )
+                    div(
+                        {key: "div", className: "chart"}
+                    )
+                ]
+            )
+    )
+    return test
+]).directive("icswTestG",
+[
+    "icswD3T2", "ICSW_URLS", "icswSimpleAjaxCall",
+(
+    icswD3T2, ICSW_URLS, icswSimpleAjaxCall
+) ->
+    return {
+        restrict: "EA"
+        replace: true
+        link: (scope, element, attr) ->
+            scope.size = undefined
+            scope.$watch("size", (new_val) ->
+                # hm, not working
+                console.log "new size", new_val
+            )
+            icswSimpleAjaxCall(
+                url      : ICSW_URLS.NETWORK_JSON_NETWORK
+                data     :
+                    "graph_sel" : "all"
+                    "devices": angular.toJson([])
+                dataType : "json"
+            ).then(
+                (json) ->
+                    idx = 0
+                    idy = 0
+                    for node in json.nodes
+                        node.x = idx
+                        node.y = idy
+                        node.r = 10
+                        idx += 10
+                        idy += 25
+                        if idy > 100
+                            idy = 0
+                        console.log "node=", node
+                    _settings = {
+                        data: json.nodes
+                        links: json.links
+                        domain: {x: [0, 10], y: [0,20]}
+                        settings: {
+                            offset: {
+                                x: 0
+                                y: 0
+                            }
+                            zoom: {
+                                factor: 1.0
+                            }
+                            force: {
+                                enabled: true
+                            }
+                        }
+                    }
+                    _render = () ->
+                        ReactDOM.render(
+                            React.createElement(
+                                icswD3T2
+                                _settings
+                            )
+                            element[0]
+                        )
+                    _render()
+            )
+            scope.$on("$destroy", (d) ->
+                ReactDOM.unmountComponentAtNode(element[0])
+            )
+
     }
 ])

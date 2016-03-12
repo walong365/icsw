@@ -46,8 +46,10 @@ angular.module(
     set_selection = (sel) ->
         _selection = sel
         $rootScope.$emit(ICSW_SIGNALS("ICSW_OVERVIEW_SELECTION_CHANGED"), _selection)
+
     get_selection = (sel) ->
         return _selection
+
     return {
         set_selection: (sel) ->
             set_selection(sel)

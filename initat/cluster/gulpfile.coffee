@@ -83,7 +83,7 @@ sources = {
         "parta.js"
         [
             "frontend/static/js/modernizr-2.8.1.min.js",
-            "frontend/static/js/jquery-2.2.0.min.js",
+            "frontend/static/js/jquery-2.2.1.min.js",
         ]
         "js"
         true
@@ -114,6 +114,8 @@ sources = {
             "frontend/static/js/angular-promise-extras.js",
             "frontend/static/js/react-0.14.7.js",
             "frontend/static/js/react-dom-0.14.7.js",
+            # not needed ?
+            "frontend/static/js/react-draggable.js",
             "frontend/static/js/hotkeys.js",
         ]
         "js"
@@ -193,11 +195,18 @@ if not options.production
 COMPILE_DIR = options["compile-dir"]
 DEPLOY_DIR = options["deploy-dir"]
 
+gulp.task("initclean", () ->
+    return del(
+        [
+            COMPILE_DIR
+        ]
+    )
+)
+
 gulp.task("clean", () ->
     return del(
         [
             DEPLOY_DIR,
-            COMPILE_DIR
         ]
     )
 )
@@ -533,7 +542,7 @@ gulp.task("stop", () ->
     bgtask.stop()
 )
 
-gulp.task("serve", ["watch", "django", "staticbuild"], () ->
+gulp.task("serve", ["initclean", "watch", "django", "staticbuild"], () ->
     connect.server(
         {
             root: "work"
