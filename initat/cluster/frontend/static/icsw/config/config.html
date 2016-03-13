@@ -3,30 +3,35 @@
 </script>
 
 <script type="text/ng-template" id="config.catalog.form">
-    <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
+    <form name="form_data" class="form-horizontal">
         <h2>Config catalog '{{ edit_obj.name }}'</h2>
         <fieldset>
             <legend>Basic settings</legend>
-            <div id="div_id_name" class="form-group  ng-class:form_error('name')">
-                <label for="id_name" class="control-label col-sm-3 requiredField">
+            <div class="form-group  ng-class:form_error('name')">
+                <label class="control-label col-sm-3 requiredField">
                     Name<span class="asteriskField">*</span>
                 </label>
-                <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="254" name="name" ng-model="edit_obj.name" required="True" type="text"></input></div>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="254" name="name" ng-model="edit_obj.name" required="True" type="text"/
+                ></div>
             </div>
-            <div id="div_id_author" class="form-group">
-                <label for="id_author" class="control-label col-sm-3">
+            <div class="form-group">
+                <label class="control-label col-sm-3">
                     Author
                 </label>
-                <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_author" maxlength="256" name="author" ng-model="edit_obj.author" type="text"></input></div>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control"maxlength="256" name="author" ng-model="edit_obj.author" type="text"/>
+                </div>
             </div>
-            <div id="div_id_url" class="form-group">
-                <label for="id_url" class="control-label col-sm-3">
+            <div class="form-group">
+                <label class="control-label col-sm-3">
                     Url
                 </label>
-                <div class="controls col-sm-7"><input class="urlinput form-control" id="id_url" maxlength="256" name="url" ng-model="edit_obj.url" type="url"></input></div>
+                <div class="controls col-sm-7">
+                    <input class="urlinput form-control" maxlength="256" name="url" ng-model="edit_obj.url" type="url"/>
+                </div>
             </div>
         </fieldset>
-        <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="action_string"></input></div>
     </form>
 </script>
 
@@ -111,16 +116,12 @@
             <icsw-config-generate-config icsw-sel-man="0" icsw-sel-man-sel-mode="d"></icsw-config-generate-config>
         </uib-tab>
         <uib-tab heading="Monitoring categories">
-            <div ng-controller="icswConfigCategoryTreeCtrl">
-                <icsw-config-category-tree mode="mon"></icsw-config-category-tree>
-            </div>
+            <icsw-config-category-tree-edit mode="mon"></icsw-config-category-tree-edit>
         </uib-tab>
         <uib-tab heading="Config categories">
-            <div ng-controller="icswConfigCategoryTreeCtrl">
-                <icsw-config-category-tree mode="config"></icsw-config-category-tree>
-            </div>
+            <icsw-config-category-tree-edit mode="config"></icsw-config-category-tree-edit>
         </uib-tab>
-        <uib-tab heading="Catalogs">
+        <uib-tab heading="Config Catalogs">
             <icsw-config-catalog-table></icsw-config-catalog-table>
         </uib-tab>
         <uib-tab heading="Uploads ({{ num_cached_uploads }})" ng-show="num_cached_uploads">
@@ -159,7 +160,7 @@
 <script type="text/ng-template" id="icsw.config.catalog.table">
     <icsw-tools-rest-table-new target-list="config_catalogs" config-service="icswConfigCatalogListService">
         <h2>{{ config_catalogs.length }} catalogs,
-            <icsw-tools-button type="create" value="create new catalog" ng-click="create($event)" size="sm"></icsw-tools-button>
+            <icsw-tools-button type="create" value="create new catalog" ng-click="create($event)" size="xs"></icsw-tools-button>
         </h2>
         <table st-table="entries_displayed" st-safe-src="config_catalogs"
                class="table table-hover table-condensed table-striped" style="width:auto;">
@@ -181,9 +182,9 @@
                     <td>{{ catalog.url }}</td>
                     <td>{{ catalog.author }}</td>
                     <td>{{ catalog.version }}</td>
-                    <td>{{ get_num_configs(catalog) }}</td>
+                    <td>{{ catalog.configs.length }}</td>
                     <td><icsw-tools-button type="modify" value="modify" ng-click="edit($event, catalog)" size="xs"/></td>
-                    <td><icsw-tools-button type="delete" value="delete" ng-show="get_num_configs(catalog) == 0" ng-click="delete(catalog)" size="xs"/></td>
+                    <td><icsw-tools-button type="delete" value="delete" ng-show="catalog.configs.length == 0" ng-click="delete(catalog)" size="xs"/></td>
                 </tr>
             </tbody>
         </table>
@@ -785,7 +786,7 @@
             <uib-tab heading="Categories">
                 <fieldset>
                     <legend>Categories</legend>
-                    <div icsw-config-category-choice="" edit-obj="edit_obj" mode="mon"></div>
+                    <icsw-category-tree-modify mode="mon"></icsw-category-tree-modify>
                 </fieldset>
             </uib-tab>
             <uib-tab heading="History">

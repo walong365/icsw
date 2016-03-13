@@ -65,12 +65,15 @@ config_module = angular.module(
             @show_select = true
             @show_descendants = false
             @show_childs = false
+            @lut = {}
+
         get_name : (t_entry) ->
             obj = t_entry.obj
             if obj.comment
                 return "#{obj.name} (#{obj.comment})"
             else
                 return obj.name
+
         selection_changed: () =>
             sel_list = @get_selected((node) ->
                 if node.selected
@@ -80,6 +83,7 @@ config_module = angular.module(
             )
             @scope.new_selection(sel_list)
             @scope.$digest()
+
 ]).service("icswCachedConfigRestService", ["$q", "Restangular", "ICSW_URLS", "icswCachingCall", "icswTools", "icswSimpleAjaxCall", ($q, Restangular, ICSW_URLS, icswCachingCall, icswTools, icswSimpleAjaxCall) ->
     cached_uploads = undefined
     # number of cached uploads
@@ -118,79 +122,6 @@ config_module = angular.module(
         "get_num_cached_uploads": () ->
             return num_cached_uploads
     }
-]).service("icswCategoryTree",
-[
-    "icswTools", "ICSW_URLS", "$q", "Restangular", "$rootScope",
-(
-    icswTools, ICSW_URLS, $q, Restangular, $rootScope
-) ->
-    class icswCategoryTree
-        constructor: (@list) ->
-            @build_luts()
-
-        build_luts: () =>
-            @lut = icswTools.build_lut(@list)
-
-]).service("icswCategoryTreeService",
-[
-    "$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall", "icswTools",
-    "icswCategoryTree", "$rootScope", "ICSW_SIGNALS",
-(
-    $q, Restangular, ICSW_URLS, $window, icswCachingCall, icswTools,
-    icswCategoryTree, $rootScope, ICSW_SIGNALS
-) ->
-    rest_map = [
-        [
-            ICSW_URLS.REST_CATEGORY_LIST
-            {}
-        ]
-    ]
-    _fetch_dict = {}
-    _result = undefined
-    # load called
-    load_called = false
-
-    load_data = (client) ->
-        load_called = true
-        _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in rest_map)
-        _defer = $q.defer()
-        $q.all(_wait_list).then(
-            (data) ->
-                console.log "*** category tree loaded ***"
-                _result = new icswCategoryTree(data[0])
-                _defer.resolve(_result)
-                for client of _fetch_dict
-                    # resolve clients
-                    _fetch_dict[client].resolve(_result)
-                $rootScope.$emit(ICSW_SIGNALS("ICSW_CATEGORY_TREE_LOADED"), _result)
-                # reset fetch_dict
-                _fetch_dict = {}
-        )
-        return _defer
-
-    fetch_data = (client) ->
-        if client not of _fetch_dict
-            # register client
-            _defer = $q.defer()
-            _fetch_dict[client] = _defer
-        if _result
-            # resolve immediately
-            _fetch_dict[client].resolve(_result)
-        return _fetch_dict[client]
-
-    return {
-        "load": (client) ->
-            # loads from server
-            if load_called
-                # fetch when data is present (after sidebar)
-                return fetch_data(client).promise
-            else
-                return load_data(client).promise
-        "reload": (client) ->
-            # to be implemented
-        "current": () ->
-            return _result
-    }
 ]).service("icswConfigTree",
 [
     "icswTools", "ICSW_URLS", "$q", "Restangular", "$rootScope",
@@ -202,9 +133,67 @@ config_module = angular.module(
             @build_luts()
 
         build_luts: () =>
+            # new entries added
             @lut = icswTools.build_lut(@list)
             @catalog_lut = icswTools.build_lut(@catalog_list)
             @hint_lut = icswTools.build_lut(@hint_list)
+            @reorder()
+
+        reorder: () =>
+            # sort
+            @catalog_list = _.orderBy(
+                @catalog_list
+                ["name"]
+                ["asc"]
+            )
+            console.log (entry.name for entry in @catalog_list)
+            @link()
+
+        link: () =>
+            # create links between elements
+            for cat in @catalog_list
+                cat.configs = []
+            for config in @list
+                if config.config_catalog
+                    @catalog_lut[config.config_catalog].configs.push(config.idx)
+                else
+                    # hm, config has no catalog ...
+                    true
+        # catalog create / delete catalogs
+        create_config_catalog: (new_cc) =>
+            # create new peer
+            defer = $q.defer()
+            Restangular.all(ICSW_URLS.REST_CONFIG_CATALOG_LIST.slice(1)).post(new_cc).then(
+                (new_obj) =>
+                    @_fetch_config_catalog(new_obj.idx, defer, "created config_catalog")
+                (not_ok) ->
+                    defer.reject("config catalog not created")
+            )
+            return defer.promise
+
+        delete_config_catalog: (del_cc) =>
+            # ensure REST hooks
+            Restangular.restangularizeElement(null, del_cc, ICSW_URLS.REST_CONFIG_CATALOG_DETAIL.slice(1).slice(0, -2))
+            defer = $q.defer()
+            del_cc.remove().then(
+                (ok) =>
+                    _.remove(@catalog_list, (entry) -> return entry.idx == del_cc.idx)
+                    @build_luts()
+                    defer.resolve("deleted")
+                (error) ->
+                    defer.reject("not deleted")
+            )
+            return defer.promise
+
+        _fetch_config_catalog: (pk, defer, msg) =>
+            Restangular.one(ICSW_URLS.REST_CONFIG_CATALOG_LIST.slice(1)).get({"idx": pk}).then(
+                (new_cc) =>
+                    new_cc = new_cc[0]
+                    @catalog_list.push(new_cc)
+                    @build_luts()
+                    defer.resolve(msg)
+            )
+
 
 ]).service("icswConfigTreeService",
 [
@@ -438,46 +427,90 @@ config_module = angular.module(
 ]).service('icswConfigCatalogListService',
 [
     "icswConfigTreeService", "$q", "icswTools", "ICSW_URLS", "icswUserService",
+    "icswComplexModalService", "icswConfigCatalogBackup", "$compile", "$templateCache",
+    "icswToolsSimpleModalService",
 (
-    icswConfigTreeService, $q, icswTools, ICSW_URLS, icswUserService
+    icswConfigTreeService, $q, icswTools, ICSW_URLS, icswUserService,
+    icswComplexModalService, icswConfigCatalogBackup, $compile, $templateCache,
+    icswToolsSimpleModalService
 ) ->
-    _config = $q.defer()
-    configs = []
-    catalogs = []
+    config_tree = undefined
     icswConfigTreeService.load("icsw_config_catalog_list_service").then(
         (data) ->
-            configs = data.list
-            catalogs = data.catalog_list
-            _config.resolve(catalogs)
+            config_tree = data
     )
     return {
-        edit_template: "config.catalog.form"
         fetch: (scope) ->
             defer = $q.defer()
             icswConfigTreeService.load(scope.$id).then(
                 (tree) ->
-                    console.log tree.catalog_list
                     defer.resolve(tree.catalog_list)
             )
             return defer.promise
 
-        delete_confirm_str: (obj) ->
-            return "Really delete config catalog '#{obj.name}' ?"
-        new_object: () ->
-            new_obj = {
-                "name" : "new catalog", "author" : icswUserService.get().login, "url" : "http://localhost/",
-            }
-            return new_obj
-        save_defer: (new_obj) ->
-            _cd = $q.defer()
-            icswConfigRestService.create_catalog(new_obj).then(
-                (new_cat) ->
-                    _cd.resolve(new_cat)
+        create_or_edit: (scope, event, create, obj_or_parent) ->
+            if create
+                obj_or_parent = {
+                    name: "new catalog"
+                    url: "http://localhost"
+                    author: "ich"
+                }
+            else
+                dbu = new icswConfigCatalogBackup()
+                dbu.create_backup(obj_or_parent)
+            sub_scope = scope.$new(false)
+            sub_scope.edit_obj = obj_or_parent
+            icswComplexModalService(
+                {
+                    message: $compile($templateCache.get("config.catalog.form"))(sub_scope)
+                    title: "Config Catalog"
+                    css_class: "modal-wide"
+                    ok_label: if create then "Create" else "Modify"
+                    closable: true
+                    ok_callback: (modal) ->
+                        d = $q.defer()
+                        if sub_scope.form_data.$invalid
+                            toaster.pop("warning", "form validation problem", "", 0)
+                            d.reject("form not valid")
+                        else
+                            if create
+                                config_tree.create_config_catalog(sub_scope.edit_obj).then(
+                                    (ok) ->
+                                        d.resolve("created")
+                                    (notok) ->
+                                        d.reject("not created")
+                                )
+                            else
+                                sub_scope.edit_obj.put().then(
+                                    (ok) ->
+                                        config_tree.reorder()
+                                        d.resolve("updated")
+                                    (not_ok) ->
+                                        d.reject("not updated")
+                                )
+                        return d.promise
+                    cancel_callback: (modal) ->
+                        if not create
+                            dbu.restore_backup(obj_or_parent)
+                        d = $q.defer()
+                        d.resolve("cancel")
+                        return d.promise
+                }
+            ).then(
+                (fin) ->
+                    console.log "finish"
+                    sub_scope.$destroy()
             )
-            return _cd.promise
-        init_fn: (scope) ->
-            scope.get_num_configs = (cat) ->
-                return (entry for entry in configs when entry.config_catalog == cat.idx).length
+
+        delete: (cc, event) ->
+            icswToolsSimpleModalService("Really delete ConfigCatalog #{cc.name} ?").then(
+                () =>
+                    config_tree.delete_config_catalog(cc).then(
+                        () ->
+                            console.log "cc deleted"
+                    )
+            )
+
     }
 ]).service('icswConfigListService',
 [
@@ -1253,32 +1286,35 @@ config_module = angular.module(
         restrict : "EA"
         template : $templateCache.get("icsw.config.mon.table")
     }
-]).directive("icswConfigCategoryChoice",
+]).directive("icswCategoryTreeModify",
 [
     "$templateCache", "icswConfigMonCategoryTreeService", "icswConfigTreeService", "$q",
+    "icswCategoryTreeService",
 (
-    $templateCache, icswConfigMonCategoryTreeService, icswConfigTreeService, $q
+    $templateCache, icswConfigMonCategoryTreeService, icswConfigTreeService, $q,
+    icswCategoryTreeService
 ) ->
     return {
         restrict : "EA"
         template : "<tree treeconfig='cat_tree'></tree>"
         scope:
-            editObj: "="
+            edit_obj: "="
         link : (scope, el, attrs) ->
             # start at -1 because we dont count the Top level category
             scope.num_cats = -1
             scope.cat_tree = new icswConfigMonCategoryTreeService(scope)
-            update = (cats) ->
+            update = (tree) ->
                 scope.cat_tree.clear_root_nodes()
-                cat_tree_lut = {}
-                if attrs["mode"] == "conf"
+                if scope.edit_obj?
                     sel_cat = scope.editObj.categories
+                else
+                    sel_cat = []
+                if attrs["mode"] == "conf"
                     top_cat_re = new RegExp(/^\/config/)
                 else if attrs["mode"] == "mon"
                     # mon
-                    sel_cat = scope.editObj.categories
                     top_cat_re = new RegExp(/^\/mon/)
-                for entry in cats
+                for entry in tree.list
                     if entry.full_name.match(top_cat_re)
                         scope.num_cats++
                         t_entry = scope.cat_tree.new_node(
@@ -1287,20 +1323,18 @@ config_module = angular.module(
                             expand: entry.depth < 2
                             selected: entry.idx in sel_cat
                         )
-                        cat_tree_lut[entry.idx] = t_entry
-                        if entry.parent and entry.parent of cat_tree_lut
-                            cat_tree_lut[entry.parent].add_child(t_entry)
+                        scope.cat_tree.lut[entry.idx] = t_entry
+                        if entry.parent and entry.parent of scope.cat_tree.lut
+                            scope.cat_tree.lut[entry.parent].add_child(t_entry)
                         else
                             # hide selection from root nodes
                             t_entry._show_select = false
                             scope.cat_tree.add_root_node(t_entry)
 
-                scope.cat_tree_lut = cat_tree_lut
                 scope.cat_tree.show_selected(true)
-            _def = icswConfigRestService.fetch("icsw_config_cat_choice")
-            _def.then((data) ->
-                cats = data[2]
-                update(cats)
+            icswCategoryTreeService.load(scope.$id).then(
+                (tree) ->
+                    update(tree)
             )
             scope.new_selection = (new_sel) ->
                 scope.editObj.categories = new_sel

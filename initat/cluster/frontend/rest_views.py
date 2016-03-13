@@ -392,8 +392,8 @@ class list_view(mixins.ListModelMixin,
         model_name = self.model._meta.model_name
         if model_name == "domain_tree_node":
             return domain_name_tree()
-        elif model_name == "category":
-            return category_tree(with_ref_count=True)
+        # elif model_name == "category":
+        #    return category_tree(with_ref_count=True)
         related_fields, prefetch_fields = (
             getattr(self, "_{}_related".format(model_name), lambda: [])(),
             getattr(self, "_{}_prefetch".format(model_name), lambda: [])(),

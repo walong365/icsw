@@ -165,4 +165,25 @@ angular.module(
                 "s_netdevice", "s_spec", "d_netdevice", "d_spec", "penalty", "autocreated", "info",
             ]
 
+]).service("icswConfigCatalogBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswConfigCatalogBackupDefinition extends icswBackupDefinition
+
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "name", "author", "url",
+            ]
+
+]).service("icswCategoryBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswCategoryBackupDefinition extends icswBackupDefinition
+
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "name", "full_name", "parent", "depth", "immutable",
+                "physical", "latitude", "longitude", "locked", "comment",
+            ]
+
 ])
