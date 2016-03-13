@@ -12,6 +12,16 @@
             </uib-tab-heading>
             <icsw-device-network-overview icsw-sel-man="{{ popupmode }}" icsw-device-list="dev_list['network']"></icsw-device-network-overview>
         </uib-tab>
+        <uib-tab ng-if="acl_read(null, 'backbone.device.change_config')" select="activate('config')" active="config_active">
+            <uib-tab-heading>
+                Config{{ addon_text }}
+            </uib-tab-heading>
+            <icsw-device-configuration-overview icsw-sel-man="{{ popupmode }}" devicepklist="dev_list['config']">
+            </icsw-device-configuration-overview>
+            <!-- only valid for corvus -->
+            <icsw-device-configuration-var-overview icsw-sel-man="{{ popupmode }}" devicepklist="dev_list['config']">
+            </icsw-device-configuration-var-overview>
+        </uib-tab>
     </uib-tabset>
 </script>
 

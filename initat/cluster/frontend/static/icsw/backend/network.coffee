@@ -201,7 +201,7 @@ angular.module(
         "reload": (client) ->
             # reloads from server
             return load_data(client).promise
-        "fetch": (client) ->
+        "load": (client) ->
             if load_called
                 # fetch when data is present (after sidebar)
                 return fetch_data(client).promise

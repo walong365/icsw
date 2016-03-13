@@ -15,50 +15,6 @@ th.rotate > div > span {
   padding: 5px 10px;
 }
 
-#icsw-wrapper {
-    padding-left: 0;
-    -webkit-transition: all 0.5s ease;
-    -moz-transition: all 0.5s ease;
-    -o-transition: all 0.5s ease;
-    transition: all 0.5s ease;
-}
-
-#icsw-sidebar-wrapper {
-    z-index: 1000;
-    position: fixed;
-    width: 0;
-    height: 100%;
-    padding-bottom: 54px;
-    padding-left:0px;
-    overflow-y: auto;
-    background-color: rgba(255, 255, 255, 1);
-    -webkit-transition: all 0.2s ease;
-    -moz-transition: all 0.2s ease;
-    -o-transition: all 0.2s ease;
-    transition: all 0.2s ease;
-}
-
-#icsw-sidebar-sep {
-    z-index: 1000;
-    position: fixed;
-    width: 12px;
-    height: 100%;
-    margin-left: 1px;
-    margin-right: 1px;
-    overflow-y: auto;
-    background-color: #dddddd;
-    border:1px solid #888888;
-    -webkit-transition: all 0.2s ease;
-    -moz-transition: all 0.2s ease;
-    -o-transition: all 0.2s ease;
-    transition: all 0.2s ease;
-}
-
-#page-content-wrapper {
-    width: 100%;
-    padding: 2px;
-}
-
 .CodeMirror {
     border-top: 1px solid black;
     border-bottom: 1px solid black;
@@ -101,10 +57,10 @@ circle.fixed {
   width: 90%;
 }
 .modal-wide .modal-body {
-    overflow-y: auto;
+    overflow-y: auto !important;
 }
 .modal-tall .modal-body {
-    overflow-y: auto;
+    overflow-y: auto !important;
 }
 
 /* use for striping tables where every odd row is a regular row

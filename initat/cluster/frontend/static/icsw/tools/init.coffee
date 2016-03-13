@@ -275,7 +275,7 @@ angular.module(
                             _new_sel((_tree.all_lut[pk] for pk in icswActiveSelectionService.current().tot_dev_sel when _tree.all_lut[pk]?))
                         else
                             console.log "tree not valid, ignoring, triggering load"
-                            icswDeviceTreeService.fetch(scope.$id).then(
+                            icswDeviceTreeService.load(scope.$id).then(
                                 (tree) ->
                             )
                 )
@@ -302,7 +302,9 @@ angular.module(
         "ICSW_DSR_REGISTERED": "icsw.dsr.registered"
         "ICSW_SELECTOR_SHOW": "icsw.selector.show"
         "ICSW_DEVICE_TREE_LOADED": "icsw.device.tree.loaded"
+        "ICSW_CATEGORY_TREE_LOADED": "icsw.category.tree.loaded"
         "ICSW_NETWORK_TREE_LOADED": "icsw.network.tree.loaded"
+        "ICSW_CONFIG_TREE_LOADED": "icsw.config.tree.loaded"
         "ICSW_DTREE_FILTER_CHANGED": "icsw.dtree.filter.changed"
         "ICSW_FORCE_TREE_FILTER": "icsw.tree.force.filter"
         "ICSW_OVERVIEW_SELECTION_CHANGED": "icsw.overview.selection.changed"

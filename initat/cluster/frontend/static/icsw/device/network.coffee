@@ -70,9 +70,9 @@ angular.module(
     $scope.new_devsel = (_dev_sel) ->
         dev_sel = (dev for dev in _dev_sel when not dev.is_meta_device)
         wait_list = [
-            icswDeviceTreeService.fetch($scope.$id)
-            icswNetworkTreeService.fetch($scope.$id)
-            icswDomainTreeService.fetch($scope.$id)
+            icswDeviceTreeService.load($scope.$id)
+            icswNetworkTreeService.load($scope.$id)
+            icswDomainTreeService.load($scope.$id)
             icswPeerInformationService.load($scope.$id, dev_sel)
         ]
         $q.all(wait_list).then(
@@ -1263,7 +1263,7 @@ angular.module(
         fetch: (scope) ->
             # console.log "start fetch"
             defer = $q.defer()
-            icswNetworkTreeService.fetch(scope.$id).then(
+            icswNetworkTreeService.load(scope.$id).then(
                 (net_tree) ->
                     nw_tree = net_tree
                     defer.resolve(net_tree.nw_device_type_list)
@@ -1354,7 +1354,7 @@ angular.module(
         fetch: (scope) ->
             # console.log "start fetch"
             defer = $q.defer()
-            icswNetworkTreeService.fetch(scope.$id).then(
+            icswNetworkTreeService.load(scope.$id).then(
                 (net_tree) ->
                     nw_tree = net_tree
                     defer.resolve(net_tree.nw_type_list)
@@ -1503,8 +1503,8 @@ angular.module(
             defer = $q.defer()
             $q.all(
                 [
-                    icswNetworkTreeService.fetch(scope.$id)
-                    icswDomainTreeService.fetch(scope.$id)
+                    icswNetworkTreeService.load(scope.$id)
+                    icswDomainTreeService.load(scope.$id)
                 ]
             ).then(
                 (data) ->

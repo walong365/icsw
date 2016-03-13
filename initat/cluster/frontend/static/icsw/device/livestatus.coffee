@@ -345,7 +345,7 @@ angular.module(
             #pre_sel = (dev.idx for dev in $scope.devices when dev.expanded)
             #restDataSource.reset()
             wait_list = [
-                icswDeviceTreeService.fetch($scope.$id)
+                icswDeviceTreeService.load($scope.$id)
                 icswDeviceLivestatusDataService.retain($scope.$id, _dev_sel)
             ]
             $q.all(wait_list).then((data) ->
@@ -547,7 +547,7 @@ angular.module(
                 }
             ).then(
                 (xml) ->
-                    icswDeviceTreeService.fetch("bla").then(
+                    icswDeviceTreeService.load("bla").then(
                         (data) ->
                             dev_tree_lut = data.enabled_lut
                             service_entries = []
@@ -743,7 +743,7 @@ angular.module(
         $scope.single_selection = single_selection
         $scope._burst_sel = _dev_list
         wait_list = [
-            icswDeviceTreeService.fetch($scope.$id)
+            icswDeviceTreeService.load($scope.$id)
             icswDeviceLivestatusDataService.retain($scope.$id, _dev_list)
         ]
         $q.all(wait_list).then(

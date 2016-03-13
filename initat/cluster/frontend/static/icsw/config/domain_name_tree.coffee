@@ -115,12 +115,10 @@ angular.module(
             _fetch_dict[client].resolve(_result)
         return _fetch_dict[client]
     return {
-        "load": (client) ->
-            # loads from server
-            return load_data(client).promise
         "trigger_reload": () ->
             trigger_reload()
-        "fetch": (client) ->
+        "load": (client) ->
+            # load from server when first load or return result
             if load_called
                 # fetch when data is present (after sidebar)
                 return fetch_data(client).promise

@@ -253,19 +253,19 @@ angular.module(
 ]).service("icswDeviceTree",
 [
     "icswTools", "ICSW_URLS", "$q", "Restangular", "icswEnrichmentInfo", "icswSimpleAjaxCall", "$rootScope", "$timeout",
-    "ICSW_SIGNALS", "icswDeviceTreeHelper",
+    "ICSW_SIGNALS", "icswDeviceTreeHelper", "icswNetworkTreeService",
 (
     icswTools, ICSW_URLS, $q, Restangular, icswEnrichmentInfo, icswSimpleAjaxCall, $rootScope, $timeout,
-    ICSW_SIGNALS, icswDeviceTreeHelper
+    ICSW_SIGNALS, icswDeviceTreeHelper, icswNetworkTreeService
 ) ->
     class icswDeviceTree
-        constructor: (full_list, cat_list, group_list, domain_tree) ->
-            @cat_list = cat_list
+        constructor: (full_list, group_list, domain_tree, cat_tree) ->
             @group_list = group_list
             @all_list = []
             @enabled_list = []
             @disabled_list = []
             @domain_tree = domain_tree
+            @cat_tree = cat_tree
             @enricher = new icswEnrichmentInfo(@)
             @build_luts(full_list)
 
@@ -311,7 +311,6 @@ angular.module(
             @disabled_lut = icswTools.build_lut(@disabled_list)
             @all_lut = icswTools.build_lut(@all_list)
             @group_lut = icswTools.build_lut(@group_list)
-            @cat_lut = icswTools.build_lut(@cat_list)
             # console.log @enabled_list.length, @disabled_list.length, @all_list.length
             @link()
 
@@ -320,7 +319,7 @@ angular.module(
             for group in @group_list
                 # reference to all devices
                 group.devices = []
-            for cat in @cat_list
+            for cat in @cat_tree.list
                 cat.devices = []
             for entry in @all_list
                 # add enrichment info
@@ -330,7 +329,7 @@ angular.module(
                 # entry.group_object = @group_lut[entry.device_group]
                 @group_lut[entry.device_group].devices.push(entry.idx)
                 for cat in entry.categories
-                    @cat_lut[cat].devices.push(entry.idx)
+                    @cat_tree.lut[cat].devices.push(entry.idx)
             for group in @group_list
                 # num of all devices (enabled and disabled, also with md)
                 group.num_devices_with_meta = group.devices.length
@@ -349,7 +348,7 @@ angular.module(
             return @group_lut[dev.device_group]
 
         get_category: (cat) =>
-            return @cat_lut[cat]
+            return @cat_tree.lut[cat]
 
         get_num_devices: (group) =>
             # return all enabled devices in group, not working ... ?
@@ -526,18 +525,31 @@ angular.module(
                 )
             _fetch.promise.then(
                 (result) =>
-                    # clear previous values
-                    # console.log "clear previous enrichment values"
-                    (dev.$$_enrichment_info.clear_infos(en_req) for dev in dth.devices)
-                    # console.log "set new enrichment values"
-                    # feed results back to enricher
-                    @enricher.feed_results(result, en_req)
-                    # build local luts
-                    (dev.$$_enrichment_info.build_luts(en_list, dth) for dev in dth.devices)
-                    # build global luts
-                    @build_helper_luts(en_list, dth)
-                    # resolve with device list
-                    defer.resolve(dth.devices)
+                    # fetch missing requirements
+                    # FIXME: make this more dynamic
+                    _reqs = $q.defer()
+                    if "network_info" in en_list
+                        icswNetworkTreeService.load("enr").then(
+                            (done) =>
+                                _reqs.resolve("loaded")
+                        )
+                    else
+                        _reqs.resolve("not needed")
+                    _reqs.promise.then(
+                        (ok) =>
+                            # clear previous values
+                            # console.log "clear previous enrichment values"
+                            (dev.$$_enrichment_info.clear_infos(en_req) for dev in dth.devices)
+                            # console.log "set new enrichment values"
+                            # feed results back to enricher
+                            @enricher.feed_results(result, en_req)
+                            # build local luts
+                            (dev.$$_enrichment_info.build_luts(en_list, dth) for dev in dth.devices)
+                            # build global luts
+                            @build_helper_luts(en_list, dth)
+                            # resolve with device list
+                            defer.resolve(dth.devices)
+                    )
             )
             return defer.promise
 
@@ -637,7 +649,16 @@ angular.module(
                         @scan_timeout = $timeout(@check_scans_running, 1000)
                 )
 
-]).service("icswDeviceTreeService", ["$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall", "icswTools", "icswDeviceTree", "$rootScope", "ICSW_SIGNALS", "icswDomainTreeService", ($q, Restangular, ICSW_URLS, $window, icswCachingCall, icswTools, icswDeviceTree, $rootScope, ICSW_SIGNALS, icswDomainTreeService) ->
+]).service("icswDeviceTreeService",
+[
+    "$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall",
+    "icswTools", "icswDeviceTree", "$rootScope", "ICSW_SIGNALS",
+    "icswDomainTreeService", "icswCategoryTreeService",
+(
+    $q, Restangular, ICSW_URLS, $window, icswCachingCall,
+    icswTools, icswDeviceTree, $rootScope, ICSW_SIGNALS,
+    icswDomainTreeService, icswCategoryTreeService
+) ->
     rest_map = [
         [
             ICSW_URLS.REST_DEVICE_TREE_LIST
@@ -648,10 +669,6 @@ angular.module(
                 "with_categories" : true
                 "ignore_disabled": true
             }
-        ]
-        [
-            ICSW_URLS.REST_CATEGORY_LIST
-            {}
         ]
         [
             ICSW_URLS.REST_DEVICE_GROUP_LIST
@@ -666,7 +683,8 @@ angular.module(
     load_data = (client) ->
         load_called = true
         _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in rest_map)
-        _wait_list.push(icswDomainTreeService.fetch(client))
+        _wait_list.push(icswDomainTreeService.load(client))
+        _wait_list.push(icswCategoryTreeService.load(client))
         _defer = $q.defer()
         $q.all(_wait_list).then(
             (data) ->
@@ -694,9 +712,6 @@ angular.module(
 
     return {
         "load": (client) ->
-            # loads from server
-            return load_data(client).promise
-        "fetch": (client) ->
             if load_called
                 # fetch when data is present (after sidebar)
                 return fetch_data(client).promise

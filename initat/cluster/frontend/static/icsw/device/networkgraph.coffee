@@ -459,6 +459,21 @@ angular.module(
                     link.y2c = d_node.y
                 $rootScope.$emit(ICSW_SIGNALS("ICSW_NETWORK_REDRAW_D3_ELEMENT"))
     }
+]).service("icswD3Elementx", ["svg_tools", (svg_tools) ->
+    class icswD3Elementx
+        constructor: () ->
+        create: (selector, data) ->
+            ds = selector.data(data, (d) -> return d.id)
+            ds.enter().append("circle").attr("class", "d3-point draggable")
+            ds.attr('cx', (d) -> return d.x)
+            .attr('cy', (d) -> return d.y)
+            .attr('r', (d) -> return d.r)
+            .attr("id", (d) -> return d.id)
+            return ds
+            # EXIT
+            # point.exit().remove()
+
+
 ]).service("icswD3Element", ["svg_tools", (svg_tools) ->
     class icswD3Element
         constructor: () ->
@@ -501,7 +516,6 @@ angular.module(
                     $(element).mousedown(
                         (event) =>
                             mouseCaptureFactory.register_element(element)
-                            console.log "msd"
                             _find_element = (s_target) ->
                                 # iterative search
                                 if svg_tools.has_class_svg(s_target, "draggable")
@@ -513,12 +527,8 @@ angular.module(
                                     return null
                             drag_el = _find_element($(event.target))
                             if drag_el? and drag_el.length
-                                el_scope = angular.element(drag_el[0]).scope()
-                            else
-                                el_scope = null
-                            if el_scope
+                                drag_el = $(drag_el[0])
                                 drag_el_tag = drag_el.prop("tagName")
-                                console.log drag_el_tag
                                 if drag_el_tag == "svg"
                                     _sx = 0
                                     _sy = 0
@@ -551,7 +561,6 @@ angular.module(
                                                 svg_tools.get_abs_coordinate(svg, x, y)
                                                 draw_settings
                                             )
-                                            console.log start_drag_point, cur_point, drag_node
                                             $(drag_node).attr("cx", cur_point.x)
                                             $(drag_node).attr("cy", cur_point.y)
                                             node = _lut[parseInt($(drag_node).attr("id"))]
@@ -561,8 +570,6 @@ angular.module(
                                             node.py = cur_point.y
                                         dragEnded: () =>
                                     })
-
-                                    console.log "DN", drag_el[0]
                     )
                     Hamster(element).wheel((event, delta, dx, dy) =>
                         # console.log "msd", delta, dx, dy
@@ -600,8 +607,6 @@ angular.module(
                                 "cy", (d) -> return d.y
                             )
                         )
-                        console.log state.data[0].x
-                        console.log state.data[0].y
                     svg.append("rect").attr("x", "0").attr("y", "0")
                     .attr("width", "100%")
                     .attr("height", "100%")
@@ -616,6 +621,7 @@ angular.module(
 
         _drag_start: (event, ui) ->
             console.log "ds", event, ui
+
         _rescale: (point, settings) =>
             point.x -= settings.offset.x
             point.y -= settings.offset.y
@@ -740,7 +746,7 @@ angular.module(
                         idy += 25
                         if idy > 100
                             idy = 0
-                        console.log "node=", node
+                        # console.log "node=", node
                     _settings = {
                         data: json.nodes
                         links: json.links

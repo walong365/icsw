@@ -118,16 +118,105 @@ config_module = angular.module(
         "get_num_cached_uploads": () ->
             return num_cached_uploads
     }
-]).service("icswConfigRestService", ["$q", "Restangular", "ICSW_URLS", "icswCachingCall", "icswTools", ($q, Restangular, ICSW_URLS, icswCachingCall, icswTools) ->
+]).service("icswCategoryTree",
+[
+    "icswTools", "ICSW_URLS", "$q", "Restangular", "$rootScope",
+(
+    icswTools, ICSW_URLS, $q, Restangular, $rootScope
+) ->
+    class icswCategoryTree
+        constructor: (@list) ->
+            @build_luts()
+
+        build_luts: () =>
+            @lut = icswTools.build_lut(@list)
+
+]).service("icswCategoryTreeService",
+[
+    "$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall", "icswTools",
+    "icswCategoryTree", "$rootScope", "ICSW_SIGNALS",
+(
+    $q, Restangular, ICSW_URLS, $window, icswCachingCall, icswTools,
+    icswCategoryTree, $rootScope, ICSW_SIGNALS
+) ->
+    rest_map = [
+        [
+            ICSW_URLS.REST_CATEGORY_LIST
+            {}
+        ]
+    ]
+    _fetch_dict = {}
+    _result = undefined
+    # load called
+    load_called = false
+
+    load_data = (client) ->
+        load_called = true
+        _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in rest_map)
+        _defer = $q.defer()
+        $q.all(_wait_list).then(
+            (data) ->
+                console.log "*** category tree loaded ***"
+                _result = new icswCategoryTree(data[0])
+                _defer.resolve(_result)
+                for client of _fetch_dict
+                    # resolve clients
+                    _fetch_dict[client].resolve(_result)
+                $rootScope.$emit(ICSW_SIGNALS("ICSW_CATEGORY_TREE_LOADED"), _result)
+                # reset fetch_dict
+                _fetch_dict = {}
+        )
+        return _defer
+
+    fetch_data = (client) ->
+        if client not of _fetch_dict
+            # register client
+            _defer = $q.defer()
+            _fetch_dict[client] = _defer
+        if _result
+            # resolve immediately
+            _fetch_dict[client].resolve(_result)
+        return _fetch_dict[client]
+
+    return {
+        "load": (client) ->
+            # loads from server
+            if load_called
+                # fetch when data is present (after sidebar)
+                return fetch_data(client).promise
+            else
+                return load_data(client).promise
+        "reload": (client) ->
+            # to be implemented
+        "current": () ->
+            return _result
+    }
+]).service("icswConfigTree",
+[
+    "icswTools", "ICSW_URLS", "$q", "Restangular", "$rootScope",
+(
+    icswTools, ICSW_URLS, $q, Restangular, $rootScope
+) ->
+    class icswConfigTree
+        constructor: (@list, @catalog_list, @hint_list) ->
+            @build_luts()
+
+        build_luts: () =>
+            @lut = icswTools.build_lut(@list)
+            @catalog_lut = icswTools.build_lut(@catalog_list)
+            @hint_lut = icswTools.build_lut(@hint_list)
+
+]).service("icswConfigTreeService",
+[
+    "$q", "Restangular", "ICSW_URLS", "icswCachingCall", "icswTools", "icswConfigTree",
+    "$rootScope", "ICSW_SIGNALS",
+(
+    $q, Restangular, ICSW_URLS, icswCachingCall, icswTools, icswConfigTree,
+    $rootScope, ICSW_SIGNALS
+) ->
     rest_map = [
         [
             ICSW_URLS.REST_CONFIG_LIST,
-        ],
-        [
-            ICSW_URLS.REST_MON_SERVICE_TEMPL_LIST,
-        ],
-        [
-            ICSW_URLS.REST_CATEGORY_LIST,
         ],
         [
             ICSW_URLS.REST_CONFIG_CATALOG_LIST,
@@ -135,12 +224,6 @@ config_module = angular.module(
         [
             ICSW_URLS.REST_CONFIG_HINT_LIST,
         ],
-        [
-            ICSW_URLS.REST_MON_CHECK_COMMAND_SPECIAL_LIST,
-        ],
-        [
-            ICSW_URLS.REST_MON_CHECK_COMMAND_LIST,
-        ]
     ]
     _fetch_dict = {}
     _result = undefined
@@ -149,26 +232,18 @@ config_module = angular.module(
     load_data = (client) ->
         load_called = true
         _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in rest_map)
-        if client
-            _defer = $q.defer()
-        $q.all(_wait_list).then((data) ->
-            if _result is undefined
-                _result = data
-            else
-                for _zip in _.zip(_result, data)
-                    _old = _zip[0]
-                    _new = _zip[1]
-                    _old.length = 0
-                    # also the code below does not work if we execute it immediately, but this works:
-                    for entry in _new
-                        _old.push(entry)
-            if client
+        _defer = $q.defer()
+        $q.all(_wait_list).then(
+            (data) ->
+                console.log "*** config tree loaded ***"
+                _result = new icswConfigTree(data[0], data[1], data[2])
                 _defer.resolve(_result)
-            for client of _fetch_dict
-                # resolve clients
-                _fetch_dict[client].resolve(_result)
-            # reset fetch_dict
-            _fetch_dict = {}
+                for client of _fetch_dict
+                    # resolve clients
+                    _fetch_dict[client].resolve(_result)
+                $rootScope.$emit(ICSW_SIGNALS("ICSW_CONFIG_TREE_LOADED"), _result)
+                # reset fetch_dict
+                _fetch_dict = {}
         )
         if client
             return _defer
@@ -184,12 +259,16 @@ config_module = angular.module(
             # resolve immediately
             _fetch_dict[client].resolve(_result)
         return _fetch_dict[client]
+
     # number of selected configs
     num_selected_configs = 0
     return {
         "load": (client) ->
-            # loads from server
-            return load_data(client).promise
+            if load_called
+                # fetch when data is present (after sidebar)
+                return fetch_data(client).promise
+            else
+                return load_data(client).promise
         "trigger_reload": () ->
             trigger_reload()
         "get_num_selected_configs": () ->
@@ -274,22 +353,22 @@ config_module = angular.module(
             )
             return _d.promise
     }
-]).service("icswConfigHintService", ["icswConfigRestService", "$q", "icswTools", "ICSW_URLS", (icswConfigRestService, $q, icswTools, ICSW_URLS) ->
-    _def = icswConfigRestService.fetch("icsw_config_catalog_list_service")
+]).service("icswConfigHintService", ["icswConfigTreeService", "$q", "icswTools", "ICSW_URLS", (icswConfigTreeService, $q, icswTools, ICSW_URLS) ->
     hints = []
     _hints_loaded = false
     config_hints = {}
     soft_config_hints = []
-    _def.then((data) ->
-        hints = data[4]
-        _hints_loaded = true
-        for entry in hints
-            config_hints[entry.config_name] = entry
-            if not entry.exact_match
-                soft_config_hints.push(entry)
-            entry.var_lut = {}
-            for vh in entry.config_var_hint_set
-                entry.var_lut[vh.var_name] = vh
+    icswConfigTreeService.load("icsw_config_catalog_list_service").then(
+        (data) ->
+            hints = data.hint_list
+            _hints_loaded = true
+            for entry in hints
+                config_hints[entry.config_name] = entry
+                if not entry.exact_match
+                    soft_config_hints.push(entry)
+                entry.var_lut = {}
+                for vh in entry.config_var_hint_set
+                    entry.var_lut[vh.var_name] = vh
     )
     # config hint resolvers
     # configs found (positive cache)
@@ -356,20 +435,32 @@ config_module = angular.module(
             else
                 return []
     }
-]).service('icswConfigCatalogListService', ["icswConfigRestService", "$q", "icswTools", "ICSW_URLS", "icswUserService", (icswConfigRestService, $q, icswTools, ICSW_URLS, icswUserService) ->
-    _def = icswConfigRestService.fetch("icsw_config_catalog_list_service")
+]).service('icswConfigCatalogListService',
+[
+    "icswConfigTreeService", "$q", "icswTools", "ICSW_URLS", "icswUserService",
+(
+    icswConfigTreeService, $q, icswTools, ICSW_URLS, icswUserService
+) ->
     _config = $q.defer()
     configs = []
     catalogs = []
-    _def.then((data) ->
-        configs = data[0]
-        catalogs = data[3]
-        _config.resolve(catalogs)
+    icswConfigTreeService.load("icsw_config_catalog_list_service").then(
+        (data) ->
+            configs = data.list
+            catalogs = data.catalog_list
+            _config.resolve(catalogs)
     )
     return {
         edit_template: "config.catalog.form"
-        load_promise: () ->
-            return _config.promise
+        fetch: (scope) ->
+            defer = $q.defer()
+            icswConfigTreeService.load(scope.$id).then(
+                (tree) ->
+                    console.log tree.catalog_list
+                    defer.resolve(tree.catalog_list)
+            )
+            return defer.promise
+
         delete_confirm_str: (obj) ->
             return "Really delete config catalog '#{obj.name}' ?"
         new_object: () ->
@@ -388,17 +479,22 @@ config_module = angular.module(
             scope.get_num_configs = (cat) ->
                 return (entry for entry in configs when entry.config_catalog == cat.idx).length
     }
-]).service('icswConfigListService', ["icswConfigRestService", "$q", "icswTools", "ICSW_URLS", "icswConfigHintService", "msgbus", (icswConfigRestService, $q, icswTools, ICSW_URLS, icswConfigHintService, msgbus) ->
-    _def = icswConfigRestService.fetch("icsw_config_list_service")
+]).service('icswConfigListService',
+[
+    "icswConfigTreeService", "$q", "icswTools", "ICSW_URLS", "icswConfigHintService", "msgbus",
+(
+    icswConfigTreeService, $q, icswTools, ICSW_URLS, icswConfigHintService, msgbus
+) ->
     _config = $q.defer()
     _configs = []
     _catalogs = []
-    _def.then((data) ->
-        _configs = data[0]
-        (create_extra_fields(entry) for entry in _configs)
-        _catalogs = data[3]
-        _config.resolve(data[0])
-        update_filter_field()
+    icswConfigTreeService.load("icsw_config_list_service").then(
+        (data) ->
+            _configs = data.list
+            (create_extra_fields(entry) for entry in _configs)
+            _catalogs = data.catalog_list
+            _config.resolve(data.list)
+            update_filter_field()
     )
     create_extra_fields = (entry) ->
         entry._cef = true
@@ -481,7 +577,8 @@ config_module = angular.module(
             icswConfigRestService.delete_config(obj)
         init_fn: (scope) ->
             scope.$watch("selected_configs", (new_val) ->
-                icswConfigRestService.set_num_selected_configs(new_val)
+                # fixme, todo
+                # icswConfigRestService.set_num_selected_configs(new_val)
             )
             scope.get_config_catalog_name = (conf) ->
                 _cats = (entry for entry in _catalogs when entry.idx == conf.config_catalog)
@@ -540,7 +637,14 @@ config_module = angular.module(
                     _filter_settings["name"] = true
                 update_filter_field()
     }
-]).directive("icswConfigDownload", ["$templateCache", "icswConfigRestService", "icswCachedConfigRestService", "ICSW_URLS", "icswTools", "icswSimpleAjaxCall", "blockUI", "FileUploader", "$compile", ($templateCache, icswConfigRestService, icswCachedConfigRestService, ICSW_URLS, icswTtools, icswSimpleAjaxCall, blockUI, FileUploader, $compile) ->
+]).directive("icswConfigDownload",
+[
+    "$templateCache", "icswConfigTreeService", "icswCachedConfigRestService", "ICSW_URLS",
+    "icswTools", "icswSimpleAjaxCall", "blockUI", "FileUploader", "$compile",
+(
+    $templateCache, icswConfigTreeService, icswCachedConfigRestService, ICSW_URLS,
+    icswTtools, icswSimpleAjaxCall, blockUI, FileUploader, $compile
+) ->
     return {
         restrict: "E"
         scope: {}
@@ -548,7 +652,7 @@ config_module = angular.module(
         link: (scope, el, attr) ->
             scope.selected_configs = 0
             scope.$watch(
-                icswConfigRestService.get_num_selected_configs
+                icswConfigTreeService.get_num_selected_configs
                 (new_val) ->
                     scope.selected_configs = new_val
             )
@@ -556,7 +660,14 @@ config_module = angular.module(
                 hash = angular.toJson((entry.idx for entry in icswConfigRestService.get_selected_configs()))
                 window.location = ICSW_URLS.CONFIG_DOWNLOAD_CONFIGS.slice(0, -1) + hash
     }
-]).directive("icswConfigUploader", ["$templateCache", "icswCSRFService", "icswConfigRestService", "icswCachedConfigRestService", "ICSW_URLS", "icswTools", "icswSimpleAjaxCall", "blockUI", "FileUploader", "$compile", ($templateCache, icswCSRFService, icswConfigRestService, icswCachedConfigRestService, ICSW_URLS, icswTtools, icswSimpleAjaxCall, blockUI, FileUploader, $compile) ->
+]).directive("icswConfigUploader",
+[
+    "$templateCache", "icswCSRFService", "icswConfigTreeService", "icswCachedConfigRestService",
+    "ICSW_URLS", "icswTools", "icswSimpleAjaxCall", "blockUI", "FileUploader", "$compile",
+(
+    $templateCache, icswCSRFService, icswConfigTreeService, icswCachedConfigRestService,
+    ICSW_URLS, icswTtools, icswSimpleAjaxCall, blockUI, FileUploader, $compile
+) ->
     return {
         restrict: "E"
         scope: {}
@@ -584,7 +695,14 @@ config_module = angular.module(
                 return null
             el.append($compile($templateCache.get("icsw.config.uploader"))(scope))
     }
-]).directive("icswConfigUploaded", ["$templateCache", "icswConfigRestService", "icswCachedConfigRestService", "ICSW_URLS", "icswTools", "icswSimpleAjaxCall", ($templateCache, icswConfigRestService, icswCachedConfigRestService, ICSW_URLS, icswTtools, icswSimpleAjaxCall) ->
+]).directive("icswConfigUploaded",
+[
+    "$templateCache", "icswConfigTreeService", "icswCachedConfigRestService", "ICSW_URLS",
+    "icswTools", "icswSimpleAjaxCall",
+(
+    $templateCache, icswConfigTreeService, icswCachedConfigRestService, ICSW_URLS,
+    icswTtools, icswSimpleAjaxCall
+) ->
     return {
         restrict: "E"
         scope: {}
@@ -597,207 +715,220 @@ config_module = angular.module(
             )
             scope.config_catalogs = []
             scope.use_catalog = 0
-            icswConfigRestService.fetch(scope.$id).then((data) ->
-                scope.config_catalogs = data[3]
-                scope.use_catalog = scope.config_catalogs[0].idx
-            )
+            # fixme, todo
+            #icswConfigRestService.fetch(scope.$id).then((data) ->
+            #    scope.config_catalogs = data[3]
+            #    scope.use_catalog = scope.config_catalogs[0].idx
+            #)
     }
-]).controller("icswConfigConfigCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$uibModal", "FileUploader", "$http", "blockUI", "icswTools", "ICSW_URLS", "icswToolsButtonConfigService", "msgbus", "icswConfigRestService", "icswConfigListService", "icswConfigHintService", "icswConfigMonCheckCommandHelpService", "icswSimpleAjaxCall", "icswCachedConfigRestService",
-    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $uibModal, FileUploader, $http, blockUI, icswTools, ICSW_URLS, icswToolsButtonConfigService, msgbus, icswConfigRestService, icswConfigListService, icswConfigHintService, icswConfigMonCheckCommandHelpService, icswSimpleAjaxCall, icswCachedConfigRestService) ->
-        $scope.selected_objects = []
-        $scope.num_cached_uploads = 0
-        $scope.$watch(
-            () ->
-                icswCachedConfigRestService.get_num_cached_uploads()
-            (new_val) ->
-                $scope.num_cached_uploads = new_val
-        )
+]).controller("icswConfigConfigCtrl",
+[
+    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource",
+    "$q", "$uibModal", "FileUploader", "$http", "blockUI", "icswTools", "ICSW_URLS",
+    "icswToolsButtonConfigService", "msgbus", "icswConfigTreeService", "icswConfigListService",
+    "icswConfigHintService", "icswConfigMonCheckCommandHelpService", "icswSimpleAjaxCall",
+    "icswCachedConfigRestService",
+(
+    $scope, $compile, $filter, $templateCache, Restangular, restDataSource,
+    $q, $uibModal, FileUploader, $http, blockUI, icswTools, ICSW_URLS,
+    icswToolsButtonConfigService, msgbus, icswConfigTreeRestService, icswConfigListService,
+    icswConfigHintService, icswConfigMonCheckCommandHelpService, icswSimpleAjaxCall,
+    icswCachedConfigRestService
+) ->
+    $scope.selected_objects = []
+    $scope.num_cached_uploads = 0
+    $scope.$watch(
+        () ->
+            icswCachedConfigRestService.get_num_cached_uploads()
+        (new_val) ->
+            $scope.num_cached_uploads = new_val
+    )
 
-        $scope.delete_selected_objects = () ->
-            if confirm("really delete #{$scope.selected_objects.length} objects ?")
-                blockUI.start()
-                for obj in $scope.selected_objects
-                    conf = (entry for entry in $scope.entries when entry.idx == obj.config)[0]
-                    if obj.object_type == "mon"
-                        ref_f = conf.mon_check_command_set
-                    else
-                        ref_f = conf["config_#{obj.object_type}_set"]
-                    ref_f = (_rv for _rv in ref_f when _rv.idx != obj.idx)
-                    if obj.object_type == "mon"
-                        conf.mon_check_command_set = ref_f
-                    else
-                        conf["config_#{obj.object_type}_set"] = ref_f
-                    $scope._set_fields(conf)
-                icswSimpleAjaxCall(
-                    url     : ICSW_URLS.CONFIG_DELETE_OBJECTS
-                    data    :
-                        "obj_list" : angular.toJson(([entry.object_type, entry.idx] for entry in $scope.selected_objects))
-                ).then(
-                    (xml) ->
-                        blockUI.stop()
-                    (xml) ->
-                        blockUI.stop()
-                )
-                $scope.selected_objects = []
-        $scope.unselect_objects = () ->
-            # unselect all selected objects
-            idx = 0
-            while $scope.selected_objects.length
-                prev_len = $scope.selected_objects.length
-                idx++
-                entry = $scope.selected_objects[0]
-                $scope.unselect_object($scope.selected_objects[0])
-                # unable to unselect, exit loop
-                if $scope.selected_objects.length == prev_len
-                    console.log "problem unselect..."
-                    break
-        $scope.unselect_object = (obj) ->
-            obj._selected = false
-            $scope.selected_objects = (entry for entry in $scope.selected_objects when entry != obj)
-        $scope.select_object = (obj) ->
-            if obj._selected
-                $scope.unselect_object(obj)
-            else
-                obj._selected = true
-                $scope.selected_objects.push(obj)
-
-        # hint functions
-        $scope.re_compare = (_array, _input) ->
-            console.log _array, _input, $scope.config_hints[_array].exact_match
-            return true
-            cur_pat = new RegExp(_array, "i")
-            console.log cur_pat, _input
-            return cur_pat.test(_input)
-
-        $scope.create_var = (config, v_type, event) ->
-            sub_scope = $scope.$new()
-            _templ = "config.#{v_type}.form"
-            sub_scope.config = config
-            sub_scope.modify = () ->
-                icswConfigRestService.create_var(config, v_type, sub_scope.edit_obj).then(
-                    (new_var) ->
-                        icswConfigListService.update_config(config)
-                        sub_scope.modal.close()
-                )
-            sub_scope.show_config_var_help = () ->
-                return icswConfigHintService.show_config_var_help(sub_scope.config, sub_scope.edit_obj)
-            sub_scope.get_config_var_hints = () ->
-                return icswConfigHintService.get_config_var_hints(sub_scope.config)
-            sub_scope.edit_obj = {
-                "config" : config.idx
-                "name" : "new #{v_type} var"
-                "description" : "new variable (type #{v_type})"
-                "value" : {"str" : "", "int" : 0, "bool" : 1}[v_type]
-            }
-            edit_div = $compile($templateCache.get(_templ))(sub_scope)
-            my_modal = BootstrapDialog.show
-                message: edit_div
-                draggable: true
-                title: "Create new #{v_type} variable"
-                size: BootstrapDialog.SIZE_WIDE
-                closable: true
-                closeByBackdrop: false
-                cssClass: "modal-tall"
-                onshow: (modal) =>
-                    height = $(window).height() - 100
-                    modal.getModal().find(".modal-body").css("max-height", height)
-                onhide: (modal) =>
-                    sub_scope.$destroy()
-            sub_scope.modal = my_modal
-
-        $scope.create_script = (config, event) ->
-            sub_scope = $scope.$new()
-            _templ = "config.script.form"
-            sub_scope.config = config
-            sub_scope.edit_obj = {
-                "config"   : config.idx
-                "name"     : "new script"
-                "priority" : 0
-                "enabled"  : true
-                "description" : "new config script"
-                "edit_value"  : "# config script (" + moment().format() + ")\n#\n"
-            }
-            sub_scope.editorOptions = {
-                lineWrapping : false
-                lineNumbers: true
-                mode:
-                    name : "python"
-                    version : 2
-                matchBrackets: true
-                styleActiveLine: true
-                indentUnit : 4
-            }
-            sub_scope.modify = () ->
-                icswConfigRestService.create_script(config, sub_scope.edit_obj).then(
-                    (new_script) ->
-                        icswConfigListService.update_config(config)
-                        sub_scope.modal.close()
-                )
-            edit_div = $compile($templateCache.get(_templ))(sub_scope)
-            my_modal = BootstrapDialog.show
-                message: edit_div
-                draggable: true
-                title: "Create new script"
-                size: BootstrapDialog.SIZE_WIDE
-                closable: true
-                closeByBackdrop: false
-                cssClass: "modal-tall"
-                onshow: (modal) =>
-                    height = $(window).height() - 100
-                    modal.getModal().find(".modal-body").css("max-height", height)
-                onhide: (modal) =>
-                    sub_scope.$destroy()
-            sub_scope.modal = my_modal
-
-        $scope.create_mon = (config, event) ->
-            sub_scope = $scope.$new()
-            _templ = "mon.check.command.form"
-            c_name = "cc_#{config.name}"
-            c_idx = 1
-            cc_names = (cc.name for cc in config.mon_check_command_set)
-            while true
-                if "#{c_name}_#{c_idx}" in cc_names
-                    c_idx++
+    $scope.delete_selected_objects = () ->
+        if confirm("really delete #{$scope.selected_objects.length} objects ?")
+            blockUI.start()
+            for obj in $scope.selected_objects
+                conf = (entry for entry in $scope.entries when entry.idx == obj.config)[0]
+                if obj.object_type == "mon"
+                    ref_f = conf.mon_check_command_set
                 else
-                    break
-            c_name = "#{c_name}_#{c_idx}"
-            sub_scope.config = config
-            sub_scope.mon_service_templ = []
-            icswConfigRestService.fetch(sub_scope.$id).then((data) ->
-                sub_scope.mon_service_templ = data[1]
+                    ref_f = conf["config_#{obj.object_type}_set"]
+                ref_f = (_rv for _rv in ref_f when _rv.idx != obj.idx)
+                if obj.object_type == "mon"
+                    conf.mon_check_command_set = ref_f
+                else
+                    conf["config_#{obj.object_type}_set"] = ref_f
+                $scope._set_fields(conf)
+            icswSimpleAjaxCall(
+                url     : ICSW_URLS.CONFIG_DELETE_OBJECTS
+                data    :
+                    "obj_list" : angular.toJson(([entry.object_type, entry.idx] for entry in $scope.selected_objects))
+            ).then(
+                (xml) ->
+                    blockUI.stop()
+                (xml) ->
+                    blockUI.stop()
             )
-            sub_scope.edit_obj = {
-                "config" : config.idx
-                "name" : c_name
-                "is_active": true
-                "description" : "Check command"
-                "command_line" : "$USER2$ -m $HOSTADDRESS$ uptime"
-                "categories" : []
-                "arg_name" : "argument"
-                "arg_value" : "80"
-            }
-            angular.extend(sub_scope, icswConfigMonCheckCommandHelpService)
-            sub_scope.modify = () ->
-                icswConfigRestService.create_mon_check_command(config, sub_scope.edit_obj).then(
-                    (new_moncc) ->
-                        icswConfigListService.update_config(config)
-                        sub_scope.modal.close()
-                )
-            edit_div = $compile($templateCache.get(_templ))(sub_scope)
-            my_modal = BootstrapDialog.show
-                message: edit_div
-                draggable: true
-                title: "Create new MonCheckCommand"
-                size: BootstrapDialog.SIZE_WIDE
-                closable: true
-                closeByBackdrop: false
-                cssClass: "modal-tall"
-                onshow: (modal) =>
-                    height = $(window).height() - 100
-                    modal.getModal().find(".modal-body").css("max-height", height)
-                onhide: (modal) =>
-                    sub_scope.$destroy()
-            sub_scope.modal = my_modal
+            $scope.selected_objects = []
+    $scope.unselect_objects = () ->
+        # unselect all selected objects
+        idx = 0
+        while $scope.selected_objects.length
+            prev_len = $scope.selected_objects.length
+            idx++
+            entry = $scope.selected_objects[0]
+            $scope.unselect_object($scope.selected_objects[0])
+            # unable to unselect, exit loop
+            if $scope.selected_objects.length == prev_len
+                console.log "problem unselect..."
+                break
+    $scope.unselect_object = (obj) ->
+        obj._selected = false
+        $scope.selected_objects = (entry for entry in $scope.selected_objects when entry != obj)
+    $scope.select_object = (obj) ->
+        if obj._selected
+            $scope.unselect_object(obj)
+        else
+            obj._selected = true
+            $scope.selected_objects.push(obj)
+
+    # hint functions
+    $scope.re_compare = (_array, _input) ->
+        console.log _array, _input, $scope.config_hints[_array].exact_match
+        return true
+        cur_pat = new RegExp(_array, "i")
+        console.log cur_pat, _input
+        return cur_pat.test(_input)
+
+    $scope.create_var = (config, v_type, event) ->
+        sub_scope = $scope.$new()
+        _templ = "config.#{v_type}.form"
+        sub_scope.config = config
+        sub_scope.modify = () ->
+            icswConfigRestService.create_var(config, v_type, sub_scope.edit_obj).then(
+                (new_var) ->
+                    icswConfigListService.update_config(config)
+                    sub_scope.modal.close()
+            )
+        sub_scope.show_config_var_help = () ->
+            return icswConfigHintService.show_config_var_help(sub_scope.config, sub_scope.edit_obj)
+        sub_scope.get_config_var_hints = () ->
+            return icswConfigHintService.get_config_var_hints(sub_scope.config)
+        sub_scope.edit_obj = {
+            "config" : config.idx
+            "name" : "new #{v_type} var"
+            "description" : "new variable (type #{v_type})"
+            "value" : {"str" : "", "int" : 0, "bool" : 1}[v_type]
+        }
+        edit_div = $compile($templateCache.get(_templ))(sub_scope)
+        my_modal = BootstrapDialog.show
+            message: edit_div
+            draggable: true
+            title: "Create new #{v_type} variable"
+            size: BootstrapDialog.SIZE_WIDE
+            closable: true
+            closeByBackdrop: false
+            cssClass: "modal-tall"
+            onshow: (modal) =>
+                height = $(window).height() - 100
+                modal.getModal().find(".modal-body").css("max-height", height)
+            onhide: (modal) =>
+                sub_scope.$destroy()
+        sub_scope.modal = my_modal
+
+    $scope.create_script = (config, event) ->
+        sub_scope = $scope.$new()
+        _templ = "config.script.form"
+        sub_scope.config = config
+        sub_scope.edit_obj = {
+            "config"   : config.idx
+            "name"     : "new script"
+            "priority" : 0
+            "enabled"  : true
+            "description" : "new config script"
+            "edit_value"  : "# config script (" + moment().format() + ")\n#\n"
+        }
+        sub_scope.editorOptions = {
+            lineWrapping : false
+            lineNumbers: true
+            mode:
+                name : "python"
+                version : 2
+            matchBrackets: true
+            styleActiveLine: true
+            indentUnit : 4
+        }
+        sub_scope.modify = () ->
+            icswConfigRestService.create_script(config, sub_scope.edit_obj).then(
+                (new_script) ->
+                    icswConfigListService.update_config(config)
+                    sub_scope.modal.close()
+            )
+        edit_div = $compile($templateCache.get(_templ))(sub_scope)
+        my_modal = BootstrapDialog.show
+            message: edit_div
+            draggable: true
+            title: "Create new script"
+            size: BootstrapDialog.SIZE_WIDE
+            closable: true
+            closeByBackdrop: false
+            cssClass: "modal-tall"
+            onshow: (modal) =>
+                height = $(window).height() - 100
+                modal.getModal().find(".modal-body").css("max-height", height)
+            onhide: (modal) =>
+                sub_scope.$destroy()
+        sub_scope.modal = my_modal
+
+    $scope.create_mon = (config, event) ->
+        sub_scope = $scope.$new()
+        _templ = "mon.check.command.form"
+        c_name = "cc_#{config.name}"
+        c_idx = 1
+        cc_names = (cc.name for cc in config.mon_check_command_set)
+        while true
+            if "#{c_name}_#{c_idx}" in cc_names
+                c_idx++
+            else
+                break
+        c_name = "#{c_name}_#{c_idx}"
+        sub_scope.config = config
+        sub_scope.mon_service_templ = []
+        icswConfigRestService.fetch(sub_scope.$id).then((data) ->
+            sub_scope.mon_service_templ = data[1]
+        )
+        sub_scope.edit_obj = {
+            "config" : config.idx
+            "name" : c_name
+            "is_active": true
+            "description" : "Check command"
+            "command_line" : "$USER2$ -m $HOSTADDRESS$ uptime"
+            "categories" : []
+            "arg_name" : "argument"
+            "arg_value" : "80"
+        }
+        angular.extend(sub_scope, icswConfigMonCheckCommandHelpService)
+        sub_scope.modify = () ->
+            icswConfigRestService.create_mon_check_command(config, sub_scope.edit_obj).then(
+                (new_moncc) ->
+                    icswConfigListService.update_config(config)
+                    sub_scope.modal.close()
+            )
+        edit_div = $compile($templateCache.get(_templ))(sub_scope)
+        my_modal = BootstrapDialog.show
+            message: edit_div
+            draggable: true
+            title: "Create new MonCheckCommand"
+            size: BootstrapDialog.SIZE_WIDE
+            closable: true
+            closeByBackdrop: false
+            cssClass: "modal-tall"
+            onshow: (modal) =>
+                height = $(window).height() - 100
+                modal.getModal().find(".modal-body").css("max-height", height)
+            onhide: (modal) =>
+                sub_scope.$destroy()
+        sub_scope.modal = my_modal
 
 ]).directive("icswConfigConfigOverview", ["$templateCache", ($templateCache) ->
     return {
@@ -940,18 +1071,26 @@ config_module = angular.module(
         scope:
             config: "="
     }
-]).service('icswConfigMonCheckCommandHelpService', ["icswConfigRestService", "icswConfigListService", "$q", "icswTools", "ICSW_URLS", "icswConfigHintService", "Restangular", (icswConfigRestService, icswConfigListService, $q, icswTools, ICSW_URLS, icswConfigHintService, Restangular) ->
-    _def = icswConfigRestService.fetch("icsw_config_mcc_help_service")
+]).service('icswConfigMonCheckCommandHelpService',
+[
+    "icswConfigTreeService", "icswConfigListService", "$q", "icswTools",
+    "ICSW_URLS", "icswConfigHintService", "Restangular",
+(
+    icswConfigTreeService, icswConfigListService, $q, icswTools,
+    ICSW_URLS, icswConfigHintService, Restangular
+) ->
+    _def =
     _configs = []
     _categories = []
     mccs_lut = {}
     mccs_list = []
-    _def.then((data) ->
-        _configs = data[0]
-        _categories = data[2]
-        mccs_list = data[5]
-        mccs_lut = icswTools.build_lut(mccs_list)
-    )
+    #icswConfigRestService.load("icsw_config_mcc_help_service").then(
+    #    (data) ->
+    #        _configs = data[0]
+    #        _categories = data[2]
+    #        mccs_list = data[5]
+    #        mccs_lut = icswTools.build_lut(mccs_list)
+    #)
     return {
         "get_mccs_already_used_warning": (edit_obj) ->
             cur_mccs = edit_obj.mon_check_command_special
@@ -1049,7 +1188,16 @@ config_module = angular.module(
                         ev_handlers.push(cc)
             return ev_handlers
     }
-]).service('icswConfigMonCheckCommandListService', ["icswSimpleAjaxCall", "icswConfigMonCheckCommandHelpService", "icswConfigListService", "icswTools", "icswConfigHintService", "Restangular", "ICSW_URLS", "msgbus", "icswConfigRestService", (icswSimpleAjaxCall, icswConfigMonCheckCommandHelpService, icswConfigListService, icswTools, icswConfigHintService, Restangular, ICSW_URLS, msgbus, icswConfigRestService) ->
+]).service('icswConfigMonCheckCommandListService',
+[
+    "icswSimpleAjaxCall", "icswConfigMonCheckCommandHelpService", "icswConfigListService",
+    "icswTools", "icswConfigHintService", "Restangular", "ICSW_URLS", "msgbus",
+    "icswConfigTreeService",
+(
+    icswSimpleAjaxCall, icswConfigMonCheckCommandHelpService, icswConfigListService,
+    icswTools, icswConfigHintService, Restangular, ICSW_URLS, msgbus,
+    icswConfigTreeService
+) ->
     return {
         delete_confirm_str: (obj) ->
             return "Really delete MonCheckCommand '#{obj.name}' ?"
@@ -1105,7 +1253,12 @@ config_module = angular.module(
         restrict : "EA"
         template : $templateCache.get("icsw.config.mon.table")
     }
-]).directive("icswConfigCategoryChoice", ["$templateCache", "icswConfigMonCategoryTreeService", "icswConfigRestService", "$q", ($templateCache, icswConfigMonCategoryTreeService, icswConfigRestService, $q) ->
+]).directive("icswConfigCategoryChoice",
+[
+    "$templateCache", "icswConfigMonCategoryTreeService", "icswConfigTreeService", "$q",
+(
+    $templateCache, icswConfigMonCategoryTreeService, icswConfigTreeService, $q
+) ->
     return {
         restrict : "EA"
         template : "<tree treeconfig='cat_tree'></tree>"
@@ -1163,7 +1316,16 @@ config_module = angular.module(
         }
         replace : true
     }
-]).directive("icswConfigCachedConfig", ["$templateCache", "$compile", "blockUI", "$uibModal", "Restangular", "ICSW_URLS", "icswConfigRestService", "icswCachedConfigRestService", "icswSimpleAjaxCall", "icswConfigListService", ($templateCache, $compile, blockUI, $uibModal, Restangular, ICSW_URLS, icswConfigRestService, icswCachedConfigRestService, icswSimpleAjaxCall, icswConfigListService) ->
+]).directive("icswConfigCachedConfig",
+[
+    "$templateCache", "$compile", "blockUI", "$uibModal", "Restangular", "ICSW_URLS",
+    "icswConfigTreeService", "icswCachedConfigRestService", "icswSimpleAjaxCall",
+    "icswConfigListService",
+(
+    $templateCache, $compile, blockUI, $uibModal, Restangular, ICSW_URLS,
+    icswConfigTreeService, icswCachedConfigRestService, icswSimpleAjaxCall,
+    icswConfigListService
+) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.config.cached.upload")

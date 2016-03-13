@@ -120,7 +120,7 @@ angular.module(
         for value, idx in $scope.rest_map
             $scope.rest_data[value.short] = restDataSource.reload([value.url, value.options])
             wait_list.push($scope.rest_data[value.short])
-        wait_list.push(icswDeviceTreeService.fetch($scope.$id))
+        wait_list.push(icswDeviceTreeService.load($scope.$id))
         $q.all(wait_list).then(
             (data) ->
                 $scope.device_tree_valid = true

@@ -30,7 +30,7 @@ angular.module(
     id = Math.random()
     return (dev_pk) ->
         defer = $q.defer()
-        icswDeviceTreeService.fetch(id).then((new_data) ->
+        icswDeviceTreeService.load(id).then((new_data) ->
             if dev_pk of new_data.all_lut
                 defer.resolve(new_data.all_lut[dev_pk])
             else
@@ -41,7 +41,7 @@ angular.module(
     id = Math.random()
     return (dev_pk) ->
         defer = $q.defer()
-        icswDeviceTreeService.fetch(id).then((new_data) ->
+        icswDeviceTreeService.load(id).then((new_data) ->
             defer.resolve(dev_pk of new_data.all_lut)
         )
         return defer.promise
@@ -191,7 +191,7 @@ angular.module(
         resolve_lazy_selection: () ->
             # categories
             for _cat in @cat_sel
-                for _cs in @tree.cat_lut[_cat].devices
+                for _cs in @tree.cat_tree.lut[_cat].devices
                     @tot_dev_sel.push(_cs)
             @cat_sel = []
             # groups
@@ -236,7 +236,7 @@ angular.module(
 
         resolve_categories: () ->
             if @cat_sel.length
-                _list = ((@tree.cat_lut[_cs].full_name for _cs in @cat_sel))
+                _list = ((@tree.cat_tree.lut[_cs].full_name for _cs in @cat_sel))
                 _list.sort()
                 return _list.join(", ")
             else
@@ -435,7 +435,7 @@ angular.module(
         $rootScope.$on(ICSW_SIGNALS("ICSW_USER_CHANGED"), (event, new_user) ->
             console.log "new user", new_user
             if new_user and new_user.idx
-                icswDeviceTreeService.fetch($scope.$id).then(
+                icswDeviceTreeService.load($scope.$id).then(
                     (new_tree) ->
                         $scope.got_rest_data(new_tree, icswActiveSelectionService.get_selection())
                 )
@@ -446,7 +446,7 @@ angular.module(
             # call when the requester is shown
             console.log "show_devsel", event, cur_state, $scope
             if icswUserService.user_present()
-                icswDeviceTreeService.fetch($scope.$id).then(
+                icswDeviceTreeService.load($scope.$id).then(
                     (new_tree) ->
                         $scope.got_rest_data(new_tree, icswActiveSelectionService.get_selection())
                 )
@@ -475,7 +475,7 @@ angular.module(
         # store tree
         $scope.tree = tree
         console.log tree
-        for entry in tree.cat_list
+        for entry in tree.cat_tree.list
             t_entry = $scope.tc_categories.new_node(
                 {
                     folder: true
@@ -622,7 +622,7 @@ angular.module(
                         if _sel
                             num_found++
                     else if entry._node_type == "c"
-                        _sel = if $scope.tree.cat_lut[entry.obj].name.match(cur_re) then true else false
+                        _sel = if $scope.tree.cat_tree.lut[entry.obj].name.match(cur_re) then true else false
                         entry.set_selected(_sel)
                         if _sel
                             num_found++
@@ -899,7 +899,7 @@ angular.module(
             else if t_entry._node_type == "c"
                 if entry.depth
                     _res = entry.name
-                    cat = @current.cat_lut[t_entry.obj]
+                    cat = @current.cat_tree.lut[t_entry.obj]
                     if cat.devices.length
                         _res = "#{_res} (#{cat.devices.length} devices)"
                 else
@@ -936,7 +936,7 @@ angular.module(
             if t_entry._node_type == "g"
                 return @scope.tree.group_lut[t_entry.obj]
             else if t_entry._node_type == "c"
-                return @scope.tree.cat_lut[t_entry.obj]
+                return @scope.tree.cat_tree.lut[t_entry.obj]
             else
                 return @scope.tree.all_lut[t_entry.obj]
         selection_changed: () =>

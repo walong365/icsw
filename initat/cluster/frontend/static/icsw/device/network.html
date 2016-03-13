@@ -358,7 +358,7 @@
 
         <uib-tab heading="Network types">
             <icsw-tools-rest-table-new target-list="entries" config-service="icswNetworkTypeService">
-                <h3>Network types ({{entries.length}} entries)</h3>
+                <h3>Network types ({{ entries.length }} entries)</h3>
                 <icsw-tools-button type="create" value="create new" ng-click="create($event)" size="sm"/>
                 <table st-table="entries_displayed" st-safe-src="entries"
                        class="table table-hover table-condensed table-striped" style="width:auto;">

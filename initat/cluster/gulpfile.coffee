@@ -68,12 +68,12 @@ sources = {
             "frontend/static/css/tooltip.css",
             "frontend/static/css/smart-table.css",
             "frontend/static/css/font-awesome.min.css",
-            "frontend/static/css/icsw.css",
             "frontend/static/css/toaster.css",
             "frontend/static/css/bootstrap-dialog.css",
             "frontend/static/css/angular-gridster.min.css",
             "frontend/static/css/main.css",
             "frontend/static/css/hotkeys.css",
+            "frontend/static/css/icsw.css",
         ]
         "css"
         true

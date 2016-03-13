@@ -157,7 +157,7 @@
 </script>
 
 <script type="text/ng-template" id="icsw.config.catalog.table">
-    <icsw-tools-rest-table target-list="config_catalogs" config-service="icswConfigCatalogListService">
+    <icsw-tools-rest-table-new target-list="config_catalogs" config-service="icswConfigCatalogListService">
         <h2>{{ config_catalogs.length }} catalogs,
             <icsw-tools-button type="create" value="create new catalog" ng-click="create($event)" size="sm"></icsw-tools-button>
         </h2>
@@ -187,7 +187,7 @@
                 </tr>
             </tbody>
         </table>
-    </icsw-tools-rest-table>
+    </icsw-tools-rest-table-new>
 </script>
 
 <script type="text/ng-template" id="icsw.config.config.table">

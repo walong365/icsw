@@ -419,11 +419,11 @@ menu_module = angular.module(
                 React.PropTypes.object.isRequired
             componentDidMount: () ->
                 mb_height = $(react_dom.findDOMNode(@)).height()
-                console.log "fMENUBAR_HEIGHT=", mb_height
+                # console.log "fMENUBAR_HEIGHT=", mb_height
                 $("body").css("padding-top", mb_height + 1)
             componentDidUpdate: () ->
                 mb_height = $(react_dom.findDOMNode(@)).height()
-                console.log "uMENUBAR_HEIGHT=", mb_height
+                # console.log "uMENUBAR_HEIGHT=", mb_height
                 $("body").css("padding-top", mb_height + 1)
             render: () ->
                 menus = []

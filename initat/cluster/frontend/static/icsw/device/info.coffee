@@ -78,7 +78,7 @@ angular.module(
             {
                 message: $compile("<icsw-device-overview></icsw-device-overview>")(sub_scope)
                 title: "Device Info"
-                css_class: "modal-wide"
+                css_class: "modal-wide modal-tall"
                 closable: true
                 show_callback: (modal) ->
                     DeviceOverviewSettings.open()
@@ -209,7 +209,7 @@ angular.module(
 
     $scope.new_devsel = (in_list) ->
         if in_list.length > 0
-            icswDeviceTreeService.fetch($scope.$id).then(
+            icswDeviceTreeService.load($scope.$id).then(
                 (tree) ->
                     $scope.dev_tree = tree
                     edit_obj = in_list[0]
@@ -217,7 +217,7 @@ angular.module(
                     dt_hs = icswDeviceTreeHelperService.create($scope.dev_tree, [edit_obj])
                     $q.all(
                         [
-                            icswDomainTreeService.fetch($scope.$id)
+                            icswDomainTreeService.load($scope.$id)
                             icswMonitoringTreeService.fetch($scope.$id)
                             $scope.dev_tree.enrich_devices(dt_hs, ["network_info", "monitoring_hint_info", "disk_info", "com_info", "snmp_info", "snmp_schemes_info", "scan_info"])
                         ]
