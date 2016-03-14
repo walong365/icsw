@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2012-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -163,7 +163,11 @@ def get_related_models(in_obj, m2m=False, detail=False, check_all=False, ignore_
                 # ignore foreign keys where on_delete == SET_NULL
                 pass
             else:
-                ref_list = [entry for entry in rel_obj.related_model.objects.filter(Q(**{rel_field_name: in_obj})) if entry not in ignore_objs]
+                ref_list = [
+                    entry for entry in rel_obj.related_model.objects.filter(
+                        Q(**{rel_field_name: in_obj})
+                    ) if entry not in ignore_objs
+                ]
                 if ref_list:
                     if related_objects is not None:
                         rel_obj.ref_list = ref_list
@@ -191,9 +195,17 @@ def get_related_models(in_obj, m2m=False, detail=False, check_all=False, ignore_
         for m2m_obj in all_m2ms:
             m2m_field_name = m2m_obj.field.name
             if detail:
-                used_objs.extend(list(m2m_obj.related_model.objects.filter(Q(**{m2m_field_name: in_obj}))))
+                used_objs.extend(
+                    list(
+                        m2m_obj.related_model.objects.filter(
+                            Q(**{m2m_field_name: in_obj})
+                        )
+                    )
+                )
             else:
-                used_objs += m2m_obj.related_model.objects.filter(Q(**{m2m_field_name: in_obj})).count()
+                used_objs += m2m_obj.related_model.objects.filter(
+                    Q(**{m2m_field_name: in_obj})
+                ).count()
     in_obj._lock_list = _lock_list
     if ignore_list:
         raise ImproperlyConfigured(

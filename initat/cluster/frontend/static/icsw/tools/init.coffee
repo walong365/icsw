@@ -315,6 +315,8 @@ angular.module(
         "ICSW_MENU_PROGRESS_BAR_CHANGED": "icsw.menu.progress.bar.changed"
         "ICSW_NETWORK_REDRAW_TOPOLOGY": "icsw.network.redraw.topology",
         "ICSW_NETWORK_REDRAW_D3_ELEMENT": "icsw.network.redraw.d3.element",
+        # not needed up to now
+        # "ICSW_RENDER_MENUBAR": "icsw.render.menubar",
         # "ICSW_READY_TO_RECEIVE_SELECTION": "icsw.ready.to.receive.selection"
     }
     return (name) ->
@@ -807,7 +809,41 @@ angular.module(
         template : $templateCache.get("icsw.tools.old.paginator")
         link     : link
     }
-]).service("icswComplexModalService", ["$q", ($q) ->
+]).service("icswInfoModalService",
+[
+    "$q",
+(
+    $q,
+) ->
+    return (info) ->
+        d = $q.defer()
+        BootstrapDialog.show
+            message: info
+            draggable: true
+            animate: false
+            size: BootstrapDialog.SIZE_SMALL
+            title: "Info"
+            closable: false
+            buttons: [
+                {
+                     icon: "glyphicon glyphicon-ok"
+                     cssClass: "btn-success"
+                     label: "Yes"
+                     action: (dialog) ->
+                        dialog.close()
+                        d.resolve()
+                },
+            ]
+            iconshow: (modal) =>
+                height = $(window).height() - 100
+                modal.getModal().find(".modal-body").css("max-height", height)
+        return d.promise
+]).service("icswComplexModalService",
+[
+    "$q", "icswToolsSimpleModalService",
+(
+    $q, icswToolsSimpleModalService
+) ->
     return (in_dict) ->
         # build buttons list
         buttons = []
@@ -824,6 +860,36 @@ angular.module(
                                 modal.close()
                             (notok) ->
                                 console.log "cms/modify/notok returned #{notok}"
+                        )
+                        return false
+                }
+            )
+        if in_dict.delete_callback
+            buttons.push(
+                {
+                    label: if in_dict.delete_label? then in_dict.delete_label else "Delete"
+                    icon: "fa fa-remove"
+                    cssClass: "btn-danger"
+                    action: (modal) ->
+                        d = $q.defer()
+                        if in_dict.delete_ask?
+                            icswToolsSimpleModalService("Really delete ?").then(
+                                (ok) ->
+                                    d.resolve("yes with ask")
+                                (nto) ->
+                                    d.reject("no with ask")
+                            )
+                        else
+                            d.resolve("no ask")
+                        d.promise.then(
+                            (answer) ->
+                                in_dict.delete_callback(modal).then(
+                                    (ok) ->
+                                        console.log "cms/delete/ok returned #{answer} / #{ok}"
+                                        modal.close()
+                                    (notok) ->
+                                        console.log "cms/delete/notok returned #{answer} / #{notok}"
+                                )
                         )
                         return false
                 }

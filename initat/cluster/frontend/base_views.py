@@ -83,8 +83,22 @@ class prune_category_tree(permission_required_mixin, View):
 
     @method_decorator(xml_wrapper)
     def post(self, request):
-        category_tree().prune(mode=request.POST['mode'])
-        request.xml_response.info("tree pruned")
+        doit = True if int(request.POST.get("doit", "0")) else False
+        to_delete = category_tree().prune(mode=request.POST['mode'], doit=doit)
+        if doit:
+            request.xml_response.info(
+                "tree pruned ({})".format(
+                    logging_tools.get_plural("element", to_delete)
+                )
+            )
+        else:
+            request.xml_response["nodes"] = to_delete
+            if to_delete:
+                request.xml_response["info"] = "OK to delete {} ?".format(
+                    logging_tools.get_plural("element", to_delete)
+                )
+            else:
+                request.xml_response["info"] = "Nothing to prune"
 
 
 TARGET_WIDTH, TARGET_HEIGTH = (1920, 1920)

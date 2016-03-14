@@ -23,85 +23,100 @@ menu_module = angular.module(
     [
         "ngSanitize", "ui.bootstrap", "icsw.layout.selection", "icsw.user",
     ]
-).controller("icswMenuBaseCtrl", ["$scope", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswAcessLevelService", "initProduct", "icswLayoutSelectionDialogService", "icswActiveSelectionService", "$q", "icswUserService", "blockUI", "$state",
-    ($scope, $window, ICSW_URLS, icswSimpleAjaxCall, icswAcessLevelService, initProduct, icswLayoutSelectionDialogService, icswActiveSelectionService, $q, icswUserService, blockUI, $state) ->
-        # init service types
-        $scope.ICSW_URLS = ICSW_URLS
-        $scope.initProduct = initProduct
-        # flag: show navbar
-        $scope.show_navbar = false
-        $scope.CURRENT_USER = undefined
-        $scope.HANDBOOK_PDF_PRESENT = false
-        $scope.HANDBOOK_CHUNKS_PRESENT = false
-        $scope.HANDBOOK_PAGE = "---"
-        icswAcessLevelService.install($scope)
-        $q.all(
-            [
-                icswSimpleAjaxCall(
-                    {
-                        "url": ICSW_URLS.MAIN_GET_DOCU_INFO,
-                        "dataType": "json"
-                    }
-                ),
-                icswUserService.load(),
-            ]
-        ).then(
-            (data) ->
-                $scope.HANDBOOK_PDF_PRESENT = data[0].HANDBOOK_PDF_PRESENT
-                $scope.HANDBOOK_CHUNKS_PRESENT = data[0].HANDBOOK_CHUNKS_PRESENT
-        )
-        $scope.get_progress_style = (obj) ->
-            return {"width" : "#{obj.value}%"}
-        $scope.redirect_to_init = () ->
-            window.location = "http://www.initat.org"
-            return false
-        $scope.handbook_url = "/"
-        $scope.handbook_url_valid = false
-        $scope.$watch(
-            "initProduct",
-            (new_val) ->
-                if new_val.name?
-                    $scope.handbook_url_valid = true
-                    $scope.handbook_url = "/cluster/doc/#{new_val.name.toLowerCase()}_handbook.pdf"
+).controller("icswMenuBaseCtrl",
+[
+    "$scope", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswAcessLevelService",
+    "initProduct", "icswLayoutSelectionDialogService", "icswActiveSelectionService",
+    "$q", "icswUserService", "blockUI", "$state", "$rootScope", "ICSW_SIGNALS",
+(
+    $scope, $window, ICSW_URLS, icswSimpleAjaxCall, icswAcessLevelService,
+    initProduct, icswLayoutSelectionDialogService, icswActiveSelectionService,
+    $q, icswUserService, blockUI, $state, $rootScope, ICSW_SIGNALS
+) ->
+    # init service types
+    $scope.ICSW_URLS = ICSW_URLS
+    $scope.initProduct = initProduct
+    # flag: show navbar
+    $scope.show_navbar = false
+    $scope.CURRENT_USER = undefined
+    $scope.HANDBOOK_PDF_PRESENT = false
+    $scope.HANDBOOK_CHUNKS_PRESENT = false
+    $scope.HANDBOOK_PAGE = "---"
+    icswAcessLevelService.install($scope)
+    $q.all(
+        [
+            icswSimpleAjaxCall(
+                {
+                    "url": ICSW_URLS.MAIN_GET_DOCU_INFO,
+                    "dataType": "json"
+                }
+            ),
+            icswUserService.load(),
+        ]
+    ).then(
+        (data) ->
+            $scope.HANDBOOK_PDF_PRESENT = data[0].HANDBOOK_PDF_PRESENT
+            $scope.HANDBOOK_CHUNKS_PRESENT = data[0].HANDBOOK_CHUNKS_PRESENT
+    )
+    $scope.get_progress_style = (obj) ->
+        return {"width" : "#{obj.value}%"}
+    $scope.redirect_to_init = () ->
+        window.location = "http://www.initat.org"
+        return false
+    $scope.handbook_url = "/"
+    $scope.handbook_url_valid = false
+    $scope.$watch(
+        "initProduct",
+        (new_val) ->
+            if new_val.name?
+                $scope.handbook_url_valid = true
+                $scope.handbook_url = "/cluster/doc/#{new_val.name.toLowerCase()}_handbook.pdf"
+        true
+    )
+    # not needed, now handled in menubar-component
+    # $scope.$watch(
+    #    "size",
+    #    (new_val) ->
+    #        console.log "size=", new_val
+    #        $rootScope.$emit(ICSW_SIGNALS("ICSW_RENDER_MENUBAR"))
+    # )
+    $scope.$on("$stateChangeStart", (event, to_state, to_params, from_state, from_params) ->
+        to_main = if to_state.name.match(/^main/) then true else false
+        from_main = if from_state.name.match(/^main/) then true else false
+        console.log "state_cs", to_state.name, to_main, from_state.name, from_main
+        if to_main and not from_main
             true
-        )
-        $scope.$on("$stateChangeStart", (event, to_state, to_params, from_state, from_params) ->
-            to_main = if to_state.name.match(/^main/) then true else false
-            from_main = if from_state.name.match(/^main/) then true else false
-            console.log "state_cs", to_state.name, to_main, from_state.name, from_main
-            if to_main and not from_main
-                true
-            else if to_state.name == "login"
-                # logout if logged in
-                if icswUserService.user_present()
-                    icswUserService.logout()
-                icswUserService.force_logout()
-                $scope.CURRENT_USER = undefined
-                $scope.show_navbar = false
-        )
-        $scope.$on("$stateChangeSuccess", (event, to_state, to_params, from_state, from_params) ->
-            to_main = if to_state.name.match(/^main/) then true else false
-            from_main = if from_state.name.match(/^main/) then true else false
-            console.log "success", to_state.name, to_main, from_state.name, from_main
-            if to_state.name == "logout"
-                blockUI.start("Logging out...")
-                icswUserService.logout().then(
-                    (json) ->
-                        blockUI.stop()
-                        $scope.CURRENT_USER = undefined
-                )
-            else if not from_main and to_main
-                $scope.CURRENT_USER = icswUserService.get()
-                $scope.show_navbar = true
-                # console.log to_params, $scope
-        )
-        $scope.$on("$stateChangeError", (event, to_state, to_params) ->
-            console.log "error moving to #{to_state.name}"
-            $state.go("login")
-        )
-        # $scope.device_selection = () ->
-        #    console.log "SHOW_DIALOG"
-        #     icswLayoutSelectionDialogService.show_dialog()
+        else if to_state.name == "login"
+            # logout if logged in
+            if icswUserService.user_present()
+                icswUserService.logout()
+            icswUserService.force_logout()
+            $scope.CURRENT_USER = undefined
+            $scope.show_navbar = false
+    )
+    $scope.$on("$stateChangeSuccess", (event, to_state, to_params, from_state, from_params) ->
+        to_main = if to_state.name.match(/^main/) then true else false
+        from_main = if from_state.name.match(/^main/) then true else false
+        console.log "success", to_state.name, to_main, from_state.name, from_main
+        if to_state.name == "logout"
+            blockUI.start("Logging out...")
+            icswUserService.logout().then(
+                (json) ->
+                    blockUI.stop()
+                    $scope.CURRENT_USER = undefined
+            )
+        else if not from_main and to_main
+            $scope.CURRENT_USER = icswUserService.get()
+            $scope.show_navbar = true
+            # console.log to_params, $scope
+    )
+    $scope.$on("$stateChangeError", (event, to_state, to_params) ->
+        console.log "error moving to #{to_state.name}"
+        $state.go("login")
+    )
+    # $scope.device_selection = () ->
+    #    console.log "SHOW_DIALOG"
+    #     icswLayoutSelectionDialogService.show_dialog()
 ]).directive("icswLayoutMenubar", ["$templateCache", ($templateCache) ->
     return {
         restrict: "EA"
@@ -417,13 +432,28 @@ menu_module = angular.module(
             displayName: "menubar"
             propTypes:
                 React.PropTypes.object.isRequired
+            update_dimensions: () ->
+                @setState(
+                    {
+                        width: $(window).width()
+                        height: $(window).height()
+                    }
+                )
+            componentWillMount: () ->
+                # register eventhandler
+                $(window).on("resize", @update_dimensions)
+
+            componentWillUnmount: () ->
+                # remove eventhandler
+                $(window).off("resize", @update_dimensions)
+
             componentDidMount: () ->
-                mb_height = $(react_dom.findDOMNode(@)).height()
-                # console.log "fMENUBAR_HEIGHT=", mb_height
+                mb_height = $(react_dom.findDOMNode(@)).parents("nav").height()
+                console.log "fMENUBAR_HEIGHT=", mb_height
                 $("body").css("padding-top", mb_height + 1)
             componentDidUpdate: () ->
-                mb_height = $(react_dom.findDOMNode(@)).height()
-                # console.log "uMENUBAR_HEIGHT=", mb_height
+                mb_height = $(react_dom.findDOMNode(@)).parents("nav").height()
+                console.log "uMENUBAR_HEIGHT=", mb_height
                 $("body").css("padding-top", mb_height + 1)
             render: () ->
                 menus = []
@@ -510,6 +540,10 @@ menu_module = angular.module(
                 # console.log "mps", settings
                 _render()
             )
+            # $rootScope.$on(ICSW_SIGNALS("ICSW_RENDER_MENUBAR"), (event, settings) ->
+            #     # console.log "mps", settings
+            #     _render()
+            # )
 
     }
 ])

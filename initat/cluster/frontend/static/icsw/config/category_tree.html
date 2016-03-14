@@ -8,41 +8,50 @@
     </icsw-tools-ensure-device-selection>
 </script>
 
-<script type="text/ng-template" id="icsw.config.category.tree.head">cat_head.html">
+<script type="text/ng-template" id="icsw.config.category.tree.head">
     <tr>
         <th>Name</th>
         <th>Full name</th>   
         <th>Comment</th>
         <th>refs</th>
-        <th>lat</th>
-        <th>long</th>
-        <th>lockstate</th>
-        <th>type</th>
+        <th ng-if="mode_is_location">lat</th>
+        <th ng-if="mode_is_location">long</th>
+        <th ng-if="mode_is_location">lockstate</th>
+        <th ng-if="mode_is_location">type</th>
         <th colspan="2">Action</th>
     </tr>
 </script>
 
 <script type="text/ng-template" id="icsw.config.category.tree.row">
     <td style="font-family:monospace;"><span ng-bind-html="get_space(obj.depth )"></span>{{ obj.name || '[TLN]' }}</td>
-    <td><span ng-show="obj.depth">{{ obj.full_name }}</span></td>
+    <td>
+        <span ng-show="obj.depth">{{ obj.full_name }}</span>
+    </td>
     <td>{{ obj.comment }}</td>
-    <td><span ng-show="obj.depth > 1">{{ obj.num_refs || '---' }}</span></td>
-    <td><span ng-show="is_location(obj)">{{ obj.latitude }}</span></td>
-    <td><span ng-show="is_location(obj)">{{ obj.longitude }}</span></td>
-    <td><span ng-show="is_location(obj)">{{ obj.locked && 'locked' || 'unlocked' }}</span></td>
-    <td><span ng-show="is_location(obj)">{{ obj.physical && 'physical' || 'structural' }}</span></td>
-    <td><icsw-tools-button type="modify" size="xs" ng-click="edit_obj(obj, $event)" ng-show="obj.depth > 1"></icsw-tools-button></td>
-    <td><icsw-tools-button type="delete" size="xs" ng-click="delete_obj(obj)" ng-show="obj.depth > 1"></icsw-tools-button></td>
+    <td>
+        <span ng-show="obj.depth > 1">{{ obj.num_refs || '---' }}</span>
+    </td>
+    <td ng-if="is_location(obj)">{{ obj.latitude }}</td>
+    <td ng-if="is_location(obj)">{{ obj.longitude }}</td>
+    <td ng-if="is_location(obj)">{{ obj.locked && 'locked' || 'unlocked' }}</td>
+    <td ng-if="is_location(obj)">{{ obj.physical && 'physical' || 'structural' }}</td>
+    <td>
+        <icsw-tools-button type="modify" size="xs" ng-click="create_or_edit($event, false, obj)" ng-show="obj.depth > 1"></icsw-tools-button>
+    </td>
+    <td>
+        <icsw-tools-button type="delete" size="xs" ng-click="delete_obj($event, obj)" ng-show="obj.depth > 1"></icsw-tools-button>
+    </td>
 </script>
 
 <script type="text/ng-template" id="icsw.config.category.tree">
     <h2>
         {{ mode_display | capitalize }} categories ({{ mode_entries.length }} <ng-pluralize count="mode_entries.length" when="{'1': 'entry', 'other': 'entries'}")></ng-pluralize>)
     </h2>
-    <h3>Actions:
-        <icsw-tools-button type="create" value="create new" ng-click="create_new($event, '')" size="sm"></icsw-tools-button>
-        <input type="button" value="prune tree" class="btn btn-sm btn-warning" ng-click="prune_tree()"/>
-    </h3>
+    <p>
+        Actions:
+        <icsw-tools-button type="create" value="create new" size="sm" ng-click="create_or_edit($event, true, null)"></icsw-tools-button>
+        <icsw-tools-button type="modify" value="prune tree" size="sm" ng-click="prune_tree()"/>
+    </p>
     <div class="row">
         <div class="col-sm-4">
             <h3>Tree view</h3>
@@ -54,7 +63,7 @@
                 <thead icsw-config-category-tree-head>
                 </thead>
                 <tbody>
-                    <tr icsw-config-category-tree-row ng-repeat="obj in mode_entries" ng-class="get_tr_class(obj)">
+                    <tr icsw-config-category-tree-row ng-repeat="obj in mode_entries" ng-click="click_row(obj)" ng-class="get_tr_class(obj)">
                     </tr>
                 </tbody>
             </table>

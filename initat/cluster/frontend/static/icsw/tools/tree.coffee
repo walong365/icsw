@@ -609,8 +609,19 @@ angular.module(
         _iter: (entry, cb_func, cb_data) =>
             cb_func(entry, cb_data)
             (@_iter(child, cb_func, cb_data) for child in entry.children)
+        get_active: () =>
+            active = []
+            @iter(
+                (entry) ->
+                    if entry.active
+                        active.push(entry)
+            )
+            return active
         clear_active: () =>
-            @iter((entry) -> entry.active=false)
+            @iter(
+                (entry) ->
+                    entry.active = false
+            )
             @redraw_tree()
 
         get_icon_class: (entry) ->

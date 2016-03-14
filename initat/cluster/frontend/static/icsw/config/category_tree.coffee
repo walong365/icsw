@@ -50,7 +50,10 @@ angular.module(
             @show_descendants = true
             @show_childs = false
             @location_re = new RegExp("^/location/.*$")
+
+        clear_tree: () =>
             @lut = {}
+
         get_name : (t_entry) ->
             cat = t_entry.obj
             is_loc = @location_re.test(cat.full_name)
@@ -70,12 +73,34 @@ angular.module(
                 r_info = cat.full_name
             else
                 r_info = "TOP"
+            # r_info = "#{r_info}"
             return r_info
+
+        add_extra_span: (entry) =>
+            cat = entry.obj
+            #if cat.depth > 0
+            #    return angular.element("<span></span>")
+            #else
+            return null
+
+        update_extra_span: (entry, span) =>
+            span.empty()
+            cat = entry.obj
+            if cat.depth > 0
+                # span.append(angular.element("<input type='button' value='bla'></input>"))
+                true
+
         handle_click: (entry, event) =>
-            @clear_active()
+            if not entry.active
+                # i am not the active node, clear others
+                @clear_active()
             cat = entry.obj
             if cat.depth > 1
-                @scope.create_or_edit(event, false, cat)
+                if entry.active
+                    @scope.create_or_edit(event, false, cat)
+                else
+                    entry.active = true
+                    @show_active()
             else if cat.depth == 1
                 @scope.create_or_edit(event, true, cat)
             @scope.$digest()
@@ -88,6 +113,13 @@ angular.module(
 ) ->
     class icswCategoryTree
         constructor: (@list) ->
+            @build_luts()
+
+        update: (new_list) ->
+            # update with new data from server
+            @list.length = 0
+            for entry in new_list
+                @list.push(entry)
             @build_luts()
 
         build_luts: () =>
@@ -186,7 +218,10 @@ angular.module(
         $q.all(_wait_list).then(
             (data) ->
                 console.log "*** category tree loaded ***"
-                _result = new icswCategoryTree(data[0])
+                if _result?
+                    _result.update(data[0])
+                else
+                    _result = new icswCategoryTree(data[0])
                 _defer.resolve(_result)
                 for client of _fetch_dict
                     # resolve clients
@@ -216,7 +251,7 @@ angular.module(
             else
                 return load_data(client).promise
         "reload": (client) ->
-            # to be implemented
+            return load_data(client).promise
         "current": () ->
             return _result
     }
@@ -224,28 +259,39 @@ angular.module(
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.config.category.tree.head")
+        controller: "icswConfigCategoryRowCtrl"
     }
 ]).directive("icswConfigCategoryTreeRow", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.config.category.tree.row")
-        link : (scope, el, attrs) ->
-            scope.get_tr_class = (obj) ->
-                return if obj.depth > 1 then "" else "success"
-            scope.get_space = (depth) ->
-                return ("&nbsp;&nbsp;" for idx in [0..depth]).join("")
+        controller: "icswConfigCategoryRowCtrl"
     }
-]).directive("icswConfigCategoryTreeEditTemplate", ["$compile", "$templateCache", ($compile, $templateCache) ->
-    return {
-        restrict : "EA"
-        template : $templateCache.get("category.form")
-        link : (scope, element, attrs) ->
-            scope.form_error = (field_name) ->
-                if scope.form[field_name].$valid
-                    return ""
-                else
-                    return "has-error"
-    }
+]).controller("icswConfigCategoryRowCtrl",
+[
+    "$scope",
+(
+    $scope
+) ->
+    $scope.is_location = (obj) ->
+        # called from formular code
+        # full_name.match leads to infinite digest cycles
+        return (obj.depth > 1) and $scope.mode == "location"
+
+    $scope.get_tr_class = (obj) ->
+        if $scope.tree.lut[obj.idx].active
+            return "danger"
+        else
+            return if obj.depth > 1 then "" else "success"
+
+    $scope.get_space = (depth) ->
+        return ("&nbsp;&nbsp;" for idx in [0..depth]).join("")
+
+    $scope.click_row = (obj) ->
+        $scope.tree.clear_active()
+        $scope.tree.lut[obj.idx].active = true
+        $scope.tree.show_active()
+
 ]).directive("icswConfigCategoryTreeEdit", ["$compile", "$templateCache", ($compile, $templateCache) ->
     return {
         restrict: "EA"
@@ -269,73 +315,35 @@ angular.module(
     "$q", "$uibModal", "icswAcessLevelService", "blockUI", "icswTools", "ICSW_URLS", "icswConfigCategoryTreeService", "msgbus",
     "icswSimpleAjaxCall", "toaster", "icswConfigCategoryTreeMapService", "icswConfigCategoryTreeFetchService",
     "icswToolsSimpleModalService", "icswCategoryTreeService", "icswComplexModalService",
-    "icswCategoryBackup",
+    "icswCategoryBackup", "icswInfoModalService",
 (
     $scope, $compile, $filter, $templateCache, Restangular, $timeout, $q, $uibModal, icswAcessLevelService,
     blockUI, icswTools, ICSW_URLS, icswConfigCategoryTreeService, msgbus, icswSimpleAjaxCall, toaster,
     icswConfigCategoryTreeMapService, icswConfigCategoryTreeFetchService, icswToolsSimpleModalService,
-    icswCategoryTreeService, icswComplexModalService, icswCategoryBackup
+    icswCategoryTreeService, icswComplexModalService, icswCategoryBackup, icswInfoModalService
 ) ->
-    # $scope.entries = []
     $scope.mode_entries = []
-    # mixins
-    # edit mixin for cateogries
-    #$scope.edit_mixin = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q, "cat")
-    #$scope.edit_mixin.use_modal = false
-    #$scope.edit_mixin.use_promise = true
-    #$scope.edit_mixin.new_object = (scope) -> return scope.new_object()
-    #$scope.edit_mixin.delete_confirm_str = (obj) -> return "Really delete category node '#{obj.name}' ?"
-    #$scope.edit_mixin.modify_rest_url = ICSW_URLS.REST_CATEGORY_DETAIL.slice(1).slice(0, -2)
-    #$scope.edit_mixin.create_rest_url = Restangular.all(ICSW_URLS.REST_CATEGORY_LIST.slice(1))
-    #$scope.edit_mixin.edit_template = "category.form"
-    #$scope.form = {}
 
     $scope.tree = new icswConfigCategoryTreeService($scope, {})
-    $scope.reload = () ->
+    $scope.load = () ->
+        $scope.mode_is_location = if $scope.mode == "location" then true else false
         icswCategoryTreeService.load($scope.$id).then(
             (data) ->
                 $scope.category_tree = data
-                # for entry in $scope.entries
-                #    entry.open = false
-                # $scope.dml_list = data[2]
-                # $scope.edit_mixin.create_list = $scope.entries
-                # $scope.edit_mixin.delete_list = $scope.entries
                 $scope.rebuild_tree()
     )
-    msgbus.receive(msgbus.event_types.CATEGORY_CHANGED, $scope, $scope.reload)
-    $scope.edit_obj = (cat, event) ->
-        $scope.create_mode = false
-        $scope.cat.clear_active()
-        $scope.cat_lut[cat.idx].active = true
-        $scope.cat.show_active()
-        pre_parent = cat.parent
-        $scope.edit_mixin.edit(cat, event).then((data) ->
-            if data.parent == pre_parent
-                $scope.cat.iter(
-                    (entry) ->
-                        if entry.parent and entry.parent.obj.name
-                            entry.obj.full_name = "#{entry.parent.obj.full_name}/#{entry.obj.name}"
-                        else
-                            entry.obj.full_name = "/#{entry.obj.name}"
-                )
-            else
-                $scope.reload()
-            msgbus.emit("icsw.config.locations.changed.tree")
-            msgbus.emit(msgbus.event_types.CATEGORY_CHANGED)
-        )
-    $scope.delete_obj = (obj) ->
-        $scope.edit_mixin.delete_obj(obj).then((data) ->
-            if data
-                $scope.rebuild_cat()
-                $scope.cat.clear_active()
-                msgbus.emit("icsw.config.locations.changed.tree")
-                msgbus.emit(msgbus.event_types.CATEGORY_CHANGED)
-        )
+    $scope.reload = () ->
+        icswCategoryTreeService.reload($scope.$id).then(
+            (data) ->
+                $scope.rebuild_tree()
+    )
+
     $scope.rebuild_tree = () ->
         $scope.mode_entries = (entry for entry in $scope.category_tree.list when entry.depth < 1 or entry.full_name.split("/")[1] == $scope.mode)
-        # check location gfx refs
-        $scope.tree.lut = {}
+        # save previous active nodes
+        active = (entry.obj.idx for entry in $scope.tree.get_active())
         $scope.tree.clear_root_nodes()
+        $scope.tree.clear_tree()
         # only use mode_entries (for historic reasons, different category types are still mixed elsewhere here)
         for entry in $scope.mode_entries
             t_entry = $scope.tree.new_node(
@@ -343,7 +351,7 @@ angular.module(
                     folder: false
                     obj: entry
                     expand: entry.depth < 2
-                    selected: entry.immutable
+                    selected: false # entry.immutable
                 }
             )
             $scope.tree.lut[entry.idx] = t_entry
@@ -351,10 +359,20 @@ angular.module(
                 $scope.tree.lut[entry.parent].add_child(t_entry)
             else
                 $scope.tree.add_root_node(t_entry)
+        # activate nodes
+        $scope.tree.iter(
+            (entry) ->
+                if entry.obj.idx in active
+                    entry.active = true
+        )
+        $scope.tree.show_active()
 
     $scope.create_or_edit = (event, create, obj_or_parent) ->
-        console.log obj_or_parent.name
-        top_level = obj_or_parent.full_name.split("/")[1]
+        if obj_or_parent?
+            top_level = obj_or_parent.full_name.split("/")[1]
+        else
+            # for top-level creation
+            top_level = $scope.mode
         if create
             _parent = (value for value in $scope.mode_entries when value.depth == 1 and value.full_name.split("/")[1] == top_level)[0]
             _name = "new_#{top_level}_cat"
@@ -382,7 +400,7 @@ angular.module(
                 p_list = (value for value in $scope.mode_entries when value.depth and top_cat.test(value.full_name))
                 # remove all nodes below myself
                 r_list = []
-                add_list = [$scope.edit_obj.idx]
+                add_list = [sub_scope.edit_obj.idx]
                 while add_list.length
                     r_list = r_list.concat(add_list)
                     add_list = (value.idx for value in p_list when (value.parent in r_list and value.idx not in r_list))
@@ -427,6 +445,18 @@ angular.module(
                                     d.reject("not updated")
                             )
                     return d.promise
+                delete_ask: true
+
+                delete_callback: (modal) ->
+                    d = $q.defer()
+                    $scope.category_tree.delete_category_entry(sub_scope.edit_obj).then(
+                        (ok) ->
+                            d.resolve("deleted")
+                        (notok) ->
+                            d.reject("not deleted")
+                    )
+                    return d.promise
+
                 cancel_callback: (modal) ->
                     if not create
                         dbu.restore_backup(obj_or_parent)
@@ -441,27 +471,49 @@ angular.module(
                 sub_scope.$destroy()
         )
 
-    $scope.prune_tree = () ->
-        $scope.cat.clear_active()
-        $scope.close_modal()
-        icswToolsSimpleModalService("Really prune tree (delete empty elements) ?").then(() ->
-            blockUI.start()
-            icswSimpleAjaxCall(
-                url     : ICSW_URLS.BASE_PRUNE_CATEGORIES
-                data:
-                    mode : $scope.mode
-            ).then(
-                (xml) ->
-                    $scope.reload()
-                    msgbus.emit(msgbus.event_types.CATEGORY_CHANGED)
-                    blockUI.stop()
-                (xml) ->
-                    $scope.reload()
-                    msgbus.emit(msgbus.event_types.CATEGORY_CHANGED)
-                    blockUI.stop()
-            )
+    $scope.delete_obj = (event, obj) ->
+        icswToolsSimpleModalService("Really delete Category ?").then(
+            (ok) ->
+                $scope.category_tree.delete_category_entry(obj).then(
+                    (ok) ->
+                        $scope.rebuild_tree()
+                )
         )
-    $scope.reload()
+    $scope.prune_tree = () ->
+        blockUI.start()
+        icswSimpleAjaxCall(
+            url: ICSW_URLS.BASE_PRUNE_CATEGORY_TREE
+            data:
+                mode: $scope.mode
+                doit: 0
+        ).then(
+            (xml) ->
+                blockUI.stop()
+                to_delete = parseInt($(xml).find("value[name='nodes']").text())
+                info_str = $(xml).find("value[name='info']").text()
+                if to_delete
+                    icswToolsSimpleModalService(info_str).then(
+                        (doit) ->
+                            blockUI.start()
+                            icswSimpleAjaxCall(
+                                url: ICSW_URLS.BASE_PRUNE_CATEGORY_TREE
+                                data:
+                                    mode: $scope.mode
+                                    doit: 1
+                            ).then(
+                                (xml) ->
+                                    $scope.reload()
+                                    blockUI.stop()
+                                (xml) ->
+                                    blockUI.stop()
+                            )
+                    )
+                else
+                    icswInfoModalService(info_str)
+            (xml) ->
+                blockUI.stop()
+        )
+    $scope.load()
 
 ]).directive("icswConfigCategoryContentsViewer", ["Restangular", "ICSW_URLS", "msgbus", (Restangular, ICSW_URLS, msgbus) ->
     return {

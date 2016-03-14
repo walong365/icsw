@@ -403,7 +403,8 @@ class category_tree(object):
                     name=cat_part,
                     parent=cur_node,
                     full_name="{}/{}".format(cur_node.full_name, cat_part),
-                    depth=cur_node.depth + 1)
+                    depth=cur_node.depth + 1
+                )
                 new_node.save()
                 self.__node_dict[new_node.pk] = new_node
                 cur_node._sub_tree.setdefault(cat_part, []).append(new_node)
@@ -431,25 +432,31 @@ class category_tree(object):
     def keys(self):
         return self.__node_dict.keys()
 
-    def prune(self, mode=None):
+    def prune(self, mode=None, doit=False):
         # removes all unreferenced nodes
         assert mode in [None, u'mon', u'device', u'location', u'config']
 
         removed = True
+        # set of already deleted leafs
+        _deleted = set()
         while removed:
             removed = False
             del_nodes = []
             for cur_leaf in self.__node_dict.itervalues():
-                if mode is None or cur_leaf.full_name.startswith("/{}".format(mode)):
-                    if not cur_leaf._sub_tree and not cur_leaf.immutable:
-                        # count related models (with m2m)
-                        if not get_related_models(cur_leaf, m2m=True):
-                            del_nodes.append(cur_leaf)
+                if cur_leaf not in _deleted:
+                    if mode is None or cur_leaf.full_name.startswith("/{}".format(mode)):
+                        if not cur_leaf.immutable:
+                            # count related models (with m2m)
+                            if not get_related_models(cur_leaf, m2m=True, ignore_objs=_deleted):
+                                del_nodes.append(cur_leaf)
             for del_node in del_nodes:
-                del self[del_node.parent_id]._sub_tree[del_node.name]
-                del self.__node_dict[del_node.pk]
-                del_node.delete()
+                _deleted.add(del_node)
+                if doit:
+                    del self[del_node.parent_id]._sub_tree[del_node.name]
+                    del self.__node_dict[del_node.pk]
+                    del_node.delete()
             removed = len(del_nodes) > 0
+        return len(_deleted)
 
     def __iter__(self):
         return self.all()
