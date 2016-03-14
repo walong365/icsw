@@ -45,7 +45,7 @@
 
 <script type="text/ng-template" id="icsw.config.category.tree">
     <h2>
-        {{ mode_display | capitalize }} categories ({{ mode_entries.length }} <ng-pluralize count="mode_entries.length" when="{'1': 'entry', 'other': 'entries'}")></ng-pluralize>)
+        {{ mode_display | capitalize }} categories ({{ tree.mode_entries.length }} <ng-pluralize count="tree.mode_entries.length" when="{'1': 'entry', 'other': 'entries'}")></ng-pluralize>)
     </h2>
     <p>
         Actions:
@@ -63,11 +63,12 @@
                 <thead icsw-config-category-tree-head>
                 </thead>
                 <tbody>
-                    <tr icsw-config-category-tree-row ng-repeat="obj in mode_entries" ng-click="click_row(obj)" ng-class="get_tr_class(obj)">
+                    <tr icsw-config-category-tree-row ng-repeat="obj in tree.mode_entries" ng-click="click_row(obj)" ng-class="get_tr_class(obj)">
                     </tr>
                 </tbody>
             </table>
         </div>
+        Todo: show lookup
         <div class="col-sm-6">
             <div ng-if="modal_active && !settings.use_modal && active_aem == 'cat' && !create_mode">
                 <icsw-config-category-contents-viewer category-name="_edit_obj.full_name" category-pk="_edit_obj.idx"></icsw-config-category-contents-viewer>

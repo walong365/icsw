@@ -49,7 +49,14 @@ angular.module(
             @show_select = false
             @show_descendants = true
             @show_childs = false
+            @mode_entries = []
             @location_re = new RegExp("^/location/.*$")
+
+        create_mode_entries: (mode, cat_tree) =>
+            @mode_entries.length = []
+            for entry in cat_tree.list
+                if entry.depth < 1 or entry.full_name.split("/")[1] == mode
+                    @mode_entries.push(entry)
 
         clear_tree: () =>
             @lut = {}
@@ -322,8 +329,6 @@ angular.module(
     icswConfigCategoryTreeMapService, icswConfigCategoryTreeFetchService, icswToolsSimpleModalService,
     icswCategoryTreeService, icswComplexModalService, icswCategoryBackup, icswInfoModalService
 ) ->
-    $scope.mode_entries = []
-
     $scope.tree = new icswConfigCategoryTreeService($scope, {})
     $scope.load = () ->
         $scope.mode_is_location = if $scope.mode == "location" then true else false
@@ -339,13 +344,13 @@ angular.module(
     )
 
     $scope.rebuild_tree = () ->
-        $scope.mode_entries = (entry for entry in $scope.category_tree.list when entry.depth < 1 or entry.full_name.split("/")[1] == $scope.mode)
+        $scope.tree.create_mode_entries($scope.mode, $scope.category_tree)
         # save previous active nodes
         active = (entry.obj.idx for entry in $scope.tree.get_active())
         $scope.tree.clear_root_nodes()
         $scope.tree.clear_tree()
         # only use mode_entries (for historic reasons, different category types are still mixed elsewhere here)
-        for entry in $scope.mode_entries
+        for entry in $scope.tree.mode_entries
             t_entry = $scope.tree.new_node(
                 {
                     folder: false
@@ -374,7 +379,7 @@ angular.module(
             # for top-level creation
             top_level = $scope.mode
         if create
-            _parent = (value for value in $scope.mode_entries when value.depth == 1 and value.full_name.split("/")[1] == top_level)[0]
+            _parent = (value for value in $scope.tree.mode_entries when value.depth == 1 and value.full_name.split("/")[1] == top_level)[0]
             _name = "new_#{top_level}_cat"
             r_struct = {
                 name: _name
@@ -397,7 +402,7 @@ angular.module(
             if obj.idx
                 # object already saved, do not move between top categories
                 top_cat = new RegExp("^/" + obj.full_name.split("/")[1])
-                p_list = (value for value in $scope.mode_entries when value.depth and top_cat.test(value.full_name))
+                p_list = (value for value in $scope.tree.mode_entries when value.depth and top_cat.test(value.full_name))
                 # remove all nodes below myself
                 r_list = []
                 add_list = [sub_scope.edit_obj.idx]
@@ -407,7 +412,7 @@ angular.module(
                 p_list = (value for value in p_list when value.idx not in r_list)
             else
                 # new object, allow all values
-                p_list = (value for value in $scope.mode_entries when value.depth)
+                p_list = (value for value in $scope.tree.mode_entries when value.depth)
             return p_list
 
         sub_scope.is_location = (obj) ->

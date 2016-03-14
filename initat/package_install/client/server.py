@@ -350,6 +350,12 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         return None
 
     @RemoteCall()
+    def clear_cache(self, srv_com, **kwargs):
+        self.__got_response_from_server = True
+        self._new_batch_list(srv_com)
+        return None
+
+    @RemoteCall()
     def get_repo_list(self, srv_com, **kwargs):
         self.__got_response_from_server = True
         self._new_batch_list(srv_com)
