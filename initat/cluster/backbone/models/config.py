@@ -82,7 +82,6 @@ def config_catalog_pre_save(sender, **kwargs):
 
 
 class config(models.Model):
-
     idx = models.AutoField(db_column="new_config_idx", primary_key=True)
     name = models.CharField(max_length=192, blank=False)
     config_catalog = models.ForeignKey(config_catalog, null=True)

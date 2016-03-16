@@ -596,19 +596,19 @@ class handle_cached_config(View):
         taken = False
         if _take:
             if _ent.is_valid():
-                _ent.object.create_default_entries = False
+                print dir(_ent)
+                _ent.create_default_entries = False
                 try:
                     # store config catalog
-                    _ent.object.config_catalog = ccat
-                    _ent.object.name = dummy_name
-                    _ent.object.save()
+                    _ent.save(name=dummy_name, config_catalog=ccat)
                     # pass
                 except:
-                    logger.error(
+                    request.xml_response.error(
                         "error saving entry '{}': {}".format(
                             unicode(_ent),
                             process_tools.get_except_info()
-                        )
+                        ),
+                        logger=logger
                     )
                 else:
                     taken = True
@@ -645,9 +645,20 @@ class handle_cached_config(View):
                     _ent.object.name = conf["name"]
                     _ent.object.save()
                     request.xml_response["new_pk"] = "{:d}".format(_ent.object.pk)
-                    request.xml_response.info("create new config {} ({:d}) in config catalog {}".format(unicode(_ent.object), sub_added, unicode(ccat)))
+                    request.xml_response.info(
+                        "create new config {} ({:d}) in config catalog {}".format(
+                            unicode(_ent.object),
+                            sub_added,
+                            unicode(ccat)
+                        )
+                    )
             else:
-                request.xml_response.error("cannot create config object: {}".format(unicode(_ent.errors)), logger=logger)
+                request.xml_response.error(
+                    "cannot create config object: {}".format(
+                        unicode(_ent.errors)
+                    ),
+                    logger=logger
+                )
         return taken
 
 

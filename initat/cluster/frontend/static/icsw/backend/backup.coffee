@@ -224,4 +224,14 @@ angular.module(
                 "config", "name", "description", "value", "device"
             ]
 
+]).service("icswConfigScriptBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswConfigScriptBackupDefinition extends icswBackupDefinition
+
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "name", "description", "enabled", "priority", "config", "value", "error_text",
+            ]
+
 ])

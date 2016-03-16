@@ -135,13 +135,16 @@ class config_script_nat_serializer(serializers.ModelSerializer):
 
 
 class config_dump_serializer(serializers.ModelSerializer):
-    config_str_set = config_str_nat_serializer(many=True)
-    config_int_set = config_int_nat_serializer(many=True)
-    config_blob_set = config_blob_nat_serializer(many=True)
-    config_bool_set = config_bool_nat_serializer(many=True)
-    config_script_set = config_script_nat_serializer(many=True)
-    mon_check_command_set = mon_check_command_nat_serializer(many=True)
+    config_str_set = config_str_nat_serializer(many=True, allow_null=True)
+    config_int_set = config_int_nat_serializer(many=True, allow_null=True)
+    config_blob_set = config_blob_nat_serializer(many=True, allow_null=True)
+    config_bool_set = config_bool_nat_serializer(many=True, allow_null=True)
+    config_script_set = config_script_nat_serializer(many=True, allow_null=True)
+    mon_check_command_set = mon_check_command_nat_serializer(many=True, allow_null=True)
     # categories only as flat list, no nesting
+
+    def create(self, validated_data):
+        return config(**validated_data)
 
     class Meta:
         model = config

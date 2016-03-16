@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2015 init.at
+# Copyright (C) 2012-2016 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -17,10 +17,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+
+# unified button for angular
+
 angular.module(
     "icsw.tools.button",
-    [
-    ]
+    []
 ).service('icswToolsButtonConfigService', ['gettextCatalog', (gettextCatalog) ->
     get_config_for_button_type = (type) ->
         ret_obj = {}
@@ -198,7 +200,8 @@ visible-md visible-lg
                 )
 
             if attrs.type == "show"
-                scope.$watch(scope.isShow
+                scope.$watch(
+                    scope.isShow
                     (new_val) ->
                         if new_val
                             scope.button_value = attrs.showValue or gettextCatalog.getString("show")
@@ -206,7 +209,8 @@ visible-md visible-lg
                             scope.button_value = attrs.hideValue or gettextCatalog.getString("hide")
                 )
             else if attrs.type == "enable"
-                scope.$watch(scope.isEnable
+                scope.$watch(
+                    scope.isEnable
                     (new_val) ->
                         if new_val
                             scope.button_value = gettextCatalog.getString("disable")
@@ -215,5 +219,28 @@ visible-md visible-lg
                             scope.button_value = gettextCatalog.getString("enable")
                             scope.css_class = "btn-success"
                 )
+    }
+]).directive('icswToolsButtonStatic', ["icswToolsButtonConfigService", "gettextCatalog", (icswToolsButtonsConfigService, gettextCatalog) ->
+    # static button, doenst change its face during his lifetime
+    return {
+        restrict: "EA",
+        template: '<button type="button" class="btn" ng-disabled="is_disabled">value</button>'
+        link: (scope, element, attrs) ->
+            # attrs:
+            # - type (mandatory): "modify", "create", "delete", "reload", "show", "clear_selection", "download"
+            # - size: inserted into "btn-{{size}}", no default
+            # - value: Custom text to display in button
+
+            settings = icswToolsButtonsConfigService.get_config_for_button_type(attrs.type)
+
+            if attrs.value?
+                value = attrs.value
+            else
+                value = settings.button_value
+            element.text(value)
+            element.addClass("btn " + settings.css_class + " " + settings.icon_class)
+            if attrs.size?
+                element.addClass("btn-#{attrs.size}")
+
     }
 ])
