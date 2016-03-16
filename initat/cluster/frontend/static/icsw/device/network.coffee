@@ -1293,7 +1293,7 @@ angular.module(
                     closable: true
                     ok_callback: (modal) ->
                         d = $q.defer()
-                        if scope.form_data.$invalid
+                        if sub_scope.form_data.$invalid
                             toaster.pop("warning", "form validation problem", "", 0)
                             d.reject("form not valid")
                         else
@@ -1325,7 +1325,7 @@ angular.module(
                     console.log "finish"
                     sub_scope.$destroy()
             )
-        delete: (obj) ->
+        delete: (scope, event, obj) ->
             icswToolsSimpleModalService("Really delete Network DeviceType '#{obj.description}' ?").then(
                 (ok) ->
                     nw_tree.delete_network_device_type(obj).then(
@@ -1380,7 +1380,7 @@ angular.module(
                     closable: true
                     ok_callback: (modal) ->
                         d = $q.defer()
-                        if scope.form_data.$invalid
+                        if sub_scope.form_data.$invalid
                             toaster.pop("warning", "form validation problem", "", 0)
                             d.reject("form not valid")
                         else
@@ -1412,7 +1412,7 @@ angular.module(
                     console.log "finish"
                     sub_scope.$destroy()
             )
-        delete: (obj) ->
+        delete: (scope, event, obj) ->
             icswToolsSimpleModalService("Really delete NetworkType '#{obj.description}' ?").then(
                 (ok) ->
                     nw_tree.delete_network_type(obj).then(
@@ -1442,11 +1442,11 @@ angular.module(
 [
     "Restangular", "$q", "icswTools", "ICSW_URLS", "icswDomainTreeService", "icswSimpleAjaxCall", "blockUI",
     "icswNetworkTreeService", "icswNetworkBackup", "icswComplexModalService", "$compile", "$templateCache",
-    "toaster",
+    "toaster", "icswToolsSimpleModalService",
 (
     Restangular, $q, icswTools, ICSW_URLS, icswDomainTreeService, icswSimpleAjaxCall, blockUI,
     icswNetworkTreeService, icswNetworkBackup, icswComplexModalService, $compile, $templateCache,
-    toaster
+    toaster, icswToolsSimpleModalService
 ) ->
 
     # networks_rest = Restangular.all(ICSW_URLS.REST_NETWORK_LIST.slice(1)).getList({"_with_ip_info" : true}).$object
@@ -1556,7 +1556,7 @@ angular.module(
                     closable: true
                     ok_callback: (modal) ->
                         d = $q.defer()
-                        if scope.form_data.$invalid
+                        if sub_scope.form_data.$invalid
                             toaster.pop("warning", "form validation problem", "", 0)
                             d.reject("form not valid")
                         else
@@ -1587,6 +1587,15 @@ angular.module(
                 (fin) ->
                     console.log "finish"
                     sub_scope.$destroy()
+            )
+
+        delete: (scope, event, nw) ->
+            icswToolsSimpleModalService("Really delete Network #{nw.name} ?").then(
+                () =>
+                    nw_tree.delete_network(nw).then(
+                        () ->
+                            console.log "network deleted"
+                    )
             )
 
         get_production_networks : () ->

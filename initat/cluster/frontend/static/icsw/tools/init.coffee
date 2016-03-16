@@ -338,6 +338,13 @@ angular.module(
             for value in in_list
                 lut[value.idx] = value
             return lut
+
+        "order_in_place": (in_array, key_list, order_list) ->
+            _tmp_list = _.orderBy(in_array, key_list, order_list)
+            in_array.length = 0
+            for entry in _tmp_list
+                in_array.push(entry)
+
         "remove_by_idx" : (in_array, idx) ->
             for c_idx, val of in_array
                 if val.idx == idx

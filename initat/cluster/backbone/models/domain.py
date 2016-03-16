@@ -532,13 +532,17 @@ class category(models.Model):
         return True if self.full_name.startswith("/location/") else False
 
     def get_references(self):
-        num_refs = 0
         all_m2ms = [
             _f for _f in self._meta.get_fields(include_hidden=True) if _f.many_to_many and _f.auto_created
         ]
-        for rel in all_m2ms:
-            num_refs += getattr(self, rel.get_accessor_name()).count()
-        return num_refs
+        _names = [_f.name for _f in all_m2ms]
+        _required = {"config", "mon_check_command", "deviceselection", "device"}
+        if set(_names) != _required:
+            raise ValidationError("Related fields for category_tree changed")
+        ref_dict = {
+            rel.name: getattr(self, rel.get_accessor_name()).count() for rel in all_m2ms
+        }
+        return ref_dict
 
     class Meta:
         verbose_name = "Category"

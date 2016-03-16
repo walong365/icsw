@@ -386,12 +386,8 @@ angular.module(
             scope.edit = (event, obj) ->
                 scope.create_or_edit(event, false, obj)
 
-            scope.create = (event, parent_obj) ->
-                if typeof(scope.config_service.new_object) == "function"
-                    scope.new_obj = scope.config_service.new_object(parent_obj)
-                else
-                    scope.new_obj = scope.config_service.new_object
-                scope.create_or_edit(event, true, scope.new_obj)
+            scope.create = (event, obj) ->
+                scope.create_or_edit(event, true, obj)
 
             scope.create_or_edit = (event, create, obj_or_parent) ->
                 scope.config_service.create_or_edit(scope, event, create, obj_or_parent)
@@ -410,10 +406,10 @@ angular.module(
                 else
                     return ""
 
-            scope.delete = (obj, $event) ->
+            scope.delete = ($event, obj) ->
                 if $event
                     $event.stopPropagation()
-                scope.config_service.delete(obj)
+                scope.config_service.delete(scope, $event, obj)
     }
 ]).directive('icswToolsShowHideColumns', () ->
     return {

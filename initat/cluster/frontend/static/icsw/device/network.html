@@ -374,7 +374,7 @@
                             <td>{{ config_service.resolve_type(obj.identifier) }} ({{ obj.identifier }})</td>
                             <td>{{ obj.description }}</td>
                             <td><icsw-tools-button type="modify" ng-click="edit($event, obj)" size="xs"></icsw-tools-button></td>
-                            <td><icsw-tools-button type="delete" ng-click="delete(obj)" size="xs"></icsw-tools-button></td>
+                            <td><icsw-tools-button type="delete" ng-click="delete($event, obj)" size="xs"></icsw-tools-button></td>
                         </tr>
                     </tbody>
                 </table>
@@ -414,7 +414,7 @@
                             <td class="text-center">{{ obj.for_matching | yesno2 }}</td>
                             <td class="text-center">{{ obj.auto_created | yesno2 }}</td>
                             <td><icsw-tools-button type="modify" ng-click="edit($event, obj)" size="xs"></icsw-tools-button></td>
-                            <td><icsw-tools-button type="delete" ng-click="delete(obj)" size="xs"></icsw-tools-button></td>
+                            <td><icsw-tools-button type="delete" ng-click="delete($event, obj)" size="xs"></icsw-tools-button></td>
                         </tr>
                     </tbody>
                 </table>
@@ -506,7 +506,7 @@
                         <icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"/>
                     </td>
                     <td>
-                        <icsw-tools-button type="delete" ng-show="obj.num_ip == 0" ng-click="delete(obj)" size="xs">
+                        <icsw-tools-button type="delete" ng-show="obj.num_ip == 0" ng-click="delete($event, obj)" size="xs">
                         </icsw-tools-button>
                         <icsw-tools-button type="show" ng-show="obj.num_ip > 0" size="xs"
                                            is-show="config_service.network_display.active_network != obj "
@@ -902,7 +902,7 @@
 </script>
 
 <script type="text/ng-template" id="network.form">
-    <form id="form" class="form-horizontal" name="form_data">
+    <form class="form-horizontal" name="form_data">
         <uib-tabset>
             <uib-tab heading="Base data">
                 <fieldset>

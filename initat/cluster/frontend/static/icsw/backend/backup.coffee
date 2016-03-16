@@ -175,6 +175,19 @@ angular.module(
                 "name", "author", "url",
             ]
 
+]).service("icswConfigBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswConfigBackupDefinition extends icswBackupDefinition
+
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "name", "config_catalog", "description", "priority", "service_config", "system_config", "enabled",
+            ]
+            @list_attributes = [
+                "categories"
+            ]
+
 ]).service("icswCategoryBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
 
     class icswCategoryBackupDefinition extends icswBackupDefinition
@@ -184,6 +197,31 @@ angular.module(
             @simple_attributes = [
                 "name", "full_name", "parent", "depth", "immutable",
                 "physical", "latitude", "longitude", "locked", "comment",
+            ]
+
+]).service("icswMonCheckCommandBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswMonCheckCOmmandBackupDefinition extends icswBackupDefinition
+
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "config", "mon_service_templ", "name", "mon_check_command_special",
+                "command_line", "description", "enable_perfdata", "volatile", "event_handler",
+                "is_event_handler", "event_handler_enabled", "is_active", "tcp_coverage",
+            ]
+            @list_attributes = [
+                "categories", "exclude_devices"
+            ]
+
+]).service("icswConfigVarBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswConfigVarBackupDefinition extends icswBackupDefinition
+
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "config", "name", "description", "value", "device"
             ]
 
 ])

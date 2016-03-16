@@ -80,6 +80,10 @@ angular.module(
             ret_obj.css_class = "btn-success"
             ret_obj.button_value = gettextCatalog.getString("download")
             ret_obj.icon_class = "fa fa-download"
+        else if type == "upload"
+            ret_obj.css_class = "btn-success"
+            ret_obj.button_value = gettextCatalog.getString("upload")
+            ret_obj.icon_class = "fa fa-upload"
         else if type == "revert"
             ret_obj.css_class = "btn-warning"
             ret_obj.button_value = "revert"

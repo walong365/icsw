@@ -250,9 +250,6 @@ monitoring_basic_module = angular.module("icsw.monitoring.monitoring_basic",
         return _fetch_dict[client]
     return {
         "load": (client) ->
-            # loads from server
-            return load_data(client).promise
-        "fetch": (client) ->
             if load_called
                 # fetch when data is present (after sidebar)
                 return fetch_data(client).promise

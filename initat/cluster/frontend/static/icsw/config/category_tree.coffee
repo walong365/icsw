@@ -145,8 +145,10 @@ angular.module(
                 cat.full_name = "#{full_name}/#{cat.name}"
                 cat.depth = depth + 1
                 (set_name(@lut[child], cat.full_name, depth + 1) for child in cat.children)
+            # links
             for entry in @list
                 entry.children = []
+                entry.num_refs = _.sum((value for key, value of entry.reference_dict))
             for entry in @list
                 if entry.parent
                     @lut[entry.parent].children.push(entry.idx)
@@ -157,12 +159,28 @@ angular.module(
                     (set_name(@lut[child], entry.full_name, 1) for child in entry.children)
             @reorder_full_name()
 
+        clear_references: (name) =>
+            for entry in @list
+                entry.reference_dict[name] = 0
+
+        feed_config_tree: (ct) =>
+            @clear_references("config")
+            @clear_references("mon_check_command")
+            for config in ct.list
+                for cat in config.categories
+                    @lut[cat].reference_dict["config"]++
+                for mcc in config.mon_check_command_set
+                    for cat in mcc.categories
+                        @lut[cat].reference_dict["mon_check_command"]++
+            @link()
+
         reorder_full_name: () =>
-            @list = _.orderBy(
+            icswTools.order_in_place(
                 @list
                 ["full_name"]
                 ["asc"]
             )
+
         # catalog create / delete category entries
         create_category_entry: (new_ce) =>
             # create new peer
@@ -195,8 +213,16 @@ angular.module(
                     new_ce = new_ce[0]
                     console.log "NEW", new_ce
                     @list.push(new_ce)
-                    @build_luts()
-                    defer.resolve(msg)
+                    loc_defer = $q.defer()
+                    if new_ce.parent and new_ce.parent not of @lut
+                        @_fetch_category_entry(new_ce.parent, loc_defer, "intermediate fetch")
+                    else
+                        loc_defer.resolve("nothing missing")
+                    loc_defer.promise.then(
+                        (res) =>
+                            @build_luts()
+                            defer.resolve(msg)
+                    )
             )
 
 ]).service("icswCategoryTreeService",
@@ -425,7 +451,7 @@ angular.module(
             {
                 message: $compile($templateCache.get("icsw.category.form"))(sub_scope)
                 title: "#{ok_label} Category entry '#{obj_or_parent.name}"
-                css_class: "modal-wide"
+                # css_class: "modal-wide"
                 ok_label: ok_label
                 closable: true
                 ok_callback: (modal) ->
