@@ -218,7 +218,7 @@ angular.module(
                     $q.all(
                         [
                             icswDomainTreeService.load($scope.$id)
-                            icswMonitoringTreeService.fetch($scope.$id)
+                            icswMonitoringTreeService.load($scope.$id)
                             $scope.dev_tree.enrich_devices(dt_hs, ["network_info", "monitoring_hint_info", "disk_info", "com_info", "snmp_info", "snmp_schemes_info", "scan_info"])
                         ]
                     ).then(

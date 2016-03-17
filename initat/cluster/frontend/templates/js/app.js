@@ -70,6 +70,7 @@ icsw_app = angular.module(
         "icsw.backend.devicetree",
         "icsw.backend.backup",
         "icsw.backend.network",
+        "icsw.backend.config",
         "icsw.rrd.graph",
         "icsw.info.background",
         "icsw.server.info",

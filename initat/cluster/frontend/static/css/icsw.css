@@ -48,19 +48,19 @@ circle.fixed {
     pointer-events : none;
 }
 .connect_line_hidden {
-    stroke-width : 0
+    stroke-width : 0 ;
 }
 .angular-google-map-container { height: 480px; }
 
 /* modal changes */
 .modal.modal-wide .modal-dialog {
-  width: 90%;
+  width: 90% !important ;
 }
 .modal-wide .modal-body {
-    overflow-y: auto !important;
+    overflow-y: auto !important ;
 }
 .modal-tall .modal-body {
-    overflow-y: auto !important;
+    overflow-y: auto !important ;
 }
 
 /* use for striping tables where every odd row is a regular row
