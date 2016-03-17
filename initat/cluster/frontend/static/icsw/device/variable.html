@@ -31,7 +31,9 @@
     <td>{{ get_name(obj) }}</td>
     <td>{{ obj.device_group_name }}</td>
     <td>{{ obj.comment }}</td>
-    <td><icsw-tools-button value="create" type="create" ng-click="create($event, obj)" size="xs"/></td>
+    <td>
+        <icsw-tools-button value="create" type="create" ng-click="create($event, obj)" size="xs"/>
+    </td>
 </script>
 
 <script type="text/ng-template" id="icsw.device.variable.table">
@@ -157,7 +159,9 @@
                 </label>
                 <div class="controls col-sm-8">
                     <ui-select ng-model="edit_obj.var_type" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                        <ui-select-match class="ui-select-match" placeholder="Variable type">{{$select.selected.long}}</ui-select-match>
+                        <ui-select-match class="ui-select-match" placeholder="Variable type">
+                            {{ $select.selected.long }}
+                        </ui-select-match>
                         <ui-select-choices class="ui-select-choices" repeat="value.short as value in valid_var_types| props_filter:{long:$select.search}">
                             <div ng-bind-html="value.long | highlight: $select.search"></div>
                         </ui-select-choices>
@@ -214,7 +218,7 @@
                 <div class="checkbox">
                     <div class="controls col-lg-offset-0 col-sm-8">
                         <label>
-                            <input checked="checked" class="checkboxinput checkbox" id="id_inherit" name="inherit" ng-model="edit_obj.inherit" type="checkbox"/>
+                            <input checked="checked" class="checkboxinput checkbox" name="inherit" ng-model="edit_obj.inherit" type="checkbox"/>
                             Inherit
                         </label>
                     </div>
@@ -235,7 +239,8 @@
             <div class="form-group">
                 <label class="control-label col-sm-3 requiredField">
                     Name
-                    <span class="asteriskField">*</span></label>
+                    <span class="asteriskField">*</span>
+                </label>
                 <div class="controls col-sm-7">
                     <input class="textinput textInput form-control" maxlength="765" name="name" ng-model="edit_obj.name" required="True" type="text"/>
                 </div>
@@ -305,7 +310,9 @@
 
 
 <script type="text/ng-template" id="icsw.device.configuration.var.overview">
-    <h2>Config variables for {{ devsel_list.length }} devices, <input type="button" class="btn btn-xs btn-primary" value="show vars" ng-click="load_vars()"/></h2>
+    <h2>
+        Config variables for {{ devsel_list.length }} devices, <input type="button" class="btn btn-xs btn-primary" value="show vars" ng-click="load_vars()"/>
+    </h2>
     <div class="row">
         <div class="col-sm-5 form-inline" ng-show="loaded">
             <div class="form-group">
