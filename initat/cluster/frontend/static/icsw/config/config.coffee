@@ -41,21 +41,6 @@ config_module = angular.module(
                         preSpacer: true
             }
     )
-    $stateProvider.state(
-        "main.deviceconfig"
-            {
-                url: "/deviceconfig"
-                templateUrl: "icsw/main/device/config.html"
-                data:
-                    pageTitle: "Configure Device"
-                    rights: ["device.change_config"]
-                    menuEntry:
-                        menukey: "dev"
-                        name: "Device Configurations"
-                        icon: "fa-check-square"
-                        ordering: 10
-            }
-    )
 ]).service("icswCatSelectionTreeService", ["icswTreeConfig", (icswTreeConfig) ->
     class icswCatSelectionTree extends icswTreeConfig
         constructor: (@scope, args) ->

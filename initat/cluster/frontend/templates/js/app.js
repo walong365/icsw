@@ -84,7 +84,7 @@ icsw_app = angular.module(
         "icsw.config.domain_name_tree",
         "icsw.device.network",
         "icsw.device.network.graph",
-        "icsw.device.configuration",
+        "icsw.device.config",
         "icsw.device.connection",
         "icsw.device.category",
         "icsw.device.livestatus",

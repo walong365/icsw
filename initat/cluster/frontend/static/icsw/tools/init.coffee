@@ -316,6 +316,7 @@ angular.module(
         ICSW_NETWORK_REDRAW_TOPOLOGY: "icsw.network.redraw.topology",
         ICSW_NETWORK_REDRAW_D3_ELEMENT: "icsw.network.redraw.d3.element",
         ICSW_CONFIG_UPLOADED: "icsw.config.uploaded",
+        ICSW_DEVICE_CONFIG_CHANGED: "icsw.device.config.changed",
         # not needed up to now
         # "ICSW_RENDER_MENUBAR": "icsw.render.menubar",
         # "ICSW_READY_TO_RECEIVE_SELECTION": "icsw.ready.to.receive.selection"

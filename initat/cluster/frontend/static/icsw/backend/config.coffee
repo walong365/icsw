@@ -85,6 +85,8 @@ config_module = angular.module(
         link: () =>
             # hints
             # create links between elements
+            # how often a config name is used
+            multi_name_dict = _.countBy((config.name for config in @list))
             for cat in @catalog_list
                 if cat.configs?
                     cat.configs.length = 0
@@ -98,6 +100,8 @@ config_module = angular.module(
                 else
                     # hm, config has no catalog ...
                     console.error "*** Config #{config.name} has no valid config_catalog"
+                # device config set
+                config.usecount = config.device_config_set.length
                 # populate helper fields
                 config.script_sel = 0
                 config.var_sel = 0
@@ -133,6 +137,21 @@ config_module = angular.module(
                 config.mon_num = config.mon_check_command_set.length
                 config.mon_sel = (true for entry in config.mon_check_command_set when entry.$selected).length
                 config.mon_check_command_lut = _.keyBy(config.mon_check_command_set, "idx")
+                # build info strings for device-config
+                if multi_name_dict[config.name] > 1
+                    _name = "#{config.name} [" + @catalog_lut[config.config_catalog].name + "]"
+                    # flag, can be used in frontend
+                    config.$mulitple_names = true
+                else
+                    _name = "#{config.name}"
+                    config.$mulitple_names = false
+                config.info_str = "#{_name} (#{config.var_num}, #{config.script_num}, #{config.mon_num})"
+                r_v = []
+                if config.server_config
+                    r_v.push("S")
+                if config.system_config
+                    r_v.push("Y")
+                config.config_type_str = r_v.join("/")
             @$selected = (entry for entry in @list when entry.$selected).length
 
         update_category_tree: () =>

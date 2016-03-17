@@ -96,9 +96,6 @@ class config(models.Model):
     # categories for this config
     categories = models.ManyToManyField("backbone.category", blank=True)
 
-    def get_use_count(self):
-        return self.device_config_set.all().count()
-
     def __unicode__(self):
         return self.name
 

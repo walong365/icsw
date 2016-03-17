@@ -51,11 +51,6 @@ class device_variable_serializer(serializers.ModelSerializer):
         model = device_variable
 
 
-class device_config_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = device_config
-
-
 class device_config_help_serializer(serializers.ModelSerializer):
     info_string = serializers.CharField(source="home_info")
     homeexport = serializers.SerializerMethodField()

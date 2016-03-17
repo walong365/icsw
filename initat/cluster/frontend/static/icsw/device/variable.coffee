@@ -41,6 +41,103 @@ device_variable_module = angular.module(
         restrict : "EA"
         template : $templateCache.get("icsw.device.variable.head")
     }
+]).controller("icswConfigVarsCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$uibModal", "ICSW_URLS", "icswDeviceConfigurationConfigVarTreeService", "icswSimpleAjaxCall",
+    ($scope, $compile, $filter, $templateCache, Restangular, $q, $uibModal, ICSW_URLS, icswDeviceConfigurationConfigVarTreeService, icswSimpleAjaxCall) ->
+        $scope.devvar_tree = new icswDeviceConfigurationConfigVarTreeService($scope)
+        $scope.var_filter = ""
+        $scope.loaded = false
+        $scope.new_devsel = (_dev_sel) ->
+            $scope.devsel_list = _dev_sel
+        $scope.load_vars = () ->
+            if not $scope.loaded
+                $scope.loaded = true
+                icswSimpleAjaxCall(
+                    url     : ICSW_URLS.CONFIG_GET_DEVICE_CVARS
+                    data    :
+                        "keys" : angular.toJson($scope.devsel_list)
+                ).then((xml) ->
+                    $scope.set_tree_content($(xml).find("devices"))
+                )
+        $scope.set_tree_content = (in_xml) ->
+            for dev_xml in in_xml.find("device")
+                dev_xml = $(dev_xml)
+                dev_entry = $scope.devvar_tree.new_node({folder: true, expand:true, obj:{"name" : dev_xml.attr("name"), "info_str": dev_xml.attr("info_str"), "state_level" : parseInt(dev_xml.attr("state_level"))}, _node_type:"d"})
+                $scope.devvar_tree.add_root_node(dev_entry)
+                for _xml in dev_xml.find("var_tuple_list").children()
+                    _xml = $(_xml)
+                    t_entry = $scope.devvar_tree.new_node(
+                        folder: true
+                        obj:
+                            "key": _xml.attr("key")
+                            "value": _xml.attr("value")
+                        _node_type: "c"
+                    )
+                    dev_entry.add_child(t_entry)
+                    _xml.children().each (idx, _sv) ->
+                        _sv = $(_sv)
+                        t_entry.add_child(
+                            $scope.devvar_tree.new_node(
+                                folder: false
+                                obj:
+                                    "key": _sv.attr("key")
+                                    "value": _sv.attr("value")
+                                _node_type: "v"
+                            )
+                        )
+            $scope.$digest()
+        $scope.$watch("var_filter", (new_val) -> $scope.new_filter_set(new_val, true))
+        $scope.new_filter_set = (new_val) ->
+            if new_val
+                try
+                    filter_re = new RegExp(new_val, "gi")
+                catch
+                    filter_re = new RegExp("^$", "gi")
+            else
+                filter_re = new RegExp("^$", "gi")
+            $scope.devvar_tree.iter(
+                (entry, filter_re) ->
+                    cmp_name = if entry._node_type == "d" then entry.obj.name else entry.obj.key
+                    entry.set_selected(if cmp_name.match(filter_re) then true else false)
+                filter_re
+            )
+            $scope.devvar_tree.show_selected(false)
+]).directive("icswDeviceConfigurationVarOverview", ["$templateCache", "$compile", "$uibModal", "Restangular", ($templateCache, $compile, $uibModal, Restangular) ->
+    return {
+        scope: true
+        restrict : "EA"
+        template : $templateCache.get("icsw.device.configuration.var.overview")
+        controller: "icswConfigVarsCtrl"
+    }
+]).service("icswDeviceConfigurationConfigVarTreeService", ["icswTreeConfig", (icswTreeConfig) ->
+    class device_config_var_tree extends icswTreeConfig
+        constructor: (@scope, args) ->
+            super(args)
+            @show_selection_buttons = false
+            @show_icons = true
+            @show_select = false
+            @show_descendants = false
+            @show_childs = false
+        get_name_class: (t_entry) =>
+            # override
+            obj = t_entry.obj
+            if obj.state_level?
+                if obj.state_level == 40
+                    return "text-danger"
+                else if obj.state_level == 20
+                    return "text-success"
+                else
+                    return "text-warning"
+            else
+                return ""
+        get_name : (t_entry) ->
+            obj = t_entry.obj
+            if t_entry._node_type == "d"
+                return "#{obj.name} (#{obj.info_str})"
+            else
+                if obj.value?
+                    return "#{obj.key} = #{obj.value}"
+                else
+                    return obj.key
 ]).service("icswDeviceVariableRestService", ["$q", "Restangular", "icswCachingCall", "ICSW_URLS", "icswTools", ($q, Restangular, icswCachingCall, ICSW_URLS, icswTools) ->
     vstruct = {}
     _data_loaded = false
