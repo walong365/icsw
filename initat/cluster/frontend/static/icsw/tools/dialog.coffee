@@ -109,7 +109,11 @@ angular.module(
                     return false
 
                 child_scope.all_actions_defined = (obj_pk) ->
-                    return _.all(related_objects[obj_pk], (elem) -> return elem.selected_action?)
+                    return _.every(
+                        related_objects[obj_pk]
+                        (elem) -> return elem.selected_action?
+                    )
+
                 child_scope.force_delete = (obj_pk) ->
                     delete_strategies = []
                     # collect data from gui
@@ -244,9 +248,7 @@ angular.module(
                             # this is Nan on invalid entry, and NaN != 0, which we want here
                             if num_remaining == 0
                                 if check_list_entry.after_delete?
-                                    console.log "a0"
                                     check_list_entry.after_delete(check_list_entry)
-                                    console.log "a1"
                                 if !check_list_entry.async
                                     blockUI.stop()
                                 remove_list.push(k)

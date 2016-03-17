@@ -53,7 +53,6 @@ from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockList
 from initat.cluster.backbone.models.status_history import mon_icinga_log_aggregated_host_data, \
     mon_icinga_log_aggregated_timespan, mon_icinga_log_aggregated_service_data, \
     mon_icinga_log_raw_base, mon_icinga_log_raw_service_alert_data, mon_icinga_log_raw_host_alert_data, AlertList
-from initat.cluster.backbone.render import permission_required_mixin
 from initat.cluster.frontend.common import duration_utils
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.frontend.rest_views import rest_logging
@@ -341,119 +340,6 @@ class resolve_name(View):
             else:
                 logger.info(u"resolved {} to {}".format(fqdn, _ip))
                 request.xml_response["ip"] = _ip
-
-
-class create_device(permission_required_mixin, View):
-    all_required_permissions = ["backbone.user.modify_tree"]
-
-    @method_decorator(login_required)
-    def get(self, request):
-        pass
-
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        # domain name tree
-        dnt = domain_name_tree()
-        device_data = json.loads(_post["device_data"])
-        try:
-            cur_dg = device_group.objects.get(Q(name=device_data["device_group"]))
-        except device_group.DoesNotExist:
-            try:
-                cur_dg = device_group.objects.create(
-                    name=device_data["device_group"],
-                    domain_tree_node=dnt.get_domain_tree_node(""),
-                    description="auto created device group {}".format(device_data["device_group"]),
-                )
-            except:
-                request.xml_response.error(
-                    u"cannot create new device group: {}".format(
-                        process_tools.get_except_info()
-                    ),
-                    logger=logger
-                )
-                cur_dg = None
-            else:
-                request.xml_response.info(u"created new device group '{}'".format(unicode(cur_dg)), logger=logger)
-        else:
-            if cur_dg.cluster_device_group:
-                request.xml_response.error(
-                    u"no devices allowed in system (cluster) group",
-                    logger=logger
-                )
-                cur_dg = None
-        if cur_dg is not None:
-            if device_data["full_name"].count("."):
-                short_name, domain_name = device_data["full_name"].split(".", 1)
-                dnt_node = dnt.add_domain(domain_name)
-            else:
-                short_name = device_data["full_name"]
-                # top level node
-                dnt_node = dnt.get_domain_tree_node("")
-            try:
-                cur_dev = device.objects.get(Q(name=short_name) & Q(domain_tree_node=dnt_node))
-            except device.DoesNotExist:
-                # check image
-                if device_data["icon_name"].strip():
-                    try:
-                        cur_img = mon_ext_host.objects.get(Q(name=device_data["icon_name"]))
-                    except mon_ext_host.DoesNotExist:
-                        cur_img = None
-                    else:
-                        pass
-                try:
-                    cur_dev = device.objects.create(
-                        device_group=cur_dg,
-                        is_meta_device=False,
-                        domain_tree_node=dnt_node,
-                        name=short_name,
-                        mon_resolve_name=device_data["resolve_via_ip"],
-                        comment=device_data["comment"],
-                        mon_ext_host=cur_img,
-                    )
-                except:
-                    request.xml_response.error(
-                        u"cannot create new device: {}".format(
-                            process_tools.get_except_info()
-                        ),
-                        logger=logger
-                    )
-                    cur_dev = None
-                else:
-                    request.xml_response.info(u"created new device '{}'".format(unicode(cur_dev)), logger=logger)
-            else:
-                request.xml_response.warn(u"device {} already exists".format(unicode(cur_dev)), logger=logger)
-                cur_dev = None
-
-            if cur_dev is not None:
-                try:
-                    cur_nd = netdevice.objects.get(Q(device=cur_dev) & Q(devname='eth0'))
-                except netdevice.DoesNotExist:
-                    cur_nd = netdevice.objects.create(
-                        devname="eth0",
-                        device=cur_dev,
-                        routing=device_data["routing_capable"],
-                    )
-                    if device_data["peer"]:
-                        peer_information.objects.create(
-                            s_netdevice=cur_nd,
-                            d_netdevice=netdevice.objects.get(Q(pk=device_data["peer"])),
-                            penalty=1,
-                        )
-                try:
-                    cur_ip = net_ip.objects.get(Q(netdevice=cur_nd) & Q(ip=device_data["ip"]))
-                except net_ip.DoesNotExist:
-                    cur_ip = net_ip(
-                        netdevice=cur_nd,
-                        ip=device_data["ip"],
-                        domain_tree_node=dnt_node,
-                    )
-                    try:
-                        cur_ip.save()
-                    except:
-                        request.xml_response.error(u"cannot create IP: {}".format(process_tools.get_except_info()), logger=logger)
-                        cur_ip = None
 
 
 ########################################

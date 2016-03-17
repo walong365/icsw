@@ -44,106 +44,108 @@ angular.module(
                     ordering: 5
         }
     )
-]).controller("icswDeviceCreateCtrl", ["$scope", "$timeout", "$window", "$templateCache", "restDataSource", "$q", "blockUI", "ICSW_URLS", "icswSimpleAjaxCall",
-    ($scope, $timeout, $window, $templateCache, restDataSource, $q, blockUI, ICSW_URLS, icswSimpleAjaxCall) ->
-        $scope.base_open = true
-        $scope.resolve_pending = false
-        $scope.device_data = {
-            full_name        : ""
-            comment          : "new device"
-            device_group     : "newgroup"
-            ip               : ""
-            resolve_via_ip   : true
-            routing_capable  : false
-            peer             : 0
-            icon_name        : "linux40"
-        }
-        $scope.peers = []
-        $scope.rest_map = [
-            {"short" : "device_group", "url" : ICSW_URLS.REST_DEVICE_GROUP_LIST}
-            {"short" : "mother_server", "url" : ICSW_URLS.REST_DEVICE_TREE_LIST, "options" : {"all_mother_servers" : true}}
-            {"short" : "monitor_server", "url" : ICSW_URLS.REST_DEVICE_TREE_LIST, "options" : {"monitor_server_type" : true}}
-            {"short" : "domain_tree_node", "url" : ICSW_URLS.REST_DOMAIN_TREE_NODE_LIST}
-            {"short" : "peers", "url" : ICSW_URLS.REST_NETDEVICE_PEER_LIST},
-            {"short" : "mon_ext_host", "url" : ICSW_URLS.REST_MON_EXT_HOST_LIST}
-        ]
-        $scope.rest_data = {}
-        $scope.all_peers = [{"idx" : 0, "info" : "no peering", "device group name" : "---"}]
-        $scope.reload = () ->
-            blockUI.start()
-            wait_list = []
-            for value, idx in $scope.rest_map
-                $scope.rest_data[value.short] = restDataSource.reload([value.url, value.options])
-                wait_list.push($scope.rest_data[value.short])
-            $q.all(wait_list).then((data) ->
-                for value, idx in data
-                    $scope.rest_data[$scope.rest_map[idx].short] = value
-                # build image lut
-                $scope.img_lut = {}
-                for value in $scope.rest_data.mon_ext_host
-                    $scope.img_lut[value.name] = value.data_image
-                # create info strings
-                for entry in $scope.rest_data.peers
-                    entry.info = "#{entry.devname} on #{entry.device_name}"
-                $scope.peers = (entry for entry in $scope.rest_data.peers when entry.routing)
-                r_list = [{"idx" : 0, "info" : "no peering", "device group name" : "---"}]
-                for entry in $scope.peers 
-                    r_list.push(entry)
-                $scope.all_peers = r_list
-                blockUI.stop()
-            )
-        $scope.get_image_src = () ->
-            img_url = ""
-            if $scope.img_lut?
-                if $scope.device_data.icon_name of $scope.img_lut
-                    img_url = $scope.img_lut[$scope.device_data.icon_name]
-            return img_url
-        $scope.device_name_changed = () ->
-            if not $scope.resolve_pending and $scope.device_data.full_name and not $scope.device_data.ip
+]).controller("icswDeviceCreateCtrl",
+[
+    "$scope", "$timeout", "$window", "$templateCache", "$q", "blockUI", "ICSW_URLS", "icswSimpleAjaxCall",
+    "icswDeviceTreeService", "icswPeerInformationService",
+(
+    $scope, $timeout, $window, $templateCache, $q, blockUI, ICSW_URLS, icswSimpleAjaxCall,
+    icswDeviceTreeService, icswPeerInformationService,
+) ->
+    $scope.base_open = true
+    $scope.resolve_pending = false
+    $scope.device_data = {
+        full_name        : "www.orf.at"
+        comment          : "new device, created at " + moment().format()
+        device_group     : "newgroup"
+        ip               : ""
+        resolve_via_ip   : true
+        routing_capable  : false
+        peer             : 0
+        icon_name        : "linux40"
+    }
+    $scope.data_ready = false
+
+    $scope.reload = () ->
+        $q.all(
+            [
+                icswDeviceTreeService.load($scope.$id)
+                icswPeerInformationService.load($scope.$id, [])
+            ]
+        ).then(
+            (data) ->
+                $scope.device_tree = data[0]
+                $scope.peer_tree = data[1]
+                $scope.device_data.device_group = (entry for entry in $scope.device_tree.group_list when $scope.device_tree.ignore_cdg(entry))[0].name
+                if $scope.peer_tree.peer_list.length
+                    $scope.device_data.peer = $scope.peer_tree.peer_list[0].idx
+
+                # to speed up testing
+
                 $scope.resolve_name()
-        $scope.resolve_name = () ->
-            # clear ip
+                $scope.data_ready = true
+        )
+
+    $scope.reload()
+
+    $scope.get_image_src = () ->
+        img_url = ""
+        if $scope.img_lut?
+            if $scope.device_data.icon_name of $scope.img_lut
+                img_url = $scope.img_lut[$scope.device_data.icon_name]
+        return img_url
+
+    $scope.device_name_changed = () ->
+        if not $scope.resolve_pending and $scope.device_data.full_name and not $scope.device_data.ip
+            $scope.resolve_name()
+
+    $scope.resolve_name = () ->
+        # clear ip
+        if $scope.device_data.full_name
             $scope.device_data.ip = ""
             $scope.resolve_pending = true
             icswSimpleAjaxCall(
                 url  : ICSW_URLS.MON_RESOLVE_NAME
                 data : {
-                    "fqdn" : $scope.device_data.full_name
-                }
-            ).then((xml) ->
-                $scope.resolve_pending = false
-                $scope.device_data.ip = $(xml).find("value[name='ip']").text()
-            )
-        $scope.device_groups = () ->
-            return (entry.name for entry in $scope.rest_data.device_group when entry.cluster_device_group == false and entry.enabled)
-        $scope.any_peers = () ->
-            return if $scope.peers.length > 0 then true else false
-        $scope.build_device_dict = () ->
-            return {
-                "full_name" : $scope.full_name
-                "comment"   : $scope.comment
-                "device_group" : $scope.device_group
-                "ip"           : $scope.ip
-            }
-        $scope.create_device = () ->
-            d_dict = $scope.device_data
-            blockUI.start()
-            icswSimpleAjaxCall(
-                url  : ICSW_URLS.MON_CREATE_DEVICE
-                data : {
-                    "device_data" : angular.toJson(d_dict)
+                    fqdn: $scope.device_data.full_name
                 }
             ).then(
                 (xml) ->
-                    blockUI.stop()
-                    $scope.reload()
+                    $scope.resolve_pending = false
+                    $scope.device_data.ip = $(xml).find("value[name='ip']").text()
             )
-        $scope.reload()
+
+    $scope.create_device = () ->
+        d_dict = $scope.device_data
+        blockUI.start()
+        icswSimpleAjaxCall(
+            url: ICSW_URLS.DEVICE_CREATE_DEVICE
+            data: {
+                "device_data" : angular.toJson(d_dict)
+            }
+        ).then(
+            (xml) =>
+                if $(xml).find("value[name='device_pk']").length
+                    $scope.device_data.full_name = ""
+                    defer = $q.defer()
+                    $scope.device_tree._fetch_device(
+                        parseInt($(xml).find("value[name='device_pk']").text())
+                        defer
+                        "new device"
+                    )
+                    defer.promise.then(
+                        (ok) ->
+                            blockUI.stop()
+                        (not_ok) ->
+                            blockUI.stop()
+                    )
+                else
+                    blockUI.stop()
+        )
 ]).directive("icswDeviceCreateMask", ["$templateCache", ($templateCache) ->
     return {
         restrict: "EA"
         template: $templateCache.get("icsw.device.create.mask")
+        controller: "icswDeviceCreateCtrl"
     }
-]).controller("form_ctrl", ["$scope",
-    ($scope) ->
 ])

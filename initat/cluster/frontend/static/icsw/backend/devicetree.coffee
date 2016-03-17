@@ -352,7 +352,7 @@ angular.module(
 
         get_num_devices: (group) =>
             # return all enabled devices in group, not working ... ?
-            console.log("DO NOT USE: get_num_devices()")
+            console.error "DO NOT USE: get_num_devices()"
             return (entry for entry in @enabled_list when entry.device_group == group.idx).length - 1
 
         # create / delete functions
@@ -411,8 +411,21 @@ angular.module(
                 (dev_list) =>
                     dev = dev_list[0]
                     @all_list.push(dev)
-                    @reorder()
-                    defer.resolve(msg)
+                    if dev.device_group of @group_lut
+                        @reorder()
+                        defer.resolve(msg)
+                    else
+                        # new device-group added (at least the group is missing), fetch group
+                        Restangular.one(ICSW_URLS.REST_DEVICE_GROUP_LIST.slice(1)).get({"idx": dev.device_group}).then(
+                            (new_obj) =>
+                                new_group = new_obj[0]
+                                # add new device_group to group_list
+                                @group_list.push(new_group)
+                                # update group_lut
+                                @group_lut[new_group.idx] = new_group
+                                # and now the meta-device
+                                @_fetch_device(new_group.device, defer, "created device_group")
+                        )
             )
 
         apply_json_changes: (json) =>
