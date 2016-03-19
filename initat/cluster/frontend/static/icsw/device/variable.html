@@ -83,7 +83,7 @@
         </div>
 
         <icsw-tools-rest-table-new target-list="var_devices" icsw-config-object="struct" config-service="icswDeviceVariableListService">
-            <h4>
+            <h4 ng-if="struct.devices.length > 1">
                 <icsw-tools-button type="create" value="create for all" title="create a new variable for all shown devices" ng-click="special_fn($event, 'create_for_all')" size="xs"></icsw-tools-button>
             </h4>
             <table st-table="var_devices_displayed" st-safe-src="var_devices" class="table table-condensed table-hover" style="width:auto;">
