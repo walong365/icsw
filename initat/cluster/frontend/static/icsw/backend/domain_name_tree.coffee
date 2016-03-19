@@ -85,7 +85,6 @@ angular.module(
                 ["$sort_name"]
                 ["asc"]
             )
-            console.log @list
 
         get_full_name: (dev) =>
             if dev.domain_tree_node

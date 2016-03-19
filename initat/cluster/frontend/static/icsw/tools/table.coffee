@@ -345,9 +345,11 @@ angular.module(
         }
 ]).directive("icswToolsRestTableNew",
 [
-    "Restangular", "$parse", "$injector", "$compile", "$templateCache", "icswTools", "icswToolsSimpleModalService", "toaster", "$timeout",
+    "Restangular", "$parse", "$injector", "$compile", "$templateCache", "icswTools",
+    "icswToolsSimpleModalService", "toaster", "$timeout",
 (
-    Restangular, $parse, $injector, $compile, $templateCache, icswTools, icswToolsSimpleModalService, toaster, $timeout
+    Restangular, $parse, $injector, $compile, $templateCache, icswTools,
+    icswToolsSimpleModalService, toaster, $timeout
 ) ->
     return {
         restrict: 'EA'

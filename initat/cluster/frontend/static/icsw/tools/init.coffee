@@ -324,6 +324,7 @@ angular.module(
         ICSW_NETWORK_REDRAW_D3_ELEMENT: "icsw.network.redraw.d3.element",
         ICSW_CONFIG_UPLOADED: "icsw.config.uploaded",
         ICSW_DEVICE_CONFIG_CHANGED: "icsw.device.config.changed",
+        ICSW_DOMAIN_NAME_TREE_CHANGED: "icsw.domain.name.tree.changed",
         # not needed up to now
         # "ICSW_RENDER_MENUBAR": "icsw.render.menubar",
         # "ICSW_READY_TO_RECEIVE_SELECTION": "icsw.ready.to.receive.selection"
@@ -895,7 +896,11 @@ angular.module(
                         return false
                 }
             )
-        if in_dict.delete_callback
+        if "show_delete_callback" of in_dict
+            _sdc = in_dict.show_delete_callback
+        else
+            _sdc = true
+        if in_dict.delete_callback and _sdc
             buttons.push(
                 {
                     label: if in_dict.delete_label? then in_dict.delete_label else "Delete"

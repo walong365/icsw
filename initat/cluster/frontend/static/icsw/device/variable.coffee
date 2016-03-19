@@ -348,7 +348,6 @@ device_variable_module = angular.module(
                         blockUI.stop()
                 )
             else if fn_name == "create_for_all"
-                console.log "cfa"
                 create_or_edit(scope, event, true, null)
 
     }

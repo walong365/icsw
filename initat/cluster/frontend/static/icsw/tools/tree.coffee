@@ -21,18 +21,28 @@
 angular.module(
     "icsw.tools.tree",
     []
-).directive("tree", ["$compile", "$templateCache", ($compile, $templateCache) ->
+).directive("tree",
+[
+    "$compile", "$templateCache", "$injector",
+(
+    $compile, $templateCache, $injector,
+) ->
     return {
         restrict: "E"
         scope: {
             treeconfig: "="
             maxHeight  : "&"
+            icswConfigObject: "="
         }
         replace: true
         link: (scope, element, attr) ->
             scope.$watch("treeconfig", (new_val) ->
                 # setup a list of nodes (with all subtrees)
                 if new_val
+                    if "configService" of attr
+                        cservice = $injector.get(attr.configService)
+                        new_val.config_service = cservice
+                        new_val.config_object = scope.icswConfigObject
                     element.children().remove()
                     _root_el = angular.element($templateCache.get("icsw.tree.root.node"))
                     if scope.maxHeight?

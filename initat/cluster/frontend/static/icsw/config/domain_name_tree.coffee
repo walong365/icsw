@@ -53,6 +53,8 @@ angular.module(
             @show_select = false
             @show_descendants = true
             @show_childs = false
+            @config_service = undefined
+            @config_object = undefined
 
         clear_tree: () =>
             @lut = {}
@@ -65,42 +67,49 @@ angular.module(
                 return "TOP"
 
         handle_click: (entry, event) =>
-            if not entry.active
-                # i am not the active node, clear others
-                @clear_active()
+            # if not entry.active
+            #    # i am not the active node, clear others
+            #    @clear_active()
             dtn = entry.obj
             if dtn.depth
                 if entry.active
-                    @scope.create_or_edit(event, false, dtn)
+                    @config_service.create_or_edit(@config_object.scope, event, false, dtn)
                 else
                     entry.active = true
                     @show_active()
+                    # sync table
+                    @scope.$digest()
 
 ]).controller("icswConfigDomainNameTreeCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular",
     "$q", "icswAcessLevelService", "ICSW_URLS", "icswConfigDomainNameTreeService",
-    "icswDomainTreeService", "icswComplexModalService", "toaster", "icswDomainTreeNodeBackup",
+    "icswDomainTreeService", "$rootScope", "ICSW_SIGNALS",
 (
     $scope, $compile, $filter, $templateCache, Restangular,
     $q, icswAcessLevelService, ICSW_URLS, icswConfigDomainNameTreeService,
-    icswDomainTreeService, icswComplexModalService, toaster, icswDomainTreeNodeBackup,
+    icswDomainTreeService, $rootScope, ICSW_SIGNALS,
 ) ->
-    $scope.tree = undefined
+    $scope.struct = {}
     $scope.reload = () ->
         $scope.dn_tree = new icswConfigDomainNameTreeService($scope)
         icswDomainTreeService.load($scope.$id).then(
             (tree) ->
-                $scope.tree = tree
+                $scope.struct.tree = tree
+                $scope.struct.dn_tree = $scope.dn_tree
                 $scope.rebuild_dnt()
         )
 
+    $rootScope.$on(ICSW_SIGNALS("ICSW_DOMAIN_NAME_TREE_CHANGED"), (event) ->
+        $scope.rebuild_dnt()
+
+    )
     $scope.rebuild_dnt = () ->
         # save previous active nodes
         active = (entry.obj.idx for entry in $scope.dn_tree.get_active())
         $scope.dn_tree.clear_tree()
         $scope.dn_tree.clear_root_nodes()
-        for entry in $scope.tree.list
+        for entry in $scope.struct.tree.list
             t_entry = $scope.dn_tree.new_node(
                 {
                     folder: false
@@ -109,6 +118,7 @@ angular.module(
                 }
             )
             $scope.dn_tree.lut[entry.idx] = t_entry
+            entry.$$leaf = t_entry
             if entry.parent
                 $scope.dn_tree.lut[entry.parent].add_child(t_entry)
             else
@@ -121,110 +131,162 @@ angular.module(
         )
         $scope.dn_tree.show_active()
 
-    $scope.create_or_edit = (event, create, obj_or_parent) ->
-        if create
-            # _parent = (value for value in $scope.tree.lmode_entries when value.depth == 1 and value.full_name.split("/")[1] == top_level)[0]
-            r_struct = {
-                name: "super-new.domain.at"
-                parent: $scope.tree.tln.idx
-                depth: 2
-                create_short_names: true
-                always_create_ip: false
-                write_nameserver_config: false
-                comment: "New Domain"
-            }
-            # all nodes are valid
-            valid_parents = $scope.tree.list
-            obj_or_parent = r_struct
-        else
-            dbu = new icswDomainTreeNodeBackup()
-            dbu.create_backup(obj_or_parent)
-            # get valid parents
-            # step 1: everything below myself
-            _get_below = (_idx) ->
-                _childs = (node.idx for node in $scope.tree.list when node.parent == _idx)
-                r_list = [_idx]
-                for _child in _childs
-                    r_list = r_list.concat(_get_below(_child))
-                return r_list
-
-            not_idx = _get_below(obj_or_parent.idx)
-            # step 2: everything else is a possible parent node
-            valid_parents = (entry for entry in $scope.tree.list when entry.idx not in not_idx)
-
-        sub_scope = $scope.$new(false)
-        sub_scope.tree = $scope.tree
-        sub_scope.edit_obj = obj_or_parent
-        sub_scope.valid_parents = valid_parents
-
-        ok_label = if create then "Create" else "Modify"
-
-        icswComplexModalService(
-            {
-                message: $compile($templateCache.get("icsw.config.domain.tree.node.form"))(sub_scope)
-                title: "#{ok_label} Domain tree node entry '#{obj_or_parent.name}"
-                # css_class: "modal-wide"
-                ok_label: ok_label
-                closable: true
-                ok_callback: (modal) ->
-                    d = $q.defer()
-                    if sub_scope.form_data.$invalid
-                        toaster.pop("warning", "form validation problem", "", 0)
-                        d.reject("form not valid")
-                    else
-                        if create
-                            $scope.tree.create_domain_tree_node_entry(sub_scope.edit_obj).then(
-                                (ok) ->
-                                    d.resolve("created")
-                                (notok) ->
-                                    d.reject("not created")
-                            )
-                        else
-                            if sub_scope.edit_obj.name.match(/\./)
-                                toaster.pop("warning", "no dots allowed in name", "", 0)
-                                d.reject("form invalid")
-                            else
-                                sub_scope.edit_obj.put().then(
-                                    (ok) ->
-                                        $scope.tree.reorder()
-                                        d.resolve("updated")
-                                    (not_ok) ->
-                                        d.reject("not updated")
-                                )
-                    return d.promise
-                delete_ask: true
-
-                delete_callback: (modal) ->
-                    d = $q.defer()
-                    $scope.tree.delete_domain_tree_node_entry(sub_scope.edit_obj).then(
-                        (ok) ->
-                            d.resolve("deleted")
-                        (notok) ->
-                            d.reject("not deleted")
-                    )
-                    return d.promise
-
-                cancel_callback: (modal) ->
-                    if not create
-                        dbu.restore_backup(obj_or_parent)
-                    d = $q.defer()
-                    d.resolve("cancel")
-                    return d.promise
-            }
-        ).then(
-            (fin) ->
-                console.log "finish"
-                $scope.rebuild_dnt()
-                sub_scope.$destroy()
-        )
-
     $scope.reload()
-]).directive("icswConfigDomainNameTreeHead", ["$templateCache", ($templateCache) ->
+]).service("icswConfigDTNListService",
+[
+    "icswTools", "icswDomainTreeService", "$q", "$compile", "$templateCache",
+    "icswComplexModalService", "toaster", "icswDomainTreeNodeBackup",
+    "icswToolsSimpleModalService", "ICSW_SIGNALS", "$rootScope",
+(
+    icswTools, icswDomainTreeService, $q, $compile, $templateCache,
+    icswComplexModalService, toaster, icswDomainTreeNodeBackup,
+    icswToolsSimpleModalService, ICSW_SIGNALS, $rootScope,
+) ->
+    return {
+        fetch: (scope) ->
+            defer = $q.defer()
+            # set scope for dn_tree
+            scope.icswConfigObject.scope = scope
+            scope.tree = scope.icswConfigObject.tree
+            scope.dn_tree = scope.icswConfigObject.dn_tree
+            defer.resolve(scope.tree.list)
+            return defer.promise
+
+        toggle_active: (dtn) ->
+            leaf = dtn.$$leaf
+            leaf.active = !leaf.active
+            leaf.config.show_active()
+
+        create_or_edit: (scope, event, create, obj_or_parent) ->
+            if create
+                # _parent = (value for value in $scope.tree.lmode_entries when value.depth == 1 and value.full_name.split("/")[1] == top_level)[0]
+                r_struct = {
+                    name: "super-new.domain.at"
+                    parent: scope.tree.tln.idx
+                    depth: 2
+                    create_short_names: true
+                    always_create_ip: false
+                    write_nameserver_config: false
+                    comment: "New Domain"
+                }
+                # all nodes are valid
+                valid_parents = scope.tree.list
+                obj_or_parent = r_struct
+            else
+                dbu = new icswDomainTreeNodeBackup()
+                dbu.create_backup(obj_or_parent)
+                # get valid parents
+                # step 1: everything below myself
+                _get_below = (_idx) ->
+                    _childs = (node.idx for node in scope.tree.list when node.parent == _idx)
+                    r_list = [_idx]
+                    for _child in _childs
+                        r_list = r_list.concat(_get_below(_child))
+                    return r_list
+
+                not_idx = _get_below(obj_or_parent.idx)
+                # step 2: everything else is a possible parent node
+                valid_parents = (entry for entry in scope.tree.list when entry.idx not in not_idx)
+
+            sub_scope = scope.$new(false)
+            sub_scope.tree = scope.tree
+            sub_scope.edit_obj = obj_or_parent
+            sub_scope.valid_parents = valid_parents
+            show_delete_callback = if create then false else true
+
+            ok_label = if create then "Create" else "Modify"
+
+            icswComplexModalService(
+                {
+                    message: $compile($templateCache.get("icsw.config.domain.tree.node.form"))(sub_scope)
+                    title: "#{ok_label} Domain tree node entry '#{obj_or_parent.name}'"
+                    # css_class: "modal-wide"
+                    ok_label: ok_label
+                    closable: true
+                    ok_callback: (modal) ->
+                        d = $q.defer()
+                        if sub_scope.form_data.$invalid
+                            toaster.pop("warning", "form validation problem", "", 0)
+                            d.reject("form not valid")
+                        else
+                            if create
+                                scope.tree.create_domain_tree_node_entry(sub_scope.edit_obj).then(
+                                    (ok) ->
+                                        d.resolve("created")
+                                    (notok) ->
+                                        d.reject("not created")
+                                )
+                            else
+                                if sub_scope.edit_obj.name.match(/\./)
+                                    toaster.pop("warning", "no dots allowed in name", "", 0)
+                                    d.reject("form invalid")
+                                else
+                                    sub_scope.edit_obj.put().then(
+                                        (ok) ->
+                                            scope.tree.reorder()
+                                            d.resolve("updated")
+                                        (not_ok) ->
+                                            d.reject("not updated")
+                                    )
+                        return d.promise
+                    delete_ask: true
+                    show_delete_callback: show_delete_callback
+
+                    delete_callback: (modal) ->
+                        d = $q.defer()
+                        scope.tree.delete_domain_tree_node_entry(sub_scope.edit_obj).then(
+                            (ok) ->
+                                # sync with tree
+                                $rootScope.$emit(ICSW_SIGNALS("ICSW_DOMAIN_NAME_TREE_CHANGED"))
+                                d.resolve("deleted")
+                            (notok) ->
+                                d.reject("not deleted")
+                        )
+                        return d.promise
+
+                    cancel_callback: (modal) ->
+                        if not create
+                            dbu.restore_backup(obj_or_parent)
+                        d = $q.defer()
+                        d.resolve("cancel")
+                        return d.promise
+                }
+            ).then(
+                (fin) ->
+                    console.log "finish"
+                    $rootScope.$emit(ICSW_SIGNALS("ICSW_DOMAIN_NAME_TREE_CHANGED"))
+                    sub_scope.$destroy()
+            )
+
+        delete: (scope, event, obj) ->
+            icswToolsSimpleModalService("Really delete DTN #{obj.full_name} ?").then(
+                () =>
+                    scope.tree.delete_domain_tree_node_entry(obj).then(
+                        () ->
+                            $rootScope.$emit(ICSW_SIGNALS("ICSW_DOMAIN_NAME_TREE_CHANGED"))
+                            console.log "dtn deleted"
+                    )
+            )
+
+
+    }
+]).directive("icswConfigDomainNameTreeHead",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.config.domain.name.tree.head")
+        replace: true
     }
-]).directive("icswConfigDomainNameTreeRow", ["$templateCache", ($templateCache) ->
+]).directive("icswConfigDomainNameTreeRow",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.config.domain.name.tree.row")
@@ -232,18 +294,12 @@ angular.module(
             scope.get_space = (depth) ->
                 return ("&nbsp;&nbsp;" for idx in [0..depth]).join("")
     }
-]).directive("icswConfigDomainNameTreeEditTemplate", ["$compile", "$templateCache", ($compile, $templateCache) ->
-    return {
-        restrict : "EA"
-        template : $templateCache.get("domain.tree.node.form")
-        link : (scope, element, attrs) ->
-            scope.form_error = (field_name) ->
-                if scope.form[field_name].$valid
-                    return ""
-                else
-                    return "has-error"
-    }
-]).directive("icswConfigDomainNameTree", ["$compile", "$templateCache", ($compile, $templateCache) ->
+]).directive("icswConfigDomainNameTree",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
     return {
         restrict: "EA"
         template: $templateCache.get("icsw.config.domain.name.tree")
