@@ -108,13 +108,17 @@ angular.module(
                     _val = $(xml).find("value[name='redirect']").text()
                     # clear token
                     icswCSRFService.clear_token()
-                    icswCSRFService.get_token().then(
-                        (csrf_token) ->
-                            icswUserService.load().then(
-                                (_user) ->
-                                    blockUI.stop()
-                                    $state.go(_val)
-                            )
+                    $q.all(
+                        [
+                            icswCSRFService.get_token()
+                            icswUserService.load()
+                        ]
+                    ).then(
+                        (data) ->
+                            csrf_token = data[0]
+                            _user = data[1]
+                            blockUI.stop()
+                            $state.go(_val)
                     )
             (error) ->
                 blockUI.stop()

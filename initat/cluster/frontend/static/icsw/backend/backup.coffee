@@ -234,4 +234,15 @@ angular.module(
                 "name", "description", "enabled", "priority", "config", "value", "error_text",
             ]
 
+]).service("icswDeviceVariableBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswDeviceVariableBackupDefinition extends icswBackupDefinition
+
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "device", "is_public", "name", "description", "local_copy_ok", "inherit", "protected",
+                "var_type", "val_str", "val_int", "val_blob", "val_data", "val_time",
+            ]
+
 ])

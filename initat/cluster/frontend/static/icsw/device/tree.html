@@ -197,7 +197,7 @@
 </script>
 
 <script type="text/ng-template" id="device.tree.many.form">
-    <form id="form" class="form-horizontal" ng-submit="modify_many()" name="form_data">
+    <form class="form-horizontal" name="form_data">
         <h2>Change settings of {{ num_selected() }} devices</h2>
         <fieldset>
             <legend>Basic settings</legend>
@@ -478,9 +478,6 @@
                 </div>
             </div>
         </fieldset>
-        <div class="form-actions">
-            <input type="submit" name="submit" value="Modify many" class="btn btn-primary primaryAction" id="submit-id-submit"/>
-        </div>
     </form>
 </script>
 
@@ -544,36 +541,6 @@
         </fieldset>
     </form>
 </script>
-
-<!-- <script type="text/ng-template" id="create.device.form">
-    <form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form">
-        <h2>Create new device</h2>
-        <fieldset>
-            <legend>Base data</legend>
-            <div id="div_id_scan_address" class="form-group">
-                <label class="control-label col-sm-3 requiredField">
-                    Scan address<span class="asteriskField">*</span>
-                </label>
-                <div class="controls col-sm-7">
-                    <input class="textinput textInput form-control" maxlength="128" ng-model="_edit_obj.scan_address" required="True" type="text"/>
-                </div>
-            </div>
-        </fieldset>
-        <fieldset>
-            <legend>Flags</legend>
-            <div class="form-group">
-                <div id="div_id_strict_mode" class="checkbox">
-                    <div class="controls col-lg-offset-0 col-sm-7"><label for="id_strict_mode"><input class="checkboxinput checkbox" id="id_strict_mode" name="strict_mode" ng-model="_edit_obj.strict_mode" type="checkbox"></input>
-                        Strict mode
-                    </label></div>
-                </div>
-            </div>
-        </fieldset>
-        <div class="form-actions">
-            <input type="button" name="scan" value="scan" class="btn btn btn-sm btn-primary" id="button-id-scan" ng-click="fetch_device_network()"></input> <input type="submit" name="cancel" value="cancel" class="btn btn-primary btn btn-sm btn-warning" id="submit-id-cancel"></input>
-        </div>
-    </form>
-</script> -->
 
 <script type="text/ng-template" id="device.tree.form">
     <form class="form-horizontal" name="form_data">

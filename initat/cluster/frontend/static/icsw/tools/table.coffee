@@ -354,6 +354,10 @@ angular.module(
         scope: true
         link: (scope, element, attrs) ->
             scope.config_service = $injector.get(attrs.configService)
+            if attrs.icswConfigObject?
+                scope.icswConfigObject = scope.$eval(attrs.icswConfigObject)
+            else
+                scope.icswConfigObject = undefined
 
             # scope.config_service.use_modal ?= true
 
@@ -391,6 +395,10 @@ angular.module(
 
             scope.create_or_edit = (event, create, obj_or_parent) ->
                 scope.config_service.create_or_edit(scope, event, create, obj_or_parent)
+
+            scope.special_fn = (event, fn_name, obj, data) ->
+                # for non-specific functions
+                scope.config_service.special_fn(scope, event, fn_name, obj, data)
 
             scope.form_error = (field_name) ->
                 # temporary fix, FIXME

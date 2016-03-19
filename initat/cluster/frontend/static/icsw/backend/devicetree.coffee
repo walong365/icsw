@@ -28,7 +28,12 @@ angular.module(
         "init.csw.filters", "restangular", "noVNC", "ui.select", "icsw.tools",
         "icsw.device.info", "icsw.tools.tree", "icsw.user",
     ]
-).service("icswDeviceTreeHelper", ["icswTools", (icswTools) ->
+).service("icswDeviceTreeHelper",
+[
+    "icswTools",
+(
+    icswTools
+) ->
     ref_ctr = 0
     # helper service for global (== selection-wide) luts and lists
     class icswDeviceTreeHelper
@@ -42,6 +47,7 @@ angular.module(
             @net_ip_lut = {}
 
         # global post calls
+
         post_g_network_info: () =>
             # FIXME, todo: remove entries when a device gets delete
             @netdevice_list.length = 0
@@ -67,14 +73,130 @@ angular.module(
                 ["asc", "asc", "asc"],
             )
 
-]).service("icswDeviceTreeHelperService", ["icswDeviceTreeHelper", (icswDeviceTreeHelper) ->
+        post_g_variable_info: () ->
+
+            if not @var_name_filter?
+                @var_name_filter = ""
+            for dev in @devices
+                if not dev.$vars_expanded?
+                    dev.$vars_expanded = false
+            @filter_device_variables()
+
+        set_var_filter: (new_filter) =>
+            @var_name_filter = new_filter
+            @filter_device_variables()
+
+        filter_device_variables: () =>
+            try
+                filter_re = new RegExp(@var_name_filter, "gi")
+            catch
+                filter_re = new RegExp("^$", "gi")
+            # step 1: filter variables
+            for dev in @devices
+                dev.$var_filter_active = false
+                if dev.device_variables_filtered?
+                    dev.device_variables_filtered.length = 0
+                else
+                    dev.device_variables_filtered = []
+                if dev.is_cluster_device_group
+                    v_source = "c"
+                else if dev.is_meta_device
+                    v_source = "m"
+                else
+                    v_source = "d"
+                dev.$num_vars_total = dev.device_variable_set.length
+                dev.$num_vars_parent = 0
+                dev.$num_vars_shadowed = 0
+                for d_var in dev.device_variable_set
+                    if not d_var.$selected?
+                        d_var.$selected = false
+                    # set var_type
+                    if d_var.var_type == "s"
+                        d_var.$var_type = "string"
+                        d_var.$var_value = d_var.val_str
+                    else if d_var.var_type == "i"
+                        d_var.$var_type = "integer"
+                        d_var.$var_value = d_var.val_int
+                    else if d_var.var_type == "b"
+                        d_var.$var_type = "blob"
+                        d_var.$var_value = d_var.val_blob.length + "bytes"
+                    else if d_var.var_type == "t"
+                        d_var.$var_type = "time"
+                        d_var.$var_value = d_var.val_time
+                    else if d_var.var_type == "d"
+                        d_var.$var_type = "datetime"
+                        d_var.$var_value = moment(d_var.val_date).format("dd, D. MMM YYYY HH:mm:ss")
+                    else
+                        d_var.$var_type = "VarType #{d_var.var_type}"
+                        d_var.$var_value = "unknown type #{d_var.var_type}"
+
+                    # source is device
+                    d_var.$source = v_source
+                    if d_var.name.match(filter_re)
+                        dev.device_variables_filtered.push(d_var)
+                    else
+                        dev.$var_filter_active = true
+                dev.$local_var_names = (d_var.name for d_var in dev.device_variables_filtered)
+                dev.$local_meta_var_names = []
+            # step 2: add meta-vars to devices
+            for dev in @devices
+                if not dev.is_meta_device
+                    meta = @tree.get_meta_device(dev)
+                    for d_var in meta.device_variables_filtered
+                        if d_var.inherit
+                            if d_var.name in dev.$local_var_names
+                                # var locally set, ignore
+                                dev.$num_vars_shadowed++
+                            else
+                                dev.device_variables_filtered.push(d_var)
+                                dev.$num_vars_total++
+                                dev.$num_vars_parent++
+                            # store in local_meta_var_names
+                            dev.$local_meta_var_names.push(d_var.name)
+            # step 3: add cdg vars to rest
+            cdg_dev = @tree.cluster_device_group_device
+            for dev in @devices
+                if dev.idx != cdg_dev.idx
+                    for d_var in cdg_dev.device_variables_filtered
+                        if d_var.inherit
+                            if d_var.name in dev.$local_var_names
+                                if d_var not in dev.$local_meta_var_names
+                                    dev.$num_vars_shadowed++
+                                else
+                                    # var already shadowed via meta, ignore
+                                    true
+                            else
+                                dev.device_variables_filtered.push(d_var)
+                                dev.$num_vars_total++
+                                dev.$num_vars_parent++
+                dev.$num_vars_filtered = dev.device_variables_filtered.length
+            # step 4: sort variables
+            for dev in @devices
+                icswTools.order_in_place(
+                    dev.device_variables_filtered
+                    ["name"]
+                    ["asc"]
+                )
+
+
+]).service("icswDeviceTreeHelperService",
+[
+    "icswDeviceTreeHelper",
+(
+    icswDeviceTreeHelper
+) ->
 
     return {
         "create": (tree, devices) ->
             return new icswDeviceTreeHelper(tree, devices)
     }
 
-]).service("icswEnrichmentInfo", ["icswNetworkTreeService", "icswTools", (icswNetworkTreeService, icswTools) ->
+]).service("icswEnrichmentInfo",
+[
+    "icswNetworkTreeService", "icswTools",
+(
+    icswNetworkTreeService, icswTools
+) ->
     # stores info about already fetched additional info from server
     class icswEnrichmentInfo
         constructor: (@device) ->
@@ -115,6 +237,7 @@ angular.module(
                 "snmp_info": "devicesnmpinfo"
                 "snmp_schemes_info": "snmp_schemes"
                 "scan_info": "active_scan"
+                "variable_info": "device_variable_set"
             }
             if req of _lut
                 return _lut[req]
@@ -244,7 +367,7 @@ angular.module(
                         if _pk not in devices_set
                             devices_set.push(_pk)
                     else
-                        console.log obj
+                        console.error "feed_results, ", obj
                         throw new Error("No device attribute found in object")
                 _missing = _.difference(en_req[key], devices_set)
                 for _pk in _missing
@@ -296,8 +419,13 @@ angular.module(
             @disabled_list.length = 0
             @enabled_lut = {}
             @disabled_lut = {}
+            @cluster_device_group_device = undefined
+            @cluster_device_group = undefined
             _disabled_groups = []
             for _entry in full_list
+                if _entry.is_cluster_device_group
+                    # oh what a name ...
+                    @cluster_device_group_device = _entry
                 @all_list.push(_entry)
                 if not _entry.is_meta_device and _entry.device_group in _disabled_groups
                     @disabled_list.push(_entry)
@@ -311,6 +439,9 @@ angular.module(
             @disabled_lut = icswTools.build_lut(@disabled_list)
             @all_lut = icswTools.build_lut(@all_list)
             @group_lut = icswTools.build_lut(@group_list)
+            # set the clusterDevice Group
+            if @cluster_device_group_device
+                @cluster_device_group = @group_lut[@cluster_device_group_device.device_group]
             # console.log @enabled_list.length, @disabled_list.length, @all_list.length
             @link()
 
@@ -478,7 +609,7 @@ angular.module(
             defer = $q.defer()
             Restangular.all(ICSW_URLS.REST_NET_IP_LIST.slice(1)).post(new_ip).then(
                 (new_obj) =>
-                    @_fetch_netip(new_obj.idx, defer, "created netip ", cur_nd)
+                    @_fetch_netip(new_obj.idx, defer, "created netip", cur_nd)
                 (not_ok) ->
                     defer.reject("ip not created")
             )
@@ -504,6 +635,43 @@ angular.module(
                     new_ip = new_ip[0]
                     dev = @all_lut[cur_nd.device]
                     dev.$$_enrichment_info.add_netip(new_ip, cur_nd)
+                    defer.resolve(msg)
+            )
+
+        # for device Variables
+
+        create_device_variable: (new_var) =>
+            # create new netIP
+            defer = $q.defer()
+            Restangular.all(ICSW_URLS.REST_DEVICE_VARIABLE_LIST.slice(1)).post(new_var).then(
+                (new_obj) =>
+                    @_fetch_device_variable(new_obj.idx, defer, "created variable")
+                (not_ok) ->
+                    defer.reject("variable not created")
+            )
+            return defer.promise
+
+        delete_device_variable: (del_var) =>
+            # ensure REST hooks
+            Restangular.restangularizeElement(null, del_var, ICSW_URLS.REST_DEVICE_VARIABLE_DETAIL.slice(1).slice(0, -2))
+            defer = $q.defer()
+            del_var.remove().then(
+                (ok) =>
+                    dev = @all_lut[del_var.device]
+                    console.log del_var, dev.device_variable_set
+                    _.remove(dev.device_variable_set, (entry) -> return entry.idx == del_var.idx)
+                    defer.resolve("deleted")
+                (error) ->
+                    defer.reject("not deleted")
+            )
+            return defer.promise
+
+        _fetch_device_variable: (pk, defer, msg) =>
+            Restangular.one(ICSW_URLS.REST_DEVICE_VARIABLE_LIST.slice(1)).get({"idx": pk}).then(
+                (new_var) =>
+                    new_var = new_var[0]
+                    dev = @all_lut[new_var.device]
+                    dev.device_variable_set.push(new_var)
                     defer.resolve(msg)
             )
 
@@ -661,6 +829,23 @@ angular.module(
                             @set_device_scan(@all_lut[_res.pk], _res.active_scan)
                         @scan_timeout = $timeout(@check_scans_running, 1000)
                 )
+
+        # device trace functions
+        get_device_trace: (devs)  =>
+            # get all devices (including meta-devices and the cluster device group)
+            # for devs
+            # intermediate result, as pks
+            _res = (dev.idx for dev in devs)
+
+            for _dev in devs
+                _md = @get_meta_device(_dev)
+                if _md.idx not in _res
+                    _res.push(_md.idx)
+
+            # add the cluster device group
+            _res.push(@cluster_device_group_device.idx)
+            # console.log "trace: in #{devs.length}, out #{_res.length}"
+            return (@all_lut[idx] for idx in _res)
 
 ]).service("icswDeviceTreeService",
 [

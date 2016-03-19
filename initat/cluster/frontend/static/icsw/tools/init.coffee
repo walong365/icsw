@@ -234,9 +234,11 @@ angular.module(
     return bus
 ]).directive("icswSelMan",
 [
-    "$rootScope", "ICSW_SIGNALS", "DeviceOverviewSelection", "DeviceOverviewSettings", "icswActiveSelectionService", "icswDeviceTreeService",
+    "$rootScope", "ICSW_SIGNALS", "DeviceOverviewSelection", "DeviceOverviewSettings",
+    "icswActiveSelectionService", "icswDeviceTreeService",
 (
-    $rootScope, ICSW_SIGNALS, DeviceOverviewService, DeviceOverviewSettings, icswActiveSelectionService, icswDeviceTreeService
+    $rootScope, ICSW_SIGNALS, DeviceOverviewService, DeviceOverviewSettings,
+    icswActiveSelectionService, icswDeviceTreeService
 ) ->
     # important: for icsw-sel-man to work the controller has to be specified separatedly (and not via overloading the link-function)
     # selection manager directive
@@ -247,13 +249,18 @@ angular.module(
         priority: -100
         link: (scope, el, attrs) ->
             # console.log "link selman to scope", scope
+            # store selection list
+            scope.$icsw_selman_list  = []
 
             _new_sel = (sel) ->
                 selman_mode = attrs["icswSelManSelMode"] || "d"
                 # console.log "SelMan new selection (mode #{selman_mode})", sel
                 selman_mode = attrs["icswSelManSelMode"] || "d"
                 if scope.new_devsel?
-                    scope.new_devsel(sel)
+                    scope.$icsw_selman_list.length = 0
+                    for entry in sel
+                        scope.$icsw_selman_list.push(entry)
+                    scope.new_devsel(scope.$icsw_selman_list)
                 else
                     console.log "no devsel_defined"
 
@@ -399,7 +406,12 @@ angular.module(
                 @ajax_dict[xhr_id]["state"]   = "done"
                 @ajax_dict[xhr_id]["runtime"] = new Date() - @ajax_dict[xhr_id]["start"]
                 @top_div.find("li##{xhr_id}").remove()
-]).service("_icswCallAjaxService", ["icswAjaxInfoService", "icswCSRFService", "$q", (icswAjaxInfoService, icswCSRFService, $q) ->
+]).service("_icswCallAjaxService",
+[
+    "icswAjaxInfoService", "icswCSRFService", "$q",
+(
+    icswAjaxInfoService, icswCSRFService, $q
+) ->
     local_ajax_info = new icswAjaxInfoService("div#ajax_info")
     default_ajax_dict =
         type       : "POST"
@@ -437,7 +449,13 @@ angular.module(
         )
 
         return _ret.promise
-]).service("icswSimpleAjaxCall", ["_icswCallAjaxService", "icswParseXMLResponseService", "$q", (_icswCallAjaxService, icswParseXMLResponseService, $q) ->
+
+]).service("icswSimpleAjaxCall",
+[
+    "_icswCallAjaxService", "icswParseXMLResponseService", "$q",
+(
+    _icswCallAjaxService, icswParseXMLResponseService, $q
+) ->
     return (in_dict) ->
         _def = $q.defer()
         if in_dict.ignore_log_level?
@@ -618,7 +636,12 @@ angular.module(
         reload: () ->
             reload(false)
    }, func_dict)
-]).service("initProduct", ["ICSW_URLS", "Restangular", (ICSW_URLS, Restangular) ->
+]).service("initProduct",
+[
+    "ICSW_URLS", "Restangular",
+(
+    ICSW_URLS, Restangular
+) ->
     product = {}
     Restangular.all(ICSW_URLS.USER_GET_INIT_PRODUCT.slice(1)).customGET().then(
         (new_data) ->
@@ -650,56 +673,55 @@ angular.module(
 ]).filter("paginator_filter", ["$filter", ($filter) ->
     return (arr, scope) ->
         return scope.pagSettings.apply_filter(arr)
-]).run(["Restangular", "toaster",
-    (Restangular, toaster) ->
-        Restangular.setRestangularFields(
-            {
-                "id" : "idx"
-            }
-        )
-        Restangular.setResponseInterceptor((data, operation, what, url, response, deferred) ->
-            if data.log_lines
-                for entry in data.log_lines
-                    toaster.pop(
-                        {20 : "success", 30 : "warning", 40 : "error", 50 : "error"}[entry[0]]
-                        entry[1]
-                        ""
-                    )
-            if data._change_list
-                $(data._change_list).each (idx, entry) ->
-                    toaster.pop("success", "", entry[0] + " : " + entry[1])
-                delete data._change_list
-            if data._messages
-                $(data._messages).each (idx, entry) ->
-                    toaster.pop("success", "", entry)
-            return data
-        )
-        Restangular.setErrorInterceptor((resp) ->
-            error_list = []
-            if typeof(resp.data) == "string"
-                if resp.data
-                    resp.data = {"error" : resp.data}
+]).run(["Restangular", "toaster", (Restangular, toaster) ->
+    Restangular.setRestangularFields(
+        {
+            "id" : "idx"
+        }
+    )
+    Restangular.setResponseInterceptor((data, operation, what, url, response, deferred) ->
+        if data.log_lines
+            for entry in data.log_lines
+                toaster.pop(
+                    {20 : "success", 30 : "warning", 40 : "error", 50 : "error"}[entry[0]]
+                    entry[1]
+                    ""
+                )
+        if data._change_list
+            $(data._change_list).each (idx, entry) ->
+                toaster.pop("success", "", entry[0] + " : " + entry[1])
+            delete data._change_list
+        if data._messages
+            $(data._messages).each (idx, entry) ->
+                toaster.pop("success", "", entry)
+        return data
+    )
+    Restangular.setErrorInterceptor((resp) ->
+        error_list = []
+        if typeof(resp.data) == "string"
+            if resp.data
+                resp.data = {"error" : resp.data}
+            else
+                resp.data = {}
+        for key, value of resp.data
+            key_str = if key == "__all__" then "error: " else "#{key} : "
+            if key != "_reset_list"
+                if Array.isArray(value)
+                    for sub_val in value
+                        if sub_val.non_field_errors
+                            error_list.push(key_str + sub_val.non_field_errors.join(", "))
+                        else
+                            error_list.push(key_str + String(sub_val))
                 else
-                    resp.data = {}
-            for key, value of resp.data
-                key_str = if key == "__all__" then "error: " else "#{key} : "
-                if key != "_reset_list"
-                    if Array.isArray(value)
-                        for sub_val in value
-                            if sub_val.non_field_errors
-                                error_list.push(key_str + sub_val.non_field_errors.join(", "))
-                            else
-                                error_list.push(key_str + String(sub_val))
-                    else
-                        if (typeof(value) == "object" or typeof(value) == "string") and (not key.match(/^_/) or key == "__all__")
-                            error_list.push(key_str + if typeof(value) == "string" then value else value.join(", "))
-            new_error_list = []
-            for _err in error_list
-                if _err not in new_error_list
-                    new_error_list.push(_err)
-                    toaster.pop("error", _err, "", 0)
-            return true
-        )
+                    if (typeof(value) == "object" or typeof(value) == "string") and (not key.match(/^_/) or key == "__all__")
+                        error_list.push(key_str + if typeof(value) == "string" then value else value.join(", "))
+        new_error_list = []
+        for _err in error_list
+            if _err not in new_error_list
+                new_error_list.push(_err)
+                toaster.pop("error", _err, "", 0)
+        return true
+    )
 ]).service("paginatorSettings", ["$filter", ($filter) ->
 # in fact identical ?
 # cur_mod.service("paginatorSettings", (paginator_class))
@@ -945,7 +967,12 @@ angular.module(
         BootstrapDialog.show bs_dict
         return d.promise
 
-]).service("icswToolsSimpleModalService", ["$q", ($q) ->
+]).service("icswToolsSimpleModalService",
+[
+    "$q",
+(
+    $q
+) ->
     return (question) ->
         d = $q.defer()
         BootstrapDialog.show

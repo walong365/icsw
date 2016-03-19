@@ -37,11 +37,12 @@ from rest_framework import serializers
 from initat.cluster.backbone.models import device_group, device, \
     cd_connection, domain_tree_node, category, netdevice, ComCapability, \
     partition_table, monitoring_hint, DeviceSNMPInfo, snmp_scheme, \
-    domain_name_tree, net_ip, peer_information, mon_ext_host
+    domain_name_tree, net_ip, peer_information, mon_ext_host, device_variable
 from initat.cluster.backbone.models.functions import can_delete_obj
 from initat.cluster.backbone.render import permission_required_mixin
 from initat.cluster.backbone.serializers import netdevice_serializer, ComCapabilitySerializer, \
-    partition_table_serializer, monitoring_hint_serializer, DeviceSNMPInfoSerializer, snmp_scheme_serializer
+    partition_table_serializer, monitoring_hint_serializer, DeviceSNMPInfoSerializer, \
+    snmp_scheme_serializer, device_variable_serializer
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from initat.tools import logging_tools, server_command, process_tools
 
@@ -444,6 +445,7 @@ class EnrichmentHelper(object):
         self._all["snmp_schemes_info"] = SNMPSchemeEnrichment()
         self._all["monitoring_hint_info"] = EnrichmentObject(monitoring_hint, monitoring_hint_serializer)
         self._all["scan_info"] = ScanEnrichment()
+        self._all["variable_info"] = EnrichmentObject(device_variable, device_variable_serializer)
 
     def create(self, key, pk_list):
         if key not in self._all:

@@ -55,12 +55,12 @@
 
 <script type="text/ng-template" id="icsw.layout.menubar.progress">
     <ul class="nav navbar-nav">
-        <li class="active" ng-if="num_gauges" ng-mouseover="device_quickselection()">
+        <li class="active" ng-if="num_gauges" ng-click="device_quickselection()">
             <div ng-repeat="(key, obj) in cur_gauges" class="progress" style="width:200px; margin-top:10px;">
                 <uib-progressbar animate="true" value="obj.value" type="success"><span>{{ obj.value }} %</span></uib-progressbar>
             </div>
         </li>
-        <li class="active" ng-if="num_gauges == 0" ng-mouseover="device_quickselection()">
+        <li class="active" ng-if="num_gauges == 0" ng-click="device_quickselection()">
             <img height="42px" ng-attr-src="{{ initProduct.menu_gfx_url }}" ng-click="redirect_to_init()" style="cursor: pointer" title="{{ initProduct.name }}" alt="{{ initProduct.name }}"/>
         </li>
     </ul>

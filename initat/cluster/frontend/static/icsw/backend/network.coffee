@@ -18,6 +18,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+# network related core services
+
 angular.module(
 
     # network tree handling (including speed and types)
@@ -30,9 +32,9 @@ angular.module(
     ]
 ).service("icswNetworkTree",
 [
-    "icswTools", "ICSW_URLS", "$q", "Restangular", "icswSimpleAjaxCall",
+    "icswTools", "ICSW_URLS", "$q", "Restangular",
 (
-    icswTools, ICSW_URLS, $q, Restangular, icswSimpleAjaxCall
+    icswTools, ICSW_URLS, $q, Restangular,
 ) ->
     class icswNetworkTree
         constructor: (@nw_list, @nw_speed_list, @nw_type_list, @nw_device_type_list, @nw_snmp_type_list) ->
@@ -230,9 +232,9 @@ angular.module(
 
 ]).service("icswPeerInformation",
 [
-    "icswTools", "ICSW_URLS", "$q", "Restangular", "icswSimpleAjaxCall", "icswPeerHelperObject",
+    "icswTools", "ICSW_URLS", "$q", "Restangular", "icswPeerHelperObject",
 (
-    icswTools, ICSW_URLS, $q, Restangular, icswSimpleAjaxCall, icswPeerHelperObject
+    icswTools, ICSW_URLS, $q, Restangular, icswPeerHelperObject
 ) ->
     class icswPeerInformation
         constructor: (@list, @peer_list, @device_pk_list) ->

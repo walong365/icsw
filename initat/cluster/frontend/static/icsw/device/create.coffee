@@ -67,6 +67,7 @@ angular.module(
     $scope.data_ready = false
 
     $scope.reload = () ->
+        blockUI.start("Fetching data from server")
         $q.all(
             [
                 icswDeviceTreeService.load($scope.$id)
@@ -83,9 +84,9 @@ angular.module(
                 # to speed up testing
 
                 $scope.resolve_name()
+                blockUI.stop()
                 $scope.data_ready = true
         )
-
     $scope.reload()
 
     $scope.get_image_src = () ->
