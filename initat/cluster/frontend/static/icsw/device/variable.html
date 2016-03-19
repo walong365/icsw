@@ -70,10 +70,10 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.variable.overview">
-    <h2>
-        Device variables ({{ devices.length }} devices)
-    </h2>
     <icsw-tools-ensure-device-selection dev-list="struct.devices" list-ready="dataLoaded">
+        <h2>
+            Device variables ({{ struct.devices.length }} devices)
+        </h2>
         <div class="row">
             <div class="col-sm-5 form-inline">
                 <div class="form-group">
