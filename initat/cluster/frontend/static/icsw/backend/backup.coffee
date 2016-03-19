@@ -245,4 +245,16 @@ angular.module(
                 "var_type", "val_str", "val_int", "val_blob", "val_data", "val_time",
             ]
 
+]).service("icswDomainTreeNodeBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswDomainTreeNodeBackupDefinition extends icswBackupDefinition
+
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "name", "full_name", "parent", "node_postfix", "depth",
+                "intermediate", "create_short_names", "always_create_ip",
+                "write_nameserver_config",
+            ]
+
 ])

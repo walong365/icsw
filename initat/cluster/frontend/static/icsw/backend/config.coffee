@@ -21,7 +21,8 @@
 config_module = angular.module(
     "icsw.backend.config",
     [
-        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.codemirror", "angularFileUpload", "ui.select", "icsw.tools.button",
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.codemirror",
+        "angularFileUpload", "ui.select", "icsw.tools.button",
     ]
 ).service("icswConfigTree",
 [
@@ -414,18 +415,5 @@ config_module = angular.module(
                 return fetch_data(client).promise
             else
                 return load_data(client).promise
-
-        #"get_num_selected_configs": () ->
-        #    return num_selected_configs
-        #"set_num_selected_configs": (num) ->
-        #    num_selected_configs = num
-        #"load_single_config": (pk) ->
-        #    _d = $q.defer()
-        #    Restangular.all(rest_map[0][0].slice(1)).get(pk).then(
-        #        (new_obj) ->
-        #            _result[0].push(new_obj)
-        #            _d.resolve(new_obj)
-        #    )
-        #    return _d.promise
     }
 ])

@@ -1,7 +1,5 @@
 <script type="text/ng-template" id="icsw/main/device/domaintree.html">
-    <div ng-controller="icswConfigDomainNameTreeCtrl">
-        <icsw-config-domain-name-tree></icsw-config-domain-name-tree>
-    </div>
+    <icsw-config-domain-name-tree></icsw-config-domain-name-tree>
 </script>
 
 <script type="text/ng-template" id="icsw.config.domain.name.tree.head">
@@ -30,7 +28,10 @@
 </script>
 
 <script type="text/ng-template" id="icsw.config.domain.name.tree">
-    <h2>Domain name tree ({{entries.length}} entries), <icsw-tools-button type="create" value="create new" ng-click="create_new($event)" size="sm"/></h2>
+    <h2>
+        Domain name tree ({{ tree.list.length}} entries),
+        <icsw-tools-button type="create" size="xs" value="create new" ng-click="create_or_edit($event, true, null)"/>
+    </h2>
     <div class="panel panel-default">
         <div class="panel-body">
             <div class="row">
@@ -38,14 +39,7 @@
                     <div class="row">
                         <div class="col-sm-12">
                             <h3>Tree view</h3>
-                            <tree treeconfig="dnt"></tree>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-sm-12">
-                            <h3>Create / modify</h3>
-                            <div icsw-config-domain-name-tree-edit-template ng-if="modal_active && !settings.use_modal" class="well well-sm">
-                            </div>
+                            <tree treeconfig="dn_tree"></tree>
                         </div>
                     </div>
                 </div>
@@ -54,8 +48,7 @@
                     <table class="table table-condensed table-hover" style="width:auto;">
                         <thead icsw-config-domain-name-tree-head dtnhead></thead>
                         <tbody>
-                            <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="20"></td></tr>
-                            <tr icsw-config-domain-name-tree-row ng-repeat="obj in entries | paginator:this"></tr>
+                            <tr icsw-config-domain-name-tree-row ng-repeat="obj in tree.list"></tr>
                         </tbody>
                     </table>
                 </div>
@@ -64,27 +57,30 @@
     </div>
 </script>
 
-<script type="text/ng-template" id="domain.tree.node.form">
-    <form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form">
+<script type="text/ng-template" id="icsw.config.domain.tree.node.form">
+    <form class="form-horizontal" name="form_data">
         <div>
-            <h2>Domain tree node details for {{ _edit_obj.full_name }}</h2>
+            <h2>Domain tree node details for {{ edit_obj.full_name }}</h2>
             <fieldset>
                 <legend>Basic settings</legend>
-                <div id="div_id_name" class="form-group">
-                    <label for="id_name" class="control-label col-sm-2 requiredField">
-                        Name<span class="asteriskField">*</span></label>
-
-                    <div class="controls col-sm-8"><input class="textinput textInput form-control" id="id_name" maxlength="64" name="name" ng-model="_edit_obj.name" required="True" type="text"></input></div>
-                </div>
-                <div id="div_id_parent" class="form-group">
-                    <label for="id_parent" class="control-label col-sm-2 requiredField">
-                        Parent<span class="asteriskField">*</span></label>
-
+                <div class="form-group">
+                    <label class="control-label col-sm-2 requiredField">
+                        Name<span class="asteriskField">*</span>
+                    </label>
                     <div class="controls col-sm-8">
-                        <ui-select ng-model="_edit_obj.parent" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                            <ui-select-match class="ui-select-match" placeholder="Select a parent node">{{$select.selected.tree_info}}
+                        <input class="textinput textInput form-control" maxlength="64" name="name" ng-model="edit_obj.name" required="True" type="text"/>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="control-label col-sm-2 requiredField">
+                        Parent<span class="asteriskField">*</span>
+                    </label>
+                    <div class="controls col-sm-8">
+                        <ui-select ng-model="edit_obj.parent" style="max-width:400px; min-width:240px;">
+                            <ui-select-match class="ui-select-match" placeholder="Select a parent node">
+                                {{ $select.selected.tree_info }}
                             </ui-select-match>
-                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in get_valid_parents(_edit_obj)| props_filter:{tree_info:$select.search}">
+                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in valid_parents | props_filter:{tree_info:$select.search}">
                                 <div ng-bind-html="value.tree_info | highlight: $select.search"></div>
                             </ui-select-choices>
                         </ui-select>
@@ -92,51 +88,65 @@
                 </div>
             </fieldset>
             <fieldset>
+                <legend>Info</legend>
+                <div class="row">
+                    <div class="col-md-12">
+                        Device <code>node01</code> will get the name <code>node01{{ edit_obj.node_postfix }}.{{ edit_obj.name }}<span ng-show="tree.lut[edit_obj.parent].depth">.{{ tree.lut[edit_obj.parent].full_name }}</span></code>
+                    </div>
+                </div>
+            </fieldset>
+            <fieldset>
                 <legend>Additional settings</legend>
-                <div id="div_id_node_postfix" class="form-group">
-                    <label for="id_node_postfix" class="control-label col-sm-2">
+                <div class="form-group">
+                    <label class="control-label col-sm-2">
                         Node postfix
                     </label>
-
-                    <div class="controls col-sm-8"><input class="textinput textInput form-control" id="id_node_postfix" maxlength="16" name="node_postfix" ng-model="_edit_obj.node_postfix" type="text"></input></div>
+                    <div class="controls col-sm-8">
+                        <input class="textinput textInput form-control" maxlength="16" ng-model="edit_obj.node_postfix" type="text"/>
+                    </div>
                 </div>
-                <div id="div_id_comment" class="form-group">
-                    <label for="id_comment" class="control-label col-sm-2">
+                <div class="form-group">
+                    <label class="control-label col-sm-2">
                         Comment
                     </label>
-
-                    <div class="controls col-sm-8"><input class="textinput textInput form-control" id="id_comment" maxlength="256" name="comment" ng-model="_edit_obj.comment" type="text"></input></div>
+                    <div class="controls col-sm-8">
+                        <input class="textinput textInput form-control" maxlength="256" name="comment" ng-model="edit_obj.comment" type="text"/>
+                    </div>
                 </div>
             </fieldset>
             <fieldset>
                 <legend>Flags</legend>
                 <div class="form-group">
-                    <div id="div_id_create_short_names" class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-8"><label for="id_create_short_names"><input checked="checked" class="checkboxinput checkbox" id="id_create_short_names" name="create_short_names" ng-model="_edit_obj.create_short_names" type="checkbox"></input>
-                            Create short names
-                        </label></div>
+                    <div class="checkbox">
+                        <div class="controls col-lg-offset-0 col-sm-8">
+                            <label>
+                                <input checked="checked" class="checkboxinput checkbox" name="create_short_names" ng-model="edit_obj.create_short_names" type="checkbox"/>
+                                Create short names
+                            </label>
+                        </div>
                     </div>
                 </div>
                 <div class="form-group">
-                    <div id="div_id_always_create_ip" class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-8"><label for="id_always_create_ip"><input class="checkboxinput checkbox" id="id_always_create_ip" name="always_create_ip" ng-model="_edit_obj.always_create_ip" type="checkbox"></input>
-                            Always create ip
-                        </label></div>
+                    <div class="checkbox">
+                        <div class="controls col-lg-offset-0 col-sm-8">
+                            <label>
+                                <input class="checkboxinput checkbox" ng-model="edit_obj.always_create_ip" type="checkbox"/>
+                                Always create ip
+                            </label>
+                        </div>
                     </div>
                 </div>
                 <div class="form-group">
-                    <div id="div_id_write_nameserver_config" class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-8"><label for="id_write_nameserver_config"><input class="checkboxinput checkbox" id="id_write_nameserver_config" name="write_nameserver_config" ng-model="_edit_obj.write_nameserver_config" type="checkbox"></input>
-                            Write nameserver config
-                        </label></div>
+                    <div class="checkbox">
+                        <div class="controls col-lg-offset-0 col-sm-8">
+                            <label>
+                                <input class="checkboxinput checkbox" ng-model="edit_obj.write_nameserver_config" type="checkbox"/>
+                                Write nameserver config
+                            </label>
+                        </div>
                     </div>
                 </div>
             </fieldset>
-            <div class="form-actions">
-                <input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="get_action_string()"></input>
-                &#160;<input type="button" name="close" value="close" class="btn btn-warning" id="button-id-close" ng-click="close_modal()"></input>
-                &#160;<input type="button" name="delete" value="delete" class="btn btn-danger" id="button-id-delete" ng-click="delete_obj(_edit_obj)"></input>
-            </div>
         </div>
     </form>
 </script>

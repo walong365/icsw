@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2015 init.at
+# Copyright (C) 2012-2016 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -39,11 +39,6 @@ device_variable_module = angular.module(
                     ordering: 30
         }
     )
-]).directive("icswDeviceVariableHead", ["$templateCache", ($templateCache) ->
-    return {
-        restrict : "EA"
-        template : $templateCache.get("icsw.device.variable.head")
-    }
 ]).controller("icswConfigVarsCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$uibModal", "ICSW_URLS", "icswDeviceConfigurationConfigVarTreeService", "icswSimpleAjaxCall",
     ($scope, $compile, $filter, $templateCache, Restangular, $q, $uibModal, ICSW_URLS, icswDeviceConfigurationConfigVarTreeService, icswSimpleAjaxCall) ->
         $scope.devvar_tree = new icswDeviceConfigurationConfigVarTreeService($scope)
@@ -105,7 +100,12 @@ device_variable_module = angular.module(
                 filter_re
             )
             $scope.devvar_tree.show_selected(false)
-]).directive("icswDeviceConfigurationVarOverview", ["$templateCache", "$compile", "$uibModal", "Restangular", ($templateCache, $compile, $uibModal, Restangular) ->
+]).directive("icswDeviceConfigurationVarOverview",
+[
+    "$templateCache",
+(
+    $templateCache,
+) ->
     return {
         scope: true
         restrict : "EA"
@@ -352,23 +352,6 @@ device_variable_module = angular.module(
                 create_or_edit(scope, event, true, null)
 
     }
-]).directive("icswDeviceVariableRow", ["$templateCache", ($templateCache) ->
-    return {
-        restrict: "EA"
-        template: $templateCache.get("icsw.device.variable.row")
-    }
-]).directive("icswDeviceVariableTable",
-[
-    "$templateCache", "$compile", "$q", "Restangular", "ICSW_URLS",
-(
-    $templateCache, $compile, $q, Restangular, ICSW_URLS,
-) ->
-    return {
-        restrict : "EA"
-        template : $templateCache.get("icsw.device.variable.table")
-        link : (scope, el, attrs) ->
-            scope.device = scope.$eval(attrs["device"])
-    }
 ]).controller("icswDeviceVariableCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "blockUI",
@@ -434,5 +417,37 @@ device_variable_module = angular.module(
         restrict: "EA"
         template: $templateCache.get("icsw.device.variable.overview")
         controller: "icswDeviceVariableCtrl"
+    }
+]).directive("icswDeviceVariableTable",
+[
+    "$templateCache", "$compile", "$q", "Restangular", "ICSW_URLS",
+(
+    $templateCache, $compile, $q, Restangular, ICSW_URLS,
+) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("icsw.device.variable.table")
+        link : (scope, el, attrs) ->
+            scope.device = scope.$eval(attrs["device"])
+    }
+]).directive("icswDeviceVariableHead",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("icsw.device.variable.head")
+    }
+]).directive("icswDeviceVariableRow",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.device.variable.row")
     }
 ])

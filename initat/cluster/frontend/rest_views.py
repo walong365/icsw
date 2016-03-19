@@ -390,8 +390,8 @@ class list_view(mixins.ListModelMixin,
     @rest_logging
     def get_queryset(self):
         model_name = self.model._meta.model_name
-        if model_name == "domain_tree_node":
-            return domain_name_tree()
+        # if model_name == "domain_tree_node":
+        #    return domain_name_tree()
         # elif model_name == "category":
         #    return category_tree(with_ref_count=True)
         related_fields, prefetch_fields = (
