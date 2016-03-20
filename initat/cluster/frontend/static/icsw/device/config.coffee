@@ -49,9 +49,18 @@ angular.module(
     # helper service for config changes
 
     class icswDeviceConfigHelper
-        constructor: (@device_tree, @config_tree, @devices) ->
+        constructor: (@device_tree, @config_tree) ->
             console.log "ch init", @
             @active_configs = []
+            @devices = []
+
+        set_devices: (dev_list) =>
+            # create a copy of the device list, otherwise
+            # the list could be changed from icsw-sel-man without
+            # the necessary helper objects ($local_selected)
+            @devices.length = 0
+            for dev in dev_list
+                @devices.push(dev)
             @link()
 
         link: () =>
@@ -205,24 +214,32 @@ angular.module(
 
     $scope.helper = undefined
 
-    $scope.devices = []
     $scope.name_filter = ""
     $scope.new_config_name = ""
     $scope.matrix = true
     $scope.only_selected = false
     $scope.new_devsel = (_dev_sel) ->
-        wait_list = [
-            icswDeviceTreeService.load($scope.$id)
-            icswConfigTreeService.load($scope.$id)
-        ]
-        $q.all(wait_list).then(
-            (data) ->
-                console.log data, _dev_sel
-                $scope.device_tree = data[0]
-                $scope.config_tree = data[1]
-                $scope.devices = _dev_sel
-                $scope.helper = new icswDeviceConfigHelper($scope.device_tree, $scope.config_tree, $scope.devices)
-
+        local_defer = $q.defer()
+        if not $scope.device_tree
+            $q.all(
+                [
+                    icswDeviceTreeService.load($scope.$id)
+                    icswConfigTreeService.load($scope.$id)
+                ]
+            ).then(
+                (data) ->
+                    $scope.device_tree = data[0]
+                    $scope.config_tree = data[1]
+                    $scope.helper = new icswDeviceConfigHelper($scope.device_tree, $scope.config_tree)
+                    local_defer.resolve("init done")
+            )
+        else
+            local_defer.resolve("already init")
+        local_defer.promise.then(
+            (init_msg) ->
+                $scope.helper.set_devices(_dev_sel)
+                # create instance with $local_selected,
+                # $scope.helper = new icswDeviceConfigHelper($scope.device_tree, $scope.config_tree, _dev_sel)
                 $scope.$watch("name_filter", (new_val) ->
                     if $scope.filter_to?
                         $timeout.cancel($scope.filter_to)

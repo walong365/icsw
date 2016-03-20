@@ -45,7 +45,7 @@ device_variable_module = angular.module(
         $scope.var_filter = ""
         $scope.loaded = false
         $scope.new_devsel = (_dev_sel) ->
-            console.log _dev_sel
+            console.log "icswConfigVarsCtrl", _dev_sel
             # $scope.devsel_list = _dev_sel
         $scope.load_vars = () ->
             if not $scope.loaded

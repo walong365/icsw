@@ -7,7 +7,7 @@
 
 <script type="text/ng-template" id="icsw.device.configuration.overview">
     <h2>
-        Device config ({{ devices.length }} devices), {{ configs.length }} configurations ({{ helper.active_configs.length }} shown)
+        Device config ({{ helper.devices.length }} devices), {{ configs.length }} configurations ({{ helper.active_configs.length }} shown)
     </h2>
     <div class="form-inline">
         <input class="form-control" ng-model="name_filter" placeholder="filter"/>,
@@ -30,13 +30,13 @@
             </div>
         </div>
     </div>
-    <uib-accordion ng-show="devices.length" close-others="false">
+    <uib-accordion ng-show="helper.devices.length" close-others="false">
         <uib-accordion-group is-open="matrix">
             <uib-accordion-heading>
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': matrix, 'glyphicon-chevron-right': !matrix}"></i>
                 Config matrix
             </uib-accordion-heading>
-            <table ng-show="devices.length" class="table table-condensed table-hover" style="width:auto;">
+            <table ng-show="helper.devices.length" class="table table-condensed table-hover" style="width:auto;">
                 <thead>
                     <tr>
                         <th colspan="3">&nbsp;</th>
@@ -54,7 +54,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr ng-repeat="dev in devices">
+                    <tr ng-repeat="dev in helper.devices">
                         <th ng-class="get_th_class(dev)">{{ get_name(dev) }}</th>
                         <td class="text-center">{{ dev.$local_selected.length }}</td>
                         <td class="text-center">
