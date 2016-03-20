@@ -41,7 +41,7 @@ class domain_tree_node_serializer(serializers.ModelSerializer):
 
 class category_serializer(serializers.ModelSerializer):
     allow_add_remove = True
-    reference_dict = serializers.JSONField(source="get_references", read_only=True)
+    reference_dict = serializers.JSONField(source="get_reference_dict", read_only=True)
 
     class Meta:
         model = category

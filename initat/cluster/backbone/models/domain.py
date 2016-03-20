@@ -531,7 +531,7 @@ class category(models.Model):
     def single_select(self):
         return True if self.full_name.startswith("/location/") else False
 
-    def get_references(self):
+    def get_reference_dict(self):
         all_m2ms = [
             _f for _f in self._meta.get_fields(include_hidden=True) if _f.many_to_many and _f.auto_created
         ]

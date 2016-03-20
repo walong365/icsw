@@ -375,10 +375,12 @@ angular.module(
 
 ]).service("icswDeviceTree",
 [
-    "icswTools", "ICSW_URLS", "$q", "Restangular", "icswEnrichmentInfo", "icswSimpleAjaxCall", "$rootScope", "$timeout",
+    "icswTools", "ICSW_URLS", "$q", "Restangular", "icswEnrichmentInfo",
+    "icswSimpleAjaxCall", "$rootScope", "$timeout",
     "ICSW_SIGNALS", "icswDeviceTreeHelper", "icswNetworkTreeService",
 (
-    icswTools, ICSW_URLS, $q, Restangular, icswEnrichmentInfo, icswSimpleAjaxCall, $rootScope, $timeout,
+    icswTools, ICSW_URLS, $q, Restangular, icswEnrichmentInfo,
+    icswSimpleAjaxCall, $rootScope, $timeout,
     ICSW_SIGNALS, icswDeviceTreeHelper, icswNetworkTreeService
 ) ->
     class icswDeviceTree
@@ -392,6 +394,11 @@ angular.module(
             @enricher = new icswEnrichmentInfo(@)
             @build_luts(full_list)
 
+            # install global signal handlers
+            $rootScope.$on(ICSW_SIGNALS("ICSW_DOMAIN_NAME_TREE_CHANGED"), (event, domain_tree) =>
+                # domain name tree changed, build full_names and reorder
+                @reorder()
+            )
             # init scan infrastructure
             @init_device_scans()
 
@@ -411,6 +418,9 @@ angular.module(
                     ["desc", "asc", "desc", "asc"]
                 )
             )
+
+        dnt_changed: () =>
+            console.log "DNT CHANGED", @domain_tree
 
         build_luts: (full_list) =>
             # build luts and create enabled / disabled lists

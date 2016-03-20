@@ -86,6 +86,8 @@ angular.module(
                 ["asc"]
             )
 
+        # utility functions
+
         get_full_name: (dev) =>
             if dev.domain_tree_node
                 node = @lut[dev.domain_tree_node]
@@ -138,7 +140,6 @@ angular.module(
             Restangular.one(ICSW_URLS.REST_DOMAIN_TREE_NODE_LIST.slice(1)).get({"idx": pk}).then(
                 (new_dtn) =>
                     new_dtn = new_dtn[0]
-                    console.log "NEW", new_dtn
                     @list.push(new_dtn)
                     loc_defer = $q.defer()
                     if new_dtn.parent and new_dtn.parent not of @lut

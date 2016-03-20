@@ -2,20 +2,6 @@
     <icsw-config-domain-name-tree></icsw-config-domain-name-tree>
 </script>
 
-<script type="text/ng-template" id="icsw.config.domain.name.tree.head">
-    <tr>
-        <th>Name</th>   
-        <th>Nodename</th>
-        <th>depth</th>
-        <th>comment</th>
-        <th>SN</th>
-        <th>IP</th>
-        <th>NS</th>
-        <th>Select</th>
-        <th colspan="2">Action</th>
-    </tr>
-</script>
-
 <script type="text/ng-template" id="icsw.config.domain.name.tree.row">
     <td style="font-family:monospace;"><span ng-bind-html="get_space(obj.depth )"></span>{{ obj.name || '[TLN]' }}</td>
     <td><span ng-show="obj.depth">*{{ obj.node_postfix }}.{{ obj.full_name }}</span></td>
@@ -33,26 +19,33 @@
 
 <script type="text/ng-template" id="icsw.config.domain.name.tree">
     <h2>
-        Domain name tree ({{ struct.tree.list.length}} entries),
+        Domain name tree ({{ struct.tree.list.length}} entries)
     </h2>
     <div class="panel panel-default">
         <div class="panel-body" ng-if="struct.tree">
             <icsw-tools-rest-table-new target-list="tree_nodes" config-service="icswConfigDTNListService" icsw-config-object="struct">
                 <icsw-tools-button type="create" size="sm" value="create new" ng-click="create($event, null)"/>
+                <icsw-tools-button type="delete" ng-show="icswConfigObject.num_active" size="sm" value="delete selected" ng-click="special_fn($event, 'delete_many', null)"/>
                 <div class="row">
-                    <div class="col-sm-6">
-                        <div class="row">
-                            <div class="col-sm-12">
-                                <h3>Tree view</h3>
-                                <tree treeconfig="dn_tree" config-service="icswConfigDTNListService" icsw-config-object="icswConfigObject"></tree>
-                            </div>
-                        </div>
+                    <div class="col-sm-4">
+                        <h3>Tree view</h3>
+                        <tree treeconfig="dn_tree" config-service="icswConfigDTNListService" icsw-config-object="icswConfigObject"></tree>
                     </div>
-                    <div class="col-sm-6">
+                    <div class="col-sm-8">
                         <h3>Table view</h3>
                         <table st-table="tree_nodes_displayed" st-safe-src="tree_nodes" class="table table-condensed table-hover" style="width:auto;">
                             <thead>
-                                <icsw-config-domain-name-tree-head></icsw-config-domain-name-tree-head>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Nodename</th>
+                                    <th>depth</th>
+                                    <th>comment</th>
+                                    <th>SN</th>
+                                    <th>IP</th>
+                                    <th>NS</th>
+                                    <th>Select</th>
+                                    <th colspan="2">Action</th>
+                                </tr>
                                 <tr>
                                     <td colspan="99">
                                         <div

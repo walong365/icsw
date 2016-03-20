@@ -67,9 +67,6 @@ angular.module(
                 return "TOP"
 
         handle_click: (entry, event) =>
-            # if not entry.active
-            #    # i am not the active node, clear others
-            #    @clear_active()
             dtn = entry.obj
             if dtn.depth
                 if entry.active
@@ -77,6 +74,7 @@ angular.module(
                 else
                     entry.active = true
                     @show_active()
+                    @scope.update_active()
                     # sync table
                     @scope.$digest()
 
@@ -96,6 +94,7 @@ angular.module(
         icswDomainTreeService.load($scope.$id).then(
             (tree) ->
                 $scope.struct.tree = tree
+                $scope.struct.num_active = 0
                 $scope.struct.dn_tree = $scope.dn_tree
                 $scope.rebuild_dnt()
         )
@@ -104,6 +103,10 @@ angular.module(
         $scope.rebuild_dnt()
 
     )
+
+    $scope.update_active = ( )->
+        $scope.struct.num_active = $scope.dn_tree.get_active().length
+
     $scope.rebuild_dnt = () ->
         # save previous active nodes
         active = (entry.obj.idx for entry in $scope.dn_tree.get_active())
@@ -156,6 +159,8 @@ angular.module(
             leaf = dtn.$$leaf
             leaf.active = !leaf.active
             leaf.config.show_active()
+            # leaf -> tree -> scope
+            leaf.config.scope.update_active()
 
         create_or_edit: (scope, event, create, obj_or_parent) ->
             if create
@@ -237,7 +242,7 @@ angular.module(
                         scope.tree.delete_domain_tree_node_entry(sub_scope.edit_obj).then(
                             (ok) ->
                                 # sync with tree
-                                $rootScope.$emit(ICSW_SIGNALS("ICSW_DOMAIN_NAME_TREE_CHANGED"))
+                                $rootScope.$emit(ICSW_SIGNALS("ICSW_DOMAIN_NAME_TREE_CHANGED"), scope.tree)
                                 d.resolve("deleted")
                             (notok) ->
                                 d.reject("not deleted")
@@ -254,7 +259,7 @@ angular.module(
             ).then(
                 (fin) ->
                     console.log "finish"
-                    $rootScope.$emit(ICSW_SIGNALS("ICSW_DOMAIN_NAME_TREE_CHANGED"))
+                    $rootScope.$emit(ICSW_SIGNALS("ICSW_DOMAIN_NAME_TREE_CHANGED"), scope.tree)
                     sub_scope.$destroy()
             )
 
@@ -263,23 +268,27 @@ angular.module(
                 () =>
                     scope.tree.delete_domain_tree_node_entry(obj).then(
                         () ->
-                            $rootScope.$emit(ICSW_SIGNALS("ICSW_DOMAIN_NAME_TREE_CHANGED"))
+                            $rootScope.$emit(ICSW_SIGNALS("ICSW_DOMAIN_NAME_TREE_CHANGED"), scope.tree)
                             console.log "dtn deleted"
                     )
             )
 
+        special_fn: (scope, event, fn_name, obj) ->
+            if fn_name == "delete_many"
+                active = scope.dn_tree.get_active()
+                console.log active
+                icswToolsSimpleModalService("Really delete #{active.length} DomainTreeNodes ?").then(
+                    (doit) ->
+                        $q.allSettled(
+                            (scope.tree.delete_domain_tree_node_entry(entry.obj) for entry in active)
+                        ).then(
+                            (result) ->
+                                console.log result
+                                $rootScope.$emit(ICSW_SIGNALS("ICSW_DOMAIN_NAME_TREE_CHANGED"), scope.tree)
+                                console.log "many dtn deleted"
+                        )
+                )
 
-    }
-]).directive("icswConfigDomainNameTreeHead",
-[
-    "$templateCache",
-(
-    $templateCache
-) ->
-    return {
-        restrict : "EA"
-        template : $templateCache.get("icsw.config.domain.name.tree.head")
-        replace: true
     }
 ]).directive("icswConfigDomainNameTreeRow",
 [

@@ -222,6 +222,9 @@ class DBPrefetchMixin(object):
     def _network_prefetch(self):
         return ["network_device_type", "net_ip_set"]
 
+    def _category_prefetch(self):
+        return ["config_set", "device_set", "mon_check_command_set", "deviceselection_set"]
+
     def _virtual_desktop_protocol_prefetch(self):
         return ["devices"]
 

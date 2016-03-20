@@ -93,7 +93,7 @@ angular.module(
                 ["asc"]
             )
 
-        # category create / delete category entries
+        # category create / delete functions
 
         create_category_entry: (new_ce) =>
             # create new category entry
@@ -124,7 +124,6 @@ angular.module(
             Restangular.one(ICSW_URLS.REST_CATEGORY_LIST.slice(1)).get({"idx": pk}).then(
                 (new_ce) =>
                     new_ce = new_ce[0]
-                    console.log "NEW", new_ce
                     @list.push(new_ce)
                     loc_defer = $q.defer()
                     if new_ce.parent and new_ce.parent not of @lut
