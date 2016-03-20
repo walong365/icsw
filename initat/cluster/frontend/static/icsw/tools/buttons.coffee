@@ -132,7 +132,7 @@ angular.module(
     return {
         restict: "EA"
         template: """
-<button class="btn btn-xs form-control" ng-class="get_class()" ng-click="change_value($event)">{{ get_value() }}</button>
+<button class="btn btn-xs form-control" ng-class="get_class()" style="width:100px;" ng-click="change_value($event)">{{ get_value() }}</button>
 """
         scope:
             flag: "="

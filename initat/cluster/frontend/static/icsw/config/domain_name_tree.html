@@ -75,18 +75,18 @@
             <fieldset>
                 <legend>Basic settings</legend>
                 <div class="form-group">
-                    <label class="control-label col-sm-2 requiredField">
+                    <label class="control-label col-sm-3 requiredField">
                         Name<span class="asteriskField">*</span>
                     </label>
-                    <div class="controls col-sm-8">
+                    <div class="controls col-sm-9">
                         <input class="textinput textInput form-control" maxlength="64" name="name" ng-model="edit_obj.name" required="True" type="text"/>
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="control-label col-sm-2 requiredField">
+                    <label class="control-label col-sm-3 requiredField">
                         Parent<span class="asteriskField">*</span>
                     </label>
-                    <div class="controls col-sm-8">
+                    <div class="controls col-sm-9">
                         <ui-select ng-model="edit_obj.parent" style="max-width:400px; min-width:240px;">
                             <ui-select-match class="ui-select-match" placeholder="Select a parent node">
                                 {{ $select.selected.tree_info }}
@@ -109,18 +109,18 @@
             <fieldset>
                 <legend>Additional settings</legend>
                 <div class="form-group">
-                    <label class="control-label col-sm-2">
+                    <label class="control-label col-sm-3">
                         Node postfix
                     </label>
-                    <div class="controls col-sm-8">
+                    <div class="controls col-sm-9">
                         <input class="textinput textInput form-control" maxlength="16" ng-model="edit_obj.node_postfix" type="text"/>
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="control-label col-sm-2">
+                    <label class="control-label col-sm-3">
                         Comment
                     </label>
-                    <div class="controls col-sm-8">
+                    <div class="controls col-sm-9">
                         <input class="textinput textInput form-control" maxlength="256" name="comment" ng-model="edit_obj.comment" type="text"/>
                     </div>
                 </div>
@@ -129,31 +129,37 @@
                 <legend>Flags</legend>
                 <div class="form-group">
                     <div class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-8">
+                        <div class="control-label col-lg-offset-0 col-sm-3">
                             <label>
-                                <input checked="checked" class="checkboxinput checkbox" name="create_short_names" ng-model="edit_obj.create_short_names" type="checkbox"/>
                                 Create short names
                             </label>
                         </div>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <div class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-8">
-                            <label>
-                                <input class="checkboxinput checkbox" ng-model="edit_obj.always_create_ip" type="checkbox"/>
-                                Always create ip
-                            </label>
+                        <div class="controls col-lg-offset-0 col-sm-2">
+                            <icsw-tools-yes-no flag="edit_obj.create_short_names"></icsw-tools-yes-no>
                         </div>
                     </div>
                 </div>
                 <div class="form-group">
                     <div class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-8">
+                        <div class="control-label col-lg-offset-0 col-sm-3">
                             <label>
-                                <input class="checkboxinput checkbox" ng-model="edit_obj.write_nameserver_config" type="checkbox"/>
+                                Always create ip
+                            </label>
+                        </div>
+                        <div class="controls col-lg-offset-0 col-sm-2">
+                            <icsw-tools-yes-no flag="edit_obj.always_create_ip"></icsw-tools-yes-no>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="checkbox">
+                        <div class="control-label col-lg-offset-0 col-sm-3">
+                            <label>
                                 Write nameserver config
                             </label>
+                        </div>
+                        <div class="controls col-lg-offset-0 col-sm-2">
+                            <icsw-tools-yes-no flag="edit_obj.write_nameserver_config"></icsw-tools-yes-no>
                         </div>
                     </div>
                 </div>
