@@ -109,24 +109,24 @@ angular.module(
 
         toggle_active_obj: (obj) =>
             node = @lut[obj.idx]
-            if node.depth
+            if node.obj
                 node.active = !node.active
                 @show_active()
                 @scope.update_active()
-                @scope.$digest()
 
         handle_click: (entry, event) =>
             @toggle_active_obj(entry.obj)
+            @scope.$digest()
 
 ]).service("icswConfigCategoryListService",
 [
     "icswTools", "icswDomainTreeService", "$q", "$compile", "$templateCache",
-    "icswComplexModalService", "toaster", "icswCategoryBackup",
-    "icswToolsSimpleModalService", "ICSW_SIGNALS", "$rootScope",
+    "icswComplexModalService", "toaster", "icswCategoryBackup", "Restangular";
+    "icswToolsSimpleModalService", "ICSW_SIGNALS", "$rootScope", "ICSW_URLS",
 (
     icswTools, icswDomainTreeService, $q, $compile, $templateCache,
-    icswComplexModalService, toaster, icswCategoryBackup,
-    icswToolsSimpleModalService, ICSW_SIGNALS, $rootScope,
+    icswComplexModalService, toaster, icswCategoryBackup, Restangular,
+    icswToolsSimpleModalService, ICSW_SIGNALS, $rootScope, ICSW_URLS,
 ) ->
     return {
         fetch: (scope) ->
@@ -210,6 +210,7 @@ angular.module(
                                         d.reject("not created")
                                 )
                             else
+                                Restangular.restangularizeElement(null, sub_scope.edit_obj, ICSW_URLS.REST_CATEGORY_DETAIL.slice(1).slice(0, -2))
                                 sub_scope.edit_obj.put().then(
                                     (ok) ->
                                         scope.tree.reorder()

@@ -69,14 +69,14 @@ angular.module(
 
         toggle_active_obj: (obj) =>
             node = @lut[obj.idx]
-            if node.depth
+            if obj.depth
                 node.active = !node.active
                 @show_active()
                 @scope.update_active()
-                @scope.$digest()
 
         handle_click: (entry, event) =>
             @toggle_active_obj(entry.obj)
+            @scope.$digest()
 
 
 ]).controller("icswConfigDomainNameTreeCtrl",
@@ -157,13 +157,6 @@ angular.module(
             scope.dn_tree = scope.icswConfigObject.dn_tree
             defer.resolve(scope.tree.list)
             return defer.promise
-
-        toggle_active: (dtn) ->
-            leaf = dtn.$$leaf
-            leaf.active = !leaf.active
-            leaf.config.show_active()
-            # leaf -> tree -> scope
-            leaf.config.scope.update_active()
 
         create_or_edit: (scope, event, create, obj_or_parent) ->
             if create
