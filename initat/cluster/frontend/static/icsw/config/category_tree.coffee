@@ -270,6 +270,9 @@ angular.module(
                                 console.log "many cats deleted"
                         )
                 )
+            else if fn_name == "clear_selection"
+                scope.icswConfigObject.ctrl_scope.clear_active()
+
     }
 ]).directive("icswConfigCategoryTreeRow", ["$templateCache", ($templateCache) ->
     return {
@@ -342,6 +345,8 @@ angular.module(
                 $scope.struct.dn_tree = $scope.dn_tree
                 $scope.struct.tree = $scope.tree
                 $scope.struct.mode = $scope.mode
+                # create ctrl_scope entry
+                $scope.struct.ctrl_scope = $scope
                 $scope.rebuild_dnt()
     )
 
@@ -350,8 +355,13 @@ angular.module(
 
     )
 
-    $scope.update_active = ( )->
+    $scope.clear_active = () ->
+        $scope.dn_tree.clear_active()
+        $scope.update_active()
+
+    $scope.update_active = ()->
         $scope.struct.num_active = $scope.dn_tree.get_active().length
+        $scope.dn_tree.show_active()
 
     $scope.rebuild_dnt = () ->
         $scope.dn_tree.create_mode_entries($scope.mode, $scope.tree)

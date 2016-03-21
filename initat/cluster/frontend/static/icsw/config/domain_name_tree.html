@@ -29,6 +29,7 @@
                     Actions:
                     <icsw-tools-button type="create" size="sm" value="create new" ng-click="create($event, null)"/>
                     <icsw-tools-button type="delete" ng-show="icswConfigObject.num_active" size="sm" value="delete selected" ng-click="special_fn($event, 'delete_many', null)"/>
+                    <icsw-tools-button type="close" ng-show="icswConfigObject.num_active" size="sm" value="clear selection" ng-click="special_fn($event, 'clear_selection', null)"/>
                 </p>
                 <div class="row">
                     <div class="col-sm-4">

@@ -60,7 +60,7 @@ angular.module(
         clear_tree: () =>
             @lut = {}
 
-        get_name : (t_entry) ->
+        get_name: (t_entry) ->
             dtn = t_entry.obj
             if dtn.parent
                 return "#{dtn.name} (*#{dtn.node_postfix}.#{dtn.full_name})"
@@ -77,6 +77,12 @@ angular.module(
         handle_click: (entry, event) =>
             @toggle_active_obj(entry.obj)
             @scope.$digest()
+
+        handle_dblclick: (entry, event) =>
+            dtn = entry.obj
+            if dtn.depth
+                @config_service.create_or_edit(@config_object.list_scope, event, false, dtn)
+
 
 
 ]).controller("icswConfigDomainNameTreeCtrl",
@@ -97,6 +103,7 @@ angular.module(
                 $scope.struct.tree = tree
                 # init struct for list-service
                 $scope.struct.num_active = 0
+                $scope.struct.ctrl_scope = $scope
                 $scope.struct.dn_tree = $scope.dn_tree
                 $scope.rebuild_dnt()
         )
@@ -106,8 +113,13 @@ angular.module(
 
     )
 
-    $scope.update_active = ( )->
+    $scope.clear_active = () ->
+        $scope.dn_tree.clear_active()
+        $scope.update_active()
+
+    $scope.update_active = ()->
         $scope.struct.num_active = $scope.dn_tree.get_active().length
+        $scope.dn_tree.show_active()
 
     $scope.rebuild_dnt = () ->
         # save previous active nodes
@@ -135,7 +147,6 @@ angular.module(
                     entry.active = true
         )
         $scope.update_active()
-        $scope.dn_tree.show_active()
 
     $scope.reload()
 ]).service("icswConfigDTNListService",
@@ -152,7 +163,7 @@ angular.module(
         fetch: (scope) ->
             defer = $q.defer()
             # set scope for dn_tree
-            scope.icswConfigObject.scope = scope
+            scope.icswConfigObject.list_scope = scope
             scope.tree = scope.icswConfigObject.tree
             scope.dn_tree = scope.icswConfigObject.dn_tree
             defer.resolve(scope.tree.list)
@@ -283,6 +294,8 @@ angular.module(
                                 console.log "many dtn deleted"
                         )
                 )
+            else if fn_name == "clear_selection"
+                scope.icswConfigObject.ctrl_scope.clear_active()
 
     }
 ]).controller("icswConfigDomainNameTreeRowCtrl",
