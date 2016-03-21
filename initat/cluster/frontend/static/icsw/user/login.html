@@ -44,7 +44,7 @@
 </script>
 
 <script type="text/ng-template" id="icsw.authentication.form">
-    <form class="form-horizontal">
+    <form class="form-horizontal" ng-submit="do_login()">
         <div class="form-horizontal">
             <fieldset>
                 <legend>Please enter your login credentials <span ng-show="CLUSTER_NAME"> for {{ CLUSTER_NAME }}</span>
@@ -67,7 +67,7 @@
                 </div>
             </fieldset>
             <div class="form-actions">
-                <icsw-tools-button ng-disabled="disabled" type="submit" value="Login" ng-click="do_login()"></icsw-tools-button>
+                <icsw-tools-button ng-disabled="disabled" button-type="submit" type="submit" value="Login" ng-click="do_login()"></icsw-tools-button>
             </div>
         </div>
     </form>

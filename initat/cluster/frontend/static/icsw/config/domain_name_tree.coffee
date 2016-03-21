@@ -53,6 +53,7 @@ angular.module(
             @show_select = false
             @show_descendants = true
             @show_childs = false
+            # link to config-service of a list controller
             @config_service = undefined
             @config_object = undefined
 
@@ -66,17 +67,17 @@ angular.module(
             else
                 return "TOP"
 
+        toggle_active_obj: (obj) =>
+            node = @lut[obj.idx]
+            if node.depth
+                node.active = !node.active
+                @show_active()
+                @scope.update_active()
+                @scope.$digest()
+
         handle_click: (entry, event) =>
-            dtn = entry.obj
-            if dtn.depth
-                if entry.active
-                    @config_service.create_or_edit(@config_object.scope, event, false, dtn)
-                else
-                    entry.active = true
-                    @show_active()
-                    @scope.update_active()
-                    # sync table
-                    @scope.$digest()
+            @toggle_active_obj(entry.obj)
+
 
 ]).controller("icswConfigDomainNameTreeCtrl",
 [
@@ -94,6 +95,7 @@ angular.module(
         icswDomainTreeService.load($scope.$id).then(
             (tree) ->
                 $scope.struct.tree = tree
+                # init struct for list-service
                 $scope.struct.num_active = 0
                 $scope.struct.dn_tree = $scope.dn_tree
                 $scope.rebuild_dnt()
@@ -132,6 +134,7 @@ angular.module(
                 if entry.obj.idx in active
                     entry.active = true
         )
+        $scope.update_active()
         $scope.dn_tree.show_active()
 
     $scope.reload()
@@ -276,7 +279,6 @@ angular.module(
         special_fn: (scope, event, fn_name, obj) ->
             if fn_name == "delete_many"
                 active = scope.dn_tree.get_active()
-                console.log active
                 icswToolsSimpleModalService("Really delete #{active.length} DomainTreeNodes ?").then(
                     (doit) ->
                         $q.allSettled(
@@ -290,6 +292,24 @@ angular.module(
                 )
 
     }
+]).controller("icswConfigDomainNameTreeRowCtrl",
+[
+    "$scope",
+(
+    $scope
+) ->
+    $scope.get_tr_class = (obj) ->
+        if $scope.dn_tree.lut[obj.idx].active
+            return "danger"
+        else
+            return if obj.depth > 1 then "" else "success"
+
+    $scope.get_space = (depth) ->
+        return ("&nbsp;&nbsp;" for idx in [0..depth]).join("")
+
+    $scope.click_row = (obj) ->
+        $scope.dn_tree.toggle_active_obj(obj)
+
 ]).directive("icswConfigDomainNameTreeRow",
 [
     "$templateCache",
@@ -299,9 +319,7 @@ angular.module(
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.config.domain.name.tree.row")
-        link : (scope, el, attrs) ->
-            scope.get_space = (depth) ->
-                return ("&nbsp;&nbsp;" for idx in [0..depth]).join("")
+        controller: "icswConfigDomainNameTreeRowCtrl"
     }
 ]).directive("icswConfigDomainNameTree",
 [

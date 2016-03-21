@@ -325,6 +325,7 @@ angular.module(
         ICSW_CONFIG_UPLOADED: "icsw.config.uploaded",
         ICSW_DEVICE_CONFIG_CHANGED: "icsw.device.config.changed",
         ICSW_DOMAIN_NAME_TREE_CHANGED: "icsw.domain.name.tree.changed",
+        ICSW_CATEGORY_TREE_CHANGED: "icsw.category.tree.changed",
         # not needed up to now
         # "ICSW_RENDER_MENUBAR": "icsw.render.menubar",
         # "ICSW_READY_TO_RECEIVE_SELECTION": "icsw.ready.to.receive.selection"

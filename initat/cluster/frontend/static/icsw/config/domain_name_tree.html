@@ -11,10 +11,11 @@
     <td>{{ obj.always_create_ip | yesno1 }}</td>
     <td>{{ obj.write_nameserver_config | yesno1 }}</td>
     <td>
-        <input type="button" ng-class="obj.$$leaf.active && 'btn btn-primary btn-xs' || 'btn btn-xs'" value="sel" ng-show="obj.depth > 0" ng-click="config_service.toggle_active(obj)"/>
+        <icsw-tools-button type="modify" ng-click="edit($event, obj)" ng-show="obj.depth" size="xs"/>
     </td>
-    <td><icsw-tools-button type="modify" ng-click="edit($event, obj)" ng-show="obj.depth" size="xs"/></td>
-    <td><icsw-tools-button type="delete" ng-click="delete($event, obj)" ng-show="obj.depth > 0" size="xs"/></td>
+    <td>
+        <icsw-tools-button type="delete" ng-click="delete($event, obj)" ng-show="obj.depth > 0" size="xs"/>
+    </td>
 </script>
 
 <script type="text/ng-template" id="icsw.config.domain.name.tree">
@@ -24,8 +25,11 @@
     <div class="panel panel-default">
         <div class="panel-body" ng-if="struct.tree">
             <icsw-tools-rest-table-new target-list="tree_nodes" config-service="icswConfigDTNListService" icsw-config-object="struct">
-                <icsw-tools-button type="create" size="sm" value="create new" ng-click="create($event, null)"/>
-                <icsw-tools-button type="delete" ng-show="icswConfigObject.num_active" size="sm" value="delete selected" ng-click="special_fn($event, 'delete_many', null)"/>
+                <p>
+                    Actions:
+                    <icsw-tools-button type="create" size="sm" value="create new" ng-click="create($event, null)"/>
+                    <icsw-tools-button type="delete" ng-show="icswConfigObject.num_active" size="sm" value="delete selected" ng-click="special_fn($event, 'delete_many', null)"/>
+                </p>
                 <div class="row">
                     <div class="col-sm-4">
                         <h3>Tree view</h3>
@@ -43,7 +47,6 @@
                                     <th>SN</th>
                                     <th>IP</th>
                                     <th>NS</th>
-                                    <th>Select</th>
                                     <th colspan="2">Action</th>
                                 </tr>
                                 <tr>
@@ -58,7 +61,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr icsw-config-domain-name-tree-row ng-repeat="obj in tree_nodes_displayed"></tr>
+                                <tr icsw-config-domain-name-tree-row ng-repeat="obj in tree_nodes_displayed" ng-click="click_row(obj)" ng-class="get_tr_class(obj)"></tr>
                             </tbody>
                         </table>
                     </div>

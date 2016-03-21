@@ -11,7 +11,7 @@
 <script type="text/ng-template" id="icsw.config.category.tree.head">
     <tr>
         <th>Name</th>
-        <th>Full name</th>   
+        <th>Full name</th>
         <th>Comment</th>
         <th>refs</th>
         <th ng-if="mode_is_location">lat</th>
@@ -36,43 +36,72 @@
     <td ng-if="is_location(obj)">{{ obj.locked && 'locked' || 'unlocked' }}</td>
     <td ng-if="is_location(obj)">{{ obj.physical && 'physical' || 'structural' }}</td>
     <td>
-        <icsw-tools-button type="modify" size="xs" ng-click="create_or_edit($event, false, obj)" ng-show="obj.depth > 1"></icsw-tools-button>
+        <icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)" ng-show="obj.depth > 1"></icsw-tools-button>
     </td>
     <td>
-        <icsw-tools-button type="delete" size="xs" ng-click="delete_obj($event, obj)" ng-show="obj.depth > 1"></icsw-tools-button>
+        <icsw-tools-button type="delete" size="xs" ng-click="delete($event, obj)" ng-show="obj.depth > 1"></icsw-tools-button>
     </td>
 </script>
 
 <script type="text/ng-template" id="icsw.config.category.tree">
     <h2>
-        {{ mode_display | capitalize }} categories ({{ tree.mode_entries.length }} <ng-pluralize count="tree.mode_entries.length" when="{'1': 'entry', 'other': 'entries'}")></ng-pluralize>)
+        {{ mode_display | capitalize }} categories ({{ struct.dn_tree.mode_entries.length }}
+        <ng-pluralize count="struct.dn_tree.mode_entries.length" when="{'1': 'entry', 'other': 'entries'}")></ng-pluralize>)
     </h2>
-    <p>
-        Actions:
-        <icsw-tools-button type="create" value="create new" size="sm" ng-click="create_or_edit($event, true, null)"></icsw-tools-button>
-        <icsw-tools-button type="modify" value="prune tree" size="sm" ng-click="prune_tree()"/>
-    </p>
-    <div class="row">
-        <div class="col-sm-4">
-            <h3>Tree view</h3>
-            <tree treeconfig="tree"></tree>
-        </div>
-        <div class="col-sm-8">
-            <h3>Table view</h3>
-            <table class="table table-condensed table-hover" style="width:auto;">
-                <thead icsw-config-category-tree-head>
-                </thead>
-                <tbody>
-                    <tr icsw-config-category-tree-row ng-repeat="obj in tree.mode_entries" ng-click="click_row(obj)" ng-class="get_tr_class(obj)">
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        Todo: show lookup
-        <div class="col-sm-6">
-            <div ng-if="modal_active && !settings.use_modal && active_aem == 'cat' && !create_mode">
-                <icsw-config-category-contents-viewer category-name="_edit_obj.full_name" category-pk="_edit_obj.idx"></icsw-config-category-contents-viewer>
-            </div>
+    <div class="panel panel-default">
+        <div class="panel-body" ng-if="struct.tree">
+            <icsw-tools-rest-table-new target-list="tree_nodes" config-service="icswConfigCategoryListService" icsw-config-object="struct">
+                <p>
+                    Actions:
+                    <icsw-tools-button type="create" value="create new" size="sm" ng-click="create($event, null)"></icsw-tools-button>
+                    <icsw-tools-button type="modify" value="prune tree" size="sm" ng-click="prune_tree()"/>
+                    <icsw-tools-button type="delete" ng-show="icswConfigObject.num_active" size="sm" value="delete selected" ng-click="special_fn($event, 'delete_many', null)"/>
+                </p>
+                <div class="row">
+                    <div class="col-sm-4">
+                        <h3>Tree view</h3>
+                        <tree treeconfig="dn_tree"  config-service="icswConfigCategoryListService" icsw-config-object="icswConfigObject"></tree>
+                    </div>
+                    <div class="col-sm-8">
+                        <h3>Table view</h3>
+                        <table st-table="tree_nodes_displayed" st-safe-src="tree_nodes" class="table table-condensed table-hover" style="width:auto;">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Full name</th>
+                                    <th>Comment</th>
+                                    <th>refs</th>
+                                    <th ng-if="mode_is_location">lat</th>
+                                    <th ng-if="mode_is_location">long</th>
+                                    <th ng-if="mode_is_location">lockstate</th>
+                                    <th ng-if="mode_is_location">type</th>
+                                    <th colspan="2">Action</th>
+                                </tr>
+                                <tr>
+                                    <td colspan="99">
+                                        <div
+                                            icsw-tools-pagination
+                                            st-items-by-page="15"
+                                            st-displayed-pages="11"
+                                            possible-items-by-page="15,30,100,200"
+                                        ></div>
+                                    </td>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr icsw-config-category-tree-row ng-repeat="obj in tree_nodes_displayed" ng-click="click_row(obj)" ng-class="get_tr_class(obj)">
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="col-sm-6">
+                        <div ng-if="modal_active && !settings.use_modal && active_aem == 'cat' && !create_mode">
+                            <icsw-config-category-contents-viewer category-name="_edit_obj.full_name" category-pk="_edit_obj.idx"></icsw-config-category-contents-viewer>
+                        </div>
+                    </div>
+                </div>
+                <uib-alert>Todo: show lookup</uib-alert>
+            </icsw-tools-rest-table-new>
         </div>
     </div>
 </script>

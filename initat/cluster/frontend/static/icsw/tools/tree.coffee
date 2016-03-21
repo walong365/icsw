@@ -437,6 +437,9 @@ angular.module(
             _a_node.bind("click", (event) =>
                 @handle_click(node, event)
             )
+            _a_node.bind("dblclick", (event) =>
+                @handle_dblclick(node, event)
+            )
             _top_span.append(_a_node)
             li_node.append(_top_span)
             node._top_span = _top_span
