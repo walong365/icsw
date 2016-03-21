@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# Copyright (C) 2012-2016 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -200,9 +201,50 @@ class change_category(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
+        import pprint
+        pprint.pprint(_post)
+        add_cat = True if int(_post.get("set", "0").lower()) else False
+        print "***", add_cat
         multi_mode = True if _post.get("multi", "False").lower()[0] in ["1", "t", "y"] else False
         # format: [(device_idx, cat_idx), ...]
         _added, _removed = ([], [])
+        devs_added, devs_removed = ([], [])
+        for sc_cat in category.objects.filter(Q(pk__in=json.loads(_post["cat_pks"]))):
+            print "cat=", sc_cat
+            for _dev in device.objects.filter(
+                Q(pk__in=json.loads(_post["dev_pks"]))
+            ).prefetch_related(
+                "categories"
+            ):
+                if add_cat and sc_cat not in _dev.categories.all():
+                    devs_added.append(_dev)
+                    _dev.categories.add(sc_cat)
+                    _added.append((_dev.idx, sc_cat.idx))
+                    print "add", sc_cat, _dev
+                elif not add_cat and sc_cat in _dev.categories.all():
+                    devs_removed.append(_dev)
+                    _dev.categories.remove(sc_cat)
+                    _removed.append((_dev.idx, sc_cat.idx))
+                    print "del", sc_cat, _dev
+        _info_f = []
+        if devs_added:
+            _info_f.append("added to {}".format(logging_tools.get_plural("device", len(devs_added))))
+        if devs_removed:
+            _info_f.append("removed from {}".format(logging_tools.get_plural("device", len(devs_removed))))
+
+        request.xml_response.info(
+            u"{}: {}".format(
+                unicode(sc_cat),
+                ", ".join(_info_f) or "nothing done",
+            )
+        )
+        request.xml_response["changes"] = json.dumps(
+            {
+                "added": _added,
+                "removed": _removed
+            }
+        )
+        return
         if multi_mode:
             set_mode = True if int(_post["set"]) else False
             sc_cat = category.objects.get(Q(pk=_post["cat_pk"]))
@@ -381,17 +423,19 @@ class CheckDeleteObject(View):
                         )
                         refs_of_refs.update(get_related_models(referenced_object, detail=True))
 
-                    info.append({
-                        'model': related_object.model._meta.object_name,
-                        'model_verbose_name': related_object.model._meta.verbose_name.capitalize(),
-                        'field_name': related_object.field.name,
-                        'field_verbose_name': related_object.field.verbose_name.capitalize(),
-                        'null': related_object.field.null,
-                        'objects': {
-                            'num_refs_of_refs': len(refs_of_refs),
-                            'list': referenced_objects_list,
-                        },
-                    })
+                    info.append(
+                        {
+                            'model': related_object.model._meta.object_name,
+                            'model_verbose_name': related_object.model._meta.verbose_name.capitalize(),
+                            'field_name': related_object.field.name,
+                            'field_verbose_name': related_object.field.verbose_name.capitalize(),
+                            'null': related_object.field.null,
+                            'objects': {
+                                'num_refs_of_refs': len(refs_of_refs),
+                                'list': referenced_objects_list,
+                            },
+                        }
+                    )
                 related_objects_info[obj_to_delete.pk] = info
                 # print 'build 2nd level rel list', time.time() - a
             # print 'obj', obj_pk, ' took ', time.time() - a

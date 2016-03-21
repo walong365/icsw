@@ -39,7 +39,12 @@ angular.module(
                         ordering: 14
             }
     )
-]).service("icswDeviceCategoryTreeService", ["icswTreeConfig", "msgbus", (icswTreeConfig, msgbus) ->
+]).service("icswDeviceCategoryTreeService",
+[
+    "icswTreeConfig",
+(
+    icswTreeConfig
+) ->
     class category_tree extends icswTreeConfig
         constructor: (@scope, args) ->
             super(args)
@@ -48,120 +53,176 @@ angular.module(
             @show_select = true
             @show_descendants = false
             @show_childs = false
-        selection_changed: (entry) =>
-            # FIXME, TODO, slow update of the frontend (albeit the backbone already got the request)
-            if @scope.multi_device_mode
-                @scope.new_md_selection(entry)
-            else
-                sel_list = @get_selected((node) ->
+            @mode_entries = []
+            @clear_tree()
+
+        clear_tree: () =>
+            @lut = {}
+
+        create_mode_entries: (mode, cat_tree) =>
+            @mode_entries.length = []
+            for entry in cat_tree.list
+                if entry.depth < 1 or entry.full_name.split("/")[1] == mode
+                    @mode_entries.push(entry)
+
+
+        get_selected_cat_pks: () =>
+            return @get_selected(
+                (node) ->
                     if node.selected
                         return [node.obj.idx]
                     else
                         return []
-                )
-                @scope.new_selection(sel_list)
+            )
+
+        selection_changed: (entry) =>
+            @scope.new_selection(entry, @get_selected_cat_pks())
+
         get_name : (t_entry) ->
             cat = t_entry.obj
             if cat.depth > 1
                 r_info = "#{cat.full_name} (#{cat.name})"
-                num_sel = @scope.sel_dict[cat.idx].length
-                if num_sel and num_sel < @scope.num_devices
-                    r_info = "#{r_info}, #{num_sel} of #{@scope.num_devices}"
+                num_sel = t_entry.$match_pks.length # number of selected entries
+                if num_sel and @$num_devs > 1
+                    r_info = "#{r_info}, #{num_sel} of #{@$num_devs}"
                 if cat.num_refs
-                    r_info = "#{r_info} (refs=#{cat.num_refs})"
+                    r_info = "#{r_info}, total references=#{cat.num_refs}"
                 return r_info
             else if cat.depth
                 return cat.full_name
             else
                 return "TOP"
+
         handle_click: (entry, event) =>
             @scope.selected_category = entry.obj
             @scope.$digest()
-]).controller("icswDeviceCategoryCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$uibModal", "icswAcessLevelService", "ICSW_URLS", "icswDeviceCategoryTreeService", "icswSimpleAjaxCall", "msgbus"
-    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $uibModal, icswAcessLevelService, ICSW_URLS, icswDeviceCategoryTreeService, icswSimpleAjaxCall, msgbus) ->
-        icswAcessLevelService.install($scope)
-        $scope.device_pks = []
-        $scope.device_list_ready = false
-        $scope.cat_tree = new icswDeviceCategoryTreeService($scope, {})
-        $scope.new_devsel = (pk_list) ->
-            $scope.device_pks = pk_list
-            $scope.multi_device_mode = if $scope.device_pks.length > 1 then true else false
-            $scope.reload()
-        msgbus.receive("icsw.config.locations.changed.tree", $scope, () ->
-            $scope.reload()
-        )
-        $scope.reload = () ->
-            wait_list = [
-                restDataSource.reload([ICSW_URLS.REST_CATEGORY_LIST, {}])
-                restDataSource.reload([ICSW_URLS.REST_DEVICE_TREE_LIST, {"pks" : angular.toJson($scope.device_pks), "with_categories" : true}])
-            ]
-            $q.all(wait_list).then((data) ->
-                $scope.devices = data[1]
-                $scope.device_list_ready = true
-                $scope.num_devices = $scope.devices.length
-                $scope.cat_tree.change_select = true
-                for dev in $scope.devices
-                    # check all devices and disable change button when not all devices are in allowed list
-                    if not $scope.acl_all(dev, "backbone.device.change_category", 7)
-                        $scope.cat_tree.change_select = false
-                cat_tree_lut = {}
-                $scope.cat_tree.clear_root_nodes()
-                # selection dict
-                sel_dict = {}
-                for entry in data[0]
-                    if entry.full_name.match(/^\/device/)
-                        sel_dict[entry.idx] = []
-                for dev in $scope.devices
-                    for _sel in dev.categories
-                        if _sel of sel_dict
-                            sel_dict[_sel].push(entry.idx)
-                $scope.sel_dict = sel_dict
-                for entry in data[0]
-                    if entry.full_name.match(/^\/device/)
-                        t_entry = $scope.cat_tree.new_node({folder:false, obj:entry, expand:entry.depth < 2, selected: sel_dict[entry.idx].length == $scope.num_devices})
-                        cat_tree_lut[entry.idx] = t_entry
-                        if entry.parent and entry.parent of cat_tree_lut
-                            cat_tree_lut[entry.parent].add_child(t_entry)
-                        else
-                            # hide selection from root nodes
-                            t_entry._show_select = false
-                            $scope.cat_tree.add_root_node(t_entry)
-                $scope.cat_tree_lut = cat_tree_lut
-                $scope.cat_tree.show_selected(false)
-            )
-        $scope.new_md_selection = (entry) ->
-            # for multi-device selection
-            cat = entry.obj
-            icswSimpleAjaxCall(
-                url     : ICSW_URLS.BASE_CHANGE_CATEGORY
-                data    :
-                    "obj_type" : "device"
-                    "multi"    : "1"
-                    "obj_pks"  : angular.toJson((_entry.idx for _entry in $scope.devices))
-                    "set"      : if entry.selected then "1" else "0"
-                    "cat_pk"   : cat.idx
-            ).then((xml) ->
-                if entry.selected
-                    $scope.sel_dict[cat.idx] = (_entry.idx for _entry in $scope.devices)
-                else
-                    $scope.sel_dict[cat.idx] = []
-                # FIXME, TODO
-                # reload_sidebar_tree((_dev.idx for _dev in $scope.devices))
 
-                msgbus.emit(msgbus.event_types.CATEGORY_CHANGED)  # category contents changed
+]).controller("icswDeviceCategoryCtrl",
+[
+    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q",
+    "icswAcessLevelService", "ICSW_URLS", "icswDeviceCategoryTreeService", "icswSimpleAjaxCall",
+    "icswDeviceTreeService", "icswCategoryTreeService", "blockUI",
+(
+    $scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q,
+    icswAcessLevelService, ICSW_URLS, icswDeviceCategoryTreeService, icswSimpleAjaxCall,
+    icswDeviceTreeService, icswCategoryTreeService, blockUI,
+) ->
+    icswAcessLevelService.install($scope)
+    $scope.device_pks = []
+    $scope.struct = {
+        device_list_ready: false
+        mult_device_mode: false
+        cat_tree: new icswDeviceCategoryTreeService($scope, {})
+    }
+    $scope.new_devsel = (devs) ->
+        console.log "*nd", devs
+        $q.all(
+            [
+                icswDeviceTreeService.load($scope.$id)
+                icswCategoryTreeService.load($scope.$id)
+            ]
+        ).then(
+            (data) ->
+                device_tree = data[0]
+                $scope.struct.device_list_ready = true
+                $scope.struct.tree = data[1]
+                $scope.struct.multi_device_mode = if devs.length > 1 then true else false
+                $scope.struct.devices = devs
+                $scope.struct.device_tree = device_tree
+                $scope.rebuild_dnt()
+        )
+    $scope.$on("$destroy", () ->
+        $scope.struct.device_list_ready = false
+    )
+
+    $scope.rebuild_dnt = () ->
+        _ct = $scope.struct.cat_tree
+        _ct.change_select = true
+        for dev in $scope.struct.devices
+            # check all devices and disable change button when not all devices are in allowed list
+            if not $scope.acl_all(dev, "backbone.device.change_category", 7)
+                _ct.change_select = false
+                break
+        # hm, not working right now ...
+        if _ct.$pre_sel?
+            _cur_sel = _ct.$pre_sel
+        else
+            _cur_sel = []
+        _ct.clear_tree()
+        _ct.clear_root_nodes()
+        _ct.create_mode_entries("device", $scope.struct.tree)
+
+        _ct.$num_devs = $scope.struct.devices.length
+        _num_devs = $scope.struct.devices.length
+        _dev_pks = (dev.idx for dev in $scope.struct.devices)
+        _dev_pks.sort()
+
+        console.log _cur_sel
+        # console.log _dev_pks
+        # for dev in $scope.devices
+        #    for _sel in dev.categories
+        #        if _sel of sel_dict
+        #            sel_dict[_sel].push(entry.idx)
+        # $scope.sel_dict = sel_dict
+        for entry in _ct.mode_entries
+            # console.log entry.reference_dict.device, _num_devs
+            # get pks of devices in current selection which have the category entry set
+            _match_pks = (_val for _val in entry.reference_dict.device when _val in _dev_pks)
+            _match_pks.sort()
+            # console.log entry.idx, _match_pks, entry.idx in _cur_sel
+            # console.log _match_pks, _dev_pks
+            t_entry = _ct.new_node(
+                {
+                    folder: false
+                    obj: entry
+                    expand: (entry.depth < 2) or (entry.idx in _cur_sel) or _match_pks.length
+                    selected: _match_pks.length == _num_devs
+                }
             )
-        $scope.new_selection = (sel_list) =>
-            # only for single-device mode
-            icswSimpleAjaxCall(
-                url     : ICSW_URLS.BASE_CHANGE_CATEGORY
-                data    :
-                    "obj_type" : "device"
-                    "obj_pk"   : $scope.devices[0].idx
-                    "subtree"  : "/device"
-                    "cur_sel"  : angular.toJson(sel_list)
-            ).then((xml) ->
-                msgbus.emit(msgbus.event_types.CATEGORY_CHANGED)  # category contents changed
-            )
+            # copy matching pks to tree entry (NOT entry because entry is global)
+            t_entry.$match_pks = (_v for _v in _match_pks)
+            _ct.lut[entry.idx] = t_entry
+            if entry.parent and entry.parent of _ct.lut
+                _ct.lut[entry.parent].add_child(t_entry)
+                if t_entry.expand
+                    # propagate expand level upwards
+                    _t_entry = t_entry
+                    while _t_entry.parent
+                        _t_entry.expand = true
+                        _t_entry = _t_entry.parent
+            else
+                # hide selection from root nodes
+                t_entry._show_select = false
+                _ct.add_root_node(t_entry)
+        _ct.$pre_sel = _ct.get_selected_cat_pks()
+        # _ct.show_selected(false)
+
+    $scope.new_selection = (t_entry, sel_list) =>
+        blockUI.start()
+        cat = t_entry.obj
+        icswSimpleAjaxCall(
+            url: ICSW_URLS.BASE_CHANGE_CATEGORY
+            data:
+                "dev_pks": angular.toJson((_entry.idx for _entry in $scope.struct.devices))
+                "cat_pks": angular.toJson([cat.idx])
+                "set": if t_entry.selected then "1" else "0"
+        ).then(
+            (xml) ->
+                change_dict = angular.fromJson($(xml).find("value[name='changes']").text())
+                sync_pks = []
+                for add_b in change_dict.added
+                    $scope.struct.device_tree.add_category_to_device_by_pk(add_b[0], add_b[1])
+                    if add_b[0] not in sync_pks
+                        sync_pks.push(add_b[0])
+                for sub_b in change_dict.removed
+                    $scope.struct.device_tree.remove_category_from_device_by_pk(sub_b[0], sub_b[1])
+                    if sub_b[0] not in sync_pks
+                        sync_pks.push(sub_b[0])
+                if sync_pks.length
+                    $scope.struct.tree.sync_devices(($scope.struct.device_tree.all_lut[_pk] for _pk in sync_pks))
+                $scope.rebuild_dnt()
+                blockUI.stop()
+        )
 ]).directive("icswDeviceCategoryOverview", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"

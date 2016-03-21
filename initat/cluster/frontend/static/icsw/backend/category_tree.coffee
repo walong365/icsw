@@ -60,7 +60,12 @@ angular.module(
             # links
             for entry in @list
                 entry.children = []
-                entry.num_refs = _.sum((value for key, value of entry.reference_dict))
+                entry.num_refs = 0
+                for key, value of entry.reference_dict
+                    if angular.isArray(value)
+                        entry.num_refs += value.length
+                    else
+                        entry.num_refs += value
             for entry in @list
                 if entry.parent
                     @lut[entry.parent].children.push(entry.idx)
@@ -73,7 +78,20 @@ angular.module(
 
         clear_references: (name) =>
             for entry in @list
-                entry.reference_dict[name] = 0
+                if angular.isArray(entry.reference_dict[name])
+                    entry.reference_dict[name].length = 0
+                else
+                    entry.reference_dict[name] = 0
+
+        sync_devices: (dev_list) =>
+            # set device categories from a given device
+            for dev in dev_list
+                for cat in @list
+                    if cat.idx in dev.categories and dev.idx not in cat.reference_dict.device
+                        cat.reference_dict.device.push(dev.idx)
+                    else if cat.idx not in dev.categories and dev.idx in cat.reference_dict.device
+                        _.remove(cat.reference_dict.device, (entry) -> return entry == dev.idx)
+            @link()
 
         feed_config_tree: (ct) =>
             @clear_references("config")

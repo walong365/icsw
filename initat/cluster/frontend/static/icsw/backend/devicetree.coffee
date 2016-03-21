@@ -857,6 +857,16 @@ angular.module(
             # console.log "trace: in #{devs.length}, out #{_res.length}"
             return (@all_lut[idx] for idx in _res)
 
+        # category functions
+        add_category_to_device_by_pk: (dev_pk, cat_pk) =>
+            dev = @all_lut[dev_pk]
+            dev.categories.push(cat_pk)
+
+        remove_category_from_device_by_pk: (dev_pk, cat_pk) =>
+            dev = @all_lut[dev_pk]
+            _.remove(dev.categories, (entry) -> return entry == cat_pk)
+
+
 ]).service("icswDeviceTreeService",
 [
     "$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall",

@@ -308,7 +308,7 @@ angular.module(
         if $scope.dn_tree.lut[obj.idx].active
             return "danger"
         else
-            return if obj.depth > 1 then "" else "success"
+            return if obj.depth > 0 then "" else "success"
 
     $scope.get_space = (depth) ->
         return ("&nbsp;&nbsp;" for idx in [0..depth]).join("")
