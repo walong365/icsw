@@ -96,7 +96,14 @@ angular.module(
         "register_receiver": () ->
             register_receiver()
     }
-]).service("icswSelection", ["icswDeviceTreeService", "$q", "icswSimpleAjaxCall", "ICSW_URLS", "$rootScope", "Restangular", "icswSavedSelectionService", "ICSW_SIGNALS", (icswDeviceTreeService, $q, icswSimpleAjaxCall, ICSW_URLS, $rootScope, Restangular, icswSavedSelectionService, ICSW_SIGNALS) ->
+]).service("icswSelection",
+[
+    "icswDeviceTreeService", "$q", "icswSimpleAjaxCall", "ICSW_URLS", "$rootScope",
+    "Restangular", "icswSavedSelectionService", "ICSW_SIGNALS",
+(
+    icswDeviceTreeService, $q, icswSimpleAjaxCall, ICSW_URLS, $rootScope,
+    Restangular, icswSavedSelectionService, ICSW_SIGNALS
+) ->
 
     class icswSelection
         # only instantiated once (for now), also handles saved selections
@@ -329,7 +336,12 @@ angular.module(
             )
             return defer.promise
 
-]).service("icswSavedSelectionService", ["Restangular", "$q", "ICSW_URLS", "icswUserService", (Restangular, $q, ICSW_URLS, icswUserService) ->
+]).service("icswSavedSelectionService",
+[
+    "Restangular", "$q", "ICSW_URLS", "icswUserService",
+(
+    Restangular, $q, ICSW_URLS, icswUserService
+) ->
     enrich_selection = (entry) ->
         _created = moment(entry.date)
         info = [entry.name]
@@ -342,7 +354,9 @@ angular.module(
         info = info.join(", ")
         info = "#{info} (#{_created.format('YYYY-MM-DD HH:mm')})"
         entry.info = info
+
     _list = []
+
     load_selections = () ->
         defer = $q.defer()
         icswUserService.load().then(
@@ -355,6 +369,7 @@ angular.module(
                 )
         )
         return defer.promise
+
     save_selection = (user, sel) ->
         defer = $q.defer()
         sel.create_saved_selection(user).then(
@@ -364,16 +379,18 @@ angular.module(
                 defer.resolve(data)
         )
         return defer.promise
+
     delete_selection = (sel) ->
         defer = $q.defer()
         del_id = sel.db_idx
         sel.delete_saved_selection().then(
-            () ->
+            (done) ->
                 console.log del_id, (entry.idx for entry in _list)
-                _list = (entry for entry in _list when entry.idx != del_id)
+                _.remove(_list, (entry) -> return entry.idx == del_id)
                 defer.resolve(_list)
         )
         return defer.promise
+
     return {
         "load_selections": () ->
             return load_selections()
@@ -821,7 +838,14 @@ angular.module(
                 $scope.activate_tab("d")
                 blockUI.stop()
         )
-]).service("icswLayoutSelectionDialogService", ["$q", "$compile", "$templateCache", "$state", "icswToolsSimpleModalService", "$rootScope", "ICSW_SIGNALS", ($q, $compile, $templateCache, $state, icswToolsSimpleModalService, $rootScope, ICSW_SIGNALS) ->
+]).service("icswLayoutSelectionDialogService",
+[
+    "$q", "$compile", "$templateCache", "$state", "icswToolsSimpleModalService",
+    "$rootScope", "ICSW_SIGNALS",
+(
+    $q, $compile, $templateCache, $state, icswToolsSimpleModalService,
+    $rootScope, ICSW_SIGNALS
+) ->
     # dialog_div =
     prev_left = undefined
     prev_top = undefined
@@ -870,7 +894,14 @@ angular.module(
         "quick_dialog": () ->
             return quick_dialog()
     }
-]).service("icswLayoutSelectionTreeService", ["DeviceOverviewService", "icswTreeConfig", "icswDeviceTreeService", "DeviceOverviewSelection", (DeviceOverviewService, icswTreeConfig, icswDeviceTreeService, DeviceOverviewSelection) ->
+]).service("icswLayoutSelectionTreeService",
+[
+    "DeviceOverviewService", "icswTreeConfig", "icswDeviceTreeService",
+    "DeviceOverviewSelection",
+(
+    DeviceOverviewService, icswTreeConfig, icswDeviceTreeService,
+    DeviceOverviewSelection
+) ->
     class selection_tree extends icswTreeConfig
         constructor: (@scope, args) ->
             super(args)

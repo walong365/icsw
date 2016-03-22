@@ -5,13 +5,13 @@
                 <icsw-device-location-overview icsw-sel-man="0" icsw-sel-man-sel-mode="d">
                 </icsw-device-location-overview>
             </uib-tab>
-            <uib-tab heading="Location configuration" select="set_active_tab('conf')">
+            <!-- <uib-tab heading="Location configuration" select="set_active_tab('conf')">
                 <icsw-config-category-location-edit preview-gfx="preview_gfx" preview-close="close_preview">
                 </icsw-config-category-location-edit>
                 <hr ng-show="preview_gfx"/>
                 <icsw-config-category-tree-map-enhance preview-gfx="preview_gfx" preview-close="close_preview">
                 </icsw-config-category-tree-map-enhance>
-            </uib-tab>
+            </uib-tab> -->
             <uib-tab heading="Available locations" select="set_active_tab('avail')">
                 <icsw-config-category-tree-edit mode="location"></icsw-config-category-tree-edit>
             </uib-tab>
@@ -20,30 +20,33 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.location.overview">
-    <h2>Device location for <ng-pluralize count="device_pks.length" when="{'one':'1 device', 'other':'{} devices'}"></ng-pluralize></h2>
+    <h3>
+        Device location for
+        <ng-pluralize count="struct.devices.length" when="{'one':'1 device', 'other':'{} devices'}"></ng-pluralize>
+    </h3>
 
     <uib-alert type="warning" style="max-width: 500px" ng-if="!is_any_location_defined()">Please create locations in the tab 'Available locations'.</uib-alert>
 
     <div class="row">
         <div class="col-md-6">
             <h3>Location Tree</h3>
-            <icsw-tools-ensure-device-selection dev-list="device_pks" list-ready="device_list_ready">
-                <tree treeconfig="loc_tree"></tree>
+            <icsw-tools-ensure-device-selection dev-list="struct.devices" list-ready="struct.device_list_ready">
+                <tree treeconfig="struct.loc_tree"></tree>
             </icsw-tools-ensure-device-selection>
         </div>
-        <div class="col-md-6" ng-show="gfx_cat">
-            <icsw-device-location-list></icsw-device-location-list>
+        <div class="col-md-6" ng-if="struct.active_loc">
+            <icsw-device-location-list icsw-location="struct.active_loc"></icsw-device-location-list>
         </div>
     </div>
-    <h3 ng-show="gfx_cat && active_loc_gfx">Locations ({{ set_pks.length }} of {{ dev_pks.length }} set)<span ng-show="extra_dml_list.length">, {{ extra_dml_list.length }} extra</span>, zoom is {{ cur_scale | number:2 }}</h3>
-    <div class="row" ng-show="gfx_cat && active_loc_gfx">
+    <h3 ng-show="struct.active_loc && struct.active_gfx">Locations ({{ set_pks.length }} of {{ dev_pks.length }} set)<span ng-show="extra_dml_list.length">, {{ extra_dml_list.length }} extra</span>, zoom is {{ cur_scale | number:2 }}</h3>
+    <!-- <div class="row" ng-show="gfx_cat && active_loc_gfx">
         <div class="col-md-3">
-            <icsw-device-monitoring-location-list></icsw-device-monitoring-location-list>
+            <icsw-device-monitoring-location-listx></icsw-device-monitoring-location-listx>
         </div>
         <div class="col-md-9">
-            <icsw-device-location-map></icsw-device-location-map>
+            <icsw-device-location-mapx></icsw-device-location-mapx>
         </div>
-    </div>
+    </div> -->
 </script>
 
 <script type="text/ng-template" id="icsw.device.monitoring.location.list">
@@ -81,11 +84,15 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.location.list">
-    <h3><ng-pluralize count="gfx_cat.location_gfxs.length" when="{'0': 'No Location maps for {{ gfx_cat.full_name }}', 'one': 'One Location map for {{ gfx_cat.full_name }}', 'other': '{} location maps for {{ gfx_cat.full_name }}'}"></ng-pluralize></h3>
+    <h3>
+        <ng-pluralize count="location.$gfx_list.length" when="{'0': 'No Location maps for {{ gfx_cat.full_name }}', 'one': 'One Location map for {{ gfx_cat.full_name }}', 'other': '{} location maps for {{ location.full_name }}'}"></ng-pluralize>
+    </h3>
     <ul class="list-group">
-        <li class="list-group-item" ng-repeat="loc_gfx in get_location_gfxs(gfx_cat)">
-            <span ng-show="DEBUG">[{{ loc_gfx.idx }}]</span><input type="button" ng-class="get_button_class(loc_gfx)" value="show" ng-click="activate_loc_gfx(loc_gfx)"/>
-            {{ loc_gfx.name }}<span ng-show="loc_gfx.comment"> ({{ loc_gfx.comment }})</span>
+        <li class="list-group-item" ng-repeat="loc_gfx in $gfx_list">
+            <span ng-show="DEBUG">[{{ loc_gfx.idx }}]</span>
+            <input type="button" ng-class="get_button_class(loc_gfx)" value="show" ng-click="activate_loc_gfx(loc_gfx)"/>
+            {{ loc_gfx.name }}
+            <span ng-show="loc_gfx.comment"> ({{ loc_gfx.comment }})</span>
             <ng-pluralize count="get_num_devices(loc_gfx)" when="{'0': '', 'one' : ', one device', 'other' : ', {} devices'}"></ng-pluralize>
             <span ng-show="get_num_devices(loc_gfx)" class="glyphicon glyphicon-info-sign" tooltip="{{ get_device_list(loc_gfx) }}" tooltip-placement="right"></span>
             , {{ loc_gfx.image_name }} {{ loc_gfx.width }} x {{ loc_gfx.height }} ({{ loc_gfx.content_type }})

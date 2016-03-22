@@ -63,7 +63,7 @@
                 <div class="row">
                     <div class="col-sm-4">
                         <h3>Tree view</h3>
-                        <tree treeconfig="dn_tree"  config-service="icswConfigCategoryListService" icsw-config-object="icswConfigObject"></tree>
+                        <tree treeconfig="dn_tree" config-service="icswConfigCategoryListService" icsw-config-object="icswConfigObject"></tree>
                     </div>
                     <div class="col-sm-8">
                         <h3>Table view</h3>
@@ -157,7 +157,7 @@
                     Name<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
-                    <input class="textinput textInput form-control" maxlength="64" name="name" ng-model="edit_obj.name" required="True" type="text"/>
+                    <input class="textinput textInput form-control" maxlength="64" name="name" ng-model="edit_obj.name" required="True" type="text" ng-disabled="edit_obj.depth < 2"/>
                 </div>
             </div>
             <div class="form-group">
@@ -166,10 +166,11 @@
                 </label>
                 <div class="controls col-sm-7">
                     <ui-select ng-model="edit_obj.parent" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                        <ui-select-match class="ui-select-match" placeholder="Select a parent node">{{ $select.selected.full_name }}
+                        <ui-select-match class="ui-select-match" placeholder="Select a parent node">
+                            {{ $select.selected.info_string }}
                         </ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in get_valid_parents(edit_obj) | props_filter:{full_name:$select.search}">
-                            <div ng-bind-html="value.full_name | highlight: $select.search"></div>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in valid_parents | props_filter:{full_name:$select.search}">
+                            <div ng-bind-html="value.info_string | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
                 </div>
@@ -204,24 +205,20 @@
                     <input class="numberinput form-control" name="longitude" ng-model="edit_obj.longitude" ng-pattern="/^\d+(\.\d+)*$/" required="True" step="any" type="number" value="16.3"/>
                 </div>
             </div>
-            <div class="form-group">
-                <div class="checkbox">
-                    <div class="controls col-lg-offset-0 col-sm-7">
-                        <label>
-                            <input class="checkboxinput checkbox" name="locked" ng-model="edit_obj.locked" type="checkbox"/>
-                            Locked
-                        </label>
-                    </div>
+            <div class="form-group row">
+                <div class="control-label col-sm-3">
+                    Locked
+                </div>
+                <div class="controls col-sm-7">
+                    <icsw-tools-yes-no flag="edit_obj.locked"></icsw-tools-yes-no>
                 </div>
             </div>
-            <div class="form-group">
-                <div class="checkbox">
-                    <div class="controls col-lg-offset-0 col-sm-7">
-                        <label>
-                            <input checked="checked" class="checkboxinput checkbox" name="physical" ng-model="edit_obj.physical" type="checkbox"/>
-                            Physical
-                        </label>
-                    </div>
+            <div class="form-group row">
+                <div class="control-label col-sm-3">
+                    Physical
+                </div>
+                <div class="controls col-sm-7">
+                    <icsw-tools-yes-no flag="edit_obj.physical"></icsw-tools-yes-no>
                 </div>
             </div>
         </fieldset>

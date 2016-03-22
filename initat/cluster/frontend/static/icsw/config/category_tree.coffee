@@ -140,6 +140,7 @@ angular.module(
             scope.tree = scope.icswConfigObject.tree
             scope.dn_tree = scope.icswConfigObject.dn_tree
             scope.mode = scope.icswConfigObject.mode
+            scope.mode_is_location = scope.mode == "location"
             defer.resolve(scope.dn_tree.mode_entries)
             return defer.promise
 
@@ -169,11 +170,14 @@ angular.module(
             sub_scope = scope.$new(false)
             sub_scope.edit_obj = obj_or_parent
 
-            sub_scope.get_valid_parents = (obj) ->
-                # called from form code
-                if obj.idx
-                    # object already saved, do not move between top categories
-                    top_cat = new RegExp("^/" + obj.full_name.split("/")[1])
+            if sub_scope.edit_obj.idx
+                # object already saved, do not move between top categories
+                if sub_scope.edit_obj.depth == 1
+                    console.log "*"
+                    p_list = (value for value in scope.dn_tree.mode_entries when value.depth == 0)
+                    console.log p_list
+                else
+                    top_cat = new RegExp("^/" + sub_scope.edit_obj.full_name.split("/")[1])
                     p_list = (value for value in scope.dn_tree.mode_entries when value.depth and top_cat.test(value.full_name))
                     # remove all nodes below myself
                     r_list = []
@@ -182,10 +186,12 @@ angular.module(
                         r_list = r_list.concat(add_list)
                         add_list = (value.idx for value in p_list when (value.parent in r_list and value.idx not in r_list))
                     p_list = (value for value in p_list when value.idx not in r_list)
-                else
-                    # new object, allow all values
-                    p_list = (value for value in scope.dn_tree.mode_entries when value.depth)
-                return p_list
+            else
+                # new object, allow all values
+                p_list = (value for value in scope.dn_tree.mode_entries when value.depth)
+
+            console.log p_list
+            sub_scope.valid_parents = p_list
 
             sub_scope.is_location = (obj) ->
                 # called from formular code
@@ -293,7 +299,7 @@ angular.module(
     $scope.is_location = (obj) ->
         # called from formular code
         # full_name.match leads to infinite digest cycles
-        return (obj.depth > 1) and $scope.mode == "location"
+        return $scope.mode == "location"
 
     $scope.get_tr_class = (obj) ->
         if $scope.dn_tree.lut[obj.idx].active
@@ -460,11 +466,16 @@ angular.module(
                     config: icswConfigTreeService
                     device: icswDeviceTreeService
                     mon_check_command: icswMonitoringTreeService
+                    deviceselectipon: null
                 }
                 for key, refs of _cat.reference_dict
                     if refs.length
-                        _wait_list.push(_lut[key].load(scope.$id))
-                        _ref_list.push(key)
+                        _ext_call = _lut[key]
+                        if _ext_call
+                            _wait_list.push(_ext_call.load(scope.$id))
+                            _ref_list.push(key)
+                        else
+                            console.error "cannot handle references to #{key}"
                 res_list = []
                 defer = $q.defer()
                 if _wait_list.length

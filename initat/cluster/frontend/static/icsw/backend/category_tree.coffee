@@ -31,16 +31,23 @@ angular.module(
     icswTools, ICSW_URLS, $q, Restangular, $rootScope
 ) ->
     class icswCategoryTree
-        constructor: (cat_list, ref_list) ->
+        constructor: (cat_list, ref_list, gfx_list, dml_list) ->
             @list = []
-            @update(cat_list, ref_list)
+            @gfx_list = []
+            @dml_list = []
+            @update(cat_list, ref_list, gfx_list, dml_list)
             @build_luts()
 
-        update: (new_list, ref_list) ->
+        update: (new_list, ref_list, gfx_list, dml_list) ->
+            console.log "*", dml_list
             # update with new data from server
             REF_NAMES = ["config", "mon_check_command", "deviceselection", "device"]
             @list.length = 0
             for entry in new_list
+                # gfx references, only idx
+                if not entry.$gfx_list?
+                    entry.$gfx_list = []
+                    entry.$dml_list = []
                 if not entry.reference_dict?
                     entry.reference_dict = {}
                 for ref_name in REF_NAMES
@@ -48,8 +55,19 @@ angular.module(
                         entry.reference_dict[ref_name] = []
                     entry.reference_dict[ref_name].length = 0
                 @list.push(entry)
-            # intermediat lut
+            # intermediate lut
             @lut = _.keyBy(@list, "idx")
+            # link gfx
+            @gfx_list.length = 0
+            for gfx in gfx_list
+                if not gfx.$dml_list?
+                    gfx.$dml_list = []
+                @gfx_list.push(gfx)
+
+            # device monitoring location
+            @dml_list.length = 0
+            for dml in dml_list
+                @dml_list.push(dml)
             # should be improved, FIXME, TODO
             for ref in ref_list
                 @lut[ref[1]].reference_dict[ref[0]].push(ref[2])
@@ -58,6 +76,10 @@ angular.module(
         build_luts: () =>
             # create lookupTables
             @lut = _.keyBy(@list, "idx")
+            # gfx lut
+            @gfx_lut = _.keyBy(@gfx_list, "idx")
+            # dml lut
+            @dml_lut = _.keyBy(@dml_list, "idx")
             @reorder()
 
         reorder: () =>
@@ -69,6 +91,7 @@ angular.module(
             # clear all child entries
             set_name = (cat, full_name, depth) =>
                 cat.full_name = "#{full_name}/#{cat.name}"
+                cat.info_string = cat.full_name
                 cat.depth = depth + 1
                 (set_name(@lut[child], cat.full_name, depth + 1) for child in cat.children)
             # links
@@ -82,9 +105,24 @@ angular.module(
                     @lut[entry.parent].children.push(entry.idx)
                 else
                     entry.full_name = entry.name
+                    # manually set top-entry info string
+                    entry.info_string = "[TOP]"
             for entry in @list
+                entry.$gfx_list.length = 0
+                entry.$dml_list.length = 0
                 if entry.depth == 1
+                    entry.info_string = entry.full_name
                     (set_name(@lut[child], entry.full_name, 1) for child in entry.children)
+            # gfx list
+            for gfx in @gfx_list
+                gfx.$dml_list.length = 0
+                @lut[gfx.location].$gfx_list.push(gfx.idx)
+
+            # dml
+            for dml in @dml_list
+                @lut[dml.location].$dml_list.push(dml.idx)
+                @gfx_lut[dml.location_gfx].$dml_list.push(dml.idx)
+
             @reorder_full_name()
 
         clear_references: (name) =>
@@ -173,11 +211,23 @@ angular.module(
 ) ->
     rest_map = [
         [
+            # categories
             ICSW_URLS.REST_CATEGORY_LIST
             {}
         ]
         [
+            # reference counters
             ICSW_URLS.BASE_CATEGORY_REFERENCES
+            {}
+        ]
+        [
+            # location gfx
+            ICSW_URLS.REST_LOCATION_GFX_LIST
+            {}
+        ]
+        [
+             # device-location n2m
+            ICSW_URLS.REST_DEVICE_MON_LOCATION_LIST
             {}
         ]
     ]
@@ -194,9 +244,9 @@ angular.module(
             (data) ->
                 console.log "*** category tree loaded ***"
                 if _result?
-                    _result.update(data[0], data[1])
+                    _result.update(data[0], data[1], data[2], data[3])
                 else
-                    _result = new icswCategoryTree(data[0], data[1])
+                    _result = new icswCategoryTree(data[0], data[1], data[2], data[3])
                 _defer.resolve(_result)
                 for client of _fetch_dict
                     # resolve clients

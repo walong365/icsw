@@ -596,6 +596,9 @@ def category_pre_save(sender, **kwargs):
         if cur_inst.depth and not valid_category_re.match(cur_inst.name):
             raise ValidationError("illegal characters in name '{}'".format(cur_inst.name))
         if cur_inst.depth:
+            if cur_inst.depth == 1:
+                if "/{}".format(cur_inst.name) not in TOP_LOCATIONS:
+                    raise ValidationError("illegal top-level category name '{}'".format(cur_inst.name))
             check_empty_string(cur_inst, "name")
             parent_node = cur_inst.parent
             new_full_name = "{}/{}".format(
@@ -825,8 +828,8 @@ class device_mon_location(models.Model):
     # creation date
     created = models.DateTimeField(auto_now_add=True)
 
-    def get_device_name(self):
-        return self.device.full_name
+    # def get_device_name(self):
+    #    return self.device.full_name
 
     class Meta:
         verbose_name = "Monitoring location"

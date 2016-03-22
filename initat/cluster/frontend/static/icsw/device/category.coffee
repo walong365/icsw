@@ -65,7 +65,6 @@ angular.module(
                 if entry.depth < 1 or entry.full_name.split("/")[1] == mode
                     @mode_entries.push(entry)
 
-
         get_selected_cat_pks: () =>
             return @get_selected(
                 (node) ->
@@ -81,7 +80,7 @@ angular.module(
         get_name : (t_entry) ->
             cat = t_entry.obj
             if cat.depth > 1
-                r_info = "#{cat.full_name} (#{cat.name})"
+                r_info = "#{cat.name}"
                 # number of selected entries (from local selection)
                 num_sel = t_entry.$match_pks.length
                 if num_sel and @$num_devs > 1
@@ -95,8 +94,9 @@ angular.module(
                 return "TOP"
 
         handle_click: (entry, event) =>
-            @scope.selected_category = entry.obj
-            @scope.$digest()
+            if entry.obj.depth > 0
+                @scope.selected_category = entry.obj
+                @scope.$digest()
 
 ]).controller("icswDeviceCategoryCtrl",
 [
@@ -109,12 +109,16 @@ angular.module(
     icswDeviceTreeService, icswCategoryTreeService, blockUI,
 ) ->
     icswAcessLevelService.install($scope)
-    $scope.device_pks = []
     $scope.struct = {
         device_list_ready: false
-        mult_device_mode: false
+        multi_device_mode: false
         cat_tree: new icswDeviceCategoryTreeService($scope, {})
     }
+
+    $scope.$on("$destroy", () ->
+        $scope.struct.device_list_ready = false
+    )
+
     $scope.new_devsel = (devs) ->
         $q.all(
             [
@@ -131,9 +135,6 @@ angular.module(
                 $scope.struct.device_tree = device_tree
                 $scope.rebuild_dnt()
         )
-    $scope.$on("$destroy", () ->
-        $scope.struct.device_list_ready = false
-    )
 
     $scope.rebuild_dnt = () ->
         _ct = $scope.struct.cat_tree
@@ -143,7 +144,6 @@ angular.module(
             if not $scope.acl_all(dev, "backbone.device.change_category", 7)
                 _ct.change_select = false
                 break
-        # hm, not working right now ...
         if _ct.$pre_sel?
             _cur_sel = _ct.$pre_sel
         else
@@ -157,13 +157,6 @@ angular.module(
         _dev_pks = (dev.idx for dev in $scope.struct.devices)
         _dev_pks.sort()
 
-        # console.log _cur_sel
-        # console.log _dev_pks
-        # for dev in $scope.devices
-        #    for _sel in dev.categories
-        #        if _sel of sel_dict
-        #            sel_dict[_sel].push(entry.idx)
-        # $scope.sel_dict = sel_dict
         for entry in _ct.mode_entries
             # console.log entry.reference_dict.device, _num_devs
             # get pks of devices in current selection which have the category entry set
