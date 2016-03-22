@@ -192,7 +192,7 @@ angular.module(
         resolve_lazy_selection: () ->
             # categories
             for _cat in @cat_sel
-                for _cs in @tree.cat_tree.lut[_cat].devices
+                for _cs in @tree.cat_tree.lut[_cat].reference_dict.device
                     @tot_dev_sel.push(_cs)
             @cat_sel = []
             # groups
@@ -702,7 +702,7 @@ angular.module(
             for _group_dev in $scope.tree.group_lut[_gs].devices
                 tot_dev_sel.push(_group_dev)
         for _cs in cat_sel_nodes
-            for _cat_dev in $scope.tree.get_category(_cs).devices
+            for _cat_dev in $scope.tree.get_category(_cs).reference_dict.device
                 tot_dev_sel.push(_cat_dev)
         $scope.selection.update(cat_sel_nodes, devg_sel, dev_sel, _.uniq(tot_dev_sel))
         if $scope.selection.is_synced()
@@ -901,8 +901,8 @@ angular.module(
                 if entry.depth
                     _res = entry.name
                     cat = @current.cat_tree.lut[t_entry.obj]
-                    if cat.devices.length
-                        _res = "#{_res} (#{cat.devices.length} devices)"
+                    if cat.reference_dict.device.length
+                        _res = "#{_res} (#{cat.reference_dict.device.length} devices)"
                 else
                     _res = "[TOP]"
                 return _res

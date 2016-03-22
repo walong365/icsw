@@ -31,19 +31,33 @@ angular.module(
     icswTools, ICSW_URLS, $q, Restangular, $rootScope
 ) ->
     class icswCategoryTree
-        constructor: (@list) ->
+        constructor: (cat_list, ref_list) ->
+            @list = []
+            @update(cat_list, ref_list)
             @build_luts()
 
-        update: (new_list) ->
+        update: (new_list, ref_list) ->
             # update with new data from server
+            REF_NAMES = ["config", "mon_check_command", "deviceselection", "device"]
             @list.length = 0
             for entry in new_list
+                if not entry.reference_dict?
+                    entry.reference_dict = {}
+                for ref_name in REF_NAMES
+                    if ref_name not of entry.reference_dict
+                        entry.reference_dict[ref_name] = []
+                    entry.reference_dict[ref_name].length = 0
                 @list.push(entry)
+            # intermediat lut
+            @lut = _.keyBy(@list, "idx")
+            # should be improved, FIXME, TODO
+            for ref in ref_list
+                @lut[ref[1]].reference_dict[ref[0]].push(ref[2])
             @build_luts()
 
         build_luts: () =>
             # create lookupTables
-            @lut = icswTools.build_lut(@list)
+            @lut = _.keyBy(@list, "idx")
             @reorder()
 
         reorder: () =>
@@ -62,10 +76,7 @@ angular.module(
                 entry.children = []
                 entry.num_refs = 0
                 for key, value of entry.reference_dict
-                    if angular.isArray(value)
-                        entry.num_refs += value.length
-                    else
-                        entry.num_refs += value
+                    entry.num_refs += value.length
             for entry in @list
                 if entry.parent
                     @lut[entry.parent].children.push(entry.idx)
@@ -78,10 +89,7 @@ angular.module(
 
         clear_references: (name) =>
             for entry in @list
-                if angular.isArray(entry.reference_dict[name])
-                    entry.reference_dict[name].length = 0
-                else
-                    entry.reference_dict[name] = 0
+                entry.reference_dict[name].length = 0
 
         sync_devices: (dev_list) =>
             # set device categories from a given device
@@ -98,10 +106,10 @@ angular.module(
             @clear_references("mon_check_command")
             for config in ct.list
                 for cat in config.categories
-                    @lut[cat].reference_dict["config"]++
+                    @lut[cat].reference_dict["config"].push(config.idx)
                 for mcc in config.mon_check_command_set
                     for cat in mcc.categories
-                        @lut[cat].reference_dict["mon_check_command"]++
+                        @lut[cat].reference_dict["mon_check_command"].push(mcc.idx)
             @link()
 
         reorder_full_name: () =>
@@ -168,6 +176,10 @@ angular.module(
             ICSW_URLS.REST_CATEGORY_LIST
             {}
         ]
+        [
+            ICSW_URLS.BASE_CATEGORY_REFERENCES
+            {}
+        ]
     ]
     _fetch_dict = {}
     _result = undefined
@@ -182,9 +194,9 @@ angular.module(
             (data) ->
                 console.log "*** category tree loaded ***"
                 if _result?
-                    _result.update(data[0])
+                    _result.update(data[0], data[1])
                 else
-                    _result = new icswCategoryTree(data[0])
+                    _result = new icswCategoryTree(data[0], data[1])
                 _defer.resolve(_result)
                 for client of _fetch_dict
                     # resolve clients

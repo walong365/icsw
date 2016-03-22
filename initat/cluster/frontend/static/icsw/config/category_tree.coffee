@@ -111,6 +111,10 @@ angular.module(
             node = @lut[obj.idx]
             if node.obj
                 node.active = !node.active
+                if node.active
+                    @scope.selected_category = node.obj
+                else
+                    @scope.selected_category = null
                 @show_active()
                 @scope.update_active()
 
@@ -429,23 +433,86 @@ angular.module(
         )
     $scope.reload()
 
-]).directive("icswConfigCategoryContentsViewer", ["Restangular", "ICSW_URLS", "msgbus", (Restangular, ICSW_URLS, msgbus) ->
+]).directive("icswConfigCategoryContentsViewer",
+[
+    "Restangular", "ICSW_URLS", "icswConfigTreeService", "icswDeviceTreeService", "$q",
+    "icswMonitoringTreeService",
+(
+    Restangular, ICSW_URLS, icswConfigTreeService, icswDeviceTreeService, $q,
+    icswMonitoringTreeService,
+) ->
     return {
         restrict: "EA"
         templateUrl: "icsw.config.category.contents_viewer"
         scope:
-            categoryPk: '='
-            categoryName: '='
+            icsw_category: '=icswCategory'
+            # categoryName: '='
         link : (scope, elements, attrs) ->
+            scope.enabled = false
+            scope.data_ready = false
             update = () ->
                 scope.data_ready = false
-                scope.enabled = scope.categoryPk?
-                if scope.enabled
-                    Restangular.all(ICSW_URLS.BASE_CATEGORY_CONTENTS.slice(1)).getList({category_pk: scope.categoryPk}).then((new_data) ->
-                        scope.data_ready = true
-                        scope.category_contents = new_data
+                _cat = scope.icsw_category
+                _wait_list = []
+                _ref_list = []
+                # todo: add deviceselection
+                _lut = {
+                    config: icswConfigTreeService
+                    device: icswDeviceTreeService
+                    mon_check_command: icswMonitoringTreeService
+                }
+                for key, refs of _cat.reference_dict
+                    if refs.length
+                        _wait_list.push(_lut[key].load(scope.$id))
+                        _ref_list.push(key)
+                res_list = []
+                defer = $q.defer()
+                if _wait_list.length
+                    $q.all(
+                        _wait_list
+                    ).then(
+                        (data) ->
+                            for [key, res_obj] in _.zip(_ref_list, data)
+                                # key, res_obj = res_tuple
+                                pk_list = _cat.reference_dict[key]
+                                for pk in pk_list
+                                    [subtype, info] = ["", ""]
+                                    if key == "device"
+                                        _dev = res_obj.all_lut[pk]
+                                        name = _dev.full_name
+                                        if _dev.is_meta_device
+                                            subtype = "Group"
+                                        else
+                                            info = "DeviceGroup " + res_obj.group_lut[_dev.device_group].name
+                                    else if key == "config"
+                                        _conf = res_obj.lut[pk]
+                                        name = _conf.name
+                                        info = "Coniguration"
+                                    else if key == "mon_check_command"
+                                        _mcc = res_obj.mon_check_command_lut[pk]
+                                        name = _mcc.name
+                                    res_list.push(
+                                        type: key
+                                        subtype: subtype
+                                        name: name
+                                        info: info
+                                    )
+                            defer.resolve(res_list)
                     )
-            msgbus.receive(msgbus.event_types.CATEGORY_CHANGED, scope, update)
-            scope.$watch('categoryPk', update)
+                else
+                    defer.resolve(res_list)
+                defer.promise.then(
+                    (res_list) ->
+                        scope.data_ready = true
+                        scope.contents = res_list
+                )
+            scope.$watch("icsw_category", (new_val) ->
+                if new_val
+                    scope.enabled = true
+                    update()
+                else
+                    scope.enabled = false
+                    scope.data_ready = false
+            )
     }
 ])

@@ -881,6 +881,7 @@ class device_com_capabilities(APIView):
             _data.append(ComCapabilitySerializer([_cap for _cap in _dev.com_capability_list.all()], many=True).data)
         return Response(_data)
 
+# print len(REST_LIST)
 
 for src_mod, obj_name in REST_LIST:
     is_camelcase = obj_name[0].lower() != obj_name[0]

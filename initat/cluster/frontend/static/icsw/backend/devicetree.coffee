@@ -460,8 +460,6 @@ angular.module(
             for group in @group_list
                 # reference to all devices
                 group.devices = []
-            for cat in @cat_tree.list
-                cat.devices = []
             for entry in @all_list
                 # add enrichment info
                 if not entry.$$_enrichment_info?
@@ -469,8 +467,6 @@ angular.module(
                 # do not set group here to prevent circular dependencies in serializer
                 # entry.group_object = @group_lut[entry.device_group]
                 @group_lut[entry.device_group].devices.push(entry.idx)
-                for cat in entry.categories
-                    @cat_tree.lut[cat].devices.push(entry.idx)
             for group in @group_list
                 # num of all devices (enabled and disabled, also with md)
                 group.num_devices_with_meta = group.devices.length

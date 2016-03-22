@@ -6,8 +6,7 @@
     <icsw-tools-ensure-device-selection dev-list="struct.devices" list-ready="struct.device_list_ready">
         <tree treeconfig="struct.cat_tree"></tree>
         <div style="height: 10px"></div>
-        <icsw-config-category-contents-viewer category-name="selected_category.full_name" category-pk="selected_category.idx">
-        </icsw-config-category-contents-viewer>
+        <icsw-config-category-contents-viewer icsw-category="selected_category"></icsw-config-category-contents-viewer>
     </icsw-tools-ensure-device-selection>
 </script>
 
@@ -104,8 +103,8 @@
                         </div>
                     </div>
                 </div>
-                <uib-alert>Todo: show lookup</uib-alert>
             </icsw-tools-rest-table-new>
+            <icsw-config-category-contents-viewer icsw-category="selected_category"></icsw-config-category-contents-viewer>
         </div>
     </div>
 </script>
@@ -113,13 +112,13 @@
 <script type="text/ng-template" id="icsw.config.category.contents_viewer">
     <div class="panel panel-default" ng-if="enabled">
         <div class="panel-heading">
-            Contents of category {{categoryName}}
+            Contents of category {{ icsw_category.full_name }}
         </div>
-        <div class="panel-body">
-            <uib-alert type="ok" ng-if="enabled && data_ready && category_contents.length == 0">
+        <div class="panel-body" ng-if="data_ready">
+            <uib-alert type="warning" ng-if="enabled && icsw_category.num_refs == 0">
                 This category is empty.
             </uib-alert>
-            <table st-table="entries" st-safe-src="category_contents" class="table table-condensed table-striped"
+            <table st-table="entries" st-safe-src="contents" class="table table-condensed table-striped"
                    style="width: auto" ng-show="entries.length > 0">
                 <thead>
                     <tr>
@@ -129,27 +128,21 @@
                         </td>
                     </tr>
                     <tr>
-                        <!-- NOTE: this assumes homogenous category contents -->
-                        <th ng-repeat="(k, v) in entries[0].properties" st-sort="properties['{{k}}']">
-                            {{k | capitalize}}
-                        </th>
+                        <th>Type</th>
+                        <th>SubType</th>
+                        <th>Name</th>
+                        <th>Info</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr ng-repeat="entry in entries">
-                        <td ng-repeat="v in entry.properties">
-                            {{v}}
-                        </td>
+                        <td>{{ entry.type }}</td>
+                        <td>{{ entry.subtype }}</td>
+                        <td>{{ entry.name }}</td>
+                        <td>{{ entry.info }}</td>
                     </tr>
                 </tbody>
             </table>
-            <ul class="list-group">
-                <li class="list-group-item" ng-repeat="entry in new_data">
-                    <div class="list-group-item-heading">
-                        {{entry.name}}
-                    </div>
-                </li>
-            </ul>
         </div>
     </div>
 </script>

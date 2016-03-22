@@ -28,12 +28,13 @@ import logging
 import PIL
 from PIL import Image
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Q
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from lxml.builder import E  # @UnresolvedImport
+from lxml.builder import E
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 
@@ -201,16 +202,14 @@ class change_category(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        import pprint
-        pprint.pprint(_post)
+        # import pprint
+        # pprint.pprint(_post)
         add_cat = True if int(_post.get("set", "0").lower()) else False
-        print "***", add_cat
         multi_mode = True if _post.get("multi", "False").lower()[0] in ["1", "t", "y"] else False
         # format: [(device_idx, cat_idx), ...]
         _added, _removed = ([], [])
         devs_added, devs_removed = ([], [])
         for sc_cat in category.objects.filter(Q(pk__in=json.loads(_post["cat_pks"]))):
-            print "cat=", sc_cat
             for _dev in device.objects.filter(
                 Q(pk__in=json.loads(_post["dev_pks"]))
             ).prefetch_related(
@@ -244,108 +243,6 @@ class change_category(View):
                 "removed": _removed
             }
         )
-        return
-        if multi_mode:
-            set_mode = True if int(_post["set"]) else False
-            sc_cat = category.objects.get(Q(pk=_post["cat_pk"]))
-            devs_added, devs_removed = ([], [])
-            for _obj in getattr(
-                initat.cluster.backbone.models, _post["obj_type"]
-            ).objects.filter(
-                Q(pk__in=json.loads(_post["obj_pks"]))
-            ).prefetch_related("categories"):
-                if set_mode and sc_cat not in _obj.categories.all():
-                    devs_added.append(_obj)
-                    _obj.categories.add(sc_cat)
-                    _remcats = [_cat for _cat in _obj.categories.all() if _cat != sc_cat and _cat.single_select()]
-                    _obj.categories.remove(*_remcats)
-                    _added.append((_obj.idx, sc_cat.idx))
-                    _removed.extend([(_obj.idx, _remcat.idx) for _remcat in _remcats])
-                elif not set_mode and sc_cat in _obj.categories.all():
-                    devs_removed.append(_obj)
-                    _removed.append((_obj.idx, sc_cat.idx))
-                    _obj.categories.remove(sc_cat)
-            request.xml_response.info(
-                u"{}: added to {}, removed from {}".format(
-                    unicode(sc_cat),
-                    logging_tools.get_plural("device", len(devs_added)),
-                    logging_tools.get_plural("device", len(devs_removed)),
-                )
-            )
-        else:
-            cur_obj = getattr(initat.cluster.backbone.models, _post["obj_type"]).objects.get(Q(pk=_post["obj_pk"]))
-            cur_sel = set(cur_obj.categories.filter(Q(full_name__startswith=_post["subtree"])).values_list("pk", flat=True))
-            new_sel = set(json.loads(_post["cur_sel"]))
-            # remove
-            to_del = [_entry for _entry in cur_sel - new_sel]
-            to_add = [_entry for _entry in new_sel - cur_sel]
-            if to_del:
-                cur_obj.categories.remove(*category.objects.filter(Q(pk__in=to_del)))
-                _removed.extend([(cur_obj.idx, _to_del) for _to_del in to_del])
-            if to_add:
-                cur_obj.categories.add(*category.objects.filter(Q(pk__in=to_add)))
-                _added.extend([(cur_obj.idx, _to_add) for _to_add in to_add])
-            request.xml_response.info(
-                "added {:d}, removed {:d}".format(
-                    len(to_add),
-                    len(to_del)
-                )
-            )
-        request.xml_response["changes"] = json.dumps({"added": _added, "removed": _removed})
-
-
-class CategoryContents(ListAPIView):
-    @method_decorator(login_required)
-    @rest_logging
-    def list(self, request, *args, **kwargs):
-        contents = []
-        try:
-            cat_db = category.objects.get(pk=request.GET['category_pk'])
-        except category.DoesNotExist:
-            # on category deletion, client often triggers a reload, so just return empty list in that case
-            pass
-        else:
-
-            # NOTE: gui currently assumes homogenous category contents, i.e. at most one of the following types:
-
-            for dev in device.objects.filter(categories=cat_db).select_related('device_group'):
-                contents.append({
-                    "pk": dev.pk,
-                    'properties': {
-                        "name": dev.full_name,
-                        "group": dev.device_group.name,
-                    },
-                    "type": "device",
-                })
-
-            for mcc in mon_check_command.objects.filter(categories=cat_db):
-                contents.append({
-                    "pk": mcc.pk,
-                    'properties': {
-                        "Check command": mcc.name
-                    },
-                    "type": "mon_check_command",
-                })
-
-            for conf in config.objects.filter(categories=cat_db):
-                contents.append({
-                    "pk": conf.pk,
-                    'properties': {
-                        "Config": conf.name,
-                    },
-                    "type": "config",
-                })
-
-            for loc_dev in device.objects.filter(device_mon_location__location=cat_db):
-                contents.append({
-                    "pk": loc_dev.pk,
-                    'properties': {
-                        "Location": loc_dev.name,
-                    },
-                    "type": "location_device",
-                })
-
-        return Response(contents)
 
 
 class GetKpiSourceData(View):
@@ -507,3 +404,28 @@ class CheckDeletionStatus(View):
                 msg = "Deleting {}{}".format(logging_tools.get_plural("object", len(obj_pks)), additional)
 
             request.xml_response['msg_{}'.format(k)] = msg
+
+
+class CategoryReferences(ListAPIView):
+    @method_decorator(login_required)
+    @rest_logging
+    def list(self, request, *args, **kwargs):
+        all_m2ms = [
+            _f for _f in category._meta.get_fields(include_hidden=True) if _f.many_to_many and _f.auto_created
+        ]
+        _names = [_f.name for _f in all_m2ms]
+        _required = {"config", "mon_check_command", "deviceselection", "device"}
+        if set(_names) != _required:
+            raise ValidationError("Related fields for category_tree changed")
+        # not optimal, improve format
+        contents = []
+        for rel in all_m2ms:
+            for cat_id, remote_id in getattr(
+                category,
+                rel.get_accessor_name()
+            ).through.objects.all().values_list(
+                "category_id",
+                "{}_id".format(rel.name)
+            ):
+                contents.append((rel.name, cat_id, remote_id))
+        return Response(contents)

@@ -82,7 +82,8 @@ angular.module(
             cat = t_entry.obj
             if cat.depth > 1
                 r_info = "#{cat.full_name} (#{cat.name})"
-                num_sel = t_entry.$match_pks.length # number of selected entries
+                # number of selected entries (from local selection)
+                num_sel = t_entry.$match_pks.length
                 if num_sel and @$num_devs > 1
                     r_info = "#{r_info}, #{num_sel} of #{@$num_devs}"
                 if cat.num_refs
@@ -115,7 +116,6 @@ angular.module(
         cat_tree: new icswDeviceCategoryTreeService($scope, {})
     }
     $scope.new_devsel = (devs) ->
-        console.log "*nd", devs
         $q.all(
             [
                 icswDeviceTreeService.load($scope.$id)
@@ -157,7 +157,7 @@ angular.module(
         _dev_pks = (dev.idx for dev in $scope.struct.devices)
         _dev_pks.sort()
 
-        console.log _cur_sel
+        # console.log _cur_sel
         # console.log _dev_pks
         # for dev in $scope.devices
         #    for _sel in dev.categories

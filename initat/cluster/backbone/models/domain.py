@@ -531,25 +531,26 @@ class category(models.Model):
     def single_select(self):
         return True if self.full_name.startswith("/location/") else False
 
-    def get_reference_dict(self):
-        all_m2ms = [
-            _f for _f in self._meta.get_fields(include_hidden=True) if _f.many_to_many and _f.auto_created
-        ]
-        _names = [_f.name for _f in all_m2ms]
-        _required = {"config", "mon_check_command", "deviceselection", "device"}
-        if set(_names) != _required:
-            raise ValidationError("Related fields for category_tree changed")
-        ref_dict = {}
-        for rel in all_m2ms:
-            if rel.name == "device":
-                # print getattr(self, rel.get_accessor_name()).count()
-                # print getattr(self, rel.get_accessor_name()).all()
-                ref_dict[rel.name] = getattr(self, rel.get_accessor_name()).values_list("pk", flat=True)
-            else:
-                ref_dict[rel.name] = getattr(self, rel.get_accessor_name()).count()
-        # print self.device.get_accessor_name().values_list("device")
-        # print ref_dict
-        return ref_dict
+    # no longer needed
+    # def get_reference_dict(self):
+    #    all_m2ms = [
+    #        _f for _f in self._meta.get_fields(include_hidden=True) if _f.many_to_many and _f.auto_created
+    #    ]
+    #    _names = [_f.name for _f in all_m2ms]
+    #    _required = {"config", "mon_check_command", "deviceselection", "device"}
+    #    if set(_names) != _required:
+    #        raise ValidationError("Related fields for category_tree changed")
+    #    ref_dict = {}
+    #    for rel in all_m2ms:
+    #        if rel.name == "device":
+    #            # print getattr(self, rel.get_accessor_name()).count()
+    #            # print getattr(self, rel.get_accessor_name()).all()
+    #            ref_dict[rel.name] = getattr(self, rel.get_accessor_name()).values_list("pk", flat=True)
+    #        else:
+    #            ref_dict[rel.name] = getattr(self, rel.get_accessor_name()).count()
+    #    # print self.device.get_accessor_name().values_list("device")
+    #    # print ref_dict
+    #    return ref_dict
 
     class Meta:
         verbose_name = "Category"
