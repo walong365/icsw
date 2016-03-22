@@ -22,6 +22,14 @@
             <icsw-device-configuration-var-overview icsw-sel-man="{{ popupmode }}" icsw-device-list="dev_list['config']">
             </icsw-device-configuration-var-overview>
         </uib-tab>
+         <uib-tab ng-if="acl_read(null, 'backbone.device.change_category') && dev_pk_nmd_list.length" select="activate('category')" active="category_active">
+            <uib-tab-heading>
+                Category{{ addon_text_nmd }}
+            </uib-tab-heading>
+
+            <icsw-device-category-overview icsw-sel-man="{{ popupmode }}" icsw-device-list="dev_list['category']">
+            </icsw-device-category-overview>
+        </uib-tab>
         <uib-tab ng-if="acl_read(null, 'backbone.device.change_variables')" select="activate('device_variable')" active="device_variable_active">
             <uib-tab-heading>
                 Device Variable{{ addon_text }}
