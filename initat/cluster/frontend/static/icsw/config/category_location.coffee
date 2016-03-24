@@ -23,7 +23,21 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "ui.select", "restangular", "uiGmapgoogle-maps", "angularFileUpload"
     ]
-).directive("icswConfigCategoryLocationEdit",
+).config(["$stateProvider", ($stateProvider) ->
+    $stateProvider.state(
+        "main.devlocation", {
+            url: "/devlocation"
+            templateUrl: "icsw/main/device/location.html"
+            data:
+                pageTitle: "Device location"
+                rights: ["user.modify_category_tree"]
+                menuEntry:
+                    menukey: "dev"
+                    icon: "fa-map-marker"
+                    ordering: 40
+        }
+    )
+]).directive("icswConfigCategoryLocationMapEdit",
 [
     "$templateCache",
 (
@@ -31,14 +45,16 @@ angular.module(
 ) ->
     return {
         restrict: "EA"
-        template: $templateCache.get("icsw.config.category.location.edit")
+        template: $templateCache.get("icsw.config.category.location.map.edit")
         scope: {
             preview_gfx: "=previewGfx"
             preview_close: "=previewClose"
+            active_tab: "=activeTab"
         }
         controller: "icswConfigCategoryLocationCtrl"
     }
 ]).directive("icswConfigCategoryLocationShow",
+# not in use right now, was in Dashboard
 [
     "$templateCache",
 (
@@ -83,22 +99,16 @@ angular.module(
         restrict: "EA"
         template: $templateCache.get("icsw.config.category.location.list.show")
     }
-]).service("icswConfigCategoryLocationHelperService", [() ->
-    active_tab = ""
+]).directive("icswConfigLocationTabHelper", [() ->
     return {
-        "set_active_tab": (tab) ->
-            active_tab = tab
-        "get_active_tab": () ->
-            return active_tab
+        restrict: "A"
+        link: (scope, element, attrs) ->
+            scope.active_tab = ""
+            scope.set_active_tab = (tab) ->
+                scope.active_tab = tab
+            scope.get_active_tab = () ->
+                return scope.active_tab
     }
-]).controller("icswConfigCategoryLocationTopCtrl",
-[
-    "$scope", "icswConfigCategoryLocationHelperService",
-(
-    $scope, icswConfigCategoryLocationHelperService
-) ->
-    $scope.set_active_tab = (name) ->
-        icswConfigCategoryLocationHelperService.set_active_tab(name)
 ]).controller("icswConfigCategoryLocationCtrl", [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$timeout",
     "icswCSRFService", "$rootScope", "ICSW_SIGNALS",
@@ -302,11 +312,11 @@ angular.module(
 ]).directive("icswConfigCategoryTreeGoogleMap",
 [
     "$templateCache", "uiGmapGoogleMapApi",
-    "icswConfigCategoryLocationHelperService", "$timeout", "$rootScope",
+    "$timeout", "$rootScope",
     "ICSW_SIGNALS",
 (
     $templateCache, uiGmapGoogleMapApi,
-    icswConfigCategoryLocationHelperService, $timeout, $rootScope,
+    $timeout, $rootScope,
     ICSW_SIGNALS,
 ) ->
     return {
@@ -314,8 +324,10 @@ angular.module(
         template: $templateCache.get("icsw.config.category.tree.google.map")
         scope: {
             locations: "=locations"
+            active_tab: "=activeTab"
         }
         link: (scope, element, attrs) ->
+            console.log attrs
             scope.marker_lut = {}
             scope.location_list = []
             scope.marker_list = []
@@ -399,8 +411,9 @@ angular.module(
                     $rootScope.$emit(ICSW_SIGNALS("ICSW_LOCATION_GOOGLE_MAPS_LOADED"), scope.map)
             )
             scope.$watch(
-                icswConfigCategoryLocationHelperService.get_active_tab
+                "active_tab"
                 (new_val) ->
+                    console.log "at", new_val
                     if new_val == "conf"
                         $timeout(
                             () ->

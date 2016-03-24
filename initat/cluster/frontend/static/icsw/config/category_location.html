@@ -10,6 +10,41 @@
     </uib-tabset>
 </script>
 
+<script type="text/ng-template" id="icsw/main/device/location.html">
+    <uib-tabset icsw-config-location-tab-helper>
+        <uib-tab heading="Device location" select="set_active_tab('loc')">
+            <icsw-device-location-overview icsw-sel-man="0" icsw-sel-man-sel-mode="d">
+            </icsw-device-location-overview>
+        </uib-tab>
+        <uib-tab heading="Location configuration" select="set_active_tab('conf')">
+            <icsw-config-category-location-map-edit preview-gfx="preview_gfx" active-tab="active_tab" preview-close="close_preview">
+            </icsw-config-category-location-map-edit>
+            <hr ng-show="preview_gfx"/>
+            <icsw-config-category-tree-map-enhance preview-gfx="preview_gfx" preview-close="close_preview">
+            </icsw-config-category-tree-map-enhance>
+        </uib-tab>
+        <uib-tab heading="Available locations" select="set_active_tab('avail')">
+            <icsw-config-category-tree-edit mode="location"></icsw-config-category-tree-edit>
+        </uib-tab>
+    </uib-tabset>
+</script>
+
+<script type="text/ng-template" id="icsw.config.category.location.map.edit">
+    <uib-alert type="warning" style="max-width: 500px" ng-if="locations.length == 0">
+        Please create locations in the tab 'Available locations'.
+    </uib-alert>
+
+    <h3 ng-show="locations.length">Map view, {{ locations.length }} locations</h3>
+    <div class="row" ng-if="locations.length > 0">
+        <div class="col-md-6">
+            <icsw-config-category-tree-google-map locations="locations" active-tab="active_tab"></icsw-config-category-tree-google-map>
+        </div>
+        <div class="col-md-6">
+            <icsw-config-category-location-list-edit></icsw-config-category-location-list-edit>
+        </div>
+    </div>
+</script>
+
 <script type="text/ng-template" id="icsw.config.category.location.list.edit">
     <uib-accordion close-others="no">
         <uib-accordion-group ng-repeat="loc in locations" is-open="loc.open">
@@ -69,22 +104,6 @@
             - {{ loc_gfx.name }} ({{ loc_gfx.dev_pks.length }})
         </li>
     </ul>
-</script>
-
-<script type="text/ng-template" id="icsw.config.category.location.edit">
-    <uib-alert type="warning" style="max-width: 500px" ng-if="locations.length == 0">
-        Please create locations in the tab 'Available locations'.
-    </uib-alert>
-
-    <h3 ng-show="locations.length">Map view, {{ locations.length }} locations</h3>
-    <div class="row" ng-if="locations.length > 0">
-        <div class="col-md-6">
-            <icsw-config-category-tree-google-map locations="locations"></icsw-config-category-tree-google-map>
-        </div>
-        <div class="col-md-6">
-            <icsw-config-category-location-list-edit></icsw-config-category-location-list-edit>
-        </div>
-    </div>
 </script>
 
 <script type="text/ng-template" id="icsw.config.category.location.show">

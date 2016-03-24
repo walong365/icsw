@@ -22,21 +22,7 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "icsw.d3", "icsw.tools.button"
     ]
-).config(["$stateProvider", ($stateProvider) ->
-    $stateProvider.state(
-        "main.devlocation", {
-            url: "/devlocation"
-            templateUrl: "icsw/main/device/location.html"
-            data:
-                pageTitle: "Device location"
-                rights: ["user.modify_category_tree"]
-                menuEntry:
-                    menukey: "dev"
-                    icon: "fa-map-marker"
-                    ordering: 40
-        }
-    )
-]).service("icswDeviceLocationTreeService",
+).service("icswDeviceLocationTreeService",
 [
     "icswTreeConfig",
 (
