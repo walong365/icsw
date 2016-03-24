@@ -102,11 +102,11 @@ angular.module(
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q",
     "icswAcessLevelService", "ICSW_URLS", "icswDeviceCategoryTreeService", "icswSimpleAjaxCall",
-    "icswDeviceTreeService", "icswCategoryTreeService", "blockUI",
+    "icswDeviceTreeService", "icswCategoryTreeService", "blockUI", "$rootScope", "ICSW_SIGNALS",
 (
     $scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q,
     icswAcessLevelService, ICSW_URLS, icswDeviceCategoryTreeService, icswSimpleAjaxCall,
-    icswDeviceTreeService, icswCategoryTreeService, blockUI,
+    icswDeviceTreeService, icswCategoryTreeService, blockUI, $rootScope, ICSW_SIGNALS,
 ) ->
     icswAcessLevelService.install($scope)
     $scope.struct = {
@@ -136,6 +136,9 @@ angular.module(
                 $scope.rebuild_dnt()
         )
 
+    $rootScope.$on(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), (event) ->
+        $scope.rebuild_dnt()
+    )
     $scope.rebuild_dnt = () ->
         _ct = $scope.struct.cat_tree
         _ct.change_select = true
@@ -201,6 +204,7 @@ angular.module(
                 "set": if t_entry.selected then "1" else "0"
         ).then(
             (xml) ->
+                # see code in location.coffee
                 change_dict = angular.fromJson($(xml).find("value[name='changes']").text())
                 sync_pks = []
                 for add_b in change_dict.added

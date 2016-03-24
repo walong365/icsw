@@ -39,29 +39,17 @@ angular.module(
             @build_luts()
 
         update: (new_list, ref_list, gfx_list, dml_list) ->
-            console.log "*", dml_list
             # update with new data from server
             REF_NAMES = ["config", "mon_check_command", "deviceselection", "device"]
             @list.length = 0
             for entry in new_list
-                # gfx references, only idx
-                if not entry.$gfx_list?
-                    entry.$gfx_list = []
-                    entry.$dml_list = []
-                if not entry.reference_dict?
-                    entry.reference_dict = {}
-                for ref_name in REF_NAMES
-                    if ref_name not of entry.reference_dict
-                        entry.reference_dict[ref_name] = []
-                    entry.reference_dict[ref_name].length = 0
+                @_init_ref_dict(entry, true)
                 @list.push(entry)
             # intermediate lut
             @lut = _.keyBy(@list, "idx")
             # link gfx
             @gfx_list.length = 0
             for gfx in gfx_list
-                if not gfx.$dml_list?
-                    gfx.$dml_list = []
                 @gfx_list.push(gfx)
 
             # device monitoring location
@@ -86,7 +74,26 @@ angular.module(
             # sort
             @link()
 
+        _init_ref_dict: (entry, clear) =>
+            REF_NAMES = ["config", "mon_check_command", "deviceselection", "device"]
+            if not entry.reference_dict?
+                entry.reference_dict = {}
+            for ref_name in REF_NAMES
+                if ref_name not of entry.reference_dict
+                    entry.reference_dict[ref_name] = []
+                if clear
+                    entry.reference_dict[ref_name].length = 0
+
         link: () =>
+            for entry in @list
+                # gfx references, only idx
+                if not entry.$gfx_list?
+                    entry.$gfx_list = []
+                    entry.$dml_list = []
+                @_init_ref_dict(entry, false)
+            for gfx in @gfx_list
+                if not gfx.$dml_list?
+                    gfx.$dml_list = []
             # create links
             # clear all child entries
             set_name = (cat, full_name, depth) =>
@@ -115,13 +122,19 @@ angular.module(
                     (set_name(@lut[child], entry.full_name, 1) for child in entry.children)
             # gfx list
             for gfx in @gfx_list
+                # for speedup
+                if gfx.comment
+                    gfx.name_comment = "#{gfx.name} (#{gfx.comment})"
+                else
+                    gfx.name_comment = "#{gfx.name}"
+                gfx.info_string = "#{gfx.image_name} #{gfx.width} x #{gfx.height} (#{gfx.content_type})"
                 gfx.$dml_list.length = 0
                 @lut[gfx.location].$gfx_list.push(gfx.idx)
 
             # dml
             for dml in @dml_list
-                @lut[dml.location].$dml_list.push(dml.idx)
-                @gfx_lut[dml.location_gfx].$dml_list.push(dml.idx)
+                @lut[dml.location].$dml_list.push(dml)
+                @gfx_lut[dml.location_gfx].$dml_list.push(dml)
 
             @reorder_full_name()
 
@@ -200,6 +213,80 @@ angular.module(
                             defer.resolve(msg)
                     )
             )
+
+        # populate gfx_locations
+        populate_gfx_location: (gfx_loc, device_tree, sel_devices) =>
+            location = @lut[gfx_loc.location]
+            # selected device pks
+            _sel_pks = (dev.idx for dev in sel_devices)
+            # number of devices in map from selection
+            gfx_loc.$map_devs_selected = 0
+            # number of devices in map, other sources
+            gfx_loc.$map_devs_other = 0
+            # console.log "sel_pks", _sel_pks
+            # local device list
+            for entry in gfx_loc.$dml_list
+                # add $device entries for fast processing in map
+                entry.$device = device_tree.all_lut[entry.device]
+                entry.$$selected = entry.device in _sel_pks
+                if entry.$$selected
+                    gfx_loc.$map_devs_selected++
+                else
+                    gfx_loc.$map_devs_other++
+            gfx_loc.$device_info = (entry.$device.full_name for entry in gfx_loc.$dml_list).join(", ")
+            _set_pks = (entry.$device.idx for entry in gfx_loc.$dml_list)
+            # _unset_pks = (dev.idx for dev in sel_devices when dev.idx not in _set_pks)
+            # list of unset devices
+            gfx_loc.$unset_devices = []
+            for dev in sel_devices
+                if dev.idx not in _set_pks
+                    # check if the current location category is valid for the device
+                    if gfx_loc.location in dev.categories
+                        # physical location in device selection
+                        gfx_loc.$unset_devices.push(dev)
+            # console.log gfx_loc.$dml_list
+            # console.log gfx_loc.$unset_devices
+
+        # dml create / delete functions
+
+        create_device_mon_location_entry: (new_dml) =>
+            # create new category entry
+            defer = $q.defer()
+            Restangular.all(ICSW_URLS.REST_DEVICE_MON_LOCATION_LIST.slice(1)).post(new_dml).then(
+                (new_obj) =>
+                    @_fetch_device_mon_location_entry(new_obj.idx, defer, "created dml entry")
+                (not_ok) ->
+                    defer.reject("dml entry not created")
+            )
+            return defer.promise
+
+        _fetch_device_mon_location_entry: (pk, defer, msg) =>
+            Restangular.one(ICSW_URLS.REST_DEVICE_MON_LOCATION_LIST.slice(1)).get({"idx": pk}).then(
+                (new_dml) =>
+                    new_dml = new_dml[0]
+                    @dml_list.push(new_dml)
+                    @build_luts()
+                    defer.resolve(msg)
+            )
+
+        delete_device_mon_location_entry: (del_dml) =>
+            # ensure REST hooks
+            Restangular.restangularizeElement(null, del_dml, ICSW_URLS.REST_DEVICE_MON_LOCATION_DETAIL.slice(1).slice(0, -2))
+            defer = $q.defer()
+            del_dml.remove().then(
+                (ok) =>
+                    _.remove(@dml_list, (entry) -> return entry.idx == del_dml.idx)
+                    @build_luts()
+                    defer.resolve("deleted")
+                (error) ->
+                    defer.reject("not deleted")
+            )
+            return defer.promise
+
+        # simple remove command for dmls
+        remove_dml_by_pk: (del_dml_pk) =>
+            _.remove(@dml_list, (entry) -> return entry.idx == del_dml_pk)
+            @build_luts()
 
 ]).service("icswCategoryTreeService",
 [

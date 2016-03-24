@@ -64,6 +64,10 @@ angular.module(
             ret_obj.icon_class = "fa fa-check"
             ret_obj.button_value = "enable"
             ret_obj.css_class = "btn-ok"
+        else if type == "lock"
+            ret_obj.icon_class = "fa fa-lock"
+            ret_obj.button_value = "lock"
+            ret_obj.css_class = "btn-ok"
         else if type == "disable"
             ret_obj.css_class = "btn-danger"
             ret_obj.button_value = "disable"
@@ -164,6 +168,7 @@ visible-md visible-lg
             isShow: '&'
             disabled: '&'
             isEnable: '&'
+            isLock: '&'
         link: (scope, element, attrs) ->
 
             # attrs:
@@ -218,6 +223,19 @@ visible-md visible-lg
                         else
                             scope.button_value = gettextCatalog.getString("enable")
                             scope.css_class = "btn-success"
+                )
+            else if attrs.type == "lock"
+                scope.$watch(
+                    scope.isLock
+                    (new_val) ->
+                        if new_val
+                            scope.button_value = gettextCatalog.getString("unlock")
+                            scope.css_class = "btn-warning"
+                            scope.icon_class = "fa fa-unlock"
+                        else
+                            scope.button_value = gettextCatalog.getString("lock")
+                            scope.css_class = "btn-success"
+                            scope.icon_class = "fa fa-lock"
                 )
     }
 ]).directive('icswToolsButtonStatic', ["icswToolsButtonConfigService", "gettextCatalog", (icswToolsButtonsConfigService, gettextCatalog) ->

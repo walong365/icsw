@@ -528,8 +528,9 @@ class category(models.Model):
     def __unicode__(self):
         return u"{}".format(self.full_name if self.depth else "[TLN]")
 
+    @property
     def single_select(self):
-        return True if self.full_name.startswith("/location/") else False
+        return True if (self.full_name.startswith("/location/") and self.physical) else False
 
     # no longer needed
     # def get_reference_dict(self):
@@ -586,7 +587,9 @@ def category_pre_save(sender, **kwargs):
         if cur_inst.parent_id:
             if cur_inst.pk:
                 # check for valid parent
-                all_parents = {_v[0]: _v[1] for _v in category.objects.all().values_list("idx", "parent")}
+                all_parents = {
+                    _v[0]: _v[1] for _v in category.objects.all().values_list("idx", "parent")
+                }
                 cur_p_id = cur_inst.parent_id
                 while cur_p_id:
                     if cur_p_id == cur_inst.pk:

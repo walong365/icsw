@@ -40,7 +40,8 @@ from rest_framework.response import Response
 
 import initat.cluster.backbone.models
 from initat.cluster.backbone.models import device_variable, category, \
-    category_tree, location_gfx, DeleteRequest, device, config, mon_check_command
+    category_tree, location_gfx, DeleteRequest, device, config, mon_check_command, \
+    device_mon_location
 from initat.cluster.backbone.models.functions import can_delete_obj, get_related_models
 from initat.cluster.backbone.render import permission_required_mixin
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
@@ -201,14 +202,25 @@ class change_category(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
+        def remove_mon_loc(_dev, _loc):
+            # get all dmls which are not from the current location and DMLs
+            # which are not on structural entries
+            dml_set = device_mon_location.objects.exclude(
+                Q(location__physical=False)
+            ).filter(
+                Q(location=_loc) & Q(device=_dev)
+            )
+            if dml_set.count():
+                mon_loc_removed.extend(list(dml_set))
+                dml_set.delete()
+
         _post = request.POST
         # import pprint
         # pprint.pprint(_post)
         add_cat = True if int(_post.get("set", "0").lower()) else False
-        multi_mode = True if _post.get("multi", "False").lower()[0] in ["1", "t", "y"] else False
         # format: [(device_idx, cat_idx), ...]
         _added, _removed = ([], [])
-        devs_added, devs_removed = ([], [])
+        devs_added, devs_removed, dev_ss_removed, mon_loc_removed = ([], [], [], [])
         for sc_cat in category.objects.filter(Q(pk__in=json.loads(_post["cat_pks"]))):
             for _dev in device.objects.filter(
                 Q(pk__in=json.loads(_post["dev_pks"]))
@@ -219,17 +231,48 @@ class change_category(View):
                     devs_added.append(_dev)
                     _dev.categories.add(sc_cat)
                     _added.append((_dev.idx, sc_cat.idx))
-                    print "add", sc_cat, _dev
+                    if sc_cat.single_select:
+                        _single_del_list = [
+                            _del_cat for _del_cat in _dev.categories.all() if _del_cat != sc_cat and _del_cat.single_select
+                        ]
+                        if len(_single_del_list):
+                            dev_ss_removed.append(_dev)
+                            for _to_del in _single_del_list:
+                                _dev.categories.remove(_to_del)
+                                remove_mon_loc(_dev, _to_del)
+                                _removed.append((_dev.idx, _to_del.idx))
                 elif not add_cat and sc_cat in _dev.categories.all():
                     devs_removed.append(_dev)
                     _dev.categories.remove(sc_cat)
+                    remove_mon_loc(_dev, sc_cat)
                     _removed.append((_dev.idx, sc_cat.idx))
-                    print "del", sc_cat, _dev
         _info_f = []
         if devs_added:
-            _info_f.append("added to {}".format(logging_tools.get_plural("device", len(devs_added))))
+            _info_f.append(
+                "added to {}".format(
+                    logging_tools.get_plural("device", len(devs_added))
+                )
+            )
         if devs_removed:
-            _info_f.append("removed from {}".format(logging_tools.get_plural("device", len(devs_removed))))
+            _info_f.append(
+                "removed from {}".format(
+                    logging_tools.get_plural("device", len(devs_removed))
+                )
+            )
+        if dev_ss_removed:
+            request.xml_response.warn(
+                "removed location from {} due to single-select policy".format(
+                    logging_tools.get_plural("device", len(dev_ss_removed)),
+                ),
+                logger
+            )
+        if mon_loc_removed:
+            request.xml_response.warn(
+                u"removed {}".format(
+                    logging_tools.get_plural("Location reference", len(mon_loc_removed))
+                ),
+                logger
+            )
 
         request.xml_response.info(
             u"{}: {}".format(
@@ -240,7 +283,10 @@ class change_category(View):
         request.xml_response["changes"] = json.dumps(
             {
                 "added": _added,
-                "removed": _removed
+                "removed": _removed,
+                "dml_removed": [
+                    (entry.device_id, entry.location_id, entry.location_gfx_id, entry.idx) for entry in mon_loc_removed
+                ]
             }
         )
 

@@ -221,6 +221,7 @@ angular.module(
             @show_tree_expand_buttons = true
             @show_icons = true
             @show_select = true
+            @disable_select = false
             @change_select = true
             # show total descendants and not file-only entries
             @show_total_descendants = true
@@ -375,7 +376,9 @@ angular.module(
             )
             _top_span.append(_exp)
             if @show_select and node._show_select
-                _sel_span = angular.element("<span class='fancytree-checkbox' style='margin-left:2px;'/>")
+                _sel_span = angular.element("<input type='checkbox' class='fancytree-checkbox' style='margin-left:2px;'/>")
+                if @disable_select
+                    _sel_span.attr("disabled", "disabled")
                 _sel_span.on("click", () => @_jq_toggle_checkbox_node(node))
                 node._sel_span = _sel_span
                 _top_span.append(_sel_span)
@@ -651,8 +654,11 @@ angular.module(
                 r_class.push "fancytree-folder"
             if entry.active
                 r_class.push "fancytree-active"
-            if entry.selected
-                r_class.push "fancytree-selected"
+            if entry._sel_span?
+                if entry.selected
+                    entry._sel_span.prop("checked", true)
+                else
+                    entry._sel_span.prop("checked", false)
             if entry.children.length or entry.always_folder
                 r_class.push "fancytree-has-children"
                 if entry.expand and entry.children.length
