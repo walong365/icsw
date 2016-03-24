@@ -345,14 +345,14 @@ config_module = angular.module(
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource",
     "$q", "$uibModal", "FileUploader", "$http", "blockUI", "icswTools", "ICSW_URLS",
-    "icswToolsButtonConfigService", "msgbus", "icswConfigTreeService", "icswConfigListService",
+    "icswToolsButtonConfigService", "icswConfigTreeService", "icswConfigListService",
     "icswSimpleAjaxCall", "icswMonitoringTreeService", "icswConfigScriptListService",
     "icswConfigMonCheckCommandListService", "icswConfigVarListService", "$rootScope",
     "ICSW_SIGNALS",
 (
     $scope, $compile, $filter, $templateCache, Restangular, restDataSource,
     $q, $uibModal, FileUploader, $http, blockUI, icswTools, ICSW_URLS,
-    icswToolsButtonConfigService, msgbus, icswConfigTreeService, icswConfigListService,
+    icswToolsButtonConfigService, icswConfigTreeService, icswConfigListService,
     icswSimpleAjaxCall, icswMonitoringTreeService, icswConfigScriptListService,
     icswConfigMonCheckCommandListService, icswConfigVarListService, $rootScope,
     ICSW_SIGNALS
@@ -779,12 +779,12 @@ config_module = angular.module(
 ]).service('icswConfigMonCheckCommandListService',
 [
     "icswSimpleAjaxCall", "icswConfigListService", "icswToolsSimpleModalService",
-    "icswTools", "Restangular", "ICSW_URLS", "msgbus", "$q",
+    "icswTools", "Restangular", "ICSW_URLS",  "$q",
     "icswConfigTreeService", "icswMonitoringTreeService", "icswMonCheckCommandBackup",
     "icswComplexModalService", "$compile", "$templateCache",
 (
     icswSimpleAjaxCall, icswConfigListService, icswToolsSimpleModalService,
-    icswTools, Restangular, ICSW_URLS, msgbus, $q,
+    icswTools, Restangular, ICSW_URLS, $q,
     icswConfigTreeService, icswMonitoringTreeService, icswMonCheckCommandBackup,
     icswComplexModalService, $compile, $templateCache
 ) ->

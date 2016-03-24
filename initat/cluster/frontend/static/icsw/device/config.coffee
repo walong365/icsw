@@ -199,11 +199,11 @@ angular.module(
 ]).controller("icswDeviceConfigurationCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$uibModal", "icswAcessLevelService",
-    "msgbus", "icswTools", "ICSW_URLS", "$timeout", "icswDeviceTreeService", "blockUI",
+    "icswTools", "ICSW_URLS", "$timeout", "icswDeviceTreeService", "blockUI",
     "icswConfigTreeService", "icswDeviceConfigHelper",
 (
     $scope, $compile, $filter, $templateCache, Restangular, $q, $uibModal, icswAcessLevelService,
-    msgbus, icswTools, ICSW_URLS, $timeout, icswDeviceTreeService, blockUI,
+    icswTools, ICSW_URLS, $timeout, icswDeviceTreeService, blockUI,
     icswConfigTreeService, icswDeviceConfigHelper,
 ) ->
     icswAcessLevelService.install($scope)

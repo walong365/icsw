@@ -154,7 +154,12 @@ angular.module(
     [
         "toaster"
     ],
-).service("icswCSRFService", ["$http", "ICSW_URLS", "$q", ($http, ICSW_URLS, $q) ->
+).service("icswCSRFService",
+[
+    "$http", "ICSW_URLS", "$q",
+(
+    $http, ICSW_URLS, $q
+) ->
     csrf_token = undefined
     _waiting = []
     _fetching = false
@@ -193,7 +198,12 @@ angular.module(
 ]).config(["toasterConfig", (toasterConfig) ->
     # close on click
     toasterConfig["tap-to-dismiss"] = true
-]).service("icswParseXMLResponseService", ["toaster", (toaster) ->
+]).service("icswParseXMLResponseService",
+[
+    "toaster",
+(
+    toaster
+) ->
     return (xml, min_level, show_error=true, hidden=false) ->
         # use in combination with icswCallAjaxService, or otherwise make sure to wrap
         # the <response> from the server in some outer tag (similar to usage in license.coffee)
@@ -378,12 +388,18 @@ angular.module(
                     scope_obj[entry[0]] = entry[1]
                 delete data._reset_list
     }
-]).service("icswAjaxInfoService", ["$window", ($window) ->
-    class ajax_struct
+]).service("icswAjaxInfoService",
+[
+    "$window",
+(
+    $window
+) ->
+    class icswAjaxInfo
         constructor: (@top_div_name) ->
             @ajax_uuid = 0
             @ajax_dict = {}
             @top_div = undefined
+
         new_connection: (settings) =>
             cur_id = @ajax_uuid
             if not @top_div
@@ -405,6 +421,7 @@ angular.module(
             }
             @ajax_uuid++
             return cur_id
+
         close_connection: (xhr_id) =>
             if xhr_id?
                 @ajax_dict[xhr_id]["state"]   = "done"
@@ -488,7 +505,12 @@ angular.module(
         _icswCallAjaxService(in_dict)
 
         return _def.promise
-]).service("icswAcessLevelService", ["ICSW_URLS", "ICSW_SIGNALS", "Restangular", "$q", "$rootScope", (ICSW_URLS, ICSW_SIGNALS, Restangular, $q, $rootScope) ->
+]).service("icswAcessLevelService",
+[
+    "ICSW_URLS", "ICSW_SIGNALS", "Restangular", "$q", "$rootScope",
+(
+    ICSW_URLS, ICSW_SIGNALS, Restangular, $q, $rootScope
+) ->
     data = {}
     _changed = () ->
         $rootScope.$emit(ICSW_SIGNALS("ICSW_ACLS_CHANGED"), data)
@@ -1023,24 +1045,28 @@ angular.module(
 d3js_module = angular.module(
     "icsw.d3",
     []
-).factory("d3_service", ["$document", "$q", "$rootScope", "ICSW_URLS",
-    ($document, $q, $rootScope, ICSW_URLS) ->
-        d = $q.defer()
-        on_script_load = () ->
-            $rootScope.$apply(() -> d.resolve(window.d3))
-        script_tag = $document[0].createElement('script')
-        script_tag.type = "text/javascript"
-        script_tag.async = true
-        script_tag.src = ICSW_URLS.D3_MIN_JS
-        script_tag.onreadystatechange = () ->
-            if this.readyState == 'complete'
-                on_script_load()
-        script_tag.onload = on_script_load
-        s = $document[0].getElementsByTagName('body')[0]
-        s.appendChild(script_tag)
-        return {
-            "d3" : () -> return d.promise
-        }
+).factory("d3_service",
+[
+    "$document", "$q", "$rootScope", "ICSW_URLS",
+(
+    $document, $q, $rootScope, ICSW_URLS
+) ->
+    d = $q.defer()
+    on_script_load = () ->
+        $rootScope.$apply(() -> d.resolve(window.d3))
+    script_tag = $document[0].createElement('script')
+    script_tag.type = "text/javascript"
+    script_tag.async = true
+    script_tag.src = ICSW_URLS.D3_MIN_JS
+    script_tag.onreadystatechange = () ->
+        if this.readyState == 'complete'
+            on_script_load()
+    script_tag.onload = on_script_load
+    s = $document[0].getElementsByTagName('body')[0]
+    s.appendChild(script_tag)
+    return {
+        "d3" : () -> return d.promise
+    }
 ])
 
 dimple_module = angular.module(
@@ -1115,10 +1141,6 @@ angular.module(
                 else
                     res_list = (entry for key, entry of f_array when typeof(entry) == "object" and entry and entry["idx"] == in_value)
                 return if res_list.length then res_list[0] else "Key Error (#{in_value})"
-).filter(
-    "exclude_device_groups", () ->
-        return (in_array) ->
-            return (entry for entry in in_array when entry.is_meta_device == false)
 ).filter(
     "ip_fixed_width", () ->
         return (in_str) ->
@@ -1205,7 +1227,12 @@ angular.module(
             # not an array, ignore filter
             out = items
         return out
-).service("icswCachingCall", ["$interval", "$timeout", "$q", "Restangular", ($inteval, $timeout, $q, Restangular) ->
+).service("icswCachingCall",
+[
+    "$interval", "$timeout", "$q", "Restangular",
+(
+    $inteval, $timeout, $q, Restangular
+) ->
 
     class LoadInfo
         constructor: (@key, @url, @options) ->
@@ -1213,6 +1240,7 @@ angular.module(
             @client_pk_list = {}
             # initial value is null (== no filtering)
             @pk_list = null
+
         add_pk_list: (client, pk_list) =>
             if pk_list != null
                 # got a non-null pk_list
@@ -1224,6 +1252,7 @@ angular.module(
             _defer = $q.defer()
             @client_dict[client] = _defer
             return _defer
+
         load: () =>
             opts = {}
             for key, value of @options
@@ -1280,7 +1309,7 @@ angular.module(
         return url_key
 
     return {
-        "fetch" : (client, url, options, pk_list) ->
+        fetch: (client, url, options, pk_list) ->
             _defer = add_client(client, url, options, pk_list)
             schedule_load(_key(url, options, pk_list))
             return _defer.promise
