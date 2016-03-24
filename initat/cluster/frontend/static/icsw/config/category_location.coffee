@@ -1,4 +1,4 @@
-# Copyright (C) 2015 init.at
+# Copyright (C) 2015-2016 init.at
 #
 # Send feedback to: <mallinger@init.at>
 #
@@ -23,7 +23,12 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "ui.select", "restangular", "uiGmapgoogle-maps", "angularFileUpload"
     ]
-).directive("icswConfigCategoryLocationEdit", ["$templateCache", "icswConfigCategoryTreeMapService", ($templateCache, icswConfigCategoryTreeMapService) ->
+).directive("icswConfigCategoryLocationEdit",
+[
+    "$templateCache",
+(
+    $templateCache,
+) ->
     return {
         restrict: "EA"
         template: $templateCache.get("icsw.config.category.location.edit")
@@ -32,9 +37,13 @@ angular.module(
             preview_close: "=previewClose"
         }
         controller: "icswConfigCategoryLocationCtrl"
-        link: (scope, element, attrs) ->
     }
-]).directive("icswConfigCategoryLocationShow", ["$templateCache", "icswConfigCategoryTreeMapService", ($templateCache, icswConfigCategoryTreeMapService) ->
+]).directive("icswConfigCategoryLocationShow",
+[
+    "$templateCache",
+(
+    $templateCache,
+) ->
     return {
         restrict: "EA"
         template: $templateCache.get("icsw.config.category.location.show")
@@ -54,17 +63,25 @@ angular.module(
                         )
                 )
     }
-]).directive("icswConfigCategoryLocationListEdit", ["$templateCache", "icswConfigCategoryTreeMapService", ($templateCache, icswConfigCategoryTreeMapService) ->
+]).directive("icswConfigCategoryLocationListEdit",
+[
+    "$templateCache",
+(
+    $templateCache,
+) ->
     return {
         restrict: "EA"
         template: $templateCache.get("icsw.config.category.location.list.edit")
-        link: (scope, element, attrs) ->
     }
-]).directive("icswConfigCategoryLocationListShow", ["$templateCache", "icswConfigCategoryTreeMapService", ($templateCache, icswConfigCategoryTreeMapService) ->
+]).directive("icswConfigCategoryLocationListShow",
+[
+    "$templateCache",
+(
+    $templateCache,
+) ->
     return {
         restrict: "EA"
         template: $templateCache.get("icsw.config.category.location.list.show")
-        link: (scope, element, attrs) ->
     }
 ]).service("icswConfigCategoryLocationHelperService", [() ->
     active_tab = ""
@@ -74,202 +91,224 @@ angular.module(
         "get_active_tab": () ->
             return active_tab
     }
-]).controller("icswConfigCategoryLocationTopCtrl", ["$scope", "icswConfigCategoryLocationHelperService", ($scope, icswConfigCategoryLocationHelperService) ->
+]).controller("icswConfigCategoryLocationTopCtrl",
+[
+    "$scope", "icswConfigCategoryLocationHelperService",
+(
+    $scope, icswConfigCategoryLocationHelperService
+) ->
     $scope.set_active_tab = (name) ->
         icswConfigCategoryLocationHelperService.set_active_tab(name)
 ]).controller("icswConfigCategoryLocationCtrl", [
-    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$timeout", "icswCSRFService",
-    "$q", "$uibModal", "icswAcessLevelService", "FileUploader", "blockUI", "icswTools", "ICSW_URLS", "icswConfigCategoryTreeService",
-    "icswSimpleAjaxCall", "icswParseXMLResponseService", "toaster", "icswConfigCategoryTreeMapService", "icswConfigCategoryTreeFetchService", "msgbus",
-   ($scope, $compile, $filter, $templateCache, Restangular, $timeout, icswCSRFService, $q, $uibModal, icswAcessLevelService,
-    FileUploader, blockUI, icswTools, ICSW_URLS, icswConfigCategoryTreeService, icswSimpleAjaxCall, icswParseXMLResponseService, toaster,
-    icswConfigCategoryTreeMapService, icswConfigCategoryTreeFetchService, msgbus) ->
-        $scope.entries = []
-        # mixins
-        $scope.gfx_mixin = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q, "gfx")
-        $scope.gfx_mixin.use_modal = true
-        $scope.gfx_mixin.use_promise = true
-        $scope.gfx_mixin.new_object = (scope) -> return scope.new_location_gfx()
-        $scope.gfx_mixin.delete_confirm_str = (obj) -> return "Really delete location graphic '#{obj.name}' ?"
-        $scope.gfx_mixin.modify_rest_url = ICSW_URLS.REST_LOCATION_GFX_DETAIL.slice(1).slice(0, -2)
-        $scope.gfx_mixin.create_rest_url = Restangular.all(ICSW_URLS.REST_LOCATION_GFX_LIST.slice(1))
-        $scope.gfx_mixin.create_template = "location.gfx.form"
-        $scope.gfx_mixin.edit_template = "location.gfx.form"
-        # edit mixin for cateogries
-        $scope.locations = []
-        $scope.map = null
-        msgbus.receive("icsw.config.locations.changed.tree", $scope, () ->
-            # receiver for global changes from tree
-            $scope.reload()
-        )
-        $scope.$watch(
-            () -> return icswConfigCategoryTreeMapService.map_set()
-            (new_val) ->
-                $scope.map = icswConfigCategoryTreeMapService.get_map()
-        )
-        $scope.uploader = new FileUploader(
-            scope : $scope
-            url : ICSW_URLS.BASE_UPLOAD_LOCATION_GFX
-            queueLimit : 1
-            alias : "gfx"
-            formData : [
-                 "location_id" : 0
-                 "csrfmiddlewaretoken" : icswCSRFService["csrf_token"],
-            ]
-            removeAfterUpload : true
-        )
-        $scope.upload_list = []
-        $scope.uploader.onBeforeUploadItem = (item) ->
-            item.formData[0].location_id = $scope.cur_location_gfx.idx
-            blockUI.start()
-        $scope.uploader.onCompleteAll = () ->
-            blockUI.stop()
-            $scope.uploader.clearQueue()
-            return null
-        $scope.uploader.onErrorItem = (item, response, status, headers) ->
-            blockUI.stop()
-            $scope.uploader.clearQueue()
-            toaster.pop("error", "", "error uploading file, please check logs", 0)
-            return null
-        $scope.uploader.onCompleteItem = (item, response, status, headers) ->
-            xml = $.parseXML(response)
-            if icswParseXMLResponseService(xml)
-                Restangular.one(ICSW_URLS.REST_LOCATION_GFX_DETAIL.slice(1).slice(0, -2), $scope.cur_location_gfx.idx).get().then((data) ->
-                    for _copy in ["width", "height", "uuid", "content_type", "locked", "image_stored", "icon_url", "image_name", "image_url"]
-                        $scope.cur_location_gfx[_copy] = data[_copy]
-                )
-        _is_location = (obj) ->
-            return (obj.depth > 1) and obj.full_name.split("/")[1] == "location"
-        $scope.reload = () ->
-            if $scope.ls_devsel?
-                $scope.$watch(
-                    $scope.ls_devsel.changed
-                    (changed) ->
-                        _dev_sel = $scope.ls_devsel.get()
-                        $scope.reload_now(_dev_sel)
-                )
-            else
-                $scope.reload_now(null)
-        $scope.reload_now = (_dev_sel) ->
-            $scope.dev_sel = _dev_sel
-            icswConfigCategoryTreeFetchService.fetch($scope.$id, _dev_sel).then((data) ->
-                $scope.entries = data[0]
-                for entry in $scope.entries
-                    entry.open = false
-                $scope.location_gfxs = data[1]
-                $scope.dml_list = data[2]
-                $scope.dtl_list = data[3]
-                # device to location map
-                $scope.dtl_map = {}
-                for _entry in $scope.dtl_list
-                    # device -> location
-                    $scope.dtl_map[_entry[0]] = _entry[1]
-                $scope.rebuild_cat()
-        )
-        $scope.rebuild_cat = () ->
-            $scope.locations = (entry for entry in $scope.entries when _is_location(entry))
-            $scope.gfx_lut = icswTools.build_lut($scope.location_gfxs)
-            $scope.loc_lut = icswTools.build_lut($scope.locations)
-            for entry in $scope.locations
-                entry.dev_pks = []
-            for entry in $scope.location_gfxs
-                # entry.num_dml = 0
-                entry.dev_pks = []
-            for entry in $scope.dml_list
-                $scope.gfx_lut[entry.location_gfx].dev_pks.push(entry.device)
-                $scope.loc_lut[entry.location].dev_pks.push(entry.device)
-            for entry in $scope.locations
-                entry.location_gfxs = (_gfx for _gfx in $scope.location_gfxs when _gfx.location == entry.idx)
-            for entry in $scope.dtl_list
-                $scope.loc_lut[entry[1]].dev_pks.push(entry[0])
-            if $scope.dev_sel
-                # filter locations if dev_sel is set (not config)
-                $scope.locations = (entry for entry in $scope.locations when entry.dev_pks.length)
-                $scope.redraw_svgs()
-        $scope.redraw_svgs = () ->
-            if $scope.dtl_list? and $scope.dtl_list.length
-                _wait_list = []
-                for loc in $scope.locations
-                    if loc.dev_pks.length
-                        _wait_list.push(_svg_to_png(loc.idx, loc.dev_pks))
-                $q.all(_wait_list).then((data) ->
-                    for _tuple in data
-                        $scope.loc_lut[_tuple[0]].svg_url = _tuple[1]
-                )
-        _svg_to_png = (loc_pk, dev_pks) ->
-            defer = $q.defer()
-            sub_scope = $scope.$new(true, $scope)
-            sub_scope.response = {"drawn": 0}
-            sub_scope.ls_filter = $scope.ls_filter
-            pk_str = _.uniq(dev_pks).join(",")
-            _el = $compile("<icsw-device-livestatus-map devicepk='#{pk_str}' is-drawn='response.drawn' ls-filter='ls_filter'></icsw-device-livestatus-map>")(sub_scope)
-            sub_scope.$watch('response.drawn', (new_val) ->
-                if new_val
-                    $timeout(
-                        () ->
-                            icswSimpleAjaxCall(
-                                hidden: true
-                                url : ICSW_URLS.MON_SVG_TO_PNG
-                                data :
-                                    svg : _el[0].outerHTML
-                            ).then((xml) ->
-                                _url = ICSW_URLS.MON_FETCH_PNG_FROM_CACHE.slice(0, -1) + $(xml).find("value[name='cache_key']").text()
-                                sub_scope.$destroy()
-                                defer.resolve([loc_pk, _url])
-                            )
-                    )
+    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$timeout",
+    "icswCSRFService", "$rootScope", "ICSW_SIGNALS",
+    "$q", "$uibModal", "icswAcessLevelService",
+    "FileUploader", "blockUI", "icswTools", "ICSW_URLS",
+    "icswConfigCategoryTreeService",
+    "icswSimpleAjaxCall", "icswParseXMLResponseService", "toaster",
+    "icswConfigCategoryTreeFetchService", "msgbus",
+(
+    $scope, $compile, $filter, $templateCache, Restangular, $timeout,
+    icswCSRFService, $rootScope, ICSW_SIGNALS,
+    $q, $uibModal, icswAcessLevelService,
+    FileUploader, blockUI, icswTools, ICSW_URLS,
+    icswConfigCategoryTreeService,
+    icswSimpleAjaxCall, icswParseXMLResponseService, toaster,
+    icswConfigCategoryTreeFetchService, msgbus
+) ->
+    $scope.entries = []
+    # mixins
+    $scope.gfx_mixin = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q, "gfx")
+    $scope.gfx_mixin.use_modal = true
+    $scope.gfx_mixin.use_promise = true
+    $scope.gfx_mixin.new_object = (scope) -> return scope.new_location_gfx()
+    $scope.gfx_mixin.delete_confirm_str = (obj) -> return "Really delete location graphic '#{obj.name}' ?"
+    $scope.gfx_mixin.modify_rest_url = ICSW_URLS.REST_LOCATION_GFX_DETAIL.slice(1).slice(0, -2)
+    $scope.gfx_mixin.create_rest_url = Restangular.all(ICSW_URLS.REST_LOCATION_GFX_LIST.slice(1))
+    $scope.gfx_mixin.create_template = "location.gfx.form"
+    $scope.gfx_mixin.edit_template = "location.gfx.form"
+    # edit mixin for cateogries
+    $scope.locations = []
+    $scope.map = null
+    msgbus.receive("icsw.config.locations.changed.tree", $scope, () ->
+        # receiver for global changes from tree
+        $scope.reload()
+    )
+    $rootScope.$on(ICSW_SIGNALS("ICSW_LOCATION_GOOGLE_MAPS_LOADED"), (event, map) ->
+        $scope.map = map
+    )
+    $scope.uploader = new FileUploader(
+        scope : $scope
+        url : ICSW_URLS.BASE_UPLOAD_LOCATION_GFX
+        queueLimit : 1
+        alias : "gfx"
+        formData : [
+             "location_id" : 0
+             "csrfmiddlewaretoken" : icswCSRFService["csrf_token"],
+        ]
+        removeAfterUpload : true
+    )
+    $scope.upload_list = []
+    $scope.uploader.onBeforeUploadItem = (item) ->
+        item.formData[0].location_id = $scope.cur_location_gfx.idx
+        blockUI.start()
+    $scope.uploader.onCompleteAll = () ->
+        blockUI.stop()
+        $scope.uploader.clearQueue()
+        return null
+    $scope.uploader.onErrorItem = (item, response, status, headers) ->
+        blockUI.stop()
+        $scope.uploader.clearQueue()
+        toaster.pop("error", "", "error uploading file, please check logs", 0)
+        return null
+    $scope.uploader.onCompleteItem = (item, response, status, headers) ->
+        xml = $.parseXML(response)
+        if icswParseXMLResponseService(xml)
+            Restangular.one(ICSW_URLS.REST_LOCATION_GFX_DETAIL.slice(1).slice(0, -2), $scope.cur_location_gfx.idx).get().then((data) ->
+                for _copy in ["width", "height", "uuid", "content_type", "locked", "image_stored", "icon_url", "image_name", "image_url"]
+                    $scope.cur_location_gfx[_copy] = data[_copy]
             )
-            return defer.promise
-        $scope.locate = (loc, $event) ->
-            $scope.map.control.refresh({"latitude": loc.latitude, "longitude": loc.longitude})
-            $scope.map.control.getGMap().setZoom(11)
-            if $event
-                $event.stopPropagation()
-                $event.preventDefault()
-        $scope.toggle_lock = ($event, loc) ->
-            loc.locked = !loc.locked
-            loc.put()
-            if $event
-                $event.stopPropagation()
-                $event.preventDefault()
-            msgbus.emit(msgbus.event_types.CATEGORY_CHANGED)
-        $scope.close_modal = () ->
-            if $scope.cur_edit
-                $scope.cur_edit.close_modal()
-        $scope.new_location_gfx = () ->
-            # return empty location_gfx for current location
-            return {
-                "location" : $scope.loc_gfx_mother.idx
-            }
-        $scope.add_location_gfx = ($event, loc) ->
-            $scope.preview_gfx = undefined
-            # store for later reference in new_location_gfx
-            $scope.loc_gfx_mother = loc
-            $scope.gfx_mixin.create($event).then((data) ->
-                data.num_dml = 0
-                loc.location_gfxs.push(data)
+    _is_location = (obj) ->
+        return (obj.depth > 1) and obj.full_name.split("/")[1] == "location"
+    $scope.reload = () ->
+        if $scope.ls_devsel?
+            $scope.$watch(
+                $scope.ls_devsel.changed
+                (changed) ->
+                    _dev_sel = $scope.ls_devsel.get()
+                    $scope.reload_now(_dev_sel)
             )
+        else
+            $scope.reload_now(null)
+    $scope.reload_now = (_dev_sel) ->
+        $scope.dev_sel = _dev_sel
+        icswConfigCategoryTreeFetchService.fetch($scope.$id, _dev_sel).then((data) ->
+            $scope.entries = data[0]
+            for entry in $scope.entries
+                entry.open = false
+            $scope.location_gfxs = data[1]
+            $scope.dml_list = data[2]
+            $scope.dtl_list = data[3]
+            # device to location map
+            $scope.dtl_map = {}
+            for _entry in $scope.dtl_list
+                # device -> location
+                $scope.dtl_map[_entry[0]] = _entry[1]
+            $scope.rebuild_cat()
+    )
+    $scope.rebuild_cat = () ->
+        $scope.locations = (entry for entry in $scope.entries when _is_location(entry))
+        $scope.gfx_lut = icswTools.build_lut($scope.location_gfxs)
+        $scope.loc_lut = icswTools.build_lut($scope.locations)
+        for entry in $scope.locations
+            entry.dev_pks = []
+        for entry in $scope.location_gfxs
+            # entry.num_dml = 0
+            entry.dev_pks = []
+        for entry in $scope.dml_list
+            $scope.gfx_lut[entry.location_gfx].dev_pks.push(entry.device)
+            $scope.loc_lut[entry.location].dev_pks.push(entry.device)
+        for entry in $scope.locations
+            entry.location_gfxs = (_gfx for _gfx in $scope.location_gfxs when _gfx.location == entry.idx)
+        for entry in $scope.dtl_list
+            $scope.loc_lut[entry[1]].dev_pks.push(entry[0])
+        if $scope.dev_sel
+            # filter locations if dev_sel is set (not config)
+            $scope.locations = (entry for entry in $scope.locations when entry.dev_pks.length)
+            $scope.redraw_svgs()
+    $scope.redraw_svgs = () ->
+        if $scope.dtl_list? and $scope.dtl_list.length
+            _wait_list = []
+            for loc in $scope.locations
+                if loc.dev_pks.length
+                    _wait_list.push(_svg_to_png(loc.idx, loc.dev_pks))
+            $q.all(_wait_list).then((data) ->
+                for _tuple in data
+                    $scope.loc_lut[_tuple[0]].svg_url = _tuple[1]
+            )
+    _svg_to_png = (loc_pk, dev_pks) ->
+        defer = $q.defer()
+        sub_scope = $scope.$new(true, $scope)
+        sub_scope.response = {"drawn": 0}
+        sub_scope.ls_filter = $scope.ls_filter
+        pk_str = _.uniq(dev_pks).join(",")
+        _el = $compile("<icsw-device-livestatus-map devicepk='#{pk_str}' is-drawn='response.drawn' ls-filter='ls_filter'></icsw-device-livestatus-map>")(sub_scope)
+        sub_scope.$watch('response.drawn', (new_val) ->
+            if new_val
+                $timeout(
+                    () ->
+                        icswSimpleAjaxCall(
+                            hidden: true
+                            url : ICSW_URLS.MON_SVG_TO_PNG
+                            data :
+                                svg : _el[0].outerHTML
+                        ).then((xml) ->
+                            _url = ICSW_URLS.MON_FETCH_PNG_FROM_CACHE.slice(0, -1) + $(xml).find("value[name='cache_key']").text()
+                            sub_scope.$destroy()
+                            defer.resolve([loc_pk, _url])
+                        )
+                )
+        )
+        return defer.promise
+    $scope.locate = (loc, $event) ->
+        $scope.map.control.refresh({"latitude": loc.latitude, "longitude": loc.longitude})
+        $scope.map.control.getGMap().setZoom(11)
+        if $event
             $event.stopPropagation()
             $event.preventDefault()
-        $scope.modify_location_gfx = ($event, loc) ->
-            $scope.preview_gfx = undefined
-            $scope.cur_location_gfx = loc
-            $scope.gfx_mixin.edit(loc, $event).then((data) ->
-            )
-        $scope.delete_location_gfx = ($event, obj) ->
-            # find location object via cat_lut
-            loc = $scope.loc_lut[obj.location]
-            $scope.preview_gfx = undefined
-            $scope.gfx_mixin.delete_obj(obj).then((data) ->
-                if data
-                    loc.location_gfxs = (entry for entry in loc.location_gfxs when entry.idx != obj.idx)
-            )
-        $scope.show_preview = (obj) ->
-            $scope.preview_gfx = obj
-        $scope.preview_close = () ->
-            $scope.preview_gfx = undefined
-        $scope.reload()
-]).directive("icswConfigCategoryTreeGoogleMap", ["$templateCache", "icswConfigCategoryTreeMapService", "uiGmapGoogleMapApi", "icswConfigCategoryLocationHelperService", "$timeout", ($templateCache, icswConfigCategoryTreeMapService, uiGmapGoogleMapApi, icswConfigCategoryLocationHelperService, $timeout) ->
+    $scope.toggle_lock = ($event, loc) ->
+        loc.locked = !loc.locked
+        loc.put()
+        if $event
+            $event.stopPropagation()
+            $event.preventDefault()
+        msgbus.emit(msgbus.event_types.CATEGORY_CHANGED)
+    $scope.close_modal = () ->
+        if $scope.cur_edit
+            $scope.cur_edit.close_modal()
+    $scope.new_location_gfx = () ->
+        # return empty location_gfx for current location
+        return {
+            "location" : $scope.loc_gfx_mother.idx
+        }
+    $scope.add_location_gfx = ($event, loc) ->
+        $scope.preview_gfx = undefined
+        # store for later reference in new_location_gfx
+        $scope.loc_gfx_mother = loc
+        $scope.gfx_mixin.create($event).then((data) ->
+            data.num_dml = 0
+            loc.location_gfxs.push(data)
+        )
+        $event.stopPropagation()
+        $event.preventDefault()
+    $scope.modify_location_gfx = ($event, loc) ->
+        $scope.preview_gfx = undefined
+        $scope.cur_location_gfx = loc
+        $scope.gfx_mixin.edit(loc, $event).then((data) ->
+        )
+    $scope.delete_location_gfx = ($event, obj) ->
+        # find location object via cat_lut
+        loc = $scope.loc_lut[obj.location]
+        $scope.preview_gfx = undefined
+        $scope.gfx_mixin.delete_obj(obj).then((data) ->
+            if data
+                loc.location_gfxs = (entry for entry in loc.location_gfxs when entry.idx != obj.idx)
+        )
+    $scope.show_preview = (obj) ->
+        $scope.preview_gfx = obj
+    $scope.preview_close = () ->
+        $scope.preview_gfx = undefined
+    $scope.reload()
+]).directive("icswConfigCategoryTreeGoogleMap",
+[
+    "$templateCache", "uiGmapGoogleMapApi",
+    "icswConfigCategoryLocationHelperService", "$timeout", "$rootScope",
+    "ICSW_SIGNALS",
+(
+    $templateCache, uiGmapGoogleMapApi,
+    icswConfigCategoryLocationHelperService, $timeout, $rootScope,
+    ICSW_SIGNALS,
+) ->
     return {
         restrict: "EA"
         template: $templateCache.get("icsw.config.category.tree.google.map")
@@ -353,10 +392,11 @@ angular.module(
                     scope.marker_lut = marker_lut
             scope.maps_ready = false
             scope.maps = undefined
-            uiGmapGoogleMapApi.then((maps) ->
-                scope.maps_ready = true
-                icswConfigCategoryTreeMapService.set_map(scope.map)
-                scope.maps = maps
+            uiGmapGoogleMapApi.then(
+                (maps) ->
+                    scope.maps_ready = true
+                    scope.maps = maps
+                    $rootScope.$emit(ICSW_SIGNALS("ICSW_LOCATION_GOOGLE_MAPS_LOADED"), scope.map)
             )
             scope.$watch(
                 icswConfigCategoryLocationHelperService.get_active_tab
@@ -383,7 +423,12 @@ angular.module(
                 true
             )
     }
-]).directive("icswConfigCategoryTreeMapEnhance", ["$templateCache", "ICSW_URLS", "icswSimpleAjaxCall", "blockUI", ($templateCache, ICSW_URLS, icswSimpleAjaxCall, blockUI) ->
+]).directive("icswConfigCategoryTreeMapEnhance",
+[
+    "$templateCache", "ICSW_URLS", "icswSimpleAjaxCall", "blockUI",
+(
+    $templateCache, ICSW_URLS, icswSimpleAjaxCall, blockUI
+) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.config.category.tree.map.enhance")
@@ -459,17 +504,4 @@ angular.module(
                     scope.preview_gfx.height = parseInt($(xml).find("value[name='height']").text())
                 )
     }
-]).service("icswConfigCategoryTreeMapService", [() ->
-    _map = null
-    _map_id = 0
-    return {
-        "map_set": () ->
-            return _map_id
-        "get_map": () ->
-            return _map
-        "set_map": (map) ->
-            _map_id++
-            _map = map
-    }
 ])
-

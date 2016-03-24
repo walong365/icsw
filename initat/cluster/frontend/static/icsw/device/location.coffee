@@ -294,7 +294,9 @@ angular.module(
                 dml_lost += _to_delete.length
         defer = $q.defer()
         if dml_lost
-            icswToolsSimpleModalService("Really change location (#{dml_lost} Location settings would be lost) ?").then(
+            icswToolsSimpleModalService(
+                "Really change location (#{dml_lost} Location settings would be lost) ?"
+            ).then(
                 (ok) ->
                     defer.resolve("go")
                 (notok) ->

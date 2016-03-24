@@ -327,6 +327,7 @@ angular.module(
         ICSW_DOMAIN_NAME_TREE_CHANGED: "icsw.domain.name.tree.changed",
         ICSW_CATEGORY_TREE_CHANGED: "icsw.category.tree.changed",
         ICSW_LOCATION_SETTINGS_CHANGED: "icsw.location.settings.changed",
+        ICSW_LOCATION_GOOGLE_MAPS_LOADED: "icsw.location.google.maps.loaded",
         # not needed up to now
         # "ICSW_RENDER_MENUBAR": "icsw.render.menubar",
         # "ICSW_READY_TO_RECEIVE_SELECTION": "icsw.ready.to.receive.selection"

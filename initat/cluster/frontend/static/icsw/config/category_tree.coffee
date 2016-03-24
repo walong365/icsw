@@ -334,13 +334,13 @@ angular.module(
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$timeout", "$rootScope",
     "$q", "icswAcessLevelService", "blockUI", "icswTools", "ICSW_URLS", "icswConfigCategoryTreeService",
-    "icswSimpleAjaxCall", "toaster", "icswConfigCategoryTreeMapService",
+    "icswSimpleAjaxCall", "toaster",
     "icswToolsSimpleModalService", "icswCategoryTreeService", "icswComplexModalService",
     "icswCategoryBackup", "icswInfoModalService", "ICSW_SIGNALS",
 (
     $scope, $compile, $filter, $templateCache, Restangular, $timeout, $rootScope,
     $q, icswAcessLevelService, blockUI, icswTools, ICSW_URLS, icswConfigCategoryTreeService,
-    icswSimpleAjaxCall, toaster,icswConfigCategoryTreeMapService,
+    icswSimpleAjaxCall, toaster,
     icswToolsSimpleModalService,icswCategoryTreeService, icswComplexModalService,
     icswCategoryBackup, icswInfoModalService, ICSW_SIGNALS
 ) ->
