@@ -543,6 +543,8 @@ angular.module(
                 entry.expand = not entry.expand
         toggle_checkbox_node: (entry) =>
             if @change_select
+                if @pre_change_cb?
+                    @pre_change_cb(entry)
                 entry.set_selected(!entry.selected)
                 if entry.selected and @single_select
                     # remove all other selections
