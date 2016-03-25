@@ -11,17 +11,24 @@
 </script>
 
 <script type="text/ng-template" id="icsw/main/device/location.html">
-    <uib-tabset icsw-config-location-tab-helper>
+    <uib-tabset icsw-config-location-tab-helper icsw-config-location-gfx-enhance-helper>
         <uib-tab heading="Device location" select="set_active_tab('loc')">
             <icsw-device-location-overview icsw-sel-man="0" icsw-sel-man-sel-mode="d">
             </icsw-device-location-overview>
         </uib-tab>
         <uib-tab heading="Location configuration" select="set_active_tab('conf')">
-            <icsw-config-category-location-map-edit preview-gfx="preview_gfx" active-tab="active_tab" preview-close="close_preview">
+            <icsw-config-category-location-map-edit preview-gfx="preview_gfx" active-tab="active_tab" gfx-enhance-list="gfx_list" preview-close="close_preview">
             </icsw-config-category-location-map-edit>
-            <hr ng-show="preview_gfx"/>
-            <icsw-config-category-tree-map-enhance preview-gfx="preview_gfx" preview-close="close_preview">
-            </icsw-config-category-tree-map-enhance>
+            <hr ng-show="gfx_list.length"/>
+            <uib-tabset ng-if="gfx_list.length">
+                <uib-tab ng-repeat="gfx in gfx_list">
+                    <uib-tab-heading>
+                        {{ gfx.name }} <icsw-tools-button size="xs" type="close" value="" ng-click="remove_gfx($event, gfx)"></icsw-tools-button>
+                    </uib-tab-heading>
+                    <icsw-config-category-tree-map-enhance preview-gfx="gfx">
+                    </icsw-config-category-tree-map-enhance
+                </uib-tab>
+            </uib-tabset>
         </uib-tab>
         <uib-tab heading="Available locations" select="set_active_tab('avail')">
             <icsw-config-category-tree-edit mode="location"></icsw-config-category-tree-edit>
@@ -118,7 +125,8 @@
                                 </td>
                                 <td>
                                     <icsw-tools-button type="modify" size="xs" ng-click="create_or_edit($event, false, loc, gfx)"></icsw-tools-button>
-                                    <icsw-tools-button ng-show="gfx.$dml_list.length" type="delete" size="xs" ng-click="delete_gfx($event, gfx)"></icsw-tools-button>
+                                    <icsw-tools-button type="display" size="xs" ng-click="show_gfx_preview(gfx)"></icsw-tools-button>
+                                    <icsw-tools-button ng-show="!gfx.$dml_list.length" type="delete" size="xs" ng-click="delete_gfx($event, gfx)"></icsw-tools-button>
                                 </td>
                             </tr>
                         </tbody>
@@ -127,7 +135,7 @@
             </tr>
         </tbody>
     </table>
-    <uib-accordion close-others="no">
+    <!-- <uib-accordion close-others="no">
         <uib-accordion-group ng-repeat="loc in struct.locations" is-open="loc.open">
             <uib-accordion-heading>
                 <icsw-tools-button type="create" value="add locGfx" size="sm" ng-click="add_location_gfx($event, loc)"></icsw-tools-button>
@@ -169,10 +177,11 @@
                 </li>
             </ul>
         </uib-accordion-group>
-    </uib-accordion>
+    </uib-accordion> -->
 </script>
 
 <script type="text/ng-template" id="icsw.config.category.location.list.show">
+    <!-- not needed right now -->
     <h3 ng-show="!locations.length">No locations</h3>
     <ul class="list-group">
         <li class="list-group-item" ng-repeat-start="loc in locations">
@@ -199,12 +208,9 @@
 </script>
 
 <script type="text/ng-template" id="icsw.config.category.tree.map.enhance">
-    <div class="row panel panel-default" ng-show="preview_gfx">
+    <div class="row panel panel-default">
         <div class="col-md-12 panel-heading">
             <h3>Modify and enhance '{{ preview_gfx.name }}', size is {{ preview_gfx.width }} x {{ preview_gfx.height }}</h3>
-            <div class="btn-group">
-                <button type="button" class="btn btn-warning" title="Close" ng-click="close_preview()">close</button>
-            </div>
             Display:
             <div class="btn-group">
                 <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
@@ -227,19 +233,19 @@
             Size:
             <div class="btn-group">
                 <button type="button" ng-class="'btn btn-default'" ng-click="resize(1.125)" title="increase size">
-                    <span class="glyphicon glyphicon-upload"></span>
+                    <span class="glyphicon glyphicon-plus"></span>
                 </button>
                 <button type="button" ng-class="'btn btn-default'" ng-click="resize(0.875)" title="decrease size">
-                    <span class="glyphicon glyphicon-download"></span>
+                    <span class="glyphicon glyphicon-minus"></span>
                 </button>
             </div>
             Brightness:
             <div class="btn-group">
                 <button type="button" ng-class="'btn btn-default'" ng-click="brightness(1.25)" title="increase brightness">
-                    <span class="glyphicon glyphicon-upload"></span>
+                    <span class="glyphicon glyphicon-plus"></span>
                 </button>
                 <button type="button" ng-class="'btn btn-default'" ng-click="brightness(0.75)" title="decrease brightness">
-                    <span class="glyphicon glyphicon-download"></span>
+                    <span class="glyphicon glyphicon-minus"></span>
                 </button>
             </div>
             Sharpen:

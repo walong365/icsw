@@ -50,6 +50,7 @@ angular.module(
             preview_gfx: "=previewGfx"
             preview_close: "=previewClose"
             active_tab: "=activeTab"
+            enhance_list: "=gfxEnhanceList"
         }
         controller: "icswConfigCategoryLocationCtrl"
     }
@@ -90,6 +91,7 @@ angular.module(
         template: $templateCache.get("icsw.config.category.location.list.edit")
     }
 ]).directive("icswConfigCategoryLocationListShow",
+    # not needed right now
 [
     "$templateCache",
 (
@@ -109,6 +111,15 @@ angular.module(
             scope.get_active_tab = () ->
                 return scope.active_tab
     }
+]).directive("icswConfigLocationGfxEnhanceHelper", [() ->
+    return {
+        restrict: "A"
+        link: (scope, element, attrs) ->
+            scope.gfx_list = []
+            scope.remove_gfx = ($event, obj) ->
+                # hm, not working, FIXME, ToDo
+                _.remove(scope.gfx_list, (entry) -> return entry.idx == obj.idx)
+    }
 ]).controller("icswConfigCategoryLocationCtrl", [
     "$scope", "$compile", "$templateCache", "Restangular", "$timeout",
     "icswCSRFService", "$rootScope", "ICSW_SIGNALS", "icswDeviceTreeService",
@@ -116,7 +127,7 @@ angular.module(
     "FileUploader", "blockUI", "icswTools", "ICSW_URLS",
     "icswSimpleAjaxCall", "icswParseXMLResponseService", "toaster",
     "icswConfigCategoryTreeFetchService", "icswComplexModalService",
-    "icswLocationGfxBackup",
+    "icswLocationGfxBackup", "icswToolsSimpleModalService",
 (
     $scope, $compile, $templateCache, Restangular, $timeout,
     icswCSRFService, $rootScope, ICSW_SIGNALS, icswDeviceTreeService,
@@ -124,7 +135,7 @@ angular.module(
     FileUploader, blockUI, icswTools, ICSW_URLS,
     icswSimpleAjaxCall, icswParseXMLResponseService, toaster,
     icswConfigCategoryTreeFetchService, icswComplexModalService,
-    icswLocationGfxBackup,
+    icswLocationGfxBackup, icswToolsSimpleModalService,
 ) ->
     $scope.map = null
     $rootScope.$on(ICSW_SIGNALS("ICSW_LOCATION_GOOGLE_MAPS_LOADED"), (event, map) ->
@@ -189,6 +200,7 @@ angular.module(
                 location: parent.idx
             }
         else
+            _.remove($scope.enhance_list, (entry) -> return entry.idx == obj.idx)
             dbu = new icswLocationGfxBackup()
             dbu.create_backup(obj)
             edit_obj = obj
@@ -270,7 +282,7 @@ angular.module(
                                     sub_scope.upload_gfx(new_gfx).then(
                                         (ok) ->
                                             $scope.struct.category_tree.build_luts()
-                                            $rootScope.$emit(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"))
+                                            $rootScope.$emit(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), $scope.struct.category_tree)
                                             d.resolve("created gfx")
                                     )
                                 (notok) ->
@@ -283,7 +295,7 @@ angular.module(
                                     sub_scope.upload_gfx(sub_scope.edit_obj).then(
                                         (ok) ->
                                             $scope.struct.category_tree.build_luts()
-                                            $rootScope.$emit(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"))
+                                            $rootScope.$emit(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), $scope.struct.category_tree)
                                             d.resolve("updated")
                                     )
                                 (not_ok) ->
@@ -304,11 +316,12 @@ angular.module(
         )
 
     $scope.delete_gfx = ($event, gfx) ->
+        _.remove($scope.enhance_list, (entry) -> return entry.idx == gfx.idx)
         icswToolsSimpleModalService("Really delete LocationGfx #{gfx.name} ?").then(
             (ok) ->
                 $scope.struct.category_tree.delete_location_gfx_entry(gfx).then(
                     (ok) ->
-                        $rootScope.$emit(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), scope.tree)
+                        $rootScope.$emit(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), $scope.struct.category_tree)
                 )
         )
 
@@ -356,10 +369,16 @@ angular.module(
             $event.preventDefault()
         # msgbus.emit(msgbus.event_types.CATEGORY_CHANGED)
 
-    $scope.show_preview = (obj) ->
-        $scope.preview_gfx = obj
-    $scope.preview_close = () ->
-        $scope.preview_gfx = undefined
+    $scope.show_gfx_preview = (gfx) ->
+        console.log $scope.enhance_list.length
+        if gfx not in $scope.enhance_list
+            $scope.enhance_list.push(gfx)
+        console.log $scope.enhance_list.length
+        console.log (entry.name for entry in $scope.enhance_list)
+
+    # $scope.preview_close = () ->
+    #     $scope.preview_gfx = undefined
+    
     $scope.reload()
 ]).directive("icswConfigCategoryTreeGoogleMap",
 [
@@ -505,24 +524,18 @@ angular.module(
         template : $templateCache.get("icsw.config.category.tree.map.enhance")
         scope: {
             preview_gfx: "=previewGfx"
-            preview_close: "=previewClose"
         }
         link: (scope, element, attrs) ->
+
             scope.display_size = (ds) ->
                 scope.display_style = ds
                 if ds == "scaled"
                     scope.img_style = "width:100%;"
                 else
                     scope.img_style = ""
+
             scope.display_size("scaled")
-            scope.$watch(
-                attrs["previewGfx"]
-                (new_val) ->
-                    scope.preview_gfx = new_val
-            )
-            scope.close_preview = () ->
-                if attrs["previewClose"]
-                    scope.preview_close()
+
             scope.rotate = (degrees) ->
                 scope.modify_image(
                      {
@@ -531,6 +544,7 @@ angular.module(
                         "degrees" : degrees
                      }
                 )
+
             scope.resize = (factor) ->
                 scope.modify_image(
                      {
@@ -539,6 +553,7 @@ angular.module(
                         "factor": factor
                      }
                 )
+
             scope.brightness = (factor) ->
                 scope.modify_image(
                      {
@@ -547,6 +562,7 @@ angular.module(
                         "factor" : factor
                      }
                 )
+
             scope.sharpen = (factor) ->
                 scope.modify_image(
                      {
@@ -555,24 +571,31 @@ angular.module(
                         "factor" : factor
                      }
                 )
+
             scope.restore = () ->
                 scope.modify_image("restore")
+
             scope.undo = (obj) ->
                 scope.modify_image("undo")
+
             scope.modify_image = (data) ->
                 # scope.show_preview(obj)
                 if angular.isString(data)
-                    data = {"id" : scope.preview_gfx.idx, "mode": data}
+                    data = {
+                        "id": scope.preview_gfx.idx
+                        "mode": data
+                    }
                 blockUI.start()
                 icswSimpleAjaxCall(
                     url : ICSW_URLS.BASE_MODIFY_LOCATION_GFX
                     data: data
-                ).then((xml) ->
-                    blockUI.stop()
-                    scope.preview_gfx.image_url = $(xml).find("value[name='image_url']").text()
-                    scope.preview_gfx.icon_url = $(xml).find("value[name='icon_url']").text()
-                    scope.preview_gfx.width = parseInt($(xml).find("value[name='width']").text())
-                    scope.preview_gfx.height = parseInt($(xml).find("value[name='height']").text())
+                ).then(
+                    (xml) ->
+                        blockUI.stop()
+                        scope.preview_gfx.image_url = $(xml).find("value[name='image_url']").text()
+                        scope.preview_gfx.icon_url = $(xml).find("value[name='icon_url']").text()
+                        scope.preview_gfx.width = parseInt($(xml).find("value[name='width']").text())
+                        scope.preview_gfx.height = parseInt($(xml).find("value[name='height']").text())
                 )
     }
 ])
