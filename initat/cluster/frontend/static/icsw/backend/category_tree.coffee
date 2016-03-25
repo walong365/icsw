@@ -294,6 +294,57 @@ angular.module(
             _.remove(@dml_list, (entry) -> return entry.idx == del_dml_pk)
             @build_luts()
 
+        # location_gfx create / delete functions
+
+        create_location_gfx_entry: (new_gfx) =>
+            # create new category entry
+            defer = $q.defer()
+            Restangular.all(ICSW_URLS.REST_LOCATION_GFX_LIST.slice(1)).post(new_gfx).then(
+                (new_obj) =>
+                    @_fetch_location_gfx_entry(new_obj.idx, defer)
+                (not_ok) ->
+                    defer.reject("loc_gfx entry not created")
+            )
+            return defer.promise
+
+        delete_location_gfx_entry: (del_gfx) =>
+            # ensure REST hooks
+            Restangular.restangularizeElement(null, del_gfx, ICSW_URLS.REST_LOCATION_GFX_DETAIL.slice(1).slice(0, -2))
+            defer = $q.defer()
+            del_gfx.remove().then(
+                (ok) =>
+                    _.remove(@gfx_list, (entry) -> return entry.idx == del_gfx.idx)
+                    @build_luts()
+                    defer.resolve("deleted")
+                (error) ->
+                    defer.reject("not deleted")
+            )
+            return defer.promise
+
+        reload_location_gfx_entry: (loc_gfx) =>
+            # reload
+            defer = $q.defer()
+            Restangular.one(ICSW_URLS.REST_LOCATION_GFX_LIST.slice(1)).get({"idx": loc_gfx.idx}).then(
+                (new_gfx) =>
+                    new_gfx = new_gfx[0]
+                    _.remove(@gfx_list, (entry) -> return entry.idx == loc_gfx.idx)
+                    @gfx_list.push(new_gfx)
+                    @build_luts()
+                    defer.resolve("gfx updated")
+                (error) =>
+                    defer.resolve("Not reloaded")
+            )
+            return defer.promise
+            
+        _fetch_location_gfx_entry: (pk, defer) =>
+            Restangular.one(ICSW_URLS.REST_LOCATION_GFX_LIST.slice(1)).get({"idx": pk}).then(
+                (new_gfx) =>
+                    new_gfx = new_gfx[0]
+                    @gfx_list.push(new_gfx)
+                    @build_luts()
+                    defer.resolve(new_gfx)
+            )
+
 ]).service("icswCategoryTreeService",
 [
     "$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall", "icswTools",

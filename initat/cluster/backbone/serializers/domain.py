@@ -46,8 +46,8 @@ class category_serializer(serializers.ModelSerializer):
 
 
 class location_gfx_serializer(serializers.ModelSerializer):
-    icon_url = serializers.URLField(source="get_icon_url")
-    image_url = serializers.URLField(source="get_image_url")
+    icon_url = serializers.URLField(source="get_icon_url", read_only=True)
+    image_url = serializers.URLField(source="get_image_url", read_only=True)
 
     class Meta:
         model = location_gfx

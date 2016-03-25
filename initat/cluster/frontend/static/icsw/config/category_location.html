@@ -34,7 +34,7 @@
         Please create locations in the tab 'Available locations'.
     </uib-alert>
 
-    <h3 ng-show="struct.locations.length">Map view, {{ struct.locations.length }} locations</h3>
+    <h3 ng-show="struct.locations.length">Map view, {{ struct.locations.length }} useable locations</h3>
     <div class="row" ng-if="struct.locations.length > 0">
         <div class="col-md-6">
             <icsw-config-category-tree-google-map locations="struct.locations" active-tab="active_tab"></icsw-config-category-tree-google-map>
@@ -96,6 +96,7 @@
                             <tr>
                                 <th>Name</th>
                                 <th>Comment</th>
+                                <th>#devs</th>
                                 <th colspan="3">Size</th>
                                 <th>Image name</th>
                                 <th>ContentType</th>
@@ -106,13 +107,18 @@
                             <tr ng-repeat="gfx in loc.$gfx_list">
                                 <td>{{ gfx.name }}</td>
                                 <td>{{ gfx.comment }}</td>
+                                <td>{{ gfx.$dml_list.length }}</td>
                                 <td class="text-right">{{ gfx.width }}</td>
                                 <td class="text-center">x</td>
                                 <td>{{ gfx.height }}</td>
                                 <td>{{ gfx.image_name }}</td>
                                 <td>{{ gfx.content_type }}</td>
                                 <td>
+                                    <image ng-src="{{ gfx.icon_url }}" width="24" height="24"></image>
+                                </td>
+                                <td>
                                     <icsw-tools-button type="modify" size="xs" ng-click="create_or_edit($event, false, loc, gfx)"></icsw-tools-button>
+                                    <icsw-tools-button ng-show="gfx.$dml_list.length" type="delete" size="xs" ng-click="delete_gfx($event, gfx)"></icsw-tools-button>
                                 </td>
                             </tr>
                         </tbody>
@@ -316,7 +322,7 @@
                     </div>
                 </div>
             </fieldset>
-            <fieldset ng-if="!create_mode">
+            <fieldset>
                 <legend>Graphic</legend>
                 <div ng-show="edit_obj.image_stored" class="form-group">
                     <label class="control-label col-sm-3">
@@ -328,7 +334,7 @@
                 </div>
                 <div class="form-group">
                     <label class="control-label col-sm-3">
-                        Graphic
+                        <span ng-if="!create_mode">New </span>Graphic
                     </label>
 
                     <div class="col-sm-6">

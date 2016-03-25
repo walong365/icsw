@@ -22,8 +22,10 @@
     <td class="text-center">
         {{ obj.useable | yesno1 }}
     </td>
-    <td ng-if="is_location(obj)" class="text-right">{{ obj.latitude | number:3 }}</td>
-    <td ng-if="is_location(obj)" class="text-right">{{ obj.longitude | number:3 }}</td>
+    <td ng-if="is_location(obj) && obj.useable" class="text-right">{{ obj.latitude | number:3 }}</td>
+    <td ng-if="is_location(obj) && !obj.useable"></td>
+    <td ng-if="is_location(obj) && obj.useable" class="text-right">{{ obj.longitude | number:3 }}</td>
+    <td ng-if="is_location(obj) && !obj.useable"></td>
     <td ng-if="is_location(obj)" class="text-center">{{ obj.locked && 'locked' || 'unlocked' }}</td>
     <td ng-if="is_location(obj)" class="text-center">{{ obj.physical && 'physical' || 'structural' }}</td>
     <td ng-if="is_location(obj)" class="text-center">{{ obj.$gfx_list.length }}</td>
