@@ -248,49 +248,5 @@ class angular_edit_mixin
         if @use_promise
             return ret.promise
 
-class angular_modal_mixin
-    constructor : (@scope, @templateCache, @compile, @q, @title) ->
-        @cssClass = ""
-    edit : (obj, event) =>
-        @scope._edit_obj = obj
-        @scope.cur_edit = @
-        @_prom = @q.defer()
-        @edit_div = @compile(@templateCache.get(@template))(@scope)
-        @my_modal = BootstrapDialog.show
-            message: @edit_div
-            draggable: true
-            size: BootstrapDialog.SIZE_WIDE
-            title: @title
-            closable: true
-            cssClass: @cssClass
-            closeByBackdrop: false
-            onhidden: () =>
-                @scope.modal_active = false
-            onshow: (modal) =>
-                height = $(window).height() - 100
-                modal.getModal().find(".modal-body").css("max-height", height)
-            onshown: () =>
-                @scope.modal_active = true
-        return @_prom.promise
-    close_modal : () =>
-        @my_modal.close()
-    form_error : (field_name) =>
-        if @scope.form[field_name].$valid
-            return ""
-        else
-            return "has-error"
-    modify : () ->
-        if @scope.form
-            if not @scope.form.$invalid
-                @close_modal()
-                return @_prom.resolve(@scope._edit_obj)
-            else
-                # fixme, todo, move to toaster
-                console.log "form validation problem"
-        else
-            @close_modal()
-            return @_prom.resolve(@scope._edit_obj)
-
 root = exports ? this
 root.angular_edit_mixin = angular_edit_mixin
-root.angular_modal_mixin = angular_modal_mixin

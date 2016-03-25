@@ -110,23 +110,22 @@ angular.module(
                 return scope.active_tab
     }
 ]).controller("icswConfigCategoryLocationCtrl", [
-    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$timeout",
-    "icswCSRFService", "$rootScope", "ICSW_SIGNALS",
-    "$q", "$uibModal", "icswAcessLevelService",
+    "$scope", "$compile", "$templateCache", "Restangular", "$timeout",
+    "icswCSRFService", "$rootScope", "ICSW_SIGNALS", "icswDeviceTreeService",
+    "$q", "icswAcessLevelService", "icswCategoryTreeService",
     "FileUploader", "blockUI", "icswTools", "ICSW_URLS",
-    "icswConfigCategoryTreeService",
     "icswSimpleAjaxCall", "icswParseXMLResponseService", "toaster",
-    "icswConfigCategoryTreeFetchService", "msgbus",
+    "icswConfigCategoryTreeFetchService", "icswComplexModalService",
+    "icswLocationGfxBackup",
 (
-    $scope, $compile, $filter, $templateCache, Restangular, $timeout,
-    icswCSRFService, $rootScope, ICSW_SIGNALS,
-    $q, $uibModal, icswAcessLevelService,
+    $scope, $compile, $templateCache, Restangular, $timeout,
+    icswCSRFService, $rootScope, ICSW_SIGNALS, icswDeviceTreeService,
+    $q, icswAcessLevelService, icswCategoryTreeService,
     FileUploader, blockUI, icswTools, ICSW_URLS,
-    icswConfigCategoryTreeService,
     icswSimpleAjaxCall, icswParseXMLResponseService, toaster,
-    icswConfigCategoryTreeFetchService, msgbus
+    icswConfigCategoryTreeFetchService, icswComplexModalService,
+    icswLocationGfxBackup,
 ) ->
-    $scope.entries = []
     # mixins
     $scope.gfx_mixin = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q, "gfx")
     $scope.gfx_mixin.use_modal = true
@@ -140,47 +139,150 @@ angular.module(
     # edit mixin for cateogries
     $scope.locations = []
     $scope.map = null
-    msgbus.receive("icsw.config.locations.changed.tree", $scope, () ->
-        # receiver for global changes from tree
-        $scope.reload()
-    )
+    #msgbus.receive("icsw.config.locations.changed.tree", $scope, () ->
+    #    # receiver for global changes from tree
+    #    $scope.reload()
+    #)
     $rootScope.$on(ICSW_SIGNALS("ICSW_LOCATION_GOOGLE_MAPS_LOADED"), (event, map) ->
         $scope.map = map
     )
-    $scope.uploader = new FileUploader(
-        scope : $scope
-        url : ICSW_URLS.BASE_UPLOAD_LOCATION_GFX
-        queueLimit : 1
-        alias : "gfx"
-        formData : [
-             "location_id" : 0
-             "csrfmiddlewaretoken" : icswCSRFService["csrf_token"],
-        ]
-        removeAfterUpload : true
+    $scope.struct = {
+        device_tree: null
+        category_tree: null
+        locations: []
+    }
+    $scope.reload = () ->
+        $q.all(
+            [
+                icswDeviceTreeService.load($scope.$id)
+                icswCategoryTreeService.load($scope.$id)
+            ]
+        ).then(
+            (data) ->
+                $scope.struct.device_tree = data[0]
+                $scope.struct.category_tree = data[1]
+                $scope.rebuild_list()
+        )
+
+    $rootScope.$on(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), (event) ->
+        $scope.rebuild_list()
     )
-    $scope.upload_list = []
-    $scope.uploader.onBeforeUploadItem = (item) ->
-        item.formData[0].location_id = $scope.cur_location_gfx.idx
-        blockUI.start()
-    $scope.uploader.onCompleteAll = () ->
-        blockUI.stop()
-        $scope.uploader.clearQueue()
-        return null
-    $scope.uploader.onErrorItem = (item, response, status, headers) ->
-        blockUI.stop()
-        $scope.uploader.clearQueue()
-        toaster.pop("error", "", "error uploading file, please check logs", 0)
-        return null
-    $scope.uploader.onCompleteItem = (item, response, status, headers) ->
-        xml = $.parseXML(response)
-        if icswParseXMLResponseService(xml)
-            Restangular.one(ICSW_URLS.REST_LOCATION_GFX_DETAIL.slice(1).slice(0, -2), $scope.cur_location_gfx.idx).get().then((data) ->
-                for _copy in ["width", "height", "uuid", "content_type", "locked", "image_stored", "icon_url", "image_name", "image_url"]
-                    $scope.cur_location_gfx[_copy] = data[_copy]
-            )
+
+    $scope.rebuild_list = () ->
+        $scope.struct.locations.length = []
+        _ct = $scope.struct.category_tree
+        for entry in _ct.list
+            if _ct.is_location(entry, min_depth=2)
+                if not entry.$$expanded?
+                    entry.$$expanded = false
+                if not entry.$gfx_list.length
+                    entry.$$expanded = false
+                $scope.struct.locations.push(entry)
+
+    # utility functions
+        
+    $scope.toggle_expand = ($event, loc) ->
+        if loc.$gfx_list.length
+            loc.$$expanded = !loc.$$expanded
+        else
+            loc.$$expanded = false
+
+    $scope.locate = ($event, loc) ->
+        $scope.map.control.refresh(
+            {
+                latitude: loc.latitude
+                longitude: loc.longitude
+            }
+        )
+        $scope.map.control.getGMap().setZoom(11)
+
+    # modifiers
+    
+    $scope.create_or_edit = ($event, create_mode, parent, obj) ->
+        if create_mode
+            edit_obj = {
+                name: "New gfx"
+                location: parent.idx
+            }
+        else
+            dbu = new icswLocationGfxBackup()
+            dbu.create_backup(obj)
+            edit_obj = obj
+        sub_scope = $scope.$new(false)
+        sub_scope.loc = parent
+        sub_scope.edit_obj = edit_obj
+
+        # init uploaded
+        sub_scope.uploader = new FileUploader(
+            scope : $scope
+            url : ICSW_URLS.BASE_UPLOAD_LOCATION_GFX
+            queueLimit : 1
+            alias : "gfx"
+            removeAfterUpload : true
+        )
+        icswCSRFService.get_token().then(
+            (token) ->
+                sub_scope.uploader.formData.push({"csrfmiddlewaretoken": token})
+        )
+        sub_scope.upload_list = []
+        # sub_scope.uploader.onBeforeUploadItem = (item) ->
+        #    item.formData[0].location_id = $scope.cur_location_gfx.idx
+        #    blockUI.start()
+        sub_scope.uploader.onCompleteAll = () ->
+            blockUI.stop()
+            sub_scope.uploader.clearQueue()
+            return null
+        sub_scope.uploader.onErrorItem = (item, response, status, headers) ->
+            blockUI.stop()
+            sub_scope.uploader.clearQueue()
+            toaster.pop("error", "", "error uploading file, please check logs", 0)
+            return null
+
+        sub_scope.uploader.onCompleteItem = (item, response, status, headers) ->
+            xml = $.parseXML(response)
+            if icswParseXMLResponseService(xml)
+                console.log xml
+                Restangular.one(ICSW_URLS.REST_LOCATION_GFX_DETAIL.slice(1).slice(0, -2), $scope.cur_location_gfx.idx).get().then(
+                    (data) ->
+                        for _copy in ["width", "height", "uuid", "content_type", "locked", "image_stored", "icon_url", "image_name", "image_url"]
+                            $scope.cur_location_gfx[_copy] = data[_copy]
+                )
+
+        icswComplexModalService(
+            {
+                title: "Location Gfx"
+                message: $compile($templateCache.get("icsw.location.gfx.form"))(sub_scope)
+                ok_label: if create_mode then "Create" else "Modify"
+                ok_callback: (modal) ->
+                    console.log sub_scope.edit_obj
+                    d = $q.defer()
+                    if sub_scope.form_data.$invalid
+                        toaster.pop("warning", "form validation problem", "", 0)
+                        d.reject("form not valid")
+                    else if sub_scope.uploader.queue.length == 0
+                        toaster.pop("warning", "No graphic defined", "", 0)
+                        d.reject("no gfx defined")
+                    else
+                        console.log sub_scope.uploader.queue.length
+                        if create_mode
+                            console.log "c", sub_scope.edit_obj
+                        d.resolve("ok")
+                    return d.promise
+                cancel_callback: (modal) ->
+                    if not create_mode
+                        dbu.restore_backup(obj)
+                    d = $q.defer()
+                    d.resolve("cancel")
+                    return d.promise
+            }
+        ).then(
+            (fin) ->
+                console.log "gfx closed"
+                sub_scope.$destroy()
+        )
     _is_location = (obj) ->
         return (obj.depth > 1) and obj.full_name.split("/")[1] == "location"
-    $scope.reload = () ->
+    $scope.reloadx = () ->
         if $scope.ls_devsel?
             $scope.$watch(
                 $scope.ls_devsel.changed
@@ -260,19 +362,13 @@ angular.module(
                 )
         )
         return defer.promise
-    $scope.locate = (loc, $event) ->
-        $scope.map.control.refresh({"latitude": loc.latitude, "longitude": loc.longitude})
-        $scope.map.control.getGMap().setZoom(11)
-        if $event
-            $event.stopPropagation()
-            $event.preventDefault()
     $scope.toggle_lock = ($event, loc) ->
         loc.locked = !loc.locked
         loc.put()
         if $event
             $event.stopPropagation()
             $event.preventDefault()
-        msgbus.emit(msgbus.event_types.CATEGORY_CHANGED)
+        # msgbus.emit(msgbus.event_types.CATEGORY_CHANGED)
     $scope.close_modal = () ->
         if $scope.cur_edit
             $scope.cur_edit.close_modal()
@@ -311,13 +407,9 @@ angular.module(
     $scope.reload()
 ]).directive("icswConfigCategoryTreeGoogleMap",
 [
-    "$templateCache", "uiGmapGoogleMapApi",
-    "$timeout", "$rootScope",
-    "ICSW_SIGNALS",
+    "$templateCache", "uiGmapGoogleMapApi", "$timeout", "$rootScope", "ICSW_SIGNALS",
 (
-    $templateCache, uiGmapGoogleMapApi,
-    $timeout, $rootScope,
-    ICSW_SIGNALS,
+    $templateCache, uiGmapGoogleMapApi, $timeout, $rootScope, ICSW_SIGNALS,
 ) ->
     return {
         restrict: "EA"
@@ -329,14 +421,11 @@ angular.module(
         link: (scope, element, attrs) ->
             console.log attrs
             scope.marker_lut = {}
-            scope.location_list = []
+            # scope.location_list = []
             scope.marker_list = []
             scope.map = {
-                center: {
-                    latitude: 4
-                    longitude: 7
-                }
-                zoom: 2
+                center: {}
+                zoom: 6
                 control: {}
                 options: {
                     "streetViewControl": false
@@ -352,14 +441,6 @@ angular.module(
                         "latitude": 20
                         "longitude": 30
                     }
-                    "ne" : {
-                        "latitude": 4
-                        "longitude": 4
-                    }
-                    "sw": {
-                        "latitude": 20
-                        "longitude": 30
-                    }
                 }
             }
             scope.event_dict = {
@@ -370,69 +451,93 @@ angular.module(
                     _cat.longitude = _pos.lng()
                     _cat.put()
             }
-            scope.build_markers = () ->
-                if scope.location_list.length == scope.marker_list.length
-                    # update list to reduce flicker
-                    for _vt in _.zip(scope.location_list, scope.marker_list)
-                        _entry = _vt[0]
-                        marker = _vt[1]
-                        marker.latitude = _entry.latitude
-                        marker.longitude = _entry.longitude
-                        marker.comment = if _entry.comment then "#{_entry.name} (#{_entry.comment})" else _entry.name
-                        marker.options.opacity = if _entry.locked then 1.0 else 0.7
-                        marker.icon = if _entry.svg_url then _entry.svg_url else null
-                else
-                    new_list = []
-                    marker_lut = {}
-                    for _entry in scope.location_list
-                        new_list.push(
-                            {
-                                "latitude": _entry.latitude
-                                "longitude": _entry.longitude
-                                "key": _entry.idx
-                                "comment": if _entry.comment then "#{_entry.name} (#{_entry.comment})" else _entry.name
-                                "options": {
-                                    "draggable": not _entry.locked
-                                    "title": _entry.full_name
-                                    "opacity": if _entry.locked then 1.0 else 0.7
-                                }
-                                "icon": if _entry.svg_url then _entry.svg_url else null
+            scope.zoom_to_locations = () ->
+                # center map around the locations
+                _bounds = null
+                for entry in scope.locations
+                    if not _bounds
+                        _bounds = {
+                            northeast: {
+                                latitude: entry.latitude
+                                longitude: entry.longitude
                             }
-                        )
-                        marker_lut[_entry.idx] = _entry
-                    scope.marker_list = new_list
+                            southwest: {
+                                latitude: entry.latitude
+                                longitude: entry.longitude
+                            }
+                        }
+                    else
+                        _bounds.northeast.latitude = Math.max(_bounds.northeast.latitude, entry.latitude)
+                        _bounds.northeast.longitude = Math.max(_bounds.northeast.longitude, entry.longitude)
+                        _bounds.southwest.latitude = Math.min(_bounds.southwest.latitude, entry.latitude)
+                        _bounds.southwest.longitude = Math.min(_bounds.southwest.longitude, entry.longitude)
+                scope.map.bounds = _bounds
+                scope.map.center.latitude = (_bounds.northeast.latitude + _bounds.southwest.latitude) / 2.0
+                scope.map.center.longitude = (_bounds.northeast.longitude + _bounds.southwest.longitude) / 2.0
+                console.log scope.map
+                # console.log _bounds
+
+            scope.build_markers = () ->
+                scope.marker_list.length = 0
+                marker_lut = {}
+                for _entry in scope.locations
+                    comment = _entry.name
+                    if _entry.comment
+                        comment = "#{comment} (#{_entry.comment})"
+                    if _entry.$gfx_list.length
+                        comment = "#{comment}, #{_entry.$gfx_list.length} gfxs"
+                    scope.marker_list.push(
+                        {
+                            "latitude": _entry.latitude
+                            "longitude": _entry.longitude
+                            "key": _entry.idx
+                            "comment": comment
+                            "options": {
+                                "draggable": not _entry.locked
+                                "title": comment
+                                "opacity": if _entry.locked then 1.0 else 0.7
+                            }
+                            "icon": if _entry.svg_url then _entry.svg_url else null
+                        }
+                    )
+                    marker_lut[_entry.idx] = _entry
                     scope.marker_lut = marker_lut
             scope.maps_ready = false
             scope.maps = undefined
-            uiGmapGoogleMapApi.then(
-                (maps) ->
-                    scope.maps_ready = true
-                    scope.maps = maps
-                    $rootScope.$emit(ICSW_SIGNALS("ICSW_LOCATION_GOOGLE_MAPS_LOADED"), scope.map)
+            _update = () ->
+                if scope.active_tab == "conf" and scope.locations and not scope.maps_ready
+                    console.log "Zoom"
+                    scope.zoom_to_locations()
+                    scope.build_markers()
+                    uiGmapGoogleMapApi.then(
+                        (maps) ->
+                            scope.maps_ready = true
+                            scope.maps = maps
+                            $rootScope.$emit(ICSW_SIGNALS("ICSW_LOCATION_GOOGLE_MAPS_LOADED"), scope.map)
+                    )
+                    $timeout(
+                        () ->
+                            _map = scope.map
+                            _map.control.refresh(
+                                {
+                                    "latitude": _map.center.latitude
+                                    "longitude": _map.center.longitude
+                                }
+                            )
+                        100
+                    )
+            $rootScope.$on(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), (event) ->
+                _update()
             )
             scope.$watch(
                 "active_tab"
                 (new_val) ->
-                    console.log "at", new_val
-                    if new_val == "conf"
-                        $timeout(
-                            () ->
-                                _map = scope.map
-                                _map.control.refresh(
-                                    {
-                                        "latitude": _map.center.latitude
-                                        "longitude": _map.center.longitude
-                                    }
-                                )
-                            100
-                        )
+                    _update()
             )
             scope.$watch(
                 "locations",
                 (new_val) ->
-                    if new_val
-                        scope.location_list = new_val
-                        scope.build_markers()
+                    _update()
                 true
             )
     }

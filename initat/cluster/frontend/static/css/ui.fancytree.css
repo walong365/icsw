@@ -295,14 +295,14 @@ span.fancytree-node {
   display: inherit;
   width: 100%;
   margin-top: 0px;
-  min-height: 20px;
+  min-height: 16px;
 }
 span.fancytree-title {
   color: black;
   cursor: pointer;
   display: inline-block;
   vertical-align: top;
-  min-height: 20px;
+  min-height: 18px;
   padding: 0 3px 0 3px;
   margin: 0px 0 0 3px;
   border: 1px solid transparent;

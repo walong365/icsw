@@ -450,13 +450,15 @@ class category_tree(object):
                             if not get_related_models(cur_leaf, m2m=True, ignore_objs=_deleted):
                                 del_nodes.append(cur_leaf)
             for del_node in del_nodes:
+                # store idx in an extra field
+                del_node.saved_pk = del_node.idx
                 _deleted.add(del_node)
                 if doit:
                     del self[del_node.parent_id]._sub_tree[del_node.name]
                     del self.__node_dict[del_node.pk]
                     del_node.delete()
             removed = len(del_nodes) > 0
-        return len(_deleted)
+        return _deleted
 
     def __iter__(self):
         return self.all()
@@ -493,6 +495,8 @@ class category(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     # immutable
     immutable = models.BooleanField(default=False)
+    # useable flag, False for intermediate entries
+    useable = models.BooleanField(default=True)
     # for location fields: physical or structural (for overview location maps)
     # a device can be used on a structural (non-physical) loction map even if
     # this location map is not attached to the location node the devices is attached to
@@ -576,6 +580,7 @@ def category_pre_save(sender, **kwargs):
                         _parent = category(
                             name=cur_part,
                             parent=cur_parent,
+                            useable=False,
                             comment="autocreated intermediate",
                         )
                         _parent.save()
@@ -797,11 +802,13 @@ class location_gfx(models.Model):
         self.locked = True
         if cache.get(self.icon_cache_key):
             cache.delete(self.icon_cache_key)
-        self.save(update_fields=[
-            "changes",
-            "width", "height",
-            "content_type",
-            "locked", "image_stored", "image_count", "image_name"])
+        self.save(
+            update_fields=[
+                "changes", "width", "height",
+                "content_type",
+                "locked", "image_stored", "image_count", "image_name"
+            ]
+        )
 
 
 @receiver(signals.pre_save, sender=location_gfx)

@@ -93,8 +93,6 @@ angular.module(
             @config = null
             # always shown as folder ?
             @always_folder = false
-            for key, value of args
-                @[key] = value
             # idx
             @_idx = 0
             # number of all nodes below this
@@ -109,6 +107,10 @@ angular.module(
             @_sel_descendants = 0
             # pruned (currently not shown)
             @pruned = false
+            # show selection entry
+            @_show_select = true
+            for key, value of args
+                @[key] = value
             @notify_child_selection_changed()
         set_selected: (flag, propagate=true) ->
             # if _show_select is false ignore selection request
@@ -197,7 +199,7 @@ angular.module(
             else
                 return "label label-default"
         is_selectable: () =>
-            return typeof(@_show_select) == "undefined" or @_show_select
+            return @_show_select
         all_selectable_descendant_and_self_selected: () =>
             if @is_selectable() and not @selected
                 return false
@@ -253,9 +255,6 @@ angular.module(
             @_node_idx++
             new_node = new icswTreeNode(args)
             new_node._is_root_node = false
-            if not new_node._show_select?
-                # only set _show_select if _show_select is not already set
-                new_node._show_select = true
             new_node._idx = @_node_idx
             new_node._depth = 0
             new_node.config = @

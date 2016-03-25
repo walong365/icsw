@@ -154,6 +154,8 @@ angular.module(
             if create
                 _parent = (value for value in scope.dn_tree.mode_entries when value.depth == 1 and value.full_name.split("/")[1] == top_level)[0]
                 _name = "new_#{top_level}_cat"
+                useable: true
+                was_unuseable: false
                 r_struct = {
                     name: _name
                     parent: _parent.idx
@@ -165,6 +167,7 @@ angular.module(
                     r_struct["longitude"] = 16.3
                 obj_or_parent = r_struct
             else
+                obj_or_parent.was_unuseable = not obj_or_parent.useable
                 dbu = new icswCategoryBackup()
                 dbu.create_backup(obj_or_parent)
             sub_scope = scope.$new(false)
@@ -425,8 +428,12 @@ angular.module(
                                     mode: $scope.mode
                                     doit: 1
                             ).then(
-                                (xml) ->
-                                    $scope.reload()
+                                (xml) =>
+                                    $(xml).find("categories > category").each (idx, el) =>
+                                        del_idx = parseInt($(el).attr("pk"))
+                                        $scope.struct.tree.delete_category_by_pk(del_idx)
+                                    $scope.struct.tree.build_luts()
+                                    $rootScope.$emit(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), $scope.struct.tree)
                                     blockUI.stop()
                                 (xml) ->
                                     blockUI.stop()

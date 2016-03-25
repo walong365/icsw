@@ -173,6 +173,7 @@ angular.module(
                     obj: entry
                     expand: (entry.depth < 2) or (entry.idx in _cur_sel) or _match_pks.length
                     selected: _match_pks.length == _num_devs
+                    _show_select: entry.useable
                 }
             )
             # copy matching pks to tree entry (NOT entry because entry is global)

@@ -1035,6 +1035,7 @@ config_module = angular.module(
                                 obj: entry
                                 expand: entry.depth < 2
                                 selected: entry.idx in sel_cat
+                                _show_select: entry.useable
                             )
                             scope.cat_tree.lut[entry.idx] = t_entry
                             if entry.parent and entry.parent of scope.cat_tree.lut

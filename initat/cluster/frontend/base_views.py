@@ -91,14 +91,19 @@ class prune_category_tree(permission_required_mixin, View):
         if doit:
             request.xml_response.info(
                 "tree pruned ({})".format(
-                    logging_tools.get_plural("element", to_delete)
+                    logging_tools.get_plural("element", len(to_delete))
                 )
             )
+            request.xml_response["deleted"] = E.categories(
+                *[
+                    E.category(pk="{:d}".format(_del.saved_pk)) for _del in to_delete
+                ]
+            )
         else:
-            request.xml_response["nodes"] = to_delete
+            request.xml_response["nodes"] = len(to_delete)
             if to_delete:
                 request.xml_response["info"] = "OK to delete {} ?".format(
-                    logging_tools.get_plural("element", to_delete)
+                    logging_tools.get_plural("element", len(to_delete))
                 )
             else:
                 request.xml_response["info"] = "Nothing to prune"

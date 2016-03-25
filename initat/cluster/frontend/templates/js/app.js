@@ -138,4 +138,12 @@ icsw_app = angular.module(
         "DIMPLE_MIN_JS": "/icsw/static/dimple.v2.1.6.min.js",
         "STATIC_URL": "/icsw/static"
     }
-);
+).config(function(uiGmapGoogleMapApiProvider) {
+    uiGmapGoogleMapApiProvider.configure(
+        {
+            //    key: 'your api key',
+            v: '3.23', //defaults to latest 3.X anyhow
+            libraries: 'weather,geometry,visualization'
+        }
+    );
+});

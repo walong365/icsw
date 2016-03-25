@@ -30,14 +30,14 @@
 </script>
 
 <script type="text/ng-template" id="icsw.config.category.location.map.edit">
-    <uib-alert type="warning" style="max-width: 500px" ng-if="locations.length == 0">
+    <uib-alert type="warning" style="max-width: 500px" ng-if="struct.locations.length == 0">
         Please create locations in the tab 'Available locations'.
     </uib-alert>
 
-    <h3 ng-show="locations.length">Map view, {{ locations.length }} locations</h3>
-    <div class="row" ng-if="locations.length > 0">
+    <h3 ng-show="struct.locations.length">Map view, {{ struct.locations.length }} locations</h3>
+    <div class="row" ng-if="struct.locations.length > 0">
         <div class="col-md-6">
-            <icsw-config-category-tree-google-map locations="locations" active-tab="active_tab"></icsw-config-category-tree-google-map>
+            <icsw-config-category-tree-google-map locations="struct.locations" active-tab="active_tab"></icsw-config-category-tree-google-map>
         </div>
         <div class="col-md-6">
             <icsw-config-category-location-list-edit></icsw-config-category-location-list-edit>
@@ -46,8 +46,83 @@
 </script>
 
 <script type="text/ng-template" id="icsw.config.category.location.list.edit">
+    <!-- table-striped make no sense here -->
+    <table st-table="locations_displayed" st-safe-src="struct.locations" class="table table-condensed table-hover" style="width:auto;">
+        <thead>
+            <tr>
+                <td colspan="99">
+                    <div
+                        icsw-tools-pagination
+                        st-items-by-page="10"
+                        st-displayed-pages="11"
+                        possible-items-by-page="10,20,50,100"
+                    ></div>
+                </td>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat-start="loc in locations_displayed" >
+                <td ng-click="toggle_expand($event, loc)">
+                    {{ loc.full_name }}
+                    <span class="pull-right" ng-show="loc.$gfx_list.length">
+                        <button class="btn btn-xs btn-primary">
+                            {{ loc.$gfx_list.length }}
+                            <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': loc.$$expanded, 'glyphicon-chevron-right': !loc.$$expanded}"></i>
+                        </button>
+                    </span>
+                </td>
+                <td class="text-center">
+                    <button class="btn btn-xs btn-success" ng-click="locate($event, loc)">
+                        <span class="fa fa-map-marker"></span>
+                    </button>
+                </td>
+                <td class="text-center">{{ loc.depth }}</td>
+                <td class="text-center">
+                    <span ng-show="loc.physical" class="label label-success">Physical</span>
+                    <span ng-show="!loc.physical" class="label label-default">Structural</span>
+                </td>
+                <td class="text-center">
+                    <span ng-show="loc.locked" class="fa fa-lock"/>
+                    <span ng-show="!loc.locked" class="fa fa-unlock"/>
+                </td>
+                <td>
+                    <icsw-tools-button type="create" size="xs" value="Gfx" ng-click="create_or_edit($event, true, loc)"></icsw-tools-button>
+                </td>
+            </tr>
+            <tr ng-show="loc.$$expanded" ng-repeat-end>
+                <td colspan="5">
+                    <table class="table table-condensed table-hover table-striped">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Comment</th>
+                                <th colspan="3">Size</th>
+                                <th>Image name</th>
+                                <th>ContentType</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr ng-repeat="gfx in loc.$gfx_list">
+                                <td>{{ gfx.name }}</td>
+                                <td>{{ gfx.comment }}</td>
+                                <td class="text-right">{{ gfx.width }}</td>
+                                <td class="text-center">x</td>
+                                <td>{{ gfx.height }}</td>
+                                <td>{{ gfx.image_name }}</td>
+                                <td>{{ gfx.content_type }}</td>
+                                <td>
+                                    <icsw-tools-button type="modify" size="xs" ng-click="create_or_edit($event, false, loc, gfx)"></icsw-tools-button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </td>
+            </tr>
+        </tbody>
+    </table>
     <uib-accordion close-others="no">
-        <uib-accordion-group ng-repeat="loc in locations" is-open="loc.open">
+        <uib-accordion-group ng-repeat="loc in struct.locations" is-open="loc.open">
             <uib-accordion-heading>
                 <icsw-tools-button type="create" value="add locGfx" size="sm" ng-click="add_location_gfx($event, loc)"></icsw-tools-button>
                 <icsw-tools-button type="display" value="locate" size="sm" ng-click="locate(loc, $event)" title="({{ loc.latitude }}, {{ loc.longitude }})"></icsw-tools-button>
@@ -131,7 +206,7 @@
                 </button>
                 <ul class="dropdown-menu" role="menu">
                     <li><a ng-click="display_size('scaled')">Scaled</a></li>
-                    <li><a ng-click="display_size('original')">Original</a></li>
+                    <li><a ng-click="display_size('original')">ariginal</a></li>
                 </ul>
             </div>
             Rotate:
@@ -217,3 +292,54 @@
         </ui-gmap-google-map>
     </div>
 </script>
+
+<script type="text/ng-template" id="icsw.location.gfx.form">
+    <form class="form-horizontal" name="form_data">
+        <div>
+            <h3>Graphic '{{ edit_obj.name }}' for location '{{ loc.full_name }}'</h3>
+            <fieldset>
+                <legend>Basic settings</legend>
+                <div class="form-group  ng-class:form_error('name')">
+                    <label class="control-label col-sm-3 requiredField">
+                        Name<span class="asteriskField">*</span>
+                    </label>
+                    <div class="controls col-sm-9">
+                        <input class="textinput textInput form-control" maxlength="64" name="name" ng-model="edit_obj.name" required="True" type="text"/>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="control-label col-sm-3">
+                        Comment
+                    </label>
+                    <div class="controls col-sm-9">
+                        <input class="textinput textInput form-control" maxlength="1024" name="comment" ng-model="edit_obj.comment" type="text"/>
+                    </div>
+                </div>
+            </fieldset>
+            <fieldset ng-if="!create_mode">
+                <legend>Graphic</legend>
+                <div ng-show="edit_obj.image_stored" class="form-group">
+                    <label class="control-label col-sm-3">
+                        Current Graphic
+                    </label>
+                    <div class="col-sm-9">
+                        {{ edit_obj.image_name }} ( {{ edit_obj.width }} x {{ edit_obj.height }}), {{ edit_obj.content_type }}
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="control-label col-sm-3">
+                        Graphic
+                    </label>
+
+                    <div class="col-sm-6">
+                        <input type="file" nv-file-select="" class="form-control" uploader="uploader"/>
+                    </div>
+                    <div class="col-sm-3">
+                        <input type="button" ng-show="uploader.queue.length" class="btn btn-warning btn-sm" value="upload" ng-click="uploader.uploadAll()"/>
+                    </div>
+                </div>
+            </fieldset>
+        </div>
+    </form>
+</script>
+

@@ -129,7 +129,7 @@ angular.module(
                     gfx.name_comment = "#{gfx.name}"
                 gfx.info_string = "#{gfx.image_name} #{gfx.width} x #{gfx.height} (#{gfx.content_type})"
                 gfx.$dml_list.length = 0
-                @lut[gfx.location].$gfx_list.push(gfx.idx)
+                @lut[gfx.location].$gfx_list.push(gfx)
 
             # dml
             for dml in @dml_list
@@ -138,6 +138,9 @@ angular.module(
 
             @reorder_full_name()
 
+        is_location: (entry, min_depth=0) =>
+            return entry.depth >= min_depth and entry.full_name.split("/")[1] == "location"
+                
         clear_references: (name) =>
             for entry in @list
                 entry.reference_dict[name].length = 0
@@ -183,6 +186,9 @@ angular.module(
             )
             return defer.promise
 
+        delete_category_by_pk: (pk) =>
+            _.remove(@list, (entry) -> return entry.idx == pk)
+            
         delete_category_entry: (del_ce) =>
             # ensure REST hooks
             Restangular.restangularizeElement(null, del_ce, ICSW_URLS.REST_CATEGORY_DETAIL.slice(1).slice(0, -2))

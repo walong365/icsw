@@ -197,6 +197,7 @@ angular.module(
             @simple_attributes = [
                 "name", "full_name", "parent", "depth", "immutable",
                 "physical", "latitude", "longitude", "locked", "comment",
+                "useable",
             ]
 
 ]).service("icswMonCheckCommandBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
@@ -255,6 +256,18 @@ angular.module(
                 "name", "full_name", "parent", "node_postfix", "depth",
                 "intermediate", "create_short_names", "always_create_ip",
                 "write_nameserver_config",
+            ]
+
+]).service("icswLocationGfxBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswLocationGfxBackupDefinition extends icswBackupDefinition
+
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "name", "image_name", "uuid", "image_stored",
+                "image_count", "width", "height",
+                "content_type", "location", "locked", "changes", "comment",
             ]
 
 ])

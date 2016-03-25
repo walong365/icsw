@@ -17,6 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+
 angular.module(
     "icsw.device.location",
     [
@@ -227,6 +228,7 @@ angular.module(
                     obj: entry
                     expand: (entry.depth < 2) or (entry.idx in _cur_sel) or _match_pks.length
                     selected: _match_pks.length == _num_devs
+                    _show_select: entry.useable
                 }
             )
             # check if selected devices have location-gfx link to this category
@@ -274,8 +276,7 @@ angular.module(
         dml_lost = 0
         # iterate over check locations
         for c_loc in check_locs
-            for gfx_id in c_loc.$gfx_list
-                gfx = $scope.struct.tree.gfx_lut[gfx_id]
+            for gfx in c_loc.$gfx_list
                 _to_delete = (dml for dml in gfx.$dml_list when dml.device in dev_pks)
                 dml_lost += _to_delete.length
         defer = $q.defer()
@@ -320,8 +321,8 @@ angular.module(
                         sync_locs = _.uniq(sync_locs)
                         # add gfxs to sync
                         for sync_loc in sync_locs
-                            for gfx_id in $scope.struct.tree.lut[sync_loc].$gfx_list
-                                sync_gfxs.push(gfx_id)
+                            for gfx in $scope.struct.tree.lut[sync_loc].$gfx_list
+                                sync_gfxs.push(gfx.idx)
                         sync_gfxs = _.uniq(sync_gfxs)
                         if sync_pks.length
                             # sync devices
@@ -382,12 +383,10 @@ angular.module(
             _tree_loaded = false
             scope.cat_tree = null
             scope.device_tree = null
-            scope.$gfx_list = []
             scope.active_gfx = null
 
             update = () ->
                 # truncate list
-                scope.$gfx_list.length = 0
                 loc_defer = $q.defer()
                 if _tree_loaded
                     loc_defer.resolve("init done")
@@ -407,13 +406,11 @@ angular.module(
                     (init_msg) ->
                         _tree_loaded = true
                         _clear_active = true
-                        for gfx_id in scope.location.$gfx_list
-                            _gfx = scope.cat_tree.gfx_lut[gfx_id]
-                            if _gfx == scope.active_gfx
+                        for gfx in scope.location.$gfx_list
+                            if gfx.idx == scope.active_gfx
                                 # do not clear active_gfx when element is in current list
                                 _clear_active = false
-                            scope.cat_tree.populate_gfx_location(_gfx, scope.device_tree, scope.devices)
-                            scope.$gfx_list.push(_gfx)
+                            scope.cat_tree.populate_gfx_location(gfx, scope.device_tree, scope.devices)
                         if _clear_active
                             scope.active_gfx = null
                 )
