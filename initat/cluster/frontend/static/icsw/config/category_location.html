@@ -26,7 +26,7 @@
                         {{ gfx.name }} <icsw-tools-button size="xs" type="close" value="" ng-click="remove_gfx($event, gfx)"></icsw-tools-button>
                     </uib-tab-heading>
                     <icsw-config-category-tree-map-enhance preview-gfx="gfx">
-                    </icsw-config-category-tree-map-enhance
+                    </icsw-config-category-tree-map-enhance>
                 </uib-tab>
             </uib-tabset>
         </uib-tab>
@@ -44,7 +44,7 @@
     <h3 ng-show="struct.locations.length">Map view, {{ struct.locations.length }} useable locations</h3>
     <div class="row" ng-if="struct.locations.length > 0">
         <div class="col-md-6">
-            <icsw-config-category-tree-google-map locations="struct.locations" active-tab="active_tab"></icsw-config-category-tree-google-map>
+            <icsw-config-category-tree-google-map locations="struct.locations" icsw-google-maps-fn="struct.google_maps_fn" active-tab="active_tab" icsw-map-mode="edit"></icsw-config-category-tree-google-map>
         </div>
         <div class="col-md-6">
             <icsw-config-category-location-list-edit></icsw-config-category-location-list-edit>
@@ -68,7 +68,10 @@
             </tr>
         </thead>
         <tbody>
-            <tr ng-repeat-start="loc in locations_displayed" >
+            <tr ng-repeat-start="loc in locations_displayed"
+                ng-click="select_location($event, loc)"
+                ng-class="{'success': loc.$$selected}"
+            >
                 <td ng-click="toggle_expand($event, loc)">
                     {{ loc.full_name }}
                     <span class="pull-right" ng-show="loc.$gfx_list.length">
@@ -84,6 +87,8 @@
                     </button>
                 </td>
                 <td class="text-center">{{ loc.depth }}</td>
+                <td class="text-right">{{ loc.latitude | number:3 }}</td>
+                <td class="text-right">{{ loc.longitude | number:3 }}</td>
                 <td class="text-center">
                     <span ng-show="loc.physical" class="label label-success">Physical</span>
                     <span ng-show="!loc.physical" class="label label-default">Structural</span>

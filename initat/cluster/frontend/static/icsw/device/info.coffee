@@ -145,7 +145,7 @@ angular.module(
                 scope["#{_cur_mode}_active"] = true
                 scope.activate = (name) ->
                     DeviceOverviewSettings.set_mode(name)
-                    if name in ["network", "status_history", "livestatus", "category"]
+                    if name in ["network", "status_history", "livestatus", "category", "location"]
                         scope.pk_list[name] = scope.device_nmd_list
                         scope.dev_list[name] = scope.devicelist
                     else if name in ["config", "graphing", "device_variable"]

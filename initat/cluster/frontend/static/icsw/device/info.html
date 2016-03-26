@@ -30,6 +30,14 @@
             <icsw-device-category-overview icsw-sel-man="{{ popupmode }}" icsw-device-list="dev_list['category']">
             </icsw-device-category-overview>
         </uib-tab>
+         <uib-tab ng-if="acl_read(null, 'backbone.device.change_location') && dev_pk_nmd_list.length" select="activate('location')" active="category_active">
+            <uib-tab-heading>
+                Location{{ addon_text_nmd }}
+            </uib-tab-heading>
+
+            <icsw-device-location-overview icsw-sel-man="{{ popupmode }}" icsw-device-list="dev_list['location']">
+            </icsw-device-location-overview>
+        </uib-tab>
         <uib-tab ng-if="acl_read(null, 'backbone.device.change_variables')" select="activate('device_variable')" active="device_variable_active">
             <uib-tab-heading>
                 Device Variable{{ addon_text }}

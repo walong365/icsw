@@ -126,25 +126,20 @@ angular.module(
     "$q", "icswAcessLevelService", "icswCategoryTreeService",
     "FileUploader", "blockUI", "icswTools", "ICSW_URLS",
     "icswSimpleAjaxCall", "icswParseXMLResponseService", "toaster",
-    "icswConfigCategoryTreeFetchService", "icswComplexModalService",
-    "icswLocationGfxBackup", "icswToolsSimpleModalService",
+    "icswComplexModalService", "icswLocationGfxBackup", "icswToolsSimpleModalService",
 (
     $scope, $compile, $templateCache, Restangular, $timeout,
     icswCSRFService, $rootScope, ICSW_SIGNALS, icswDeviceTreeService,
     $q, icswAcessLevelService, icswCategoryTreeService,
     FileUploader, blockUI, icswTools, ICSW_URLS,
     icswSimpleAjaxCall, icswParseXMLResponseService, toaster,
-    icswConfigCategoryTreeFetchService, icswComplexModalService,
-    icswLocationGfxBackup, icswToolsSimpleModalService,
+    icswComplexModalService, icswLocationGfxBackup, icswToolsSimpleModalService,
 ) ->
-    $scope.map = null
-    $rootScope.$on(ICSW_SIGNALS("ICSW_LOCATION_GOOGLE_MAPS_LOADED"), (event, map) ->
-        $scope.map = map
-    )
     $scope.struct = {
         device_tree: null
         category_tree: null
         locations: []
+        google_maps: null
     }
     $scope.reload = () ->
         $q.all(
@@ -164,18 +159,18 @@ angular.module(
     )
 
     $scope.rebuild_list = () ->
-        $scope.struct.locations.length = []
-        _ct = $scope.struct.category_tree
-        for entry in _ct.list
-            if _ct.is_location(entry, min_depth=2) and entry.useable
-                if not entry.$$expanded?
-                    entry.$$expanded = false
-                if not entry.$gfx_list.length
-                    entry.$$expanded = false
-                $scope.struct.locations.push(entry)
+        $scope.struct.category_tree.build_location_list($scope.struct.locations)
 
     # utility functions
-        
+
+    $scope.select_location = ($event, loc) ->
+        if loc.$$selected
+            loc.$$selected = false
+        else
+            for entry in $scope.struct.locations
+                entry.$$selected = false
+            loc.$$selected = true
+
     $scope.toggle_expand = ($event, loc) ->
         if loc.$gfx_list.length
             loc.$$expanded = !loc.$$expanded
@@ -183,13 +178,11 @@ angular.module(
             loc.$$expanded = false
 
     $scope.locate = ($event, loc) ->
-        $scope.map.control.refresh(
-            {
-                latitude: loc.latitude
-                longitude: loc.longitude
-            }
-        )
-        $scope.map.control.getGMap().setZoom(11)
+        if $scope.struct.google_maps_fn
+            $scope.struct.google_maps_fn("refresh", [loc.latitude, loc.longitude])
+            $scope.struct.google_maps_fn("zoom", 11)
+        else
+            console.error "no google_maps defined"
 
     # modifiers
     
@@ -392,8 +385,24 @@ angular.module(
         scope: {
             locations: "=locations"
             active_tab: "=activeTab"
+            maps_control: "=icswGoogleMapsFn"
+            maps_cb_fn: "=icswGoogleMapsCbFn"
         }
         link: (scope, element, attrs) ->
+            # map mode, can be one of
+            # edit ... edit locations
+            # show ... only show the active locations
+            scope.map_mode = attrs["icswMapMode"]
+            if scope.map_mode in ["show"]
+                scope.map_active = true
+            else
+                # wait for activation
+                scope.map_active = false
+
+            scope.maps_ready = false
+            # google maps object
+            scope.google_maps = undefined
+
             scope.marker_lut = {}
             # scope.location_list = []
             scope.marker_list = []
@@ -419,11 +428,20 @@ angular.module(
             }
             scope.event_dict = {
                 dragend: (marker, event_name, args) ->
+                    console.log "DE"
                     _pos = marker.getPosition()
                     _cat = scope.marker_lut[marker.key]
                     _cat.latitude = _pos.lat()
                     _cat.longitude = _pos.lng()
                     _cat.put()
+                click: (marker, event_name, args) ->
+                    _loc = scope.marker_lut[marker.key]
+                    console.log "c", marker, _loc
+                    for entry in scope.locations
+                        entry.$$selected = false
+                    _loc.$$selected = !_loc.$$selected
+                    if scope.maps_cb_fn?
+                        scope.maps_cb_fn("marker_clicked", _loc)
             }
             scope.zoom_to_locations = () ->
                 # center map around the locations
@@ -458,6 +476,11 @@ angular.module(
                         comment = "#{comment} (#{_entry.comment})"
                     if _entry.$gfx_list.length
                         comment = "#{comment}, #{_entry.$gfx_list.length} gfxs"
+                    # draggable flag
+                    if scope.map_mode in ["edit"]
+                        _draggable = not _entry.locked
+                    else
+                        _draggable = false
                     scope.marker_list.push(
                         {
                             "latitude": _entry.latitude
@@ -465,7 +488,7 @@ angular.module(
                             "key": _entry.idx
                             "comment": comment
                             "options": {
-                                "draggable": not _entry.locked
+                                "draggable": _draggable
                                 "title": comment
                                 "opacity": if _entry.locked then 1.0 else 0.7
                             }
@@ -474,18 +497,28 @@ angular.module(
                     )
                     marker_lut[_entry.idx] = _entry
                     scope.marker_lut = marker_lut
-            scope.maps_ready = false
-            scope.maps = undefined
+
+            scope.maps_control = (fn_name, args) ->
+                if fn_name == "refresh"
+                    [lat, long] = args
+                    scope.map.control.refresh(
+                        {
+                            latitude: lat
+                            longitude: long
+                        }
+                    )
+                else if fn_name == "zoom"
+                    scope.map.control.getGMap().setZoom(args)
+
             _update = () ->
-                if scope.active_tab == "conf" and scope.locations and not scope.maps_ready
+                if scope.map_active and scope.locations? and scope.locations.length and not scope.maps_ready
                     console.log "Zoom"
                     scope.zoom_to_locations()
                     scope.build_markers()
                     uiGmapGoogleMapApi.then(
                         (maps) ->
                             scope.maps_ready = true
-                            scope.maps = maps
-                            $rootScope.$emit(ICSW_SIGNALS("ICSW_LOCATION_GOOGLE_MAPS_LOADED"), scope.map)
+                            scope.google_maps = maps
                     )
                     $timeout(
                         () ->
@@ -504,7 +537,12 @@ angular.module(
             scope.$watch(
                 "active_tab"
                 (new_val) ->
-                    _update()
+                    if new_val?
+                        if new_val == "conf"
+                            scope.map_active = true
+                            _update()
+                        else
+                            scope.map_active = false
             )
             scope.$watch(
                 "locations",

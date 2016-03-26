@@ -112,14 +112,14 @@ angular.module(
             else
                 return "TOP"
 
-        handle_click: (t_entry) ->
+        handle_click: (t_entry, center_map=true) ->
             cat = t_entry.obj
             @clear_active()
             if cat.depth > 1
                 if cat != @scope.struct.active_loc
                     @scope.struct.active_gfx = null
                 # if cat.$gfx_list.length
-                @scope.struct.active_loc = cat
+                @scope.set_active_location(cat, center_map)
                 # else
                 #     @scope.struct.active_loc = null
                 t_entry.active = true
@@ -147,12 +147,16 @@ angular.module(
         device_list_ready: false
         multi_device_mode: false
         loc_tree: new icswDeviceLocationTreeService($scope, {})
+        # useable locations
+        locations: []
         # selected devices
         devices: []
         # active location
         active_loc: null
         # active gfx
         active_gfx: null
+        # google maps callback
+        google_maps_fn: null
     }
     $scope.DEBUG = false
 
@@ -162,6 +166,14 @@ angular.module(
     $scope.$on("$destroy", () ->
         $scope.struct.device_list_ready = false
     )
+
+    $scope.google_maps_cb_fn = (fn_name, args) ->
+        if fn_name == "marker_clicked"
+            _loc = args
+            _lc = $scope.struct.loc_tree
+            # active node
+            _node = _lc.lut[_loc.idx]
+            _lc.handle_click(_node, center_map=false)
 
     $scope.new_devsel = (devs) ->
         $q.all(
@@ -192,6 +204,8 @@ angular.module(
     )
     $scope.rebuild_dnt = () ->
         _ct = $scope.struct.loc_tree
+        # build location list for google-maps
+        $scope.struct.tree.build_location_list($scope.struct.locations)
         _ct.change_select = true
         for dev in $scope.struct.devices
             # check all devices and disable change button when not all devices are in allowed list
@@ -203,7 +217,7 @@ angular.module(
             _cur_sel = _ct.$pre_sel
         else
             _cur_sel = []
-        console.log "pre=", _cur_sel
+        # console.log "pre=", _cur_sel
         _ct.clear_tree()
         _ct.clear_root_nodes()
         _ct.create_mode_entries("location", $scope.struct.tree)
@@ -258,6 +272,12 @@ angular.module(
         _ct.$pre_sel = _ct.get_selected_loc_pks()
         # _ct.show_selected(false)
 
+    $scope.set_active_location = (loc, center_map=true) ->
+        $scope.struct.active_loc = loc
+        if loc.useable and $scope.struct.google_maps_fn and center_map
+            $scope.struct.google_maps_fn("refresh", [loc.latitude, loc.longitude])
+            $scope.struct.google_maps_fn("zoom", 11)
+            
     $scope.is_any_location_defined = () ->
         if ! $scope.loc_tree_lut
             return true  # assume that they will arrive
@@ -407,7 +427,7 @@ angular.module(
                         _tree_loaded = true
                         _clear_active = true
                         for gfx in scope.location.$gfx_list
-                            if gfx.idx == scope.active_gfx
+                            if scope.active_gfx? and gfx.idx == scope.active_gfx.idx
                                 # do not clear active_gfx when element is in current list
                                 _clear_active = false
                             scope.cat_tree.populate_gfx_location(gfx, scope.device_tree, scope.devices)

@@ -13,22 +13,42 @@
                 <tree treeconfig="struct.loc_tree"></tree>
             </icsw-tools-ensure-device-selection>
         </div>
-        <div class="col-md-6" ng-if="struct.active_loc">
-            <icsw-device-location-list icsw-location="struct.active_loc" icsw-active-gfx="struct.active_gfx" icsw-devices="struct.devices"></icsw-device-location-list>
+        <div class="col-md-6">
+            <icsw-config-category-tree-google-map locations="struct.locations" icsw-google-maps-fn="struct.google_maps_fn" icsw-google-maps-cb-fn="google_maps_cb_fn" icsw-map-mode="show"></icsw-config-category-tree-google-map>
         </div>
     </div>
-    <h3 ng-show="struct.active_gfx">
-        Location {{ struct.active_gfx.name }}
+    <h3 ng-show="struct.active_loc">
+        Location {{ struct.active_loc.full_name }},
+        <ng-pluralize count="struct.active_loc.$gfx_list.length" when="{'0': 'no Location maps', 'one': 'one Location map', 'other': '{} location maps'}"></ng-pluralize>
         <!-- <span ng-show="extra_dml_list.length">, {{ extra_dml_list.length }} extra</span>, zoom is {{ cur_scale | number:2 }}-->
     </h3>
-    <div class="row" ng-show="struct.active_gfx">
-        <div class="col-md-3">
+    <div class="row" ng-show="struct.active_gfx || struct.active_loc">
+        <div class="col-md-4" ng-if="struct.active_loc">
+            <icsw-device-location-list icsw-location="struct.active_loc" icsw-active-gfx="struct.active_gfx" icsw-devices="struct.devices"></icsw-device-location-list>
+        </div>
+        <div class="col-md-2">
             <icsw-device-monitoring-location-list icsw-active-gfx="struct.active_gfx" icsw-devices="struct.devices"></icsw-device-monitoring-location-list>
         </div>
-        <div class="col-md-9">
+        <div class="col-md-6">
             <icsw-device-location-map icsw-active-gfx="struct.active_gfx" icsw-devices="struct.devices"></icsw-device-location-map>
         </div>
     </div>
+</script>
+
+<script type="text/ng-template" id="icsw.device.location.list">
+    <ul class="list-group">
+        <li class="list-group-item" ng-repeat="loc_gfx in location.$gfx_list">
+            <span ng-show="DEBUG">[{{ loc_gfx.idx }}]</span>
+            <input type="button" ng-class="get_button_class(loc_gfx)" value="show" ng-click="activate_loc_gfx(loc_gfx)"/>
+            {{ loc_gfx.name_comment  }}
+            <ng-pluralize count="get_num_devices(loc_gfx)" when="{'0': '', 'one' : ', one device', 'other' : ', {} devices'}"></ng-pluralize>
+            <span ng-show="loc_gfx.$dml_list.length" class="label label-primary" uib-tooltip="{{ loc_gfx.$device_info }}" uib-tooltip-placement="right">
+                {{ loc_gfx.$map_devs_selected }} / {{ loc_gfx.$map_devs_other }}
+            </span>
+            , {{ loc_gfx.info_string }}
+            <image ng-src="{{ loc_gfx.icon_url }}" width="24" height="24"></image>
+        </li>
+    </ul>
 </script>
 
 <script type="text/ng-template" id="icsw.device.monitoring.location.list">
@@ -55,23 +75,4 @@
             </li>
         </ul>
     </div>
-</script>
-
-<script type="text/ng-template" id="icsw.device.location.list">
-    <h3>
-        <ng-pluralize count="location.$gfx_list.length" when="{'0': 'No Location maps', 'one': 'One Location map', 'other': '{} location maps'}"></ng-pluralize> for {{ location.full_name }}
-    </h3>
-    <ul class="list-group">
-        <li class="list-group-item" ng-repeat="loc_gfx in location.$gfx_list">
-            <span ng-show="DEBUG">[{{ loc_gfx.idx }}]</span>
-            <input type="button" ng-class="get_button_class(loc_gfx)" value="show" ng-click="activate_loc_gfx(loc_gfx)"/>
-            {{ loc_gfx.name_comment  }}
-            <ng-pluralize count="get_num_devices(loc_gfx)" when="{'0': '', 'one' : ', one device', 'other' : ', {} devices'}"></ng-pluralize>
-            <span ng-show="loc_gfx.$dml_list.length" class="label label-primary" uib-tooltip="{{ loc_gfx.$device_info }}" uib-tooltip-placement="right">
-                {{ loc_gfx.$map_devs_selected }} / {{ loc_gfx.$map_devs_other }}
-            </span>
-            , {{ loc_gfx.info_string }}
-            <image ng-src="{{ loc_gfx.icon_url }}" width="24" height="24"></image>
-        </li>
-    </ul>
 </script>

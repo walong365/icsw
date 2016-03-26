@@ -137,6 +137,19 @@ angular.module(
                 @gfx_lut[dml.location_gfx].$dml_list.push(dml)
 
             @reorder_full_name()
+            
+        # location specific calls
+        build_location_list: (loc_list) =>
+            loc_list.length = 0
+            for entry in @list
+                if @is_location(entry, min_depth=2) and entry.useable
+                    if not entry.$$expanded?
+                        entry.$$expanded = false
+                    if not entry.$$selected?
+                        entry.$$selected = false
+                    if not entry.$gfx_list.length
+                        entry.$$expanded = false
+                    loc_list.push(entry)
 
         is_location: (entry, min_depth=0) =>
             return entry.depth >= min_depth and entry.full_name.split("/")[1] == "location"
@@ -232,6 +245,8 @@ angular.module(
             # console.log "sel_pks", _sel_pks
             # local device list
             for entry in gfx_loc.$dml_list
+                # restangularize element
+                Restangular.restangularizeElement(null, entry, ICSW_URLS.REST_DEVICE_MON_LOCATION_DETAIL.slice(1).slice(0, -2))
                 # add $device entries for fast processing in map
                 entry.$device = device_tree.all_lut[entry.device]
                 entry.$$selected = entry.device in _sel_pks
