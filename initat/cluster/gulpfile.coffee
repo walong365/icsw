@@ -96,7 +96,7 @@ sources = {
         [
             "frontend/static/js/jquery-ui-1.10.2.custom.js",
             # angular
-            "frontend/static/js/angular-1.5.2.js",
+            "frontend/static/js/angular-1.5.3.js",
             "frontend/static/js/lodash.js",
             "frontend/static/js/bluebird.js",
             "frontend/static/js/codemirror/codemirror.js",

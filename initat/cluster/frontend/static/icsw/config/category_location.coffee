@@ -428,7 +428,6 @@ angular.module(
             }
             scope.event_dict = {
                 dragend: (marker, event_name, args) ->
-                    console.log "DE"
                     _pos = marker.getPosition()
                     _cat = scope.marker_lut[marker.key]
                     _cat.latitude = _pos.lat()
@@ -436,7 +435,6 @@ angular.module(
                     _cat.put()
                 click: (marker, event_name, args) ->
                     _loc = scope.marker_lut[marker.key]
-                    console.log "c", marker, _loc
                     for entry in scope.locations
                         entry.$$selected = false
                     _loc.$$selected = !_loc.$$selected
