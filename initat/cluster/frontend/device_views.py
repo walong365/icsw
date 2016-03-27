@@ -42,7 +42,7 @@ from initat.cluster.backbone.models.functions import can_delete_obj
 from initat.cluster.backbone.render import permission_required_mixin
 from initat.cluster.backbone.serializers import netdevice_serializer, ComCapabilitySerializer, \
     partition_table_serializer, monitoring_hint_serializer, DeviceSNMPInfoSerializer, \
-    snmp_scheme_serializer, device_variable_serializer
+    snmp_scheme_serializer, device_variable_serializer, cd_connection_serializer
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from initat.tools import logging_tools, server_command, process_tools
 
@@ -420,6 +420,20 @@ class DiskEnrichment(object):
         return _data
 
 
+class DeviceConnectionEnrichment(object):
+    def fetch(self, pk_list):
+        _ref_list = cd_connection.objects.filter(
+            Q(child__in=pk_list) | Q(parent__in=pk_list)
+        )
+        # result dict
+        _data = [
+            cd_connection_serializer(
+                _cd,
+            ).data for _cd in _ref_list
+        ]
+        return _data
+
+
 class ScanSerializer(serializers.Serializer):
     device = serializers.IntegerField(source="pk")
     active_scan = serializers.CharField()
@@ -446,6 +460,7 @@ class EnrichmentHelper(object):
         self._all["monitoring_hint_info"] = EnrichmentObject(monitoring_hint, monitoring_hint_serializer)
         self._all["scan_info"] = ScanEnrichment()
         self._all["variable_info"] = EnrichmentObject(device_variable, device_variable_serializer)
+        self._all["device_connection_info"] = DeviceConnectionEnrichment()
 
     def create(self, key, pk_list):
         if key not in self._all:

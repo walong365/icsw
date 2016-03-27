@@ -73,6 +73,25 @@ angular.module(
                 ["asc", "asc", "asc"],
             )
 
+        post_g_device_connection_info: () ->
+            dev_pks = (dev.idx for dev in @devices)
+            dev_lut = _.keyBy(@devices, "idx")
+            for dev in @devices
+                if not dev.$$master_list?
+                    dev.$$master_list = []
+                    dev.$$slave_list = []
+                else
+                    dev.$$master_list.length = 0
+                    dev.$$slave_list.length = 0
+            for dev in @devices
+                for cd in dev.device_connection_set
+                    if cd.parent of dev_lut
+                        if cd.idx not in (_cd.idx for _cd in dev_lut[cd.parent].$$slave_list)
+                            dev_lut[cd.parent].$$slave_list.push(cd)
+                    if cd.child of dev_lut
+                        if cd.idx not in (_cd.idx for _cd in dev_lut[cd.child].$$master_list)
+                            dev_lut[cd.child].$$master_list.push(cd)
+            
         post_g_variable_info: () ->
 
             if not @var_name_filter?
@@ -206,6 +225,9 @@ angular.module(
             @device.num_netdevices = 0
             @device.num_netips = 0
             @device.num_peers = 0
+            # hm, not optimal, should be done
+            if not @device.device_connection_set?
+                @device.device_connection_set = []
 
         is_scalar: (req) =>
             return req in ["scan_info"]
@@ -238,6 +260,7 @@ angular.module(
                 "snmp_schemes_info": "snmp_schemes"
                 "scan_info": "active_scan"
                 "variable_info": "device_variable_set"
+                "device_connection_info": "device_connection_set"
             }
             if req of _lut
                 return _lut[req]
@@ -335,11 +358,18 @@ angular.module(
                 @loaded.push(key)
             # store info
             if @is_scalar(key)
-                @[@get_setter_name(key)](@device, result)
-            else if @is_element(key)
-                @device[@get_attr_name(key)] = result
+                _setter_name = @get_setter_name(key)
+                @[_setter_name](@device, result)
             else
-                @device[@get_attr_name(key)].push(result)
+                _attr_name = @get_attr_name(key)
+                if @device[_attr_name]?
+                    if @is_element(key)
+                        @device[_attr_name] = result
+                    else
+                        @device[_attr_name].push(result)
+                else
+                    # this can happen for device-connections
+                    console.warn "device #{@device.full_name} has no attribute #{_attr_name}"
 
         feed_empty_result: (key) =>
             if key not in @loaded
@@ -360,15 +390,22 @@ angular.module(
             for key, obj_list of result
                 devices_set = []
                 for obj in obj_list
+                    _pks = []
                     if obj.device?
-                        _pk = obj.device
-                        @device.all_lut[_pk].$$_enrichment_info.feed_result(key, obj)
-                        # remember devices with a valid result
-                        if _pk not in devices_set
-                            devices_set.push(_pk)
+                        _pks.push(obj.device)
+                    # parent / child
+                    else if obj.parent? and obj.child?
+                        _pks.push(obj.parent)
+                        _pks.push(obj.child)
+                    if _pks.length
+                        for _pk in _pks
+                            @device.all_lut[_pk].$$_enrichment_info.feed_result(key, obj)
+                            # remember devices with a valid result
+                            if _pk not in devices_set
+                                devices_set.push(_pk)
                     else
                         console.error "feed_results, ", obj
-                        throw new Error("No device attribute found in object")
+                        throw new Error("No device / parent / child attribute found in object")
                 _missing = _.difference(en_req[key], devices_set)
                 for _pk in _missing
                     @device.all_lut[_pk].$$_enrichment_info.feed_empty_result(key)
@@ -862,6 +899,46 @@ angular.module(
             dev = @all_lut[dev_pk]
             _.remove(dev.categories, (entry) -> return entry == cat_pk)
 
+        # device connection calls
+        create_device_connection: (new_cd, hs) =>
+            # create new netdevice
+            defer = $q.defer()
+            Restangular.all(ICSW_URLS.REST_CD_CONNECTION_LIST.slice(1)).post(new_cd).then(
+                (new_obj) =>
+                    @_fetch_device_connection(new_obj.idx, defer, "created devc", hs)
+                (not_ok) ->
+                    defer.reject("devc not created")
+            )
+            return defer.promise
+
+        delete_device_connection: (del_cd, hs) ->
+            # ensure REST hooks
+            Restangular.restangularizeElement(null, del_cd, ICSW_URLS.REST_CD_CONNECTION_DETAIL.slice(1).slice(0, -2))
+            defer = $q.defer()
+            del_cd.remove().then(
+                (ok) =>
+                    p_dev = @all_lut[del_cd.parent]
+                    s_dev = @all_lut[del_cd.child]
+                    _.remove(p_dev.device_connection_set, (cd) -> return cd.idx == del_cd.idx)
+                    _.remove(s_dev.device_connection_set, (cd) -> return cd.idx == del_cd.idx)
+                    hs.post_g_device_connection_info()
+                    defer.resolve("deleted")
+                (error) ->
+                    defer.reject("not deleted")
+            )
+            return defer.promise
+
+        _fetch_device_connection: (pk, defer, msg, hs) =>
+            Restangular.one(ICSW_URLS.REST_CD_CONNECTION_LIST.slice(1)).get({"idx": pk}).then(
+                (new_cd) =>
+                    new_cd = new_cd[0]
+                    p_dev = @all_lut[new_cd.parent]
+                    s_dev = @all_lut[new_cd.child]
+                    p_dev.device_connection_set.push(new_cd)
+                    s_dev.device_connection_set.push(new_cd)
+                    hs.post_g_device_connection_info()
+                    defer.resolve(msg)
+            )
 
 ]).service("icswDeviceTreeService",
 [

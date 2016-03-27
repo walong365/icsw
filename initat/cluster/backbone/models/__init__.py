@@ -855,7 +855,8 @@ class cd_connection(models.Model):
         return "{} (via {}) {}".format(
             unicode(self.parent),
             self.connection_info,
-            unicode(self.child))
+            unicode(self.child)
+        )
 
     class Meta:
         ordering = ("parent__name", "child__name",)

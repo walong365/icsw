@@ -630,8 +630,8 @@ angular.module(
                     svg = d3.select(element[0])
                         .append("svg:svg")
                         .attr(
-                            "width": "#{width}px"
-                            "height": "#{height}px"
+                            "width": "100%" # #{width}px"
+                            "height": "100%" # #{height}px"
                             "viewBox": "0 0 #{width} #{height}"
                         )
                     scope.my_zoom = d3.behavior.zoom()
@@ -650,7 +650,7 @@ angular.module(
                     scope.drag_node = d3.behavior.drag()
                     .on("dragstart", (d) -> )
                     .on("dragend", (d) ->
-                        console.log "dragend", d
+                        # console.log "dragend", d
                         d.put()
                     )
                     .on("drag", (d) ->

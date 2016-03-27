@@ -1,71 +1,73 @@
 <script type="text/ng-template" id="icsw/main/device/connection.html">
-    <div ng-controller="icswDeviceConnectionCtrl">
-        <icsw-device-connection-overview icsw-sel-man="0" icsw-sel-man-sel-mode="d"></icsw-device-connection-overview>
-    </div>
+    <icsw-device-connection-overview icsw-sel-man="0" icsw-sel-man-sel-mode="d"></icsw-device-connection-overview>
 </script>
 
 <script type="text/ng-template" id="icsw.device.connection.overview">
     <div>
-        <h2>Device connections, {{ cd_devs.length }} controlling devices selected</h2>
-        <table ng-show="cd_devs.length" class="table table-condensed table-hover" style="width:auto;">
+        <h2>Device connections, {{ struct.cd_devices.length }} controlling devices selected</h2>
+        <table ng-show="struct.cd_devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
             <tbody>
-                <tr ng-repeat-start="dev in cd_devs" class="success">
+                <tr ng-repeat-start="dev in struct.cd_devices" class="success">
                     <th colspan="2">{{ dev.full_name }} ({{ dev.comment }})</th>
                 </tr>
-                <tr>
+                <tr ng-show="dev.$$cd_valid_list.length || dev.$$cd_valid_list_cd.length">
                     <td>
-                        <div class="btn-group" ng-show="any_valid_devs(dev, false)">
+                        <div class="btn-group" ng-show="dev.$$cd_valid_list.length">
                             <button class="btn btn-success dropdown-toggle btn-sm" data-toggle="dropdown">
                                 is master for <span class="caret"></span>
                             </button>
                             <ul class="dropdown-menu">
-                                <li ng-repeat="pk in get_valid_devs(dev, false)">
-                                    <a ng-click="create_master(dev, pk)">{{ get_device_info(pk) }}</a>
+                                <li ng-repeat="child in dev.$$cd_valid_list">
+                                    <a ng-click="create_connection(dev, child, 'master')">{{ child.full_name }}</a>
                                 </li>
                             </ul>
                         </div>
                     </td>
                     <td>
-                        <div class="btn-group" ng-show="any_valid_devs(dev, true)">
+                        <div class="btn-group" ng-show="dev.$$cd_valid_list_cd.length">
                             <button class="btn btn-success dropdown-toggle btn-sm" data-toggle="dropdown">
                                 is slave of <span class="caret"></span>
                             </button>
                             <ul class="dropdown-menu">
-                                <li ng-repeat="pk in get_valid_devs(dev, true)">
-                                    <a ng-click="create_slave(dev, pk)">{{ get_device_info(pk) }}</a>
+                                <li ng-repeat="child in dev.$$cd_valid_list_cd">
+                                    <a ng-click="create_connection(dev, child, 'slave')">{{ child.full_name }}</a>
                                 </li>
                             </ul>
                         </div>
                     </td>
                 </tr>
                 <tr>
-                    <td><ng-pluralize count="dev.slave_list.length" when="{'0' : 'no slave devices', '1' : 'one slave device', 'other' : '{} slave devices'}"</ng-pluralize></td>
-                    <td><ng-pluralize count="dev.master_list.length" when="{'0' : 'no master devices', '1' : 'one master device', 'other' : '{} master devices'}"</ng-pluralize></td>
+                    <td>
+                        {{ dev.$$slave_list.length }} / <ng-pluralize count="dev.$$slave_list.length" when="{'0': 'no slave devices', '1': 'one slave device', 'other': '{} slave devices'}"></ng-pluralize>
+                    </td>
+                    <td>
+                        {{ dev.$$master_list.length }} / <ng-pluralize count="dev.$$master_list.length" when="{'0': 'no master devices', '1': 'one master device', 'other': '{} master devices'}"></ng-pluralize>
+                    </td>
                 </tr>
-                <tr ng-repeat-end>
+                <tr ng-repeat-end ng-show="dev.$$slave_list.length || dev.$$master_list.length">
                     <td>
                         <ul class="list-group">
-                            <li ng-repeat="el in dev.slave_list" class="list-group-item">
-                                <button class="btn btn-xs btn-danger" ng-click="delete_cd(el, dev, $event)">delete</button>&nbsp;
+                            <li ng-repeat="cd in dev.$$slave_list" class="list-group-item">
+                                <button class="btn btn-xs btn-danger" ng-click="delete_connection($event, cd)">delete</button>&nbsp;
                                 <button class="btn btn-xs btn-warning" ng-click="modify_cd(el, $event)">modify</button>
-                                {{ el.child | follow_fk:this:'devices':'full_name' }}
-                                ({{ el.connection_info }}; {{ el.parameter_i1 }} /
-                                {{ el.parameter_i2 }} /
-                                {{ el.parameter_i3 }} /
-                                {{ el.parameter_i4 }})
+                                {{ cd.child }}
+                                ({{ cd.connection_info }}; {{ cd.parameter_i1 }} /
+                                {{ cd.parameter_i2 }} /
+                                {{ cd.parameter_i3 }} /
+                                {{ cd.parameter_i4 }})
                             </li>
                         </ul>
                     </td>
                     <td>
                         <ul class="list-group">
-                            <li ng-repeat="el in dev.master_list" class="list-group-item">
-                                <button class="btn btn-xs btn-danger" ng-click="delete_cd(el, dev, $event)">delete</button>&nbsp;
+                            <li ng-repeat="cd in dev.$$master_list" class="list-group-item">
+                                <button class="btn btn-xs btn-danger" ng-click="delete_connection($event, cd)">delete</button>&nbsp;
                                 <button class="btn btn-xs btn-warning" ng-click="modify_cd(el, $event)">modify</button>
-                                {{ el.parent | follow_fk:this:'devices':'full_name' }}
-                                ({{ el.connection_info }}; {{ el.parameter_i1 }} /
-                                {{ el.parameter_i2 }} /
-                                {{ el.parameter_i3 }} /
-                                {{ el.parameter_i4 }})
+                                {{ cd.parent }}
+                                ({{ cd.connection_info }}; {{ cd.parameter_i1 }} /
+                                {{ cd.parameter_i2 }} /
+                                {{ cd.parameter_i3 }} /
+                                {{ cd.parameter_i4 }})
                             </li>
                         </ul>
                     </td>
@@ -91,42 +93,51 @@
 </script>
 
 <script type="text/ng-template" id="cd.connection.form">
-    <form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form">
+    <form class="form-horizontal" name="form_data">
         <h2>Connection {{ get_cd_info() }}</h2>
         <fieldset>
             <legend>Settings</legend>
-            <div id="div_id_connection_info" class="form-group">
-                <label for="id_connection_info" class="control-label col-sm-4 requiredField">
-                    Connection info<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_connection_info" maxlength="256" name="connection_info" ng-model="_edit_obj.connection_info" required="True" type="text" value="not set"></input></div>
+            <div class="form-group">
+                <label class="control-label col-sm-4 requiredField">
+                    Connection info<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="256" ng-model="edit_obj.connection_info" required="True" type="text" value="not set"/>
+                </div>
             </div>
-            <div id="div_id_parameter_i1" class="form-group">
-                <label for="id_parameter_i1" class="control-label col-sm-4 requiredField">
-                    Parameter i1<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_parameter_i1" max="256" min="0" name="parameter_i1" ng-model="_edit_obj.parameter_i1" required="True" type="number" value="0"></input></div>
+            <div class="form-group">
+                <label class="control-label col-sm-4 requiredField">
+                    Parameter i1<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="numberinput form-control" max="256" min="0" ng-model="edit_obj.parameter_i1" required="True" type="number" value="0"/>
+                </div>
             </div>
-            <div id="div_id_parameter_i2" class="form-group">
-                <label for="id_parameter_i2" class="control-label col-sm-4 requiredField">
-                    Parameter i2<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_parameter_i2" max="256" min="0" name="parameter_i2" ng-model="_edit_obj.parameter_i2" required="True" type="number" value="0"></input></div>
+            <div class="form-group">
+                <label class="control-label col-sm-4 requiredField">
+                    Parameter i2<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="numberinput form-control" max="256" min="0" ng-model="edit_obj.parameter_i2" required="True" type="number" value="0"/>
+                </div>
             </div>
-            <div id="div_id_parameter_i3" class="form-group">
-                <label for="id_parameter_i3" class="control-label col-sm-4 requiredField">
-                    Parameter i3<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_parameter_i3" max="256" min="0" name="parameter_i3" ng-model="_edit_obj.parameter_i3" required="True" type="number" value="0"></input></div>
+            <div class="form-group">
+                <label class="control-label col-sm-4 requiredField">
+                    Parameter i3<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="numberinput form-control" max="256" min="0" ng-model="edit_obj.parameter_i3" required="True" type="number" value="0"/>
+                </div>
             </div>
-            <div id="div_id_parameter_i4" class="form-group">
-                <label for="id_parameter_i4" class="control-label col-sm-4 requiredField">
-                    Parameter i4<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_parameter_i4" max="256" min="0" name="parameter_i4" ng-model="_edit_obj.parameter_i4" required="True" type="number" value="0"></input></div>
+            <div class="form-group">
+                <label class="control-label col-sm-4 requiredField">
+                    Parameter i4<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="numberinput form-control" max="256" min="0" ng-model="edit_obj.parameter_i4" required="True" type="number" value="0"/>
+                </div>
             </div>
         </fieldset>
-        <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="action_string"></input></div>
     </form>
 </script>
 
