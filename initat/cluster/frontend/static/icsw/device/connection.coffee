@@ -57,13 +57,14 @@ angular.module(
         $scope.ac_type = if $scope.ac_type == "master" then "slave" else "master"
 
     $scope.handle_ac = () ->
+        return
         blockUI.start()
         icswSimpleAjaxCall(
             url   : ICSW_URLS.DEVICE_MANUAL_CONNECTION
             data  : {
-                "source" : $scope.ac_host
-                "target" : $scope.ac_cd
-                "mode"   : $scope.ac_type
+                "source": $scope.ac_host
+                "target": $scope.ac_cd
+                "mode": $scope.ac_type
             }
         ).then(
             (xml) ->
@@ -71,7 +72,6 @@ angular.module(
                 # show info
                 # icswParseXMLResponseService(xml, 30)
                 # reload (even on error)
-                $scope.reload()
         )
     $scope.struct = {
         # device tree
@@ -138,14 +138,6 @@ angular.module(
             dev.$$cd_valid_list = _valid_devs
             dev.$$cd_valid_list_cd = (_dev for _dev in _valid_devs when _dev.$$is_cd)
 
-    $scope.modify_cd = (cd, event) ->
-        $scope.cd_edit.edit(cd, event).then(
-            (mod_cd) ->
-                if mod_cd != false
-                    # nothing
-                    true
-        )
-
     $scope.delete_connection = ($event, cd) ->
         icswToolsSimpleModalService("Really delete connection ?").then(
             (ok) ->
@@ -177,14 +169,8 @@ angular.module(
                         Restangular.restangularizeElement(null, sub_scope.edit_obj, ICSW_URLS.REST_CD_CONNECTION_DETAIL.slice(1).slice(0, -2))
                         sub_scope.edit_obj.put().then(
                             (data) ->
-                                # ToDo, FIXME, handle change (test?), move to DeviceTreeService
-                                # icswTools.handle_reset(data, cur_f, $scope.edit_obj.idx)
                                 d.resolve("save")
                             (reject) ->
-                                # ToDo, FIXME, handle rest (test?)
-                                # icswTools.handle_reset(resp.data, cur_f, $scope.edit_obj.idx)
-                                # two possibilites: restore and continue or reject, right now we use the second path
-                                # dbu.restore_backup(obj)
                                 d.reject("not saved")
                         )
                     return d.promise

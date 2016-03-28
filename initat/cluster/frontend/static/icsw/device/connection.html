@@ -74,21 +74,23 @@
                 </tr>
             </tbody>
         </table>
-        <h3>Automatic creation</h3>
-        <form class="form-inline">
-            Set
-            <div class="form-group">
-                <input type="text" class="form-control" ng-model="ac_host"/>
-            </div>
-            (Host) as <input type="button" class="btn btn-sn btn-primary" ng-value="ac_type" ng-click="change_ac_type()"/>
-            for
-            <div class="form-group">
-                <input type="text" class="form-control" ng-model="ac_cd"/>
-            </div>
-            (Controlling device)
-            <input type="button" ng-show="ac_host && ac_cd" class="btn btn-success" value="create" ng-click="handle_ac()"/>
-        </form>
-        Example: 'node##' as Slave for 'ipmi##' (2 digits).
+        <div class="alert alert-warning">
+            <h3>Automatic creation (currently disabled)</h3>
+            <form class="form-inline">
+                Set
+                <div class="form-group">
+                    <input type="text" class="form-control" ng-model="ac_host"/>
+                </div>
+                (Host) as <input type="button" class="btn btn-sn btn-primary" ng-value="ac_type" ng-click="change_ac_type()"/>
+                for
+                <div class="form-group">
+                    <input type="text" class="form-control" ng-model="ac_cd"/>
+                </div>
+                (Controlling device)
+                <input type="button" ng-show="ac_host && ac_cd" class="btn btn-success" value="create" ng-click="handle_ac()"/>
+            </form>
+            Example: 'node##' as Slave for 'ipmi##' (2 digits).
+        </div>
     </div>
 </script>
 
