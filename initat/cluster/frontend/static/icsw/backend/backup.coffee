@@ -270,4 +270,15 @@ angular.module(
                 "content_type", "location", "locked", "changes", "comment",
             ]
 
+]).service("icswCDConnectionBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswCDConnectionBackupDefinition extends icswBackupDefinition
+
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "parent", "child", "created_by", "connection_info",
+                "parameter_i1", "parameter_i2", "parameter_i3", "parameter_i4",
+            ]
+
 ])

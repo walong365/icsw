@@ -49,8 +49,8 @@
                         <ul class="list-group">
                             <li ng-repeat="cd in dev.$$slave_list" class="list-group-item">
                                 <button class="btn btn-xs btn-danger" ng-click="delete_connection($event, cd)">delete</button>&nbsp;
-                                <button class="btn btn-xs btn-warning" ng-click="modify_cd(el, $event)">modify</button>
-                                {{ cd.child }}
+                                <button class="btn btn-xs btn-warning" ng-click="modify_connection($event, cd)">modify</button>
+                                {{ cd.$$child }}
                                 ({{ cd.connection_info }}; {{ cd.parameter_i1 }} /
                                 {{ cd.parameter_i2 }} /
                                 {{ cd.parameter_i3 }} /
@@ -62,8 +62,8 @@
                         <ul class="list-group">
                             <li ng-repeat="cd in dev.$$master_list" class="list-group-item">
                                 <button class="btn btn-xs btn-danger" ng-click="delete_connection($event, cd)">delete</button>&nbsp;
-                                <button class="btn btn-xs btn-warning" ng-click="modify_cd(el, $event)">modify</button>
-                                {{ cd.parent }}
+                                <button class="btn btn-xs btn-warning" ng-click="modify_connection($event, cd)">modify</button>
+                                {{ cd.$$parent }}
                                 ({{ cd.connection_info }}; {{ cd.parameter_i1 }} /
                                 {{ cd.parameter_i2 }} /
                                 {{ cd.parameter_i3 }} /
@@ -92,9 +92,9 @@
     </div>
 </script>
 
-<script type="text/ng-template" id="cd.connection.form">
+<script type="text/ng-template" id="icsw.cd.connection.form">
     <form class="form-horizontal" name="form_data">
-        <h2>Connection {{ get_cd_info() }}</h2>
+        <h2>Connection {{ cd_info }}</h2>
         <fieldset>
             <legend>Settings</legend>
             <div class="form-group">

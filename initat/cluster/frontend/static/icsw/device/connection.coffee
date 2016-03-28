@@ -41,14 +41,14 @@ angular.module(
 ]).controller("icswDeviceConnectionCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular",
-    "$q", "blockUI", "ICSW_URLS", "icswSimpleAjaxCall",
+    "$q", "blockUI", "ICSW_URLS", "icswSimpleAjaxCall", "icswCDConnectionBackup",
     "icswUserService", "icswDeviceTreeService", "icswDeviceTreeHelperService",
-    "icswToolsSimpleModalService",
+    "icswToolsSimpleModalService", "icswComplexModalService",
 (
     $scope, $compile, $filter, $templateCache, Restangular,
-    $q, blockUI, ICSW_URLS, icswSimpleAjaxCall,
+    $q, blockUI, ICSW_URLS, icswSimpleAjaxCall, icswCDConnectionBackup,
     icswUserService, icswDeviceTreeService, icswDeviceTreeHelperService,
-    icswToolsSimpleModalService,
+    icswToolsSimpleModalService, icswComplexModalService,
 ) ->
     $scope.devsel_list = []
     # ac settings
@@ -85,14 +85,6 @@ angular.module(
         # helper service
         helper_service: undefined
     }
-    # mixins
-    $scope.cd_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q)
-    $scope.cd_edit.create_template = "cd.connection.form"
-    $scope.cd_edit.edit_template = "cd.connection.form"
-    $scope.cd_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_CD_CONNECTION_LIST.slice(1))
-    $scope.cd_edit.modify_rest_url = ICSW_URLS.REST_CD_CONNECTION_DETAIL.slice(1).slice(0, -2)
-    $scope.cd_edit.new_object_at_tail = true
-    $scope.cd_edit.use_promise = true
 
     $scope.new_devsel = (dev_sel) ->
         devs = (dev for dev in dev_sel when not dev.is_meta_device)
@@ -131,7 +123,14 @@ angular.module(
 
     # helper functions
     $scope.build_helper_lists = () ->
+        _dt = $scope.struct.device_tree
         for dev in $scope.struct.cd_devices
+            _fix_list = (in_list) ->
+                for _entry in in_list
+                    _entry.$$parent = _dt.all_lut[_entry.parent].full_name
+                    _entry.$$child = _dt.all_lut[_entry.child].full_name
+            _fix_list(dev.$$master_list)
+            _fix_list(dev.$$slave_list)
             _ref_pks = (entry.parent for entry in dev.$$master_list).concat(
                 (entry.child for entry in dev.$$slave_list)
             )
@@ -157,6 +156,54 @@ angular.module(
                 )
         )
 
+    $scope.modify_connection = ($event, cd) ->
+        sub_scope = $scope.$new(false)
+        dbu = new icswCDConnectionBackup()
+        dbu.create_backup(cd)
+        sub_scope.edit_obj = cd
+        _dt = $scope.struct.device_tree
+        sub_scope.cd_info = "from #{_dt.all_lut[cd.parent].full_name} to #{_dt.all_lut[cd.child].full_name}"
+        icswComplexModalService(
+            {
+                message: $compile($templateCache.get("icsw.cd.connection.form"))(sub_scope)
+                ok_label: "Modify"
+                title: "Edit DeviceConnection"
+                ok_callback: (modal) ->
+                    d = $q.defer()
+                    if sub_scope.form_data.$invalid
+                        toaster.pop("warning", "form validation problem", "", 0)
+                        d.reject("form not valid")
+                    else
+                        Restangular.restangularizeElement(null, sub_scope.edit_obj, ICSW_URLS.REST_CD_CONNECTION_DETAIL.slice(1).slice(0, -2))
+                        sub_scope.edit_obj.put().then(
+                            (data) ->
+                                # ToDo, FIXME, handle change (test?), move to DeviceTreeService
+                                # icswTools.handle_reset(data, cur_f, $scope.edit_obj.idx)
+                                d.resolve("save")
+                            (reject) ->
+                                # ToDo, FIXME, handle rest (test?)
+                                # icswTools.handle_reset(resp.data, cur_f, $scope.edit_obj.idx)
+                                # two possibilites: restore and continue or reject, right now we use the second path
+                                # dbu.restore_backup(obj)
+                                d.reject("not saved")
+                        )
+                    return d.promise
+                cancel_callback: (modal) ->
+                    dbu.restore_backup(cd)
+                    d = $q.defer()
+                    d.resolve("cancel")
+                    return d.promise
+            }
+        ).then(
+            (fin) ->
+                console.log "CD requester closed, trigger redraw"
+                sub_scope.$destroy()
+                # trigger rebuild of lists
+                # $rootScope.$emit(ICSW_SIGNALS("ICSW_FORCE_TREE_FILTER"))
+                # recreate helper luts
+        )
+
+
     $scope.create_connection = (dev, child, mode) ->
         _new_obj = {
             connection_info: "from webfrontend"
@@ -172,6 +219,7 @@ angular.module(
             (new_cd) ->
                 $scope.build_helper_lists()
         )
+
 ]).directive("icswDeviceConnectionOverview",
 [
     "$templateCache",
