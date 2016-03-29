@@ -6,7 +6,7 @@
 # E-Mail: Philipp.Posovszky@dlr.de
 # Date : 22/04/2015
 #
-# Version: 1.0.2
+# Version: 1.0.3
 #
 # This program is free software; you can redistribute it or modify
 # it under the terms of the GNU General Public License version 3.0
@@ -17,7 +17,7 @@
 #
 # Plugin check for icinga
 #
-# Modified version 1.0.2 by www.init.at 
+# Modified version 1.0.3 by www.init.at
 # ---------------------------------------------------- #
 import argparse
 import psycopg2
@@ -29,7 +29,7 @@ import MySQLdb
 # Variables
 databaseName = 'bareos'
 
-def createBackupKindString(full, inc, diff):
+def create_backup_kind_string(full, inc, diff):
     if full == False and inc == False and diff == False:
         return "'F','D','I'"
     kind = []
@@ -42,7 +42,7 @@ def createBackupKindString(full, inc, diff):
 
     return ",".join(kind)
 
-def createFactor(unit):
+def create_factor(unit):
     options = {'EB' : 2 ** 60,
                'PB' : 2 ** 50,
                'TB': 2 ** 40,
@@ -50,16 +50,16 @@ def createFactor(unit):
                'MB': 2 ** 20}
     return options[unit]
 
-def getState(state):
-    options = {'T' : '"Completed successfully"',
-               'C' : '"Created,not yet running"',
+def get_state(state):
+    options = {'T': '"Completed successfully"',
+               'C': '"Created,not yet running"',
                'R': '"Running"',
                'E': '"Terminated with Errors"',
                'f': '"Fatal error"',
                'A': '"Canceled by user"'}
     return options[state]
 
-def getUnit(time_unit):
+def get_unit(time_unit):
     options = {'m' : "MINUTE",
                'h' : "HOUR",
                'D' : "DAY",
@@ -68,50 +68,55 @@ def getUnit(time_unit):
                'Y' : "YEAR"}
     return options[time_unit]
 
-def checkFailedBackups(courser, time, time_unit, unit, state, warning, critical):
-    checkState = {}
+def check_failed_backups(courser, time, time_unit, unit, state, warning, critical):
+    check_state = {}
     if time == None:
         time = 7
+    state = ["'{}'".format(i) for i in state]
+    if state == []:
+        state = 'f'
+    print state
+    print ','.join(state)
     query = """
     SELECT Job.Name,Level,starttime, JobStatus
     FROM Job
-    Where JobStatus in ('""" + str(state) + """') and starttime > DATE_SUB(now(), INTERVAL """ + str(time) + """ """ + str(getUnit(time_unit)) + """);
+    Where JobStatus in (""" + ','.join(state) + """) and starttime > DATE_SUB(now(), INTERVAL """ + str(time) + """ """ + str(get_unit(time_unit)) + """);
     """
     print(query)
     courser.execute(query)
     results = courser.fetchall()  # Returns a value
     result = len(results)
     if result >= int(critical):
-        checkState["returnCode"] = 2
+        check_state["returnCode"] = 2
         if time >= 1:
-            checkState["returnMessage"] = "CRITICAL - " + str(result) + " " + str(getState(state)) + " Backups in the past " + str(time) + " " + str(getUnit(time_unit)) + "'s"
+            check_state["returnMessage"] = "CRITICAL - " + str(result) + " " + str(get_state(state)) + " Backups in the past " + str(time) + " " + str(get_unit(time_unit)) + "'s"
         else:
-            checkState["returnMessage"] = "CRITICAL - " + str(result) + " " + str(getState(state)) + " Backups in the past " + str(time) + " " + str(getUnit(time_unit))
+            check_state["returnMessage"] = "CRITICAL - " + str(result) + " " + str(get_state(state)) + " Backups in the past " + str(time) + " " + str(get_unit(time_unit))
     elif result >= int(warning):
-        checkState["returnCode"] = 1
+        check_state["returnCode"] = 1
         if time >= 1:
-            checkState["returnMessage"] = "WARNING - " + str(result) +  " " + str(getState(state)) + " Backups in the past " + str(time) + " " + str(getUnit(time_unit)) + "'s"
+            check_state["returnMessage"] = "WARNING - " + str(result) +  " " + str(get_state(state)) + " Backups in the past " + str(time) + " " + str(get_unit(time_unit)) + "'s"
         else:
-            checkState["returnMessage"] = "WARNING - " + str(result) +  " " + str(getState(state)) + " Backups in the past " + str(time) + " " + str(getUnit(time_unit))
+            check_state["returnMessage"] = "WARNING - " + str(result) +  " " + str(get_state(state)) + " Backups in the past " + str(time) + " " + str(get_unit(time_unit))
     else:
-        checkState["returnCode"] = 0
+        check_state["returnCode"] = 0
         if result == 0:
             if time > 1:
-                checkState["returnMessage"] = "OK - No Backups in state " + str(getState(state)) + " in the last " + str(time) + " " + str(getUnit(time_unit)) + "'s"
+                check_state["returnMessage"] = "OK - No Backups in state " + str(get_state(state)) + " in the last " + str(time) + " " + str(get_unit(time_unit)) + "'s"
             else:
-                checkState["returnMessage"] = "OK - No Backups in state " + str(getState(state)) + " in the last " + str(time) + " " + str(getUnit(time_unit))
+                check_state["returnMessage"] = "OK - No Backups in state " + str(get_state(state)) + " in the last " + str(time) + " " + str(get_unit(time_unit))
         else:
-            checkState["returnMessage"] = "OK - Only " + str(result) + " Backups in state " + str(getState(state)) + " in the last " + str(time) + " " + str(getUnit(time_unit))
-    checkState["performanceData"] = "Failed=" + str(result) + ";" + str(warning) + ";" + str(critical) + ";;"
+            check_state["returnMessage"] = "OK - Only " + str(result) + " Backups in state " + str(get_state(state)) + " in the last " + str(time) + " " + str(get_unit(time_unit))
+    check_state["performanceData"] = "Failed=" + str(result) + ";" + str(warning) + ";" + str(critical) + ";;"
 
-    return checkState
+    return check_state
 
-def checkBackupSize(courser, time, time_unit, kind, factor):
+def check_backupSize(courser, time, time_unit, kind, factor):
     if time != None:
         query = """
         SELECT ROUND(SUM(JobBytes/""" + str(float(factor)) + """),3)
         FROM Job
-        Where Level in (""" + kind + """) and starttime > DATE_SUB(now(), INTERVAL """ + str(time) + """ """ + str(getUnit(time_unit)) + """);
+        Where Level in (""" + kind + """) and starttime > DATE_SUB(now(), INTERVAL """ + str(time) + """ """ + str(get_unit(time_unit)) + """);
         """
         print(query)
         courser.execute(query)
@@ -129,47 +134,47 @@ def checkBackupSize(courser, time, time_unit, kind, factor):
         return results[0]
  
 def checkTotalBackupSize(cursor, time, time_unit, kind, unit, warning, critical):
-            checkState = {}
-            result = checkBackupSize(cursor, time, time_unit, kind, createFactor(unit))
+            check_state = {}
+            result = check_backup_size(cursor, time, time_unit, kind, create_factor(unit))
             if result >= int(critical) or result == None:
-                    checkState["returnCode"] = 2
+                    check_state["returnCode"] = 2
                     if args.time:
                         if time > 1:
-                            checkState["returnMessage"] = "CRITICAL - " + str(result) + " " + unit + " Total Backup size in Level " + kind + " in the past " + str(time) + " " + str(getUnit(time_unit)) + "'s"
+                            check_state["returnMessage"] = "CRITICAL - " + str(result) + " " + unit + " Total Backup size in Level " + kind + " in the past " + str(time) + " " + str(get_unit(time_unit)) + "'s"
                         else:
-                            checkState["returnMessage"] = "CRITICAL - " + str(result) + " " + unit + " Total Backup size in Level " + kind + " in the past " + str(time) + " " + str(getUnit(time_unit))
+                            check_state["returnMessage"] = "CRITICAL - " + str(result) + " " + unit + " Total Backup size in Level " + kind + " in the past " + str(time) + " " + str(get_unit(time_unit))
                     else:
-                        checkState["returnMessage"] = "CRITICAL - " + str(result) + " " +unit + " Total Backup size in level " + kind + " since first Backup"
+                        check_state["returnMessage"] = "CRITICAL - " + str(result) + " " +unit + " Total Backup size in level " + kind + " since first Backup"
             elif result >= int(warning):
-                    checkState["returnCode"] = 1
+                    check_state["returnCode"] = 1
                     if args.time:
                         if time > 1:
-                            checkState["returnMessage"] = "WARNING - " + str(result) + " " + unit + " Total Backup size in Level " + kind + " in the past " + str(time) + " " + str(getUnit(time_unit)) + "'s"
+                            check_state["returnMessage"] = "WARNING - " + str(result) + " " + unit + " Total Backup size in Level " + kind + " in the past " + str(time) + " " + str(get_unit(time_unit)) + "'s"
                         else:
-                            checkState["returnMessage"] = "WARNING - " + str(result) + " " + unit + " Total Backup size in Level " + kind + " in the past " + str(time) + " " + str(getUnit(time_unit))
+                            check_state["returnMessage"] = "WARNING - " + str(result) + " " + unit + " Total Backup size in Level " + kind + " in the past " + str(time) + " " + str(get_unit(time_unit))
                     else:
-                        checkState["returnMessage"] = "WARNING - " + str(result) + " " +unit + " Total Backup size in level " + kind + " since first Backup"
+                        check_state["returnMessage"] = "WARNING - " + str(result) + " " +unit + " Total Backup size in level " + kind + " since first Backup"
             else:
-                    checkState["returnCode"] = 0
+                    check_state["returnCode"] = 0
                     if args.time:
                         if time > 1:
-                            checkState["returnMessage"] = "OK - " + str(result) + " " + unit + " Total Backup size in Level " + kind + " in the past " + str(time) + " " + str(getUnit(time_unit)) + "'s"
+                            check_state["returnMessage"] = "OK - " + str(result) + " " + unit + " Total Backup size in Level " + kind + " in the past " + str(time) + " " + str(get_unit(time_unit)) + "'s"
                         else:
-                            checkState["returnMessage"] = "OK - " + str(result) + " " + unit + " Total Backup size in Level " + kind + " in the past " + str(time) + " " + str(getUnit(time_unit))
+                            check_state["returnMessage"] = "OK - " + str(result) + " " + unit + " Total Backup size in Level " + kind + " in the past " + str(time) + " " + str(get_unit(time_unit))
                     else:
-                        checkState["returnMessage"] = "OK - " + str(result) + " " + unit + " Total Backup size in level " + kind + " since first Backup"
-            checkState["performanceData"] = "Size=" + str(result) + ";" + str(warning) + ";" + str(critical) + ";;"
-            return checkState
+                        check_state["returnMessage"] = "OK - " + str(result) + " " + unit + " Total Backup size in level " + kind + " since first Backup"
+            check_state["performanceData"] = "Size=" + str(result) + ";" + str(warning) + ";" + str(critical) + ";;"
+            return check_state
         
 def checkOversizedBackups(courser, time, time_unit, size, kind, unit, warning, critical):
-            checkState = {}
+            check_state = {}
             if time == None:
                 time = 7
-            factor = createFactor(unit)
+            factor = create_factor(unit)
             query = """
             SELECT Job.Name,Level,starttime, JobBytes/""" + str(float(factor)) + """
             FROM Job
-            Where Level in (""" + kind + """) and starttime > DATE_SUB(now(), INTERVAL  """ + str(time) + """  """ + str(getUnit(time_unit)) + """)  and JobBytes/""" + str(float(factor)) + """>""" + str(size) + """;
+            Where Level in (""" + kind + """) and starttime > DATE_SUB(now(), INTERVAL  """ + str(time) + """  """ + str(get_unit(time_unit)) + """)  and JobBytes/""" + str(float(factor)) + """>""" + str(size) + """;
             """
             print(query)
             courser.execute(query)
@@ -177,34 +182,34 @@ def checkOversizedBackups(courser, time, time_unit, size, kind, unit, warning, c
             result = len(results) 
     
             if result >= int(critical):
-                    checkState["returnCode"] = 2
+                    check_state["returnCode"] = 2
                     if time > 1:
-                        checkState["returnMessage"] = "CRITICAL - " + str(result) + " " + kind + " Backups larger than " + str(size) + " " + unit + " in the last " + str(time) + " " + str(getUnit(time_unit)) + "'s"
+                        check_state["returnMessage"] = "CRITICAL - " + str(result) + " " + kind + " Backups larger than " + str(size) + " " + unit + " in the last " + str(time) + " " + str(get_unit(time_unit)) + "'s"
                     else:
-                        checkState["returnMessage"] = "CRITICAL - " + str(result) + " " + kind + " Backups larger than " + str(size) + " " + unit + " in the last " + str(time) + " " + str(getUnit(time_unit))
+                        check_state["returnMessage"] = "CRITICAL - " + str(result) + " " + kind + " Backups larger than " + str(size) + " " + unit + " in the last " + str(time) + " " + str(get_unit(time_unit))
             elif result >= int(warning):
-                    checkState["returnCode"] = 1
+                    check_state["returnCode"] = 1
                     if time > 1:
-                        checkState["returnMessage"] = "WARNING - " + str(result) + " " + kind + " Backups larger than " + str(size) + " " + unit + " in the last " + str(time) + " " + str(getUnit(time_unit) + "'s")
+                        check_state["returnMessage"] = "WARNING - " + str(result) + " " + kind + " Backups larger than " + str(size) + " " + unit + " in the last " + str(time) + " " + str(get_unit(time_unit) + "'s")
                     else:
-                        checkState["returnMessage"] = "WARNING - " + str(result) + " " + kind + " Backups larger than " + str(size) + " " + unit + " in the last " + str(time) + " " + str(getUnit(time_unit))
+                        check_state["returnMessage"] = "WARNING - " + str(result) + " " + kind + " Backups larger than " + str(size) + " " + unit + " in the last " + str(time) + " " + str(get_unit(time_unit))
             else:
-                    checkState["returnCode"] = 0
+                    check_state["returnCode"] = 0
                     if time > 1:
-                        checkState["returnMessage"] = "OK - No " + kind + " Backup larger than " + str(size) + " " + unit + " in the last " + str(time) + " " + str(getUnit(time_unit)) + "'s"
+                        check_state["returnMessage"] = "OK - No " + kind + " Backup larger than " + str(size) + " " + unit + " in the last " + str(time) + " " + str(get_unit(time_unit)) + "'s"
                     else:
-                        checkState["returnMessage"] = "OK - No " + kind + " Backup larger than " + str(size) + " " + unit + " in the last " + str(time) + " " + str(getUnit(time_unit))
-            checkState["performanceData"] = "OverSized=" + str(result) + ";" + str(warning) + ";" + str(critical) + ";;"
-            return checkState
+                        check_state["returnMessage"] = "OK - No " + kind + " Backup larger than " + str(size) + " " + unit + " in the last " + str(time) + " " + str(get_unit(time_unit))
+            check_state["performanceData"] = "OverSized=" + str(result) + ";" + str(warning) + ";" + str(critical) + ";;"
+            return check_state
 
 def checkEmptyBackups(cursor, time, time_unit, kind, warning, critical):
-            checkState = {}
+            check_state = {}
             if time == None:
                 time = 7
             query = """
             SELECT Job.Name,Level,starttime
             FROM Job
-            Where Level in (""" + str(kind) + """) and JobBytes=0 and starttime > DATE_SUB(now(), INTERVAL  """ + str(time) + """ """ + str(getUnit(time_unit)) + """) and JobStatus in ('T');
+            Where Level in (""" + str(kind) + """) and JobBytes=0 and starttime > DATE_SUB(now(), INTERVAL  """ + str(time) + """ """ + str(get_unit(time_unit)) + """) and JobStatus in ('T');
             """
             print(query)
             cursor.execute(query)
@@ -212,53 +217,53 @@ def checkEmptyBackups(cursor, time, time_unit, kind, warning, critical):
             result = len(results) 
             #print(time)
             if result >= int(critical):
-                    checkState["returnCode"] = 2
+                    check_state["returnCode"] = 2
                     if time > 1:
-                        checkState["returnMessage"] = "CRITICAL - " + str(result) + " successful " + str(kind) + " backups are empty for the past " + str(time) + " " + str(getUnit(time_unit)) + "'s"
+                        check_state["returnMessage"] = "CRITICAL - " + str(result) + " successful " + str(kind) + " backups are empty for the past " + str(time) + " " + str(get_unit(time_unit)) + "'s"
                     else:
-                        checkState["returnMessage"] = "CRITICAL - " + str(result) + " successful " + str(kind) + " backups are empty for the past " + str(time) + " " + str(getUnit(time_unit))
+                        check_state["returnMessage"] = "CRITICAL - " + str(result) + " successful " + str(kind) + " backups are empty for the past " + str(time) + " " + str(get_unit(time_unit))
             elif result >= int(warning):
-                    checkState["returnCode"] = 1
+                    check_state["returnCode"] = 1
                     if time > 1:
-                        checkState["returnMessage"] = "WARNING - " + str(result) + " successful " + str(kind) + " backups are empty for the last " + str(time) + " " + str(getUnit(time_unit)) + "'s"
+                        check_state["returnMessage"] = "WARNING - " + str(result) + " successful " + str(kind) + " backups are empty for the last " + str(time) + " " + str(get_unit(time_unit)) + "'s"
                     else:
-                        checkState["returnMessage"] = "WARNING - " + str(result) + " successful " + str(kind) + " backups are empty for the last " + str(time) + " " + str(getUnit(time_unit))
+                        check_state["returnMessage"] = "WARNING - " + str(result) + " successful " + str(kind) + " backups are empty for the last " + str(time) + " " + str(get_unit(time_unit))
             else:
-                    checkState["returnCode"] = 0
-                    checkState["returnMessage"] = "OK - All " + str(kind) + " backups are fine"
-            checkState["performanceData"] = "EmptyBackups=" + str(result) + ";" + str(warning) + ";" + str(critical) + ";;"
-            return checkState
+                    check_state["returnCode"] = 0
+                    check_state["returnMessage"] = "OK - All " + str(kind) + " backups are fine"
+            check_state["performanceData"] = "EmptyBackups=" + str(result) + ";" + str(warning) + ";" + str(critical) + ";;"
+            return check_state
                
 
 # Checks on Jobs
 def checkJobs(cursor, state, kind, time, time_unit, warning, critical):
-    checkState = {}
+    check_state = {}
     if time == None:
         time = 7
     query = """
     Select count(Job.Name)
     From Job
-    Where Job.JobStatus like '""" + str(state) + """' and (starttime > DATE_SUB(now(), INTERVAL """ + str(time) + """ """ + str(getUnit(time_unit)) + """) or starttime IS NULL) and Job.Level in (""" + kind + """);
+    Where Job.JobStatus like '""" + str(state) + """' and (starttime > DATE_SUB(now(), INTERVAL """ + str(time) + """ """ + str(get_unit(time_unit)) + """) or starttime IS NULL) and Job.Level in (""" + kind + """);
     """
     cursor.execute(query)
     results = cursor.fetchone()  # Returns a value 
     result = float(results[0])
 
     if result >= int(critical):
-            checkState["returnCode"] = 2
-            checkState["returnMessage"] = "CRITICAL - " + str(result) + " Jobs are in the state: "+str(getState(state))
+            check_state["returnCode"] = 2
+            check_state["returnMessage"] = "CRITICAL - " + str(result) + " Jobs are in the state: "+str(get_state(state))
     elif result >= int(warning):
-            checkState["returnCode"] = 1
-            checkState["returnMessage"] = "WARNING - " + str(result) + " Jobs are in the state: "+str(getState(state))
+            check_state["returnCode"] = 1
+            check_state["returnMessage"] = "WARNING - " + str(result) + " Jobs are in the state: "+str(get_state(state))
     else:
-            checkState["returnCode"] = 0
-            checkState["returnMessage"] = "OK - " + str(result) + " Jobs are in the state: "+str(getState(state))
-    checkState["performanceData"] = str(getState(state))+"=" + str(result) + ";" + str(warning) + ";" + str(critical) + ";;"
+            check_state["returnCode"] = 0
+            check_state["returnMessage"] = "OK - " + str(result) + " Jobs are in the state: "+str(get_state(state))
+    check_state["performanceData"] = str(get_state(state))+"=" + str(result) + ";" + str(warning) + ";" + str(critical) + ";;"
 
-    return checkState
+    return check_state
 
 def checkSingleJob(cursor, name, state, kind, time, warning, critical):
-    checkState = {}
+    check_state = {}
     if time == None:
         time = 7
     query = """
@@ -271,20 +276,20 @@ def checkSingleJob(cursor, name, state, kind, time, warning, critical):
     result = len(results)
 
     if result >= int(critical):
-            checkState["returnCode"] = 2
-            checkState["returnMessage"] = "CRITICAL - " + str(result) + " Jobs are in the state: "+str(getState(state))
+            check_state["returnCode"] = 2
+            check_state["returnMessage"] = "CRITICAL - " + str(result) + " Jobs are in the state: "+str(get_state(state))
     elif result >= int(warning):
-            checkState["returnCode"] = 1
-            checkState["returnMessage"] = "WARNING - " + str(result) + " Jobs are in the state: "+str(getState(state))
+            check_state["returnCode"] = 1
+            check_state["returnMessage"] = "WARNING - " + str(result) + " Jobs are in the state: "+str(get_state(state))
     else:
-            checkState["returnCode"] = 0
-            checkState["returnMessage"] = "OK - " + str(result) + " Jobs are in the state: "+str(getState(state))
-    checkState["performanceData"] = str(getState(state))+"=" + str(result) + ";" + str(warning) + ";" + str(critical) + ";;"
+            check_state["returnCode"] = 0
+            check_state["returnMessage"] = "OK - " + str(result) + " Jobs are in the state: "+str(get_state(state))
+    check_state["performanceData"] = str(get_state(state))+"=" + str(result) + ";" + str(warning) + ";" + str(critical) + ";;"
 
-    return checkState
+    return check_state
 
 def checkRunTimeJobs(cursor, name, state, time, warning, critical):
-    checkState = {}
+    check_state = {}
     if time == None:
         time = 7
     query = """
@@ -297,22 +302,22 @@ def checkRunTimeJobs(cursor, name, state, time, warning, critical):
     result = float(results[0])
 
     if result >= int(critical):
-            checkState["returnCode"] = 2
-            checkState["returnMessage"] = "CRITICAL - " + str(result) + " Jobs are running longer than "+str(time)+" days"
+            check_state["returnCode"] = 2
+            check_state["returnMessage"] = "CRITICAL - " + str(result) + " Jobs are running longer than "+str(time)+" days"
     elif result >= int(warning):
-            checkState["returnCode"] = 1
-            checkState["returnMessage"] = "WARNING - " + str(result) + " Jobs are running longer than "+str(time)+" days"
+            check_state["returnCode"] = 1
+            check_state["returnMessage"] = "WARNING - " + str(result) + " Jobs are running longer than "+str(time)+" days"
     else:
-            checkState["returnCode"] = 0
-            checkState["returnMessage"] = "OK - " + str(result) + " Jobs are running longer than "+str(time)+" days"
-    checkState["performanceData"] = "Count=" + str(result) + ";" + str(warning) + ";" + str(critical) + ";;"
+            check_state["returnCode"] = 0
+            check_state["returnMessage"] = "OK - " + str(result) + " Jobs are running longer than "+str(time)+" days"
+    check_state["performanceData"] = "Count=" + str(result) + ";" + str(warning) + ";" + str(critical) + ";;"
 
-    return checkState
+    return check_state
 
      
 # Checks on Tapes
 def checkTapesInStorage(cursor, warning, critical):
-    checkState = {}
+    check_state = {}
 
     query = """
     SELECT count(MediaId)
@@ -326,19 +331,19 @@ def checkTapesInStorage(cursor, warning, critical):
     result = float(results[0])
     
     if result <= int(critical):
-        checkState["returnCode"] = 2
-        checkState["returnMessage"] = "CRITICAL - Only " + str(result) + " Tapes are in the Storage"
+        check_state["returnCode"] = 2
+        check_state["returnMessage"] = "CRITICAL - Only " + str(result) + " Tapes are in the Storage"
     elif result <= int(warning):
-        checkState["returnCode"] = 1
-        checkState["returnMessage"] = "WARNING - Only" + str(result) + " Tapes are in the Storage"
+        check_state["returnCode"] = 1
+        check_state["returnMessage"] = "WARNING - Only" + str(result) + " Tapes are in the Storage"
     else:
-        checkState["returnCode"] = 0
-        checkState["returnMessage"] = "OK - " + str(result) + " Tapes are in the Storage"
-    checkState["performanceData"] = "Tapes=" + str(result) + ";" + str(warning) + ";" + str(critical) + ";;"
-    return checkState
+        check_state["returnCode"] = 0
+        check_state["returnMessage"] = "OK - " + str(result) + " Tapes are in the Storage"
+    check_state["performanceData"] = "Tapes=" + str(result) + ";" + str(warning) + ";" + str(critical) + ";;"
+    return check_state
 
 def checkExpiredTapes(cursor, warning, critical):
-    checkState = {}
+    check_state = {}
     query = """
     SELECT Count(MediaId)
     FROM Media
@@ -349,21 +354,21 @@ def checkExpiredTapes(cursor, warning, critical):
     result = float(results[0])
     
     if result <= int(critical):
-            checkState["returnCode"] = 2
-            checkState["returnMessage"] = "CRITICAL - Only " + str(result) + " expired"
+            check_state["returnCode"] = 2
+            check_state["returnMessage"] = "CRITICAL - Only " + str(result) + " expired"
     elif result <= int(warning):
-            checkState["returnCode"] = 1
-            checkState["returnMessage"] = "WARNING - Only " + str(result) + " expired"
+            check_state["returnCode"] = 1
+            check_state["returnMessage"] = "WARNING - Only " + str(result) + " expired"
     else:
-            checkState["returnCode"] = 0
-            checkState["returnMessage"] = "OK - Tapes " + str(result) + " expired"
-    checkState["performanceData"] = "Expired=" + str(result) + ";" + str(warning) + ";" + str(critical) + ";;"
+            check_state["returnCode"] = 0
+            check_state["returnMessage"] = "OK - Tapes " + str(result) + " expired"
+    check_state["performanceData"] = "Expired=" + str(result) + ";" + str(warning) + ";" + str(critical) + ";;"
     
-    return checkState
+    return check_state
 
 
 def checkWillExpiredTapes(cursor, time, warning, critical):
-    checkState = {}
+    check_state = {}
     query = """
     SELECT Count(MediaId)
     FROM Media
@@ -374,20 +379,20 @@ def checkWillExpiredTapes(cursor, time, warning, critical):
     result = float(results[0])
     
     if result <= int(critical):
-            checkState["returnCode"] = 2
-            checkState["returnMessage"] = "CRITICAL - Only " + str(result) + " will expire in next " + str(time) + " days"
+            check_state["returnCode"] = 2
+            check_state["returnMessage"] = "CRITICAL - Only " + str(result) + " will expire in next " + str(time) + " days"
     elif result <= int(warning):
-            checkState["returnCode"] = 1
-            checkState["returnMessage"] = "WARNING - Only " + str(result) + " will expire in next " + str(time) + " days"
+            check_state["returnCode"] = 1
+            check_state["returnMessage"] = "WARNING - Only " + str(result) + " will expire in next " + str(time) + " days"
     else:
-            checkState["returnCode"] = 0
-            checkState["returnMessage"] = "OK - Tapes " + str(result) + " will expire in next " + str(time) + " days"
-    checkState["performanceData"] = "Expire=" + str(result) + ";" + str(warning) + ";" + str(critical) + ";;"
+            check_state["returnCode"] = 0
+            check_state["returnMessage"] = "OK - Tapes " + str(result) + " will expire in next " + str(time) + " days"
+    check_state["performanceData"] = "Expire=" + str(result) + ";" + str(warning) + ";" + str(critical) + ";;"
     
-    return checkState
+    return check_state
 
 def checkReplaceTapes(cursor, mounts, warning, critical):
-    checkState = {}
+    check_state = {}
     query = """
     SELECT COUNT(VolumeName)
     FROM Media
@@ -399,20 +404,20 @@ def checkReplaceTapes(cursor, mounts, warning, critical):
     result = float(results[0])
 
     if result >= int(critical):
-            checkState["returnCode"] = 2
-            checkState["returnMessage"] = "CRITICAL - " + str(result) + " Tapes have to be replaced in the near future"
+            check_state["returnCode"] = 2
+            check_state["returnMessage"] = "CRITICAL - " + str(result) + " Tapes have to be replaced in the near future"
     elif result >= int(warning):
-            checkState["returnCode"] = 1
-            checkState["returnMessage"] = "WARNING - Only " + str(result) + " Tapes have to be replaced in the near future"
+            check_state["returnCode"] = 1
+            check_state["returnMessage"] = "WARNING - Only " + str(result) + " Tapes have to be replaced in the near future"
     else:
-            checkState["returnCode"] = 0
-            checkState["returnMessage"] = "OK - Tapes " + str(result) + " have to be replaced in the near future"
-    checkState["performanceData"] = "Replace=" + str(result) + ";" + str(warning) + ";" + str(critical) + ";;"
+            check_state["returnCode"] = 0
+            check_state["returnMessage"] = "OK - Tapes " + str(result) + " have to be replaced in the near future"
+    check_state["performanceData"] = "Replace=" + str(result) + ";" + str(warning) + ";" + str(critical) + ";;"
 
-    return checkState    
+    return check_state
 
 def checkEmptyTapes(courser, warning, critical):
-        checkState = {}
+        check_state = {}
         query = """
          SELECT Count(MediaId)
           FROM Media,Pool,Storage
@@ -426,17 +431,17 @@ def checkEmptyTapes(courser, warning, critical):
         result = float(results[0])
 
         if result <= int(critical):
-                checkState["returnCode"] = 2
-                checkState["returnMessage"] = "CRITICAL - Only " + str(result) + " Tapes are empty in the Storage"
+                check_state["returnCode"] = 2
+                check_state["returnMessage"] = "CRITICAL - Only " + str(result) + " Tapes are empty in the Storage"
         elif result <= int(warning):
-                checkState["returnCode"] = 1
-                checkState["returnMessage"] = "WARNING - Only " + str(result) + " Tapes are empty in the Storage"
+                check_state["returnCode"] = 1
+                check_state["returnMessage"] = "WARNING - Only " + str(result) + " Tapes are empty in the Storage"
         else:
-                checkState["returnCode"] = 0
-                checkState["returnMessage"] = "OK - " + str(result) + " Tapes are empty in the Storage"
-        checkState["performanceData"] = "Empty=" + str(result) + ";" + str(warning) + ";" + str(critical) + ";;"
+                check_state["returnCode"] = 0
+                check_state["returnMessage"] = "OK - " + str(result) + " Tapes are empty in the Storage"
+        check_state["performanceData"] = "Empty=" + str(result) + ";" + str(warning) + ";" + str(critical) + ";;"
 
-        return checkState
+        return check_state
 
 def connectDB(userName, pw, hostName, database):
     if(database == "postgresql" or database == "p" or database == "psql"):
@@ -450,22 +455,22 @@ def connectDB(userName, pw, hostName, database):
     
             return cursor 
         except psycopg2.DatabaseError, e:
-            checkState = {}
-            checkState["returnCode"] = 2
-            checkState["returnMessage"] = "CRITICAL - " + str(e)[:-1]
-            checkState["performanceData"] = ";;;;"
-            printNagiosOutput(checkState)
+            check_state = {}
+            check_state["returnCode"] = 2
+            check_state["returnMessage"] = "CRITICAL - " + str(e)[:-1]
+            check_state["performanceData"] = ";;;;"
+            printNagiosOutput(check_state)
          
     if(database == "mysql" or database == "m"):
         try:
             conn = MySQLdb.connect(host=hostName, user=userName, passwd=pw, db=databaseName)
             return conn.cursor() 
         except MySQLdb.Error, e:
-                        checkState = {}
-                        checkState["returnCode"] = 2
-                        checkState["returnMessage"] = "CRITICAL - " + str(e)[:-1]
-                        checkState["performanceData"] = ";;;;"
-                        printNagiosOutput(checkState)
+                        check_state = {}
+                        check_state["returnCode"] = 2
+                        check_state["returnMessage"] = "CRITICAL - " + str(e)[:-1]
+                        check_state["performanceData"] = ";;;;"
+                        printNagiosOutput(check_state)
     
 def printNagiosOutput(checkResult):
     if checkResult != None:
@@ -529,7 +534,7 @@ def argumentParser():
     statusParser.add_argument('-tv', '--time_value', dest='time', action='store', help='Time value as integer, e.g. 13', type=int)
     statusParser.add_argument('-tu', '--time_unit', dest='time_unit',choices=['m', 'h', 'D', 'W', 'M', 'Y'], help='Time in m for MINUTE, h for HOUR, d for DAY, w for WEEK, m for MONTH and y for year (default=DAY)', default='D')
     statusParser.add_argument('-w', '--warning', dest='warning', action='store', help='Warning value [default=5]', default=5)
-    statusParser.add_argument('-st', '--state', dest='state', choices=['T', 'C', 'R', 'E', 'f', 'A'], default='f', help='T=Completed, C=Queued, R=Running, E=Terminated with Errors, f=Fatal error, A=Canceld by user [default=f]')
+    statusParser.add_argument('-st', '--state', action='append', dest='state', help='T=Completed, C=Queued, R=Running, E=Terminated with Errors, f=Fatal error, A=Canceld by user [default=f]')
     statusParser.add_argument('-c', '--critical', dest='critical', action='store', help='Critical value [default=10]', default=10)
     statusParser.add_argument('-s', '--size', dest='size', action='store', help='Border value for oversized backups [default=2]', default=2)
     statusParser.add_argument('-u', '--unit', dest='unit', choices=['MB', 'GB', 'TB', 'PB', 'EB'], default='TB', help='display unit [default=TB]')
@@ -570,10 +575,10 @@ def checkJob(args):
     checkResult = {}
     if checkConnection(cursor):  
         if args.checkJob:
-            kind = createBackupKindString(args.full, args.inc, args.diff)
+            kind = create_backup_kind_string(args.full, args.inc, args.diff)
             checkResult = checkSingleJob(cursor, args.name, args.state,kind, args.time, args.warning, args.critical) 
         elif args.checkJobs:
-            kind = createBackupKindString(args.full, args.inc, args.diff)
+            kind = create_backup_kind_string(args.full, args.inc, args.diff)
             checkResult = checkJobs(cursor, args.state, args.kind, args.time, args.warning, args.critical) 
         elif args.runTimeJobs:
             checkResult = checkRunTimeJobs(cursor, args.name, args.state, args.time, args.warning, args.critical)
@@ -586,17 +591,17 @@ def checkStatus(args):
     checkResult = {}
     if checkConnection(cursor):  
         if args.emptyBackups:
-            kind = createBackupKindString(args.full, args.inc, args.diff)
+            kind = create_backup_kind_string(args.full, args.inc, args.diff)
             checkResult = checkEmptyBackups(cursor, args.time, args.time_unit, kind, args.warning, args.critical)        
         elif args.totalBackupsSize:
-            kind = createBackupKindString(args.full, args.inc, args.diff)
+            kind = create_backup_kind_string(args.full, args.inc, args.diff)
             checkResult = checkTotalBackupSize(cursor, args.time, args.time_unit, kind, args.unit, args.warning, args.critical)  
         elif args.oversizedBackups:
-            kind = createBackupKindString(args.full, args.inc, args.diff)
+            kind = create_backup_kind_string(args.full, args.inc, args.diff)
             checkResult = checkOversizedBackups(cursor, args.time, args.time_unit, args.size, kind, args.unit, args.warning, args.critical)   
         elif args.failedBackups:
-            kind = createBackupKindString(args.full, args.inc, args.diff)
-            checkResult = checkFailedBackups(cursor, args.time, args.time_unit, args.unit, args.state, args.warning, args.critical)   
+            kind = create_backup_kind_string(args.full, args.inc, args.diff)
+            checkResult = check_failed_backups(cursor, args.time, args.time_unit, args.unit, args.state, args.warning, args.critical)
         printNagiosOutput(checkResult);
         cursor.close();
               
