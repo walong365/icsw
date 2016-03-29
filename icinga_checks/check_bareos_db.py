@@ -529,7 +529,7 @@ def argumentParser():
     statusParser.add_argument('-tv', '--time_value', dest='time', action='store', help='Time value as integer, e.g. 13', type=int)
     statusParser.add_argument('-tu', '--time_unit', dest='time_unit',choices=['m', 'h', 'D', 'W', 'M', 'Y'], help='Time in m for MINUTE, h for HOUR, d for DAY, w for WEEK, m for MONTH and y for year (default=DAY)', default='D')
     statusParser.add_argument('-w', '--warning', dest='warning', action='store', help='Warning value [default=5]', default=5)
-    statusParser.add_argument('-st', '--state', dest='state', choices=['T', 'C', 'R', 'E', 'f','A'], default='f', help='T=Completed, C=Queued, R=Running, E=Terminated with Errors, f=Fatal error, A=Canceld by user [default=f]')
+    statusParser.add_argument('-st', '--state', dest='state', choices=['T', 'C', 'R', 'E', 'f', 'A'], default='f', help='T=Completed, C=Queued, R=Running, E=Terminated with Errors, f=Fatal error, A=Canceld by user [default=f]')
     statusParser.add_argument('-c', '--critical', dest='critical', action='store', help='Critical value [default=10]', default=10)
     statusParser.add_argument('-s', '--size', dest='size', action='store', help='Border value for oversized backups [default=2]', default=2)
     statusParser.add_argument('-u', '--unit', dest='unit', choices=['MB', 'GB', 'TB', 'PB', 'EB'], default='TB', help='display unit [default=TB]')
@@ -576,7 +576,7 @@ def checkJob(args):
             kind = createBackupKindString(args.full, args.inc, args.diff)
             checkResult = checkJobs(cursor, args.state, args.kind, args.time, args.warning, args.critical) 
         elif args.runTimeJobs:
-            checkResult = checkRunTimeJobs(cursor, args.name,args.state, args.time, args.warning, args.critical)
+            checkResult = checkRunTimeJobs(cursor, args.name, args.state, args.time, args.warning, args.critical)
         printNagiosOutput(checkResult);
         cursor.close();
 
