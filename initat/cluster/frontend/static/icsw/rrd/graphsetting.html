@@ -1,13 +1,15 @@
 <script type="text/ng-template" id="icsw.rrd.graphsetting.overview">
     <div class="input-group">
         <ui-select ng-model="current" on-select="select_setting($item, $model)" style="width:160px;">
-            <ui-select-match class="ui-select-match" title="Stored RRD graphing settings">{{ $select.selected.name }}&nbsp;&nbsp;&nbsp;</ui-select-match>
-            <ui-select-choices class="ui-select-choices" repeat="entry in settings">
+            <ui-select-match class="ui-select-match" title="Stored RRD graphing settings">
+                {{ $select.selected.name }}&nbsp;&nbsp;&nbsp;
+            </ui-select-match>
+            <ui-select-choices class="ui-select-choices" repeat="entry in settings.list">
                 <div ng-bind-html="entry.name"></div>
             </ui-select-choices>
         </ui-select>
         <span class="input-group-btn">
-            <button class="btn btn-sm btn-primary" type="modify" value="" size="sm" ng-click="show_settings()" title="RRD graphing settings">
+            <button class="btn btn-sm btn-primary" type="modify" value="" size="sm" ng-click="edit_settings()" title="RRD graphing settings">
                 <span class="fa fa-wrench"></span>
             </button>
         </span>
@@ -15,8 +17,8 @@
 </script>
 
 <script type="text/ng-template" id="icsw.rrd.graphsetting.modify">
-    <form>
-        <h3>Settings defined: {{ settings.length }}</h3>
+    <form name="form_data">
+        <h3>Settings defined: {{ user_setting.list.length }}</h3>
         <fieldset>
             <legend>
                 Graph Flags
@@ -59,9 +61,9 @@
                     CF:
                 </label>
                 <div class="col-md-9 controls">
-                    <ui-select ng-model="vars.current.cf2">
+                    <ui-select ng-model="vars.current.cf">
                         <ui-select-match class="ui-select-match" placeholder="Consolidation function...">{{ $select.selected.long }}</ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="cf in cfs">
+                        <ui-select-choices class="ui-select-choices" repeat="cf.short as cf in base_setting.cf_list">
                             <div ng-bind-html="cf.long"></div>
                         </ui-select-choices>
                     </ui-select>
@@ -78,9 +80,9 @@
                     Legend mode:
                 </label>
                 <div class="col-md-3 controls">
-                    <ui-select ng-model="vars.current.legend_mode2">
+                    <ui-select ng-model="vars.current.legend_mode">
                         <ui-select-match class="ui-select-match" placeholder="Legend mode...">{{ $select.selected.long }}</ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="lm in legend_modes">
+                        <ui-select-choices class="ui-select-choices" repeat="lm.short as lm in base_setting.legend_mode_list">
                             <div ng-bind-html="lm.long"></div>
                         </ui-select-choices>
                     </ui-select>
@@ -90,9 +92,9 @@
                     Scale mode:
                 </label>
                 <div class="col-md-3 controls">
-                    <ui-select ng-model="vars.current.scale_mode2">
+                    <ui-select ng-model="vars.current.scale_mode">
                         <ui-select-match class="ui-select-match" placeholder="Scale mode...">{{ $select.selected.long }}</ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="sm in scale_modes">
+                        <ui-select-choices class="ui-select-choices" repeat="sm.short as sm in base_setting.scale_mode_list">
                             <div ng-bind-html="sm.long"></div>
                         </ui-select-choices>
                     </ui-select>
@@ -106,7 +108,7 @@
                 <div class="col-md-9 controls">
                     <ui-select ng-model="vars.current.graph_setting_size">
                         <ui-select-match class="ui-select-match" placeholder="Size">{{ $select.selected.info }}</ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="sz.idx as sz in sizes">
+                        <ui-select-choices class="ui-select-choices" repeat="sz.idx as sz in base_setting.size_list">
                             <div ng-bind-html="sz.info"></div>
                         </ui-select-choices>
                     </ui-select>
@@ -126,13 +128,11 @@
                     <div class="input-group">
                         <ui-select ng-model="vars.current.graph_setting_timeshift">
                             <ui-select-match class="ui-select-match" placeholder="Shift">{{ $select.selected.name }}</ui-select-match>
-                            <ui-select-choices class="ui-select-choices" repeat="sh.idx as sh in shifts">
+                            <ui-select-choices class="ui-select-choices" repeat="sh.idx as sh in base_setting.timeshift_list">
                                 <div ng-bind-html="sh.name"></div>
                             </ui-select-choices>
                         </ui-select>
-                        <span class="input-group-btn">
-                            <icsw-tools-button type="delete" value="" ng-click="vars.current.graph_setting_timeshift=null"></icsw-tools-button>
-                        </span>
+                        <icsw-tools-button type="delete" value="" ng-click="vars.current.graph_setting_timeshift=null"></icsw-tools-button>
                     </div>
                 </div>
             </div>
@@ -145,13 +145,11 @@
                     <div class="input-group">
                         <ui-select ng-model="vars.current.graph_setting_forecast">
                             <ui-select-match class="ui-select-match" placeholder="Forecast">{{ $select.selected.name }}</ui-select-match>
-                            <ui-select-choices class="ui-select-choices" repeat="fc.idx as fc in forecasts">
+                            <ui-select-choices class="ui-select-choices" repeat="fc.idx as fc in base_setting.forecast_list">
                                 <div ng-bind-html="fc.name"></div>
                             </ui-select-choices>
                         </ui-select>
-                        <span class="input-group-btn">
-                            <icsw-tools-button type="delete" value="" ng-click="vars.current.graph_setting_forecast=null"></icsw-tools-button>
-                        </span>
+                        <icsw-tools-button type="delete" value="" ng-click="vars.current.graph_setting_forecast=null"></icsw-tools-button>
                     </div>
                 </div>
             </div>
@@ -168,14 +166,14 @@
                 <div class="col-md-9 controls">
                     <div class="input-group">
                         <ui-select ng-model="vars.current" on-select="select_setting($item, $model)">
-                            <ui-select-match>{{ $select.selected.name }}</ui-select-match>
-                            <ui-select-choices class="ui-select-choices" repeat="entry in settings">
+                            <ui-select-match>
+                                {{ $select.selected.name }}
+                            </ui-select-match>
+                            <ui-select-choices class="ui-select-choices" repeat="entry in user_setting.list">
                                 <div ng-bind-html="entry.name"></div>
                             </ui-select-choices>
                         </ui-select>
-                        <span class="input-group-btn">
-                            <icsw-tools-button type="delete" value="" ng-click="delete_setting()"></icsw-tools-button>
-                        </span>
+                        <icsw-tools-button type="delete" value="" ng-click="delete_setting()"></icsw-tools-button>
                     </div>
                 </div>
             </div>
@@ -184,10 +182,8 @@
                 <div class="col-md-9 controls">
                     <div class="input-group">
                         <input class="form-control" type="text" size="100" max_length="100" ng-model="vars.current.name"/>
-                        <span class="input-group-btn">
-                            <icsw-tools-button type="create" size="sm" ng-click="create_setting()"></icsw-tools-button>
-                            <icsw-tools-button type="save" size="sm" ng-click="save_setting()"></icsw-tools-button>
-                        </span>
+                        <icsw-tools-button type="create" size="sm" ng-click="create_setting()"></icsw-tools-button>
+                        <icsw-tools-button type="save" size="sm" ng-click="save_setting()"></icsw-tools-button>
                     </div>
                 </div>
             </div>
@@ -223,8 +219,7 @@
             <span class="input-group-addon">
                  from
             </span>
-            <input type="text" class="form-control" ng-model="val.from_date_mom">
-            </input>
+            <input type="text" class="form-control" ng-model="val.from_date_mom"/>
             <span class="dropdown-toggle input-group-addon">
                 <div class="dropdown">
                     <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">

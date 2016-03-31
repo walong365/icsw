@@ -228,6 +228,8 @@ angular.module(
             # hm, not optimal, should be done
             if not @device.device_connection_set?
                 @device.device_connection_set = []
+            if not @device.sensor_threshold_set?
+                @device.sensor_threshold_set = []
 
         is_scalar: (req) =>
             return req in ["scan_info"]
@@ -261,6 +263,7 @@ angular.module(
                 "scan_info": "active_scan"
                 "variable_info": "device_variable_set"
                 "device_connection_info": "device_connection_set"
+                "sensor_threshold_info": "sensor_threshold_set"
             }
             if req of _lut
                 return _lut[req]
@@ -491,6 +494,9 @@ angular.module(
                 @cluster_device_group = @group_lut[@cluster_device_group_device.device_group]
             # console.log @enabled_list.length, @disabled_list.length, @all_list.length
             @link()
+            
+            
+            
 
         link: () =>
             # create links between groups and devices

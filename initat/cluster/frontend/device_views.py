@@ -28,7 +28,7 @@ import re
 
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
-from django.db.models import Q
+from django.db.models import Q, Max
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
@@ -37,12 +37,14 @@ from rest_framework import serializers
 from initat.cluster.backbone.models import device_group, device, \
     cd_connection, domain_tree_node, category, netdevice, ComCapability, \
     partition_table, monitoring_hint, DeviceSNMPInfo, snmp_scheme, \
-    domain_name_tree, net_ip, peer_information, mon_ext_host, device_variable
+    domain_name_tree, net_ip, peer_information, mon_ext_host, device_variable, \
+    SensorThreshold
 from initat.cluster.backbone.models.functions import can_delete_obj
 from initat.cluster.backbone.render import permission_required_mixin
 from initat.cluster.backbone.serializers import netdevice_serializer, ComCapabilitySerializer, \
     partition_table_serializer, monitoring_hint_serializer, DeviceSNMPInfoSerializer, \
-    snmp_scheme_serializer, device_variable_serializer, cd_connection_serializer
+    snmp_scheme_serializer, device_variable_serializer, cd_connection_serializer, \
+    SensorThresholdSerializer
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from initat.tools import logging_tools, server_command, process_tools
 
@@ -445,6 +447,22 @@ class ScanEnrichment(object):
         return ScanSerializer(_res, many=True).data
 
 
+class SensorThresholdEnrichment(object):
+    def fetch(self, pk_list):
+        _res = SensorThreshold.objects.filter(
+            Q(mv_value_entry__mv_struct_entry__machine_vector__device__in=pk_list)
+        ).annotate(
+            device=Max("mv_value_entry__mv_struct_entry__machine_vector__device_id")
+        )
+        _data = [
+            SensorThresholdSerializer(
+                _cd,
+                context={"device": _cd.device}
+            ).data for _cd in _res
+        ]
+        return _data
+
+
 class EnrichmentHelper(object):
     def __init__(self):
         self._all = {}
@@ -461,6 +479,7 @@ class EnrichmentHelper(object):
         self._all["scan_info"] = ScanEnrichment()
         self._all["variable_info"] = EnrichmentObject(device_variable, device_variable_serializer)
         self._all["device_connection_info"] = DeviceConnectionEnrichment()
+        self._all["sensor_threshold_info"] = SensorThresholdEnrichment()
 
     def create(self, key, pk_list):
         if key not in self._all:

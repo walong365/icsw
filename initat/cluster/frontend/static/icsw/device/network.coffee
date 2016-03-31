@@ -643,22 +643,22 @@ angular.module(
             default_ms = ("00" for idx in [0..mac_bytes]).join(":")
             edit_obj = {
                 "device": nd_obj.idx
-                "devname" : "eth0"
-                "enabled" : true
-                "netdevice_speed" : (entry.idx for entry in $scope.network_tree.nw_speed_list when entry.speed_bps == 1000000000 and entry.full_duplex)[0]
+                "devname": "eth0"
+                "enabled": true
+                "netdevice_speed": (entry.idx for entry in $scope.network_tree.nw_speed_list when entry.speed_bps == 1000000000 and entry.full_duplex)[0]
                 "ignore_netdevice_speed": false
                 "desired_status": "i"
-                "penalty" : 1
-                "net_ip_set" : []
-                "ethtool_options" : 0
-                "ethtool_autoneg" : 0
-                "ethtool_speed" : 0
-                "ethtool_duplex" : 0
+                "penalty": 1
+                "net_ip_set": []
+                "ethtool_options": 0
+                "ethtool_autoneg": 0
+                "ethtool_speed": 0
+                "ethtool_duplex": 0
                 "mtu": 1500
                 "macaddr": default_ms
                 "fake_macaddr": default_ms
                 # dummy value
-                "network_device_type" : new_type.idx
+                "network_device_type": new_type.idx
             }
             title = "Create new netdevice on '#{nd_obj.full_name}'"
         else

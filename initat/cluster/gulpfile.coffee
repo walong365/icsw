@@ -141,7 +141,7 @@ sources = {
             "frontend/static/js/restangular.min.js",
             "frontend/static/js/angular-block-ui.js",
             "frontend/static/js/select.js",
-            "frontend/static/js/ui-bootstrap-tpls.min.js",
+            "frontend/static/js/ui-bootstrap-tpls-1.2.5.min.js",
             "frontend/static/js/angular-ui-router.js",
             # must use minified version, otherwise the minifier destroys injection info
             "frontend/static/js/ui-codemirror.js",
@@ -544,7 +544,16 @@ gulp.task("stop", () ->
     bgtask.stop()
 )
 
-gulp.task("serve", ["initclean", "watch", "django", "staticbuild"], () ->
+gulp.task("graphserve", [], () ->
+    connect.server(
+        {
+            root: "/tmp/.icsw/static/graphs"
+            port: 8082
+        }
+    )
+)
+
+gulp.task("serve", ["initclean", "watch", "django", "staticbuild", "graphserve"], () ->
     connect.server(
         {
             root: "work"
@@ -553,6 +562,13 @@ gulp.task("serve", ["initclean", "watch", "django", "staticbuild"], () ->
             fallback: "work/icsw/main.html"
             middleware: (connect, opt) ->
                 return [
+                    middleware(
+                        "/icsw/api/v2/static/graphs/",
+                        {
+                            pathRewrite: {"/icsw/api/v2/static/graphs/": "/"}
+                            target: "http://localhost:8082"
+                        }
+                    )
                     middleware(
                         "/icsw/api/v2/",
                         {

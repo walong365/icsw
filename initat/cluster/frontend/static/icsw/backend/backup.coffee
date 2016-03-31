@@ -281,4 +281,17 @@ angular.module(
                 "parameter_i1", "parameter_i2", "parameter_i3", "parameter_i4",
             ]
 
+]).service("icswRRDGraphSettingBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswRRDGraphSettingBackupDefinition extends icswBackupDefinition
+
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "user", "name", "hide_empty", "include_zero",
+                "scale_mode", "legend_mode", "cf", "merge_devices", "merge_graphs",
+                "merge_controlling_devices", "graph_setting_size",
+                "graph_setting_timeshift", "graph_setting_forecast",
+            ]
+
 ])

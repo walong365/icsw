@@ -337,6 +337,7 @@ angular.module(
         ICSW_DOMAIN_NAME_TREE_CHANGED: "icsw.domain.name.tree.changed",
         ICSW_CATEGORY_TREE_CHANGED: "icsw.category.tree.changed",
         ICSW_LOCATION_SETTINGS_CHANGED: "icsw.location.settings.changed",
+        ICSW_USER_GROUP_TREE_LOADED: "Icsw.user.group.tree.loaded",
         # not needed up to now
         # "ICSW_RENDER_MENUBAR": "icsw.render.menubar",
         # "ICSW_READY_TO_RECEIVE_SELECTION": "icsw.ready.to.receive.selection"
@@ -924,6 +925,10 @@ angular.module(
             _sdc = in_dict.show_delete_callback
         else
             _sdc = true
+        if in_dict.closeable?
+            is_closeable = in_dict.closeable
+        else
+            is_closeable = false
         if in_dict.delete_callback and _sdc
             buttons.push(
                 {
@@ -976,6 +981,7 @@ angular.module(
         bs_dict = {
             message: in_dict.message
             draggable: true
+            closeable: is_closeable
             size: BootstrapDialog.SIZE_WIDE
             animate: false
             title: in_dict.title or "ComplexModalDialog"

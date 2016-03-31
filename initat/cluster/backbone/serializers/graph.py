@@ -43,6 +43,14 @@ class SensorActionSerializer(serializers.ModelSerializer):
 
 
 class SensorThresholdSerializer(serializers.ModelSerializer):
+    device = serializers.SerializerMethodField()
+
+    def get_device(self, obj):
+        if self.context and "device" in self.context:
+            return self.context["device"]
+        else:
+            return 0
+
     class Meta:
         model = SensorThreshold
 

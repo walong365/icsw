@@ -1,14 +1,13 @@
 <script type="text/ng-template" id="icsw.rrd.graph.overview">
-    <div ng-if="devsel_list.length == 0">
-        <uib-alert type="warning">No device selected</uib-alert>
+    <div ng-if="struct.error_string">
+        <uib-alert type="warning">{{ struct.error_string }}</uib-alert>
     </div>
-    <p class="text-danger">{{ error_string }}</p>
-    <h4 ng-show="vector_valid">
+    <h4 ng-show="struct.vector_valid">
         <div class="input-group form-inline">
-            <icsw-rrd-vector-info vector-info="vectordata"></icsw-rrd-vector-info>,
+            <icsw-rrd-vector-info vector-info="struct.vectordata"></icsw-rrd-vector-info>,
             <div class="form-group">
                 <div class="input-group-btn">
-                    <button type="button" ng-class="show_tree && 'btn btn-xs btn-primary' || 'btn btn-xs'" ng-click="show_tree=!show_tree" title="show/hide RRD tree">
+                    <button type="button" ng-class="struct.show_tree && 'btn btn-xs btn-primary' || 'btn btn-xs'" ng-click="struct.show_tree=!struct.show_tree" title="show/hide RRD tree">
                         <span class="glyphicon glyphicon-align-left"></span>
                         tree
                     </button>
@@ -30,9 +29,9 @@
         </div>
     </h4>
     <div class="row">
-        <div class="col-md-3" ng-show="show_tree">
+        <div class="col-md-3" ng-show="struct.show_tree">
             <div class="input-group">
-                <input type="text" class="form-control" ng-disabled="is_loading" ng-model="vals.searchstr" placeholder="search ..." ng-change="update_search()"/>
+                <input type="text" class="form-control" ng-disabled="struct.error_string.length" ng-model="vals.searchstr" placeholder="search ..." ng-change="update_search()"/>
                 <span class="input-group-btn">
                     <button class="btn btn-success" ng-show="cur_selected.length && timeframe.valid" type="button" ladda="is_drawing" ng-click="draw_graph()">
                         <span title="draw graph(s)" class="glyphicon glyphicon-pencil"></span>
@@ -45,9 +44,9 @@
                     </button>
                 </span>
             </div>
-            <tree treeconfig="g_tree"></tree>
+            <tree treeconfig="struct.g_tree"></tree>
         </div>
-        <div ng-class="show_tree && 'col-md-9' || 'col-md-12'" ng-show="graph_list.length">
+        <div ng-class="struct.show_tree && 'col-md-9' || 'col-md-12'" ng-show="graph_list.length">
             <icsw-rrd-graph-list graph-list="graph_list" graph-matrix="graph_mat"><h4>ddd</h4></icsw-rrd-graph-list>
         </div>
     </div>

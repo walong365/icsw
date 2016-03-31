@@ -74,7 +74,12 @@ user_module = angular.module(
                     ordering: 0
         }
     )
-]).service("icswUserService", ["$q", "ICSW_URLS", "icswSimpleAjaxCall", "$rootScope", ($q, ICSW_URLS, icswSimpleAjaxCall, $rootScope) ->
+]).service("icswUserService",
+[
+    "$q", "ICSW_URLS", "icswSimpleAjaxCall", "$rootScope",
+(
+    $q, ICSW_URLS, icswSimpleAjaxCall, $rootScope
+) ->
     _last_load = 0
     current_user = undefined
     set_user = (user) ->
@@ -137,6 +142,80 @@ user_module = angular.module(
         "force_logout": () ->
             # force user logout, also when a (valid) load_user request is pending
             force_logout()
+    }
+]).service("icswUserGroupTree",
+[
+    "$q",
+(
+    $q
+) ->
+    class icswUserGrouptree
+        constructor: (@user_list, @group_list) ->
+            @build_luts()
+
+        build_luts: () =>
+            @user_lut = _.keyBy(@user_list, "idx")
+            @group_lut = _.keyBy(@user_list, "idx")
+
+]).service("icswUserGroupTreeService",
+[
+    "$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall",
+    "icswTools", "icswUserGroupTree", "$rootScope", "ICSW_SIGNALS",
+(
+    $q, Restangular, ICSW_URLS, $window, icswCachingCall,
+    icswTools, icswUserGroupTree, $rootScope, ICSW_SIGNALS,
+) ->
+    rest_map = [
+        [
+            ICSW_URLS.REST_GROUP_LIST
+            {
+            }
+        ]
+        [
+            ICSW_URLS.REST_USER_LIST
+            {}
+        ]
+    ]
+    _fetch_dict = {}
+    _result = undefined
+    # load called
+    load_called = false
+
+    load_data = (client) ->
+        load_called = true
+        _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in rest_map)
+        _defer = $q.defer()
+        $q.all(_wait_list).then(
+            (data) ->
+                console.log "*** user/group tree loaded ***"
+                _result = new icswUserGroupTree(data[0], data[1])
+                _defer.resolve(_result)
+                for client of _fetch_dict
+                    # resolve clients
+                    _fetch_dict[client].resolve(_result)
+                $rootScope.$emit(ICSW_SIGNALS("ICSW_USER_GROUP_TREE_LOADED"), _result)
+                # reset fetch_dict
+                _fetch_dict = {}
+        )
+        return _defer
+
+    fetch_data = (client) ->
+        if client not of _fetch_dict
+            # register client
+            _defer = $q.defer()
+            _fetch_dict[client] = _defer
+        if _result
+            # resolve immediately
+            _fetch_dict[client].resolve(_result)
+        return _fetch_dict[client]
+
+    return {
+        "load": (client) ->
+            if load_called
+                # fetch when data is present (after sidebar)
+                return fetch_data(client).promise
+            else
+                return load_data(client).promise
     }
 ]).service("icswUserTree", ["icswTreeConfig", (icswTreeConfig) ->
     class icsw_user_tree extends icswTreeConfig

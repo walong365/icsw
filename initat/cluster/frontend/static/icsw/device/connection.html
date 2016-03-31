@@ -38,10 +38,10 @@
                 </tr>
                 <tr>
                     <td>
-                        {{ dev.$$slave_list.length }} / <ng-pluralize count="dev.$$slave_list.length" when="{'0': 'no slave devices', '1': 'one slave device', 'other': '{} slave devices'}"></ng-pluralize>
+                        {{ dev.$$slave_list.length }} / <ng-pluralize count="dev.$$slave_list.length" when="{'0': 'no slave devices', 'one': 'one slave device', 'other': '{} slave devices'}"></ng-pluralize>
                     </td>
                     <td>
-                        {{ dev.$$master_list.length }} / <ng-pluralize count="dev.$$master_list.length" when="{'0': 'no master devices', '1': 'one master device', 'other': '{} master devices'}"></ng-pluralize>
+                        {{ dev.$$master_list.length }} / <ng-pluralize count="dev.$$master_list.length" when="{'0': 'no master devices', 'one': 'one master device', 'other': '{} master devices'}"></ng-pluralize>
                     </td>
                 </tr>
                 <tr ng-repeat-end ng-show="dev.$$slave_list.length || dev.$$master_list.length">

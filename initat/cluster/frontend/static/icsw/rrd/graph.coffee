@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2015 init.at
+# Copyright (C) 2012-2016 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -47,13 +47,7 @@ class Sensor
 
 
 class DisplayGraph
-    constructor: (@num, @xml, @sensor_action_list, @user_list, @selection_list, sth_dict) ->
-        @sensor_action_lut = {}
-        for entry in @sensor_action_list
-            @sensor_action_lut[entry.idx] = entry
-        @user_lut = {}
-        for entry in @user_list
-            @user_lut[entry.idx] = entry
+    constructor: (@num, @xml, @sensor_action_tree, @user_group_tree, @selection_list, sth_dict) ->
         @active = true
         @error = false
         @src = @xml.attr("href") or ""
@@ -158,23 +152,90 @@ angular.module(
                     ordering: 40
         }
     )
-]).controller("icswGraphOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular",
-        "$q", "$uibModal", "$timeout", "ICSW_URLS", "icswRRDGraphTreeService", "icswSimpleAjaxCall", "icswParseXMLResponseService",
-        "toaster", "icswCachingCall", "icswUserService", "icswSavedSelectionService", "icswRrdGraphSettingService",
-    (
-        $scope, $compile, $filter, $templateCache, Restangular,
-        $q, $uibModal, $timeout, ICSW_URLS, icswRRDGraphTreeService, icswSimpleAjaxCall, icswParseXMLResponseService,
-        toaster, icswCachingCall, icswUserService, icswSavedSelectionService, icswRrdGraphSettingService
-    ) ->
+]).service("icswSensorActionList",
+[
+    "$q",
+(
+    $q,
+) ->
+    class icswSensorActionList
+        constructor: (@list) ->
+            @build_luts()
+
+        build_luts: () =>
+            @lut = _.keyBy(@list, "idx")
+
+]).service("icswSensorActionListService"
+[
+    "$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall",
+    "icswTools", "$rootScope", "ICSW_SIGNALS", "icswSensorActionList",
+(
+    $q, Restangular, ICSW_URLS, $window, icswCachingCall,
+    icswTools, $rootScope, ICSW_SIGNALS, icswSensorActionList,
+) ->
+    rest_map = [
+        [
+            ICSW_URLS.REST_SENSOR_ACTION_LIST
+            {}
+        ]
+    ]
+    _fetch_dict = {}
+    _result = undefined
+    # load called
+    load_called = false
+
+    load_data = (client) ->
+        load_called = true
+        _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in rest_map)
+        _defer = $q.defer()
+        $q.all(_wait_list).then(
+            (data) ->
+                console.log "*** SensorActionList loaded ***"
+                _result = new icswSensorActionList(data[0])
+                _defer.resolve(_result)
+                for client of _fetch_dict
+                    # resolve clients
+                    _fetch_dict[client].resolve(_result)
+                _fetch_dict = {}
+        )
+        return _defer
+
+    fetch_data = (client) ->
+        if client not of _fetch_dict
+            # register client
+            _defer = $q.defer()
+            _fetch_dict[client] = _defer
+        if _result
+            # resolve immediately
+            _fetch_dict[client].resolve(_result)
+        return _fetch_dict[client]
+
+    return {
+        "load": (client) ->
+            if load_called
+                # fetch when data is present (after sidebar)
+                return fetch_data(client).promise
+            else
+                return load_data(client).promise
+    }
+]).controller("icswGraphOverviewCtrl",
+[
+    "$scope", "$compile", "$filter", "$templateCache", "Restangular",
+    "$q", "$uibModal", "$timeout", "ICSW_URLS", "icswRRDGraphTreeService", "icswSimpleAjaxCall",
+    "icswParseXMLResponseService", "toaster", "icswCachingCall", "icswUserService",
+    "icswSavedSelectionService", "icswRRDGraphUserSettingService", "icswDeviceTreeService",
+    "icswUserGroupTreeService", "icswDeviceTreeHelperService", "icswSensorActionListService",
+(
+    $scope, $compile, $filter, $templateCache, Restangular,
+    $q, $uibModal, $timeout, ICSW_URLS, icswRRDGraphTreeService, icswSimpleAjaxCall,
+    icswParseXMLResponseService, toaster, icswCachingCall, icswUserService,
+    icswSavedSelectionService, icswRRDGraphUserSettingService, icswDeviceTreeService,
+    icswUserGroupTreeService,  icswDeviceTreeHelperService, icswSensorActionListService,
+) ->
         moment().utc()
-        $scope.vectordata = {"num_struct": 0, "num_mve": 0, "num_devices": 0, "num_mve_sel": 0}
         $scope.timeframe = undefined
-        $scope.vector_valid = false
-        $scope.error_string = ""
         $scope.vals =
             searchstr: ""
-        $scope.devlist_loading = true
-        $scope.is_loading = true
         $scope.is_drawing = false
         $scope.cur_selected = []
         # to be set by directive
@@ -185,23 +246,96 @@ angular.module(
         $scope.job_modes = ["none", "all", "selected"]
         $scope.job_mode = $scope.job_modes[0]
         $scope.selected_job = 0
-        $scope.show_tree = true
-        $scope.g_tree = new icswRRDGraphTreeService($scope)
-        $scope.user = undefined
-        icswUserService.load().then((user) ->
-            $scope.user = user
-        )
-        $q.all(
-            [
-                icswCachingCall.fetch($scope.$id, ICSW_URLS.REST_SENSOR_ACTION_LIST, {}, [])
-                icswCachingCall.fetch($scope.$id, ICSW_URLS.REST_USER_LIST, {}, [])
-                icswSavedSelectionService.load_selections()
-            ]
-        ).then((data) ->
-            $scope.sensor_action_list = data[0]
-            $scope.user_list = data[1]
-            $scope.selection_list = data[2]
-        )
+        $scope.struct = {
+            # show tree
+            show_tree: true
+            # user
+            user: undefined
+            # selected devices
+            devices: []
+            # device tree
+            device_tree: undefined
+            # helper server
+            dt_helper: undefined
+            # draw tree
+            g_tree: new icswRRDGraphTreeService($scope)
+            # user / group tree
+            user_group_tree: undefined
+            # settings (RRDGraphUserSetting)
+            settings: undefined
+            # selections
+            selection_list: undefined
+            # sensor action tree
+            sensor_action_tree: undefined
+            # vector (==treeView) valid
+            vector_valid: false
+            # vector data
+            vectordata: {
+                "num_struct": 0
+                "num_mve": 0
+                "num_devices": 0
+                "num_mve_sel": 0
+            }
+            # error string, if not empty show as top-level warning-div
+            error_string: "Init structures"
+        }
+        $scope.new_devsel = (dev_list) ->
+            # clear graphs
+            $scope.graph_list = []
+            $scope.struct.error_string = "Loading structures"
+            $scope.struct.vector_valid = false
+            $q.all(
+                [
+                    icswUserService.load($scope.$id)
+                    icswDeviceTreeService.load($scope.$id)
+                    icswUserGroupTreeService.load($scope.$id),
+                    icswSavedSelectionService.load_selections($scope.$id),
+                    icswSensorActionListService.load($scope.$id),
+                    icswRRDGraphUserSettingService.load($scope.$id),
+                ]
+            ).then(
+                (data) ->
+                    $scope.struct.user = data[0]
+                    $scope.struct.device_tree = data[1]
+                    $scope.struct.user_group_tree = data[2]
+                    $scope.struct.selection_list = data[3]
+                    $scope.struct.sensor_action_tree = data[4]
+                    $scope.struct.settings = data[5]
+                    $scope.struct.devices.length = 0
+                    for entry in dev_list
+                        if not entry.is_meta_device
+                            $scope.struct.devices.push(entry)
+                    hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, $scope.struct.devices)
+                    $scope.struct.error_string = "Adding sensor info"
+                    $scope.struct.device_tree.enrich_devices(hs, ["sensor_threshold_info"]).then(
+                        (done) ->
+                            console.log $scope.struct
+                            if $scope.struct.devices.length
+                                $scope.load_tree()
+                            else
+                                $scope.struct.error_string = "No devices selected"
+                    )
+            )
+
+        $scope.load_tree = () ->
+            $scope.struct.error_string = "Loading VectorTree"
+            $scope.struct.vectordata = {
+                "num_struct": 0
+                "num_mve": 0
+                "num_devices": 0
+                "num_mve_sel": 0
+            }
+            icswSimpleAjaxCall(
+                url  : ICSW_URLS.RRD_DEVICE_RRDS
+                data : {
+                    "pks" : (dev.idx for dev in $scope.struct.devices)
+                }
+                dataType: "json"
+            ).then(
+                (json) ->
+                    $scope.feed_rrd_json(json)
+            )
+
         $scope.set_job_mode = (new_jm) ->
             $scope.job_mode = new_jm
         $scope.get_job_mode = (_jm) ->
@@ -213,25 +347,7 @@ angular.module(
             if cur_jm == "selected" and not $scope.selected_job
                 return false
             else
-                return true     
-        $scope.new_devsel = (_dev_sel, _devg_sel) ->
-            # clear graphs
-            $scope.devlist_loading = false
-            $scope.graph_list = []
-            $scope.devsel_list = _dev_sel
-            $scope.reload()
-
-        $scope.reload = () ->
-            $scope.vector_valid = false
-            icswSimpleAjaxCall(
-                url  : ICSW_URLS.RRD_DEVICE_RRDS
-                data : {
-                    "pks" : $scope.devsel_list
-                }
-                dataType: "json"
-            ).then((json) ->
-                $scope.feed_rrd_json(json)
-            )
+                return true
 
         $scope.feed_rrd_json = (json) ->
             if "error" of json
@@ -243,27 +359,25 @@ angular.module(
                     $scope.auto_select_re = null
                 # to machine vector
                 root_node = $scope.init_machine_vector()
-                $scope.vectordata = {"num_struct": 0, "num_mve": 0, "num_devices": 0, "num_mve_sel": 0}
                 for dev in json
                     if dev.struct? and dev.struct.length
                         $scope.add_machine_vector(root_node, dev.pk, dev.struct)
                         #if dev._nodes.length > 1
                         #    # compound
                         #    $scope.add_machine_vector(root_node, dev.pk, dev._nodes[1])
-                        $scope.vectordata.num_devices++
-                $scope.g_tree.recalc()
-                $scope.is_loading = false
-                $scope.vector_valid = if $scope.vectordata.num_struct then true else false
-                if $scope.vector_valid
-                    $scope.error_string = ""
+                        $scope.struct.vectordata.num_devices++
+                $scope.struct.g_tree.recalc()
+                $scope.struct.vector_valid = if $scope.struct.vectordata.num_struct then true else false
+                if $scope.struct.vector_valid
+                    $scope.struct.error_string = ""
                     if $scope.auto_select_re or $scope.cur_selected.length
                         # recalc tree when an autoselect_re is present
-                        $scope.g_tree.show_selected(false)
+                        $scope.struct.g_tree.show_selected(false)
                         $scope.selection_changed()
                         if $scope.draw_on_init and $scope.vectordata.num_mve_sel
                             $scope.draw_graph()
                 else
-                    $scope.error_string = "No vector found"
+                    $scope.struct.error_string = "No vector found"
 
         $scope._add_structural_entry = (entry, lut, parent) =>
             parts = entry.key.split(".")
@@ -283,7 +397,7 @@ angular.module(
                 else
                     # override name if display_name is set and this is the structural entry at the bottom
                     # structural
-                    cur_node = $scope.g_tree.new_node(
+                    cur_node = $scope.struct.g_tree.new_node(
                         {
                             folder : true,
                             expand : false
@@ -297,7 +411,7 @@ angular.module(
                             _is_mve: false
                         }
                     )
-                    $scope.vectordata.num_struct++
+                    $scope.struct.vectordata.num_struct++
                     lut[pn] = cur_node
                     parent.add_child(cur_node, $scope._child_sort)
                 parent = cur_node
@@ -319,7 +433,9 @@ angular.module(
             return info
             
         $scope._add_value_entry = (entry, lut, parent, top) =>
-            $scope.vectordata.a = "ddd"
+            _vd = $scope.struct.vectordata
+            # debg ?
+            _vd.a = "ddd"
             # top is the parent node from the value entry (== mvstructentry)
             if entry.key
                 g_key = "#{top.key}.#{entry.key}"
@@ -338,10 +454,10 @@ angular.module(
                     # change marker
                     cur_node._is_mve = true
                     cur_node._dev_pks = []
-                    $scope.vectordata.num_struct--
-                    $scope.vectordata.num_mve++
+                    _vd.num_struct--
+                    _vd.num_mve++
             else
-                cur_node = $scope.g_tree.new_node(
+                cur_node = $scope.struct.g_tree.new_node(
                     {
                         expand : false
                         selected: _sel
@@ -350,7 +466,7 @@ angular.module(
                     }
                 )
                 cur_node.build_info = []
-                $scope.vectordata.num_mve++
+                _vd.num_mve++
                 lut[g_key] = cur_node
                 parent.add_child(cur_node, $scope._child_sort)
             cur_node._key_pair = [top.key, entry.key]
@@ -368,15 +484,17 @@ angular.module(
 
         $scope.init_machine_vector = () =>
             $scope.lut = {}
-            $scope.g_tree.clear_root_nodes()
-            root_node = $scope.g_tree.new_node({
-                folder : true
-                expand : true
-                _node_type : "h"
-                _show_select : false
-            })
+            $scope.struct.g_tree.clear_root_nodes()
+            root_node = $scope.struct.g_tree.new_node(
+                {
+                    folder: true
+                    expand: true
+                    _node_type: "h"
+                    _show_select: false
+                }
+            )
             root_node.build_info = []
-            $scope.g_tree.add_root_node(root_node)
+            $scope.struct.g_tree.add_root_node(root_node)
             return root_node
 
         $scope.add_machine_vector = (root_node, dev_pk, mv) =>
@@ -397,13 +515,13 @@ angular.module(
             $scope.set_search_filter()
 
         $scope.select_with_sensor = () =>
-            $scope.g_tree.toggle_tree_state(undefined, -1, false)
-            $scope.g_tree.iter(
+            $scope.struct.g_tree.toggle_tree_state(undefined, -1, false)
+            $scope.struct.g_tree.iter(
                 (entry) ->
                     if entry._node_type in ["e"]
                         entry.set_selected(if entry.num_sensors then true else false)
             )
-            $scope.g_tree.show_selected(false)
+            $scope.struct.g_tree.show_selected(false)
             $scope.selection_changed()
 
         $scope.set_search_filter = () =>
@@ -425,14 +543,15 @@ angular.module(
             $scope.selection_changed()
 
         $scope.selection_changed = () =>
-            $scope.cur_selected = $scope.g_tree.get_selected(
+            $scope.cur_selected = $scope.struct.g_tree.get_selected(
                 (entry) ->
                     if entry._node_type == "e" and entry.selected
                         return [entry._g_key]
                     else
                         return []
             )
-            $scope.vectordata.num_mve_sel = $scope.cur_selected.length
+            $scope.struct.vectordata.num_mve_sel = $scope.cur_selected.length
+
         $scope.$on("cropSet", (event, graph) ->
             event.stopPropagation()
             if graph.crop_width > 600
@@ -443,31 +562,21 @@ angular.module(
                 _mins = parseInt(graph.crop_width / 60)
                 toaster.pop("warning", "", "selected timeframe is too narrow (#{_mins} < 10 min)")
         )
+
         $scope.draw_graph = () =>
             if !$scope.is_drawing
                 $scope.is_drawing = true
-                rst = $q.defer()
-                Restangular.all(
-                    ICSW_URLS.REST_SENSOR_THRESHOLD_LIST.slice(1)
-                ).getList(
-                    {
-                        "mv_value_entry__mv_struct_entry__machine_vector__device__in": angular.toJson($scope.devsel_list)
-                    }
-                ).then(
-                    (data) ->
-                        rst.resolve(data)
-                )
                 gfx = $q.defer()
                 icswSimpleAjaxCall(
                     url  : ICSW_URLS.RRD_GRAPH_RRDS
                     data : {
-                        "keys"       : angular.toJson((get_node_keys($scope.lut[key]) for key in $scope.cur_selected))
-                        "pks"        : angular.toJson($scope.devsel_list)
-                        "start_time" : moment($scope.timeframe.from_date_mom).format(DT_FORM)
-                        "end_time"   : moment($scope.timeframe.to_date_mom).format(DT_FORM)
-                        "job_mode"      : $scope.job_mode
-                        "selected_job"  : $scope.selected_job
-                        "graph_setting" : icswRrdGraphSettingService.get_active().idx
+                        "keys": angular.toJson((get_node_keys($scope.lut[key]) for key in $scope.cur_selected))
+                        "pks": angular.toJson((dev.idx for dev in $scope.struct.devices))
+                        "start_time": moment($scope.timeframe.from_date_mom).format(DT_FORM)
+                        "end_time": moment($scope.timeframe.to_date_mom).format(DT_FORM)
+                        "job_mode": $scope.job_mode
+                        "selected_job": $scope.selected_job
+                        "graph_setting": $scope.settings.get_active().idx
                     }
                 ).then(
                     (xml) ->
@@ -475,17 +584,18 @@ angular.module(
                     (xml) ->
                         gfx.resolve(xml)
                 )
-                $q.all([gfx.promise, rst.promise]).then(
+                gfx.promise.then(
                     (result) ->
-                        xml = result[0]
+                        xml = result
                         # reorder sensor threshold entries
                         sth_dict = {}
-                        for sth in result[1]
-                            if sth.mv_value_entry not of sth_dict
-                                sth_dict[sth.mv_value_entry] = []
-                            if not sth.create_user
-                                sth.create_user = $scope.user.idx
-                            sth_dict[sth.mv_value_entry].push(sth)
+
+                        #for sth in result[1]
+                        #    if sth.mv_value_entry not of sth_dict
+                        #        sth_dict[sth.mv_value_entry] = []
+                        #    if not sth.create_user
+                        #        sth.create_user = $scope.user.idx
+                        #    sth_dict[sth.mv_value_entry].push(sth)
                         $scope.is_drawing = false
                         graph_list = []
                         # graph matrix
@@ -509,7 +619,14 @@ angular.module(
                                 #            if _idx of entry._idx_list
                                 #                console.log entry
                                 #)
-                                cur_graph = new DisplayGraph(num_graph, graph, $scope.sensor_action_list, $scope.user_list, $scope.selection_list, sth_dict)
+                                cur_graph = new DisplayGraph(
+                                    num_graph
+                                    graph
+                                    $scope.struct.sensor_action_tree
+                                    $scope.struct.user_group_tree
+                                    $scope.struct.selection_list
+                                    sth_dict
+                                )
                                 graph_mat[graph_key][dev_key] = cur_graph
                                 graph_list.push(cur_graph)
                         $scope.graph_mat = graph_mat
@@ -580,7 +697,12 @@ angular.module(
             if entry.num_sensors
                 span.addClass("fa fa-arrows-v")
 
-]).directive("icswRrdGraphList", ["$templateCache", "$compile", ($templateCache, $compile) ->
+]).directive("icswRrdGraphList",
+[
+    "$templateCache", "$compile",
+(
+    $templateCache, $compile
+) ->
     return {
         restrict: "E"
         replace: true
@@ -597,7 +719,12 @@ angular.module(
             scope.get_graph_keys = () ->
                 return (key for key of scope.graphMatrix)
     }
-]).directive("icswRrdGraphThreshold", ["$templateCache", ($templateCache) ->
+]).directive("icswRrdGraphThreshold",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
     return {
         restrict: "AE"
         template: $templateCache.get("icsw.rrd.graph.threshold.overview")
@@ -633,7 +760,14 @@ angular.module(
                     return "---"
 
     }
-]).service("icswRrdSensorDialogService", ["$q", "$compile", "$templateCache", "Restangular", "ICSW_URLS", "icswToolsSimpleModalService", "$timeout", "icswUserService", "icswSimpleAjaxCall", ($q, $compile, $templateCache, Restangular, ICSW_URLS, icswToolsSimpleModalService, $timeout, icswUserService, icswSimpleAjaxCall) ->
+]).service("icswRrdSensorDialogService",
+[
+    "$q", "$compile", "$templateCache", "Restangular", "ICSW_URLS",
+    "icswToolsSimpleModalService", "$timeout", "icswUserService", "icswSimpleAjaxCall",
+(
+    $q, $compile, $templateCache, Restangular, ICSW_URLS,
+    icswToolsSimpleModalService, $timeout, icswUserService, icswSimpleAjaxCall
+) ->
     th_dialog = (create, cur_scope, sensor, threshold, title) ->
         th_scope = cur_scope.$new()
         th_scope.sensor = sensor
@@ -768,7 +902,7 @@ angular.module(
             th_dialog(false, sub_scope, sensor, threshold, "Modify threshold")
         sub_scope.create_new_threshold = (sensor) ->
             _mv = sensor.mean_value
-            non_action = (entry for entry in graph.sensor_action_list when entry.action == "none")[0]
+            non_action = (entry for entry in graph.sensor_action_tree.list when entry.action == "none")[0]
             threshold = {
                 "name": "Threshold for #{sensor.mv_key}"
                 "lower_value": _mv - _mv / 10
@@ -807,7 +941,12 @@ angular.module(
                 },
             ]
         return d.promise
-]).directive("icswRrdGraphListGraph", ["$templateCache", "$compile", "icswRrdSensorDialogService", ($templateCache, $compile, icswRrdSensorDialogService) ->
+]).directive("icswRrdGraphListGraph",
+[
+    "$templateCache", "$compile", "icswRrdSensorDialogService",
+(
+    $templateCache, $compile, icswRrdSensorDialogService
+) ->
     return {
         restrict: "E"
         replace: true
