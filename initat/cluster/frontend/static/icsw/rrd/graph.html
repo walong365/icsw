@@ -31,15 +31,15 @@
     <div class="row">
         <div class="col-md-3" ng-show="struct.show_tree">
             <div class="input-group">
-                <input type="text" class="form-control" ng-disabled="struct.error_string.length" ng-model="vals.searchstr" placeholder="search ..." ng-change="update_search()"/>
+                <input type="text" class="form-control" ng-disabled="struct.error_string.length" ng-model="struct.searchstr" placeholder="search ..." ng-change="update_search()"/>
                 <span class="input-group-btn">
-                    <button class="btn btn-success" ng-show="cur_selected.length && timeframe.valid" type="button" ladda="is_drawing" ng-click="draw_graph()">
+                    <button class="btn btn-success" ng-show="cur_selected.length && timeframe.valid" type="button" ladda="struct.is_drawing" ng-click="draw_graph()">
                         <span title="draw graph(s)" class="glyphicon glyphicon-pencil"></span>
                     </button>
-                    <button class="btn btn-warning" ng-show="cur_selected.length && timeframe.valid" type="button" ladda="is_drawing" ng-click="clear_selection()">
+                    <button class="btn btn-warning" ng-show="cur_selected.length && timeframe.valid" type="button" ladda="struct.is_drawing" ng-click="clear_selection()">
                         <span title="clear selection" class="fa fa-remove"></span>
                     </button>
-                    <button class="btn btn-warning" type="button" ladda="is_drawing" ng-click="select_with_sensor()">
+                    <button class="btn btn-warning" type="button" ladda="struct.is_drawing" ng-click="select_with_sensor()">
                         <span title="select all with sensors" class="fa fa-wrench"></span>
                     </button>
                 </span>
@@ -47,13 +47,23 @@
             <tree treeconfig="struct.g_tree"></tree>
         </div>
         <div ng-class="struct.show_tree && 'col-md-9' || 'col-md-12'" ng-show="graph_list.length">
-            <icsw-rrd-graph-list graph-list="graph_list" graph-matrix="graph_mat"><h4>ddd</h4></icsw-rrd-graph-list>
+            <icsw-rrd-graph-list graph-list="graph_list" graph-matrix="graph_mat"></icsw-rrd-graph-list>
         </div>
     </div>
 </script>
 
+<script type="text/ng-template" id="icsw.rrd.graph.list.graph">
+    <div>
+        <span ng-show="graph.cropped && graph.active">cropped timerange: {{ graph.get_tv(graph.cts_start_mom) }} to {{ graph.get_tv(graph.cts_end_mom) }}
+            <input type="button" class="btn btn-xs btn-warning" value="apply" ng-click="use_crop(graph)"/>
+        </span>
+    </div>
+</script>
+
 <script type="text/ng-template" id="icsw.rrd.graph.list.header">
-    <h2>{{ graphList.length }} graphs, {{ graphList[0].get_tv(graphList[0].ts_start_mom) }} to {{ graphList[0].get_tv(graphList[0].ts_end_mom) }}</h2>
+    <h2>
+        {{ graphList.length }} graphs, {{ graphList[0].get_tv(graphList[0].ts_start_mom) }} to {{ graphList[0].get_tv(graphList[0].ts_end_mom) }}
+    </h2>
     <table class="table-condensed">
         <tr ng-repeat="gkey in get_graph_keys()">
             <td ng-repeat="(dkey, graph) in graphMatrix[gkey]" style="vertical-align:top;">
@@ -73,14 +83,6 @@
         <ng-pluralize count="graph.num_devices" when="{'one' : '1 device', 'other' : '{} devices'}"></ng-pluralize>: {{ graph.get_devices() }}
         <input type="button" class="btn btn-xs btn-primary" ng-show="graph.src && graph.num_sensors" value="Sensors" ng-click="modify_sensors()"/>
     </h4>
-</script>
-
-<script type="text/ng-template" id="icsw.rrd.graph.list.graph">
-    <div>
-        <span ng-show="graph.cropped && graph.active">cropped timerange: {{ graph.get_tv(graph.cts_start_mom) }} to {{ graph.get_tv(graph.cts_end_mom) }}
-            <input type="button" class="btn btn-xs btn-warning" value="apply" ng-click="use_crop(graph)"/>
-        </span>
-    </div>
 </script>
 
 <script type="text/ng-template" id="icsw.rrd.graph.sensor">

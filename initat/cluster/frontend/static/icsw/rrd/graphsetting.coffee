@@ -30,12 +30,13 @@ angular.module(
     $q, icswCachingCall, ICSW_URLS, icswUserService, Restangular
 ) ->
     class icswRRDGraphBaseSetting
-        constructor: (size_list, timeshift_list, forecast_list, timeframe_list) ->
+        constructor: (size_list, timeshift_list, forecast_list, timeframe_list, sensor_action_list) ->
             @size_list = []
             @timeshift_list = []
             @forecast_list = []
             @timeframe_list = []
-            @update(size_list, timeshift_list, forecast_list, timeframe_list)
+            @sensor_action_list = []
+            @update(size_list, timeshift_list, forecast_list, timeframe_list, sensor_action_list)
             @legend_mode_list = [
                 {"short": "f", "long": "full"}
                 {"short": "t", "long": "only text"}
@@ -52,9 +53,10 @@ angular.module(
                 {"short": "MAX", long: "maximum"}
             ]
 
-        update: (size_list, timeshift_list, forecast_list, timeframe_list) =>
+        update: (size_list, timeshift_list, forecast_list, timeframe_list, sensor_action_list) =>
             for [attr_name, in_list] in [["size_list", size_list], ["timeshift_list", timeshift_list],
-            ["forecast_list", forecast_list], ["timeframe_list", timeframe_list]]
+            ["forecast_list", forecast_list], ["timeframe_list", timeframe_list],
+            ["sensor_action_list", sensor_action_list]]
                 @[attr_name].length = 0
                 for entry in in_list
                     @[attr_name].push(entry)
@@ -74,6 +76,7 @@ angular.module(
             @timeshift_lut = _.keyBy(@timeshift_list, "idx")
             @forecast_lut = _.keyBy(@forecast_list, "idx")
             @timeframe_lut = _.keyBy(@timeframe_list, "idx")
+            @sensor_action_lut = _.keyBy(@sensor_action_list, "idx")
             @link()
 
         link: () =>
@@ -94,6 +97,7 @@ angular.module(
         [ICSW_URLS.REST_GRAPH_SETTING_TIMESHIFT_LIST, {}]
         [ICSW_URLS.REST_GRAPH_SETTING_FORECAST_LIST, {}]
         [ICSW_URLS.REST_GRAPH_TIME_FRAME_LIST, {}]
+        [ICSW_URLS.REST_SENSOR_ACTION_LIST, {}]
     ]
     _fetch_dict = {}
     _result = undefined
@@ -107,7 +111,7 @@ angular.module(
         $q.all(_wait_list).then(
             (data) ->
                 console.log "*** graphbasesetting loaded ***"
-                _result = new icswRRDGraphBaseSetting(data[0], data[1], data[2], data[3])
+                _result = new icswRRDGraphBaseSetting(data[0], data[1], data[2], data[3], data[4])
                 _defer.resolve(_result)
                 for client of _fetch_dict
                     # resolve clients
