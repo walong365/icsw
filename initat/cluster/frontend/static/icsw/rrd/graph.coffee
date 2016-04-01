@@ -18,114 +18,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-class Sensor
-    constructor: (@graph, @xml, sth_dict) ->
-        @mvs_id = parseInt(@xml.attr("db_key").split(".")[0])
-        @mvv_id = parseInt(@xml.attr("db_key").split(".")[1])
-        @device_id = parseInt(@xml.attr("device"))
-        @mv_key = @xml.attr("mv_key")
-        @cfs = {}
-        _value = 0.0
-        _num_value = 0
-        if not parseInt(@xml.attr("nan"))
-            for _cf in @xml.find("cfs cf")
-                _cf = $(_cf)
-                @cfs[_cf.attr("cf")] = _cf.text()
-                if _cf.attr("cf") != "TOTAL"
-                    _value += parseFloat(_cf.text())
-                    _num_value++
-        @cf_list = _.keys(@cfs).sort()
-        if _num_value
-            @mean_value = _value / _num_value
-        else
-            @mean_value = 0.0
-        # create default threshold
-        @thresholds = []
-        if @mvv_id of sth_dict
-            for _entry in sth_dict[@mvv_id]
-                @thresholds.push(_entry)
-
-
-class DisplayGraph
-    constructor: (@num, @xml, @user_settings, @user_group_tree, @selection_list, @device_tree) ->
-        @active = true
-        @error = false
-        @src = @xml.attr("href") or ""
-        @num_devices = @xml.find("devices device").length
-        @value_min = parseFloat(@xml.attr("value_min"))
-        @value_max = parseFloat(@xml.attr("value_max"))
-        # complete graphic
-        @img_width = parseInt(@xml.attr("image_width"))
-        @img_height = parseInt(@xml.attr("imageheight"))
-        # relevant part, coordinates in pixel
-        @gfx_width = parseInt(@xml.attr("graph_width"))
-        @gfx_height = parseInt(@xml.attr("graph_height"))
-        @gfx_left = parseInt(@xml.attr("graph_left"))
-        @gfx_top = parseInt(@xml.attr("graph_top"))
-        # timescale
-        @ts_start = parseInt(@xml.attr("graph_start"))
-        @ts_end = parseInt(@xml.attr("graph_end"))
-        @ts_start_mom = moment.unix(@ts_start)
-        @ts_end_mom = moment.unix(@ts_end)
-        @cropped = false
-        @removed_keys = []
-
-        full_draw_key = (s_key, v_key) ->
-            _key = s_key
-            if v_key
-                _key = "#{_key}.#{v_key}"
-            return _key
-
-        for entry in @xml.find("removed_keys removed_key")
-            @removed_keys.push(full_draw_key($(entry).attr("struct_key"), $(entry).attr("value_key")))
-
-        # build list of values for which we can createa sensor (== full db_key needed)
-        # number of (als possible) sensors
-        @num_sensors = 0
-        @sensors = []
-        for gv in @xml.find("graph_values graph_value")
-            if $(gv).attr("db_key").match(/\d+\.\d+/)
-                # only a valid sensor when the db-idx has a device (no compound displays)
-                @num_sensors++
-                @sensors.push(new Sensor(@, $(gv), @user_settings.threshold_lut_by_mvv_id))
-                console.log @sensors, gv
-        @sensors = _.sortBy(@sensors, (sensor) -> return sensor.mv_key)
-    get_sensor_info: () ->
-        return "#{@num_sensors} sensor sources"
-    get_threshold_info: () ->
-        _num_th = 0
-        for _sensor in @sensors
-            _num_th += _sensor.thresholds.length
-        return "#{_num_th} Thresholds"
-    get_devices: () ->
-        dev_names = ($(entry).text() for entry in @xml.find("devices device"))
-        return dev_names.join(", ")
-    get_tv: (val) ->
-        if val
-            return val.format(DT_FORM)
-        else
-            return "???"
-    get_removed_keys: () ->
-        return @removed_keys.join(", ")
-
-    set_crop: (sel) ->
-        @cropped = true
-        ts_range = @ts_end - @ts_start
-        new_start = @ts_start + parseInt((sel.x - @gfx_left) * ts_range / @gfx_width)
-        new_end = @ts_start + parseInt((sel.x2 - @gfx_left) * ts_range / @gfx_width)
-        @crop_width = parseInt((sel.x2 - sel.x) * ts_range / @gfx_width)
-        @cts_start_mom = moment.unix(new_start)
-        @cts_end_mom = moment.unix(new_end)
-    clear_crop: () ->
-        @cropped = false
-    get_expand_class: () ->
-        if @active
-            return "glyphicon glyphicon-chevron-down"
-        else
-            return "glyphicon glyphicon-chevron-right"
-    toggle_expand: () ->
-        @active = !@active
-      
 DT_FORM = "YYYY-MM-DD HH:mm ZZ"
 
 angular.module(
@@ -148,19 +40,143 @@ angular.module(
                     ordering: 40
         }
     )
+]).service("icswRRDSensor", [()->
+
+    class icswRRDSensor
+        constructor: (@graph, @xml, sth_dict) ->
+            @mvs_id = parseInt(@xml.attr("db_key").split(".")[0])
+            @mvv_id = parseInt(@xml.attr("db_key").split(".")[1])
+            @device_id = parseInt(@xml.attr("device"))
+            @mv_key = @xml.attr("mv_key")
+            @cfs = {}
+            _value = 0.0
+            _num_value = 0
+            if not parseInt(@xml.attr("nan"))
+                for _cf in @xml.find("cfs cf")
+                    _cf = $(_cf)
+                    @cfs[_cf.attr("cf")] = _cf.text()
+                    if _cf.attr("cf") != "TOTAL"
+                        _value += parseFloat(_cf.text())
+                        _num_value++
+            @cf_list = _.keys(@cfs).sort()
+            if _num_value
+                @mean_value = _value / _num_value
+            else
+                @mean_value = 0.0
+            # create default threshold
+            @thresholds = []
+            if @mvv_id of sth_dict
+                for _entry in sth_dict[@mvv_id]
+                    @thresholds.push(_entry)
+
+]).service("icswRRDDisplayGraph",
+[
+    "icswRRDSensor",
+(
+    icswRRDSensor,
+) ->
+
+    class icswRRDDisplayGraph
+        constructor: (@num, @xml, @user_settings, @user_group_tree, @selection_list, @device_tree) ->
+            @active = true
+            @error = false
+            @src = @xml.attr("href") or ""
+            @num_devices = @xml.find("devices device").length
+            @value_min = parseFloat(@xml.attr("value_min"))
+            @value_max = parseFloat(@xml.attr("value_max"))
+            # complete graphic
+            @img_width = parseInt(@xml.attr("image_width"))
+            @img_height = parseInt(@xml.attr("imageheight"))
+            # relevant part, coordinates in pixel
+            @gfx_width = parseInt(@xml.attr("graph_width"))
+            @gfx_height = parseInt(@xml.attr("graph_height"))
+            @gfx_left = parseInt(@xml.attr("graph_left"))
+            @gfx_top = parseInt(@xml.attr("graph_top"))
+            # timescale
+            @ts_start = parseInt(@xml.attr("graph_start"))
+            @ts_end = parseInt(@xml.attr("graph_end"))
+            @ts_start_mom = moment.unix(@ts_start)
+            @ts_end_mom = moment.unix(@ts_end)
+            @cropped = false
+            @removed_keys = []
+
+            full_draw_key = (s_key, v_key) ->
+                _key = s_key
+                if v_key
+                    _key = "#{_key}.#{v_key}"
+                return _key
+
+            for entry in @xml.find("removed_keys removed_key")
+                @removed_keys.push(full_draw_key($(entry).attr("struct_key"), $(entry).attr("value_key")))
+
+            # build list of values for which we can createa sensor (== full db_key needed)
+            # number of (als possible) sensors
+            @num_sensors = 0
+            @sensors = []
+            for gv in @xml.find("graph_values graph_value")
+                if $(gv).attr("db_key").match(/\d+\.\d+/)
+                    # only a valid sensor when the db-idx has a device (no compound displays)
+                    @num_sensors++
+                    @sensors.push(new icswRRDSensor(@, $(gv), @user_settings.threshold_lut_by_mvv_id))
+                    console.log @sensors, gv
+            @sensors = _.sortBy(@sensors, (sensor) -> return sensor.mv_key)
+
+        get_sensor_info: () ->
+            return "#{@num_sensors} sensor sources"
+
+        get_threshold_info: () ->
+            _num_th = 0
+            for _sensor in @sensors
+                _num_th += _sensor.thresholds.length
+            return "#{_num_th} Thresholds"
+
+        get_devices: () ->
+            dev_names = ($(entry).text() for entry in @xml.find("devices device"))
+            return dev_names.join(", ")
+
+        get_tv: (val) ->
+            if val
+                return val.format(DT_FORM)
+            else
+                return "???"
+
+        get_removed_keys: () ->
+            return @removed_keys.join(", ")
+
+        set_crop: (sel) ->
+            @cropped = true
+            ts_range = @ts_end - @ts_start
+            new_start = @ts_start + parseInt((sel.x - @gfx_left) * ts_range / @gfx_width)
+            new_end = @ts_start + parseInt((sel.x2 - @gfx_left) * ts_range / @gfx_width)
+            @crop_width = parseInt((sel.x2 - sel.x) * ts_range / @gfx_width)
+            @cts_start_mom = moment.unix(new_start)
+            @cts_end_mom = moment.unix(new_end)
+
+        clear_crop: () ->
+            @cropped = false
+
+        get_expand_class: () ->
+            if @active
+                return "glyphicon glyphicon-chevron-down"
+            else
+                return "glyphicon glyphicon-chevron-right"
+
+        toggle_expand: () ->
+            @active = !@active
+
 ]).controller("icswGraphOverviewCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular",
     "$q", "$uibModal", "$timeout", "ICSW_URLS", "icswRRDGraphTree", "icswSimpleAjaxCall",
     "icswParseXMLResponseService", "toaster", "icswCachingCall", "icswUserService",
     "icswSavedSelectionService", "icswRRDGraphUserSettingService", "icswDeviceTreeService",
-    "icswUserGroupTreeService", "icswDeviceTreeHelperService",
+    "icswUserGroupTreeService", "icswDeviceTreeHelperService", "icswRRDDisplayGraph",
 (
     $scope, $compile, $filter, $templateCache, Restangular,
     $q, $uibModal, $timeout, ICSW_URLS, icswRRDGraphTree, icswSimpleAjaxCall,
     icswParseXMLResponseService, toaster, icswCachingCall, icswUserService,
     icswSavedSelectionService, icswRRDGraphUserSettingService, icswDeviceTreeService,
-    icswUserGroupTreeService,  icswDeviceTreeHelperService,
+    icswUserGroupTreeService,  icswDeviceTreeHelperService, icswRRDDisplayGraph,
 ) ->
         moment().utc()
         $scope.timeframe = undefined
@@ -539,7 +555,7 @@ angular.module(
                                 if !(graph_key of graph_mat)
                                     graph_mat[graph_key] = {}
                                 num_graph++
-                                cur_graph = new DisplayGraph(
+                                cur_graph = new icswRRDDisplayGraph(
                                     num_graph
                                     graph
                                     $scope.struct.user_settings,

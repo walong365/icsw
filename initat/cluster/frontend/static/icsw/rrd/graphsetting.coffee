@@ -286,7 +286,6 @@ angular.module(
             )
             return d.promise
 
-
 ]).service("icswRRDGraphUserSettingService",
 [
     "$q", "icswCachingCall", "ICSW_URLS", "icswUserService", "Restangular",
