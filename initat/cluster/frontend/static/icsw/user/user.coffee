@@ -167,13 +167,10 @@ user_module = angular.module(
 ) ->
     rest_map = [
         [
-            ICSW_URLS.REST_GROUP_LIST
-            {
-            }
+            ICSW_URLS.REST_USER_LIST, {}
         ]
         [
-            ICSW_URLS.REST_USER_LIST
-            {}
+            ICSW_URLS.REST_GROUP_LIST, {}
         ]
     ]
     _fetch_dict = {}

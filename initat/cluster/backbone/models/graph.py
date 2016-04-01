@@ -273,7 +273,7 @@ class SensorThreshold(models.Model):
     lower_enabled = models.BooleanField(default=True)
     upper_enabled = models.BooleanField(default=True)
     # which users to notify
-    notify_users = models.ManyToManyField("user")
+    notify_users = models.ManyToManyField("user", blank=True)
     # creating user
     create_user = models.ForeignKey("user", null=True, blank=True, related_name="sensor_threshold_create_user")
     # device selection

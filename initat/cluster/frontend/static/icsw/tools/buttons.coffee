@@ -144,8 +144,31 @@ angular.module(
             scope.change_value = ($event) ->
                 scope.flag = !scope.flag
                 $event.preventDefault()
+
             scope.get_value = () ->
                 return if scope.flag then "yes" else "no"
+
+            scope.get_class = () ->
+                return if scope.flag then "btn-success" else "btn-default"
+    }
+]).directive("icswToolsYesNoSmall", [() ->
+    return {
+        restict: "EA"
+        template: """
+<button class="btn btn-xs" ng-class="get_class()" style="width:50px;" ng-click="change_value($event)">{{ get_value() }}</button>
+"""
+        scope:
+            flag: "="
+        link: (scope, element, attrs) ->
+            scope.change_value = ($event) ->
+                if not attrs.ngClick?
+                    # ngClick not defined in attributes
+                    scope.flag = !scope.flag
+                $event.preventDefault()
+
+            scope.get_value = () ->
+                return if scope.flag then "yes" else "no"
+
             scope.get_class = () ->
                 return if scope.flag then "btn-success" else "btn-default"
     }

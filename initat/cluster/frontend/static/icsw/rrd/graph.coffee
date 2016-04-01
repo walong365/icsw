@@ -47,7 +47,7 @@ class Sensor
 
 
 class DisplayGraph
-    constructor: (@num, @xml, @user_settings, @user_group_tree, @selection_list, sth_dict) ->
+    constructor: (@num, @xml, @user_settings, @user_group_tree, @selection_list, @device_tree) ->
         @active = true
         @error = false
         @src = @xml.attr("href") or ""
@@ -69,8 +69,16 @@ class DisplayGraph
         @ts_end_mom = moment.unix(@ts_end)
         @cropped = false
         @removed_keys = []
+
+        full_draw_key = (s_key, v_key) ->
+            _key = s_key
+            if v_key
+                _key = "#{_key}.#{v_key}"
+            return _key
+
         for entry in @xml.find("removed_keys removed_key")
             @removed_keys.push(full_draw_key($(entry).attr("struct_key"), $(entry).attr("value_key")))
+
         # build list of values for which we can createa sensor (== full db_key needed)
         # number of (als possible) sensors
         @num_sensors = 0
@@ -79,7 +87,8 @@ class DisplayGraph
             if $(gv).attr("db_key").match(/\d+\.\d+/)
                 # only a valid sensor when the db-idx has a device (no compound displays)
                 @num_sensors++
-                @sensors.push(new Sensor(@, $(gv), sth_dict))
+                @sensors.push(new Sensor(@, $(gv), @user_settings.threshold_lut_by_mvv_id))
+                console.log @sensors, gv
         @sensors = _.sortBy(@sensors, (sensor) -> return sensor.mv_key)
     get_sensor_info: () ->
         return "#{@num_sensors} sensor sources"
@@ -119,20 +128,6 @@ class DisplayGraph
       
 DT_FORM = "YYYY-MM-DD HH:mm ZZ"
 
-full_draw_key = (s_key, v_key) ->
-    _key = s_key
-    if v_key
-        _key = "#{_key}.#{v_key}"
-    return _key
-
-get_node_keys = (node) ->
-    # mapping for graph.py
-    return {
-        "struct_key": node._key_pair[0]
-        "value_key": node._key_pair[1]
-        "build_info": node.build_info
-    }
-
 angular.module(
     "icsw.rrd.graph",
     [
@@ -156,13 +151,13 @@ angular.module(
 ]).controller("icswGraphOverviewCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular",
-    "$q", "$uibModal", "$timeout", "ICSW_URLS", "icswRRDGraphTreeService", "icswSimpleAjaxCall",
+    "$q", "$uibModal", "$timeout", "ICSW_URLS", "icswRRDGraphTree", "icswSimpleAjaxCall",
     "icswParseXMLResponseService", "toaster", "icswCachingCall", "icswUserService",
     "icswSavedSelectionService", "icswRRDGraphUserSettingService", "icswDeviceTreeService",
     "icswUserGroupTreeService", "icswDeviceTreeHelperService",
 (
     $scope, $compile, $filter, $templateCache, Restangular,
-    $q, $uibModal, $timeout, ICSW_URLS, icswRRDGraphTreeService, icswSimpleAjaxCall,
+    $q, $uibModal, $timeout, ICSW_URLS, icswRRDGraphTree, icswSimpleAjaxCall,
     icswParseXMLResponseService, toaster, icswCachingCall, icswUserService,
     icswSavedSelectionService, icswRRDGraphUserSettingService, icswDeviceTreeService,
     icswUserGroupTreeService,  icswDeviceTreeHelperService,
@@ -194,7 +189,7 @@ angular.module(
             # helper server
             dt_helper: undefined
             # draw tree
-            g_tree: new icswRRDGraphTreeService($scope)
+            g_tree: new icswRRDGraphTree($scope)
             # user / group tree
             user_group_tree: undefined
             # user settings (RRDGraphUserSetting)
@@ -496,6 +491,14 @@ angular.module(
         )
 
         $scope.draw_graph = () =>
+            get_node_keys = (node) ->
+                # mapping for graph.py
+                return {
+                    "struct_key": node._key_pair[0]
+                    "value_key": node._key_pair[1]
+                    "build_info": node.build_info
+                }
+
             if !$scope.struct.is_drawing
                 $scope.struct.is_drawing = true
                 $scope.struct.error_string = "Drawing graphs"
@@ -521,7 +524,6 @@ angular.module(
                     (result) ->
                         xml = result
                         # reorder sensor threshold entries
-                        sth_dict = {}
 
                         $scope.struct.is_drawing = false
                         $scope.struct.error_string = ""
@@ -543,7 +545,7 @@ angular.module(
                                     $scope.struct.user_settings,
                                     $scope.struct.user_group_tree
                                     $scope.struct.selection_list
-                                    sth_dict
+                                    $scope.struct.device_tree
                                 )
                                 graph_mat[graph_key][dev_key] = cur_graph
                                 graph_list.push(cur_graph)
@@ -572,8 +574,8 @@ angular.module(
             scope.draw_on_init = attrs["draw"] ? false
         controller: "icswGraphOverviewCtrl"
     }
-]).service("icswRRDGraphTreeService", ["icswTreeConfig", (icswTreeConfig) ->
-    class rrd_tree extends icswTreeConfig
+]).service("icswRRDGraphTree", ["icswTreeConfig", (icswTreeConfig) ->
+    class icswRRDGraphTree extends icswTreeConfig
         constructor: (@scope, args) ->
             super(args)
             @show_selection_buttons = true
@@ -749,30 +751,33 @@ angular.module(
         restrict: "AE"
         template: $templateCache.get("icsw.rrd.graph.threshold.overview")
         link: (scope, el, attr) ->
-            scope.get_enabled = (type) ->
-                return if scope.threshold["#{type}_enabled"] then "enabled" else "disabled"
-            scope.toggle_enabled = (sensor, threshold, type) ->
+            scope.toggle_enabled = (type) ->
                 scope.threshold["#{type}_enabled"] = !scope.threshold["#{type}_enabled"]
                 scope.threshold.save()
-            scope.get_lower_sensor_action_name = () ->
-                if scope.threshold.lower_sensor_action
-                    return scope.sensor.graph.sensor_action_lut[scope.threshold.lower_sensor_action].name
+
+            scope.toggle_mail = (type) ->
+                scope.threshold["#{type}_mail"] = !scope.threshold["#{type}_mail"]
+                scope.threshold.save()
+
+            scope.get_enabled = (type) ->
+                return if scope.threshold["#{type}_enabled"] then "enabled" else "disabled"
+
+            scope.get_sensor_action_name = (type) ->
+                _act = scope.threshold["#{type}_sensor_action"]
+                if _act?
+                    return scope.sensor.graph.user_settings.base.sensor_action_lut[_act].name
                 else
                     return "---"
-            scope.get_upper_sensor_action_name = () ->
-                if scope.threshold.upper_sensor_action
-                    return scope.sensor.graph.sensor_action_lut[scope.threshold.upper_sensor_action].name
-                else
-                    return "---"
+
             scope.resolve_user = () ->
                 if scope.threshold.create_user
-                    return scope.sensor.graph.user_lut[scope.threshold.create_user].login
+                    return scope.sensor.graph.user_group_tree.user_lut[scope.threshold.create_user].login
                 else
                     return "---"
-            scope.get_lower_email = () ->
-                return if scope.threshold.lower_mail then "send email" else "no email"
-            scope.get_upper_email = () ->
-                return if scope.threshold.upper_mail then "send email" else "no email"
+
+            scope.get_email = (type) ->
+                return if scope.threshold["#{type}_mail"] then "send email" else "no email"
+
             scope.get_device_selection_info = () ->
                 if scope.threshold.device_selection
                     return (entry.info for entry in scope.sensor.graph.selection_list when entry.idx == scope.threshold.device_selection)[0]
@@ -794,10 +799,11 @@ angular.module(
         sub_scope = scope.$new()
 
         sub_scope.delete_threshold = (sensor, th) ->
-            icswToolsSimpleModalService("Really delete Threshold ?").then(
+            icswToolsSimpleModalService("Really delete Threshold '#{th.name}' ?").then(
                 (res) ->
-                    th.remove()
-                    sensor.thresholds = (entry for entry in sensor.thresholds when entry.idx != th.idx)
+                    sensor.graph.user_settings.remove_threshold_entry(sensor, th).then(
+                        (done) ->
+                    )
             )
 
         sub_scope.trigger_threshold = (sensor, th, lu_switch) ->
@@ -820,47 +826,11 @@ angular.module(
             )
 
         sub_scope.modify_threshold = (sensor, threshold) ->
-            if threshold.lower_sensor_action
-                threshold.lower_sensor_action_obj = graph.sensor_action_lut[threshold.lower_sensor_action]
-            else
-                threshold.lower_sensor_action_obj = undefined
-            if threshold.upper_sensor_action
-                threshold.upper_sensor_action_obj = graph.sensor_action_lut[threshold.upper_sensor_action]
-            else
-                threshold.upper_sensor_action_obj = undefined
-            if threshold.device_selection
-                threshold.device_selection_obj = (entry for entry in graph.selection_list when entry.idx == threshold.device_selection)[0]
-            else
-                threshold.device_selection_obj = undefined
-            if threshold.notify_users
-                threshold.notify_users_obj = (_user for _user in graph.user_list when _user.idx in threshold.notify_users)
-            else
-                threshold.notify_users_obj = []
-            if threshold.create_user
-                threshold.create_user_obj = graph.user_lut[threshold.create_user]
-            else
-                threshold.create_user_obj = undefined
-            icswRRDThresholdDialogService(false, sub_scope, sensor, threshold, "Modify threshold")
+            icswRRDThresholdDialogService(false, sub_scope, sensor, threshold)
 
         sub_scope.create_new_threshold = (sensor) ->
-            _mv = sensor.mean_value
-            none_action = (entry for entry in graph.user_settings.base.sensor_action_list when entry.action == "none")[0]
-            threshold = {
-                "name": "Threshold for #{sensor.mv_key}"
-                "lower_value": _mv - _mv / 10
-                "upper_value": _mv + _mv / 10
-                "lower_mail": true
-                "upper_mail": true
-                "lower_enabled": false
-                "upper_enabled": false
-                "notify_users": []
-                "create_user": icswUserService.get().idx
-                "create_user_obj": icswUserService.get()
-                "lower_sensor_action_obj": none_action
-                "upper_sensor_action_obj": none_action
-                "device_selection": undefined
-            }
-            icswRRDThresholdDialogService(true, sub_scope, sensor, threshold, "Create new threshold")
+            threshold = sensor.graph.user_settings.get_new_threshold(sensor)
+            icswRRDThresholdDialogService(true, sub_scope, sensor, threshold)
 
         sub_scope.graph = graph
 
@@ -869,6 +839,8 @@ angular.module(
             {
                 message: $compile($templateCache.get("icsw.rrd.graph.sensor"))(sub_scope)
                 title: "Modify / Create Sensors (" + graph.get_sensor_info() + ", " + graph.get_threshold_info() + ")"
+                css_class: "modal-wide"
+                ok_label: "Close"
                 ok_callback: (modal) ->
                     d = $q.defer()
                     d.resolve("done")
@@ -890,10 +862,16 @@ angular.module(
     icswToolsSimpleModalService, $timeout, icswUserService, icswSimpleAjaxCall,
     icswComplexModalService,
 ) ->
-    return (create, scope, sensor, threshold, title) ->
+    return (create, scope, sensor, threshold) ->
+        user_settings = sensor.graph.user_settings
         th_scope = scope.$new()
         th_scope.sensor = sensor
         th_scope.threshold = threshold
+        console.log "args:", create, sensor, threshold
+        if create
+            title = "Create new Threshold"
+        else
+            title = "Modify Threshold"
         th_scope.check_upper_lower = () ->
             if th_scope.change_cu_to
                 $timeout.cancel(th_scope.change_cu_to)
@@ -907,34 +885,20 @@ angular.module(
             )
         th_scope.lookup_action = (idx) ->
             console.log "la", idx
-        threshold_object_to_idx = (th_obj) ->
-            if th_obj.lower_sensor_action_obj
-                th_obj.lower_sensor_action = th_obj.lower_sensor_action_obj.idx
-            else
-                th_obj.lower_sensor_action = undefined
-            if th_obj.upper_sensor_action_obj
-                th_obj.upper_sensor_action = th_obj.upper_sensor_action_obj.idx
-            else
-                th_obj.upper_sensor_action = undefined
-            if th_obj.device_selection_obj
-                th_obj.device_selection = th_obj.device_selection_obj.idx
-            else
-                th_obj.device_selection = undefined
-            if th_obj.notify_users_obj
-                th_obj.notify_users = (_user.idx for _user in th_obj.notify_users_obj)
-            else
-                th_obj.notify_users = []
-            if th_obj.create_user_obj
-                th_obj.create_user = th_obj.create_user_obj.idx
-            else
-                th_obj.create_user = undefined
         icswComplexModalService(
             {
-                message: $compile($templateCache.get("icsw.rrd.graph.threshold.modify"))(th_scope)
+                message: $compile($templateCache.get("icsw.rrd.graph.threshold.form"))(th_scope)
                 title: title
+                ok_label: if create then "Create" else "Modify"
                 ok_callback: (modal) ->
                     d = $q.defer()
-                    d.resolve("done")
+                    if create
+                        user_settings.create_threshold_entry(sensor, th_scope.threshold).then(
+                            (created) ->
+                                d.resolve("done")
+                            (error) ->
+                                d.reject("no")
+                        )
                     return d.promise
                 cancel_callback: (modal) ->
                     d = $q.defer()
@@ -945,52 +909,6 @@ angular.module(
             (fin) ->
                 th_scope.$destroy()
         )
-        return
-        BootstrapDialog.show
-            message: thresh_div
-            draggable: true
-            title: title
-            closable: false
-            size: BootstrapDialog.SIZE_WIDE
-            cssClass: "modal-tall"
-            buttons: [
-                {
-                    icon: "glyphicon glyphicon-remove"
-                    label: "Cancel"
-                    cssClass: "btn-warning"
-                    action: (dialog) ->
-                        dialog.close()
-                        th_scope.$destroy()
-                },
-                {
-                    icon: "glyphicon glyphicon-ok"
-                    label: "OK"
-                    cssClass: "btn-success"
-                    action: (dialog) ->
-                        _th = th_scope.threshold
-                        threshold_object_to_idx(_th)
-                        _th.sensor = undefined
-                        if create
-                            _th.mv_value_entry = sensor.mvv_id
-                            Restangular.all(ICSW_URLS.REST_SENSOR_THRESHOLD_LIST.slice(1)).post(_th).then(
-                                (data) ->
-                                    # append new sensor to end of line
-                                    sensor.thresholds.push(data)
-                                    dialog.close()
-                                    th_scope.$destroy()
-                                (error) ->
-                                    _th.sensor = sensor
-                            )
-                        else
-                            _th.put().then(
-                                (data) ->
-                                    dialog.close()
-                                    th_scope.$destroy()
-                                (error) ->
-                                    _th.sensor = sensor
-                            )
-                },
-            ]
 ]).factory(
     "icswRRDVectorInfoFactory"
     [() ->

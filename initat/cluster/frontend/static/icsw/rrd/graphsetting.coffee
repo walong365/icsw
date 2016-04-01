@@ -111,7 +111,7 @@ angular.module(
         $q.all(_wait_list).then(
             (data) ->
                 console.log "*** graphbasesetting loaded ***"
-                _result = new icswRRDGraphBaseSetting(data[0], data[1], data[2], data[3], data[4])
+                _result = new icswRRDGraphBaseSetting(data[0], data[1], data[2], data[3], data[4], data[5])
                 _defer.resolve(_result)
                 for client of _fetch_dict
                     # resolve clients
@@ -147,15 +147,19 @@ angular.module(
     $q, icswCachingCall, ICSW_URLS, icswUserService, Restangular
 ) ->
     class icswRRDGraphUserSetting
-        constructor: (s_list, @base, @user) ->
+        constructor: (s_list, th_list, @base, @user) ->
             @list = []
+            @threshold_list = []
             @_active = undefined
-            @update(s_list)
+            @update(s_list, th_list)
 
-        update: (s_list) =>
+        update: (s_list, th_list) =>
             @list.length = 0
             for entry in s_list
                 @list.push(entry)
+            @threshold_list.length = 0
+            for entry in th_list
+                @threshold_list.push(entry)
             @build_luts()
             @ensure_active()
 
@@ -193,6 +197,14 @@ angular.module(
 
         build_luts: () =>
             @lut = _.keyBy(@list, "idx")
+            @threshold_lut = _.keyBy(@threshold_list, "idx")
+            _mv_lut = {}
+            for entry in @threshold_list
+                if entry.mv_value_entry not of _mv_lut
+                    _mv_lut[entry.mv_value_entry] = []
+                _mv_lut[entry.mv_value_entry].push(entry)
+            @threshold_lut_by_mvv_id = _mv_lut
+            console.log _mv_lut
 
         get_active: () =>
             return @_active
@@ -228,6 +240,53 @@ angular.module(
             )
             return defer.promise
 
+        get_new_threshold: (sensor) =>
+            _mv = sensor.mean_value
+            none_action = (entry for entry in @base.sensor_action_list when entry.action == "none")[0].idx
+            threshold = {
+                "name": "Threshold for #{sensor.mv_key}"
+                "lower_value": _mv - _mv / 10
+                "upper_value": _mv + _mv / 10
+                "lower_mail": true
+                "upper_mail": true
+                "lower_enabled": false
+                "upper_enabled": false
+                "notify_users": []
+                "create_user": @user.idx
+                "lower_sensor_action": none_action
+                "upper_sensor_action": none_action
+                "device_selection": undefined
+                "mv_value_entry": sensor.mvv_id
+            }
+            return threshold
+
+        create_threshold_entry: (sensor, threshold) =>
+            d = $q.defer()
+            Restangular.all(ICSW_URLS.REST_SENSOR_THRESHOLD_LIST.slice(1)).post(threshold).then(
+                (new_obj) =>
+                    @threshold_list.push(new_obj)
+                    @build_luts()
+                    sensor.thresholds.push(new_obj)
+                    d.resolve(new_obj)
+                (not_ok) =>
+                    d.reject("create error")
+            )
+            return d.promise
+
+        remove_threshold_entry: (sensor, threshold) =>
+            d = $q.defer()
+            threshold.remove().then(
+                (removed) =>
+                    _.remove(@threshold_list, (entry) -> return entry.idx == threshold.idx)
+                    _.remove(sensor.thresholds, (entry) -> return entry.idx == threshold.idx)
+                    @build_luts()
+                    d.resolve("deleted")
+                (not_rem) =>
+                    d.resolve("not deleted")
+            )
+            return d.promise
+
+
 ]).service("icswRRDGraphUserSettingService",
 [
     "$q", "icswCachingCall", "ICSW_URLS", "icswUserService", "Restangular",
@@ -238,6 +297,7 @@ angular.module(
 ) ->
     rest_map = [
         [ICSW_URLS.REST_GRAPH_SETTING_LIST, {}]
+        [ICSW_URLS.REST_SENSOR_THRESHOLD_LIST, {}]
     ]
     _fetch_dict = {}
     _result = undefined
@@ -253,7 +313,7 @@ angular.module(
         $q.all(_wait_list).then(
             (data) ->
                 console.log "*** graphusersetting loaded ***"
-                _result = new icswRRDGraphUserSetting((entry for entry in data[0] when entry.user == data[2].idx), data[1], data[2])
+                _result = new icswRRDGraphUserSetting((entry for entry in data[0] when entry.user == data[3].idx), data[1], data[2], data[3])
                 _result.ensure_active().then(
                     (_act) =>
                         _defer.resolve(_result)
