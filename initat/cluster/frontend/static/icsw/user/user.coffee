@@ -143,19 +143,230 @@ user_module = angular.module(
             # force user logout, also when a (valid) load_user request is pending
             force_logout()
     }
+]).service("icswUserGroupPermissionTree",
+[
+    "$q",
+(
+    $q,
+) ->
+    # permission list and objects
+    class icswUserGroupPermissionTree
+        constructor: (permission_list, object_list) ->
+            @permission_list = []
+            @object_list = []
+            @update(permission_list, object_list)
+        
+        update: (perm_list, obj_list) =>
+            @permission_list.length = 0
+            for entry in perm_list
+                @permission_list.push(entry)
+            @object_list.length = 0
+            for entry in obj_list
+                @object_list.push(entry)
+            @build_luts()
+        
+        build_luts: () =>
+            @permission_lut = _.keyBy(@permission_list, "idx")
+            @object_lut = _.keyBy(@object_list, "idx")
+            
+]).service("icswUserGroupPermissionTreeService",
+[
+    "$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall",
+    "icswTools", "icswUserGroupPermissionTree", "$rootScope", "ICSW_SIGNALS",
+(
+    $q, Restangular, ICSW_URLS, $window, icswCachingCall,
+    icswTools, icswUserGroupPermissionTree, $rootScope, ICSW_SIGNALS,
+) ->
+    rest_map = [
+        [
+            ICSW_URLS.REST_CSW_PERMISSION_LIST, {}
+        ]
+        [
+            ICSW_URLS.REST_CSW_OBJECT_LIST, {}
+        ]
+    ]
+    _fetch_dict = {}
+    _result = undefined
+    # load called
+    load_called = false
+
+    load_data = (client) ->
+        load_called = true
+        _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in rest_map)
+        _defer = $q.defer()
+        $q.all(_wait_list).then(
+            (data) ->
+                console.log "*** user/group permission tree loaded ***"
+                _result = new icswUserGroupPermissionTree(data[0], data[1])
+                _defer.resolve(_result)
+                for client of _fetch_dict
+                    # resolve clients
+                    _fetch_dict[client].resolve(_result)
+                # reset fetch_dict
+                _fetch_dict = {}
+        )
+        return _defer
+
+    fetch_data = (client) ->
+        if client not of _fetch_dict
+            # register client
+            _defer = $q.defer()
+            _fetch_dict[client] = _defer
+        if _result
+            # resolve immediately
+            _fetch_dict[client].resolve(_result)
+        return _fetch_dict[client]
+
+    return {
+        "load": (client) ->
+            if load_called
+                # fetch when data is present (after sidebar)
+                return fetch_data(client).promise
+            else
+                return load_data(client).promise
+    }
+]).service("icswUserGroupSettingsTree",
+[
+    "$q",
+(
+    $q,
+) ->
+    # various settings for users and group
+    class icswUserGroupSettingsTree
+        constructor: (
+            home_export_list,
+            quota_capable_blockdevice_list,
+            virtual_desktop_protocol_list,
+            window_manager_list,
+        ) ->
+            @home_export_list = []
+            @quota_capable_blockdevice_list = []
+            @virtual_desktop_protocol_list = []
+            @window_manager_list = []
+            @update(home_export_list, quota_capable_blockdevice_list, virtual_desktop_protocol_list, window_manager_list)
+
+        update: (he_list, qcb_list, vdp_list, wm_list) =>
+            @home_export_list.length = 0
+            for entry in he_list
+                @home_export_list.push(entry)
+            @quota_capable_blockdevice_list.length = 0
+            for entry in qcb_list
+                @quota_capable_blockdevice_list.push(entry)
+            @virtual_desktop_protocol_list.length = 0
+            for entry in vdp_list
+                @virtual_desktop_protocol_list.push(entry)
+            @window_manager_list.length = 0
+            for entry in wm_list
+                @window_manager_list.push(entry)
+            @build_luts()
+
+        build_luts: () =>
+            @home_export_lut = _.keyBy(@home_export_list, "idx")
+            @quota_capable_blockdevice_lut = _.keyBy(@quota_capable_blockdevice_list, "idx")
+            @virtual_desktop_protocol_lut = _.keyBy(@virtual_desktop_protocol_list, "idx")
+            @window_manager_lut = _.keyBy(@window_manager_list, "idx")
+
+]).service("icswUserGroupSettingsTreeService",
+[
+    "$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall",
+    "icswTools", "icswUserGroupSettingsTree", "$rootScope", "ICSW_SIGNALS",
+(
+    $q, Restangular, ICSW_URLS, $window, icswCachingCall,
+    icswTools, icswUserGroupSettingsTree, $rootScope, ICSW_SIGNALS,
+) ->
+    rest_map = [
+        [
+            ICSW_URLS.REST_HOME_EXPORT_LIST, {}
+        ]
+        [
+            ICSW_URLS.REST_QUOTA_CAPABLE_BLOCKDEVICE_LIST, {}
+        ]
+        [
+            ICSW_URLS.REST_VIRTUAL_DESKTOP_PROTOCOL_LIST, {}
+        ]
+        [
+            ICSW_URLS.REST_WINDOW_MANAGER_LIST, {}
+        ]
+    ]
+    _fetch_dict = {}
+    _result = undefined
+    # load called
+    load_called = false
+
+    load_data = (client) ->
+        load_called = true
+        _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in rest_map)
+        _defer = $q.defer()
+        $q.all(_wait_list).then(
+            (data) ->
+                console.log "*** user/group settings tree loaded ***"
+                _result = new icswUserGroupSettingsTree(data[0], data[1], data[2], data[3])
+                _defer.resolve(_result)
+                for client of _fetch_dict
+                    # resolve clients
+                    _fetch_dict[client].resolve(_result)
+                # reset fetch_dict
+                _fetch_dict = {}
+        )
+        return _defer
+
+    fetch_data = (client) ->
+        if client not of _fetch_dict
+            # register client
+            _defer = $q.defer()
+            _fetch_dict[client] = _defer
+        if _result
+            # resolve immediately
+            _fetch_dict[client].resolve(_result)
+        return _fetch_dict[client]
+
+    return {
+        "load": (client) ->
+            if load_called
+                # fetch when data is present (after sidebar)
+                return fetch_data(client).promise
+            else
+                return load_data(client).promise
+    }
 ]).service("icswUserGroupTree",
 [
     "$q",
 (
     $q
 ) ->
+    # user / group tree representation
     class icswUserGrouptree
-        constructor: (@user_list, @group_list) ->
+        constructor: (user_list, group_list, vdus_list) ->
+            @user_list =[]
+            @group_list = []
+            @vdus_list = []
+            @update(user_list, group_list, vdus_list)
+
+        update: (user_list, group_list, vdus_list) =>
+            @user_list.length = 0
+            @group_list.length = 0
+            for user in user_list
+                if not user.vdus_list?
+                    user.vdus_list = []
+                user.vdus_list.length = 0
+                @user_list.push(user)
+            for group in group_list
+                @group_list.push(group)
+            @vdus_list.length = 0
+            for entry in vdus_list
+                @vdus_list.push(entry)
             @build_luts()
 
         build_luts: () =>
             @user_lut = _.keyBy(@user_list, "idx")
-            @group_lut = _.keyBy(@user_list, "idx")
+            @group_lut = _.keyBy(@group_list, "idx")
+            @vdus_lut = _.keyBy(@vdus_list, "idx")
+            @link()
+
+        link: () =>
+            # create usefull links
+            for vdus in @vdus_list
+                @user_lut[vdus.user].vdus_list.push(vdus)
 
 ]).service("icswUserGroupTreeService",
 [
@@ -172,6 +383,9 @@ user_module = angular.module(
         [
             ICSW_URLS.REST_GROUP_LIST, {}
         ]
+        [
+            ICSW_URLS.REST_VIRTUAL_DESKTOP_USER_SETTING_LIST, {}
+        ]
     ]
     _fetch_dict = {}
     _result = undefined
@@ -185,7 +399,7 @@ user_module = angular.module(
         $q.all(_wait_list).then(
             (data) ->
                 console.log "*** user/group tree loaded ***"
-                _result = new icswUserGroupTree(data[0], data[1])
+                _result = new icswUserGroupTree(data[0], data[1], data[2])
                 _defer.resolve(_result)
                 for client of _fetch_dict
                     # resolve clients
@@ -214,8 +428,13 @@ user_module = angular.module(
             else
                 return load_data(client).promise
     }
-]).service("icswUserTree", ["icswTreeConfig", (icswTreeConfig) ->
-    class icsw_user_tree extends icswTreeConfig
+]).service("icswUserGroupDisplayTree",
+[
+    "icswTreeConfig",
+(
+    icswTreeConfig
+) ->
+    class icswUserGroupDisplayTree extends icswTreeConfig
         constructor: (@scope, args) ->
             super(args)
             @show_selection_buttons = false
@@ -223,6 +442,12 @@ user_module = angular.module(
             @show_select = false
             @show_descendants = true
             @show_childs = false
+            @init_feed()
+
+        init_feed: () =>
+            @user_lut = {}
+            @group_lut = {}
+
         get_name : (t_entry) ->
             ug = t_entry.obj
             if t_entry._node_type == "g"
@@ -234,19 +459,23 @@ user_module = angular.module(
             if ! ug.active
                 _if.push("inactive")
             return "#{_name} (" + _if.join(", ") + ")"
+
         add_extra_span: (entry) ->
             return angular.element("<span><span/><span/><span style='width:8px;'>&nbsp;</span></span>")
+
         update_extra_span: (entry, div) ->
             if entry._node_type == "u"
                 span = div.find("span:nth-child(1)")
                 span.removeClass()
                 if entry.obj.only_webfrontend
                     span.addClass("fa fa-genderless fa-fw")
+
         handle_click: (entry, event) =>
             @clear_active()
             entry.active = true
-            @scope.edit_object(entry.obj, entry._node_type)
+            @scope.add_edit_object(entry)
             @scope.$digest()
+
         get_icon_class: (entry) ->
             if entry._node_type == "u"
                 if entry.obj.is_superuser
@@ -255,6 +484,7 @@ user_module = angular.module(
                     return "fa fa-user"
             else
                 return "fa fa-group"
+
 ]).service("icswDiskUsageTree", ["icswTreeConfig", (icswTreeConfig) ->
     class icsw_disk_usage_tree extends icswTreeConfig
         constructor: (@scope, args) ->
@@ -283,8 +513,171 @@ user_module = angular.module(
             if _dir.num_files_total
                 _info.push(@scope.icswTools.get_size_str(_dir.num_files_total, 1000, "") + " files")
             return "#{_dir.name} (" + _info.join(", ") + ")"
-]).controller("user_tree", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$timeout", "$uibModal", "blockUI", "ICSW_URLS", "icswSimpleAjaxCall", "toaster", "icswAcessLevelService", "icswUserTree",
-    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $timeout, $uibModal, blockUI, ICSW_URLS, icswSimpleAjaxCall, toaster, icswAcessLevelService, icswUserTree) ->
+]).controller("icswUserGroupTreeCtrl", [
+    "icswUserGroupTreeService", "$scope", "$compile", "$q", "icswUserGroupSettingsTreeService",
+    "icswUserGroupPermissionTreeService", "icswUserGroupDisplayTree", "$timeout",
+(
+    icswUserGroupTreeService, $scope, $compile, $q, icswUserGroupSettingsTreeService,
+    icswUserGroupPermissionTreeService, icswUserGroupDisplayTree, $timeout,
+) ->
+    $scope.struct = {
+        # user and group tree
+        user_group_tree: undefined
+        # user and group settings
+        ugs_tree: undefined
+        # user and group permission tree
+        perm_tree: undefined
+        # error string (info string
+        error_string: ""
+        # display tree
+        display_tree: new icswUserGroupDisplayTree($scope)
+        # filter string
+        filterstr: ""
+        # edit groups and users
+        edit_groups: []
+        edit_users: []
+    }
+
+    $scope.reload = () ->
+        $scope.struct.error_string = "loading tree..."
+        $scope.struct.edit_groups.length = 0
+        $scope.struct.edit_users.length = 0
+        $q.all(
+            [
+                icswUserGroupTreeService.load($scope.$id)
+                icswUserGroupSettingsTreeService.load($scope.$id)
+                icswUserGroupPermissionTreeService.load($scope.$id)
+            ]
+        ).then(
+            (data) ->
+                console.log data
+                $scope.struct.user_group_tree = data[0]
+                $scope.struct.ugs_tree = data[1]
+                $scope.struct.perm_tree = data[2]
+                $scope.struct.error_string = ""
+                $scope.rebuild_tree()
+        )
+
+        $scope.rebuild_tree = () ->
+            _get_parent_group_list = (cur_group) ->
+                _list = []
+                for _group in _ugt.group_list
+                    if _group.idx != cur_group.idx
+                        add = true
+                        # check if cur_group is not a parent
+                        _cur_p = _group.parent_group
+                        while _cur_p
+                            _cur_p = _ugt.group_lut[_cur_p]
+                            if _cur_p.idx == cur_group.idx
+                                add = false
+                            _cur_p = _cur_p.parent_group
+                        if add
+                            _list.push(_group)
+                return _list
+
+            _ugt = $scope.struct.user_group_tree
+            _dt = $scope.struct.display_tree
+            # init tree
+            _dt.clear_root_nodes()
+            _dt.init_feed()
+            # groups to add later
+            rest_list = []
+            # add groups
+            for entry in _ugt.group_list
+                # set csw dummy permission list and optimizse object_permission list
+                # $scope.init_csw_cache(entry, "group")
+                t_entry = _dt.new_node(
+                    folder: true
+                    obj: entry
+                    expand: !entry.parent_group
+                    _node_type: "g"
+                    always_folder: true
+                )
+                _dt.group_lut[entry.idx] = t_entry
+                if entry.parent_group
+                    # handle later
+                    rest_list.push(t_entry)
+                else
+                    _dt.add_root_node(t_entry)
+            while rest_list.length > 0
+                # iterate until the list is empty
+                _rest_list = []
+                for entry in rest_list
+                    if entry.obj.parent_group of _dt.group_lut
+                        _dt.group_lut[entry.obj.parent_group].add_child(entry)
+                    else
+                        _rest_list.push(entry)
+                rest_list = _rest_list
+            # parent group dict
+            _pgs = {}
+            for entry in _ugt.group_list
+                _pgs[entry.idx] = _get_parent_group_list(entry)
+            $scope.parent_groups = _pgs
+            # console.log "*", $scope.parent_groups
+            # add users
+            for entry in _ugt.user_list
+                # set csw dummy permission list and optimise object_permission_list
+                # $scope.init_csw_cache(entry, "user")
+                t_entry = _dt.new_node(
+                    {
+                        folder: false
+                        obj: entry
+                        _node_type: "u"
+                    }
+                )
+                _dt.group_lut[entry.group].add_child(t_entry)
+
+    # filter functions
+
+    $scope.update_filter = () ->
+        _filter_to = () ->
+            if not $scope.struct.filterstr
+                cur_re = new RegExp("^$", "gi")
+            else
+                try
+                    cur_re = new RegExp($scope.struct.filterstr, "gi")
+                catch exc
+                    cur_re = new RegExp("^$", "gi")
+            _dt = $scope.struct.display_tree
+            _dt.iter(
+                (entry, cur_re) ->
+                    cmp_name = if entry._node_type == "g" then entry.obj.groupname else entry.obj.login
+                    entry.active = if cmp_name.match(cur_re) then true else false
+                cur_re
+            )
+            _dt.show_active(false)
+
+        if $scope.update_filter_to?
+            $timeout.cancel($scope.update_filter_to)
+        $scope.update_filter_to = $timeout(_filter_to, 200)
+
+    # edit object functions
+    $scope.add_edit_object = (treenode) ->
+        if treenode._node_type == "g"
+            ref_list = $scope.struct.edit_groups
+        else
+            ref_list = $scope.struct.edit_users
+        obj = treenode.obj
+        if obj not in ref_list
+            ref_list.push(obj)
+
+    close_edit_object = (ref_obj, ref_list) ->
+        # must use a timeout here to fix strange routing bug, FIXME, TODO
+        $timeout(
+            () ->
+                _.remove(ref_list, (entry) -> return ref_obj.idx == entry.idx)
+            100
+        )
+
+    $scope.close_group = (group_obj) ->
+        close_edit_object(group_obj, $scope.struct.edit_groups)
+
+    $scope.close_user = (user_obj) ->
+        close_edit_object(user_obj, $scope.struct.edit_users)
+
+    $scope.reload()
+]).controller("user_tree", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$timeout", "$uibModal", "blockUI", "ICSW_URLS", "icswSimpleAjaxCall", "toaster", "icswAcessLevelService",
+    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $timeout, $uibModal, blockUI, ICSW_URLS, icswSimpleAjaxCall, toaster, icswAcessLevelService) ->
         $scope.ac_levels = [
             {"level" : 0, "info" : "Read-only"},
             {"level" : 1, "info" : "Modify"},
@@ -293,8 +686,7 @@ user_module = angular.module(
         ]
         icswAcessLevelService.install($scope)
         $scope.obj_perms = {}
-        $scope.tree = new icswUserTree($scope)
-        $scope.filterstr = ""
+        # $scope.tree = new icswUserTree($scope)
         # init edit mixins
         $scope.group_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q)
         $scope.group_edit.modify_rest_url = ICSW_URLS.REST_GROUP_DETAIL.slice(1).slice(0, -2)
@@ -338,17 +730,17 @@ user_module = angular.module(
             }
             return r_obj
         wait_list = restDataSource.add_sources([
-            [ICSW_URLS.REST_GROUP_LIST, {}]
-            [ICSW_URLS.REST_USER_LIST, {}]
-            [ICSW_URLS.REST_DEVICE_GROUP_LIST, {}]
-            [ICSW_URLS.REST_CSW_PERMISSION_LIST, {}]
-            [ICSW_URLS.REST_HOME_EXPORT_LIST, {}]
-            [ICSW_URLS.REST_CSW_OBJECT_LIST, {}]
-            [ICSW_URLS.REST_QUOTA_CAPABLE_BLOCKDEVICE_LIST, {}]
-            [ICSW_URLS.REST_VIRTUAL_DESKTOP_PROTOCOL_LIST, {}]
-            [ICSW_URLS.REST_WINDOW_MANAGER_LIST, {}]
-            [ICSW_URLS.REST_DEVICE_LIST, {}]
-            [ICSW_URLS.REST_VIRTUAL_DESKTOP_USER_SETTING_LIST, {}]
+            # [ICSW_URLS.REST_GROUP_LIST, {}]
+            # [ICSW_URLS.REST_USER_LIST, {}]
+            # [ICSW_URLS.REST_DEVICE_GROUP_LIST, {}]
+            # [ICSW_URLS.REST_CSW_PERMISSION_LIST, {}]
+            # [ICSW_URLS.REST_HOME_EXPORT_LIST, {}]
+            # [ICSW_URLS.REST_CSW_OBJECT_LIST, {}]
+            # [ICSW_URLS.REST_QUOTA_CAPABLE_BLOCKDEVICE_LIST, {}]
+            # [ICSW_URLS.REST_VIRTUAL_DESKTOP_PROTOCOL_LIST, {}]
+            # [ICSW_URLS.REST_WINDOW_MANAGER_LIST, {}]
+            # [ICSW_URLS.REST_DEVICE_LIST, {}]
+            # [ICSW_URLS.REST_VIRTUAL_DESKTOP_USER_SETTING_LIST, {}]
         ])
         $scope.init_csw_cache = (entry, e_type) ->
             entry.permission = null
@@ -448,21 +840,6 @@ user_module = angular.module(
         $scope.$on("icsw.user.userchange", () ->
             $scope.rebuild_tree()
         )
-        $scope.get_parent_group_list = (cur_group) ->
-            _list = []
-            for _group in $scope.group_list
-                if _group.idx != cur_group.idx
-                    add = true
-                    # check if cur_group is not a parent
-                    _cur_p = _group.parent_group
-                    while _cur_p
-                        _cur_p = $scope.group_lut[_cur_p].obj
-                        if _cur_p.idx == cur_group.idx
-                            add = false
-                        _cur_p = _cur_p.parent_group
-                    if add
-                        _list.push(_group)
-            return _list
         $scope.valid_device_groups = () ->
             _list = (entry for entry in $scope.device_group_list when entry.enabled == true and entry.cluster_device_group == false) 
             return _list
@@ -499,21 +876,6 @@ user_module = angular.module(
             if cur_group
                 info_string = "#{info_string}, #{cur_group.homestart}/#{$scope._edit_obj.login}"
             return info_string
-        $scope.update_filter = () ->
-            if not $scope.filterstr
-                cur_re = new RegExp("^$", "gi")
-            else
-                try
-                    cur_re = new RegExp($scope.filterstr, "gi")
-                catch exc
-                    cur_re = new RegExp("^$", "gi")
-            $scope.tree.iter(
-                (entry, cur_re) ->
-                    cmp_name = if entry._node_type == "g" then entry.obj.groupname else entry.obj.login
-                    entry.set_selected(if cmp_name.match(cur_re) then true else false)
-                cur_re
-            )
-            $scope.tree.show_selected(false)
         $scope.create_group = () ->
             $scope._edit_mode = "g"
             $scope.group_edit.create()

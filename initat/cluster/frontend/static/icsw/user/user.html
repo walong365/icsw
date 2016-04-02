@@ -12,23 +12,36 @@
 </script>
 
 <script type="text/ng-template" id="icsw/main/user/tree.html">
-    <div ng-controller="user_tree">
-        <h2>
-            User / Group tree ({{ group_list.length }} groups, {{ user_list.length }} users)
-        </h2>
-        <div class="col-sm-4">
-            <div class="row">
-                <input type="text" class="form-control" ng-model="filterstr" placeholder="filter ..." ng-change="update_filter()"></input>
-            </div>
-            <div class="row">
-                <icsw-tools-button type="create" value="create group" ng-click="create_group()" ng-disabled="!user_list"></icsw-tools-button>&nbsp;
-                <icsw-tools-button type="create" value="create user" ng-click="create_user()" ng-disabled="!user_list"></icsw-tools-button>&nbsp;
-                <icsw-tools-button type="submit" value="sync users" ng-click="sync_users()" ng-disabled="!user_list"></icsw-tools-button>
-            </div>
-            <div class="row">
-                <tree treeconfig="tree"></tree>
-            </div>
+    <div ng-controller="icswUserGroupTreeCtrl">
+        <div ng-if="struct.error_string">
+            <uib-alert type="warning">{{ struct.error_string }}</uib-alert>
         </div>
+        <uib-tabset>
+            <uib-tab>
+                <uib-tab-heading>
+                    User ({{ struct.user_group_tree.user_list.length }}) / Group ({{ struct.user_group_tree.group_list.length }}) Tree
+                </uib-tab-heading>
+                <div class="form-inline">
+                    <input type="text" class="form-control" ng-model="struct.filterstr" placeholder="filter ..." ng-change="update_filter()"></input>
+                    <icsw-tools-button type="create" value="create group" ng-click="create_group()" ng-disabled="!user_list"></icsw-tools-button>&nbsp;
+                    <icsw-tools-button type="create" value="create user" ng-click="create_user()" ng-disabled="!user_list"></icsw-tools-button>&nbsp;
+                    <icsw-tools-button type="submit" value="sync users" ng-click="sync_users()" ng-disabled="!user_list"></icsw-tools-button>
+                </div>
+                <tree treeconfig="struct.display_tree"></tree>
+            </uib-tab>
+            <uib-tab ng-repeat="edit_group in struct.edit_groups">
+                <uib-tab-heading>
+                    Group {{ edit_group.name }} ({{ edit_group.gid }})
+                    <icsw-tools-button size="xs" type="close" value="" ng-click="close_group(edit_group)"></icsw-tools-button>
+                </uib-tab-heading>
+            </uib-tab>
+            <uib-tab ng-repeat="edit_user in struct.edit_users">
+                <uib-tab-heading>
+                    User {{ edit_user.login }} ({{ edit_user.uid }})
+                    <icsw-tools-button size="xs" type="close" value="" ng-click="close_user(edit_user)"></icsw-tools-button>
+                </uib-tab-heading>
+            </uib-tab>
+        </uib-tabset>
         <div class="col-sm-8">
             <div icsw-user-group-show ng-if="_edit_mode == 'g' && modal_active" class="well well-sm">
             </div>
