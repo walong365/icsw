@@ -91,18 +91,36 @@ user_module = angular.module(
     }
 ]).service("icswUserService",
 [
-    "$q", "ICSW_URLS", "icswSimpleAjaxCall", "$rootScope",
+    "$q", "ICSW_URLS", "icswSimpleAjaxCall", "$rootScope", "ICSW_SIGNALS",
+    "Restangular",
 (
-    $q, ICSW_URLS, icswSimpleAjaxCall, $rootScope
+    $q, ICSW_URLS, icswSimpleAjaxCall, $rootScope, ICSW_SIGNALS,
+    Restangular,
 ) ->
     _last_load = 0
-    current_user = undefined
-    set_user = (user) ->
-        current_user = user
-        $rootScope.$emit("icsw.user.changed", current_user)
-    set_user(undefined)
     _fetch_pending = false
     _force_logout = false
+    current_user = undefined
+
+    set_user = (user) ->
+        current_user = user
+        $rootScope.$emit(ICSW_SIGNALS("ICSW_USER_CHANGED"), current_user)
+
+    update_user = () ->
+        _defer = $q.defer()
+        if current_user
+            _update_url = ICSW_URLS.REST_USER_DETAIL.slice(1).slice(0, -2)
+            Restangular.restangularizeElement(null, current_user, _update_url)
+            current_user.put().then(
+                (ok) ->
+                    _defer.resolve("updated")
+                (not_ok) ->
+                    _defer.reject("error updating")
+            )
+        else
+            _defer.reject("no user")
+        return _defer.promise
+
     load_user = (cache) ->
         cur_time = moment().unix()
         _diff_time = Math.abs(cur_time - _last_load)
@@ -127,10 +145,12 @@ user_module = angular.module(
             )
         else
             _defer.resolve(current_user)
-        return _defer
+        return _defer.promise
+
     force_logout = () ->
         if _fetch_pending
             _force_logout = true
+
     logout_user = () ->
         _defer = $q.defer()
         set_user(undefined)
@@ -143,15 +163,20 @@ user_module = angular.module(
             (json) ->
                 _defer.resolve(json)
         )
-        return _defer
+        return _defer.promise
+
+    set_user(undefined)
+
     return {
         "load": (cache) ->
             # loads from server
-            return load_user(cache).promise
+            return load_user(cache)
         "logout": () ->
-            return logout_user().promise
+            return logout_user()
         "get": () ->
             return current_user
+        "update": () ->
+            return update_user()
         "user_present": () ->
             return if current_user then true else false
         "force_logout": () ->
@@ -973,77 +998,72 @@ user_module = angular.module(
                 # console.log "blob", blob
                 vdus.testurl = (window.URL || window.webkitURL).createObjectURL( blob );
             )
-]).controller("icswUserAccountCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$timeout", "$uibModal", "ICSW_URLS", "icswUserService",
-    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $timeout, $uibModal, ICSW_URLS, icswUserService) ->
-        $scope.virtual_desktop_user_setting = []
-        $scope.ac_levels = [
-            {"level" : 0, "info" : "Read-only"},
-            {"level" : 1, "info" : "Modify"},
-            {"level" : 3, "info" : "Modify, Create"},
-            {"level" : 7, "info" : "Modify, Create, Delete"},
-        ]
-        $scope.update = () ->
-            icswUserService.load().then((user) ->
-                wait_list = restDataSource.add_sources([
-                    [ICSW_URLS.REST_CSW_PERMISSION_LIST, {}]
-                    [ICSW_URLS.REST_CSW_OBJECT_LIST, {}]
-                    [ICSW_URLS.REST_QUOTA_CAPABLE_BLOCKDEVICE_LIST, {}]
-                    [ICSW_URLS.REST_VIRTUAL_DESKTOP_USER_SETTING_LIST, {}]
-                    [ICSW_URLS.REST_VIRTUAL_DESKTOP_PROTOCOL_LIST, {}]
-                    [ICSW_URLS.REST_WINDOW_MANAGER_LIST, {}]
-                    [ICSW_URLS.REST_DEVICE_LIST, {}]
-                ])
-                wait_list.push(Restangular.one(ICSW_URLS.REST_USER_DETAIL.slice(1).slice(0, -2), user.idx).get())
-                $q.all(wait_list).then(
-                    (data) ->
-                        # update once per minute
-                        $timeout($scope.update, 60000)
-                        $scope.edit_obj = data[7]
-                        $scope.csw_permission_list = data[0]
-                        $scope.csw_permission_lut = {}
-                        for entry in $scope.csw_permission_list
-                            $scope.csw_permission_lut[entry.idx] = entry
-                        $scope.ct_dict = {}
-                        for entry in data[1]
-                            $scope.ct_dict[entry.content_label] = entry.object_list
-                        $scope.qcb_list = data[2]
-                        $scope.qcb_lut = {}
-                        for entry in $scope.qcb_list
-                            $scope.qcb_lut[entry.idx] = entry
-                        $scope.virtual_desktop_user_setting = data[3]
-                        $scope.virtual_desktop_protocol = data[4]
-                        $scope.window_manager = data[5]
-                        $scope.device = data[6]
-                )
-            )
-        $scope.update_account = () ->
-            $scope.edit_obj.put().then(
-               (data) ->
-               (resp) ->
-            )
-        $scope.$on("icsw.set_password", (event, new_pwd) ->
-            $scope.edit_obj.password = new_pwd
-            $scope.update_account()
-            $scope.$digest()
+]).controller("icswUserAccountCtrl",
+[
+    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource",
+    "$q", "$timeout", "$uibModal", "ICSW_URLS", "icswUserService",
+    "icswUserGroupSettingsTreeService", "icswUserGroupPermissionTreeService",
+    "icswUserGetPassword", "blockUI",
+(
+    $scope, $compile, $filter, $templateCache, Restangular, restDataSource,
+    $q, $timeout, $uibModal, ICSW_URLS, icswUserService,
+    icswUserGroupSettingsTreeService, icswUserGroupPermissionTreeService,
+    icswUserGetPassword, blockUI,
+) ->
+    $scope.struct = {
+        data_valid: false
+        user: undefined
+        settings_tree: undefined
+    }
+    # for permission view, FIXME, ToDo
+    $scope.perm_tree = undefined
+
+    $scope.get_perm = (perm) ->
+        return $scope.perm_tree.permission_lut[perm]
+
+    $scope.update = () ->
+        $scope.struct.data_valid = false
+        $scope.struct.user = undefined
+        $scope.struct.settings_tree = undefined
+        $scope.permission_set = []
+        $scope.object_permission_set = []
+        $q.all(
+            [
+                icswUserService.load()
+                icswUserGroupSettingsTreeService.load($scope.$id)
+                icswUserGroupPermissionTreeService.load($scope.$id)
+            ]
+        ).then(
+            (data) ->
+                $scope.struct.data_valid = true
+                $scope.struct.user = data[0]
+                $scope.struct.settings_tree = data[1]
+                $scope.perm_tree = data[2]
+                # hack, to be improved, FIXME, ToDo
+                $scope.permission_set = $scope.struct.user.user_permission_set
+                $scope.object_permission_set = $scope.struct.user.user_object_permission_set
         )
-        $scope.get_perm_app = (perm) ->
-            return $scope.csw_permission_lut[perm.csw_permission].content_type.app_label
-        $scope.get_obj_perm_app = (perm) ->
-            return $scope.csw_permission_lut[perm.csw_permission].content_type.app_label
-        $scope.get_perm_level = (perm) ->
-            level = perm.level
-            return (_v.info for _v in $scope.ac_levels when _v.level == level)[0]
-        $scope.get_perm_model = (perm) ->
-            return $scope.csw_permission_lut[perm.csw_permission].content_type.model
-        $scope.get_perm_type = (perm) ->
-            return if $scope.csw_permission_lut[perm.csw_permission].valid_for_object_level then "G / O" else "G"
-        $scope.get_perm_object = (perm) ->
-            obj_perm = perm.csw_object_permission
-            csw_perm = $scope.csw_permission_lut[obj_perm.csw_permission]
-            key = "#{csw_perm.content_type.app_label}.#{csw_perm.content_type.model}"
-            return (_v.name for _v in $scope.ct_dict[key] when _v.idx == obj_perm.object_pk)[0]
-        $scope.get_vdus = (idx) ->
-        $scope.update()
+
+    $scope.change_password = () ->
+        icswUserGetPassword($scope, $scope.struct.user).then(
+            (done) ->
+                if $scope.struct.user.$$password_ok
+                    # copy if password is now set
+                    $scope.struct.user.password = $scope.struct.user.$$password
+                    $scope.update_account()
+        )
+
+    $scope.update_account = () ->
+        blockUI.start("saving account changes")
+        icswUserService.update().then(
+           (data) ->
+               blockUI.stop()
+           (resp) ->
+               blockUI.stop()
+        )
+
+    $scope.get_vdus = (idx) ->
+    $scope.update()
 ]).directive("icswUserEdit",
 [
     "$templateCache",
@@ -1274,10 +1294,16 @@ user_module = angular.module(
             settings_tree: "=icswUserGroupSettingsTree"
         link: (scope, element, attrs) ->
             # console.log scope.object_type, scope.object
-            if scope.object_type == "user"
-                scope.quota_settings = scope.object.user_quota_setting_set
-            else
-                scope.quota_settings = scope.object.group_quota_setting_set
+            scope.$watch("object", (new_val) ->
+                if new_val
+                    if scope.object_type == "user"
+                        scope.quota_settings = scope.object.user_quota_setting_set
+                    else
+                        scope.quota_settings = scope.object.group_quota_setting_set
+                    _salt_list(scope.quota_settings)
+                else
+                    scope.quota_settings = []
+            )
 
             _build_stacked = (qs, _type, abs) ->
                 _used = qs["#{_type}_used"]
@@ -1398,8 +1424,6 @@ user_module = angular.module(
                     entry.$$line_class = _get_line_class(entry)
                     entry.$$bytes_limit = _get_bytes_limit(entry)
                     entry.$$files_limit = _get_files_limit(entry)
-
-            _salt_list(scope.quota_settings)
 
     }
 ]).directive("icswUserDiskUsage", ["$compile", "$templateCache", "icswTools", "icswDiskUsageTree", ($compile, $templateCache, icswTools, icswDiskUsageTree) ->

@@ -1,11 +1,15 @@
 <script type="text/ng-template" id="icsw/main/user/account.html">
-    <div ng-controller="icswUserAccountCtrl" ng-model="cur_user">
-            <account-detail user="edit_obj"></account-detail>
+    <div ng-controller="icswUserAccountCtrl">
+        <icsw-user-account-detail></icsw-user-account-detail>
         <hr/>
         <h2>Permissions</h2>
-        <icsw-permission-settings object="edit_obj" type="user"></icsw-permission-settings>
+        <icsw-user-group-permissions></icsw-user-group-permissions>
         <h2>Quota info</h2>
-        <quotasettings object='edit_obj' type='user'></quotasettings>
+        <icsw-user-quota-settings
+            icsw-object="struct.user"
+            icsw-object-type="'user'"
+            icsw-user-group-settings-tree="struct.settings_tree">
+        </icsw-user-quota-settings>
     </div>
 </script>
 
@@ -969,34 +973,35 @@
     </form>
 </script>
 
-<script type="text/ng-template" id="account.detail.form">
-    <form id="form" class="form-horizontal" ng-submit="update_account()">
-        <h2>Account info for '{{ _cur_user.login }}'</h2>
+<script type="text/ng-template" id="icsw.account.detail.form">
+    <form class="form-horizontal" ng-submit="update_account()">
+        <h2>Account info for '{{ struct.user.login }}'</h2>
         <div class="row">
             <div class="col-md-6">
                 <fieldset class="form-horizontal">
                     <legend>Base data</legend>
-                    <div id="div_id_first_name" class="form-group">
-                        <label for="id_first_name" class="control-label col-sm-2">
+                    <div class="form-group">
+                        <label class="control-label col-sm-2">
                             First name
                         </label>
-
-                        <div class="controls col-sm-8"><input class="textinput textInput form-control" id="id_first_name" maxlength="765" name="first_name" ng-model="_cur_user.first_name" placeholder="first name" type="text"></input></div>
+                        <div class="controls col-sm-8">
+                            <input class="textinput textInput form-control" maxlength="765" ng-model="struct.user.first_name" placeholder="first name" type="text"/>
+                        </div>
                     </div>
-                    <div id="div_id_last_name" class="form-group">
-                        <label for="id_last_name" class="control-label col-sm-2">
+                    <div class="form-group">
+                        <label class="control-label col-sm-2">
                             Last name
                         </label>
-
-                        <div class="controls col-sm-8"><input class="textinput textInput form-control" id="id_last_name" maxlength="765" name="last_name" ng-model="_cur_user.last_name" placeholder="last name" type="text"></input></div>
+                        <div class="controls col-sm-8">
+                            <input class="textinput textInput form-control" maxlength="765" ng-model="struct.user.last_name" placeholder="last name" type="text"/>
+                        </div>
                     </div>
-                    <div id="div_id_shell" class="form-group">
-                        <label for="id_shell" class="control-label col-sm-2">
+                    <div class="form-group">
+                        <label class="control-label col-sm-2">
                             Shell
                         </label>
-
                         <div class="controls col-sm-8">
-                            <input class="textinput textInput form-control" id="id_shell" maxlength="765" name="shell" ng-model="_cur_user.shell" placeholder="shell to use" type="text" value="/bin/bash"></input>
+                            <input class="textinput textInput form-control" maxlength="765" ng-model="struct.user.shell" placeholder="shell to use" type="text" value="/bin/bash"/>
                         </div>
                     </div>
                 </fieldset>
@@ -1004,48 +1009,53 @@
             <div class="col-md-6">
                 <fieldset class="form-horizontal">
                     <legend>Additional data</legend>
-                    <div id="div_id_title" class="form-group">
-                        <label for="id_title" class="control-label col-sm-2">
+                    <div class="form-group">
+                        <label class="control-label col-sm-2">
                             Title
                         </label>
-
-                        <div class="controls col-sm-8"><input class="textinput textInput form-control" id="id_title" maxlength="765" name="title" ng-model="_cur_user.title" placeholder="Title" type="text"></input></div>
+                        <div class="controls col-sm-8">
+                            <input class="textinput textInput form-control" maxlength="765" ng-model="struct.user.title" placeholder="Title" type="text"/>
+                        </div>
                     </div>
-                    <div id="div_id_email" class="form-group">
-                        <label for="id_email" class="control-label col-sm-2">
+                    <div class="form-group">
+                        <label class="control-label col-sm-2">
                             Email
                         </label>
-
-                        <div class="controls col-sm-8"><input class="textinput textInput form-control" id="id_email" maxlength="765" name="email" ng-model="_cur_user.email" placeholder="EMail address" type="text"></input></div>
+                        <div class="controls col-sm-8">
+                            <input class="textinput textInput form-control" maxlength="765" ng-model="struct.user.email" placeholder="EMail address" type="text"/>
+                        </div>
                     </div>
-                    <div id="div_id_pager" class="form-group">
-                        <label for="id_pager" class="control-label col-sm-2">
+                    <div class="form-group">
+                        <label class="control-label col-sm-2">
                             Mobile
                         </label>
-
-                        <div class="controls col-sm-8"><input class="textinput textInput form-control" id="id_pager" maxlength="765" name="pager" ng-model="_cur_user.pager" placeholder="pager number" type="text"></input></div>
+                        <div class="controls col-sm-8">
+                            <input class="textinput textInput form-control" maxlength="765" ng-model="struct.user.pager" placeholder="pager number" type="text"/>
+                        </div>
                     </div>
-                    <div id="div_id_tel" class="form-group">
-                        <label for="id_tel" class="control-label col-sm-2">
+                    <div class="form-group">
+                        <label class="control-label col-sm-2">
                             Tel
                         </label>
-
-                        <div class="controls col-sm-8"><input class="textinput textInput form-control" id="id_tel" maxlength="765" name="tel" ng-model="_cur_user.tel" placeholder="Telefon number" type="text"></input></div>
+                        <div class="controls col-sm-8">
+                            <input class="textinput textInput form-control" maxlength="765" ng-model="struct.user.tel" placeholder="Telefon number" type="text"/>
+                        </div>
                     </div>
-                    <div id="div_id_comment" class="form-group">
-                        <label for="id_comment" class="control-label col-sm-2">
+                    <div class="form-group">
+                        <label class="control-label col-sm-2">
                             Comment
                         </label>
-
-                        <div class="controls col-sm-8"><input class="textinput textInput form-control" id="id_comment" maxlength="765" name="comment" ng-model="_cur_user.comment" placeholder="User comment" type="text"></input></div>
+                        <div class="controls col-sm-8">
+                            <input class="textinput textInput form-control" maxlength="765" ng-model="struct.user.comment" placeholder="User comment" type="text"/>
+                        </div>
                     </div>
                 </fieldset>
             </div>
         </div>
         <div class="form-actions">
-            <input type="submit" name="submit" value="Modify" class="btn btn-primary primaryAction" id="submit-id-submit"/>
-            &#160;
-            <input type="button" name="change-password" value="change password" class="btn btn-warning" id="button-id-change-password" ng-click="change_password()"/>
+            <icsw-tools-button type="submit" ng-click="update_account()"></icsw-tools-button>
+            &nbsp;
+            <icsw-tools-button type="modify" value="change password" ng-click="change_password()"></icsw-tools-button>
         </div>
     </form>
 </script>

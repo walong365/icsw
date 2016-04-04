@@ -97,20 +97,14 @@ password_module = angular.module(
         )
         return defer.promise
 
-]).directive("accountDetail", ["$templateCache", ($templateCache) ->
+]).directive("icswUserAccountDetail",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
     return {
         restrict: "EA"
-        template: $templateCache.get("account.detail.form")
-        link: (scope, element, attrs) ->
-            scope._cur_user = null
-            scope.$watch(attrs["user"], (new_val) ->
-                if new_val
-                    scope._cur_user = new_val
-            )
-            scope.update_account = () ->
-                scope._cur_user.put().then(
-                   (data) ->
-                   (resp) ->
-                )
+        template: $templateCache.get("icsw.account.detail.form")
     }
 ])

@@ -86,7 +86,11 @@
 
 <script type="text/ng-template" id="icsw.dashboard.diskquota">
     <div ng-controller="icswUserAccountCtrl">
-        <icsw-user-quota-settings object='edit_obj' type='user'></icsw-user-quota-settings>
+        <icsw-user-quota-settings
+            icsw-object="struct.user"
+            icsw-object-type="'user'"
+            icsw-user-group-settings-tree="struct.settings_tree">
+        ></icsw-user-quota-settings>
         <icsw-user-disk-usage object="edit_obj" type="user"></icsw-user-disk-usage>
     </div>
 </script>
