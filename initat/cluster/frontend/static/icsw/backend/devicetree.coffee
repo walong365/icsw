@@ -428,6 +428,8 @@ angular.module(
             @group_list = group_list
             @all_list = []
             @enabled_list = []
+            # enabled non-system group list
+            @enabled_ns_group_list = []
             @disabled_list = []
             @domain_tree = domain_tree
             @cat_tree = cat_tree
@@ -467,6 +469,7 @@ angular.module(
             @all_list.length = 0
             @enabled_list.length = 0
             @disabled_list.length = 0
+            @enabled_ns_group_list.length = 0
             @enabled_lut = {}
             @disabled_lut = {}
             @cluster_device_group_device = undefined
@@ -485,6 +488,9 @@ angular.module(
                     if _entry.is_meta_device
                         _disabled_groups.push(_entry.device_group)
                     @disabled_list.push(_entry)
+            for _group in @group_list
+                if _group.enabled and not _group.cluster_device_group
+                    @enabled_ns_group_list.push(_group)
             @enabled_lut = icswTools.build_lut(@enabled_list)
             @disabled_lut = icswTools.build_lut(@disabled_list)
             @all_lut = icswTools.build_lut(@all_list)

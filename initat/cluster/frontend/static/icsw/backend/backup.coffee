@@ -29,9 +29,9 @@ angular.module(
         "icsw.device.info", "icsw.tools.tree", "icsw.user",
         "icsw.backend.devicetree",
     ]
-).service("icswBackupDefinition", [() ->
+).service("icswBackupDefinition", ["icswBaseMixinClass", (icswBaseMixinClass) ->
 
-    class backup_def
+    class backup_def extends icswBaseMixinClass
         constructor: () ->
             @simple_attributes = []
             @list_attributes = []
@@ -44,18 +44,42 @@ angular.module(
             for _entry in @list_attributes
                 _bu[_entry] = _.cloneDeep(obj[_entry])
             @post_backup(obj, _bu)
-            obj.$$_ICSW_backup = _bu
+            obj.$$_ICSW_backup_data = _bu
+            obj.$$_ICSW_backup_def = @
 
         restore_backup: (obj) =>
-            if obj.$$_ICSW_backup?
-                _bu = obj.$$_ICSW_backup
+            if obj.$$_ICSW_backup_data?
+                _bu = obj.$$_ICSW_backup_data
                 @pre_restore(obj, _bu)
                 for _entry in @simple_attributes
                     obj[_entry] = _bu[_entry]
                 for _entry in @list_attributes
                     obj[_entry] = _.cloneDeep(_bu[_entry])
                 @post_restore(obj, _bu)
-                delete obj.$$_ICSW_backup
+                delete obj.$$_ICSW_backup_data
+                delete obj.$$_ICSW_backup_def
+        
+        changed: (obj) =>
+            if obj.$$_ICSW_backup_data?
+                _bu = obj.$$_ICSW_backup_data
+                _changed = false
+                if not _changed
+                    for entry in @simple_attributes
+                        if obj[entry] != _bu[entry]
+                            _changed = true
+                            break
+                if not _changed
+                    for entry in @list_attributes
+                        _attr_name = "compare_#{entry}"
+                        if @[_attr_name]
+                            if not @[_attr_name](obj[entry], _bu[entry])
+                                _changed = true
+                                break
+                        else
+                            if not _.isEqual(obj[entry], _bu[entry])
+                                _changed = true
+                                break
+                return _changed
 
         pre_backup: (obj) =>
             # called before backup
@@ -293,5 +317,68 @@ angular.module(
                 "merge_controlling_devices", "graph_setting_size",
                 "graph_setting_timeshift", "graph_setting_forecast",
             ]
+
+]).service("icswUserBackup", ["icswBackupDefinition", "icswUserGroupTools", (icswBackupDefinition, icswUserGroupTools) ->
+
+    class icswUserBackupDefinition extends icswBackupDefinition
+
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "idx", "active", "login", "uid", "group",
+                "aliases", "export", "home", "shell",
+                "password",
+                "first_name", "last_name", "title", "email",
+                "pager", "tel", "comment",
+                "is_superuser", "db_is_auth_for_password",
+                "only_webfrontend", "create_rms_user",
+                "scan_user_home", "scan_depth",
+            ]
+            @list_attributes = [
+                "allowed_device_groups", "secondary_groups",
+                "user_permission_set", "user_object_permission_set",
+            ]
+
+        compare_user_permission_set: (a_list, b_list) =>
+            return @_compare_perms(a_list, b_list)
+
+        compare_user_object_permission_set: (a_list, b_list) =>
+            return @_compare_perms(a_list, b_list)
+
+        _compare_perms: (a_list, b_list) =>
+            return _.isEqual(
+                [icswUserGroupTools.get_perm_fp(a) for a in a_list]
+                [icswUserGroupTools.get_perm_fp(b) for b in b_list]
+            )
+
+]).service("icswGroupBackup", ["icswBackupDefinition", "icswUserGroupTools", (icswBackupDefinition, icswUserGroupTools) ->
+
+    class icswGroupBackupDefinition extends icswBackupDefinition
+
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "idx", "active", "groupname", "gid",
+                "homestart", "group_comment",
+                "first_name", "last_name", "title", "email",
+                "pager", "tel", "comment",
+                "parent_group",
+            ]
+            @list_attributes = [
+                "allowed_device_groups",
+                "group_permission_set", "group_object_permission_set",
+            ]
+
+        compare_group_permission_set: (a_list, b_list) =>
+            return @_compare_perms(a_list, b_list)
+
+        compare_group_object_permission_set: (a_list, b_list) =>
+            return @_compare_perms(a_list, b_list)
+
+        _compare_perms: (a_list, b_list) =>
+            return _.isEqual(
+                [icswUserGroupTools.get_perm_fp(a) for a in a_list]
+                [icswUserGroupTools.get_perm_fp(b) for b in b_list]
+            )
 
 ])

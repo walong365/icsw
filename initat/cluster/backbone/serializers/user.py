@@ -139,7 +139,7 @@ class user_serializer(serializers.ModelSerializer):
             "secondary_groups", "user_permission_set", "user_object_permission_set",
             "allowed_device_groups", "aliases", "db_is_auth_for_password", "is_superuser",
             "home_dir_created", "user_quota_setting_set", "info", "scan_user_home", "scan_depth",
-            "only_webfrontend", "home", "user_scan_run_set", "login_name",
+            "only_webfrontend", "home", "user_scan_run_set", "login_name", "create_rms_user",
         )
 
 

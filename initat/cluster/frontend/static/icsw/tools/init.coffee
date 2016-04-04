@@ -154,7 +154,26 @@ angular.module(
     [
         "toaster"
     ],
-).service("icswCSRFService",
+).service("icswBaseMixinClass", [() ->
+    # hm, not really needed ... ?
+    module_keywords = ["extended", "included"]
+    class icswBaseMixinClass
+        @extend: (obj) ->
+            for key, value of obj when key not in module_keywords
+                @[key] = value
+
+            obj.extended?.apply(@)
+            this
+
+        @include: (obj) ->
+            for key, value of obj when key not in moduleKeywords
+                # Assign properties to the prototype
+                @::[key] = value
+
+            obj.included?.apply(@)
+            this
+        
+]).service("icswCSRFService",
 [
     "$http", "ICSW_URLS", "$q",
 (
@@ -314,6 +333,7 @@ angular.module(
         )
 ]).service("ICSW_SIGNALS", () ->
     _dict = {
+        # global signals (for $rootScope)
         ICSW_ACLS_CHANGED: "icsw.acls.changed"
         ICSW_USER_CHANGED: "icsw.user.changed"
         ICSW_DSR_REGISTERED: "icsw.dsr.registered"
@@ -337,7 +357,9 @@ angular.module(
         ICSW_DOMAIN_NAME_TREE_CHANGED: "icsw.domain.name.tree.changed",
         ICSW_CATEGORY_TREE_CHANGED: "icsw.category.tree.changed",
         ICSW_LOCATION_SETTINGS_CHANGED: "icsw.location.settings.changed",
-        ICSW_USER_GROUP_TREE_LOADED: "Icsw.user.group.tree.loaded",
+        ICSW_USER_GROUP_TREE_LOADED: "icsw.user.group.tree.loaded",
+        # local signals (for local $emit / $on)
+        _ICSW_CLOSE_USER_GROUP: "_icsw.close.user.group"
         # not needed up to now
         # "ICSW_RENDER_MENUBAR": "icsw.render.menubar",
         # "ICSW_READY_TO_RECEIVE_SELECTION": "icsw.ready.to.receive.selection"

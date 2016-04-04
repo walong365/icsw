@@ -14,7 +14,7 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
+# along with this program; if not, write to the Free Softwareo
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
@@ -74,6 +74,21 @@ user_module = angular.module(
                     ordering: 0
         }
     )
+]).service("icswUserGroupTools", [() ->
+    return {
+
+        # permission fingerprint
+        get_perm_fp: (perm) ->
+            if perm.csw_object_permission?
+                return "#{perm.level}-#{perm.user}-#{perm.csw_object_permission.csw_permission}-#{perm.csw_object_permission.object_pk}"
+            else
+                return "#{perm.level}-#{perm.user}-#{perm.csw_permission}"
+
+        # check if changed
+        changed: (object) ->
+            return object.$$_ICSW_backup_def.changed(object)
+
+    }
 ]).service("icswUserService",
 [
     "$q", "ICSW_URLS", "icswSimpleAjaxCall", "$rootScope",
@@ -151,24 +166,53 @@ user_module = angular.module(
 ) ->
     # permission list and objects
     class icswUserGroupPermissionTree
-        constructor: (permission_list, object_list) ->
+        constructor: (permission_list, object_level_list) ->
             @permission_list = []
-            @object_list = []
-            @update(permission_list, object_list)
+            # special object list
+            @object_level_list = []
+            @ac_level_list = [
+                {"level": 0, "info_string": "Read-only"},
+                {"level": 1, "info_string": "Modify"},
+                {"level": 3, "info_string": "Modify, Create"},
+                {"level": 7, "info_string": "Modify, Create, Delete"},
+            ]
+            @update(permission_list, object_level_list)
         
-        update: (perm_list, obj_list) =>
+        update: (perm_list, obj_level_list) =>
             @permission_list.length = 0
             for entry in perm_list
                 @permission_list.push(entry)
-            @object_list.length = 0
-            for entry in obj_list
-                @object_list.push(entry)
+                key = entry.content_type.app_label + "." + entry.content_type.model
+                entry.key = key
+            @object_level_list.length = 0
+            for entry in obj_level_list
+                @object_level_list.push(entry)
             @build_luts()
         
         build_luts: () =>
             @permission_lut = _.keyBy(@permission_list, "idx")
-            @object_lut = _.keyBy(@object_list, "idx")
-            
+            @object_level_lut_by_type = _.keyBy(@object_level_list, "content_type")
+            @object_level_lut_by_label = _.keyBy(@object_level_list, "content_label")
+            # model permissions, key is app_label.content_type
+            @model_permission_lut = {}
+            for entry in @permission_list
+                if entry.valid_for_object_level
+                    if entry.key not of @model_permission_lut
+                        @model_permission_lut[entry.key] = []
+                    @model_permission_lut[entry.key].push(entry)
+            @ac_level_lut = _.keyBy(@ac_level_list, "level")
+            @link()
+
+        link: () =>
+            # create info fields
+            for entry in @permission_list
+                entry.model_name = entry.content_type.model
+                if entry.valid_for_object_level
+                    info_str = "#{entry.name} (G/O)"
+                else
+                    info_str = "#{entry.name} (G)"
+                entry.info_string = info_str
+
 ]).service("icswUserGroupPermissionTreeService",
 [
     "$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall",
@@ -473,7 +517,7 @@ user_module = angular.module(
         handle_click: (entry, event) =>
             @clear_active()
             entry.active = true
-            @scope.add_edit_object(entry)
+            @scope.add_edit_object_from_tree(entry)
             @scope.$digest()
 
         get_icon_class: (entry) ->
@@ -514,13 +558,19 @@ user_module = angular.module(
                 _info.push(@scope.icswTools.get_size_str(_dir.num_files_total, 1000, "") + " files")
             return "#{_dir.name} (" + _info.join(", ") + ")"
 ]).controller("icswUserGroupTreeCtrl", [
-    "icswUserGroupTreeService", "$scope", "$compile", "$q", "icswUserGroupSettingsTreeService",
-    "icswUserGroupPermissionTreeService", "icswUserGroupDisplayTree", "$timeout",
+    "icswUserGroupTreeService", "$scope", "$compile", "$q", "icswUserGroupSettingsTreeService", "blockUI",
+    "icswUserGroupPermissionTreeService", "icswUserGroupDisplayTree", "$timeout", "icswDeviceTreeService",
+    "icswUserBackup", "icswGroupBackup", "icswUserGroupTools", "ICSW_SIGNALS", "icswToolsSimpleModalService",
+    "icswSimpleAjaxCall", "ICSW_URLS",
 (
-    icswUserGroupTreeService, $scope, $compile, $q, icswUserGroupSettingsTreeService,
-    icswUserGroupPermissionTreeService, icswUserGroupDisplayTree, $timeout,
+    icswUserGroupTreeService, $scope, $compile, $q, icswUserGroupSettingsTreeService, blockUI,
+    icswUserGroupPermissionTreeService, icswUserGroupDisplayTree, $timeout, icswDeviceTreeService,
+    icswUserBackup, icswGroupBackup, icswUserGroupTools, ICSW_SIGNALS, icswToolsSimpleModalService,
+    icswSimpleAjaxCall, ICSW_URLS,
 ) ->
     $scope.struct = {
+        # any tree data valid
+        tree_loaded: false
         # user and group tree
         user_group_tree: undefined
         # user and group settings
@@ -547,15 +597,17 @@ user_module = angular.module(
                 icswUserGroupTreeService.load($scope.$id)
                 icswUserGroupSettingsTreeService.load($scope.$id)
                 icswUserGroupPermissionTreeService.load($scope.$id)
+                icswDeviceTreeService.load($scope.$id)
             ]
         ).then(
             (data) ->
-                console.log data
                 $scope.struct.user_group_tree = data[0]
                 $scope.struct.ugs_tree = data[1]
                 $scope.struct.perm_tree = data[2]
+                $scope.struct.device_tree = data[3]
                 $scope.struct.error_string = ""
                 $scope.rebuild_tree()
+                $scope.struct.tree_loaded = true
         )
 
         $scope.rebuild_tree = () ->
@@ -652,213 +704,127 @@ user_module = angular.module(
         $scope.update_filter_to = $timeout(_filter_to, 200)
 
     # edit object functions
-    $scope.add_edit_object = (treenode) ->
+
+    $scope.add_edit_object_from_tree = (treenode) ->
         if treenode._node_type == "g"
+            $scope.add_edit_object(treenode.obj, "group")
+        else
+            $scope.add_edit_object(treenode.obj, "user")
+
+    $scope.add_edit_object = (obj, obj_type) ->
+        if obj_type == "group"
             ref_list = $scope.struct.edit_groups
+            bu_def = icswGroupBackup
         else
             ref_list = $scope.struct.edit_users
-        obj = treenode.obj
+            bu_def = icswUserBackup
         if obj not in ref_list
+            bu_obj = new bu_def()
+            bu_obj.create_backup(obj)
+            # console.log bu_obj, obj
             ref_list.push(obj)
 
-    close_edit_object = (ref_obj, ref_list) ->
+    # close open tabs
+
+    close_edit_object = (ref_obj, ref_list, obj_type) ->
+        defer = $q.defer()
         # must use a timeout here to fix strange routing bug, FIXME, TODO
-        $timeout(
-            () ->
-                _.remove(ref_list, (entry) -> return ref_obj.idx == entry.idx)
-            100
+        if icswUserGroupTools.changed(ref_obj)
+            icswToolsSimpleModalService("Really close changed #{obj_type} ?").then(
+                (ok) ->
+                    defer.resolve("close")
+                (not_ok) ->
+                    defer.reject("not closed")
+            )
+        else
+            defer.resolve("not changed")
+        defer.promise.then(
+            (close) ->
+                $timeout(
+                    () ->
+                        _.remove(ref_list, (entry) -> return ref_obj.idx == entry.idx)
+                    100
+                )
         )
 
+    $scope.$on(ICSW_SIGNALS("_ICSW_CLOSE_USER_GROUP"), ($event, object, obj_type) ->
+        if obj_type == "group"
+            $scope.close_group(object)
+        else
+            $scope.close_user(object)
+    )
+
     $scope.close_group = (group_obj) ->
-        close_edit_object(group_obj, $scope.struct.edit_groups)
+        close_edit_object(group_obj, $scope.struct.edit_groups, "group")
 
     $scope.close_user = (user_obj) ->
-        close_edit_object(user_obj, $scope.struct.edit_users)
+        close_edit_object(user_obj, $scope.struct.edit_users, "user")
+
+    $scope.changed = (object) ->
+        return icswUserGroupTools.changed(object)
+
+    $scope.create_group = () ->
+        gid = 200
+        gids = (entry.gid for entry in $scope.struct.user_group_tree.group_list)
+        for entry in $scope.struct.edit_groups
+            gids.push(entry.gid)
+        while gid in gids
+            gid++
+        new_group = {
+            groupname: "new_group"
+            gid: gid
+            active: true
+            homestart: "/home"
+            group_quota_setting_set: []
+            group_permission_set: []
+            group_object_permission_set: []
+        }
+        $scope.add_edit_object(new_group, "group")
+
+    $scope.create_user = () ->
+        uid = 200
+        uids = (entry.uid for entry in $scope.struct.user_group_tree.user_list)
+        for entry in $scope.struct.edit_users
+            uids.push(entry.uid)
+        while uid in uids
+            uid++
+        new_user = {
+            login: "new_user"
+            uid: uid
+            active: true
+            db_is_auth_for_password: true
+            password: ""
+            group: $scope.struct.user_group_tree.group_list[0].idx
+            shell: "/bin/bash"
+            scan_depth: 2
+            secondary_groups: []
+            user_quota_setting_set: []
+            user_permission_set: []
+            user_object_permission_set: []
+        }
+        $scope.add_edit_object(new_user, "user")
+
+    $scope.sync_users = () ->
+        blockUI.start("Sending sync to server ...")
+        icswSimpleAjaxCall(
+            url: ICSW_URLS.USER_SYNC_USERS
+            title: "syncing users"
+        ).then(
+            (xml) ->
+                blockUI.stop()
+            (xml) ->
+                blockUI.stop()
+        )
 
     $scope.reload()
 ]).controller("user_tree", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$timeout", "$uibModal", "blockUI", "ICSW_URLS", "icswSimpleAjaxCall", "toaster", "icswAcessLevelService",
     ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $timeout, $uibModal, blockUI, ICSW_URLS, icswSimpleAjaxCall, toaster, icswAcessLevelService) ->
-        $scope.ac_levels = [
-            {"level" : 0, "info" : "Read-only"},
-            {"level" : 1, "info" : "Modify"},
-            {"level" : 3, "info" : "Modify, Create"},
-            {"level" : 7, "info" : "Modify, Create, Delete"},
-        ]
-        icswAcessLevelService.install($scope)
-        $scope.obj_perms = {}
-        # $scope.tree = new icswUserTree($scope)
-        # init edit mixins
-        $scope.group_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q)
-        $scope.group_edit.modify_rest_url = ICSW_URLS.REST_GROUP_DETAIL.slice(1).slice(0, -2)
-        $scope.group_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_GROUP_LIST.slice(1))
-        $scope.group_edit.use_modal = false
-        $scope.group_edit.change_signal = "icsw.user.groupchange"
-        $scope.group_edit.new_object = () ->
-            gid = 200
-            gids = (entry.gid for entry in $scope.group_list)
-            while gid in gids
-                gid++
-            r_obj = {
-                "groupname" : "new_group"
-                "gid" : gid
-                "active" : true
-                "homestart" : "/home"
-                "perms" : []
-                "group_quota_setting": []
-            }
-            return r_obj
-        $scope.user_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q)
-        $scope.user_edit.modify_rest_url = ICSW_URLS.REST_USER_DETAIL.slice(1).slice(0, -2)
-        $scope.user_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_USER_LIST.slice(1))
-        $scope.user_edit.use_modal = false
-        $scope.user_edit.change_signal = "icsw.user.userchange"
-        $scope.user_edit.new_object = () ->
-            uid = 200
-            uids = (entry.uid for entry in $scope.user_list)
-            while uid in uids
-                uid++
-            r_obj = {
-                "login" : "new_user"
-                "uid" : uid
-                "active" : true
-                "db_is_auth_for_password" : true
-                "group" : (entry.idx for entry in $scope.group_list)[0]
-                "shell" : "/bin/bash"
-                "perms" : []
-                "scan_depth" : 2
-                "user_quota_setting": []
-            }
-            return r_obj
-        wait_list = restDataSource.add_sources([
-            # [ICSW_URLS.REST_GROUP_LIST, {}]
-            # [ICSW_URLS.REST_USER_LIST, {}]
-            # [ICSW_URLS.REST_DEVICE_GROUP_LIST, {}]
-            # [ICSW_URLS.REST_CSW_PERMISSION_LIST, {}]
-            # [ICSW_URLS.REST_HOME_EXPORT_LIST, {}]
-            # [ICSW_URLS.REST_CSW_OBJECT_LIST, {}]
-            # [ICSW_URLS.REST_QUOTA_CAPABLE_BLOCKDEVICE_LIST, {}]
-            # [ICSW_URLS.REST_VIRTUAL_DESKTOP_PROTOCOL_LIST, {}]
-            # [ICSW_URLS.REST_WINDOW_MANAGER_LIST, {}]
-            # [ICSW_URLS.REST_DEVICE_LIST, {}]
-            # [ICSW_URLS.REST_VIRTUAL_DESKTOP_USER_SETTING_LIST, {}]
-        ])
-        $scope.init_csw_cache = (entry, e_type) ->
-            entry.permission = null
-            entry.permission_level = 0
-        $q.all(wait_list).then(
-            (data) ->
-                $scope.group_list = data[0]
-                $scope.user_list = data[1]
-                $scope.device_group_list = data[2]
-                $scope.csw_permission_list = data[3]
-                $scope.csw_permission_lut = {}
-                for entry in $scope.csw_permission_list
-                    $scope.csw_permission_lut[entry.idx] = entry
-                    entry.model_name = entry.content_type.model
-                #$scope.csw_object_permission_list = data[4]
-                $scope.home_export_list = data[4]
-                # beautify permission list
-                for entry in $scope.csw_permission_list
-                    info_str = "#{entry.name} (" + (if entry.valid_for_object_level then "G/O" else "G") + ")"
-                    entry.info = info_str
-                    if entry.valid_for_object_level
-                        key = entry.content_type.app_label + "." + entry.content_type.model 
-                        if key not of $scope.obj_perms
-                            $scope.obj_perms[key] = []
-                        $scope.obj_perms[key].push(entry)
-                $scope.ct_dict = {}
-                for entry in data[5]
-                    $scope.ct_dict[entry.content_label] = entry.object_list
-                $scope.group_edit.delete_list = $scope.group_list 
-                $scope.group_edit.create_list = $scope.group_list
-                $scope.user_edit.delete_list = $scope.user_list 
-                $scope.user_edit.create_list = $scope.user_list
-                $scope.qcb_list = data[6]
-                $scope.qcb_lut = {}
-                for entry in $scope.qcb_list
-                    $scope.qcb_lut[entry.idx] = entry
-                $scope.rebuild_tree()
-                $scope.virtual_desktop_protocol = data[7]
-                $scope.window_manager = data[8]
-                $scope.device = data[9]
-                $scope.virtual_desktop_user_setting = data[10]
-                for vdus in $scope.virtual_desktop_user_setting
-                    $scope.get_viewer_command_line(vdus)
-        )
-        $scope.sync_users = () ->
-            blockUI.start("Sending sync to server ...")
-            icswSimpleAjaxCall(
-                url     : ICSW_URLS.USER_SYNC_USERS
-                title   : "syncing users"
-            ).then(
-                (xml) ->
-                    blockUI.stop()
-                (xml) ->
-                    blockUI.stop()
-            )
-        $scope.rebuild_tree = () ->
-            $scope.tree.clear_root_nodes()
-            group_lut = {}
-            rest_list = []
-            for entry in $scope.group_list
-                # set csw dummy permission list and optimizse object_permission list
-                $scope.init_csw_cache(entry, "group")
-                t_entry = $scope.tree.new_node(
-                    folder: true
-                    obj: entry
-                    expand: !entry.parent_group
-                    _node_type: "g"
-                    always_folder: true
-                )
-                group_lut[entry.idx] = t_entry
-                if entry.parent_group
-                    # handle later
-                    rest_list.push(t_entry)
-                else
-                    $scope.tree.add_root_node(t_entry)
-            while rest_list.length > 0
-                # iterate until the list is empty
-                _rest_list = []
-                for entry in rest_list
-                    if entry.obj.parent_group of group_lut
-                        group_lut[entry.obj.parent_group].add_child(entry)
-                    else
-                        _rest_list.push(entry)
-                rest_list = _rest_list
-            $scope.group_lut = group_lut
-            $scope.parent_groups = {}
-            for entry in $scope.group_list
-                $scope.parent_groups[entry.idx] = $scope.get_parent_group_list(entry)
-            for entry in $scope.user_list
-                # set csw dummy permission list and optimise object_permission_list
-                $scope.init_csw_cache(entry, "user")
-                t_entry = $scope.tree.new_node({folder:false, obj:entry, _node_type:"u"})
-                group_lut[entry.group].add_child(t_entry)
-        $scope.$on("icsw.user.groupchange", () ->
-            $scope.rebuild_tree()
-        )
-        $scope.$on("icsw.user.userchange", () ->
-            $scope.rebuild_tree()
-        )
-        $scope.valid_device_groups = () ->
-            _list = (entry for entry in $scope.device_group_list when entry.enabled == true and entry.cluster_device_group == false) 
-            return _list
         $scope.valid_group_csw_perms = () ->
-            _list = (entry for entry in $scope.csw_permission_list when entry.codename not in ["admin", "group_admin"]) 
+            _list = (entry for entry in $scope.csw_permission_list when entry.codename not in ["admin", "group_admin"])
             return _list
         $scope.valid_user_csw_perms = () ->
             return (entry for entry in $scope.csw_permission_list)
-        $scope.object_list = () ->
-            if $scope._edit_obj.permission
-                perm = $scope.csw_permission_lut[$scope._edit_obj.permission]
-                if perm.valid_for_object_level
-                    key = "#{perm.content_type.app_label}.#{perm.content_type.model}"
-                    if $scope.ct_dict[key] and $scope.ct_dict[key].length
-                        if not $scope._edit_obj.object 
-                            $scope._edit_obj.object = $scope.ct_dict[key][0].idx
-                        return $scope.ct_dict[key]
-            $scope._edit_obj.object = null
-            return []
+
         $scope.get_export_list = () ->
             for entry in $scope.home_export_list
                 entry.home_info_string = $scope.get_home_info_string(entry)
@@ -895,8 +861,6 @@ user_module = angular.module(
                 $scope._edit_obj.put()
             $scope.$digest()
         )
-        $scope.change_password = () ->
-            $scope.$broadcast("icsw.enter_password")
         $scope.create_object_permission = () ->
             perm = $scope.csw_permission_lut[$scope._edit_obj.permission]
             icswSimpleAjaxCall(
@@ -965,10 +929,6 @@ user_module = angular.module(
                         (data) ->
                             $scope._edit_obj[ps_name].push(data)
                     )
-        $scope.get_perm_app = (perm) ->
-            return $scope.csw_permission_lut[perm.csw_permission].content_type.app_label
-        $scope.get_obj_perm_app = (perm) ->
-            return $scope.csw_permission_lut[perm.csw_permission].content_type.app_label
         $scope.get_perm_level = (perm) ->
             level = perm.level
             return (_v.info for _v in $scope.ac_levels when _v.level == level)[0]
@@ -1082,111 +1042,249 @@ user_module = angular.module(
             csw_perm = $scope.csw_permission_lut[obj_perm.csw_permission]
             key = "#{csw_perm.content_type.app_label}.#{csw_perm.content_type.model}"
             return (_v.name for _v in $scope.ct_dict[key] when _v.idx == obj_perm.object_pk)[0]
-        $scope.change_password = () ->
-            $scope.$broadcast("icsw.enter_password")
         $scope.get_vdus = (idx) ->
         $scope.update()
-]).directive("icswUserGroupShow", ["$compile", "$templateCache", ($compile, $templateCache) ->
+]).directive("icswUserEdit",
+[
+    "$templateCache",
+(
+    $templateCache,
+) ->
     return {
-        restrict : "A"
-        template : $templateCache.get("group.detail.form")
-        link : (scope, element, attrs) ->
-            # not beautiful but working
-            scope.$parent.form = scope.form
-            scope.obj_perms = scope.$parent.obj_perms
+        restrict: "EA"
+        template: $templateCache.get("icsw.user.edit.form")
+        controller: "icswUserGroupEditCtrl"
+        scope:
+            user: "=icswUser"
+            tree: "=icswUserGroupTree"
+            perm_tree: "=icswPermissionTree"
+            device_tree: "=icswDeviceTree"
+            settings_tree: "=icswUserGroupSettingsTree"
+        link: (scope, element, attrs) ->
+            scope.set_type("user")
     }
-]).directive("icswUserUserShow", ["$compile", "$templateCache", ($compile, $templateCache) ->
+]).directive("icswGroupEdit",
+[
+    "$templateCache",
+(
+    $templateCache,
+) ->
     return {
-        restrict : "A"
-        template : $templateCache.get("user.detail.form")
-        link : (scope, element, attrs) ->
-            # not beautiful but working
-            scope.$parent.$parent.form = scope.form
-            scope.obj_perms = scope.$parent.$parent.obj_perms
+        restrict: "EA"
+        template: $templateCache.get("icsw.group.edit.form")
+        controller: "icswUserGroupEditCtrl"
+        scope:
+            group: "=icswGroup"
+            tree: "=icswUserGroupTree"
+            perm_tree: "=icswPermissionTree"
+            device_tree: "=icswDeviceTree"
+            settings_tree: "=icswUserGroupSettingsTree"
+        link: (scope, element, attrs) ->
+            scope.set_type("group")
     }
-]).directive("icswUserPermissions", ["$compile", "$templateCache", ($compile, $templateCache) ->
+]).controller("icswUserGroupEditCtrl",
+[
+    "$scope", "$q", "icswUserGroupTools", "ICSW_SIGNALS", "icswToolsSimpleModalService", "icswUserGetPassword",
+(
+    $scope, $q, icswUserGroupTools, ICSW_SIGNALS, icswToolsSimpleModalService, icswUserGetPassword,
+) ->
+
+    $scope.obj_list_cache = {}
+    $scope.obj_lut_cache = {}
+
+    $scope.new_perm = {
+        permission: undefined
+        level: 0
+        object: undefined
+    }
+
+    $scope.set_type = (ug_type) ->
+        $scope.type = ug_type
+        if $scope.type == "user"
+            # original
+            $scope.src_object = $scope.user
+            # working object
+            $scope.object = $scope.src_object.$$_ICSW_backup_data
+            $scope.permission_set = $scope.object.user_permission_set
+            $scope.object_permission_set = $scope.object.user_object_permission_set
+            # check password
+            if $scope.user.password.length
+                $scope.modify_ok = true
+            else
+                $scope.modify_ok = false
+        else
+            # original
+            $scope.src_object = $scope.group
+            # working object
+            $scope.object = $scope.src_object.$$_ICSW_backup_data
+            $scope.permission_set = $scope.object.group_permission_set
+            $scope.object_permission_set = $scope.object.group_object_permission_set
+
+    _object_list = (key) ->
+        if key not of $scope.obj_list_cache
+            _list = []
+            if key == "backbone.device"
+                for entry in $scope.device_tree.enabled_list
+                    if entry.is_meta_device
+                        if entry.is_cluster_device_group
+                            _name = "[CDG] " + entry.full_name.substr(8)
+                        else
+                            _name = "[MD] " + entry.full_name.substr(8)
+                    else
+                        _name = entry.full_name
+                    _list.push(
+                        {
+                            idx: entry.idx
+                            name: _name
+                            group: "DeviceGroup " + $scope.device_tree.group_lut[entry.device_group].name
+                        }
+                    )
+            else if key == "backbone.user"
+                for entry in $scope.tree.user_list
+                    _list.push(
+                        {
+                            idx: entry.idx
+                            name: entry.login
+                            group: "Group " + $scope.tree.group_lut[entry.group].groupname
+                        }
+                    )
+            else if key == "backbone.group"
+                for entry in $scope.tree.group_list
+                    _list.push(
+                        {
+                            idx: entry.idx
+                            name: entry.groupname
+                            group: ""
+                        }
+                    )
+            else
+                console.error "unknown OLP-key '#{key}'"
+            $scope.obj_list_cache[key] = _list
+            $scope.obj_lut_cache[key] = _.keyBy(_list, "idx")
+        return $scope.obj_list_cache[key]
+
+    $scope.get_perm = (perm) ->
+        return $scope.perm_tree.permission_lut[perm]
+
+    $scope.object_list = () ->
+        if $scope.new_perm.permission
+            _list = []
+            # create cache
+            perm = $scope.perm_tree.permission_lut[$scope.new_perm.permission]
+            if perm.valid_for_object_level
+                return _object_list(perm.key)
+            else
+                return []
+        else
+            return []
+
+    $scope.get_perm_object = (perm) ->
+        _perm = $scope.get_perm(perm.csw_object_permission.csw_permission)
+        # console.log perm, _perm
+        if _perm.key not of $scope.obj_list_cache
+            # build cache
+            _object_list(_perm.key)
+        _lut = $scope.obj_lut_cache[_perm.key]
+        _pk = perm.csw_object_permission.object_pk
+        if _pk of _lut
+            return _lut[_pk].name
+        else
+            return "PK #{_pk} not found for #{_perm.key}"
+
+    _enrich_permission = (perm) ->
+        if $scope.type == "user"
+            perm.user = $scope.user.idx
+        else
+            perm.group = $scope.group.idx
+
+    # create / add functions
+    $scope.create_permission = () ->
+        # add new global permission
+        _np = $scope.new_perm
+        _new_p = {
+            level: _np.level
+            csw_permission: _np.permission
+        }
+        _enrich_permission(_new_p)
+        if icswUserGroupTools.get_perm_fp(_new_p) not in (icswUserGroupTools.get_perm_fp(_old_p) for _old_p in $scope.permission_set)
+            $scope.permission_set.push(_new_p)
+
+    $scope.create_object_permission = () ->
+        # add new object permission
+        _np = $scope.new_perm
+        _new_p = {
+            level: _np.level
+            csw_object_permission: {
+                csw_permission: _np.permission
+                object_pk: _np.object
+            }
+        }
+        _enrich_permission(_new_p)
+        if icswUserGroupTools.get_perm_fp(_new_p) not in (icswUserGroupTools.get_perm_fp(_old_p) for _old_p in $scope.object_permission_set)
+            $scope.object_permission_set.push(_new_p)
+
+    $scope.delete_permission = (perm) ->
+        _fp = icswUserGroupTools.get_perm_fp(perm)
+        _.remove($scope.permission_set, (entry) -> return _fp == icswUserGroupTools.get_perm_fp(entry))
+        _.remove($scope.object_permission_set, (entry) -> return _fp == icswUserGroupTools.get_perm_fp(entry))
+
+    $scope.changed = () ->
+        return icswUserGroupTools.changed($scope.src_object)
+    
+    $scope.close = () ->
+        $scope.$emit(ICSW_SIGNALS("_ICSW_CLOSE_USER_GROUP"), $scope.src_object, $scope.type)
+        
+    $scope.password_set = () ->
+        if $scope.object.password.length
+            return true
+        else
+            return false
+            
+    $scope.change_password = () ->
+        icswUserGetPassword($scope, $scope.object).then(
+            (done) ->
+                if $scope.object.$$password_ok
+                    # copy if password is now set
+                    $scope.object.password = $scope.object.$$password
+                    $scope.modify_ok = true
+        )
+
+]).directive("icswUserGroupPermissions",
+[
+    "$compile", "$templateCache",
+(
+    $compile, $templateCache
+) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("icsw.user.permissions")
-        link : (scope, element, attrs) ->
-            scope.action = false
-            scope.$watch(attrs["object"], (new_val) ->
-                scope.object = new_val
-                # user or group
-                scope.type = attrs["type"]
-            )
-            scope.$watch(attrs["action"], (new_val) ->
-                scope.action = new_val
-            )
-            scope.get_permission_set = () ->
-                if scope.object?
-                    if scope.type == "user"
-                        return scope.object.user_permission_set
-                    else
-                        return scope.object.group_permission_set
-                else
-                    return []
-            scope.get_object_permission_set = () ->
-                if scope.object?
-                    if scope.type == "user"
-                        return scope.object.user_object_permission_set
-                    else
-                        return scope.object.group_object_permission_set
-                else
-                    return []
+        template : $templateCache.get("icsw.user.group.permissions")
     }
-]).directive("icswUserQuotaSettings", ["$compile", "$templateCache", "icswTools", ($compile, $templateCache, icswTools) ->
+]).directive("icswUserQuotaSettings",
+[
+    "$compile", "$templateCache", "icswTools",
+(
+    $compile, $templateCache, icswTools
+) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.user.quota.settings")
+        scope:
+            object: "=icswObject"
+            object_type: "=icswObjectType"
+            settings_tree: "=icswUserGroupSettingsTree"
         link: (scope, element, attrs) ->
-            scope.object = undefined
-            scope.quota_settings = []
-            scope.$watch(attrs["object"], (new_val) ->
-                scope.object = new_val
-                scope.type = attrs["type"]
-                if scope.object?
-                    # salt list
-                    if scope.type == "user"
-                        scope.quota_settings = scope.object.user_quota_setting_set
-                    else
-                        scope.quota_settings = scope.object.group_quota_setting_set
-                    if scope.quota_settings
-                        for entry in scope.quota_settings
-                            entry.show_abs = false
-                            # link
-                            entry.qcb = scope.qcb_lut[entry.quota_capable_blockdevice]
-                            entry.bytes_quota = if (entry.bytes_soft or entry.bytes_hard) then true else false
-                            entry.files_quota = if (entry.files_soft or entry.files_hard) then true else false
-                            # build stack
-                            entry.files_stacked = scope.build_stacked(entry, "files", true)
-                            entry.bytes_stacked_abs = scope.build_stacked(entry, "bytes", true)
-                            entry.bytes_stacked_rel = scope.build_stacked(entry, "bytes", false)
-            )
-            scope.get_bytes_limit = (qs) ->
-                if qs.bytes_soft or qs.bytes_hard
-                    return icswTools.get_size_str(qs.bytes_soft, 1024, "B") + " / " + icswTools.get_size_str(qs.bytes_hard, 1024, "B")
-                else
-                    return "---"
-            scope.get_files_limit = (qs) ->
-                if qs.files_soft or qs.files_hard
-                    return icswTools.get_size_str(qs.files_soft, 1000, "") + " / " + icswTools.get_size_str(qs.files_hard, 1000, "")
-                else
-                    return "---"
-            scope.get_line_class = (qs) ->
-                if (qs.bytes_hard and qs.bytes_used > qs.bytes_hard) or (qs.files_hard and qs.files_used > qs.files_hard)
-                    _class = "danger"
-                else if (qs.bytes_soft and qs.bytes_used > qs.bytes_soft) or (qs.files_soft and qs.files_used > qs.files_soft)
-                    _class = "warning"
-                else
-                    _class = ""
-                return _class
-            scope.build_stacked = (qs, _type, abs) ->
+            # console.log scope.object_type, scope.object
+            if scope.object_type == "user"
+                scope.quota_settings = scope.object.user_quota_setting_set
+            else
+                scope.quota_settings = scope.object.group_quota_setting_set
+
+            _build_stacked = (qs, _type, abs) ->
                 _used = qs["#{_type}_used"]
                 _soft = qs["#{_type}_soft"]
                 _hard = qs["#{_type}_hard"]
                 r_stack = []
-                if qs.qcb.size and (_soft or _hard)
+                if qs.$$qcb.size and (_soft or _hard)
                     if _type == "files"
                         _info1 = "files"
                         max_value = Math.max(_soft, _hard)
@@ -1194,7 +1292,7 @@ user_module = angular.module(
                     else
                         _info1 = "space"
                         if abs
-                            max_value = qs.qcb.size
+                            max_value = qs.$$qcb.size
                         else
                             max_value = _hard
                         used_str = icswTools.get_size_str(_used, 1024, "B")
@@ -1264,6 +1362,45 @@ user_module = angular.module(
                             }
                         )
                 return r_stack
+
+            _get_line_class = (qs) ->
+                if (qs.bytes_hard and qs.bytes_used > qs.bytes_hard) or (qs.files_hard and qs.files_used > qs.files_hard)
+                    _class = "danger"
+                else if (qs.bytes_soft and qs.bytes_used > qs.bytes_soft) or (qs.files_soft and qs.files_used > qs.files_soft)
+                    _class = "warning"
+                else
+                    _class = ""
+                return _class
+
+            _get_bytes_limit = (qs) ->
+                if qs.bytes_soft or qs.bytes_hard
+                    return icswTools.get_size_str(qs.bytes_soft, 1024, "B") + " / " + icswTools.get_size_str(qs.bytes_hard, 1024, "B")
+                else
+                    return "---"
+
+            _get_files_limit = (qs) ->
+                if qs.files_soft or qs.files_hard
+                    return icswTools.get_size_str(qs.files_soft, 1000, "") + " / " + icswTools.get_size_str(qs.files_hard, 1000, "")
+                else
+                    return "---"
+
+            _salt_list = (in_list) ->
+                for entry in in_list
+                    entry.$$show_abs = false
+                    # link
+                    entry.$$qcb = scope.settings_tree.quota_capable_blockdevice_lut[entry.quota_capable_blockdevice]
+                    entry.$$bytes_quota = if (entry.bytes_soft or entry.bytes_hard) then true else false
+                    entry.$$files_quota = if (entry.files_soft or entry.files_hard) then true else false
+                    # build stack
+                    entry.$$files_stacked = _build_stacked(entry, "files", true)
+                    entry.$$bytes_stacked_abs = _build_stacked(entry, "bytes", true)
+                    entry.$$bytes_stacked_rel = _build_stacked(entry, "bytes", false)
+                    entry.$$line_class = _get_line_class(entry)
+                    entry.$$bytes_limit = _get_bytes_limit(entry)
+                    entry.$$files_limit = _get_files_limit(entry)
+
+            _salt_list(scope.quota_settings)
+
     }
 ]).directive("icswUserDiskUsage", ["$compile", "$templateCache", "icswTools", "icswDiskUsageTree", ($compile, $templateCache, icswTools, icswDiskUsageTree) ->
     return {
@@ -1351,10 +1488,22 @@ user_module = angular.module(
                 else
                     return "no scan runs"
     }
-]).directive("icswUserVirtualDesktopSettings", ["$compile", "$templateCache", "icswTools", "toaster", ($compile, $templateCache, icswTools, toaster) ->
-        restrict : "EA"
-        template : $templateCache.get("icsw.user.vdu.settings")
+]).directive("icswUserVirtualDesktopSettings",
+[
+    "$compile", "$templateCache", "icswTools", "toaster",
+(
+    $compile, $templateCache, icswTools, toaster
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.user.vdu.settings")
+        scope:
+            user: "=icswUser"
+            tree: "=icswUserGroupTree"
+            device_tree: "=icswDeviceTree"
+            settings_tree: "=icswUserGroupSettingsTree"
         link: (scope, element, attrs) ->
+
             scope.available_screen_sizes = available_screen_sizes
             scope.current_vdus = null
             scope.get_virtual_desktop_submit_mode = () ->
@@ -1364,65 +1513,63 @@ user_module = angular.module(
                     return "modify"
             scope.cancel_virtual_desktop_user_setting = () ->
                 scope.$apply(
-                        scope._edit_obj.device = undefined
+                    scope._edit_obj.device = undefined
                 )
                 scope.current_vdus = null
-            scope.get_virtual_desktop_user_setting_of_user = (user_obj) ->
-                return scope.virtual_desktop_user_setting.filter( (vdus) -> vdus.user == user_obj.idx && vdus.to_delete == false )
-                
-            scope.virtual_desktop_devices = () ->
-                # devices which support both some kind of virtual desktop and window manager
+
+            # build virtual desktop device list
+            _build_vd_list = () ->
                 vd_devs = []
-                for vd in scope.virtual_desktop_protocol
+                for vd in scope.settings_tree.virtual_desktop_protocol_list
                     for dev_index in vd.devices
                         vd_devs.push(dev_index)
-                        
+
                 wm_devs = []
-                for wm in scope.window_manager
+                for wm in scope.settings_tree.window_manager_list
                     for dev_index in wm.devices
                         wm_devs.push(dev_index)
-                    
-                # vd_devs and wm_devs contain duplicates, but we dont care
-                inter = _.intersection(vd_devs, wm_devs)
 
-                return (dev for dev in scope.device when not dev.is_meta_device and dev.idx in inter)
-            scope.virtual_desktop_device_available = () ->
-                return scope.virtual_desktop_devices().length > 0
+                # vd_devs and wm_devs contain duplicates, but we dont care
+                # devices which support both some kind of virtual desktop and window manager
+                inter = _.intersection(vd_devs, wm_devs)
+                _list = (scope.device_tree.all_lut[dev] for dev in inter)
+                return (entry for entry in _list when not entry.is_meta_device)
+
+            scope.virtual_desktop_devices = _build_vd_list()
+
+            scope.virtual_desktop_device_available = scope.virtual_desktop_devices.length > 0
+
             scope.get_available_window_managers = (dev_index) ->
                 if dev_index
                     return (wm for wm in scope.window_manager when (dev_index in wm.devices))
                 else
                     return []
+
             scope.get_available_virtual_desktop_protocols = (dev_index) ->
                 if dev_index
                     return (vd for vd in scope.virtual_desktop_protocol when (dev_index in vd.devices))
                 else
                     return []
-            scope.get_device_by_index = (index) ->
-                return _.find(scope.device, (vd) -> vd.idx == index)
-            scope.get_virtual_desktop_protocol_by_index = (index) ->
-                return _.find(scope.virtual_desktop_protocol, (vd) -> vd.idx == index)
-            scope.get_window_manager_by_index = (index) ->
-                return _.find(scope.window_manager, (vd) -> vd.idx == index)
-            
+
             scope.get_selected_screen_size_as_string = () ->
-               if not scope._edit_obj.screen_size
-                   return ""
-               if scope._edit_obj.screen_size.manual
-                   return scope._edit_obj.manual_screen_size_x + "x" + scope._edit_obj.manual_screen_size_y
-               else 
-                   return scope._edit_obj.screen_size.name
+                if not scope._edit_obj.screen_size
+                    return ""
+                if scope._edit_obj.screen_size.manual
+                    return scope._edit_obj.manual_screen_size_x + "x" + scope._edit_obj.manual_screen_size_y
+                else
+                    return scope._edit_obj.screen_size.name
+
             scope.create_virtual_desktop_user_setting = () ->
                 # also called on modify
                 new_obj = {
-                    "window_manager":   scope._edit_obj.window_manager
-                    "virtual_desktop_protocol": scope._edit_obj.virtual_desktop_protocol 
-                    "screen_size":      scope.get_selected_screen_size_as_string()
-                    "device":           scope._edit_obj.device
-                    "user":             scope._edit_obj.idx
-                    "port":             scope._edit_obj.port
-                    "websockify_port":             scope._edit_obj.websockify_port
-                    "is_running":          scope._edit_obj.start_automatically
+                    "window_manager": scope._edit_obj.window_manager
+                    "virtual_desktop_protocol": scope._edit_obj.virtual_desktop_protocol
+                    "screen_size": scope.get_selected_screen_size_as_string()
+                    "device": scope._edit_obj.device
+                    "user": scope._edit_obj.idx
+                    "port": scope._edit_obj.port
+                    "websockify_port": scope._edit_obj.websockify_port
+                    "is_running": scope._edit_obj.start_automatically
                 }
                 if scope.get_virtual_desktop_submit_mode() == "create"
                     scope.push_virtual_desktop_user_setting(new_obj, (data) ->
@@ -1431,7 +1578,7 @@ user_module = angular.module(
                         scope.virtual_desktop_user_setting.push(data)
                         toaster.pop("success", "", "added virtual desktop setting")
                     )
-                else 
+                else
                     # modify
                     for prop, val of new_obj
                         scope.current_vdus[prop] = val
@@ -1443,8 +1590,8 @@ user_module = angular.module(
 
             scope.on_device_change = () ->
                 # set default values
-                scope._edit_obj.port = 0  # could perhaps depend on protocol
-                scope._edit_obj.websockify_port = 0  # could perhaps depend on protocol
+                scope._edit_obj.port = 0 # could perhaps depend on protocol
+                scope._edit_obj.websockify_port = 0 # could perhaps depend on protocol
                 scope._edit_obj.screen_size = available_screen_sizes[1] # first is "manual"
 
                 dev_index = scope._edit_obj.device
@@ -1460,27 +1607,27 @@ user_module = angular.module(
             scope.delete_virtual_desktop_user_setting = (vdus) ->
                 vdus["to_delete"] = true
                 #vdus.remove()
-                vdus.put().then( () ->
+                vdus.put().then(() ->
                     # also remove locally
                     index = scope.virtual_desktop_user_setting.indexOf(vdus)
                     scope.virtual_desktop_user_setting.splice(index, 1)
                     toaster.pop("warning", "", "removed virtual desktop setting")
                 )
-            scope.modify_virtual_desktop_user_setting = (vdus) -> 
+            scope.modify_virtual_desktop_user_setting = (vdus) ->
                 scope._edit_obj.device = vdus.device # this triggers the default settings, but we overwrite them hre
                 # this changes the mode to modify mode
                 scope.current_vdus = vdus
-                
+
                 # set initial data from vdus
                 scope._edit_obj.port = vdus.port
                 scope._edit_obj.websockify_port = vdus.websockify_port
-                scope._edit_obj.screen_size = available_screen_sizes.filter( (x) -> x.name == vdus.screen_size )[0]
+                scope._edit_obj.screen_size = available_screen_sizes.filter((x) -> x.name == vdus.screen_size)[0]
 
                 scope._edit_obj.window_manager = vdus.window_manager
                 scope._edit_obj.virtual_desktop_protocol = vdus.virtual_desktop_protocol
 
                 scope._edit_obj.start_automatically = vdus.is_running
-            
+    }
 ])
 
 virtual_desktop_utils = {

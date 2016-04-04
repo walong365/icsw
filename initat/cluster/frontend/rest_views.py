@@ -538,22 +538,12 @@ class csw_object_serializer(serializers.Serializer):
 class csw_object_group_serializer(serializers.Serializer):
     content_label = serializers.CharField()
     content_type = serializers.IntegerField()
-    object_list = csw_object_serializer(many=True)
 
 
 class csw_object_group(object):
-    def __init__(self, ct_label, ct_idx, obj_list):
+    def __init__(self, ct_label, ct_idx):
         self.content_label = ct_label
         self.content_type = ct_idx
-        self.object_list = obj_list
-
-
-class csw_object(object):
-    def __init__(self, idx, name, group, tr_class):
-        self.idx = idx
-        self.name = name
-        self.group = group
-        self.tr_class = tr_class
 
 
 class min_access_levels(viewsets.ViewSet):
@@ -583,56 +573,19 @@ class csw_object_list(viewsets.ViewSet):
     @rest_logging
     def list(self, request):
         all_db_perms = csw_permission.objects.filter(Q(valid_for_object_level=True)).select_related("content_type")
-        perm_cts = ContentType.objects.filter(Q(pk__in=[cur_perm.content_type_id for cur_perm in all_db_perms]))
+        perm_cts = ContentType.objects.filter(
+            Q(pk__in=[cur_perm.content_type_id for cur_perm in all_db_perms])
+        )
         perm_cts = sorted(perm_cts, key=operator.attrgetter("name"))
         group_list = []
         for perm_ct in perm_cts:
             cur_group = csw_object_group(
                 "{}.{}".format(perm_ct.app_label, perm_ct.model_class().__name__),
                 perm_ct.pk,
-                self._get_objects(perm_ct, [ct_perm for ct_perm in all_db_perms if ct_perm.content_type_id == perm_ct.pk])
             )
             group_list.append(cur_group)
         _ser = csw_object_group_serializer(group_list, many=True)
         return Response(_ser.data)
-
-    def _get_objects(self, cur_ct, perm_list):
-        cur_model = apps.get_model(cur_ct.app_label, cur_ct.model_class().__name__)
-        _q = cur_model.objects
-        _key = "{}.{}".format(cur_ct.app_label, cur_ct.model_class().__name__)
-        if _key == "backbone.device":
-            _q = _q.select_related("device_group").filter(
-                Q(enabled=True, device_group__enabled=True)
-            ).order_by(
-                "-device_group__cluster_device_group",
-                "device_group__name",
-                "-is_meta_device",
-                "name"
-            )
-        if _key == "backbone.user":
-            _q = _q.select_related("group")
-        return [csw_object(cur_obj.pk, self._get_name(_key, cur_obj), self._get_group(_key, cur_obj), self._tr_class(_key, cur_obj)) for cur_obj in _q.all()]
-
-    def _get_name(self, _key, cur_obj):
-        if _key == "backbone.device":
-            if cur_obj.is_meta_device:
-                return unicode(cur_obj)[8:] + (" [CDG]" if cur_obj.device_group.cluster_device_group else " [MD]")
-        return unicode(cur_obj)
-
-    def _get_group(self, _key, cur_obj):
-        if _key == "backbone.device":
-            return unicode(cur_obj.device_group)
-        elif _key == "backbone.user":
-            return unicode(cur_obj.group)
-        else:
-            return "top"
-
-    def _tr_class(self, _key, cur_obj):
-        _lt = ""
-        if _key == "backbone.device":
-            if cur_obj.is_meta_device:
-                _lt = "warning"
-        return _lt
 
 
 class device_tree_mixin(object):
