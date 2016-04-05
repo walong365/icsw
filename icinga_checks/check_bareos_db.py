@@ -77,6 +77,7 @@ def check_failed_backups(courser, time, time_unit, unit, state, warning, critica
         state = 'f'
     print state
     print ','.join(state)
+    print get_state(state)
     query = """
     SELECT Job.Name,Level,starttime, JobStatus
     FROM Job
