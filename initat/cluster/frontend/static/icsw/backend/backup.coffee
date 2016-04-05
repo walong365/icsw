@@ -402,4 +402,20 @@ angular.module(
                 "name", "channel", "not_type", "subject", "content", "enabled",
             ]
 
+]).service("icswMonServiceTemplBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswMonServiceTemplBackupDefinition extends icswBackupDefinition
+
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "name", "volatile", "nsc_period", "max_attempts",
+                "check_interval", "retry_interval", "ninterval", "nsn_period",
+                "nrecovery", "ncritical", "nwarning", "nunknown", "nflapping",
+                "nplanned_downtime", "low_flap_threshold", "high_flap_threshold",
+                "flap_detection_enabled", "flap_detect_ok", "flap_detect_warn",
+                "flap_detect_critical", "flap_detect_unknown", "check_freshness",
+                "freshness_threshold",
+            ]
+
 ])

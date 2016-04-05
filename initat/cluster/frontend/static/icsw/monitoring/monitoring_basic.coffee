@@ -253,6 +253,32 @@ monitoring_basic_module = angular.module("icsw.monitoring.monitoring_basic",
             )
             return d.promise
 
+        # create / delete mon_service_templ
+
+        create_mon_service_templ: (new_st) =>
+            d = $q.defer()
+            Restangular.all(ICSW_URLS.REST_MON_SERVICE_TEMPL_LIST.slice(1)).post(new_st).then(
+                (created) =>
+                    @mon_service_templ_list.push(created)
+                    @link()
+                    d.resolve(created)
+                (not_cr) =>
+                    d.reject("not created")
+            )
+            return d.promise
+
+        delete_mon_service_templ: (del_st) =>
+            d = $q.defer()
+            Restangular.restangularizeElement(null, del_st, ICSW_URLS.REST_MON_SERVICE_TEMPL_DETAIL.slice(1).slice(0, -2))
+            del_st.remove().then(
+                (removed) ->
+                    _.remove(@mon_service_templ_list, (entry) -> return entry.idx == del_st.idx)
+                    d.resolve("deleted")
+                (not_removed) ->
+                    d.resolve("not deleted")
+            )
+            return d.promise
+
 ]).service("icswMonitoringBasicTreeService",
 [
     "$q", "Restangular", "ICSW_URLS", "icswCachingCall", "icswTools", "$rootScope",
@@ -403,6 +429,13 @@ monitoring_basic_module = angular.module("icsw.monitoring.monitoring_basic",
             sub_scope = scope.$new(false)
             sub_scope.create = create
             sub_scope.edit_obj = obj
+            sub_scope.tree = basic_tree
+            sub_scope.form_error = (field_name) ->
+                if sub_scope.form_data[field_name].$valid
+                    return ""
+                else
+                    return "has-error"
+
             icswComplexModalService(
                 {
                     message: $compile($templateCache.get(template_name))(sub_scope)
@@ -462,6 +495,7 @@ monitoring_basic_module = angular.module("icsw.monitoring.monitoring_basic",
             icswMonitoringBasicTreeService.load(scope.$id).then(
                 (data) ->
                     basic_tree = data
+                    scope.basic_tree = basic_tree
                     defer.resolve(basic_tree.mon_period_list)
             )
             return defer.promise
@@ -513,6 +547,7 @@ monitoring_basic_module = angular.module("icsw.monitoring.monitoring_basic",
             icswMonitoringBasicTreeService.load(scope.$id).then(
                 (data) ->
                     basic_tree = data
+                    scope.basic_tree = basic_tree
                     defer.resolve(basic_tree.mon_notification_list)
             )
             return defer.promise
@@ -544,15 +579,6 @@ monitoring_basic_module = angular.module("icsw.monitoring.monitoring_basic",
                     )
             )
     }
-]).service('icswMonitoringNotificationService', ["ICSW_URLS", "icswMonitoringBasicRestService", (ICSW_URLS, icswMonitoringBasicRestService) ->
-    return {
-        rest_handle         : icswMonitoringBasicRestService.mon_notification
-        edit_template       : "mon.notification.form"
-        delete_confirm_str  : (obj) ->
-            return "Really delete monitoring notification '#{obj.name}' ?"
-        new_object          : {"name" : "", "channel" : "mail", "not_type" : "service"}
-        object_created      : (new_obj) -> new_obj.name = ""
-    }
 ]).service('icswMonitoringContactService', ["ICSW_URLS", "Restangular", "icswMonitoringBasicRestService", "icswMonitoringUtilService", (ICSW_URLS, Restangular, icswMonitoringRestService, icswMonitoringUtilService) ->
     ret = {
         rest_handle: icswMonitoringRestService.mon_contact
@@ -577,31 +603,60 @@ monitoring_basic_module = angular.module("icsw.monitoring.monitoring_basic",
     for k, v of icswMonitoringRestService  # shallow copy!
         ret[k] = v
     return ret
-]).service('icswMonitoringServiceTemplateService', ["ICSW_URLS", "Restangular", "icswMonitoringBasicRestService", "icswMonitoringUtilService", (ICSW_URLS, Restangular, icswMonitoringRestService, icswMonitoringUtilService) ->
+]).service('icswMonitoringBasicServiceTemplateService',
+[
+    "ICSW_URLS", "icswMonitoringBasicTreeService", "$q", "Restangular",
+    "icswToolsSimpleModalService", "icswMonServiceTemplBackup", "icswMonitoringBasicService",
+(
+    ICSW_URLS, icswMonitoringBasicTreeService, $q, Restangular,
+    icswToolsSimpleModalService, icswMonServiceTemplBackup, icswMonitoringBasicService,
+) ->
+    basic_tree = undefined
     return {
-        rest_handle         : icswMonitoringRestService.mon_service_templ
-        edit_template       : "mon.service.templ.form"
-        delete_confirm_str  : (obj) ->
-            return "Really delete service template '#{obj.name}' ?"
-        new_object          : () ->
-            return {
-                "nsn_period" : (entry.idx for entry in icswMonitoringRestService.mon_period)[0]
-                "nsc_period" : (entry.idx for entry in icswMonitoringRestService.mon_period)[0]
-                "max_attempts" : 1
-                "ninterval" : 2
-                "check_interval" : 2
-                "retry_interval" : 2
-                "nrecovery" : true
-                "ncritical" : true
-                "low_flap_threshold" : 20
-                "high_flap_threshold" : 80
-                "freshness_threshold" : 60
-            }
-        object_created    : (new_obj) -> new_obj.name = null
-        mon_period        : icswMonitoringRestService.mon_period
-        get_data_incomplete_error: () ->
-            return icswMonitoringUtilService.get_data_incomplete_error(icswMonitoringRestService,
-                [["mon_period", "period"]])
+        fetch: (scope) ->
+            defer = $q.defer()
+            icswMonitoringBasicTreeService.load(scope.$id).then(
+                (data) ->
+                    basic_tree = data
+                    scope.basic_tree = basic_tree
+                    defer.resolve(basic_tree.mon_service_templ_list)
+            )
+            return defer.promise
+
+        create_or_edit: (scope, $event, create, obj) ->
+            if create
+                obj = {
+                    nsn_period: basic_tree.mon_period_list[0].idx
+                    nsc_period: basic_tree.mon_period_list[0].idx
+                    max_attempts: 1
+                    ninterval: 2
+                    check_interval: 2
+                    retry_interval: 2
+                    nrecovery: true
+                    ncritical: true
+                    low_flap_threshold: 20
+                    high_flap_threshold: 80
+                    freshness_threshold: 60
+                }
+            return icswMonitoringBasicService.create_or_edit(
+                basic_tree
+                scope
+                create
+                obj
+                "mon_service_templ"
+                icswMonServiceTemplBackup
+                "icsw.mon.service.templ.form"
+                "Monitoring Service Template"
+            )
+
+        delete: (scope, $event, obj) ->
+            icswToolsSimpleModalService("Really delete MonitoringServiceTemplate '#{obj.name}' ?").then(
+                () =>
+                    basic_tree.delete_mon_service_templ(obj).then(
+                        () ->
+                            console.log "mon_service_templ deleted"
+                    )
+            )
     }
 ]).service('icswMonitoringDeviceTemplateService', ["ICSW_URLS", "Restangular", "icswMonitoringBasicRestService", "icswMonitoringUtilService", (ICSW_URLS, Restangular, icswMonitoringRestService, icswMonitoringUtilService) ->
     ret = {
