@@ -70,7 +70,7 @@ class Parser(object):
         group.add_argument(
             "--no-initial-data", default=False, action="store_true",
             help="disable inserting of initial data [%(default)s], only useful" 
-            " for the migration form an older version of the clustersoftware"
+            " for the migration from an older version of the clustersoftware"
         )
         group.add_argument(
             "--migrate", default=False, action="store_true",
