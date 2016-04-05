@@ -184,12 +184,12 @@ angular.module(
     }
 ]).controller("icswSimpleDeviceInfoCtrl",
 [
-    "$scope", "$uibModal", "Restangular", "restDataSource", "$q", "ICSW_URLS",
+    "$scope", "$uibModal", "Restangular", "$q", "ICSW_URLS",
     "$rootScope", "ICSW_SIGNALS", "icswDomainTreeService", "icswDeviceTreeService", "icswMonitoringTreeService",
     "icswAcessLevelService", "icswActiveSelectionService", "icswDeviceBackup", "icswDeviceGroupBackup",
     "icswDeviceTreeHelperService",
 (
-    $scope, $uibModal, Restangular, restDataSource, $q, ICSW_URLS,
+    $scope, $uibModal, Restangular, $q, ICSW_URLS,
     $rootScope, ICSW_SIGNALS, icswDomainTreeService, icswDeviceTreeService, icswMonitoringTreeService,
     icswAcessLevelService, icswActiveSelectionService, icswDeviceBackup, icswDeviceGroupBackup,
     icswDeviceTreeHelperService

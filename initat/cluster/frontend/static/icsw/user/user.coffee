@@ -1012,12 +1012,12 @@ user_module = angular.module(
     $scope.reload()
 ]).controller("icswUserAccountCtrl",
 [
-    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource",
+    "$scope", "$compile", "$filter", "$templateCache", "Restangular",
     "$q", "$timeout", "$uibModal", "ICSW_URLS", "icswUserService",
     "icswUserGroupSettingsTreeService", "icswUserGroupPermissionTreeService",
     "icswUserGetPassword", "blockUI",
 (
-    $scope, $compile, $filter, $templateCache, Restangular, restDataSource,
+    $scope, $compile, $filter, $templateCache, Restangular,
     $q, $timeout, $uibModal, ICSW_URLS, icswUserService,
     icswUserGroupSettingsTreeService, icswUserGroupPermissionTreeService,
     icswUserGetPassword, blockUI,
@@ -1370,7 +1370,7 @@ user_module = angular.module(
                         blockUI.stop()
                 )
             (not_ok) ->
-                # create new backupl
+                # create new backup
                 bu_def.create_backup($scope.src_object)
                 $scope.object = $scope.src_object.$$_ICSW_backup_data
                 _set_permissions_from_src()

@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2015 init.at
+# Copyright (C) 2012-2016 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -44,11 +44,11 @@ angular.module(
     )
 ]).controller("icswUserLicenseCtrl",
 [
-    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$timeout", "$uibModal",
+    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$timeout", "$uibModal",
     "ICSW_URLS", 'FileUploader', "icswCSRFService", "blockUI", "icswParseXMLResponseService",
     "icswUserLicenseDataService", "icswAcessLevelService",
 (
-    $scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $timeout, $uibModal,
+    $scope, $compile, $filter, $templateCache, Restangular, $q, $timeout, $uibModal,
     ICSW_URLS, FileUploader, icswCSRFService, blockUI, icswParseXMLResponseService,
     icswUserLicenseDataService, icswAcessLevelService,
 ) ->

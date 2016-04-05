@@ -132,12 +132,12 @@ angular.module(
 
 ]).controller("icswDeviceLocationCtrl",
 [
-    "$scope", "restDataSource", "$q", "icswAcessLevelService", "icswDeviceTreeService",
+    "$scope", "$q", "icswAcessLevelService", "icswDeviceTreeService",
     "icswCategoryTreeService", "$rootScope", "ICSW_SIGNALS", "blockUI",
     "icswDeviceLocationTreeService", "ICSW_URLS", "icswSimpleAjaxCall",
     "icswToolsSimpleModalService";
 (
-    $scope, restDataSource, $q, icswAcessLevelService, icswDeviceTreeService,
+    $scope, $q, icswAcessLevelService, icswDeviceTreeService,
     icswCategoryTreeService, $rootScope, ICSW_SIGNALS, blockUI,
     icswDeviceLocationTreeService, ICSW_URLS, icswSimpleAjaxCall,
     icswToolsSimpleModalService,

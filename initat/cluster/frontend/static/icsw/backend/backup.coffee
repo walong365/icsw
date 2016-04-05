@@ -381,4 +381,25 @@ angular.module(
                 [icswUserGroupTools.get_perm_fp(b) for b in b_list]
             )
 
+]).service("icswMonPeriodBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswMonPeriodBackupDefinition extends icswBackupDefinition
+
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "name", "alias", "mon_range", "tue_range", "wed_range", "thu_range",
+                "fri_range", "sat_range", "sun_range",
+            ]
+
+]).service("icswMonNotificationBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswMonNotificationBackupDefinition extends icswBackupDefinition
+
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "name", "channel", "not_type", "subject", "content", "enabled",
+            ]
+
 ])

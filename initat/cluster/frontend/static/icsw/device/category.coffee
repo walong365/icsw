@@ -100,11 +100,11 @@ angular.module(
 
 ]).controller("icswDeviceCategoryCtrl",
 [
-    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q",
+    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q",
     "icswAcessLevelService", "ICSW_URLS", "icswDeviceCategoryTreeService", "icswSimpleAjaxCall",
     "icswDeviceTreeService", "icswCategoryTreeService", "blockUI", "$rootScope", "ICSW_SIGNALS",
 (
-    $scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q,
+    $scope, $compile, $filter, $templateCache, Restangular, $q,
     icswAcessLevelService, ICSW_URLS, icswDeviceCategoryTreeService, icswSimpleAjaxCall,
     icswDeviceTreeService, icswCategoryTreeService, blockUI, $rootScope, ICSW_SIGNALS,
 ) ->

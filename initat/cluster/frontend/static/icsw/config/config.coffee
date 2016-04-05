@@ -343,17 +343,17 @@ config_module = angular.module(
     }
 ]).controller("icswConfigConfigCtrl",
 [
-    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource",
+    "$scope", "$compile", "$filter", "$templateCache", "Restangular",
     "$q", "$uibModal", "FileUploader", "$http", "blockUI", "icswTools", "ICSW_URLS",
     "icswToolsButtonConfigService", "icswConfigTreeService", "icswConfigListService",
-    "icswSimpleAjaxCall", "icswMonitoringTreeService", "icswConfigScriptListService",
+    "icswSimpleAjaxCall", "icswMonitoringBasicTreeService", "icswConfigScriptListService",
     "icswConfigMonCheckCommandListService", "icswConfigVarListService", "$rootScope",
     "ICSW_SIGNALS",
 (
-    $scope, $compile, $filter, $templateCache, Restangular, restDataSource,
+    $scope, $compile, $filter, $templateCache, Restangular,
     $q, $uibModal, FileUploader, $http, blockUI, icswTools, ICSW_URLS,
     icswToolsButtonConfigService, icswConfigTreeService, icswConfigListService,
-    icswSimpleAjaxCall, icswMonitoringTreeService, icswConfigScriptListService,
+    icswSimpleAjaxCall, icswMonitoringBasicTreeService, icswConfigScriptListService,
     icswConfigMonCheckCommandListService, icswConfigVarListService, $rootScope,
     ICSW_SIGNALS
 ) ->
@@ -367,7 +367,7 @@ config_module = angular.module(
             $q.all(
                 [
                     icswConfigTreeService.load($scope.$id)
-                    icswMonitoringTreeService.load($scope.$id)
+                    icswMonitoringBasicTreeService.load($scope.$id)
                 ]
             ).then(
                 (data) ->
@@ -780,12 +780,12 @@ config_module = angular.module(
 [
     "icswSimpleAjaxCall", "icswConfigListService", "icswToolsSimpleModalService",
     "icswTools", "Restangular", "ICSW_URLS",  "$q",
-    "icswConfigTreeService", "icswMonitoringTreeService", "icswMonCheckCommandBackup",
+    "icswConfigTreeService", "icswMonitoringBasicTreeService", "icswMonCheckCommandBackup",
     "icswComplexModalService", "$compile", "$templateCache",
 (
     icswSimpleAjaxCall, icswConfigListService, icswToolsSimpleModalService,
     icswTools, Restangular, ICSW_URLS, $q,
-    icswConfigTreeService, icswMonitoringTreeService, icswMonCheckCommandBackup,
+    icswConfigTreeService, icswMonitoringBasicTreeService, icswMonCheckCommandBackup,
     icswComplexModalService, $compile, $templateCache
 ) ->
     config_tree = undefined
@@ -796,7 +796,7 @@ config_module = angular.module(
             $q.all(
                 [
                     icswConfigTreeService.load(scope.$id)
-                    icswMonitoringTreeService.load(scope.$id)
+                    icswMonitoringBasicTreeService.load(scope.$id)
                 ]
             )
             .then(
@@ -1074,12 +1074,12 @@ config_module = angular.module(
     $scope, FileUploader, blockUI, ICSW_URLS, icswCSRFService, icswConfigTreeService
 ) ->
     $scope.uploader = new FileUploader(
-        scope : $scope
-        url : ICSW_URLS.CONFIG_UPLOAD_CONFIG
-        queueLimit : 1
-        alias : "config"
-        formData : []
-        removeAfterUpload : true
+        scope: $scope
+        url: ICSW_URLS.CONFIG_UPLOAD_CONFIG
+        queueLimit: 1
+        alias: "config"
+        formData: []
+        removeAfterUpload: true
     )
 
     # fetch CSRF-token from Service
