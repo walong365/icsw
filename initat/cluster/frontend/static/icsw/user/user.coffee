@@ -399,9 +399,9 @@ user_module = angular.module(
     }
 ]).service("icswUserGroupTree",
 [
-    "$q",
+    "$q", "Restangular", "ICSW_URLS", "$rootScope", "ICSW_SIGNALS",
 (
-    $q
+    $q, Restangular, ICSW_URLS, $rootScope, ICSW_SIGNALS,
 ) ->
     # user / group tree representation
     class icswUserGrouptree
@@ -436,6 +436,48 @@ user_module = angular.module(
             # create usefull links
             for vdus in @vdus_list
                 @user_lut[vdus.user].vdus_list.push(vdus)
+
+        # remove / delete calls
+        delete_user: (user) =>
+            defer = $q.defer()
+            _del_url = ICSW_URLS.REST_USER_DETAIL.slice(1).slice(0, -2)
+            Restangular.restangularizeElement(null, user, _del_url)
+            user.remove().then(
+                (del) =>
+                    _.remove(@user_list, (entry) -> return entry.idx == user.idx)
+                    _.remove(@vdus_list, (entry) -> return entry.user == user.idx)
+                    @build_luts()
+
+                    # send signal
+                    $rootScope.$emit(ICSW_SIGNALS("ICSW_USER_GROUP_TREE_CHANGED"))
+
+                    defer.resolve("deleted")
+                (not_del) =>
+                    defer.reject("not del")
+            )
+            return defer.promise
+
+        delete_group: (group) =>
+            defer = $q.defer()
+            _del_url = ICSW_URLS.REST_GROUP_DETAIL.slice(1).slice(0, -2)
+            Restangular.restangularizeElement(null, group, _del_url)
+            group.remove().then(
+                (del) =>
+                    _del_users = _.remove(@group_list, (entry) -> return entry.idx == group.idx)
+                    _del_user_ids = (user.idx for user in _del_users)
+                    _.remove(@user_list, (entry) -> return entry.idx in _del_user_ids)
+                    _.remove(@vdus_list, (entry) -> return entry.user in _del_user_ids)
+                    @build_luts()
+
+                    # send signal
+                    $rootScope.$emit(ICSW_SIGNALS("ICSW_USER_GROUP_TREE_CHANGED"))
+
+                    defer.resolve("deleted")
+                (not_del) =>
+                    defer.reject("not del")
+            )
+            return defer.promise
+
 
 ]).service("icswUserGroupTreeService",
 [
@@ -586,12 +628,12 @@ user_module = angular.module(
     "icswUserGroupTreeService", "$scope", "$compile", "$q", "icswUserGroupSettingsTreeService", "blockUI",
     "icswUserGroupPermissionTreeService", "icswUserGroupDisplayTree", "$timeout", "icswDeviceTreeService",
     "icswUserBackup", "icswGroupBackup", "icswUserGroupTools", "ICSW_SIGNALS", "icswToolsSimpleModalService",
-    "icswSimpleAjaxCall", "ICSW_URLS",
+    "icswSimpleAjaxCall", "ICSW_URLS", "$rootScope",
 (
     icswUserGroupTreeService, $scope, $compile, $q, icswUserGroupSettingsTreeService, blockUI,
     icswUserGroupPermissionTreeService, icswUserGroupDisplayTree, $timeout, icswDeviceTreeService,
     icswUserBackup, icswGroupBackup, icswUserGroupTools, ICSW_SIGNALS, icswToolsSimpleModalService,
-    icswSimpleAjaxCall, ICSW_URLS,
+    icswSimpleAjaxCall, ICSW_URLS, $rootScope,
 ) ->
     $scope.struct = {
         # any tree data valid
@@ -633,6 +675,10 @@ user_module = angular.module(
                 $scope.struct.error_string = ""
                 $scope.rebuild_tree()
                 $scope.struct.tree_loaded = true
+        )
+
+        $rootScope.$on(ICSW_SIGNALS("ICSW_USER_GROUP_TREE_CHANGED"), (event) ->
+            $scope.rebuild_tree()
         )
 
         $scope.rebuild_tree = () ->
@@ -1105,8 +1151,10 @@ user_module = angular.module(
 ]).controller("icswUserGroupEditCtrl",
 [
     "$scope", "$q", "icswUserGroupTools", "ICSW_SIGNALS", "icswToolsSimpleModalService", "icswUserGetPassword",
+    "blockUI",
 (
     $scope, $q, icswUserGroupTools, ICSW_SIGNALS, icswToolsSimpleModalService, icswUserGetPassword,
+    blockUI,
 ) ->
 
     $scope.obj_list_cache = {}
@@ -1253,7 +1301,28 @@ user_module = angular.module(
     
     $scope.close = () ->
         $scope.$emit(ICSW_SIGNALS("_ICSW_CLOSE_USER_GROUP"), $scope.src_object, $scope.type)
-        
+
+    $scope.delete = () ->
+        # check for deletion of own user / group, TODO, FIXME
+        icswToolsSimpleModalService("Really delete #{$scope.type} ?").then(
+            (doit) ->
+                blockUI.start("deleting #{$scope.type}")
+                defer = $q.defer()
+                $scope.tree["delete_#{$scope.type}"]($scope.object).then(
+                    (deleted) ->
+                        defer.resolve("ok")
+                    (not_del) ->
+                        defer.reject("not del")
+                )
+                defer.promise.then(
+                    (removed) ->
+                        blockUI.stop()
+                        $scope.$emit(ICSW_SIGNALS("_ICSW_CLOSE_USER_GROUP"), $scope.src_object, $scope.type)
+                    (not_rem) ->
+                        blockUI.stop()
+                )
+        )
+
     $scope.password_set = () ->
         if $scope.object.password.length
             return true

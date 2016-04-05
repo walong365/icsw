@@ -358,6 +358,7 @@ angular.module(
         ICSW_CATEGORY_TREE_CHANGED: "icsw.category.tree.changed",
         ICSW_LOCATION_SETTINGS_CHANGED: "icsw.location.settings.changed",
         ICSW_USER_GROUP_TREE_LOADED: "icsw.user.group.tree.loaded",
+        ICSW_USER_GROUP_TREE_CHANGED: "icsw.user.group.tree.changed",
         # local signals (for local $emit / $on)
         _ICSW_CLOSE_USER_GROUP: "_icsw.close.user.group"
         # not needed up to now
