@@ -771,7 +771,8 @@
             </uib-tab>
         </uib-tabset>
         <div class="form-actions">
-            <icsw-tools-button type="modify" ng-show="changed() && modify_ok"></icsw-tools-button>
+            <icsw-tools-button type="modify" ng-show="!create_mode && changed() && modify_ok" ng-click="modify()"></icsw-tools-button>
+            <icsw-tools-button type="create" ng-show="create_mode && modify_ok" ng-click="modify()"></icsw-tools-button>
             &nbsp;
             <icsw-tools-button type="close" ng-click="close()"></icsw-tools-button>
             &nbsp;
@@ -964,7 +965,8 @@
             </uib-tab>
         </uib-tabset>
         <div class="form-actions">
-            <icsw-tools-button type="modify" ng-show="changed()"></icsw-tools-button>
+            <icsw-tools-button type="modify" ng-show="!create_mode && changed()" ng-click="modify()"></icsw-tools-button>
+            <icsw-tools-button type="create" ng-show="create_mode" ng-click="modify()"></icsw-tools-button>
             &nbsp;
             <icsw-tools-button type="close" ng-click="close()"></icsw-tools-button>
             &nbsp;

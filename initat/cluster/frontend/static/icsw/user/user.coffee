@@ -86,7 +86,15 @@ user_module = angular.module(
 
         # check if changed
         changed: (object) ->
-            return object.$$_ICSW_backup_def.changed(object)
+            if object.$$ignore_changes?
+                return false
+            else if object.$$changed?
+                return true
+            else if object.$$_ICSW_backup_def?
+                # may be none during updates
+                return object.$$_ICSW_backup_def.changed(object)
+            else
+                return false
 
     }
 ]).service("icswUserService",
@@ -478,6 +486,118 @@ user_module = angular.module(
             )
             return defer.promise
 
+        # create calls for users and groups
+
+        create_user: (new_user) ->
+            defer = $q.defer()
+            _create_url = ICSW_URLS.REST_USER_LIST.slice(1)
+            Restangular.all(_create_url).post(new_user).then(
+                (created_user) =>
+                    @user_list.push(created_user)
+                    @build_luts()
+
+                    # send signal
+                    $rootScope.$emit(ICSW_SIGNALS("ICSW_USER_GROUP_TREE_CHANGED"))
+
+                    defer.resolve(created_user)
+                (not_ok) =>
+                    defer.reject("not saved")
+            )
+            return defer.promise
+
+        create_group: (new_group) ->
+            defer = $q.defer()
+            _create_url = ICSW_URLS.REST_GROUP_LIST.slice(1)
+            Restangular.all(_create_url).post(new_group).then(
+                (created_group) =>
+                    @group_list.push(created_group)
+                    @build_luts()
+
+                    # send signal
+                    $rootScope.$emit(ICSW_SIGNALS("ICSW_USER_GROUP_TREE_CHANGED"))
+
+                    defer.resolve(created_group)
+                (not_ok) =>
+                    defer.reject("not saved")
+            )
+            return defer.promise
+
+        # modify calls for users and groups
+
+        modify_user: (user) ->
+            defer = $q.defer()
+            _modify_url = ICSW_URLS.REST_USER_DETAIL.slice(1).slice(0, -2)
+            Restangular.restangularizeElement(null, user, _modify_url)
+            user.put().then(
+                (saved_user) =>
+                    @build_luts()
+
+                    # send signal
+                    $rootScope.$emit(ICSW_SIGNALS("ICSW_USER_GROUP_TREE_CHANGED"))
+
+                    defer.resolve("saved")
+                (not_ok) =>
+                    defer.reject("not saved")
+            )
+            return defer.promise
+
+        modify_group: (group) ->
+            defer = $q.defer()
+            _modify_url = ICSW_URLS.REST_GROUP_DETAIL.slice(1).slice(0, -2)
+            Restangular.restangularizeElement(null, group, _modify_url)
+            group.put().then(
+                (saved_group) =>
+                    @build_luts()
+
+                    # send signal
+                    $rootScope.$emit(ICSW_SIGNALS("ICSW_USER_GROUP_TREE_CHANGED"))
+
+                    defer.resolve("saved")
+                (not_ok) =>
+                    defer.reject("not saved")
+            )
+            return defer.promise
+
+        modify_user_permissions: (user, add_perms, rem_perms) ->
+            return @_modify_perms(user, add_perms, rem_perms, "user", "user_permission")
+
+        modify_user_object_permissions: (user, add_perms, rem_perms) ->
+            return @_modify_perms(user, add_perms, rem_perms, "user", "user_object_permission")
+
+        modify_group_permissions: (group, add_perms, rem_perms) ->
+            return @_modify_perms(group, add_perms, rem_perms, "group", "group_permission")
+
+        modify_group_object_permissions: (group, add_perms, rem_perms) ->
+            return @_modify_perms(group, add_perms, rem_perms, "group", "group_object_permission")
+
+        _modify_perms: (object, add_perms, rem_perms, obj_type, perm_type) =>
+            defer = $q.defer()
+            _modify_url = ICSW_URLS["REST_" + _.toUpper(perm_type) + "_DETAIL"].slice(1).slice(0, -2)
+            _create_url = ICSW_URLS["REST_" + _.toUpper(perm_type) + "_LIST"].slice(1)
+            (Restangular.restangularizeElement(null, rem_perm, _modify_url) for rem_perm in rem_perms)
+            # salt perms and build calls
+            _calls = []
+            _call_info = []
+            for add_perm in add_perms
+                add_perm[obj_type] = object.idx
+                _calls.push(Restangular.all(_create_url).post(add_perm))
+                _call_info.push(["add", add_perm])
+            for rem_perm in rem_perms
+                rem_perm[obj_type] = object.idx
+                _calls.push(rem_perm.remove())
+                _call_info.push(["rem", rem_perm])
+            $q.allSettled(
+                _calls
+            ).then(
+                (data) ->
+                    for [res_info, [info_str, info_obj]] in _.zip(data, _call_info)
+                        if info_str == "add"
+                            object["#{perm_type}_set"].push(res_info.value)
+                        else
+                            _.remove(object["#{perm_type}_set"], (entry) -> return entry.idx == info_obj.idx)
+                    defer.resolve("done")
+            )
+            return defer.promise
 
 ]).service("icswUserGroupTreeService",
 [
@@ -842,6 +962,7 @@ user_module = angular.module(
         while gid in gids
             gid++
         new_group = {
+            $$changed: true
             groupname: "new_group"
             gid: gid
             active: true
@@ -860,6 +981,7 @@ user_module = angular.module(
         while uid in uids
             uid++
         new_user = {
+            $$changed: true
             login: "new_user"
             uid: uid
             active: true
@@ -888,162 +1010,6 @@ user_module = angular.module(
         )
 
     $scope.reload()
-]).controller("user_tree", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$timeout", "$uibModal", "blockUI", "ICSW_URLS", "icswSimpleAjaxCall", "toaster", "icswAcessLevelService",
-    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $timeout, $uibModal, blockUI, ICSW_URLS, icswSimpleAjaxCall, toaster, icswAcessLevelService) ->
-        $scope.valid_group_csw_perms = () ->
-            _list = (entry for entry in $scope.csw_permission_list when entry.codename not in ["admin", "group_admin"])
-            return _list
-        $scope.valid_user_csw_perms = () ->
-            return (entry for entry in $scope.csw_permission_list)
-
-        $scope.get_export_list = () ->
-            for entry in $scope.home_export_list
-                entry.home_info_string = $scope.get_home_info_string(entry)
-            return $scope.home_export_list
-        $scope.get_home_info_string = (entry) ->
-            cur_group = (_entry for _entry in $scope.group_list when _entry.idx == $scope._edit_obj.group)
-            if cur_group.length
-                cur_group = cur_group[0]
-            else
-                cur_group = null
-            if entry.createdir
-                info_string = "#{entry.homeexport} (created in #{entry.createdir}) on #{entry.full_name}"
-            else
-                info_string = "#{entry.homeexport} on #{entry.full_name}"
-            if cur_group
-                info_string = "#{info_string}, #{cur_group.homestart}/#{$scope._edit_obj.login}"
-            return info_string
-        $scope.create_group = () ->
-            $scope._edit_mode = "g"
-            $scope.group_edit.create()
-        $scope.create_user = () ->
-            $scope._edit_mode = "u"
-            $scope.user_edit.create()
-        $scope.edit_object = (obj, obj_type) ->
-            # init dummy form object for subscope(s)
-            $scope._edit_mode = obj_type
-            if obj_type == "g"
-                $scope.group_edit.edit(obj)
-            else if obj_type == "u"
-                $scope.user_edit.edit(obj)
-        $scope.$on("icsw.set_password", (event, new_pwd) ->
-            $scope._edit_obj.password = new_pwd
-            if $scope._edit_obj.idx?
-                $scope._edit_obj.put()
-            $scope.$digest()
-        )
-        $scope.create_object_permission = () ->
-            perm = $scope.csw_permission_lut[$scope._edit_obj.permission]
-            icswSimpleAjaxCall(
-                url     : ICSW_URLS.USER_CHANGE_OBJECT_PERMISSION
-                data    :
-                    # group or user
-                    "auth_type": $scope._edit_mode
-                    "auth_pk": $scope._edit_obj.idx
-                    "model_label": perm.content_type.model
-                    "obj_idx": $scope._edit_obj.object
-                    "csw_idx": $scope._edit_obj.permission
-                    "set": 1
-                    "level": $scope._edit_obj.permission_level
-            ).then((xml) ->
-                if $(xml).find("value[name='new_obj']").length
-                    new_obj = angular.fromJson($(xml).find("value[name='new_obj']").text())
-                    if $scope._edit_mode == "u"
-                        $scope._edit_obj.user_object_permission_set.push(new_obj)
-                    else
-                        $scope._edit_obj.group_object_permission_set.push(new_obj)
-                    toaster.pop("success", "", "added local permission")
-            )
-        $scope.delete_permission = (perm) ->
-            if $scope._edit_mode == "u"
-                ug_name = "user"
-                detail_url = ICSW_URLS.REST_USER_PERMISSION_DETAIL.slice(1).slice(0, -2)
-            else
-                ug_name = "group"
-                detail_url = ICSW_URLS.REST_GROUP_PERMISSION_DETAIL.slice(1).slice(0, -2)
-            ps_name = "#{ug_name}_permission_set"
-            Restangular.restangularizeElement(null, perm, detail_url)
-            perm.remove().then((data) ->
-                $scope._edit_obj[ps_name] = (_e for _e in $scope._edit_obj[ps_name] when _e.csw_permission != perm.csw_permission)
-                toaster.pop("warning", "", "removed global #{ug_name} permission")
-            )
-        $scope.delete_object_permission = (perm) ->
-            if $scope._edit_mode == "u"
-                ug_name = "user"
-                detail_url = ICSW_URLS.REST_USER_OBJECT_PERMISSION_DETAIL.slice(1).slice(0, -2)
-            else
-                ug_name = "group"
-                detail_url = ICSW_URLS.REST_GROUP_OBJECT_PERMISSION_DETAIL.slice(1).slice(0, -2)
-            ps_name = "#{ug_name}_object_permission_set"
-            Restangular.restangularizeElement(null, perm, detail_url)
-            perm.remove().then((data) ->
-                $scope._edit_obj[ps_name] = (_e for _e in $scope._edit_obj[ps_name] when _e.idx != perm.idx)
-                toaster.pop("warning", "", "removed local #{ug_name} permission")
-            )
-        $scope.create_permission = () ->
-            if $scope._edit_obj.permission
-                if $scope._edit_mode == "u"
-                    ug_name = "user"
-                    list_url = ICSW_URLS.REST_USER_PERMISSION_LIST.slice(1)
-                else
-                    ug_name = "group"
-                    list_url = ICSW_URLS.REST_GROUP_PERMISSION_LIST.slice(1)
-                ps_name = "#{ug_name}_permission_set"
-                if not (true for _e in $scope._edit_obj[ps_name] when _e.csw_permission == $scope._edit_obj.permission).length
-                    new_obj = {
-                        "csw_permission" : $scope._edit_obj.permission
-                        "level" : $scope._edit_obj.permission_level
-                    }
-                    $scope._edit_obj.permission = null
-                    new_obj[ug_name] = $scope._edit_obj.idx
-                    Restangular.all(list_url).post(new_obj).then(
-                        (data) ->
-                            $scope._edit_obj[ps_name].push(data)
-                    )
-        $scope.get_perm_level = (perm) ->
-            level = perm.level
-            return (_v.info for _v in $scope.ac_levels when _v.level == level)[0]
-        $scope.get_perm_model = (perm) ->
-            return $scope.csw_permission_lut[perm.csw_permission].content_type.model
-        $scope.get_perm_type = (perm) ->
-            return if $scope.csw_permission_lut[perm.csw_permission].valid_for_object_level then "G / O" else "G"
-        $scope.get_home_dir_created_class = (obj) ->
-            if obj.home_dir_created
-                return "btn btn-sm btn-success"
-            else
-                return "btn btn-sm btn-danger"
-        $scope.get_home_dir_created_value = (obj) ->
-            return if obj.home_dir_created then "homedir exists" else "no homedir"
-        $scope.clear_home_dir_created = (obj) ->
-            icswSimpleAjaxCall(
-                url     : ICSW_URLS.USER_CLEAR_HOME_DIR_CREATED
-                data    :
-                    "user_pk" : obj.idx
-            ).then((xml) ->
-                obj.home_dir_created = false
-            )
-        $scope.get_perm_object = (perm) ->
-            obj_perm = perm.csw_object_permission
-            csw_perm = $scope.csw_permission_lut[obj_perm.csw_permission]
-            key = "#{csw_perm.content_type.app_label}.#{csw_perm.content_type.model}"
-            return (_v.name for _v in $scope.ct_dict[key] when _v.idx == obj_perm.object_pk)[0]
-
-        $scope.push_virtual_desktop_user_setting = (new_obj, then_fun) ->
-            url = ICSW_URLS.REST_VIRTUAL_DESKTOP_USER_SETTING_LIST.slice(1)
-            Restangular.all(url).post(new_obj).then( then_fun )
-        $scope.get_viewer_command_line = (vdus) ->
-            icswSimpleAjaxCall(
-                url      : ICSW_URLS.USER_GET_DEVICE_IP
-                data     :
-                    "device" : vdus.device
-                dataType : "json"
-            ).then((json) ->
-                vdus.viewer_cmd_line = virtual_desktop_utils.get_viewer_command_line(vdus, json.ip)
-                script = "notepad.exe\r\n"
-                blob = new Blob([ script ], { type : 'application/x-bat' });
-                # console.log "blob", blob
-                vdus.testurl = (window.URL || window.webkitURL).createObjectURL( blob );
-            )
 ]).controller("icswUserAccountCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource",
@@ -1166,15 +1132,22 @@ user_module = angular.module(
         object: undefined
     }
 
+    _set_permissions_from_src = () ->
+        $scope.object = $scope.src_object.$$_ICSW_backup_data
+        if $scope.type == "user"
+            $scope.permission_set = $scope.object.user_permission_set
+            $scope.object_permission_set = $scope.object.user_object_permission_set
+        else
+            $scope.permission_set = $scope.object.group_permission_set
+            $scope.object_permission_set = $scope.object.group_object_permission_set
+
     $scope.set_type = (ug_type) ->
         $scope.type = ug_type
         if $scope.type == "user"
             # original
             $scope.src_object = $scope.user
             # working object
-            $scope.object = $scope.src_object.$$_ICSW_backup_data
-            $scope.permission_set = $scope.object.user_permission_set
-            $scope.object_permission_set = $scope.object.user_object_permission_set
+            _set_permissions_from_src()
             # check password
             if $scope.user.password.length
                 $scope.modify_ok = true
@@ -1184,9 +1157,11 @@ user_module = angular.module(
             # original
             $scope.src_object = $scope.group
             # working object
-            $scope.object = $scope.src_object.$$_ICSW_backup_data
-            $scope.permission_set = $scope.object.group_permission_set
-            $scope.object_permission_set = $scope.object.group_object_permission_set
+            _set_permissions_from_src()
+        if $scope.object.idx?
+            $scope.create_mode = false
+        else
+            $scope.create_mode = true
 
     _object_list = (key) ->
         if key not of $scope.obj_list_cache
@@ -1259,11 +1234,11 @@ user_module = angular.module(
         else
             return "PK #{_pk} not found for #{_perm.key}"
 
-    _enrich_permission = (perm) ->
-        if $scope.type == "user"
-            perm.user = $scope.user.idx
-        else
-            perm.group = $scope.group.idx
+    # _enrich_permission = (perm) ->
+    #    if $scope.type == "user"
+    #        perm.user = $scope.user.idx
+    #    else
+    #        perm.group = $scope.group.idx
 
     # create / add functions
     $scope.create_permission = () ->
@@ -1273,7 +1248,7 @@ user_module = angular.module(
             level: _np.level
             csw_permission: _np.permission
         }
-        _enrich_permission(_new_p)
+        # _enrich_permission(_new_p)
         if icswUserGroupTools.get_perm_fp(_new_p) not in (icswUserGroupTools.get_perm_fp(_old_p) for _old_p in $scope.permission_set)
             $scope.permission_set.push(_new_p)
 
@@ -1287,7 +1262,7 @@ user_module = angular.module(
                 object_pk: _np.object
             }
         }
-        _enrich_permission(_new_p)
+        # _enrich_permission(_new_p)
         if icswUserGroupTools.get_perm_fp(_new_p) not in (icswUserGroupTools.get_perm_fp(_old_p) for _old_p in $scope.object_permission_set)
             $scope.object_permission_set.push(_new_p)
 
@@ -1317,11 +1292,93 @@ user_module = angular.module(
                 defer.promise.then(
                     (removed) ->
                         blockUI.stop()
+                        $scope.src_object.$$ignore_changes = true
                         $scope.$emit(ICSW_SIGNALS("_ICSW_CLOSE_USER_GROUP"), $scope.src_object, $scope.type)
                     (not_rem) ->
                         blockUI.stop()
                 )
         )
+        
+    # create / modify functions
+    $scope.modify = () ->
+        # copy data to original object
+        bu_def = $scope.src_object.$$_ICSW_backup_def
+
+        # lists of permissions to delete / create
+        perm_name = "#{$scope.type}_permission_set"
+        cur_perms = (icswUserGroupTools.get_perm_fp(_perm) for _perm in $scope.src_object[perm_name])
+        new_perms = (icswUserGroupTools.get_perm_fp(_perm) for _perm in $scope.src_object.$$_ICSW_backup_data[perm_name])
+        perms_to_create = (entry for entry in $scope.src_object.$$_ICSW_backup_data[perm_name] when icswUserGroupTools.get_perm_fp(entry) not in cur_perms)
+        perms_to_remove = (entry for entry in $scope.src_object[perm_name] when icswUserGroupTools.get_perm_fp(entry) not in new_perms)
+
+        # lists of object permissions to delete / create
+        obj_perm_name = "#{$scope.type}_object_permission_set"
+        cur_obj_perms = (icswUserGroupTools.get_perm_fp(_perm) for _perm in $scope.src_object[obj_perm_name])
+        new_obj_perms = (icswUserGroupTools.get_perm_fp(_perm) for _perm in $scope.src_object.$$_ICSW_backup_data[obj_perm_name])
+        obj_perms_to_create = (entry for entry in $scope.src_object.$$_ICSW_backup_data[obj_perm_name] when icswUserGroupTools.get_perm_fp(entry) not in cur_obj_perms)
+        obj_perms_to_remove = (entry for entry in $scope.src_object[obj_perm_name] when icswUserGroupTools.get_perm_fp(entry) not in new_obj_perms)
+
+        # console.log perms_to_create, perms_to_remove
+        # console.log obj_perms_to_create, obj_perms_to_remove
+        # save current settings
+        saved_perms = $scope.src_object[perm_name]
+        saved_obj_perms = $scope.src_object[obj_perm_name]
+
+        # copy to backup object to disable partial backup
+        $scope.src_object.$$_ICSW_backup_data[perm_name] = saved_perms
+        $scope.src_object.$$_ICSW_backup_data[obj_perm_name] = saved_obj_perms
+
+        # restore backup
+        bu_def.restore_backup($scope.src_object)
+
+        blockUI.start("updating #{$scope.type} object")
+        defer = $q.defer()
+
+        if $scope.create_mode
+            # create new object
+            $scope.tree["create_#{$scope.type}"]($scope.src_object).then(
+                (created) ->
+                    $scope.src_obejct = created
+                    defer.resolve("created")
+                (not_saved) ->
+                    defer.reject("not created")
+            )
+        else
+            $scope.tree["modify_#{$scope.type}"]($scope.src_object).then(
+                (saved) ->
+                    defer.resolve("saved")
+                (not_saved) ->
+                    defer.reject("not saved")
+            )
+        defer.promise.then(
+            (ok) ->
+                $q.all(
+                    [
+                        $scope.tree["modify_#{$scope.type}_permissions"]($scope.src_object, perms_to_create, perms_to_remove)
+                        $scope.tree["modify_#{$scope.type}_object_permissions"]($scope.src_object, obj_perms_to_create, obj_perms_to_remove)
+                    ]
+                ).then(
+                    (done) ->
+                        # create new backup
+                        bu_def.create_backup($scope.src_object)
+                        $scope.object = $scope.src_object.$$_ICSW_backup_data
+                        _set_permissions_from_src()
+                        if $scope.create_mode
+                            # close current tab
+                            $scope.src_object.$$ignore_changes = true
+                            $scope.$emit(ICSW_SIGNALS("_ICSW_CLOSE_USER_GROUP"), $scope.src_object, $scope.type)
+                        blockUI.stop()
+                )
+            (not_ok) ->
+                # create new backupl
+                bu_def.create_backup($scope.src_object)
+                $scope.object = $scope.src_object.$$_ICSW_backup_data
+                _set_permissions_from_src()
+                blockUI.stop()
+        )
+
+        
+    # password functions
 
     $scope.password_set = () ->
         if $scope.object.password.length

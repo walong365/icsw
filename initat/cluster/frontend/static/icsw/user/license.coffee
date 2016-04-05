@@ -43,35 +43,50 @@ angular.module(
         }
     )
 ]).controller("icswUserLicenseCtrl",
-    ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$timeout", "$uibModal",
-     "ICSW_URLS", 'FileUploader', 'blockUI', 'icswParseXMLResponseService', 'icswUserLicenseDataService',
-     "icswAcessLevelService", "icswCSRFService",
-    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $timeout, $uibModal,
-     ICSW_URLS, FileUploader, blockUI, icswParseXMLResponseService, icswUserLicenseDataService,
-     icswAcessLevelService, icswCSRFService) ->
-        $scope.uploader = new FileUploader(
-            scope : $scope
-            url : ICSW_URLS.USER_UPLOAD_LICENSE_FILE
-            queueLimit : 1
-            alias : "license_file"
-            formData : [
-                 "csrfmiddlewaretoken" : icswCSRFService["csrf_token"]
-            ]
-            removeAfterUpload : true
-        )
-        $scope.upload_list = []
-        $scope.uploader.onBeforeUploadItem = () ->
-            blockUI.start()
-        $scope.uploader.onCompleteItem = (item, response, status, headers) ->
-            # must not give direct response to the parse service
-            response = "<document>" + response + "</document>"
-            icswParseXMLResponseService(response)
-            icswUserLicenseDataService.reload_data()
-            icswAcessLevelService.reload()
-        $scope.uploader.onCompleteAll = () ->
-            blockUI.stop()
-            $scope.uploader.clearQueue()
-]).directive("icswUserLicenseOverview", ["icswUserLicenseDataService", "icswSimpleAjaxCall", "ICSW_URLS", (icswUserLicenseDataService, icswSimpleAjaxCall, ICSW_URLS) ->
+[
+    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$timeout", "$uibModal",
+    "ICSW_URLS", 'FileUploader', "icswCSRFService", "blockUI", "icswParseXMLResponseService",
+    "icswUserLicenseDataService", "icswAcessLevelService",
+(
+    $scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $timeout, $uibModal,
+    ICSW_URLS, FileUploader, icswCSRFService, blockUI, icswParseXMLResponseService,
+    icswUserLicenseDataService, icswAcessLevelService,
+) ->
+    $scope.uploader = new FileUploader(
+        scope: $scope
+        url: ICSW_URLS.USER_UPLOAD_LICENSE_FILE
+        queueLimit: 1
+        alias: "license_file"
+        formData: []
+        removeAfterUpload: true
+    )
+
+    icswCSRFService.get_token().then(
+        (token) ->
+            $scope.uploader.formData.push({"csrfmiddlewaretoken": token})
+    )
+    $scope.upload_list = []
+
+    $scope.uploader.onBeforeUploadItem = () ->
+        blockUI.start()
+
+    $scope.uploader.onCompleteItem = (item, response, status, headers) ->
+        # must not give direct response to the parse service
+        response = "<document>" + response + "</document>"
+        icswParseXMLResponseService(response)
+        icswUserLicenseDataService.reload_data()
+        icswAcessLevelService.reload()
+
+    $scope.uploader.onCompleteAll = () ->
+        blockUI.stop()
+        $scope.uploader.clearQueue()
+
+]).directive("icswUserLicenseOverview",
+[
+    "icswUserLicenseDataService", "icswSimpleAjaxCall", "ICSW_URLS",
+(
+    icswUserLicenseDataService, icswSimpleAjaxCall, ICSW_URLS
+) ->
     return {
         restrict : "EA"
         controller: 'icswUserLicenseCtrl'
@@ -82,8 +97,9 @@ angular.module(
                     url: ICSW_URLS.MAIN_GET_CLUSTER_INFO,
                     dataType: "json"
                 }
-            ).then((json) ->
-                scope.CLUSTER_ID = json.CLUSTER_ID
+            ).then(
+                (json) ->
+                    scope.CLUSTER_ID = json.CLUSTER_ID
             )
             scope.CLUSTER_ID = "---"
             scope.your_licenses_open = false
@@ -103,8 +119,11 @@ angular.module(
             )
     }
 ]).directive("icswUserLicenseYourLicenses",
-    ["icswUserLicenseDataService",
-     (icswUserLicenseDataService) ->
+[
+    "icswUserLicenseDataService",
+ (
+     icswUserLicenseDataService
+ ) ->
         return {
             restrict : "EA"
             templateUrl : "icsw.user.license.your_licenses"
@@ -121,7 +140,12 @@ angular.module(
                 scope.undefined_to_zero = (x) ->
                     return if x? then x else 0
         }
-]).directive("icswUserLicensePackages", ["icswUserLicenseDataService", "icswSimpleAjaxCall", "ICSW_URLS", (icswUserLicenseDataService, icswSimpleAjaxCall, ICSW_URLS) ->
+]).directive("icswUserLicensePackages",
+[
+    "icswUserLicenseDataService", "icswSimpleAjaxCall", "ICSW_URLS",
+(
+    icswUserLicenseDataService, icswSimpleAjaxCall, ICSW_URLS
+) ->
     return {
         restrict : "EA"
         controller: 'icswUserLicenseCtrl'
@@ -133,8 +157,9 @@ angular.module(
                     url: ICSW_URLS.MAIN_GET_CLUSTER_INFO,
                     dataType: "json"
                 }
-            ).then((json) ->
-                scope.CLUSTER_ID = json.CLUSTER_ID
+            ).then(
+                (json) ->
+                    scope.CLUSTER_ID = json.CLUSTER_ID
             )
             icswUserLicenseDataService.add_to_scope(scope)
             scope.cluster_accordion_open = {
@@ -159,7 +184,12 @@ angular.module(
                 else
                     return "Cluster #{cluster_id}"
     }
-]).service("icswUserLicenseDataService", ["Restangular", "ICSW_URLS", "gettextCatalog", "icswSimpleAjaxCall", "$q", (Restangular, ICSW_URLS, gettextCatalog, icswSimpleAjaxCall, $q) ->
+]).service("icswUserLicenseDataService",
+[
+    "Restangular", "ICSW_URLS", "gettextCatalog", "icswSimpleAjaxCall", "$q",
+(
+    Restangular, ICSW_URLS, gettextCatalog, icswSimpleAjaxCall, $q
+) ->
     cluster_id_wrapper = {
         CLUSTER_ID: "---"
     }

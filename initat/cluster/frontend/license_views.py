@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2015 Bernhard Mallinger
+# Copyright (C) 2015-2016 Bernhard Mallinger, Andreas Lang-Nevyjel
 #
 # Send feedback to: <mallinger@init.at>
 #
@@ -27,10 +27,11 @@ import logging
 from django.utils.decorators import method_decorator
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.response import Response
+
 from initat.cluster.backbone.available_licenses import LicenseEnum, get_available_licenses
+from initat.cluster.backbone.models import License
 from initat.cluster.backbone.models.license import LicenseViolation, LicenseUsage
 from initat.cluster.frontend.rest_views import rest_logging
-from initat.cluster.backbone.models import License
 
 
 logger = logging.getLogger("cluster.monitoring")
