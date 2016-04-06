@@ -685,57 +685,47 @@
         <div class="row">
             <div class="col-md-3">
                 <div class="form-group">
-                    <div class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-7">
-                            <label title="Notify in case of host state is recovery">
-                                <input class="checkboxinput checkbox" name="nrecovery" ng-model="edit_obj.nrecovery" type="checkbox"/>
-                                recovery
-                            </label>
-                        </div>
+                    <label class="col-sm-7 control-label" title="Notify in case of host state is recovery">
+                        recovery
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.nrecovery"></icsw-tools-yes-no>
                     </div>
                 </div>
                 <div class="form-group">
-                    <div class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-7">
-                            <label title="Notify in case of host state is down">
-                                <input class="checkboxinput checkbox" name="ndown" ng-model="edit_obj.ndown" type="checkbox"/>
-                                down
-                            </label>
-                        </div>
+                    <label class="col-sm-7 control-label" title="Notify in case of host state is down">
+                        down
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.ndown"></icsw-tools-yes-no>
                     </div>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="form-group">
-                    <div class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-7">
-                            <label title="Notify in case of host state is unreachable">
-                                <input class="checkboxinput checkbox" name="nunreachable" ng-model="edit_obj.nunreachable" type="checkbox"/>
-                                unreachable
-                            </label>
-                        </div>
+                    <label class="col-sm-7 control-label" title="Notify in case of host state is unreachable">
+                        unreachable
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.nunreachable"></icsw-tools-yes-no>
                     </div>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="form-group">
-                    <div class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-7">
-                            <label title="Notify in case of host state is flapping">
-                                <input class="checkboxinput checkbox" name="nflapping" ng-model="edit_obj.nflapping" type="checkbox"/>
-                                flapping
-                            </label>
-                        </div>
+                    <label class="col-sm-7 control-label" title="Notify in case of host state is flapping">
+                        flapping
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.nflapping"></icsw-tools-yes-no>
                     </div>
                 </div>
                 <div class="form-group">
-                    <div class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-7">
-                            <label title="Notify in case of host state is planned downtime">
-                                <input class="checkboxinput checkbox" name="nplanned_downtime" ng-model="edit_obj.nplanned_downtime" type="checkbox"/>
-                                planned downtime
-                            </label>
-                        </div>
+                    <label class="col-sm-7 control-label" title="Notify in case of host state is planned downtime">
+                        planned downtime
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.nplanned_downtime"></icsw-tools-yes-no>
                     </div>
                 </div>
             </div>
@@ -743,13 +733,11 @@
         <fieldset>
             <legend>Freshness settings</legend>
             <div class="form-group">
-                <div class="checkbox">
-                    <div class="controls col-lg-offset-0 col-sm-7">
-                        <label title="Ensure whether passive check is fresh or not">
-                            <input class="checkboxinput checkbox" name="check_freshness" ng-model="edit_obj.check_freshness" type="checkbox"/>
-                            Check freshness
-                        </label>
-                    </div>
+                <label class="col-sm-3 control-label" title="Ensure whether passive check is fresh or not">
+                    Check freshness
+                </label>
+                <div class="col-sm-3 controls">
+                    <icsw-tools-yes-no flag="edit_obj.check_freshness"></icsw-tools-yes-no>
                 </div>
             </div>
             <div class="form-group" ng_show="edit_obj.check_freshness">
@@ -764,13 +752,11 @@
         <fieldset>
             <legend>Flap settings</legend>
             <div class="form-group">
-                <div class="checkbox">
-                    <div class="controls col-lg-offset-0 col-sm-7">
-                        <label title="Enable detection of flapping states">
-                            <input class="checkboxinput checkbox" name="flap_detection_enabled" ng-model="edit_obj.flap_detection_enabled" type="checkbox"/>
-                            Flap detection enabled
-                        </label>
-                    </div>
+                <label class="col-sm-3 control-label" title="Enable detection of flapping states">
+                    Flap detection
+                </label>
+                <div class="col-sm-3 controls">
+                    <icsw-tools-yes-no flag="edit_obj.flap_detection_enabled"></icsw-tools-yes-no>
                 </div>
             </div>
         </fieldset>
@@ -792,38 +778,32 @@
                 </div>
             </div>
         </div>
-        <div class="row">
+        <div class="row" ng_show="edit_obj.flap_detection_enabled">
             <div class="col-md-6">
                 <div class="form-group">
-                    <div class="checkbox" ng_show="edit_obj.flap_detection_enabled">
-                        <div class="controls col-lg-offset-0 col-sm-7">
-                            <label title="Flapping detection for state up">
-                                <input checked="checked" class="checkboxinput checkbox" name="flap_detect_up" ng-model="edit_obj.flap_detect_up" type="checkbox"/>
-                                Flap detect up
-                            </label>
-                        </div>
+                    <label class="col-sm-7 control-label" title="Flapping detection for state up">
+                        Flap detect up
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.flap_detect_up"></icsw-tools-yes-no>
                     </div>
                 </div>
                 <div class="form-group">
-                    <div class="checkbox" ng_show="edit_obj.flap_detection_enabled">
-                        <div class="controls col-lg-offset-0 col-sm-7">
-                            <label title="Flapping detection for state down">
-                                <input class="checkboxinput checkbox" name="flap_detect_down" ng-model="edit_obj.flap_detect_down" type="checkbox"/>
-                                Flap detect down
-                            </label>
-                        </div>
+                    <label class="col-sm-7 control-label" title="Flapping detection for state down">
+                        Flap detect down
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.flap_detect_down"></icsw-tools-yes-no>
                     </div>
                 </div>
             </div>
             <div class="col-md-6">
                 <div class="form-group">
-                    <div class="checkbox" ng_show="edit_obj.flap_detection_enabled">
-                        <div class="controls col-lg-offset-0 col-sm-7">
-                            <label title="Flapping detection for state unreachable">
-                                <input class="checkboxinput checkbox" name="flap_detect_unreachable" ng-model="edit_obj.flap_detect_unreachable" type="checkbox"/>
-                                Flap detect unreachable
-                            </label>
-                        </div>
+                    <label class="col-sm-7 control-label" title="Flapping detection for state unreachable">
+                        Flap detect unreachable
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.flap_detect_unreachable"></icsw-tools-yes-no>
                     </div>
                 </div>
             </div>
@@ -895,70 +875,54 @@
         </fieldset>
         <div class="row">
             <div class="col-md-6">
-                <div class="form-actions">
-                    <div class="form-group">
-                        <div class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7">
-                                <label title="Receive notification in case service recovers">
-                                    <input class="checkboxinput checkbox" name="snrecovery" ng-model="edit_obj.snrecovery" type="checkbox"/>
-                                    Notify on service recovery
-                                </label>
-                            </div>
-                        </div>
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Receive notification in case service recovers">
+                        Notify on service recovery
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.snrecovery"></icsw-tools-yes-no>
                     </div>
-                    <div class="form-group">
-                        <div class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7">
-                                <label title="Receive notification in case service state is critical">
-                                    <input class="checkboxinput checkbox" name="sncritical" ng-model="edit_obj.sncritical" type="checkbox"/>
-                                    Notify on service critical
-                                </label>
-                            </div>
-                        </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Receive notification in case service state is critical">
+                        Notify on service critical
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.sncritical"></icsw-tools-yes-no>
                     </div>
-                    <div class="form-group">
-                        <div class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7">
-                                <label title="Receive notification in case service state is warning">
-                                    <input class="checkboxinput checkbox" name="snwarning" ng-model="edit_obj.snwarning" type="checkbox"/>
-                                    Notify on service warning
-                                </label>
-                            </div>
-                        </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Receive notification in case service state is warning">
+                        Notify on service warning
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.snwarning"></icsw-tools-yes-no>
                     </div>
                 </div>
             </div>
             <div class="col-md-6">
-                <div class="form-actions">
-                    <div class="form-group">
-                        <div class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7">
-                                <label title="Receive notification in case service state is unknown">
-                                    <input class="checkboxinput checkbox" name="snunknown" ng-model="edit_obj.snunknown" type="checkbox"/>
-                                    Notify on service unknown
-                                </label>
-                            </div>
-                        </div>
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Receive notification in case service state is unknown">
+                        Notify on service unknown
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.snunknown"></icsw-tools-yes-no>
                     </div>
-                    <div class="form-group">
-                        <div class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7">
-                                <label title="Receive notification in case service state is flapping">
-                                    <input class="checkboxinput checkbox" name="sflapping" ng-model="edit_obj.sflapping" type="checkbox"/>
-                                    Notify on service flapping
-                                </label>
-                            </div>
-                        </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Receive notification in case service state is flapping">
+                        Notify on service flapping
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.sflapping"></icsw-tools-yes-no>
                     </div>
-                    <div class="form-group">
-                        <div class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7">
-                                <label title="Receive notification in case service state is planned downtime">
-                                    <input class="checkboxinput checkbox" name="splanned_downtime" ng-model="edit_obj.splanned_downtime" type="checkbox"/>
-                                    Notify on service planned downtime
-                                </label>
-                            </div>
-                        </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Receive notification in case service state is planned downtime">
+                        Notify on service planned downtime
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.splanned_downtime"></icsw-tools-yes-no>
                     </div>
                 </div>
             </div>
@@ -983,60 +947,46 @@
         </fieldset>
         <div class="row">
             <div class="col-md-6">
-                <div class="form-actions">
-                    <div class="form-group">
-                        <div class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7">
-                                <label title="Receive notification in case host recovers">
-                                    <input class="checkboxinput checkbox" name="hnrecovery" ng-model="edit_obj.hnrecovery" type="checkbox"/>
-                                    Notify on host recovery
-                                </label>
-                            </div>
-                        </div>
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Receive notification in case host recovers">
+                        Notify on host recovery
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.hnrecovery"></icsw-tools-yes-no>
                     </div>
-                    <div class="form-group">
-                        <div class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7">
-                                <label title="Receive notification in case host state is down">
-                                    <input class="checkboxinput checkbox" name="hndown" ng-model="edit_obj.hndown" type="checkbox"/>
-                                    Notify on host down
-                                </label>
-                            </div>
-                        </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Receive notification in case host state is down">
+                        Notify on host down
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.hndown"></icsw-tools-yes-no>
                     </div>
-                    <div class="form-group">
-                        <div class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7">
-                                <label title="Receive notification in case host state is unreachable">
-                                    <input class="checkboxinput checkbox" name="hnunreachable" ng-model="edit_obj.hnunreachable" type="checkbox"/>
-                                    Notify on host unreachable
-                                </label>
-                            </div>
-                        </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Receive notification in case host state is unreachable">
+                        Notify on host unreachable
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.hnunreachable"></icsw-tools-yes-no>
                     </div>
                 </div>
             </div>
             <div class="col-md-6">
-                <div class="form-actions">
-                    <div class="form-group">
-                        <div class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7">
-                                <label title="Receive notification in case host state is flapping">
-                                    <input class="checkboxinput checkbox" name="hflapping" ng-model="edit_obj.hflapping" type="checkbox"/>
-                                    Notify on host flapping
-                                </label>
-                            </div>
-                        </div>
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Receive notification in case host state is flapping">
+                        Notify on host flapping
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.hflapping"></icsw-tools-yes-no>
                     </div>
-                    <div class="form-group">
-                        <div class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7">
-                                <label title="Receive notification in case host state is planned downtime">
-                                    <input class="checkboxinput checkbox" name="hplanned_downtime" ng-model="edit_obj.hplanned_downtime" type="checkbox"/>
-                                    Notify on host planned downtime
-                                </label>
-                            </div>
-                        </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Receive notification in case host state is planned downtime">
+                        Notify on host planned downtime
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.hplanned_downtime"></icsw-tools-yes-no>
                     </div>
                 </div>
             </div>
@@ -1083,13 +1033,11 @@
                 </div>
             </div>
             <div class="form-group">
-                <div class="checkbox">
-                    <div class="controls col-lg-offset-0 col-sm-7">
-                        <label>
-                            <input class="checkboxinput checkbox" name="volatile" ng-model="edit_obj.volatile" type="checkbox"/>
-                            Volatile
-                        </label>
-                    </div>
+                <label class="control-label col-sm-3">
+                     Volatile
+                </label>
+                <div class="controls col-sm-7">
+                    <icsw-tools-yes-no flag="edit_obj.volatile"></icsw-tools-yes-no>
                 </div>
             </div>
         </fieldset>
@@ -1164,63 +1112,57 @@
             </div>
         </fieldset>
         <div class="row">
-            <div class="col-sm-3">
+            <div class="col-md-3">
                 <div class="form-group">
-                    <div class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-7">
-                            <label title="Notify in case of service state is recovery"><input class="checkboxinput checkbox" id="id_nrecovery" name="nrecovery" ng-model="edit_obj.nrecovery" type="checkbox"/>
-                                recovery
-                            </label>
-                        </div>
+                    <label class="col-sm-7 control-label" title="Notify in case of service state is recovery">
+                        recovery
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.nrecovery"></icsw-tools-yes-no>
                     </div>
                 </div>
                 <div class="form-group">
-                    <div class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-7">
-                            <label title="Notify in case of service state is critical"><input class="checkboxinput checkbox" id="id_ncritical" name="ncritical" ng-model="edit_obj.ncritical" type="checkbox"/>
-                                critical
-                            </label>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-sm-3">
-                <div class="form-group">
-                    <div class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-7">
-                            <label title="Notify in case of service state is warning"><input class="checkboxinput checkbox" id="id_nwarning" name="nwarning" ng-model="edit_obj.nwarning" type="checkbox"></input>
-                                warning
-                            </label>
-                        </div>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <div class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-7">
-                            <label title="Notify in case of service state is unknown"><input class="checkboxinput checkbox" id="id_nunknown" name="nunknown" ng-model="edit_obj.nunknown" type="checkbox"></input>
-                                unknown
-                            </label>
-                        </div>
+                    <label class="col-sm-7 control-label" title="Notify in case of service state is critical">
+                        critical
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.ncritical"></icsw-tools-yes-no>
                     </div>
                 </div>
             </div>
-            <div class="col-sm-3">
+            <div class="col-md-3">
                 <div class="form-group">
-                    <div class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-7">
-                            <label title="Notify in case of service state is flapping"><input class="checkboxinput checkbox" id="id_nflapping" name="nflapping" ng-model="edit_obj.nflapping" type="checkbox"></input>
-                                flapping
-                            </label>
-                        </div>
+                    <label class="col-sm-7 control-label" title="Notify in case of service state is warning">
+                        warning
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.nwarning"></icsw-tools-yes-no>
                     </div>
                 </div>
                 <div class="form-group">
-                    <div class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-7">
-                            <label title="Notify in case of service state is planned downtime"><input class="checkboxinput checkbox" id="id_nplanned_downtime" name="nplanned_downtime" ng-model="edit_obj.nplanned_downtime" type="checkbox"></input>
-                                planned downtime
-                            </label>
-                        </div>
+                    <label class="col-sm-7 control-label" title="Notify in case of service state is unknown">
+                        unknown
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.nunknown"></icsw-tools-yes-no>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Notify in case of service state is flapping">
+                        warning
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.nflapping"></icsw-tools-yes-no>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Notify in case of service state is planned downtime">
+                        unknown
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.nplanned_downtime"></icsw-tools-yes-no>
                     </div>
                 </div>
             </div>
@@ -1228,12 +1170,11 @@
         <fieldset>
             <legend>Freshness settings</legend>
             <div class="form-group">
-                <div class="checkbox">
-                    <div class="controls col-lg-offset-0 col-sm-7">
-                        <label title="Ensure whether passive check is fresh or not"><input class="checkboxinput checkbox" id="id_check_freshness" name="check_freshness" ng-model="edit_obj.check_freshness" type="checkbox"></input>
-                            Check freshness
-                        </label>
-                    </div>
+                <label class="col-sm-3 control-label" title="Ensure whether passive check is fresh or not">
+                    Check freshness
+                </label>
+                <div class="col-sm-3 controls">
+                    <icsw-tools-yes-no flag="edit_obj.check_freshness"></icsw-tools-yes-no>
                 </div>
             </div>
             <div class="form-group" ng_show="edit_obj.check_freshness">
@@ -1248,12 +1189,11 @@
         <fieldset>
             <legend>Flap settings</legend>
             <div class="form-group">
-                <div class="checkbox">
-                    <div class="controls col-lg-offset-0 col-sm-7">
-                        <label title="Enable detection of flapping states"><input class="checkboxinput checkbox" id="id_flap_detection_enabled" name="flap_detection_enabled" ng-model="edit_obj.flap_detection_enabled" type="checkbox"/>
-                            Flap detection enabled
-                        </label>
-                    </div>
+                <label class="col-sm-3 control-label" title="Enable detection of flapping states">
+                    Flap detection enabled
+                </label>
+                <div class="col-sm-3 controls">
+                    <icsw-tools-yes-no flag="edit_obj.flap_detection_enabled"></icsw-tools-yes-no>
                 </div>
             </div>
         </fieldset>
@@ -1275,44 +1215,40 @@
                 </div>
             </div>
         </div>
-        <div class="row">
+        <div class="row" ng_show="edit_obj.flap_detection_enabled">
             <div class="col-md-6">
                 <div class="form-group">
-                    <div class="checkbox" ng_show="edit_obj.flap_detection_enabled">
-                        <div class="controls col-lg-offset-0 col-sm-7">
-                            <label title="Flapping detection for ok states"><input checked="checked" class="checkboxinput checkbox" id="id_flap_detect_ok" name="flap_detect_ok" ng-model="edit_obj.flap_detect_ok" type="checkbox"/>
-                                Flap detect ok
-                            </label>
-                        </div>
+                    <label class="col-sm-7 control-label" title="Flapping detection for ok ststes">
+                        Flap detect ok
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.flap_detect_ok"></icsw-tools-yes-no>
                     </div>
                 </div>
                 <div class="form-group">
-                    <div class="checkbox" ng_show="edit_obj.flap_detection_enabled">
-                        <div class="controls col-lg-offset-0 col-sm-7">
-                            <label title="Flapping detection for warning states"><input class="checkboxinput checkbox" id="id_flap_detect_warn" name="flap_detect_warn" ng-model="edit_obj.flap_detect_warn" type="checkbox"/>
-                                Flap detect warn
-                            </label>
-                        </div>
+                    <label class="col-sm-7 control-label" title="Flapping detection for warning states">
+                        Flap detect warn
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.flap_detect_warn"></icsw-tools-yes-no>
                     </div>
                 </div>
             </div>
             <div class="col-md-6">
                 <div class="form-group">
-                    <div class="checkbox" ng_show="edit_obj.flap_detection_enabled">
-                        <div class="controls col-lg-offset-0 col-sm-7">
-                            <label title="Flapping detection for critical states"><input class="checkboxinput checkbox" id="id_flap_detect_critical" name="flap_detect_critical" ng-model="edit_obj.flap_detect_critical" type="checkbox"/>
-                                Flap detect critical
-                            </label>
-                        </div>
+                    <label class="col-sm-7 control-label" title="Flapping detection for critical states">
+                        Flap detect critical
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.flap_detect_critical"></icsw-tools-yes-no>
                     </div>
                 </div>
                 <div class="form-group">
-                    <div class="checkbox" ng_show="edit_obj.flap_detection_enabled">
-                        <div class="controls col-lg-offset-0 col-sm-7">
-                            <label title="Flapping detection for unknown states"><input class="checkboxinput checkbox" id="id_flap_detect_unknown" name="flap_detect_unknown" ng-model="edit_obj.flap_detect_unknown" type="checkbox"/>
-                                Flap detect unknown
-                            </label>
-                        </div>
+                    <label class="col-sm-7 control-label" title="Flapping detection for unknown states">
+                        Flap detect unknown
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.flap_detect_unknown"></icsw-tools-yes-no>
                     </div>
                 </div>
             </div>
