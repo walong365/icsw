@@ -801,7 +801,7 @@
                 </fieldset>
             </uib-tab>
             <uib-tab heading="History">
-                <icsw-history-model-history style="config" model="'mon_check_command'" object-id="edit_obj.idx">
+                <icsw-history-model-history style="config" icsw-model="'mon_check_command'" icsw-object-id="edit_obj.idx">
                 </icsw-history-model-history>
             </uib-tab>
         </uib-tabset>
@@ -865,7 +865,7 @@
                 </fieldset>
             </uib-tab>
             <uib-tab heading="History" ng-if="!creaet">
-                <icsw-history-model-history on-revert="on_script_revert(edit_obj, get_change_list)" style="config" model="'config_script'" object-id="edit_obj.idx"></icsw-history-model-history>
+                <icsw-history-model-history on-revert="on_script_revert(edit_obj, get_change_list)" style="config" icsw-model="'config_script'" icsw-object-id="edit_obj.idx"></icsw-history-model-history>
             </uib-tab>
         </uib-tabset>
     </form>
@@ -906,7 +906,7 @@
                 <div ng-bind-html="show_config_var_help()"></div>
             </uib-tab>
             <uib-tab heading="History" ng-if="!create">
-                <icsw-history-model-history style="config" model="'config_str'" object-id="edit_obj.idx"></icsw-history-model-history>
+                <icsw-history-model-history style="config" icsw-model="'config_str'" icsw-object-id="edit_obj.idx"></icsw-history-model-history>
             </uib-tab>
         </uib-tabset>
     </form>
@@ -947,7 +947,7 @@
                 <div ng-bind-html="show_config_var_help()"></div>
             </uib-tab>
             <uib-tab heading="History" ng-if="!create">
-                <icsw-history-model-history style="config" model="'config_int'" object-id="edit_obj.idx"></icsw-history-model-history>
+                <icsw-history-model-history style="config" icsw-model="'config_int'" icsw-object-id="edit_obj.idx"></icsw-history-model-history>
             </uib-tab>
         </uib-tabset>
     </form>
@@ -986,7 +986,7 @@
                 <div ng-bind-html="show_config_var_help()"></div>
             </uib-tab>
             <uib-tab heading="History" ng-if="!create">
-                <icsw-history-model-history style="config" model="'config_bool'" object-id="edit_obj.idx">
+                <icsw-history-model-history style="config" icsw-model="'config_bool'" icsw-object-id="edit_obj.idx">
                 </icsw-history-model-history>
             </uib-tab>
         </uib-tabset>

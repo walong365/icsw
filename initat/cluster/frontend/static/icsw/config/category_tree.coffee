@@ -449,10 +449,10 @@ angular.module(
 ]).directive("icswConfigCategoryContentsViewer",
 [
     "Restangular", "ICSW_URLS", "icswConfigTreeService", "icswDeviceTreeService", "$q",
-    "icswMonitoringTreeService",
+    "icswMonitoringBasicTreeService",
 (
     Restangular, ICSW_URLS, icswConfigTreeService, icswDeviceTreeService, $q,
-    icswMonitoringTreeService,
+    icswMonitoringBasicTreeService,
 ) ->
     return {
         restrict: "EA"
@@ -472,7 +472,7 @@ angular.module(
                 _lut = {
                     config: icswConfigTreeService
                     device: icswDeviceTreeService
-                    mon_check_command: icswMonitoringTreeService
+                    mon_check_command: icswMonitoringBasicTreeService
                     deviceselectipon: null
                 }
                 for key, refs of _cat.reference_dict

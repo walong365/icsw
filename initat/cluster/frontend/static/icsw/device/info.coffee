@@ -197,12 +197,12 @@ angular.module(
 ]).controller("icswSimpleDeviceInfoCtrl",
 [
     "$scope", "$uibModal", "Restangular", "$q", "ICSW_URLS",
-    "$rootScope", "ICSW_SIGNALS", "icswDomainTreeService", "icswDeviceTreeService", "icswMonitoringTreeService",
+    "$rootScope", "ICSW_SIGNALS", "icswDomainTreeService", "icswDeviceTreeService", "icswMonitoringBasicTreeService",
     "icswAcessLevelService", "icswActiveSelectionService", "icswDeviceBackup", "icswDeviceGroupBackup",
     "icswDeviceTreeHelperService",
 (
     $scope, $uibModal, Restangular, $q, ICSW_URLS,
-    $rootScope, ICSW_SIGNALS, icswDomainTreeService, icswDeviceTreeService, icswMonitoringTreeService,
+    $rootScope, ICSW_SIGNALS, icswDomainTreeService, icswDeviceTreeService, icswMonitoringBasicTreeService,
     icswAcessLevelService, icswActiveSelectionService, icswDeviceBackup, icswDeviceGroupBackup,
     icswDeviceTreeHelperService
 ) ->
@@ -230,7 +230,7 @@ angular.module(
                     $q.all(
                         [
                             icswDomainTreeService.load($scope.$id)
-                            icswMonitoringTreeService.load($scope.$id)
+                            icswMonitoringBasicTreeService.load($scope.$id)
                             $scope.dev_tree.enrich_devices(dt_hs, ["network_info", "monitoring_hint_info", "disk_info", "com_info", "snmp_info", "snmp_schemes_info", "scan_info"])
                         ]
                     ).then(

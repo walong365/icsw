@@ -107,29 +107,45 @@ angular.module(
         templateUrl: 'icsw.history.model_history'
         scope: {
             icsw_model: '=icswModel'
-            objectId: '&'
+            object_id: '=icswObjectId'
             onRevert: '&'
             style: '@'  # 'config', 'history'
         }
         link: (scope, el, attrs) ->
+            scope.struct = {
+                loading: false
+                entries: []
+            }
             scope.on_revert_defined = attrs.onRevert
             icswHistoryDataService.add_to_scope(scope)
-            scope.$watch(
-                () ->
-                    [scope.icsw_model, scope.objectId]
-                () ->
-                    console.log scope.icsw_model
-                    if scope.icsw_model?
-                        model_for_callback = scope.icsw_model
-                        icswHistoryDataService.get_historic_data(scope.icsw_model, scope.objectId()).then(
-                            (new_data) ->
-                                # loading takes a while, check if the user has changed the selection meanwhile
-                                if model_for_callback == scope.icsw_model
-                                    # don't show empty changes
-                                    scope.entries = (entry for entry in new_data when entry.meta.type != 'modified' || Object.keys(entry.changes).length > 0)
-                                    # NOTE: entries must be in chronological, earliest first
-                    )
-                true
+            scope.models_with_history = []
+            icswHistoryDataService.get_models_with_history().then(
+                (data) ->
+                    scope.models_with_history = data
+            )
+            _load_model = () ->
+                scope.struct.loading = true
+                _model_to_load = scope.icsw_model
+                icswHistoryDataService.get_historic_data(_model_to_load, scope.object_id).then(
+                    (new_data) ->
+                        # loading takes a while, check if the user has changed the selection meanwhile
+                        if _model_to_load == scope.icsw_model
+                            # don't show empty changes
+                            scope.struct.entries.length = 0
+                            for entry in new_data
+                                if entry.meta.type != "modified" or Object.keys(entry.changes).length > 0
+                                    scope.struct.entries.push(entry)
+                            scope.struct.loading = false
+                        else
+                            _load_model()
+                )
+
+            scope.$watch("icsw_model", (new_val) ->
+                if new_val?
+                    if not scope.struct.loading
+                        _load_model()
+                else
+                    scope.struct.entries.length = 0
             )
 
             scope.format_value = (val) ->
@@ -146,7 +162,7 @@ angular.module(
                 return () ->
                     # return in order of original application
                     changes = []
-                    for entry in scope.entries
+                    for entry in scope.struct.entries
                         changes.push(entry.changes)
                         if entry == limit_entry
                             break

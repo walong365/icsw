@@ -6,7 +6,7 @@
         <ui-select-match class="ui-select-match" placeholder="please select model">
             {{ $select.selected[0] }}
         </ui-select-match>
-        <ui-select-choices class="ui-select-choices" repeat="v[1] as v in struct.models_with_history_sorted">
+        <ui-select-choices class="ui-select-choices" repeat="v[1] as v in struct.models_with_history_sorted | props_filter:{0:$select.search}">
             <div ng-bind-html="v[0]"></div>
         </ui-select-choices>
     </ui-select>
@@ -14,14 +14,19 @@
 </script>
 
 <script type="text/ng-template" id="icsw.history.model_history">
-    <h3 ng-show="style != 'config'">{{ models_with_history[model()] }}</h3>
+    <h3 ng-show="style != 'config'">{{ models_with_history[icsw_model] }}</h3>
+    <div class="alert alert-warning" ng-show="struct.loading">Fetching data from server</div>
     <table class="table table-condensed table-hover table-striped" style="width: auto"
-            st-table="entries_display" st-safe-src="entries">
+            st-table="entries_display" st-safe-src="struct.entries" ng-show="!struct.loading">
         <thead>
             <tr>
                 <td colspan="99">
-                    <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
-                         possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                    <div
+                        icsw-tools-pagination
+                        st-items-by-page="10"
+                        st-displayed-pages="11"
+                        possible-items-by-page="10,20,50,100,200,500,1000">
+                    </div>
                 </td>
             </tr>
             <tr>
@@ -45,8 +50,10 @@
                 <td>
                     <div ng-show="on_revert_defined">
                         <div ng-show="onRevert._revision_applied != entry">
-                            <icsw-tools-button type="revert" value="revert to this version"
-                                               ng-click="onRevert({'get_change_list': get_get_change_list(entry)}); onRevert._revision_applied = entry"></icsw-tools-button>
+                            <icsw-tools-button
+                                type="revert" value="revert to this version"
+                                ng-click="onRevert({'get_change_list': get_get_change_list(entry)}); onRevert._revision_applied = entry">
+                            </icsw-tools-button>
                         </div>
                         <div ng-show="onRevert._revision_applied == entry">
                             <uib-alert type="info">
@@ -62,26 +69,24 @@
                         <span ng-if="!v.patch">
                             from
                             <strong>
-                                {{format_value(v.old_data_human)}}
+                                {{ format_value(v.old_data_human) }}
                             </strong>
                             to
                             <strong>
-                                {{format_value(v.new_data_human)}}
+                                {{ format_value(v.new_data_human) }}
                             </strong>
                         </span>
                     </div>
-
                     <div ng-if="entry.changes.full_dump">
-
                         <table class="table table-condensed" style="width: auto">
                             <tr>
                                 <th ng-repeat="(k, v) in entry.changes.full_dump_human">
-                                    {{k}}
+                                    {{ k }}
                                 </th>
                             </tr>
                             <tr>
                                 <td ng-repeat="(k, v) in entry.changes.full_dump_human">
-                                    {{format_value(v)}}
+                                    {{ format_value(v) }}
                                 </td>
                             </tr>
 
