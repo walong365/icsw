@@ -89,14 +89,14 @@
 
         <uib-tab heading="Service templates">
             <icsw-tools-rest-table-new target-list="entries" config-service="icswMonitoringBasicServiceTemplateService">
-                <h2>Service templates ({{ entries.length }} entries),
+                <h3>Service templates ({{ entries.length }} entries),
                     <icsw-tools-button
                         disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
                         style="display: inline-block" title="{{config_service.get_data_incomplete_error()}}"
                         ng-click="create($event)" size="xs">
 
                     </icsw-tools-button>
-                </h2>
+                </h3>
                 <table st-table="entries_displayed" st-safe-src="entries"
                        class="table table-condensed table-hover" style="width:auto;">
                     <thead>
@@ -167,15 +167,14 @@
         </uib-tab>
 
         <uib-tab heading="Device templates">
-            <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringDeviceTemplateService">
-                    <h2>Device templates ({{entries.length}} entries),
-                        <icsw-tools-button
-                            disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
-                            style="display: inline-block" title="{{config_service.get_data_incomplete_error()}}"
-                            ng-click="create($event, null)">
-
-                        </icsw-tools-button>
-                    </h2>
+            <icsw-tools-rest-table-new target-list="entries" config-service="icswMonitoringBasicDeviceTemplateService">
+                <h3>Device templates ({{ entries.length }} entries),
+                    <icsw-tools-button
+                        disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
+                        style="display: inline-block" title="{{ config_service.get_data_incomplete_error() }}"
+                        ng-click="create($event, null)" size="xs">
+                    </icsw-tools-button>
+                </h3>
                 <table st-table="entries_displayed" st-safe-src="entries"
                        class="table table-condensed table-hover table-striped" style="width:auto;">
                     <thead>
@@ -214,11 +213,11 @@
                     <tbody>
                         <tr ng-repeat="obj in entries_displayed">
                             <td>{{ obj.name }}</td>
-                            <td>{{ obj.mon_service_templ | array_lookup:config_service.mon_service_templ:'name' }}</td>
-                            <td>{{ obj.host_check_command | array_lookup:config_service.host_check_command:'name' }}</td>
-                            <td>{{ obj.not_period | array_lookup:config_service.mon_period:'name' }}</td>
+                            <td>{{ basic_tree.mon_service_templ_lut[obj.mon_service_templ].name }}</td>
+                            <td>{{ basic_tree.host_check_command_lut[obj.host_check_command].name }}</td>
+                            <td>{{ basic_tree.mon_period_lut[obj.not_period].name }}</td>
                             <td>{{ obj.ninterval }}</td>
-                            <td>{{ obj.mon_period | array_lookup:config_service.mon_period:'name' }}</td>
+                            <td>{{ basic_tree.mon_period_lut[obj.mon_period].name }}</td>
                             <td>{{ obj.check_interval }}</td>
                             <td>{{ obj.retry_interval }}</td>
                             <td>{{ obj.max_attempts }}</td>
@@ -236,18 +235,20 @@
                             <td>{{ obj.check_freshness | yesno1 }}</td>
                             <td>{{ obj.freshness_threshold }}</td>
                             <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
-                            <td><icsw-tools-button type="delete" size="xs" ng-click="delete(obj)"></icsw-tools-button></td>
+                            <td><icsw-tools-button type="delete" size="xs" ng-click="delete($event, obj)"></icsw-tools-button></td>
                         </tr>
                     </tbody>
                 </table>
-            </icsw-tools-rest-table>
+            </icsw-tools-rest-table-new>
         </uib-tab>
 
         <uib-tab heading="Host check commands">
-            <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringHostCheckCommandService">
-                <h2>Host check commands ({{entries.length}} entries), <icsw-tools-button type="create" value="create new" ng-click="create($event)"></icsw-tools-button></h2>
+            <icsw-tools-rest-table-new target-list="entries" config-service="icswMonitoringBasicHostCheckCommandService">
+                <h3>Host check commands ({{ entries.length }} entries),
+                    <icsw-tools-button type="create" size="xs" value="create new" ng-click="create($event, null)"></icsw-tools-button>
+                </h3>
                 <table st-table="entries_displayed" st-safe-src="entries"
-                       class="table table-condensed table-hover" style="width:auto;">
+                       class="table table-condensed table-hover table-striped" style="width:auto;">
                     <thead>
                         <tr>
                             <td colspan="99">
@@ -267,20 +268,22 @@
                             <td>{{ obj.name }}</td>
                             <td>{{ obj.command_line }}</td>
                             <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
-                            <td><icsw-tools-button type="delete" size="xs" ng-click="delete(obj)"></icsw-tools-button></td>
+                            <td><icsw-tools-button type="delete" size="xs" ng-click="delete($event, obj)"></icsw-tools-button></td>
                         </tr>
                     </tbody>
                 </table>
-            </icsw-tools-rest-table>
+            </icsw-tools-rest-table-new>
         </uib-tab>
 
         <uib-tab heading="Contacts">
-            <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringContactService">
-                <h2>Contacts ({{entries.length}} entries),
-                    <icsw-tools-button disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
-                                       style="display: inline-block" title="{{config_service.get_data_incomplete_error()}}"
-                                       ng-click="create($event)"></icsw-tools-button>
-                </h2>
+            <icsw-tools-rest-table-new target-list="entries" config-service="icswMonitoringBasicMonContactService">
+                <h3>
+                    Contacts ({{ entries.length }} entries),
+                    <icsw-tools-button
+                        disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
+                        style="display: inline-block" title="{{ config_service.get_data_incomplete_error() }}"
+                        ng-click="create($event)" size="xs"></icsw-tools-button>
+                </h3>
                 <table st-table="entries_displayed" st-safe-src="entries"
                        class="table table-condensed table-hover" style="width:auto;">
                     <thead>
@@ -312,34 +315,36 @@
                     </thead>
                     <tbody>
                         <tr ng-repeat="obj in entries_displayed">
-                            <td>{{ obj.user | array_lookup:config_service.user | show_user }}</td>
-                            <td>{{ obj.snperiod | array_lookup:config_service.mon_period:'name' }}</td>
+                            <td>{{ user_group_tree.user_lut[obj.user].login }}</td>
+                            <td>{{ basic_tree.mon_period_lut[obj.snperiod].name }}</td>
                             <td>{{ obj.snrecovery | yesno1 }}</td>
                             <td>{{ obj.sncritical | yesno1 }}</td>
                             <td>{{ obj.snwarning | yesno1 }}</td>
                             <td>{{ obj.snunknown | yesno1 }}</td>
                             <td>{{ obj.sflapping | yesno1 }}</td>
                             <td>{{ obj.splanned_downtime | yesno1 }}</td>
-                            <td>{{ obj.hnperiod | array_lookup:config_service.mon_period:'name' }}</td>
+                            <td>{{ basic_tree.mon_period_lut[obj.hnperiod].name }}</td>
                             <td>{{ obj.hnrecovery | yesno1 }}</td>
                             <td>{{ obj.hndown | yesno1 }}</td>
                             <td>{{ obj.hnunreachable | yesno1 }}</td>
                             <td>{{ obj.hflapping | yesno1 }}</td>
                             <td>{{ obj.hplanned_downtime | yesno1 }}</td>
-                            <td>{{ obj.notifications | resolve_n2m:config_service.mon_notification:'name':'no notifications' }}
-                            </td>
+                            <td>{{ config_service.get_notifications(obj) }}</td>
                             <td>{{ obj.alias || "---" }}</td>
                             <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
-                            <td><icsw-tools-button type="delete" size="xs" ng-click="delete(obj)"></icsw-tools-button></td>
+                            <td><icsw-tools-button type="delete" size="xs" ng-click="delete($event, obj)"></icsw-tools-button></td>
                         </tr>
                     </tbody>
                 </table>
-            </icsw-tools-rest-table>
+            </icsw-tools-rest-table-new>
         </uib-tab>
 
         <uib-tab heading="Contactgroups">
-            <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringContactgroupService">
-                    <h2>Contactgroups ({{entries.length}} entries),  <icsw-tools-button type="create" value="create new" ng-click="create($event)"></icsw-tools-button></h2>
+            <icsw-tools-rest-table-new target-list="entries" config-service="icswMonitoringBasicMonContactgroupService">
+                <h3>
+                    Contactgroups ({{ entries.length }} entries),
+                    <icsw-tools-button size="xs" type="create" value="create new" ng-click="create($event)"></icsw-tools-button>
+                </h3>
                 <table st-table="entries_displayed" st-safe-src="entries"
                        class="table table-condensed table-hover" style="width:auto;">
                     <thead>
@@ -363,22 +368,15 @@
                         <tr ng-repeat="obj in entries_displayed">
                             <td>{{ obj.name }}</td>
                             <td>{{ obj.alias }}</td>
-                            <td>{{ obj.members | resolve_n2m:config_service.mon_contact:'user' |
-                                resolve_n2m:config_service.user:'login' }}
-                            </td>
-                            <td>{{ obj.device_groups | resolve_n2m:config_service.device_group:'name' }}</td>
-                            <td>{{ obj.service_templates | resolve_n2m:config_service.mon_service_templ:'name' }}</td>
-
-                            <td>
-                                <icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button>
-                            </td>
-                            <td>
-                                <icsw-tools-button type="delete" size="xs" ng-click="delete(obj)"></icsw-tools-button>
-                            </td>
+                            <td>{{ config_service.get_members(obj) }}</td>
+                            <td>{{ config_service.get_device_groups(obj) }}</td>
+                            <td>{{ config_service.get_service_templates(obj) }}</td>
+                            <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
+                            <td><icsw-tools-button type="delete" size="xs" ng-click="delete($event, obj)"></icsw-tools-button></td>
                         </tr>
                     </tbody>
                 </table>
-            </icsw-tools-rest-table>
+            </icsw-tools-rest-table-new>
         </uib-tab>
     </uib-tabset>
 </script>
@@ -533,26 +531,29 @@
     </ng-form>
 </script>
 
-<script type="text/ng-template" id="mon.device.templ.form">
-    <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
+<script type="text/ng-template" id="icsw.mon.device.templ.form">
+    <form class="form-horizontal" name="form_data">
         <h2>Device template</h2>
         <fieldset>
             <legend>Base data</legend>
-            <div id="div_id_name" class="form-group">
-                <label for="id_name" class="control-label col-sm-3 requiredField" title="Device template name">
-                    Name<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text" title="Device template name"></input></div>
-            </div>
-            <div id="div_id_mon_service_templ" class="form-group">
-                <label for="id_mon_service_templ" class="control-label col-sm-3 requiredField" title="Choose monitoring service template">
-                    Service template<span class="asteriskField">*</span></label>
-
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField" title="Device template name">
+                    Name<span class="asteriskField">*</span>
+                </label>
                 <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.mon_service_templ" style="max-width:400px; min-width:240px;" ng-disabled="false" title="Choose monitoring service template">
-                        <ui-select-match class="ui-select-match" placeholder="please select a service template">{{$select.selected.name}}
+                    <input class="textinput textInput form-control" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text" title="Device template name"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField" title="Choose monitoring service template">
+                    Service template<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <ui-select ng-model="edit_obj.mon_service_templ" style="max-width:400px; min-width:240px;" title="Choose monitoring service template">
+                        <ui-select-match class="ui-select-match" placeholder="please select a service template">
+                            {{ $select.selected.name }}
                         </ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.mon_service_templ | orderBy:'name'| props_filter:{name:$select.search}">
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in tree.mon_service_templ_list | orderBy:'name'| props_filter:{name:$select.search}">
                             <div ng-bind-html="value.name | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
@@ -561,29 +562,31 @@
         </fieldset>
         <fieldset>
             <legend>Check</legend>
-            <div id="div_id_host_check_command" class="form-group">
-                <label for="id_host_check_command" class="control-label col-sm-3 requiredField" title="Choose host check command">
-                    Host check command<span class="asteriskField">*</span></label>
-
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField" title="Choose host check command">
+                    Host check command<span class="asteriskField">*</span>
+                </label>
                 <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.host_check_command" style="max-width:400px; min-width:240px;" ng-disabled="false" title="Choose host check command">
-                        <ui-select-match class="ui-select-match" placeholder="please select a host check command">{{$select.selected.name}}
+                    <ui-select ng-model="edit_obj.host_check_command" style="max-width:400px; min-width:240px;" title="Choose host check command">
+                        <ui-select-match class="ui-select-match" placeholder="please select a host check command">
+                            {{ $select.selected.name }}
                         </ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.host_check_command | orderBy:'name'| props_filter:{name:$select.search}">
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in tree.host_check_command_list | orderBy:'name'| props_filter:{name:$select.search}">
                             <div ng-bind-html="value.name | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
                 </div>
             </div>
-            <div id="div_id_mon_period" class="form-group">
-                <label for="id_mon_period" class="control-label col-sm-3 requiredField" title="Monitoring check is active during this period">
-                    Monitoring period<span class="asteriskField">*</span></label>
-
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField" title="Monitoring check is active during this period">
+                    Monitoring period<span class="asteriskField">*</span>
+                </label>
                 <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.mon_period" style="max-width:400px; min-width:240px;" ng-disabled="false" title="Monitoring check is sctive during this period">
-                        <ui-select-match class="ui-select-match" placeholder="please select a time period">{{$select.selected.name}}
+                    <ui-select ng-model="edit_obj.mon_period" style="max-width:400px; min-width:240px;" title="Monitoring check is sctive during this period">
+                        <ui-select-match class="ui-select-match" placeholder="please select a time period">
+                            {{ $select.selected.name }}
                         </ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.mon_period | orderBy:'name'| props_filter:{name:$select.search}">
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in tree.mon_period_list | orderBy:'name'| props_filter:{name:$select.search}">
                             <div ng-bind-html="value.name | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
@@ -591,88 +594,111 @@
             </div>
         </fieldset>
         <div class="form-actions">
-            <div id="div_id_check_interval" class="form-group">
-                <label for="id_check_interval" class="control-label col-sm-3 requiredField" title="Normal check interval in minutes">
-                    Check interval<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_check_interval" max="60" min="1" name="check_interval" ng-model="edit_obj.check_interval" required="True" type="number" value="1" title="Normal check interval in minutes"></input></div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField" title="Normal check interval in minutes">
+                    Check interval<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="numberinput form-control" max="60" min="1" name="check_interval" ng-model="edit_obj.check_interval" required="True" type="number" value="1" title="Normal check interval in minutes"/>
+                </div>
             </div>
-            <div id="div_id_max_attempts" class="form-group">
-                <label for="id_max_attempts" class="control-label col-sm-3" title="Number of attempts until switching from soft state into hard state">
+            <div class="form-group">
+                <label class="control-label col-sm-3" title="Number of attempts until switching from soft state into hard state">
                     Max attempts
                 </label>
-
-                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_max_attempts" max="10" min="1" name="max_attempts" ng-model="edit_obj.max_attempts" type="number" value="1" title="Number of attempts until switching from soft state into hard state"></input></div>
+                <div class="controls col-sm-7">
+                    <input class="numberinput form-control" max="10" min="1" name="max_attempts" ng-model="edit_obj.max_attempts" type="number" value="1" title="Number of attempts until switching from soft state into hard state"/>
+                </div>
             </div>
-            <div id="div_id_retry_interval" class="form-group">
-                <label for="id_retry_interval" class="control-label col-sm-3 requiredField" title="Check interval in minutes during soft state">
-                    Retry interval<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_retry_interval" max="60" min="1" name="retry_interval" ng-model="edit_obj.retry_interval" required="True" type="number" value="1" title="Check interval in minutes during soft state"></input></div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField" title="Check interval in minutes during soft state">
+                    Retry interval<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="numberinput form-control" max="60" min="1" name="retry_interval" ng-model="edit_obj.retry_interval" required="True" type="number" value="1" title="Check interval in minutes during soft state"/>
+                </div>
             </div>
         </div>
         <fieldset>
             <legend>Notification</legend>
-            <div id="div_id_not_period" class="form-group">
-                <label for="id_not_period" class="control-label col-sm-3 requiredField" title="Notification is active during this period">
-                    Notification period<span class="asteriskField">*</span></label>
-
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField" title="Notification is active during this period">
+                    Notification period<span class="asteriskField">*</span>
+                </label>
                 <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.not_period" style="max-width:400px; min-width:240px;" ng-disabled="false" title="Notification is active during this period">
-                        <ui-select-match class="ui-select-match" placeholder="please select a time period">{{$select.selected.name}}
+                    <ui-select ng-model="edit_obj.not_period" style="max-width:400px; min-width:240px;" title="Notification is active during this period">
+                        <ui-select-match class="ui-select-match" placeholder="please select a time period">
+                            {{ $select.selected.name }}
                         </ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.mon_period | orderBy:'name'| props_filter:{name:$select.search}">
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in tree.mon_period_list | orderBy:'name'| props_filter:{name:$select.search}">
                             <div ng-bind-html="value.name | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
                 </div>
             </div>
-            <div id="div_id_ninterval" class="form-group">
-                <label for="id_ninterval" class="control-label col-sm-3 requiredField" title="Hard state notification interval in minutes">
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField" title="Hard state notification interval in minutes">
                     Notification interval<span class="asteriskField">*</span>
                 </label>
-                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_ninterval" max="10080" min="0" name="ninterval" ng-model="edit_obj.ninterval" type="number" value="1" title="Hard state notification interval in minutes"></input></div>
+                <div class="controls col-sm-7">
+                    <input class="numberinput form-control" max="10080" min="0" name="ninterval" ng-model="edit_obj.ninterval" type="number" value="1" title="Hard state notification interval in minutes"/>
+                </div>
             </div>
         </fieldset>
         <div class="row">
             <div class="col-md-3">
                 <div class="form-group">
-                    <div id="div_id_nrecovery" class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nrecovery" title="Notify in case of host state is recovery"><input class="checkboxinput checkbox" id="id_nrecovery" name="nrecovery" ng-model="edit_obj.nrecovery" type="checkbox"></input>
-                            recovery
-                        </label></div>
+                    <div class="checkbox">
+                        <div class="controls col-lg-offset-0 col-sm-7">
+                            <label title="Notify in case of host state is recovery">
+                                <input class="checkboxinput checkbox" name="nrecovery" ng-model="edit_obj.nrecovery" type="checkbox"/>
+                                recovery
+                            </label>
+                        </div>
                     </div>
                 </div>
                 <div class="form-group">
-                    <div id="div_id_ndown" class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_ndown" title="Notify in case of host state is down"><input class="checkboxinput checkbox" id="id_ndown" name="ndown" ng-model="edit_obj.ndown" type="checkbox"></input>
-                            down
-                        </label></div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="form-group">
-                    <div id="div_id_nunreachable" class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nunreachable" title="Notify in case of host state is unreachable"><input class="checkboxinput checkbox" id="id_nunreachable" name="nunreachable" ng-model="edit_obj.nunreachable" type="checkbox"></input>
-                            unreachable
-                        </label></div>
+                    <div class="checkbox">
+                        <div class="controls col-lg-offset-0 col-sm-7">
+                            <label title="Notify in case of host state is down">
+                                <input class="checkboxinput checkbox" name="ndown" ng-model="edit_obj.ndown" type="checkbox"/>
+                                down
+                            </label>
+                        </div>
                     </div>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="form-group">
-                    <div id="div_id_nflapping" class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nflapping" title="Notify in case of host state is flapping"><input class="checkboxinput checkbox" id="id_nflapping" name="nflapping" ng-model="edit_obj.nflapping" type="checkbox"></input>
-                            flapping
-                        </label></div>
+                    <div class="checkbox">
+                        <div class="controls col-lg-offset-0 col-sm-7">
+                            <label title="Notify in case of host state is unreachable">
+                                <input class="checkboxinput checkbox" name="nunreachable" ng-model="edit_obj.nunreachable" type="checkbox"/>
+                                unreachable
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="form-group">
+                    <div class="checkbox">
+                        <div class="controls col-lg-offset-0 col-sm-7">
+                            <label title="Notify in case of host state is flapping">
+                                <input class="checkboxinput checkbox" name="nflapping" ng-model="edit_obj.nflapping" type="checkbox"/>
+                                flapping
+                            </label>
+                        </div>
                     </div>
                 </div>
                 <div class="form-group">
-                    <div id="div_id_nplanned_downtime" class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nplanned_downtime" title="Notify in case of host state is planned downtime"><input class="checkboxinput checkbox" id="id_nplanned_downtime" name="nplanned_downtime" ng-model="edit_obj.nplanned_downtime" type="checkbox"></input>
-                            planned downtime
-                        </label></div>
+                    <div class="checkbox">
+                        <div class="controls col-lg-offset-0 col-sm-7">
+                            <label title="Notify in case of host state is planned downtime">
+                                <input class="checkboxinput checkbox" name="nplanned_downtime" ng-model="edit_obj.nplanned_downtime" type="checkbox"/>
+                                planned downtime
+                            </label>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -680,125 +706,150 @@
         <fieldset>
             <legend>Freshness settings</legend>
             <div class="form-group">
-                <div id="div_id_check_freshness" class="checkbox">
-                    <div class="controls col-lg-offset-0 col-sm-7"><label for="id_check_freshness" title="Ensure whether passive check is fresh or not"><input class="checkboxinput checkbox" id="id_check_freshness" name="check_freshness" ng-model="edit_obj.check_freshness" type="checkbox"></input>
-                        Check freshness
-                    </label></div>
+                <div class="checkbox">
+                    <div class="controls col-lg-offset-0 col-sm-7">
+                        <label title="Ensure whether passive check is fresh or not">
+                            <input class="checkboxinput checkbox" name="check_freshness" ng-model="edit_obj.check_freshness" type="checkbox"/>
+                            Check freshness
+                        </label>
+                    </div>
                 </div>
             </div>
-            <div id="div_id_freshness_threshold" class="form-group" ng_show="edit_obj.check_freshness">
-                <label for="id_freshness_threshold" class="control-label col-sm-3 requiredField" title="Time in seconds the passive check is fresh enough. If check is older than the threshold it will be stale">
-                    Freshness threshold<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_freshness_threshold" name="freshness_threshold" ng-model="edit_obj.freshness_threshold" required="True" type="number" value="60" title="Time in seconds the passive check is fresh enough. If check is older than the threshold it will be stale"></input></div>
+            <div class="form-group" ng_show="edit_obj.check_freshness">
+                <label class="control-label col-sm-3 requiredField" title="Time in seconds the passive check is fresh enough. If check is older than the threshold it will be stale">
+                    Freshness threshold<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="numberinput form-control" name="freshness_threshold" ng-model="edit_obj.freshness_threshold" required="True" type="number" value="60" title="Time in seconds the passive check is fresh enough. If check is older than the threshold it will be stale"/>
+                </div>
             </div>
         </fieldset>
         <fieldset>
             <legend>Flap settings</legend>
             <div class="form-group">
-                <div id="div_id_flap_detection_enabled" class="checkbox">
-                    <div class="controls col-lg-offset-0 col-sm-7"><label for="id_flap_detection_enabled" title="Enable detection of flapping states"><input class="checkboxinput checkbox" id="id_flap_detection_enabled" name="flap_detection_enabled" ng-model="edit_obj.flap_detection_enabled" type="checkbox"></input>
-                        Flap detection enabled
-                    </label></div>
+                <div class="checkbox">
+                    <div class="controls col-lg-offset-0 col-sm-7">
+                        <label title="Enable detection of flapping states">
+                            <input class="checkboxinput checkbox" name="flap_detection_enabled" ng-model="edit_obj.flap_detection_enabled" type="checkbox"/>
+                            Flap detection enabled
+                        </label>
+                    </div>
                 </div>
             </div>
         </fieldset>
         <div class="form-actions">
-            <div id="div_id_low_flap_threshold" class="form-group" ng_show="edit_obj.flap_detection_enabled">
-                <label for="id_low_flap_threshold" class="control-label col-sm-3 requiredField" title="Lower percent limit, if value falls below it, flapping stops">
-                    Low flap threshold<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_low_flap_threshold" max="100" min="0" name="low_flap_threshold" ng-model="edit_obj.low_flap_threshold" required="True" type="number" value="0" title="Lower percent limit, if value falls below it, flapping stops"></input></div>
+            <div class="form-group" ng_show="edit_obj.flap_detection_enabled">
+                <label class="control-label col-sm-3 requiredField" title="Lower percent limit, if value falls below it, flapping stops">
+                    Low flap threshold<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="numberinput form-control" max="100" min="0" name="low_flap_threshold" ng-model="edit_obj.low_flap_threshold" required="True" type="number" value="0" title="Lower percent limit, if value falls below it, flapping stops"/>
+                </div>
             </div>
-            <div id="div_id_high_flap_threshold" class="form-group" ng_show="edit_obj.flap_detection_enabled">
-                <label for="id_high_flap_threshold" class="control-label col-sm-3 requiredField" title="Higher percent limit, if value exceeds it, flapping starts">
-                    High flap threshold<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_high_flap_threshold" max="100" min="0" name="high_flap_threshold" ng-model="edit_obj.high_flap_threshold" required="True" type="number" value="0" title="Higher percent limit, if value exceeds it, flapping starts"></input></div>
+            <div class="form-group" ng_show="edit_obj.flap_detection_enabled">
+                <label class="control-label col-sm-3 requiredField" title="Higher percent limit, if value exceeds it, flapping starts">
+                    High flap threshold<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="numberinput form-control" max="100" min="0" name="high_flap_threshold" ng-model="edit_obj.high_flap_threshold" required="True" type="number" value="0" title="Higher percent limit, if value exceeds it, flapping starts"/>
+                </div>
             </div>
         </div>
         <div class="row">
             <div class="col-md-6">
                 <div class="form-group">
-                    <div id="div_id_flap_detect_up" class="checkbox" ng_show="edit_obj.flap_detection_enabled">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_flap_detect_up" title="Flapping detection for state up"><input checked="checked" class="checkboxinput checkbox" id="id_flap_detect_up" name="flap_detect_up" ng-model="edit_obj.flap_detect_up" type="checkbox"></input>
-                            Flap detect up
-                        </label></div>
+                    <div class="checkbox" ng_show="edit_obj.flap_detection_enabled">
+                        <div class="controls col-lg-offset-0 col-sm-7">
+                            <label title="Flapping detection for state up">
+                                <input checked="checked" class="checkboxinput checkbox" name="flap_detect_up" ng-model="edit_obj.flap_detect_up" type="checkbox"/>
+                                Flap detect up
+                            </label>
+                        </div>
                     </div>
                 </div>
                 <div class="form-group">
-                    <div id="div_id_flap_detect_down" class="checkbox" ng_show="edit_obj.flap_detection_enabled">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_flap_detect_down" title="Flapping detection for state down"><input class="checkboxinput checkbox" id="id_flap_detect_down" name="flap_detect_down" ng-model="edit_obj.flap_detect_down" type="checkbox"></input>
-                            Flap detect down
-                        </label></div>
+                    <div class="checkbox" ng_show="edit_obj.flap_detection_enabled">
+                        <div class="controls col-lg-offset-0 col-sm-7">
+                            <label title="Flapping detection for state down">
+                                <input class="checkboxinput checkbox" name="flap_detect_down" ng-model="edit_obj.flap_detect_down" type="checkbox"/>
+                                Flap detect down
+                            </label>
+                        </div>
                     </div>
                 </div>
             </div>
             <div class="col-md-6">
                 <div class="form-group">
-                    <div id="div_id_flap_detect_unreachable" class="checkbox" ng_show="edit_obj.flap_detection_enabled">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_flap_detect_unreachable" title="Flapping detection for state unreachable"><input class="checkboxinput checkbox" id="id_flap_detect_unreachable" name="flap_detect_unreachable" ng-model="edit_obj.flap_detect_unreachable" type="checkbox"></input>
-                            Flap detect unreachable
-                        </label></div>
+                    <div class="checkbox" ng_show="edit_obj.flap_detection_enabled">
+                        <div class="controls col-lg-offset-0 col-sm-7">
+                            <label title="Flapping detection for state unreachable">
+                                <input class="checkboxinput checkbox" name="flap_detect_unreachable" ng-model="edit_obj.flap_detect_unreachable" type="checkbox"/>
+                                Flap detect unreachable
+                            </label>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="get_action_string()"></input></div>
     </form>
 </script>
 
-<script type="text/ng-template" id="mon.contact.form">
-    <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
+<script type="text/ng-template" id="icsw.mon.contact.form">
+    <form class="form-horizontal" name="form_data">
         <h2>Contacts</h2>
         <fieldset>
             <legend>Base data</legend>
-            <div id="div_id_user" class="form-group">
-                <label for="id_user" class="control-label col-sm-3 requiredField">
-                    User<span class="asteriskField">*</span></label>
-
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    User<span class="asteriskField">*</span>
+                </label>
                 <div class="controls col-sm-7">
                     <ui-select ng-model="edit_obj.user" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                        <ui-select-match class="ui-select-match" placeholder="please select an user">{{$select.selected.info}}</ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.user | orderBy:'login'| props_filter:{info:$select.search}">
+                        <ui-select-match class="ui-select-match" placeholder="please select an user">
+                            {{ $select.selected.info }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in user_group_tree.user_list | orderBy:'login'| props_filter:{info:$select.search}">
                             <div ng-bind-html="value.info | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
                 </div>
             </div>
-            <div id="div_id_notifications" class="form-group">
-                <label for="id_notifications" class="control-label col-sm-3" title="Used notification templates">
+            <div class="form-group">
+                <label class="control-label col-sm-3" title="Used notification templates">
                     Notification templates
                 </label>
-
                 <div class="controls col-sm-7">
-                    <ui-select multiple="multiple" ng-model="edit_obj.notifications" style="max-width:400px; min-width:240px;" ng-disabled="false" title="Used notification templates">
-                        <ui-select-match class="ui-select-match" placeholder="Select one or more notifications">{{$item.name}}</ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.mon_notification | orderBy:'name'| props_filter:{name:$select.search}">
+                    <ui-select multiple="multiple" ng-model="edit_obj.notifications" style="max-width:400px; min-width:240px;" title="Used notification templates">
+                        <ui-select-match class="ui-select-match" placeholder="Select one or more notifications">
+                            {{ $item.name }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in tree.mon_notification_list | orderBy:'name'| props_filter:{name:$select.search}">
                             <div ng-bind-html="value.name | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
                 </div>
             </div>
-            <div id="div_id_mon_alias" class="form-group">
-                <label for="id_mon_alias" class="control-label col-sm-3">
+            <div class="form-group">
+                <label class="control-label col-sm-3">
                     Alias
                 </label>
-
-                <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_mon_alias" maxlength="64" name="mon_alias" ng-model="edit_obj.mon_alias" type="text"></input></div>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="64" name="mon_alias" ng-model="edit_obj.mon_alias" type="text"/>
+                </div>
             </div>
         </fieldset>
         <fieldset>
             <legend>Service settings</legend>
-            <div id="div_id_snperiod" class="form-group">
-                <label for="id_snperiod" class="control-label col-sm-3 requiredField" title="Notification service period">
-                    Service period<span class="asteriskField">*</span></label>
-
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField" title="Notification service period">
+                    Service period<span class="asteriskField">*</span>
+                </label>
                 <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.snperiod" style="max-width:400px; min-width:240px;" ng-disabled="false" title="Notification service period">
-                        <ui-select-match class="ui-select-match" placeholder="please select a time period">{{$select.selected.name}}
+                    <ui-select ng-model="edit_obj.snperiod" style="max-width:400px; min-width:240px;" title="Notification service period">
+                        <ui-select-match class="ui-select-match" placeholder="please select a time period">
+                            {{ $select.selected.name }}
                         </ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.mon_period | orderBy:'name'| props_filter:{name:$select.search}">
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in tree.mon_period_list | orderBy:'name'| props_filter:{name:$select.search}">
                             <div ng-bind-html="value.name | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
@@ -809,24 +860,33 @@
             <div class="col-md-6">
                 <div class="form-actions">
                     <div class="form-group">
-                        <div id="div_id_snrecovery" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_snrecovery" title="Receive notification in case service recovers"><input class="checkboxinput checkbox" id="id_snrecovery" name="snrecovery" ng-model="edit_obj.snrecovery" type="checkbox"></input>
-                                Notify on service recovery
-                            </label></div>
+                        <div class="checkbox">
+                            <div class="controls col-lg-offset-0 col-sm-7">
+                                <label title="Receive notification in case service recovers">
+                                    <input class="checkboxinput checkbox" name="snrecovery" ng-model="edit_obj.snrecovery" type="checkbox"/>
+                                    Notify on service recovery
+                                </label>
+                            </div>
                         </div>
                     </div>
                     <div class="form-group">
-                        <div id="div_id_sncritical" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_sncritical" title="Receive notification in case service state is critical"><input class="checkboxinput checkbox" id="id_sncritical" name="sncritical" ng-model="edit_obj.sncritical" type="checkbox"></input>
-                                Notify on service critical
-                            </label></div>
+                        <div class="checkbox">
+                            <div class="controls col-lg-offset-0 col-sm-7">
+                                <label title="Receive notification in case service state is critical">
+                                    <input class="checkboxinput checkbox" name="sncritical" ng-model="edit_obj.sncritical" type="checkbox"/>
+                                    Notify on service critical
+                                </label>
+                            </div>
                         </div>
                     </div>
                     <div class="form-group">
-                        <div id="div_id_snwarning" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_snwarning" title="Receive notification in case service state is warning"><input class="checkboxinput checkbox" id="id_snwarning" name="snwarning" ng-model="edit_obj.snwarning" type="checkbox"></input>
-                                Notify on service warning
-                            </label></div>
+                        <div class="checkbox">
+                            <div class="controls col-lg-offset-0 col-sm-7">
+                                <label title="Receive notification in case service state is warning">
+                                    <input class="checkboxinput checkbox" name="snwarning" ng-model="edit_obj.snwarning" type="checkbox"/>
+                                    Notify on service warning
+                                </label>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -834,24 +894,33 @@
             <div class="col-md-6">
                 <div class="form-actions">
                     <div class="form-group">
-                        <div id="div_id_snunknown" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_snunknown" title="Receive notification in case service state is unknown"><input class="checkboxinput checkbox" id="id_snunknown" name="snunknown" ng-model="edit_obj.snunknown" type="checkbox"></input>
-                                Notify on service unknown
-                            </label></div>
+                        <div class="checkbox">
+                            <div class="controls col-lg-offset-0 col-sm-7">
+                                <label title="Receive notification in case service state is unknown">
+                                    <input class="checkboxinput checkbox" name="snunknown" ng-model="edit_obj.snunknown" type="checkbox"/>
+                                    Notify on service unknown
+                                </label>
+                            </div>
                         </div>
                     </div>
                     <div class="form-group">
-                        <div id="div_id_sflapping" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_sflapping" title="Receive notification in case service state is flapping"><input class="checkboxinput checkbox" id="id_sflapping" name="sflapping" ng-model="edit_obj.sflapping" type="checkbox"></input>
-                                Notify on service flapping
-                            </label></div>
+                        <div class="checkbox">
+                            <div class="controls col-lg-offset-0 col-sm-7">
+                                <label title="Receive notification in case service state is flapping">
+                                    <input class="checkboxinput checkbox" name="sflapping" ng-model="edit_obj.sflapping" type="checkbox"/>
+                                    Notify on service flapping
+                                </label>
+                            </div>
                         </div>
                     </div>
                     <div class="form-group">
-                        <div id="div_id_splanned_downtime" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_splanned_downtime" title="Receive notification in case service state is planned downtime"><input class="checkboxinput checkbox" id="id_splanned_downtime" name="splanned_downtime" ng-model="edit_obj.splanned_downtime" type="checkbox"></input>
-                                Notify on service planned downtime
-                            </label></div>
+                        <div class="checkbox">
+                            <div class="controls col-lg-offset-0 col-sm-7">
+                                <label title="Receive notification in case service state is planned downtime">
+                                    <input class="checkboxinput checkbox" name="splanned_downtime" ng-model="edit_obj.splanned_downtime" type="checkbox"/>
+                                    Notify on service planned downtime
+                                </label>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -859,15 +928,16 @@
         </div>
         <fieldset>
             <legend>Host settings</legend>
-            <div id="div_id_hnperiod" class="form-group">
-                <label for="id_hnperiod" class="control-label col-sm-3 requiredField" title="Notification host period">
-                    Host period<span class="asteriskField">*</span></label>
-
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField" title="Notification host period">
+                    Host period<span class="asteriskField">*</span>
+                </label>
                 <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.hnperiod" style="max-width:400px; min-width:240px;" ng-disabled="false" title="Notification host period">
-                        <ui-select-match class="ui-select-match" placeholder="please select a time period">{{$select.selected.name}}
+                    <ui-select ng-model="edit_obj.hnperiod" style="max-width:400px; min-width:240px;" title="Notification host period">
+                        <ui-select-match class="ui-select-match" placeholder="please select a time period">
+                            {{ $select.selected.name }}
                         </ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.mon_period | orderBy:'name'| props_filter:{name:$select.search}">
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in tree.mon_period_list | orderBy:'name'| props_filter:{name:$select.search}">
                             <div ng-bind-html="value.name | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
@@ -878,24 +948,33 @@
             <div class="col-md-6">
                 <div class="form-actions">
                     <div class="form-group">
-                        <div id="div_id_hnrecovery" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_hnrecovery" title="Receive notification in case host recovers"><input class="checkboxinput checkbox" id="id_hnrecovery" name="hnrecovery" ng-model="edit_obj.hnrecovery" type="checkbox"></input>
-                                Notify on host recovery
-                            </label></div>
+                        <div class="checkbox">
+                            <div class="controls col-lg-offset-0 col-sm-7">
+                                <label title="Receive notification in case host recovers">
+                                    <input class="checkboxinput checkbox" name="hnrecovery" ng-model="edit_obj.hnrecovery" type="checkbox"/>
+                                    Notify on host recovery
+                                </label>
+                            </div>
                         </div>
                     </div>
                     <div class="form-group">
-                        <div id="div_id_hndown" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_hndown" title="Receive notification in case host state is down"><input class="checkboxinput checkbox" id="id_hndown" name="hndown" ng-model="edit_obj.hndown" type="checkbox"></input>
-                                Notify on host down
-                            </label></div>
+                        <div class="checkbox">
+                            <div class="controls col-lg-offset-0 col-sm-7">
+                                <label title="Receive notification in case host state is down">
+                                    <input class="checkboxinput checkbox" name="hndown" ng-model="edit_obj.hndown" type="checkbox"/>
+                                    Notify on host down
+                                </label>
+                            </div>
                         </div>
                     </div>
                     <div class="form-group">
-                        <div id="div_id_hnunreachable" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_hnunreachable" title="Receive notification in case host state is unreachable"><input class="checkboxinput checkbox" id="id_hnunreachable" name="hnunreachable" ng-model="edit_obj.hnunreachable" type="checkbox"></input>
-                                Notify on host unreachable
-                            </label></div>
+                        <div class="checkbox">
+                            <div class="controls col-lg-offset-0 col-sm-7">
+                                <label title="Receive notification in case host state is unreachable">
+                                    <input class="checkboxinput checkbox" name="hnunreachable" ng-model="edit_obj.hnunreachable" type="checkbox"/>
+                                    Notify on host unreachable
+                                </label>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -903,47 +982,53 @@
             <div class="col-md-6">
                 <div class="form-actions">
                     <div class="form-group">
-                        <div id="div_id_hflapping" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_hflapping" title="Receive notification in case host state is flapping"><input class="checkboxinput checkbox" id="id_hflapping" name="hflapping" ng-model="edit_obj.hflapping" type="checkbox"></input>
-                                Notify on host flapping
-                            </label></div>
+                        <div class="checkbox">
+                            <div class="controls col-lg-offset-0 col-sm-7">
+                                <label title="Receive notification in case host state is flapping">
+                                    <input class="checkboxinput checkbox" name="hflapping" ng-model="edit_obj.hflapping" type="checkbox"/>
+                                    Notify on host flapping
+                                </label>
+                            </div>
                         </div>
                     </div>
                     <div class="form-group">
-                        <div id="div_id_hplanned_downtime" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_hplanned_downtime" title="Receive notification in case host state is planned downtime"><input class="checkboxinput checkbox" id="id_hplanned_downtime" name="hplanned_downtime" ng-model="edit_obj.hplanned_downtime" type="checkbox"></input>
-                                Notify on host planned downtime
-                            </label></div>
+                        <div class="checkbox">
+                            <div class="controls col-lg-offset-0 col-sm-7">
+                                <label title="Receive notification in case host state is planned downtime">
+                                    <input class="checkboxinput checkbox" name="hplanned_downtime" ng-model="edit_obj.hplanned_downtime" type="checkbox"/>
+                                    Notify on host planned downtime
+                                </label>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="get_action_string()"></input></div>
     </form>
 </script>
 
-<script type="text/ng-template" id="host.check.command.form">
-    <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
+<script type="text/ng-template" id="icsw.host.check.command.form">
+    <form class="form-horizontal" name="form_data">
         <h2>Host check command</h2>
         <fieldset>
             <legend>Base data</legend>
-            <div id="div_id_name" class="form-group">
-                <label for="id_name" class="control-label col-sm-3 requiredField">
-                    Name<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="64" name="name" ng-model="edit_obj.name" required="True" type="text"></input></div>
-            </div>
-            <div id="div_id_command_line" class="form-group">
-                <label for="id_command_line" class="control-label col-sm-3 requiredField">
-                    Command line<span class="asteriskField">*</span></label>
-
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Name<span class="asteriskField">*</span>
+                </label>
                 <div class="controls col-sm-7">
-                    <input class="textinput textInput form-control" id="id_command_line" maxlength="128" name="command_line" ng-model="edit_obj.command_line" required="True" type="text"></input>
+                    <input class="textinput textInput form-control" maxlength="64" name="name" ng-model="edit_obj.name" required="True" type="text"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Command line<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="128" name="command_line" ng-model="edit_obj.command_line" required="True" type="text"/>
                 </div>
             </div>
         </fieldset>
-        <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="get_action_string()"></input></div>
     </form>
 </script>
 
@@ -1198,74 +1283,76 @@
     </form>
 </script>
 
-<script type="text/ng-template" id="mon.contactgroup.form">
-    <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
+<script type="text/ng-template" id="icsw.mon.contactgroup.form">
+    <form class="form-horizontal" name="form_data">
         <h2>Contactgroup</h2>
         <fieldset>
             <legend>Base data</legend>
-            <div id="div_id_name" class="form-group">
-                <label for="id_name" class="control-label col-sm-3 requiredField">
-                    Name<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text"></input></div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Name<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text"/>
+                </div>
             </div>
-            <div id="div_id_alias" class="form-group">
-                <label for="id_alias" class="control-label col-sm-3">
+            <div class="form-group">
+                <label class="control-label col-sm-3">
                     Alias
                 </label>
-
-                <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_alias" maxlength="255" name="alias" ng-model="edit_obj.alias" type="text"></input></div>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="255" name="alias" ng-model="edit_obj.alias" type="text"/>
+                </div>
             </div>
         </fieldset>
         <fieldset>
             <legend>settings</legend>
-            <div id="div_id_members" class="form-group">
-                <label for="id_members" class="control-label col-sm-3">
+            <div class="form-group">
+                <label class="control-label col-sm-3">
                     Members
                 </label>
-
                 <div class="controls col-sm-7">
-                    <ui-select multiple="multiple" ng-model="edit_obj.members" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                        <ui-select-match class="ui-select-match" placeholder="please select one or more users">{{$item.user_name}}
+                    <ui-select multiple="multiple" ng-model="edit_obj.members" style="max-width:400px; min-width:240px;">
+                        <ui-select-match class="ui-select-match" placeholder="please select one or more users">
+                            {{ $item.user_name }}
                         </ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.mon_contact | orderBy:'user_name'| props_filter:{user_name:$select.search}">
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in tree.mon_contact_list | orderBy:'user_name'| props_filter:{user_name:$select.search}">
                             <div ng-bind-html="value.user_name | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
                 </div>
             </div>
-            <div id="div_id_device_groups" class="form-group">
-                <label for="id_device_groups" class="control-label col-sm-3">
+            <div class="form-group">
+                <label class="control-label col-sm-3">
                     Device groups
                 </label>
-
                 <div class="controls col-sm-7">
-                    <ui-select multiple="multiple" ng-model="edit_obj.device_groups" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                        <ui-select-match class="ui-select-match" placeholder="please select one or more device groups">{{$item.name}}
+                    <ui-select multiple="multiple" ng-model="edit_obj.device_groups" style="max-width:400px; min-width:240px;">
+                        <ui-select-match class="ui-select-match" placeholder="please select one or more device groups">
+                            {{ $item.name }}
                         </ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.device_group | orderBy:'name'| props_filter:{name:$select.search}">
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in device_tree.enabled_ns_group_list | orderBy:'name'| props_filter:{name:$select.search}">
                             <div ng-bind-html="value.name | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
                 </div>
             </div>
-            <div id="div_id_service_templates" class="form-group">
-                <label for="id_service_templates" class="control-label col-sm-3">
+            <div class="form-group">
+                <label class="control-label col-sm-3">
                     Service templates
                 </label>
-
                 <div class="controls col-sm-7">
-                    <ui-select multiple="multiple" ng-model="edit_obj.service_templates" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                        <ui-select-match class="ui-select-match" placeholder="please select one or more service templates">{{$item.name}}
+                    <ui-select multiple="multiple" ng-model="edit_obj.service_templates" style="max-width:400px; min-width:240px;">
+                        <ui-select-match class="ui-select-match" placeholder="please select one or more service templates">
+                            {{ $item.name }}
                         </ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.mon_service_templ | orderBy:'name'| props_filter:{name:$select.search}">
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in tree.mon_service_templ_list | orderBy:'name'| props_filter:{name:$select.search}">
                             <div ng-bind-html="value.name | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
                 </div>
             </div>
         </fieldset>
-        <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="get_action_string()"></input></div>
     </form>
 </script>
 

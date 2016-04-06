@@ -418,4 +418,61 @@ angular.module(
                 "freshness_threshold",
             ]
 
+]).service("icswMonDeviceTemplBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswMonDeviceTemplBackupDefinition extends icswBackupDefinition
+
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "name", "mon_service_templ", "host_check_command",
+                "check_interval", "retry_interval", "max_attempts", "ninterval",
+                "not_period", "mon_period",
+                "nrecovery", "ndown", "nunreachable", "nflapping",
+                "nplanned_downtime", "is_default", "low_flap_threshold", "high_flap_threshold",
+                "flap_detection_enabled", "flap_detect_ok", "flap_detect_down",
+                "flap_detect_unreachable", "check_freshness",
+                "freshness_threshold",
+            ]
+
+]).service("icswHostCheckCommandBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswHostCheckCommandBackupDefinition extends icswBackupDefinition
+
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "name", "command_line",
+            ]
+
+]).service("icswMonContactBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswMonContactBackupDefinition extends icswBackupDefinition
+
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "user", "snperdio", "hnperiod",
+                "snrecovery", "sncritical", "snwarning", "snunknown",
+                "sflapping", "splanned_downtime",
+                "hnrecovery", "hndown", "hnunreachable",
+                "hflapping", "hplanned_downtime", "mon_alias"
+            ]
+            @list_attributes = [
+                "notifications"
+            ]
+
+]).service("icswMonContactgroupBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswMonContactgroupBackupDefinition extends icswBackupDefinition
+
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "name", "alias",
+            ]
+            @list_attributes = [
+                "device_groups", "members", "service_templates", "service_esc_templates",
+            ]
+
 ])
