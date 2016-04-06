@@ -360,7 +360,6 @@ angular.module(
         if $event
             $event.stopPropagation()
             $event.preventDefault()
-        # msgbus.emit(msgbus.event_types.CATEGORY_CHANGED)
 
     $scope.show_gfx_preview = (gfx) ->
         console.log $scope.enhance_list.length

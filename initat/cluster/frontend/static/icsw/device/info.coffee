@@ -17,14 +17,21 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+
 angular.module(
     "icsw.device.info",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "noVNC", "ui.select", "icsw.tools", "icsw.device.variables"
     ]
-).controller("icswDeviceInfoOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$timeout", "msgbus", "icswAcessLevelService", "ICSW_URLS",
-    ($scope, $compile, $filter, $templateCache, Restangular, $q, $timeout, msgbus, icswAcessLevelService, ICSW_URLS) ->
-        icswAcessLevelService.install($scope)
+).controller("icswDeviceInfoOverviewCtrl",
+[
+    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$timeout",
+    "icswAcessLevelService", "ICSW_URLS",
+(
+    $scope, $compile, $filter, $templateCache, Restangular, $q, $timeout,
+    icswAcessLevelService, ICSW_URLS
+) ->
+    icswAcessLevelService.install($scope)
 ]).config(["$stateProvider", ($stateProvider) ->
     $stateProvider.state(
         "main.deviceinfo", {
@@ -41,7 +48,12 @@ angular.module(
                     postSpacer: true
         }
     )
-]).service("DeviceOverviewSelection", ["$rootScope", "ICSW_SIGNALS", ($rootScope, ICSW_SIGNALS) ->
+]).service("DeviceOverviewSelection",
+[
+    "$rootScope", "ICSW_SIGNALS",
+(
+    $rootScope, ICSW_SIGNALS
+) ->
     _selection = []
     set_selection = (sel) ->
         _selection = sel

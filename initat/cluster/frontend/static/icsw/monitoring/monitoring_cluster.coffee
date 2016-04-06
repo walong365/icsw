@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2015 init.at
+# Copyright (C) 2012-2016 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -18,12 +18,12 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-monitoring_cluster_module = angular.module("icsw.monitoring.cluster",
-        ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select",
-         "icsw.tools.table", "icsw.tools.button", "icsw.monitoring.monitoring_basic"])
-
-
-monitoring_cluster_module.directive('icswMonitoringCluster', () ->
+monitoring_cluster_module = angular.module(
+    "icsw.monitoring.cluster",
+[
+    "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select",
+    "icsw.tools.table", "icsw.tools.button", "icsw.monitoring.monitoring_basic"
+]).directive('icswMonitoringCluster', () ->
     return {
         restrict     : "EA"
         templateUrl  : "icsw.monitoring.cluster"
