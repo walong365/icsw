@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (C) 2012-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2012-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # encoding: -*- utf8 -*-
@@ -22,9 +22,10 @@
 #
 """ ask license server and return an XML-represenation of license situation """
 
-from lxml import etree  # @UnresolvedImport
 import argparse
 import sys
+
+from lxml import etree
 
 from initat.tools import logging_tools, sge_license_tools
 

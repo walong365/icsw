@@ -47,16 +47,20 @@ del = require("del")
 wait = require("gulp-wait")
 strip_debug = require("gulp-strip-debug")
 run_sequence = require("run-sequence")
+fs = require("fs")
 
 class SourceMap
     constructor: (@name, @dest, @sources, @type, @static) ->
+        for f in @sources
+            if "*" not in f
+                # trigger error if file does not exist
+                fs.lstatSync(f)
 
 sources = {
     "css_base": new SourceMap(
         "css_base"
         "icsw.css"
         [
-            "frontend/static/css/smoothness/jquery-ui-1.10.2.custom.min.css",
             "frontend/static/css/ui.fancytree.css",
             "frontend/static/css/codemirror.css",
             "frontend/static/css/bootstrap.css",
@@ -94,7 +98,6 @@ sources = {
         "js_base"
         "partb.js"
         [
-            "frontend/static/js/jquery-ui-1.10.2.custom.js",
             # angular
             "frontend/static/js/angular-1.5.3.js",
             "frontend/static/js/lodash.js",
@@ -141,7 +144,7 @@ sources = {
             "frontend/static/js/restangular.min.js",
             "frontend/static/js/angular-block-ui.js",
             "frontend/static/js/select.js",
-            "frontend/static/js/ui-bootstrap-tpls-1.2.5.min.js",
+            "frontend/static/js/ui-bootstrap-tpls-1.3.1.min.js",
             "frontend/static/js/angular-ui-router.js",
             # must use minified version, otherwise the minifier destroys injection info
             "frontend/static/js/ui-codemirror.js",
