@@ -35,30 +35,78 @@ angular.module(
                     ordering: 10
         }
     )
-]).directive("icswHistoryOverview", ['icswHistoryDataService', (icswHistoryDataService) ->
+]).directive("icswHistoryOverview",
+[
+    'icswHistoryDataService',
+(
+    icswHistoryDataService
+) ->
     return  {
         restrict: 'EA'
         templateUrl: 'icsw.history.overview'
         link: (scope, el, attrs) ->
-            icswHistoryDataService.add_to_scope(scope)
-            scope.selected_model = 'device'
-            scope.$watch(
-                () -> Object.keys(icswHistoryDataService.models_with_history).length
-                () ->
-                    l = []
-                    if icswHistoryDataService.models_with_history? and icswHistoryDataService.models_with_history.plain?
-                        for k, v of icswHistoryDataService.models_with_history.plain()
-                            l.push([v, k])
-                    l.sort()
-                    scope.models_with_history_sorted = l
+            scope.struct = {
+                loading: true
+                models_with_history_sorted: []
+                selected_model: "device"
+            }
+            icswHistoryDataService.get_models_with_history().then(
+                (data) ->
+                    _list = []
+                    for key, value of data.plain()
+                        _list.push([value, key])
+                    _list.sort()
+                    scope.struct.models_with_history_sorted = _list
+                    scope.struct.loading = false
             )
+            icswHistoryDataService.add_to_scope(scope)
     }
-]).directive("icswHistoryModelHistory", ["icswHistoryDataService", (icswHistoryDataService) ->
+]).service("icswHistoryDataService",
+[
+    "Restangular", "ICSW_URLS", "$rootScope", "$q",
+(
+    Restangular, ICSW_URLS, $rootScope, $q
+) ->
+    get_historic_data = (model_name, object_id) ->
+        params = {
+            model: model_name,
+            object_id: object_id,
+        }
+        return Restangular.all(ICSW_URLS.SYSTEM_GET_HISTORICAL_DATA.slice(1)).getList(params)
+
+    user = Restangular.all(ICSW_URLS.REST_USER_LIST.slice(1)).getList().$object
+
+    get_models_with_history = () ->
+        defer = $q.defer()
+        Restangular.all(ICSW_URLS.SYSTEM_GET_MODELS_WITH_HISTORY.slice(1)).customGET().then(
+            (data) ->
+                defer.resolve(data)
+        )
+        return defer.promise
+
+    get_user_by_idx = (idx) -> return _.find(user, (elem) -> return elem.idx == idx)
+
+    return {
+        get_historic_data: get_historic_data
+        get_models_with_history: () ->
+            return get_models_with_history()
+        user:  user
+        get_user_by_idx: get_user_by_idx
+        add_to_scope: (scope) ->
+            scope.user = user
+            scope.get_user_by_idx = get_user_by_idx
+    }
+]).directive("icswHistoryModelHistory",
+[
+    "icswHistoryDataService",
+(
+    icswHistoryDataService
+) ->
     return {
         restrict: 'EA'
         templateUrl: 'icsw.history.model_history'
         scope: {
-            model: '&'
+            icsw_model: '=icswModel'
             objectId: '&'
             onRevert: '&'
             style: '@'  # 'config', 'history'
@@ -67,19 +115,23 @@ angular.module(
             scope.on_revert_defined = attrs.onRevert
             icswHistoryDataService.add_to_scope(scope)
             scope.$watch(
-                () -> [scope.model(), scope.objectId]
                 () ->
-                    if scope.model()?
-                        model_for_callback = scope.model()
-                        icswHistoryDataService.get_historic_data(scope.model(), scope.objectId()).then((new_data) ->
-                            # loading takes a while, check if the user has changed the selection meanwhile
-                            if model_for_callback == scope.model()
-                                # don't show empty changes
-                                scope.entries = (entry for entry in new_data when entry.meta.type != 'modified' || Object.keys(entry.changes).length > 0)
-                                # NOTE: entries must be in chronological, earliest first
+                    [scope.icsw_model, scope.objectId]
+                () ->
+                    console.log scope.icsw_model
+                    if scope.icsw_model?
+                        model_for_callback = scope.icsw_model
+                        icswHistoryDataService.get_historic_data(scope.icsw_model, scope.objectId()).then(
+                            (new_data) ->
+                                # loading takes a while, check if the user has changed the selection meanwhile
+                                if model_for_callback == scope.icsw_model
+                                    # don't show empty changes
+                                    scope.entries = (entry for entry in new_data when entry.meta.type != 'modified' || Object.keys(entry.changes).length > 0)
+                                    # NOTE: entries must be in chronological, earliest first
                     )
                 true
             )
+
             scope.format_value = (val) ->
                 if angular.isArray(val)
                     if val.length > 0
@@ -88,6 +140,7 @@ angular.module(
                         return "no entries"
                 else
                     return val
+
             scope.get_get_change_list = (limit_entry) ->
                 # pass as function such that we don't need to generate everything
                 return () ->
@@ -98,27 +151,5 @@ angular.module(
                         if entry == limit_entry
                             break
                     return changes
-    }
-]).service("icswHistoryDataService", ["Restangular", "ICSW_URLS", "$rootScope", (Restangular, ICSW_URLS, $rootScope) ->
-    get_historic_data = (model_name, object_id) ->
-        params = {
-            model: model_name,
-            object_id: object_id,
-        }
-        return Restangular.all(ICSW_URLS.SYSTEM_GET_HISTORICAL_DATA.slice(1)).getList(params)
-
-    user = Restangular.all(ICSW_URLS.REST_USER_LIST.slice(1)).getList().$object
-    models_with_history = Restangular.all(ICSW_URLS.SYSTEM_GET_MODELS_WITH_HISTORY.slice(1)).customGET().$object
-    get_user_by_idx = (idx) -> return _.find(user, (elem) -> return elem.idx == idx)
-
-    return {
-        get_historic_data: get_historic_data
-        models_with_history: models_with_history
-        user:  user
-        get_user_by_idx: get_user_by_idx
-        add_to_scope: (scope) ->
-            scope.user = user
-            scope.models_with_history = models_with_history
-            scope.get_user_by_idx = get_user_by_idx
     }
 ])
