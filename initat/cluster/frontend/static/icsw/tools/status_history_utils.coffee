@@ -272,57 +272,16 @@ angular.module(
     return {
         restrict: 'E'
         scope   : {
-            'data' : '='
-            'forHost' : '&'
-            'widthAttr' : '&width'
-            'heightAttr' : '&height'
-            'clickAttr' : '&click'
+            'data': '='
+            'forHost': '&'
+            'widthAttr': '&width'
+            'heightAttr': '&height'
+            'clickAttr': '&click'
         }
         require : "^icswDeviceStatusHistoryOverview"
-        template: """
-<div class="icsw-chart" ng-attr-style="width: {{width}}px; height: {{height}}px; margin-bottom: 7px;"> <!-- this must be same size as svg for tooltip positioning to work -->
-    <svg ng-attr-width="{{ width }}" ng-attr-height="{{ height }}" >
-        <g ng-show="!error">
-            <rect ng-attr-width="{{width}}" ng-attr-height="{{height}}" x="0" y="0" fill="rgba(0, 0, 0, 0.0)"
-            ng-click="entry_clicked(undefined)"></rect>
-            <rect ng-repeat="entry in data_display" ng-attr-x="{{ entry.pos_x }}" ng-attr-y="{{ entry.pos_y }}"
-                  ng-attr-width="{{entry.width}}" ng-attr-height="{{ entry.height }}" rx="1" ry="1"
-                  ng-attr-style="fill:{{ entry.color }};stroke-width:0;stroke:rgb(0,0,0)"
-                  ng-mouseenter="mouse_enter(entry)"
-                  ng-mouseleave="mouse_leave(entry)"
-                  ng-mousemove="mouse_move(entry, $event)"
-                  ng-click="entry_clicked(entry)"></rect>
-        </g>
-        <g ng-show="!error">
-            <text ng-repeat="marker in timemarker_display" ng-attr-x="{{ marker.pos_x }}" ng-attr-y="{{ height }}"  ng-attr-style="fill:black;" font-size="{{fontSize}}px" text-anchor="middle" alignment-baseline="baseline">{{marker.text}}</text>
-        </g>
-        <g ng-show="error">
-            <text x="1" y="25"  font-size="12px" fill="red">{{error}}</text>
-        </g>
-    </svg>
-    <div class="icsw-tooltip" ng-show="tooltip_entry" ng-attr-style="top: {{tooltipY}}px; left: {{tooltipX}}px; min-width: 350px; max-width: 350px;">
-        State: {{ tooltip_entry.state }}<br/>
-        Start: {{ tooltip_entry.start }}<br/>
-        End: {{ tooltip_entry.end }}<br/>
-        <span ng-show="tooltip_entry.msg">{{ tooltip_entry.msg }}<br/></span>
-    </div>
-</div>
-"""
         link: (scope, element, attrs) ->
 
             base_height = 30
-
-            scope.mouse_enter = (entry) ->
-                scope.tooltip_entry = entry
-
-            scope.mouse_leave = (entry) ->
-                scope.tooltip_entry = undefined
-
-            scope.mouse_move = (entry, event) ->
-                # not very elegant
-                tooltip = element[0].children[0].children[1]
-                scope.tooltipX = event.offsetX - (tooltip.clientWidth/2)
-                scope.tooltipY = event.offsetY - (tooltip.clientHeight) - 10
 
             scope.entry_clicked = (entry) ->
                 scope.clickAttr()
@@ -339,21 +298,34 @@ angular.module(
             scope.update = () ->
                 $timeout(scope.actual_update)
 
+            _create_element = (name, settings) ->
+                ns = 'http://www.w3.org/2000/svg'
+                node = document.createElementNS(ns, name)
+                for key, value  of settings
+                    if value?
+                        node.setAttribute(key, value)
+                return $(node)
+
             scope.actual_update = () ->
 
                 time_frame = icswStatusHistorySettings.get_time_frame()
 
-                # cleanup
-                scope.data_display = []
-                scope.timemarker_display = []
-                scope.error = ""
+                element.empty()
 
                 # calculate data to show
                 if time_frame? and scope.data?
 
+                    _div = angular.element("<div class='icsw-chart'></div>")
+                    _div.css("width", "#{scope.width}px").css("height", "#{scope.height}px").css("margin-bottom", "7px")
                     if scope.data.length > 5000
-                        scope.error = "Too much data to display"
+                        _div.text("Too much data to display (#{scope.data.length})")
                     else
+                        _svg = _create_element("svg", {"width": scope.width, "height": scope.height})
+                        _g = _create_element("g")
+                        _rect = _create_element("rect", {"width": scope.width, "height": scope.height, "x": 0, "y": 0, "fill": "rgba(0, 0, 0, 0.0)"})
+                        _g.append(_rect)
+                        _div.append(_svg)
+                        _svg.append(_g)
                         # set time marker
                         time_marker = icswStatusHistorySettings.get_time_marker()
                         i = 0
@@ -369,16 +341,27 @@ angular.module(
 
                             # if steps is set, only draw every steps'th entry
                             if !time_marker.steps or i % time_marker.steps == 0
-                                scope.timemarker_display.push(
+                                _marker = _create_element(
+                                    "text"
                                     {
-                                        text: marker
-                                        pos_x: pos_x
+                                        x: pos_x
+                                        y: scope.height
+                                        style: "fill:black"
+                                        "font-size": "#{scope.fontSize}px"
+                                        "text-anchor": "middle"
+                                        "alignment-baseline": "baseline"
                                     }
                                 )
+                                _marker.text(marker)
+                                _g.append(_marker)
 
                             i += 1
 
-
+                        # tooltip
+                        _tooltip = angular.element("<div/>")
+                        _tooltip.addClass("icsw-tooltip").css("min-width", "350px").css("max-width", "350px")
+                        _tooltip.hide()
+                        _div.append(_tooltip)
                         # calculate data to show
                         total_duration = time_frame.end.diff(time_frame.start)
 
@@ -392,6 +375,13 @@ angular.module(
                             if ! has_last_event_after_time_frame_end
                                 # add dummy element for nice iteration below
                                 data_for_iteration = data_for_iteration.concat('last')
+
+                        _mousemove = (event) ->
+                            entry = event.data
+                            _pos_x = event.offsetX - _tooltip.width() / 2
+                            _pos_y = event.offsetY - _tooltip.height() - 10
+                            _tooltip.css("left", "#{_pos_x}px")
+                            _tooltip.css("top", "#{_pos_y}px")
 
                         for entry, index in data_for_iteration
                             if entry == 'last'
@@ -447,28 +437,44 @@ angular.module(
                                         display_pos_x -= 1
                                     display_entry_width += 1
 
-                                scope.data_display.push(
+                                last_entry.display_end = display_end
+                                _rect = _create_element(
+                                    "rect"
                                     {
-                                        pos_x: display_pos_x
-                                        pos_y: pos_y
-                                        height: entry_height
                                         width: display_entry_width
-                                        color: color
-                                        msg: last_entry.msg
-                                        state: last_entry.state
-                                        # use actual start, not nice start with is always higher than time frame start
-                                        start: moment.utc(last_entry.date).format("DD.MM.YYYY HH:mm")
-                                        end: display_end.format("DD.MM.YYYY HH:mm")
+                                        height: entry_height
+                                        x: display_pos_x
+                                        y: pos_y
+                                        rx: 1
+                                        ry: 1
+                                        style: "fill:#{color}; stroke-width: 0; stroke: rgb(0, 0, 0)"
                                     }
                                 )
+                                _rect.bind("mouseenter", last_entry, (event) ->
+                                    last_entry = event.data
+                                    _tooltip.html(
+                                        "State: " + last_entry.state +
+                                        "<br/>Start: " + moment.utc(last_entry.date).format("DD.MM.YYYY HH:mm") +
+                                        "<br/>End: " + last_entry.display_end.format("DD.MM.YYYY HH:mm") +
+                                        "<br/>" + if last_entry.msg then last_entry.msg else ""
+                                    )
+                                    _mousemove(event)
+                                    _tooltip.show()
+                                ).bind("mouseleave", (event) ->
+                                    _tooltip.hide()
+                                ).bind("mousemove", last_entry, (event) ->
+                                    _mousemove(event)
+                                )
+                                _g.append(_rect)
 
                             pos_x += entry_width
                             last_date = cur_date
+                element.append(_div)
 
 
             scope.$watchGroup(
                 [
-                    'data'
+                    "data"
                     () ->
                         return icswStatusHistorySettings.get_time_frame()
                 ]
@@ -479,32 +485,34 @@ angular.module(
 ]).directive("icswToolsHistLogViewer", ["status_utils_functions", (status_utils_functions) ->
     return {
         restrict: 'E'
-        scope   : {
-            'data' : '&'  # takes same data as line graph
-            'enabled' : '&'
+        scope: {
+            'data': '&'  # takes same data as line graph
+            'enabled': '&'
         }
         templateUrl: "icsw.tools.hist_log_viewer"
         link: (scope, element, attrs) ->
             scope.view_mode = 'new'
-            scope.$watchGroup(['enabled()', 'view_mode'], () ->
-                scope.actual_data = []
-                if scope.enabled()
-                    if scope.view_mode == 'all'
-                        scope.actual_data = scope.data()
+            scope.$watchGroup(
+                ['enabled()', 'view_mode']
+                () ->
+                    scope.actual_data = []
+                    if scope.enabled()
+                        if scope.view_mode == 'all'
+                            scope.actual_data = scope.data()
 
-                    else if scope.view_mode == 'new'
-                        last_line = {'msg': undefined}
-                        for line in scope.data()
-                            if line.msg != last_line.msg
-                                scope.actual_data.push(line)
-                            last_line = line
+                        else if scope.view_mode == 'new'
+                            last_line = {'msg': undefined}
+                            for line in scope.data()
+                                if line.msg != last_line.msg
+                                    scope.actual_data.push(line)
+                                last_line = line
 
-                    else if scope.view_mode == 'state_change'
-                        last_line = {'state': undefined}
-                        for line in scope.data()
-                            if line.state != last_line.state
-                                scope.actual_data.push(line)
-                            last_line = line
+                        else if scope.view_mode == 'state_change'
+                            last_line = {'state': undefined}
+                            for line in scope.data()
+                                if line.state != last_line.state
+                                    scope.actual_data.push(line)
+                                last_line = line
             )
     }
 ])
