@@ -306,7 +306,9 @@ class GetEventLog(View):
             entries.limit(self.pagination_limit)
 
             include_device_info = len(self.device_pks) > 1
-            device_name_lut = {dev[0]: dev[1] for dev in device.objects.values_list('pk', 'name')}
+            device_name_lut = {
+                dev[0]: dev[1] for dev in device.objects.values_list('pk', 'name')
+            }
 
             result = []
             keys = set()
