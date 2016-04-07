@@ -1,17 +1,19 @@
 <script type="text/ng-template" id="icsw/main/status_history.html">
-    <div ng-controller="icswDeviceStatusHistoryCtrl">
-        <icsw-device-status-history-overview icsw-sel-man="0" icsw-sel-man-sel-mode="d"></icsw-device-status-history-overview>
-    </div>
+    <icsw-device-status-history-overview icsw-sel-man="0" icsw-sel-man-sel-mode="d"></icsw-device-status-history-overview>
 </script>
 
 <script type="text/ng-template" id="icsw.device.status_history_overview">
-    <h2>Status History</h2>
+    <h2>
+        Status History
+        <span ng-show="struct.devices.length"> for {{ struct.devices.length }} devices</span>
+        <span ng-show="struct.loading" class="text-warning">Fetching data...</span>
+    </h2>
 
-    <div class="panel panel-default" style="width: 450px">
+    <div class="panel panel-default" style="width: 450px" ng-if="struct.device_tree">
         <div class="panel-heading">
             <h4>
                 Showing data
-                <span ng-if="!timespan_error ">
+                <span ng-if="!struct.timespan_error ">
                     from <strong>{{ get_time_frame().start_str }}</strong> to <strong>{{ get_time_frame().end_str }}</strong>:
                 </span>
             </h4>
@@ -25,7 +27,7 @@
                     <div class="btn-group">
                         <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
                             <span class="glyphicon glyphicon-time"></span>
-                            {{duration_type}} <span class="caret"></span>
+                            {{ struct.duration_type }} <span class="caret"></span>
                         </button>
                         <ul class="dropdown-menu">
                             <li ng-click="set_duration_type('day')"><a>day</a></li>
@@ -35,46 +37,52 @@
                             <!-- values parsed by rest_views.py -->
                         </ul>
                     </div>
-                    <div class="input-group" ng-show="duration_type == 'day' || duration_type == 'week'">
-                        <input type="text" class="form-control" ng-model="startdate"/>
-                    <span class="dropdown-toggle input-group-addon">
-                        <div class="dropdown">
-                            <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">
-                                <i class="glyphicon glyphicon-calendar"></i>
-                            </button>
-                            <ul class="dropdown-menu" role="menu">
-                                <datetimepicker ng-model="startdate"
-                                                data-datetimepicker-config="{ startView:'day', minView:'day' }">
-                                </datetimepicker>
-                            </ul>
-                        </div>
-                    </span>
-                    </div>
-                    <div class="input-group" ng-show="duration_type == 'month'">
-                        <input type="text" class="form-control" ng-model="startdate"/>
+                    <div class="input-group" ng-show="struct.duration_type == 'day' || struct.duration_type == 'week'">
+                        <input type="text" class="form-control" ng-model="struct.startdate"/>
                         <span class="dropdown-toggle input-group-addon">
                             <div class="dropdown">
                                 <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">
                                     <i class="glyphicon glyphicon-calendar"></i>
                                 </button>
                                 <ul class="dropdown-menu" role="menu">
-                                    <datetimepicker ng-model="startdate"
-                                                    data-datetimepicker-config="{ startView:'month', minView:'month' }">
+                                    <datetimepicker
+                                        ng-model="struct.startdate"
+                                        data-datetimepicker-config="{ startView:'day', minView:'day' }"
+                                    >
                                     </datetimepicker>
                                 </ul>
                             </div>
                         </span>
                     </div>
-                    <div class="input-group" ng-show="duration_type == 'year'">
-                        <input type="text" class="form-control" ng-model="startdate"/>
+                    <div class="input-group" ng-show="struct.duration_type == 'month'">
+                        <input type="text" class="form-control" ng-model="struct.startdate"/>
                         <span class="dropdown-toggle input-group-addon">
                             <div class="dropdown">
                                 <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">
                                     <i class="glyphicon glyphicon-calendar"></i>
                                 </button>
                                 <ul class="dropdown-menu" role="menu">
-                                    <datetimepicker ng-model="startdate"
-                                                    data-datetimepicker-config="{ startView:'year', minView:'year' }">
+                                    <datetimepicker
+                                        ng-model="struct.startdate"
+                                        data-datetimepicker-config="{ startView:'month', minView:'month' }"
+                                    >
+                                    </datetimepicker>
+                                </ul>
+                            </div>
+                        </span>
+                    </div>
+                    <div class="input-group" ng-show="struct.duration_type == 'year'">
+                        <input type="text" class="form-control" ng-model="struct.startdate"/>
+                        <span class="dropdown-toggle input-group-addon">
+                            <div class="dropdown">
+                                <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">
+                                    <i class="glyphicon glyphicon-calendar"></i>
+                                </button>
+                                <ul class="dropdown-menu" role="menu">
+                                    <datetimepicker
+                                        ng-model="struct.startdate"
+                                        data-datetimepicker-config="{ startView:'year', minView:'year' }"
+                                    >
                                     </datetimepicker>
                                 </ul>
                             </div>
@@ -82,16 +90,18 @@
                     </div>
                 </div>
             </div>
-
-            <h4 class="alert alert-danger" style="width: 300px" ng-if="timespan_error ">{{timespan_error}}</h4>
-
+            <h4 class="alert alert-danger" style="width: 300px" ng-if="struct.timespan_error ">{{ struct.timespan_error }}</h4>
         </div>
     </div>
 
-    <icsw-tools-ensure-device-selection dev-list="devicepks" list-ready="devlistReady">
+    <icsw-tools-ensure-device-selection dev-list="struct.devices" list-ready="!struct.loading">
         <uib-tabset>
-            <uib-tab ng-repeat="device in devicepks" heading="{{devices_rest[device].full_name}}" select="enabled_device_lut[device] = device">
-                <icsw-device-status-history-device deviceid="enabled_device_lut[device]"></icsw-device-status-history-device>
+            <uib-tab
+                ng-repeat="device in struct.devices"
+                heading="{{ device.full_name }}"
+                select="enabled_device_lut[device.idx] = device.idx"
+            >
+                <icsw-device-status-history-device icsw-device="device"></icsw-device-status-history-device>
             </uib-tab>
         </uib-tabset>
     </icsw-tools-ensure-device-selection>
@@ -102,7 +112,7 @@
     <div class="panel panel-default">
         <div class="panel-heading">
             <h3>
-                {{device_rest.full_name}}
+                {{ device.full_name }}
                 <small>
                     (<ng-pluralize count="service_data.length" when="{'0': 'No services', 'one': '1 service', 'other': '{} services'}">
                     <!-- weird formatting here because there shouldn't be a space before ')' in any case -->
@@ -117,7 +127,7 @@
                 <div class="col-md-12">
                     <div style="width: auto">
                         <icsw-tools-device-hist-status-overview
-                            deviceid="deviceid"
+                            icsw-device="device"
                             detailed-view="true"
                         ></icsw-tools-device-hist-status-overview>
                     </div>
@@ -147,7 +157,8 @@
                         <tbody>
                             <tr ng-repeat-start="entry in service_data"
                                     ng-click="entry.log_viewer_enabled = !entry.log_viewer_enabled"
-                                    style="cursor: pointer">
+                                    style="cursor: pointer"
+                            >
                                 <td><i ng-class="entry.log_viewer_enabled && 'glyphicon glyphicon-chevron-down' || 'glyphicon glyphicon-chevron-right'"></i></td>
                                 <td>{{ entry.name }}</td>
                                 <td class="text-right">

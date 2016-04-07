@@ -377,20 +377,27 @@ class _device_status_history_util(object):
         :return: dict of either {(dev_id, service_id): values} or {dev_id: values}
         """
         if for_host:
-            obj_man = mon_icinga_log_raw_host_alert_data.objects
-            trans = dict((k, v.capitalize()) for (k, v) in mon_icinga_log_aggregated_host_data.STATE_CHOICES)
+            trans = {
+                k: v.capitalize() for (k, v) in mon_icinga_log_aggregated_host_data.STATE_CHOICES
+            }
         else:
-            obj_man = mon_icinga_log_raw_service_alert_data.objects
-            trans = dict((k, v.capitalize()) for (k, v) in mon_icinga_log_aggregated_service_data.STATE_CHOICES)
+            trans = {
+                k: v.capitalize() for (k, v) in mon_icinga_log_aggregated_service_data.STATE_CHOICES
+            }
 
-        device_ids = [int(i) for i in request.GET["device_ids"].split(",")]
+        device_ids = json.loads(request.GET["device_ids"])
 
         # calculate detailed view based on all events
         start, end, _ = _device_status_history_util.get_timespan_tuple_from_request(request)
         alert_filter = Q(device__in=device_ids)
 
-        alert_list = AlertList(is_host=for_host, alert_filter=alert_filter, start_time=start, end_time=end,
-                               calc_first_after=True)
+        alert_list = AlertList(
+            is_host=for_host,
+            alert_filter=alert_filter,
+            start_time=start,
+            end_time=end,
+            calc_first_after=True
+        )
 
         return_data = {}
 
@@ -410,9 +417,21 @@ class _device_status_history_util(object):
             l = []
             for entry in amended_list:
                 if isinstance(entry, dict):
-                    l.append({'date': entry['date'], 'state': trans[entry['state']], 'msg': entry['msg']})
+                    l.append(
+                        {
+                            'date': entry['date'],
+                            'state': trans[entry['state']],
+                            'msg': entry['msg']
+                        }
+                    )
                 else:
-                    l.append({'date': entry.date, 'state': trans[entry.state], 'msg': entry.msg})
+                    l.append(
+                        {
+                            'date': entry.date,
+                            'state': trans[entry.state],
+                            'msg': entry.msg
+                        }
+                    )
 
             if not for_host:
                 # use nice service id for services
@@ -428,9 +447,14 @@ class get_hist_timespan(RetrieveAPIView):
     def retrieve(self, request, *args, **kwargs):
         timespan = _device_status_history_util.get_timespan_db_from_request(request)
         if timespan:
-            data = {'status': 'found', 'start': timespan.start_date, 'end': timespan.end_date}
+            data = {
+                'status': 'found',
+                'start': timespan.start_date, 'end': timespan.end_date
+            }
         else:
-            data = {'status': 'not found'}
+            data = {
+                'status': 'not found'
+            }
             start, end, duration_type = _device_status_history_util.get_timespan_tuple_from_request(request)
             # return most recent data type if this type is not yet finished
             try:
@@ -450,7 +474,7 @@ class get_hist_device_data(ListAPIView):
     @method_decorator(login_required)
     @rest_logging
     def list(self, request, *args, **kwargs):
-        device_ids = [int(i) for i in request.GET["device_ids"].split(",")]
+        device_ids = json.loads(request.GET.get("device_ids"))
 
         timespan_db = _device_status_history_util.get_timespan_db_from_request(request)
 
@@ -474,9 +498,11 @@ class get_hist_device_data(ListAPIView):
                     mon_icinga_log_aggregated_host_data.STATE_CHOICES_READABLE[mon_icinga_log_raw_base.STATE_UNDETERMINED]
                 )
 
-        LicenseUsage.log_usage(LicenseEnum.reporting,
-                               LicenseParameterTypeEnum.device,
-                               data_merged_state_types.iterkeys())
+        LicenseUsage.log_usage(
+            LicenseEnum.reporting,
+            LicenseParameterTypeEnum.device,
+            data_merged_state_types.iterkeys()
+        )
 
         return Response([data_merged_state_types])  # fake a list, see coffeescript
 
@@ -485,15 +511,17 @@ class get_hist_service_data(ListAPIView):
     @method_decorator(login_required)
     @rest_logging
     def list(self, request, *args, **kwargs):
-        device_ids = [int(i) for i in request.GET["device_ids"].split(",")]
+        device_ids = json.loads(request.GET.get("device_ids"))
 
         timespan_db = _device_status_history_util.get_timespan_db_from_request(request)
 
         merge_services = bool(int(request.GET.get("merge_services", 0)))
-        return_data = mon_icinga_log_aggregated_service_data.objects.get_data(devices=device_ids,
-                                                                              timespans=[timespan_db],
-                                                                              license=LicenseEnum.reporting,
-                                                                              merge_services=merge_services)
+        return_data = mon_icinga_log_aggregated_service_data.objects.get_data(
+            devices=device_ids,
+            timespans=[timespan_db],
+            license=LicenseEnum.reporting,
+            merge_services=merge_services
+        )
 
         return Response([return_data])  # fake a list, see coffeescript
 

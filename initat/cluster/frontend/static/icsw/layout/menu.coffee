@@ -351,8 +351,12 @@ menu_module = angular.module(
                                 _add = icswAcessLevelService.has_all_menu_permissions(entry.rights)
                         if entry.licenses? and _add
                             _add = icswAcessLevelService.has_all_valid_licenses(entry.licenses)
+                            if not _add
+                                console.warn "license(s) #{entry.licenses} missing"
                         if entry.service_types? and _add
                             _add = icswAcessLevelService.has_all_service_types(entry.service_types)
+                            if not _add
+                                console.warn "service_type(s) #{entry.service_types} missing"
                         if _add
                             # console.log _key
                             if entry.preSpacer and valid_entry
