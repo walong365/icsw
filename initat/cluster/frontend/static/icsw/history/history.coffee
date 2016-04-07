@@ -59,7 +59,6 @@ angular.module(
                     scope.struct.models_with_history_sorted = _list
                     scope.struct.loading = false
             )
-            icswHistoryDataService.add_to_scope(scope)
     }
 ]).service("icswHistoryDataService",
 [
@@ -74,8 +73,6 @@ angular.module(
         }
         return Restangular.all(ICSW_URLS.SYSTEM_GET_HISTORICAL_DATA.slice(1)).getList(params)
 
-    user = Restangular.all(ICSW_URLS.REST_USER_LIST.slice(1)).getList().$object
-
     get_models_with_history = () ->
         defer = $q.defer()
         Restangular.all(ICSW_URLS.SYSTEM_GET_MODELS_WITH_HISTORY.slice(1)).customGET().then(
@@ -84,23 +81,16 @@ angular.module(
         )
         return defer.promise
 
-    get_user_by_idx = (idx) -> return _.find(user, (elem) -> return elem.idx == idx)
-
     return {
         get_historic_data: get_historic_data
         get_models_with_history: () ->
             return get_models_with_history()
-        user:  user
-        get_user_by_idx: get_user_by_idx
-        add_to_scope: (scope) ->
-            scope.user = user
-            scope.get_user_by_idx = get_user_by_idx
     }
 ]).directive("icswHistoryModelHistory",
 [
-    "icswHistoryDataService",
+    "icswHistoryDataService", "icswUserGroupTreeService",
 (
-    icswHistoryDataService
+    icswHistoryDataService, icswUserGroupTreeService,
 ) ->
     return {
         restrict: 'EA'
@@ -115,9 +105,15 @@ angular.module(
             scope.struct = {
                 loading: false
                 entries: []
+                num_entries: 0
+                # user and group tree
+                user_group_tree: undefined
             }
+            icswUserGroupTreeService.load(scope.$id).then(
+                (tree) ->
+                    scope.struct.user_group_tree = tree
+            )
             scope.on_revert_defined = attrs.onRevert
-            icswHistoryDataService.add_to_scope(scope)
             scope.models_with_history = []
             icswHistoryDataService.get_models_with_history().then(
                 (data) ->
@@ -135,6 +131,7 @@ angular.module(
                             for entry in new_data
                                 if entry.meta.type != "modified" or Object.keys(entry.changes).length > 0
                                     scope.struct.entries.push(entry)
+                            scope.struct.num_entries = scope.struct.entries.length
                             scope.struct.loading = false
                         else
                             _load_model()

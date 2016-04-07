@@ -14,8 +14,13 @@
 </script>
 
 <script type="text/ng-template" id="icsw.history.model_history">
-    <h3 ng-show="style != 'config'">{{ models_with_history[icsw_model] }}</h3>
-    <div class="alert alert-warning" ng-show="struct.loading">Fetching data from server</div>
+    <h3 ng-show="style != 'config'">{{ models_with_history[icsw_model] }}
+        <span ng-show="struct.num_entries">({{ struct.num_entries }} entries)</span>
+    </h3>
+    <div class="alert alert-warning" ng-show="struct.loading">
+        <button class="btn btn-sm btn-danger" ladda="struct.loading" disabled="disabled"></button>
+        Please wait, Fetching data from server
+    </div>
     <table class="table table-condensed table-hover table-striped" style="width: auto"
             st-table="entries_display" st-safe-src="struct.entries" ng-show="!struct.loading">
         <thead>
@@ -42,7 +47,7 @@
         <tbody>
             <tr ng-repeat="entry in entries_display">
                 <td>{{ entry.meta.date | datetime_concise }}</td>
-                <td>{{ get_user_by_idx(entry.meta.user).login }}</td>
+                <td>{{ struct.user_group_tree.user_lut[entry.meta.user].login }}</td>
                 <td>{{ entry.meta.type }}
                 <td>{{ entry.meta.object_repr }}</td>
                 <td>{{ entry.meta.object_id }}</td>
