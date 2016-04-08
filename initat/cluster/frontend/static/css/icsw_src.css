@@ -1,3 +1,48 @@
+#tooltip {
+    position: absolute;
+    z-index: 3000;
+    border: 1px solid #111;
+    background-color: #eee;
+    padding: 5px;
+    opacity: 0.95;
+}
+
+/* domain tree node styles */
+
+ul.dynatree-container span.intermediate {
+    font-style : italic;
+}
+
+ul.dynatree-container span.ip_ok {
+    font-weight : bold;
+}
+
+.popover {
+    max-width: 100% !important;
+}
+
+/* for sidebar */
+.noborder {
+    border : none;
+    padding : 0;
+}
+.noborder.ui-tabs .ui-tabs-panel {
+    padding: 0 0 0 0 ;
+}
+
+/* css for timepicker */
+.ui-timepicker-div .ui-widget-header { margin-bottom: 8px; }
+.ui-timepicker-div dl { text-align: left; }
+.ui-timepicker-div dl dt { height: 25px; margin-bottom: -25px; }
+.ui-timepicker-div dl dd { margin: 0 10px 10px 65px; }
+.ui-timepicker-div td { font-size: 90%; }
+.ui-tpicker-grid-label { background: none; border: none; margin: 0; padding: 0; }
+
+.ui-timepicker-rtl{ direction: rtl; }
+.ui-timepicker-rtl dl { text-align: right; }
+.ui-timepicker-rtl dl dd { margin: 0 65px 10px 10px; }
+
+
 th.rotate {
   height: 140px;
   white-space: nowrap;
@@ -96,4 +141,44 @@ del {
 
 .fa_top {
     width:1.4em;
+}
+
+.icsw-tooltip {
+    position: absolute;
+    float: left;
+    min-width: 80px;
+    max-width: 600px;
+    padding: 5px 15px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 1);
+    color: #444;
+    font-size: 14px;
+    text-shadow: 0 1px 0 #fff;
+    // text-transform: uppercase;
+    text-align: center;
+    line-height: 1.3;
+    letter-spacing: .06em;
+    z-index: 2000;
+    box-shadow: 0 0 3px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.5);
+    pointer-events: none;
+}
+
+.icsw-tooltip:after {
+    /* triangle pointer at bottom of piechart tooltip */
+    position: absolute;
+    left: 50%;
+    bottom: -6px;
+    content: "";
+    height: 0;
+    z-index: 2000;
+    margin: 0 0 0 -6px;
+    border-right: 5px solid transparent;
+    border-left: 5px solid transparent;
+    border-top: 6px solid rgba(255, 255, 255, 0.95);
+    line-height: 0;
+}
+
+.icsw-chart {
+    cursor: pointer;
+    position: relative;
 }

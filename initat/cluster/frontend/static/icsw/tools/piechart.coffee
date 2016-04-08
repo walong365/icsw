@@ -19,22 +19,19 @@
 #
 
 angular.module(
-    "icsw.tools.piechart", []
-).directive("icswToolsPiechart", () ->
+    "icsw.tools.piechart", ["icsw.tools"]
+).directive("icswToolsPiechart",
+[
+    "createSVGElement",
+(
+    createSVGElement,
+) ->
     return {
         restrict: "E"
         scope:
             data: "=data"  # [{value: 0.34, title: "foo", color: "#ff0000"}]
             diameter: "=diameter"
         link : (scope, element, attrs) ->
-
-            _create_element = (name, settings) ->
-                ns = 'http://www.w3.org/2000/svg'
-                node = document.createElementNS(ns, name)
-                for key, value  of settings
-                    if value?
-                        node.setAttribute(key, value)
-                return $(node)
 
             _build_pie = (data) ->
 
@@ -47,9 +44,9 @@ angular.module(
 
                 _div = angular.element("<div class='icsw-chart'></div>")
                 _div.css("width", "#{diameter}px").css("height", "#{diameter}px")
-                _svg = _create_element("svg", {width: diameter, height: diameter, viewBox: "0 0 #{diameter} #{diameter}"})
+                _svg = createSVGElement("svg", {width: diameter, height: diameter, viewBox: "0 0 #{diameter} #{diameter}"})
                 _div.append(_svg)
-                _g = _create_element("g", {opacity: 1})
+                _g = createSVGElement("g", {opacity: 1})
                 _svg.append(_g)
 
                 _tooltip = angular.element("<div/>")
@@ -102,11 +99,27 @@ angular.module(
                             'L', center_x, center_y,  #line to the center.
                             'Z'
                         ]
-                    path = cmd.join(" ")
                     # new_entry.tooltip_visible = false
 
-                    _part_g = _create_element("g", {"data-active": 1, "class": "pieSegmentGroup", "data-order": i})
-                    _path = _create_element("path", {"stroke-width": 1, "stroke-miterlimit": 2, stroke: "#fff", fill: entry.color, class: "pieSegment", d: path})
+                    _part_g = createSVGElement(
+                        "g"
+                        {
+                            "data-active": 1
+                            class: "pieSegmentGroup"
+                            "data-order": i
+                        }
+                    )
+                    _path = createSVGElement(
+                        "path"
+                        {
+                            "stroke-width": 1
+                            "stroke-miterlimit": 2
+                            stroke: "#fff"
+                            fill: entry.color
+                            class: "pieSegment"
+                            d: cmd.join(" ")
+                        }
+                    )
                     _part_g.append(_path)
                     _g.append(_part_g)
                     _part_g.bind("mouseenter", entry, (event) ->
@@ -131,5 +144,5 @@ angular.module(
                         _build_pie(scope.data)
                 )
     }
-)
+])
 

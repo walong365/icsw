@@ -387,6 +387,21 @@ class duration(object):
         def get_display_date(cls, timepoint):
             return u"{:04d}".format(timepoint.year)
 
+    class Decade(object):
+        ID = 6
+
+        @classmethod
+        def get_time_frame_start(cls, timepoint):
+            return timepoint.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0, year=10 * int(timepoint.year / 10))
+
+        @classmethod
+        def get_end_time_for_start(cls, starttime):
+            return cls.get_time_frame_start(starttime + datetime.timedelta(days=3660))
+
+        @classmethod
+        def get_display_date(cls, timepoint):
+            return u"{:04d}".format(timepoint.year)
+
     @classmethod
     def get_shorter_duration(cls, duration_type):
         if type(duration_type) == int:
@@ -400,6 +415,8 @@ class duration(object):
             shorter_duration = cls.Day  # weeks are not nice
         elif duration_type == cls.Year:
             shorter_duration = cls.Month
+        elif duration_type == cls.Decade:
+            shorter_duration = cls.Year
         else:
             raise ValueError("Invalid duration type: {}".format(duration_type))
         return shorter_duration

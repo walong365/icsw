@@ -69,13 +69,11 @@ sources = {
             "frontend/static/css/angular-block-ui.css",
             "frontend/static/css/select.css",
             "frontend/static/css/ladda-themeless.min.css",
-            "frontend/static/css/tooltip.css",
             "frontend/static/css/smart-table.css",
             "frontend/static/css/font-awesome.min.css",
             "frontend/static/css/toaster.css",
             "frontend/static/css/bootstrap-dialog.css",
             "frontend/static/css/angular-gridster.min.css",
-            "frontend/static/css/main.css",
             "frontend/static/css/hotkeys.css",
             "frontend/static/css/icsw_src.css",
             # not needed right now, not working with tree-code

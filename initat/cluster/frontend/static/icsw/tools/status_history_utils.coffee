@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2015 init.at
+# Copyright (C) 2012-2016 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -17,6 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+
 angular.module(
     "icsw.tools.status_history_utils",
     [
@@ -31,21 +32,24 @@ angular.module(
     # shows piechart and possibly table of historic device status
     # used in status history page and monitoring overview
     return {
-        restrict: 'E',
+        restrict: 'E'
         scope: {
             data: "="  # if data is passed right through here, the other attributes are discarded
                        # data must be defined if we are not below the status history ctrl
             device: "=icswDevice"
-        },
+        }
         require: '?^icswDeviceStatusHistoryOverview'
         templateUrl: "icsw.tools.device_hist_status"
         link: (scope, element, attrs) ->
             scope.detailed_view = scope.$eval(attrs.detailedView)
+            scope.struct = {
+                # loading flag
+                loading: false
+            }
 
             # TODO: make this into a filter, then remove also from serviceHist*
             scope.float_format = (n) -> return (n*100).toFixed(3) + "%"
 
-            scope.pie_data = []
             weights = {
                 "Up": -10
                 "Down": -8
@@ -62,6 +66,7 @@ angular.module(
                 #       here only get the direct data. then we can centralise the loading there.
                 #       NOTE: keep consistent with service below
                 if icswStatusHistorySettings.get_time_frame()?
+                    scope.struct.loading = true
                     time_frame = icswStatusHistorySettings.get_time_frame()
                     $q.all(
                         [
@@ -82,6 +87,7 @@ angular.module(
                                 scope.line_graph_data = line_data
                             else
                                 scope.line_graph_data = []
+                            scope.struct.loading = false
                     )
                 else
                     scope.host_data = []
@@ -158,14 +164,17 @@ angular.module(
 (
     Restangular, ICSW_URLS
 ) ->
+    service_states = [
+        "Ok", "Warning", "Critical", "Unknown", "Undetermined", "Planned down", "Flapping",
+    ]
     service_colors = {
-            "Ok": "#66dd66"
-            "Warning": "#f0ad4e"
-            "Critical": "#ff7777"
-            "Unknown": "#c7c7c7"
-            "Undetermined": "#c7c7c7"
-            "Planned down": "#5bc0de"
-        }
+        "Ok": "#66dd66"
+        "Warning": "#f0ad4e"
+        "Critical": "#ff7777"
+        "Unknown": "#c7c7c7"
+        "Undetermined": "#c7c7c7"
+        "Planned down": "#5bc0de"
+    }
 
     host_colors = {
         "Up": "#66dd66"
@@ -236,7 +245,7 @@ angular.module(
             if d['state'] != "Flapping"  # can't display flapping in pie
                 pie_data.push {
                     'title': d['state']
-                    'value': Math.round(d['value']*10000) / 100
+                    'value': Math.round(d['value'] * 10000) / 100
                     'color': colors[d['state']]
                 }
         return [final_data, pie_data]
@@ -255,6 +264,8 @@ angular.module(
         float_format: float_format
         get_device_data: get_device_data
         get_service_data: get_service_data
+        get_service_states: () ->
+            return service_states
         get_timespan: get_timespan
         preprocess_state_data: preprocess_state_data
         preprocess_service_state_data: preprocess_service_state_data
@@ -265,9 +276,9 @@ angular.module(
     }
 ]).directive("icswToolsHistLineGraph",
 [
-    "status_utils_functions", "$timeout", "icswStatusHistorySettings",
+    "status_utils_functions", "$timeout", "icswStatusHistorySettings", "createSVGElement",
 (
-    status_utils_functions, $timeout, icswStatusHistorySettings,
+    status_utils_functions, $timeout, icswStatusHistorySettings, createSVGElement,
 ) ->
     return {
         restrict: 'E'
@@ -298,14 +309,6 @@ angular.module(
             scope.update = () ->
                 $timeout(scope.actual_update)
 
-            _create_element = (name, settings) ->
-                ns = 'http://www.w3.org/2000/svg'
-                node = document.createElementNS(ns, name)
-                for key, value  of settings
-                    if value?
-                        node.setAttribute(key, value)
-                return $(node)
-
             scope.actual_update = () ->
 
                 time_frame = icswStatusHistorySettings.get_time_frame()
@@ -320,9 +323,9 @@ angular.module(
                     if scope.data.length > 5000
                         _div.text("Too much data to display (#{scope.data.length})")
                     else
-                        _svg = _create_element("svg", {"width": scope.width, "height": scope.height})
-                        _g = _create_element("g")
-                        _rect = _create_element("rect", {"width": scope.width, "height": scope.height, "x": 0, "y": 0, "fill": "rgba(0, 0, 0, 0.0)"})
+                        _svg = createSVGElement("svg", {"width": scope.width, "height": scope.height})
+                        _g = createSVGElement("g")
+                        _rect = createSVGElement("rect", {"width": scope.width, "height": scope.height, "x": 0, "y": 0, "fill": "rgba(0, 0, 0, 0.0)"})
                         _g.append(_rect)
                         _div.append(_svg)
                         _svg.append(_g)
@@ -341,7 +344,7 @@ angular.module(
 
                             # if steps is set, only draw every steps'th entry
                             if !time_marker.steps or i % time_marker.steps == 0
-                                _marker = _create_element(
+                                _marker = createSVGElement(
                                     "text"
                                     {
                                         x: pos_x
@@ -438,7 +441,7 @@ angular.module(
                                     display_entry_width += 1
 
                                 last_entry.display_end = display_end
-                                _rect = _create_element(
+                                _rect = createSVGElement(
                                     "rect"
                                     {
                                         width: display_entry_width

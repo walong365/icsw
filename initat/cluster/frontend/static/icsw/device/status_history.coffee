@@ -40,7 +40,10 @@ angular.module(
     )
 ]).service("icswStatusHistorySettings", [() ->
     _time_frame = undefined
-
+    _allowed_durations = [
+        "day", "week", "month", "year", "decade";
+    ]
+    
     _set_time_frame = (date_gui, duration_type, start, end) ->
         if date_gui?
             _time_frame = {
@@ -56,25 +59,29 @@ angular.module(
 
     _get_time_marker = () ->
 
-
         if _time_frame?
             days_of_month = _time_frame.end.subtract(1, 'seconds').date()
             return switch _time_frame.duration_type
-                when 'day' then {
+                when "day" then {
                     data: ["0:00", "6:00", "12:00", "18:00", "24:00"]
                     time_points: true
                 }
-                when 'week' then {
+                when "week" then {
                     data: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
                     time_points: false
                 }
-                when 'month' then {
+                when "month" then {
                     data: ("#{x}." for x in [1..days_of_month])
                     time_points: true
                     steps: 3
                 }
-                when 'year' then {
+                when "year" then {
                     data: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Sep", "Oct", "Nov", "Dec" ]
+                    time_points: false
+                }
+                when "decade" then {
+                    # TODO, Fixme
+                    data: [_time_frame.start.year()]
                     time_points: false
                 }
         else
@@ -89,6 +96,8 @@ angular.module(
         set_time_frame: _set_time_frame
         get_time_frame: _get_time_frame
         get_time_marker: _get_time_marker
+        get_allowed_durations: () ->
+            return _allowed_durations
     }
 
 ]).controller("icswDeviceStatusHistoryCtrl",
@@ -109,17 +118,55 @@ angular.module(
         device_tree: undefined
         # timespan error
         timespan_error: ""
+        # timespan info
+        timespan_info: ""
         # start date
-        startdate: moment().startOf("day").subtract(1, "days")
+        startdate: undefined
+        # start date for datepicker
+        startdate_dp: undefined
         # duration type
-        duration_type: "day"
+        duration_type: undefined
         # enabled devices
         enabled_device_lut: {}
     }
-    if true  # debug
-        $scope.struct.duration_type = 'month'
-        $scope.struct.startdate = moment('Wed Jul 01 2015 00:00:00 GMT+0100 (CET)')
 
+    # datetimepicker options
+    $scope.date_options = {
+        format: "dd.MM.yyyy"
+        formatYear: "yyyy"
+        maxDate: new Date()
+        minDate: new Date(2000, 1, 1)
+        startingDay: 1
+        minMode: "day"
+        datepickerMode: "day"
+        $$opened: false
+    }
+
+    $scope.open_popup = () ->
+        $scope.date_options.$$opened = true
+
+    $scope.set_duration_type = (d) ->
+        $scope.struct.duration_type = d
+        _mode = {
+            day: "day"
+            week: "day"
+            month: "month"
+            year: "year"
+            decade: "year"
+        }[d]
+        $scope.date_options.minMode = _mode
+        $scope.date_options.datepickerMode = _mode
+
+    if false  # debug
+        $scope.struct.startdate = moment('Wed Jul 01 2015 00:00:00 GMT+0100 (CET)')
+        $scope.set_duration_type("month")
+    else
+        # defaults
+        $scope.struct.startdate = moment().startOf("day").subtract(1, "days")
+        $scope.set_duration_type("day")
+
+    # convert to datepicker date
+    $scope.struct.startdate_dp = $scope.struct.startdate.toDate()
 
     $scope.new_devsel = (devs) ->
         $scope.struct.loading = true
@@ -134,19 +181,22 @@ angular.module(
                 $scope.struct.loading = false
         )
 
-    $scope.set_duration_type = (d) ->
-        $scope.struct.duration_type = d
-
     $scope.get_time_frame = () ->
         return icswStatusHistorySettings.get_time_frame()
+        
+    $scope.get_allowed_durations = () ->
+        return icswStatusHistorySettings.get_allowed_durations()
 
     update_time_frame = (new_values, old_values) ->
         duration_type_change = new_values[0] != old_values[0] and new_values[1] == old_values[1]
 
+        $scope.struct.startdate = moment($scope.struct.startdate_dp)
         if moment($scope.struct.startdate).isValid()
+            $scope.struct.timespan_info = "Fetching timespan data"
             status_utils_functions.get_timespan($scope.struct.startdate, $scope.struct.duration_type).then(
                 (new_data) ->
                     $scope.struct.timespan_error = ""
+                    $scope.struct.timespan_info = ""
                     if new_data.status == "found"
 
                         start = moment.utc(new_data.start)
@@ -170,7 +220,7 @@ angular.module(
             )
 
     $scope.$watchGroup(
-        ["struct.duration_type", "struct.startdate"]
+        ["struct.duration_type", "struct.startdate_dp"]
         (new_values, old_values) ->
             update_time_frame(new_values, old_values)
     )
@@ -190,12 +240,12 @@ angular.module(
         }
         link : (scope, el, attrs, status_history_ctrl) ->
 
-            scope.extract_service_value = (service, key) ->
-                entries = _.filter(service, (e) -> e.state == key)
-                ret = 0
-                for entry in entries
-                    ret += entry.value
-                return scope.float_format(ret)
+            scope.struct = {
+                # loading flag
+                loading: false
+                # service cache, service -> key -> value
+                service_cache: {}
+            }
 
             _extract_service_name = (service_key) ->
                 check_command_name = service_key.split(",", 2)[0]
@@ -223,6 +273,7 @@ angular.module(
 
             scope.update = () ->
                 if icswStatusHistorySettings.get_time_frame()?
+                    scope.struct.loading = true
                     time_frame = icswStatusHistorySettings.get_time_frame()
                     $q.all(
                         [
@@ -257,7 +308,7 @@ angular.module(
                                         key: key
                                         name: _extract_service_name(key)
                                         main_data: val
-                                        line_graph_data: line_data[key]
+                                        line_graph_data: if line_data? and key of line_data then line_data[key] else []
                                         pie_data: scope.calc_pie_data(key, val)
                                     } for key, val of service_data
                                 )
@@ -265,6 +316,17 @@ angular.module(
                                 processed_data = []
 
                             scope.service_data = _.sortBy(processed_data, (entry) -> return entry.name)
+                            scope.struct.service_cache = {}
+                            # create service caches
+                            for entry in scope.service_data
+                                scope.struct.service_cache[entry.name] = {}
+                                for key in status_utils_functions.get_service_states()
+                                    scope.struct.service_cache[entry.name][key] = status_utils_functions.float_format(
+                                        _.sum((_entry.value for _entry in _.filter(entry.main_data, (e) -> e.state == key)))
+                                    )
+                            scope.struct.loading = false
+                        (error) ->
+                            scope.struct.loading = false
                     )
                 else
                     scope.service_data = []

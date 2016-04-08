@@ -173,6 +173,14 @@ angular.module(
             obj.included?.apply(@)
             this
         
+]).service("createSVGElement", [() ->
+    return (name, settings) ->
+        ns = "http://www.w3.org/2000/svg"
+        node = document.createElementNS(ns, name)
+        for key, value  of settings
+            if value?
+                node.setAttribute(key, value)
+        return $(node)
 ]).service("icswCSRFService",
 [
     "$http", "ICSW_URLS", "$q",
@@ -182,6 +190,7 @@ angular.module(
     csrf_token = undefined
     _waiting = []
     _fetching = false
+
     fetch_token = () ->
         _fetching = true
         $http(
@@ -197,6 +206,7 @@ angular.module(
                 for _wait in _waiting
                     _wait.resolve(csrf_token)
         )
+
     get_token = () ->
         _defer = $q.defer()
         if csrf_token
@@ -205,15 +215,18 @@ angular.module(
             _waiting.push(_defer)
             if not _fetching
                 fetch_token()
-        return _defer
+        return _defer.promise
+
     # prefetch
     fetch_token()
+
     return {
-        "get_token": () ->
-            return get_token().promise
-        "clear_token": () ->
+        get_token: () ->
+            return get_token()
+        clear_token: () ->
             csrf_token = undefined
     }
+
 ]).config(["toasterConfig", (toasterConfig) ->
     # close on click
     toasterConfig["tap-to-dismiss"] = true

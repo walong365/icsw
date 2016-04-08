@@ -348,10 +348,13 @@ class _device_status_history_util(object):
     @staticmethod
     def get_timespan_tuple_from_request(request):
         date = duration_utils.parse_date(request.GET["date"])
-        duration_type = {'day': duration.Day,
-                         'week': duration.Week,
-                         'month': duration.Month,
-                         'year': duration.Year}[request.GET['duration_type']]
+        duration_type = {
+            'day': duration.Day,
+            'week': duration.Week,
+            'month': duration.Month,
+            'year': duration.Year,
+            "decade": duration.Decade,
+        }[request.GET['duration_type']]
         start = duration_type.get_time_frame_start(date)
         end = duration_type.get_end_time_for_start(start)
         return start, end, duration_type
