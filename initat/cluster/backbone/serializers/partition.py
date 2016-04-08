@@ -47,7 +47,7 @@ class partition_serializer(serializers.ModelSerializer):
 
 
 class partition_fs_serializer(serializers.ModelSerializer):
-    need_mountpoint = serializers.ReadOnlyField(source="need_mountpoint")
+    need_mountpoint = serializers.ReadOnlyField()
 
     class Meta:
         model = partition_fs

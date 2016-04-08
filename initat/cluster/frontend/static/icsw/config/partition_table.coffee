@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2015 init.at
+# Copyright (C) 2012-2016 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -17,71 +17,192 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+
 partition_table_module = angular.module(
     "icsw.config.partition_table",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "ui.select", "restangular"
     ]
-).controller("icswConfigPartitionTableCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$timeout", "ICSW_URLS", "icswToolsSimpleModalService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $timeout, ICSW_URLS, icswToolsSimpleModalService) ->
-        $scope.entries = []
-        $scope.edit_pts = []
-        $scope.pagSettings = paginatorSettings.get_paginator("parts", $scope)
-        $scope.pagSettings.conf.filter_settings = {
-          
-        }
-        $scope.reload = (cb_func) ->
-            wait_list = [
-                restDataSource.reload([ICSW_URLS.REST_PARTITION_TABLE_LIST, {}]),
-                restDataSource.reload([ICSW_URLS.REST_PARTITION_FS_LIST, {}]),
+).directive("icswDevicePartitionEditOverview",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("icsw.device.partition.edit.overview")
+        controller: "icswDevicePartitionEditOverviewCtrl"
+    }
+]).service("icswPartitionTableTree",
+[
+    "ICSW_URLS", "$q", "$rootScope",
+(
+    ICSW_URLS, $q, $rootScope,
+) ->
+    class icswPartitionTableTree
+        constructor: (part_list, fs_list) ->
+            @list = []
+            @fs_list = []
+            @update(part_list, fs_list)
+
+        update: (part_list, fs_list) =>
+            @list.length = 0
+            for entry in part_list
+                @list.push(entry)
+            @fs_list.length = 0
+            for entry in fs_list
+                @fs_list.push(entry)
+            @build_luts()
+
+        build_luts: () =>
+            @lut = _.keyBy(@list, "key")
+            @fs_lut = _.keyBy(@fs_list, "key")
+
+]).service("icswPartitionTableTreeService",
+[
+    "$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall",
+    "icswTools", "$rootScope", "ICSW_SIGNALS", "icswPartitionTableTree",
+(
+    $q, Restangular, ICSW_URLS, $window, icswCachingCall,
+    icswTools, $rootScope, ICSW_SIGNALS, icswPartitionTableTree,
+) ->
+    rest_map = [
+        [
+            ICSW_URLS.REST_PARTITION_TABLE_LIST, {}
+        ]
+        [
+            ICSW_URLS.REST_PARTITION_FS_LIST, {}
+        ]
+    ]
+    _fetch_dict = {}
+    _result = undefined
+    # load called
+    load_called = false
+
+    load_data = (client) ->
+        load_called = true
+        _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in rest_map)
+        _defer = $q.defer()
+        $q.all(_wait_list).then(
+            (data) ->
+                console.log "*** partition tree loaded ***"
+                _result = new icswPartitionTableTree(data[0], data[1])
+                _defer.resolve(_result)
+                for client of _fetch_dict
+                    # resolve clients
+                    _fetch_dict[client].resolve(_result)
+                # $rootScope.$emit(ICSW_SIGNALS("ICSW_DEVICE_TREE_LOADED"), _result)
+                # reset fetch_dict
+                _fetch_dict = {}
+        )
+        return _defer
+
+    fetch_data = (client) ->
+        if client not of _fetch_dict
+            # register client
+            _defer = $q.defer()
+            _fetch_dict[client] = _defer
+        if _result
+            # resolve immediately
+            _fetch_dict[client].resolve(_result)
+        return _fetch_dict[client]
+
+    return {
+        "load": (client) ->
+            if load_called
+                # fetch when data is present (after sidebar)
+                return fetch_data(client).promise
+            else
+                return load_data(client).promise
+    }
+]).controller("icswDevicePartitionEditOverviewCtrl",
+[
+    "$scope", "$compile", "$filter", "$templateCache", "Restangular",
+    "restDataSource", "$q", "$timeout", "ICSW_URLS", "icswToolsSimpleModalService",
+    "icswPartitionTableTreeService",
+(
+    $scope, $compile, $filter, $templateCache, Restangular,
+    restDataSource, $q, $timeout, ICSW_URLS, icswToolsSimpleModalService,
+    icswPartitionTableTreeService,
+) ->
+    $scope.entries = []
+    $scope.edit_pts = []
+    $scope.struct = {
+        # loading flag
+        loading: false
+        # partition tree
+        partition_tree: undefined
+    }
+    $scope.reload = () ->
+        $scope.struct.loading = true
+        $q.all(
+            [
+                icswPartitionTableTreeService.load($scope.$id)
             ]
-            $q.all(wait_list).then((data) ->
-                $scope.entries = data[0]
-                $scope.partition_fs = data[1]
-                if cb_func?
-                    cb_func()
+        ).then(
+            (data) ->
+                $scope.struct.loading = false
+                $scope.struct.partition_tree = data[0]
+                console.log data[0]
+        )
+    $scope.xreload = (cb_func) ->
+        wait_list = [
+            restDataSource.reload([ICSW_URLS.REST_PARTITION_TABLE_LIST, {}]),
+            restDataSource.reload([ICSW_URLS.REST_PARTITION_FS_LIST, {}]),
+        ]
+        $q.all(wait_list).then((data) ->
+            $scope.entries = data[0]
+            $scope.partition_fs = data[1]
+            if cb_func?
+                cb_func()
+        )
+    $scope.create = () ->
+        names = (entry.name for entry in $scope.entries)
+        _idx = -1
+        while true
+            _idx += 1
+            new_name = if _idx then "new_part_#{_idx}" else "new_part"
+            if not (new_name in names)
+                break
+        Restangular.all(ICSW_URLS.REST_PARTITION_TABLE_LIST.slice(1)).post(
+            {
+                "name" : new_name
+                "sys_partition_set" : []
+                "lvm_vg_set" : []
+                "partition_disc_set" : []
+                "lvm_lv_set" : []
+            }
+        ).then((data) ->
+            $scope.reload(() ->
+                $scope.edit_part(data)
             )
-        $scope.create = () ->
-            names = (entry.name for entry in $scope.entries)
-            _idx = -1
-            while true
-                _idx += 1                  
-                new_name = if _idx then "new_part_#{_idx}" else "new_part"
-                if not (new_name in names)
-                    break
-            Restangular.all(ICSW_URLS.REST_PARTITION_TABLE_LIST.slice(1)).post(
-                {
-                    "name" : new_name
-                    "sys_partition_set" : []
-                    "lvm_vg_set" : []
-                    "partition_disc_set" : []
-                    "lvm_lv_set" : []
-                }
-            ).then((data) ->
-                $scope.reload(() ->
-                    $scope.edit_part(data)
+        )
+    $scope.delete_ok = (obj) ->
+        return if obj.new_partition_table.length + obj.act_partition_table.length == 0 then true else false
+    $scope.not_open = (obj) ->
+        return if (entry for entry in $scope.edit_pts when entry.idx == obj.idx).length then false else true
+    $scope.close_part = (obj) ->
+        $scope.edit_pts = (entry for entry in $scope.edit_pts when entry.idx != obj.idx)
+    $scope.delete = (obj) ->
+        icswToolsSimpleModalService("really delete partition table '#{obj.name}' ?").then(
+            () ->
+                obj.remove().then(
+                    $scope.close_part(obj)
+                    $scope.entries = (entry for entry in $scope.entries when entry.idx != obj.idx)
                 )
-            )
-        $scope.delete_ok = (obj) ->
-            return if obj.new_partition_table.length + obj.act_partition_table.length == 0 then true else false
-        $scope.not_open = (obj) ->
-            return if (entry for entry in $scope.edit_pts when entry.idx == obj.idx).length then false else true
-        $scope.close_part = (obj) ->
-            $scope.edit_pts = (entry for entry in $scope.edit_pts when entry.idx != obj.idx)
-        $scope.delete = (obj) ->
-            icswToolsSimpleModalService("really delete partition table '#{obj.name}' ?").then(
-                () ->
-                    obj.remove().then(
-                        $scope.close_part(obj)
-                        $scope.entries = (entry for entry in $scope.entries when entry.idx != obj.idx)
-                    )
-            )
-        $scope.edit_part = (obj) ->
-            edit_part = (entry for entry in $scope.entries when entry.idx == obj.idx)[0]
-            edit_part.tab_active = true
-            $scope.edit_pts.push(edit_part)
-        $scope.reload()
-]).directive("icswConfigDiskLayout", ["$compile", "$templateCache", "Restangular", "ICSW_URLS", "icswSimpleAjaxCall", "$q", ($compile, $templateCache, Restangular, ICSW_URLS, icswSimpleAjaxCall, $q) ->
+        )
+    $scope.edit_part = (obj) ->
+        edit_part = (entry for entry in $scope.entries when entry.idx == obj.idx)[0]
+        edit_part.tab_active = true
+        $scope.edit_pts.push(edit_part)
+    $scope.reload()
+]).directive("icswConfigDiskLayout",
+[
+    "$compile", "$templateCache", "Restangular", "ICSW_URLS", "icswSimpleAjaxCall", "$q",
+(
+    $compile, $templateCache, Restangular, ICSW_URLS, icswSimpleAjaxCall, $q
+) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.config.disk.layout")
@@ -97,12 +218,12 @@ partition_table_module = angular.module(
             )
             scope.valid_label_types = [
                 {
-                    "label" : "msdos",
-                    "info_string" : "MSDOS",
+                    label: "msdos"
+                    info_string: "MSDOS"
                 },
                 {
-                    "label" : "gpt",
-                    "info_string" : "GPT",
+                    label: "gpt"
+                    info_string: "GPT",
                 },
             ]
             scope.get_partition_fs = () ->
@@ -130,9 +251,9 @@ partition_table_module = angular.module(
                             cur_p = $(cur_p)
                             error_list.push(
                                 {
-                                    "msg" : cur_p.text()
-                                    "level" : parseInt(cur_p.attr("level"))
-                                    "global" : if parseInt(cur_p.attr("g_problem")) then true else false
+                                    msg: cur_p.text()
+                                    level: parseInt(cur_p.attr("level"))
+                                    global: if parseInt(cur_p.attr("g_problem")) then true else false
                                 }
                             )
                         is_valid = if parseInt($(xml).find("problems").attr("valid")) then true else false
@@ -174,7 +295,12 @@ partition_table_module = angular.module(
             scope.modify = () ->
                 scope.part.put()
     }
-]).directive("icswConfigPartitionTable", ["$compile", "$templateCache", ($compile, $templateCache) ->
+]).directive("icswConfigPartitionTable",
+[
+    "$compile", "$templateCache",
+(
+    $compile, $templateCache
+) ->
     return {
         restrict : "EA"
         scope : false
@@ -182,7 +308,12 @@ partition_table_module = angular.module(
         link : (scope, element, attrs) ->
              scope.edit_obj = scope.data
     }
-]).directive("icswConfigPartitionTableDisc", ["$compile", "$templateCache", "$q", "Restangular", "ICSW_URLS", ($compile, $templateCache, $q, Restangular, ICSW_URLS) ->
+]).directive("icswConfigPartitionTableDisc",
+[
+    "$compile", "$templateCache", "$q", "Restangular", "ICSW_URLS",
+(
+    $compile, $templateCache, $q, Restangular, ICSW_URLS
+) ->
     return {
         restrict : "EA"
         #replace : true
@@ -216,7 +347,12 @@ partition_table_module = angular.module(
                     "partition_hex" : "82"
                 }
     }
-]).directive("icswConfigPartitionTablePartition", ["$compile", "$templateCache", "$q", "Restangular", "ICSW_URLS", ($compile, $templateCache, $q, Restangular, ICSW_URLS) ->
+]).directive("icswConfigPartitionTablePartition",
+[
+    "$compile", "$templateCache", "$q", "Restangular", "ICSW_URLS",
+(
+    $compile, $templateCache, $q, Restangular, ICSW_URLS
+) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.config.partition.table.partition")
@@ -228,7 +364,12 @@ partition_table_module = angular.module(
             scope.part_edit.delete_list = scope.disc.partition_set
             scope.part_edit.delete_confirm_str = (obj) -> "Really delete partition '#{obj.pnum}' ?"
     }
-]).directive("icswConfigPartitionTableSystemPartition", ["$compile", "$templateCache", "$q", "Restangular", "ICSW_URLS", ($compile, $templateCache, $q, Restangular, ICSW_URLS) ->
+]).directive("icswConfigPartitionTableSystemPartition",
+[
+    "$compile", "$templateCache", "$q", "Restangular", "ICSW_URLS",
+(
+    $compile, $templateCache, $q, Restangular, ICSW_URLS
+) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.config.partition.table.system.partition")
@@ -239,10 +380,5 @@ partition_table_module = angular.module(
             scope.sys_edit.modify_rest_url = ICSW_URLS.REST_SYS_PARTITION_DETAIL.slice(1).slice(0, -2)
             scope.sys_edit.delete_list = scope.edit_obj.sys_partition_set
             scope.sys_edit.delete_confirm_str = (obj) -> "Really delete sys partition '#{obj.name}' ?"
-    }
-]).directive("icswConfigPartitionTableRow", ["$compile", "$templateCache", ($compile, $templateCache) ->
-    return {
-        restrict : "EA"
-        template : $templateCache.get("icsw.config.partition.table.row")
     }
 ])

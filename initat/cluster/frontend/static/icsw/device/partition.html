@@ -1,65 +1,106 @@
 <script type="text/ng-template" id="icsw/main/partition.html">
-    <div ng-controller="icswConfigPartitionTableCtrl">
-        <uib-tabset>
-            <uib-tab heading="Partitions">
-                <div class="col-sm-12">
-                    <h2>Partition tables ({{entries.length}} entries),
-                        <input class="btn btn-primary" type="button" ng-click="reload()" value="reload"/>&nbsp;
-                        <input class="btn btn-warning" type="button" ng-click="create()" value="create new"/>
-                    </h2>
-                    <table class="table table-condensed table-hover" style="width:auto;">
-                        <thead partitiontablehead></thead>
-                        <tbody>
-                            <tr><td colspan="8" paginator entries="entries" pag_settings="pagSettings" per_page="10"></td></tr>
-                            <tr icsw-config-partition-table-row ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
-                        </tbody>
-                        <tfoot>
-                        </tfoot>
-                    </table>
-                </div>
-            </uib-tab>
-            <uib-tab ng-repeat="part in edit_pts" active="part.tab_active">
-                <uib-tab-heading>
-                    <span class="glyphicon glyphicon-remove" ng-click="close_part(part)"></span>{{ part.name }}
-                </uib-tab-heading>
-                <div>
-                    <icsw-config-disk-layout partition_fs="partition_fs" part_table="part"></icsw-config-disk-layout>
-                </div>
-            </uib-tab>
-        </uib-tabset>
-    </div>
+    <icsw-device-partition-edit-overview></icsw-device-partition-edit-overview>
+</script>
+
+<script type="text/ng-template" id="icsw.device.partition.edit.overview">
+    <uib-alert type="warning" ng-show="struct.loading">Loading data from server...</uib-alert>
+    <uib-tabset>
+        <uib-tab heading="Partitions">
+            <h2>
+                Partition tables ({{ entries.length }} entries),
+                <icsw-tools-button type="reload" size="xs" ng-click="reload($event)"></icsw-tools-button>
+                &nbsp;
+                <icsw-tools-button type="create" size="xs" ng-click="create($event)"></icsw-tools-button>
+            </h2>
+            <table
+                st-table="entries_displayed"
+                st-safe-src="struct.partition_tree.list"
+                class="table table-condensed table-hover"
+                style="width:auto;"
+            >
+                <thead>
+                    <tr>
+                        <th colspan="99">
+                            <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                                 possible-items-by-page="10,20,50,100,200,500,1000">
+                            </div>
+                        </th>
+                    </tr>
+                    <tr>
+                        <th>Name</th>
+                        <th>Description</th>
+                        <th>enabled</th>
+                        <th>valid</th>
+                        <th>for nodes</th>
+                        <th>usage</th>
+                        <th colspan="2">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr ng-repeat="obj in entries_displayed">
+                        <td>{{ obj.name }}</td>
+                        <td>{{ obj.description }}</td>
+                        <td ng-class="obj.valid && 'success' || 'danger'">{{ obj.enabled | yesno1 }}</td>
+                        <td ng-class="obj.valid && 'success' || 'danger'">{{ obj.valid | yesno1  }}</td>
+                        <td ng-class="obj.valid && 'success' || 'danger'">{{ obj.nodeboot | yesno1 }}</td>
+                        <td class="text-center">
+                            {{ obj.act_partition_table.length }} / {{ obj.new_partition_table.length }}
+                        </td>
+                        <td>
+                            <icsw-tools-button type="modify" size="xs" ng-show="not_open(obj)" ng-click="modify($event, obj)"></icsw-tools-button>
+                        </td>
+                        <td>
+                            <icsw-tools-button type="delete" size="xs" ng-show="delete_ok(obj)" ng-click="delete($event, obj)"></icsw-tools-button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </uib-tab>
+        <uib-tab ng-repeat="part in edit_pts" active="part.tab_active">
+            <uib-tab-heading>
+                <span class="glyphicon glyphicon-remove" ng-click="close_part(part)"></span>{{ part.name }}
+            </uib-tab-heading>
+            <div>
+                <icsw-config-disk-layout partition_fs="partition_fs" part_table="part"></icsw-config-disk-layout>
+            </div>
+        </uib-tab>
+    </uib-tabset>
 </script>
 
 <script type="text/ng-template" id="partition.sys.form">
-    <form id="id_partition_sys_form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form">
+    <form class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form">
         <div>
             <h2>Sys Partition '{{ _edit_obj.name }}'</h2>
             <fieldset>
                 <legend>Base data</legend>
-                <div id="div_id_name" class="form-group">
-                    <label for="id_name" class="control-label col-sm-3 requiredField">
-                        Name<span class="asteriskField">*</span></label>
-
-                    <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="_edit_obj.name" required="True" type="text"></input></div>
+                <div class="form-group">
+                    <label class="control-label col-sm-3 requiredField">
+                        Name<span class="asteriskField">*</span>
+                    </label>
+                    <div class="controls col-sm-7">
+                        <input class="textinput textInput form-control" maxlength="192" name="name" ng-model="_edit_obj.name" required="True" type="text"/>
+                    </div>
                 </div>
             </fieldset>
             <fieldset>
                 <legend>Mount options</legend>
-                <div id="div_id_mountpoint" class="form-group">
-                    <label for="id_mountpoint" class="control-label col-sm-3 requiredField">
-                        Mountpoint<span class="asteriskField">*</span></label>
-
-                    <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_mountpoint" maxlength="192" name="mountpoint" ng-model="_edit_obj.mountpoint" required="True" type="text" value="/"></input></div>
+                <div class="form-group">
+                    <label class="control-label col-sm-3 requiredField">
+                        Mountpoint<span class="asteriskField">*</span>
+                    </label>
+                    <div class="controls col-sm-7">
+                        <input class="textinput textInput form-control" maxlength="192" name="mountpoint" ng-model="_edit_obj.mountpoint" required="True" type="text" value="/"/>
+                    </div>
                 </div>
-                <div id="div_id_mount_options" class="form-group">
-                    <label for="id_mount_options" class="control-label col-sm-3">
+                <div class="form-group">
+                    <label class="control-label col-sm-3">
                         Mount options
                     </label>
-
-                    <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_mount_options" maxlength="255" name="mount_options" ng-model="_edit_obj.mount_options" type="text"></input></div>
+                    <div class="controls col-sm-7">
+                        <input class="textinput textInput form-control" maxlength="255" name="mount_options" ng-model="_edit_obj.mount_options" type="text"/>
+                    </div>
                 </div>
             </fieldset>
-            <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="action_string"></input></div>
         </div>
     </form>
 </script>
@@ -120,37 +161,42 @@
 </script>
 
 <script type="text/ng-template" id="partition.form">
-    <form id="id_partition_form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form">
+    <form class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form">
         <div>
             <h2>Partition '{{ _edit_obj.pnum }}'</h2>
             <fieldset>
                 <legend>Base data</legend>
-                <div id="div_id_partition_disc" class="form-group">
-                    <label for="id_partition_disc" class="control-label col-sm-3 requiredField">
-                        Partition disc<span class="asteriskField">*</span></label>
-
+                <div class="form-group">
+                    <label class="control-label col-sm-3 requiredField">
+                        Partition disc<span class="asteriskField">*</span>
+                    </label>
                     <div class="controls col-sm-7">
                         <ui-select ng-model="_edit_obj.partition_disc" style="max-width:400px; min-width:240px;" ng-disabled="true">
-                            <ui-select-match class="ui-select-match" placeholder="select the disc">{{$select.selected.disc}}</ui-select-match>
+                            <ui-select-match class="ui-select-match" placeholder="select the disc">
+                                {{ $select.selected.disc }}
+                            </ui-select-match>
                             <ui-select-choices class="ui-select-choices" repeat="value.idx as value in edit_obj.partition_disc_set | orderBy:'disc'">
                                 <div ng-bind-html="value.disc | highlight: $select.search"></div>
                             </ui-select-choices>
                         </ui-select>
                     </div>
                 </div>
-                <div id="div_id_pnum" class="form-group">
-                    <label for="id_pnum" class="control-label col-sm-3 requiredField">
-                        Pnum<span class="asteriskField">*</span></label>
-
-                    <div class="controls col-sm-7"><input class="numberinput form-control" id="id_pnum" max="16" min="1" name="pnum" ng-model="_edit_obj.pnum" placeholder="partition" required="True" type="number"></input></div>
+                <div class="form-group">
+                    <label class="control-label col-sm-3 requiredField">
+                        Pnum<span class="asteriskField">*</span>
+                    </label>
+                    <div class="controls col-sm-7">
+                        <input class="numberinput form-control" max="16" min="1" name="pnum" ng-model="_edit_obj.pnum" placeholder="partition" required="True" type="number"/>
+                    </div>
                 </div>
-                <div id="div_id_partition_fs" class="form-group">
-                    <label for="id_partition_fs" class="control-label col-sm-3 requiredField">
-                        Partition fs<span class="asteriskField">*</span></label>
-
+                <div class="form-group">
+                    <label class="control-label col-sm-3 requiredField">
+                        Partition fs<span class="asteriskField">*</span>
+                    </label>
                     <div class="controls col-sm-7">
                         <ui-select ng-model="_edit_obj.partition_fs" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                            <ui-select-match class="ui-select-match" placeholder="partition filesystem">{{$select.selected.full_info}}
+                            <ui-select-match class="ui-select-match" placeholder="partition filesystem">
+                                {{ $select.selected.full_info }}
                             </ui-select-match>
                             <ui-select-choices class="ui-select-choices" repeat="value.idx as value in this.get_partition_fs() | orderBy:'name'">
                                 <div ng-bind-html="value.full_info | highlight: $select.search"></div>
@@ -158,110 +204,119 @@
                         </ui-select>
                     </div>
                 </div>
-                <div id="div_id_size" class="form-group">
-                    <label for="id_size" class="control-label col-sm-3">
+                <div class="form-group">
+                    <label class="control-label col-sm-3">
                         Size
                     </label>
-
-                    <div class="controls col-sm-7"><input class="numberinput form-control" id="id_size" max="1000000000000" min="0" name="size" ng-model="_edit_obj.size" type="number" value="100"></input></div>
+                    <div class="controls col-sm-7">
+                        <input class="numberinput form-control" max="1000000000000" min="0" name="size" ng-model="_edit_obj.size" type="number" value="100"/>
+                    </div>
                 </div>
-                <div id="div_id_partition_hex" class="form-group">
-                    <label for="id_partition_hex" class="control-label col-sm-3">
+                <div class="form-group">
+                    <label class="control-label col-sm-3">
                         Partition hex
                     </label>
-
-                    <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_partition_hex" maxlength="6" name="partition_hex" ng-model="_edit_obj.partition_hex" readonly type="text"></input></div>
+                    <div class="controls col-sm-7">
+                        <input class="textinput textInput form-control" maxlength="6" name="partition_hex" ng-model="_edit_obj.partition_hex" readonly type="text"/>
+                    </div>
                 </div>
             </fieldset>
             <fieldset>
                 <legend>Partition flags</legend>
                 <div class="form-group">
-                    <div id="div_id_bootable" class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_bootable"><input class="checkboxinput checkbox" id="id_bootable" name="bootable" ng-model="_edit_obj.bootable" type="checkbox"></input>
-                            Bootable
-                        </label></div>
+                    <div class="checkbox">
+                        <div class="controls col-lg-offset-0 col-sm-7">
+                            <label>
+                                <input class="checkboxinput checkbox" name="bootable" ng-model="_edit_obj.bootable" type="checkbox"/>
+                                Bootable
+                            </label>
+                        </div>
                     </div>
                 </div>
             </fieldset>
             <fieldset>
                 <legend>Mount options</legend>
-                <div id="div_id_mountpoint" class="form-group" ng_show="partition_need_mountpoint(_edit_obj)">
-                    <label for="id_mountpoint" class="control-label col-sm-3">
+                <div class="form-group" ng_show="partition_need_mountpoint(_edit_obj)">
+                    <label class="control-label col-sm-3">
                         Mountpoint
                     </label>
-
-                    <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_mountpoint" maxlength="192" name="mountpoint" ng-model="_edit_obj.mountpoint" type="text" value="/"></input></div>
+                    <div class="controls col-sm-7">
+                        <input class="textinput textInput form-control" maxlength="192" name="mountpoint" ng-model="_edit_obj.mountpoint" type="text" value="/"/>
+                    </div>
                 </div>
-                <div id="div_id_mount_options" class="form-group" ng_show="partition_need_mountpoint(_edit_obj)">
-                    <label for="id_mount_options" class="control-label col-sm-3">
+                <div class="form-group" ng_show="partition_need_mountpoint(_edit_obj)">
+                    <label class="control-label col-sm-3">
                         Mount options
                     </label>
-
-                    <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_mount_options" maxlength="255" name="mount_options" ng-model="_edit_obj.mount_options" type="text" value="defaults"></input></div>
+                    <div class="controls col-sm-7">
+                        <input class="textinput textInput form-control" maxlength="255" name="mount_options" ng-model="_edit_obj.mount_options" type="text" value="defaults"/>
+                    </div>
                 </div>
-                <div id="div_id_fs_freq" class="form-group" ng_show="partition_need_mountpoint(_edit_obj)">
-                    <label for="id_fs_freq" class="control-label col-sm-3">
+                <div class="form-group" ng_show="partition_need_mountpoint(_edit_obj)">
+                    <label class="control-label col-sm-3">
                         Fs freq
                     </label>
-
-                    <div class="controls col-sm-7"><input class="numberinput form-control" id="id_fs_freq" max="1" min="0" name="fs_freq" ng-model="_edit_obj.fs_freq" type="number" value="0"></input></div>
+                    <div class="controls col-sm-7">
+                        <input class="numberinput form-control" max="1" min="0" name="fs_freq" ng-model="_edit_obj.fs_freq" type="number" value="0"/>
+                    </div>
                 </div>
-                <div id="div_id_fs_passno" class="form-group" ng_show="partition_need_mountpoint(_edit_obj)">
-                    <label for="id_fs_passno" class="control-label col-sm-3">
+                <div class="form-group" ng_show="partition_need_mountpoint(_edit_obj)">
+                    <label class="control-label col-sm-3">
                         Fs passno
                     </label>
-
-                    <div class="controls col-sm-7"><input class="numberinput form-control" id="id_fs_passno" max="2" min="0" name="fs_passno" ng-model="_edit_obj.fs_passno" type="number" value="0"></input></div>
+                    <div class="controls col-sm-7">
+                        <input class="numberinput form-control" max="2" min="0" name="fs_passno" ng-model="_edit_obj.fs_passno" type="number" value="0"/>
+                    </div>
                 </div>
             </fieldset>
             <fieldset>
                 <legend>Check thresholds</legend>
-                <div id="div_id_warn_threshold" class="form-group" ng_show="partition_need_mountpoint(_edit_obj)">
-                    <label for="id_warn_threshold" class="control-label col-sm-3">
+                <div class="form-group" ng_show="partition_need_mountpoint(_edit_obj)">
+                    <label class="control-label col-sm-3">
                         Warn threshold
                     </label>
-
                     <div class="controls col-sm-7">
-                        <input class="numberinput form-control" id="id_warn_threshold" max="100" min="0" name="warn_threshold" ng-model="_edit_obj.warn_threshold" type="number" value="85"></input>
+                        <input class="numberinput form-control" max="100" min="0" name="warn_threshold" ng-model="_edit_obj.warn_threshold" type="number" value="85"/>
                     </div>
                 </div>
-                <div id="div_id_crit_threshold" class="form-group" ng_show="partition_need_mountpoint(_edit_obj)">
-                    <label for="id_crit_threshold" class="control-label col-sm-3">
+                <div class="form-group" ng_show="partition_need_mountpoint(_edit_obj)">
+                    <label class="control-label col-sm-3">
                         Crit threshold
                     </label>
-
                     <div class="controls col-sm-7">
-                        <input class="numberinput form-control" id="id_crit_threshold" max="100" min="0" name="crit_threshold" ng-model="_edit_obj.crit_threshold" type="number" value="95"></input>
+                        <input class="numberinput form-control" max="100" min="0" name="crit_threshold" ng-model="_edit_obj.crit_threshold" type="number" value="95"/>
                     </div>
                 </div>
             </fieldset>
-            <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="action_string"></input></div>
         </div>
     </form>
 </script>
 
 <script type="text/ng-template" id="partition.table.form">
-    <form id="id_partition_form" class="form-horizontal" ng-submit="modify()" name="form">
+    <form class="form-horizontal" ng-submit="modify()" name="form">
         <div>
             <h3>Partition table '{{ edit_obj.name }}'</h3>
             <fieldset>
                 <legend>Base data</legend>
                 <div class="row">
                     <div class="col-md-6">
-                        <div id="div_id_name" class="form-group  ng-class:cur_edit.form_error('name')">
-                            <label for="id_name" class="control-label col-sm-3 requiredField">
-                                Name<span class="asteriskField">*</span></label>
-
-                            <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" placeholder="Name" required="True" type="text"></input></div>
+                        <div class="form-group  ng-class:cur_edit.form_error('name')">
+                            <label class="control-label col-sm-3 requiredField">
+                                Name<span class="asteriskField">*</span>
+                            </label>
+                            <div class="controls col-sm-7">
+                                <input class="textinput textInput form-control" maxlength="192" name="name" ng-model="edit_obj.name" placeholder="Name" required="True" type="text"/>
+                            </div>
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <div id="div_id_description" class="form-group  ng-class:cur_edit.form_error('description')">
-                            <label for="id_description" class="control-label col-sm-3">
+                        <div class="form-group  ng-class:cur_edit.form_error('description')">
+                            <label class="control-label col-sm-3">
                                 Description
                             </label>
-
-                            <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_description" maxlength="255" name="description" ng-model="edit_obj.description" placeholder="Description" type="text"></input></div>
+                            <div class="controls col-sm-7">
+                                <input class="textinput textInput form-control" maxlength="255" name="description" ng-model="edit_obj.description" placeholder="Description" type="text"/>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -271,23 +326,28 @@
                 <div class="row">
                     <div class="col-md-4">
                         <div class="form-group">
-                            <div id="div_id_enabled" class="checkbox">
-                                <div class="controls col-lg-offset-0 col-sm-7"><label for="id_enabled"><input checked="checked" class="checkboxinput checkbox" id="id_enabled" name="enabled" ng-model="edit_obj.enabled" type="checkbox"></input>
-                                    Enabled
-                                </label></div>
+                            <div class="checkbox">
+                                <div class="controls col-lg-offset-0 col-sm-7">
+                                    <label>
+                                        <input checked="checked" class="checkboxinput checkbox" name="enabled" ng-model="edit_obj.enabled" type="checkbox"/>
+                                        Enabled
+                                    </label>
+                                </div>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-4">
                         <div class="form-group">
-                            <div id="div_id_nodeboot" class="checkbox">
-                                <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nodeboot"><input class="checkboxinput checkbox" id="id_nodeboot" name="nodeboot" ng-model="edit_obj.nodeboot" type="checkbox"></input>
-                                    Nodeboot
-                                </label></div>
+                            <div class="checkbox">
+                                <div class="controls col-lg-offset-0 col-sm-7">
+                                    <label>
+                                        <input class="checkboxinput checkbox" name="nodeboot" ng-model="edit_obj.nodeboot" type="checkbox"/>
+                                        Nodeboot
+                                    </label>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-4"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="submit"></input></div>
                 </div>
             </fieldset>
         </div>
@@ -295,32 +355,34 @@
 </script>
 
 <script type="text/ng-template" id="partition.disc.form">
-    <form id="id_partition_disc_form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form">
+    <form class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form">
         <div>
             <h2>Disc '{{ _edit_obj.disc }}'</h2>
             <fieldset>
                 <legend>Base data</legend>
-                <div id="div_id_disc" class="form-group  ng-class:cur_edit.form_error('disc')">
-                    <label for="id_disc" class="control-label col-sm-3 requiredField">
-                        Disc<span class="asteriskField">*</span></label>
-
-                    <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_disc" maxlength="192" name="disc" ng-model="_edit_obj.disc" placeholder="discname" required="True" type="text"></input></div>
+                <div class="form-group  ng-class:cur_edit.form_error('disc')">
+                    <label class="control-label col-sm-3 requiredField">
+                        Disc<span class="asteriskField">*</span>
+                    </label>
+                    <div class="controls col-sm-7">
+                        <input class="textinput textInput form-control" maxlength="192" name="disc" ng-model="_edit_obj.disc" placeholder="discname" required="True" type="text"/>
+                    </div>
                 </div>
             </fieldset>
             <fieldset>
                 <legend>label type</legend>
-                <div id="div_id_label_type" class="form-group">
-                    <label for="id_label_type" class="control-label col-sm-3 requiredField">
-                        Label type<span class="asteriskField">*</span></label>
-
-                    <div class="controls col-sm-7"><select class="select form-control" id="id_label_type" name="label_type" ng-model="_edit_obj.label_type" ng-options="value.label as value.info_string for value in valid_label_types" required="True">
-                        <option value="gpt" selected>GPT</option>
-                        <option value="msdos">MSDOS</option>
-                    </select></div>
+                <div class="form-group">
+                    <label class="control-label col-sm-3 requiredField">
+                        Label type<span class="asteriskField">*</span>
+                    </label>
+                    <div class="controls col-sm-7">
+                        <select class="select form-control" name="label_type" ng-model="_edit_obj.label_type" ng-options="value.label as value.info_string for value in valid_label_types" required="True">
+                            <option value="gpt" selected>GPT</option>
+                            <option value="msdos">MSDOS</option>
+                        </select>
+                    </div>
                 </div>
             </fieldset>
-            <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="action_string"></input></div>
         </div>
     </form>
 </script>
-
