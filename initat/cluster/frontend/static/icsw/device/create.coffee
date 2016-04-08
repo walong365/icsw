@@ -55,14 +55,14 @@ angular.module(
     $scope.base_open = true
     $scope.resolve_pending = false
     $scope.device_data = {
-        full_name        : "www.orf.at"
-        comment          : "new device, created at " + moment().format()
-        device_group     : "newgroup"
-        ip               : ""
-        resolve_via_ip   : true
-        routing_capable  : false
-        peer             : 0
-        icon_name        : "linux40"
+        full_name: "www.orf.at"
+        comment: "new device, created at " + moment().format()
+        device_group: "newgroup"
+        ip: ""
+        resolve_via_ip: true
+        routing_capable: false
+        peer: 0
+        icon_name: "linux40"
     }
     $scope.data_ready = false
 

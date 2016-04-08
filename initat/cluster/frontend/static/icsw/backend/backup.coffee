@@ -475,4 +475,16 @@ angular.module(
                 "device_groups", "members", "service_templates", "service_esc_templates",
             ]
 
+]).service("icswDeviceMonitoringBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswDeviceMonitoringBackupDefinition extends icswBackupDefinition
+
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "monitor_server", "nagvis_parent", "automap_root_nagvis",
+                "mon_resolve_name", "monitor_checks", "flap_detection_enabled",
+                "enable_perfdata", "mon_ext_host", "md_cache_mode", "mon_device_templ",
+            ]
+
 ])

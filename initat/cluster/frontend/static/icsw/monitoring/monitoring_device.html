@@ -1,76 +1,100 @@
 
 <script type="text/ng-template" id="icsw.monitoring.device">
 
-    <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringDeviceService"
-                           st-table="entries_displayed" st-safe-src="entries" icsw-tools-table-leak-filtered="entries_filtered">
-        <h2>Devices ({{ entries_filtered.length }} entries)</h2>
-        <h3 ng-show="entries.length == 0">Please select devices in the tree to the left.</h3>
-        <table
-               class="table table-condensed table-hover" style="width:auto;">
-            <thead>
-                <tr>
-                    <td colspan="99">
-                        <input st-search="" class="form-control" placeholder="filter ..." type="text"/>
-                    </td>
-                </tr>
-                <tr>
-                    <td colspan="99">
-                        <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
-                             possible-items-by-page="10,20,50,100,200,500,1000"></div>
-                    </td>
-                </tr>
-                <tr>
-                    <th st-sort="full_name" st-sort-default="true">Name</th>
-                    <th st-sort="monitor_checks">Checks</th>
-                    <th st-sort="mon_resolve_name">Resolve</th>
-                    <th st-sort="mon_device_templ">Template</th>
-                    <th st-sort="md_cache_mode">Cache mode</th>
-                    <th st-sort="act_partition_table">Disk layout</th>
-                    <th st-sort="mon_ext_host">Image</th>
-                    <th st-sort="enable_perfdata">PerfData</th>
-                    <th st-sort="flap_detection_enabled">Flap</th>
-                    <th st-sort="automap_root_nagvis">NVroot</th>
-                    <th st-sort="nagvis_parent">NVparent</th>
-                    <th st-sort="monitor_server">MonServer</th>
-                    <th colspan="1" class="text-center">Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr ng-repeat="obj in entries_displayed">
-                    <td>{{ obj.full_name }}</td>
-                    <td>{{ obj.monitor_checks | yesno1 }}</td>
-                    <td>{{ obj.mon_resolve_name | yesno2 }}</td>
-                    <td>{{ obj.mon_device_templ | array_lookup:config_service.mon_device_templ:"name" }}</td>
-                    <td>{{ obj.md_cache_mode | array_lookup:config_service.md_cache_modes:"name" }}</td>
-                    <td>{{ obj.act_partition_table | yesno1 }}</td>
-                    <td class="text-center">
-        <span ng-if="obj.mon_ext_host">
-            <img ng-src="{{ obj.mon_ext_host | array_lookup:config_service.mon_ext_host:'data_image' }}" width="24px"
-                 height="24px"></img>
-        </span>
-        <span ng-if="obj.mon_ext_host == null">
-            ---
-        </span>
-                    </td>
-                    <td>{{ obj.enable_perfdata | yesno1 }}</td>
-                    <td>{{ obj.flap_detection_enabled | yesno1 }}</td>
-                    <td>{{ obj.automap_root_nagvis | yesno1 }}</td>
-                    <td>{{ obj.nagvis_parent | array_lookup:entries:"name" }}</td>
-                    <td>{{ obj.monitor_server | array_lookup:config_service.mon_server:"full_name":"Master" }}</td>
-                    <td>
-                        <icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)" value="modify"/>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-    </icsw-tools-rest-table>
-
+    <uib-alert type="warning" ng-show="struct.loading">Fetching data from server...</uib-alert>
+    <h2>Devices ({{ struct.devices.length }} entries)</h2>
+    <table
+        st-table="entries_displayed"
+        st-safe-src="struct.devices"
+        class="table table-condensed table-hover"
+        style="width:auto;"
+        ng-show="struct.devices.length"
+    >
+        <thead>
+            <tr>
+                <td colspan="99">
+                    <input st-search="" class="form-control" placeholder="filter ..." type="text"/>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="99">
+                    <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                         possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                </td>
+            </tr>
+            <tr>
+                <th st-sort="full_name" st-sort-default="true">Name</th>
+                <th st-sort="monitor_checks">Checks</th>
+                <th st-sort="mon_resolve_name">Resolve</th>
+                <th st-sort="mon_device_templ">Template</th>
+                <th st-sort="md_cache_mode">Cache mode</th>
+                <th st-sort="act_partition_table">Disk layout</th>
+                <th st-sort="mon_ext_host">Image</th>
+                <th st-sort="enable_perfdata">PerfData</th>
+                <th st-sort="flap_detection_enabled">Flap</th>
+                <th st-sort="automap_root_nagvis">NVroot</th>
+                <th st-sort="nagvis_parent">NVparent</th>
+                <th st-sort="monitor_server">MonServer</th>
+                <th colspan="1" class="text-center">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="obj in entries_displayed">
+                <td>{{ obj.full_name }}</td>
+                <td>{{ obj.monitor_checks | yesno1 }}</td>
+                <td>{{ obj.mon_resolve_name | yesno2 }}</td>
+                <td>
+                    <span ng-show="obj.mon_device_templ">
+                        {{ struct.base_tree.mon_device_templ_lut[obj.mon_device_templ].name }}
+                    </span>
+                    <span ng-show="!obj.mon_device_templ">
+                        ---
+                    </span>
+                </td>
+                <td>{{ md_cache_lut[obj.md_cache_mode].name }}</td>
+                <td>{{ obj.act_partition_table | yesno1 }}</td>
+                <td class="text-center">
+                    <span ng-show="obj.mon_ext_host">
+                        <img
+                            ng-src="{{ struct.base_tree.mon_ext_host_lut[obj.mon_ext_host].data_image }}"
+                            width="24px"
+                            height="24px"
+                        ></img>
+                    </span>
+                    <span ng-show="!obj.mon_ext_host">
+                        ---
+                    </span>
+                </td>
+                <td>{{ obj.enable_perfdata | yesno1 }}</td>
+                <td>{{ obj.flap_detection_enabled | yesno1 }}</td>
+                <td>{{ obj.automap_root_nagvis | yesno1 }}</td>
+                <td>
+                    <span ng-show="obj.nagvis_parent">
+                        {{ struct.device_tree.all_lut[obj.nagvis_parent].full_name }}
+                    </span>
+                    <span ng-show="!obj.nagvis_parent">
+                        ---
+                    </span>
+                </td>
+                <td>
+                    <span ng-show="obj.monitor_master">
+                        {{ struct.device_tree.all_lut[obj.monitor_server].full_name }}
+                    </span>
+                    <span ng-show="!obj.monitor_master">
+                        Master
+                    </span>
+                </td>
+                <td>
+                    <icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)" value="modify"/>
+                </td>
+            </tr>
+        </tbody>
+    </table>
 </script>
 
 
-<script type="text/ng-template" id="device.monitoring.form">
-    <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
-        <h2>Monitoring settings for {{ edit_obj.full_name }}</h2>
+<script type="text/ng-template" id="icsw.device.monitoring.form">
+    <form class="form-horizontal" name="form_data">
         <fieldset>
             <legend>Basic settings</legend>
             <div class="form-group">
@@ -78,9 +102,10 @@
                     Md cache mode<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.md_cache_mode" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                        <ui-select-match class="ui-select-match" placeholder="please select a cache mode">{{ $select.selected.name }}</ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.md_cache_modes| props_filter:{name:$select.search}">
+                    <ui-select ng-model="edit_obj.md_cache_mode" style="max-width:400px; min-width:240px;">
+                        <ui-select-match class="ui-select-match" placeholder="please select a cache mode">
+                            {{ $select.selected.name }}</ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in md_cache_modes| props_filter:{name:$select.search}">
                             <div ng-bind-html="value.name | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
@@ -92,9 +117,11 @@
                 </label>
                 <div class="controls col-sm-7">
                     <div class="input-group" style="max-width:400px; min-width:240px;">
-                        <ui-select ng-model="edit_obj.mon_device_templ" ng-disabled="false">
-                            <ui-select-match class="ui-select-match" placeholder="please select a device template">{{ $select.selected.name }}</ui-select-match>
-                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.mon_device_templ| props_filter:{name:$select.search}">
+                        <ui-select ng-model="edit_obj.mon_device_templ">
+                            <ui-select-match class="ui-select-match" placeholder="please select a device template">
+                                {{ $select.selected.name }}
+                            </ui-select-match>
+                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in base_tree.mon_device_templ_list | props_filter:{name:$select.search}">
                                 <div ng-bind-html="value.name | highlight: $select.search"></div>
                             </ui-select-choices>
                         </ui-select>
@@ -112,13 +139,14 @@
                 </label>
                 <div class="controls col-sm-7">
                     <div class="input-group" style="max-width:400px; min-width:240px;">
-                        <ui-select ng-model="edit_obj.mon_ext_host" ng-disabled="false">
-                            <ui-select-match class="ui-select-match" placeholder="please select an icon">{{ $select.selected.name }}</ui-select-match>
-                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.mon_ext_host| props_filter:{name:$select.search}">
+                        <ui-select ng-model="edit_obj.mon_ext_host">
+                            <ui-select-match class="ui-select-match" placeholder="please select an icon">
+                                {{ $select.selected.name }}
+                            </ui-select-match>
+                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in base_tree.mon_ext_host_list | props_filter:{name:$select.search}">
                                 <img ng-src="{{ value.data_image }}"></img>
-                                <span ng-bind-html="value.name | highlight:$select.search">
-
-                                </span></ui-select-choices>
+                                <span ng-bind-html="value.name | highlight:$select.search"></span>
+                            </ui-select-choices>
                         </ui-select>
                         <span class="input-group-btn">
                             <button type="button" ng-click="edit_obj.mon_ext_host = undefined" class="btn btn-default">
@@ -134,9 +162,11 @@
                 </label>
                 <div class="controls col-sm-7">
                     <div class="input-group" style="max-width:400px; min-width:240px;">
-                        <ui-select ng-model="edit_obj.monitor_server" ng-disabled="false">
-                            <ui-select-match class="ui-select-match" placeholder="please select a monitoring server">{{ $select.selected.name }}</ui-select-match>
-                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.mon_server| props_filter:{name:$select.search}">
+                        <ui-select ng-model="edit_obj.monitor_server">
+                            <ui-select-match class="ui-select-match" placeholder="please select a monitoring server">
+                                {{ $select.selected.name }}
+                            </ui-select-match>
+                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in monitor_servers | props_filter:{name:$select.search}">
                                 <div ng-bind-html="value.name | highlight: $select.search"></div>
                             </ui-select-choices>
                         </ui-select>
@@ -154,45 +184,37 @@
             <div class="row">
                 <div class="col-md-6">
                     <div class="form-group">
-                        <div class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7">
-                                <label>
-                                    <input checked="checked" class="checkboxinput checkbox" name="enable_perfdata" ng-model="edit_obj.enable_perfdata" type="checkbox"/>
-                                    Enable perfdata, check IPMI and SNMP
-                                </label>
-                            </div>
+                        <label class="control-label col-sm-8">
+                            Enable perfdata, check IPMI and SNMP
+                        </label>
+                        <div class="controls col-sm-4">
+                            <icsw-tools-yes-no flag="edit_obj.enable_perfdata"></icsw-tools-yes-no>
                         </div>
                     </div>
                     <div class="form-group">
-                        <div class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7">
-                                <label>
-                                    <input checked="checked" class="checkboxinput checkbox" name="flap_detection_enabled" ng-model="edit_obj.flap_detection_enabled" type="checkbox"/>
-                                    Flap detection enabled
-                                </label>
-                            </div>
+                        <label class="control-label col-sm-8">
+                            Flap detection enabled
+                        </label>
+                        <div class="controls col-sm-4">
+                            <icsw-tools-yes-no flag="edit_obj.flap_detection_enabled"></icsw-tools-yes-no>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="form-group">
-                        <div class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7">
-                                <label>
-                                    <input checked="checked" class="checkboxinput checkbox" name="monitor_checks" ng-model="edit_obj.monitor_checks" type="checkbox"/>
-                                    Checks enabled
-                                </label>
-                            </div>
+                        <label class="control-label col-sm-8">
+                            Checks enabled
+                        </label>
+                        <div class="controls col-sm-4">
+                            <icsw-tools-yes-no flag="edit_obj.monitor_checks"></icsw-tools-yes-no>
                         </div>
                     </div>
                     <div class="form-group">
-                        <div class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7">
-                                <label>
-                                    <input checked="checked" class="checkboxinput checkbox" name="mon_resolve_name" ng-model="edit_obj.mon_resolve_name" type="checkbox"/>
-                                    Resolve to IP for monitoring
-                                </label>
-                            </div>
+                        <label class="control-label col-sm-8">
+                            Resolve to IP for monitoring
+                        </label>
+                        <div class="controls col-sm-4">
+                            <icsw-tools-yes-no flag="edit_obj.mon_resolve_name"></icsw-tools-yes-no>
                         </div>
                     </div>
                 </div>
@@ -202,11 +224,11 @@
             <legend>NagVis settings</legend>
             <div class="form-group">
                 <div class="checkbox">
-                    <div class="controls col-lg-offset-0 col-sm-7">
-                        <label>
-                            <input class="checkboxinput checkbox" name="automap_root_nagvis" ng-model="edit_obj.automap_root_nagvis" type="checkbox"/>
-                            Automap root nagvis
-                        </label>
+                    <label class="control-label col-sm-3">
+                        Automap root nagvis
+                    </label>
+                    <div class="controls col-sm-9">
+                        <icsw-tools-yes-no flag="edit_obj.automap_root_nagvis"></icsw-tools-yes-no>
                     </div>
                 </div>
             </div>
@@ -218,7 +240,7 @@
                     <div class="input-group" style="max-width:400px; min-width:240px;">
                         <ui-select ng-model="edit_obj.nagvis_parent" ng-disabled="false">
                             <ui-select-match class="ui-select-match" placeholder="select a nagvis parent">{{ $select.selected.name }}</ui-select-match>
-                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in entries | orderBy:'name'| props_filter:{name:$select.search, automap_root_nagvis:true}">
+                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in nagvis_list | orderBy:'name'| props_filter:{name:$select.search}">
                                 <div ng-bind-html="value.name | highlight: $select.search"></div>
                             </ui-select-choices>
                         </ui-select>
@@ -231,8 +253,5 @@
                 </div>
             </div>
         </fieldset>
-        <div class="form-actions">
-            <input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="get_action_string()"></input> <input type="button" name="fetch" value="Fetch disk layout" class="btn btn-warning" id="button-id-fetch" ng-click="config_service.fetch(this.edit_obj)"/>
-        </div>
     </form>
 </script>

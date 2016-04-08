@@ -18,11 +18,13 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-monitoring_basic_module = angular.module("icsw.monitoring.monitoring_basic",
-[
-    "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select",
-    "icsw.tools.table", "icsw.tools.button"
-]).directive("icswMonitoringBasic",
+monitoring_basic_module = angular.module(
+    "icsw.monitoring.monitoring_basic",
+    [
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select",
+        "icsw.tools.table", "icsw.tools.button"
+    ]
+).directive("icswMonitoringBasic",
 [
     "$templateCache",
 (
