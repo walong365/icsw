@@ -68,10 +68,10 @@ class license_liveview(View):
         _lic_dump = {}
         if result is not None:
             result = result.tree
-
-            _start_node = result.xpath(".//*[local-name() = 'license_usage']")
-            if len(_start_node):
-                _lic_dump = _dump_xml(_start_node[0])
+            # not needed
+            # _start_node = result.xpath(".//*[local-name() = 'license_usage']")
+            # if len(_start_node):
+            #     _lic_dump = _dump_xml(_start_node[0])
         request.xml_response["result"] = result
 
 
@@ -94,16 +94,25 @@ class license_state_coarse_list(ListAPIView):
         if LicenseLockListExtLicense.objects.is_ext_license_locked(LicenseEnum.license_optimisation_management, lic_id):
             return Response([])
         else:
-            LicenseUsage.log_usage(LicenseEnum.license_optimisation_management,
-                                   LicenseParameterTypeEnum.ext_lic,
-                                   lic_id)
+            LicenseUsage.log_usage(
+                LicenseEnum.license_optimisation_management,
+                LicenseParameterTypeEnum.ext_lic,
+                lic_id
+            )
 
-            logger.debug("retrieving data for license {} from {} to {}, type {}".format(lic_id, start, end,
-                                                                                        duration_type))
-            self.object_list =\
-                ext_license_state_coarse.objects.filter(ext_license_id=lic_id,
-                                                        ext_license_check_coarse__duration_type=duration_type.ID,
-                                                        ext_license_check_coarse__start_date__range=(start, end))
+            logger.debug(
+                "retrieving data for license {} from {} to {}, type {}".format(
+                    lic_id,
+                    start,
+                    end,
+                    duration_type
+                )
+            )
+            self.object_list = ext_license_state_coarse.objects.filter(
+                ext_license_id=lic_id,
+                ext_license_check_coarse__duration_type=duration_type.ID,
+                ext_license_check_coarse__start_date__range=(start, end)
+            )
 
             serializer = self.get_serializer(self.object_list, many=True)
             return Response(serializer.data)
@@ -158,12 +167,14 @@ class _license_usage_view(ListAPIView):
             name = entry[0][0]
             full_start_date = entry[0][1]
             val_sum = entry[1]
-            result.append({
-                'type': name,
-                'val': val_sum,
-                'full_start_date': full_start_date,
-                'display_date': duration_type.get_display_date(full_start_date)
-            })
+            result.append(
+                {
+                    'type': name,
+                    'val': val_sum,
+                    'full_start_date': full_start_date,
+                    'display_date': duration_type.get_display_date(full_start_date)
+                }
+            )
 
         return Response(result)
 

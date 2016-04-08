@@ -61,9 +61,9 @@ class get_all_licenses(ListAPIView):
                     'id': lic.id,
                     'name': lic.name,
                     'description': lic.description,
-                    'parameter_usage':
-                        {k.to_user_name(): v
-                         for k, v in LicenseUsage.get_license_usage(lic.enum_value).iteritems()},
+                    'parameter_usage': {
+                        k.to_user_name(): v for k, v in LicenseUsage.get_license_usage(lic.enum_value).iteritems()
+                    },
                 } for lic in get_available_licenses()
             ]
         )
@@ -86,15 +86,21 @@ class GetLicenseViolations(ListAPIView):
                     'type': 'hard' if viol.hard else 'soft',
                     'name': LicenseEnum.id_string_to_user_name(viol.license),
                     'revocation_date': viol.date + LicenseUsage.GRACE_PERIOD,
-                    }
+                }
                 for viol in LicenseViolation.objects.all()
             }
         )
 
 
 class GetValidLicenses(RetrieveAPIView):
-    @method_decorator(login_required_rest(lambda: {'valid_licenses': [],
-                                                   'all_licenses': [l.name for l in LicenseEnum]}))
+    @method_decorator(
+        login_required_rest(
+            lambda: {
+                'valid_licenses': [],
+                'all_licenses': [l.name for l in LicenseEnum]
+            }
+        )
+    )
     @rest_logging
     def get(self, request, *args, **kwargs):
         return Response(
