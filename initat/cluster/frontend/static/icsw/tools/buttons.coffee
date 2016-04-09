@@ -141,8 +141,13 @@ angular.module(
         scope:
             flag: "="
         link: (scope, element, attrs) ->
+            if attrs.disabled?
+                _disabled = true
+            else
+                _disabled = false
             scope.change_value = ($event) ->
-                scope.flag = !scope.flag
+                if not _disabled
+                    scope.flag = !scope.flag
                 $event.preventDefault()
 
             scope.get_value = () ->

@@ -528,4 +528,33 @@ angular.module(
             @simple_attributes = [
                 "name", "options", "mountpoint",
             ]
+]).service("icswKernelBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswKernelBackupDefinition extends icswBackupDefinition
+
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "name", "display_name", "kernel_version", "major", "minor",
+                "patchlevel", "version", "release", "builds", "build_machine",
+                "master_server", "master_role", "device",
+                "build_lock", "config_name", "cpu_arch", "sub_cpu_arch",
+                "target_dir", "comment", "enabled", "initrd_version",
+                "initrd_built", "module_list", "target_module_list",
+                "xen_host_kernel", "xen_guest_kernel", "bitcount",
+                "stage1_lo_present", "stage1_cpio_present", "stage1_cramfs_present",
+                "stage2_present",
+            ]
+]).service("icswImageBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswImageBackupDefinition extends icswBackupDefinition
+
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "name", "source", "version", "release", "builds",
+                "build_machine", "device", "build_lock", 
+                "size", "size_string", "sys_vendor", "sys_version", "sys_release",
+                "bitcount", "architecture", "full_build", "enabled",
+            ]
 ])
