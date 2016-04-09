@@ -106,7 +106,7 @@ class partition_table_serializer(serializers.ModelSerializer):
         model = partition_table
         fields = (
             "partition_disc_set", "lvm_lv_set", "lvm_vg_set", "name", "idx", "description", "valid",
-            "enabled", "nodeboot", "act_partition_table", "new_partition_table", "sys_partition_set",
+            "enabled", "nodeboot", "sys_partition_set",
             "device",
         )
         # otherwise the REST framework would try to store lvm_lv and lvm_vg

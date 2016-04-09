@@ -487,4 +487,45 @@ angular.module(
                 "enable_perfdata", "mon_ext_host", "md_cache_mode", "mon_device_templ",
             ]
 
+]).service("icswPartitionTableBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswPartitionTableBackupDefinition extends icswBackupDefinition
+
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "name", "description", "enabled", "nodeboot"
+            ]
+
+]).service("icswPartitionDiscBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswPartitionDiscBackupDefinition extends icswBackupDefinition
+
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "disc", "label_type", "priority",
+            ]
+
+]).service("icswPartitionBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswPartitionBackupDefinition extends icswBackupDefinition
+
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "partition_disc", "mountpoint", "partition_hex", "size",
+                "mount_options", "pnum", "bootable", "fs_freq", "fs_passno",
+                "partition_fs", "disk_by_info", "warn_threshold", "crit_threshold",
+            ]
+
+]).service("icswSysPartitionBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswSysPartitionBackupDefinition extends icswBackupDefinition
+
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "name", "options", "mountpoint",
+            ]
 ])
