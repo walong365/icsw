@@ -36,9 +36,9 @@ partition_table_module = angular.module(
     }
 ]).service("icswPartitionTableTree",
 [
-    "ICSW_URLS", "$q", "$rootScope",
+    "ICSW_URLS", "$q", "$rootScope", "Restangular",
 (
-    ICSW_URLS, $q, $rootScope,
+    ICSW_URLS, $q, $rootScope, Restangular,
 ) ->
     class icswPartitionTableTree
         constructor: (part_list, fs_list) ->
@@ -58,6 +58,30 @@ partition_table_module = angular.module(
         build_luts: () =>
             @lut = _.keyBy(@list, "key")
             @fs_lut = _.keyBy(@fs_list, "key")
+            @link()
+        
+        link: () =>
+            # create helper fields
+            for entry in @list
+                entry.$$td_class = if entry.valid then "success" else "danger"
+                if entry.new_partition_table.length or entry.act_partition_table.length
+                    entry.$$delete_ok = false
+                else
+                    entry.$$delete_ok = true
+
+        delete_partition_table: (part) ->
+            d = $q.defer()
+            Restangular.restangularizeElement(null, part, ICSW_URLS.REST_PARTITION_TABLE_DETAIL.slice(1).slice(0, -2))
+            part.remove().then(
+                (ok) =>
+                    # partition table deleted
+                    _.remove(@list, (entry) -> return entry.idx == part.idx)
+                    @build_luts()
+                    d.resolve("deleted")
+                (not_ok) =>
+                    d.reject("not deleted")
+            )
+            return d.promise
 
 ]).service("icswPartitionTableTreeService",
 [
@@ -120,11 +144,11 @@ partition_table_module = angular.module(
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular",
     "restDataSource", "$q", "$timeout", "ICSW_URLS", "icswToolsSimpleModalService",
-    "icswPartitionTableTreeService",
+    "icswPartitionTableTreeService", "blockUI",
 (
     $scope, $compile, $filter, $templateCache, Restangular,
     restDataSource, $q, $timeout, ICSW_URLS, icswToolsSimpleModalService,
-    icswPartitionTableTreeService,
+    icswPartitionTableTreeService, blockUI,
 ) ->
     $scope.entries = []
     $scope.edit_pts = []
@@ -133,6 +157,8 @@ partition_table_module = angular.module(
         loading: false
         # partition tree
         partition_tree: undefined
+        # edit partitions
+        edit_parts: []
     }
     $scope.reload = () ->
         $scope.struct.loading = true
@@ -178,24 +204,42 @@ partition_table_module = angular.module(
                 $scope.edit_part(data)
             )
         )
-    $scope.delete_ok = (obj) ->
-        return if obj.new_partition_table.length + obj.act_partition_table.length == 0 then true else false
-    $scope.not_open = (obj) ->
-        return if (entry for entry in $scope.edit_pts when entry.idx == obj.idx).length then false else true
-    $scope.close_part = (obj) ->
-        $scope.edit_pts = (entry for entry in $scope.edit_pts when entry.idx != obj.idx)
-    $scope.delete = (obj) ->
-        icswToolsSimpleModalService("really delete partition table '#{obj.name}' ?").then(
+    # tab functions
+    $scope.edit = ($event, part) ->
+        if !part.$$tab_open
+            part.$$tab_active = true
+            part.$$tab_open = true
+            $scope.struct.edit_parts.push(part)
+
+    $scope.close = ($event, part) ->
+        if part.$$tab_open
+            $timeout(
+                () ->
+                    part.$$tab_open = false
+                    _.remove($scope.struct.edit_parts, (entry) -> return !entry.$$tab_open)
+                10
+            )
+
+    $scope.delete = ($event, part) ->
+        icswToolsSimpleModalService("Really delete partition table '#{part.name}' ?").then(
             () ->
-                obj.remove().then(
-                    $scope.close_part(obj)
-                    $scope.entries = (entry for entry in $scope.entries when entry.idx != obj.idx)
+                blockUI.start("Deleting partition...")
+                $scope.struct.partition_tree.delete_partition_table(part).then(
+                    (ok) ->
+                        # close tab if open
+                        $scope.close_part(part)
+                        console.log "part deleted"
+                        blockUI.stop()
+                    (not_ok) ->
+                        console.log "not deleted"
+                        blockUI.stop()
                 )
+                #obj.remove().then(
+                #    $scope.close_part(obj)
+                #    $scope.entries = (entry for entry in $scope.entries when entry.idx != obj.idx)
+                #)
         )
-    $scope.edit_part = (obj) ->
-        edit_part = (entry for entry in $scope.entries when entry.idx == obj.idx)[0]
-        edit_part.tab_active = true
-        $scope.edit_pts.push(edit_part)
+
     $scope.reload()
 ]).directive("icswConfigDiskLayout",
 [
