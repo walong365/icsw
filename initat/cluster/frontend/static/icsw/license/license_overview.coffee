@@ -110,11 +110,11 @@ lic_module = angular.module("icsw.license.overview",
     }
 ]).controller("icswRMSLicenseLiveviewCtrl",
 [
-    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource",
-    "$q", "$uibModal", "icswAcessLevelService", "$timeout", "ICSW_URLS", "icswSimpleAjaxCall",
+    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q",
+    "$uibModal", "icswAcessLevelService", "$timeout", "ICSW_URLS", "icswSimpleAjaxCall",
 (
-    $scope, $compile, $filter, $templateCache, Restangular, restDataSource,
-    $q, $uibModal, icswAcessLevelService, $timeout, ICSW_URLS, icswSimpleAjaxCall
+    $scope, $compile, $filter, $templateCache, Restangular, $q,
+    $uibModal, icswAcessLevelService, $timeout, ICSW_URLS, icswSimpleAjaxCall
 ) ->
     $scope.servers = []
     $scope.licenses = []

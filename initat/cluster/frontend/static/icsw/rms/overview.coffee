@@ -193,8 +193,8 @@ rms_module = angular.module(
                     ordering: 0
         }
     )
-]).controller("icswRmsOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$uibModal", "icswAcessLevelService", "$timeout", "$sce", "ICSW_URLS", "icswSimpleAjaxCall", "$window"
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $uibModal, icswAcessLevelService, $timeout, $sce, ICSW_URLS, icswSimpleAjaxCall, $window) ->
+]).controller("icswRmsOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "$q", "$uibModal", "icswAcessLevelService", "$timeout", "$sce", "ICSW_URLS", "icswSimpleAjaxCall", "$window"
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, $q, $uibModal, icswAcessLevelService, $timeout, $sce, ICSW_URLS, icswSimpleAjaxCall, $window) ->
         icswAcessLevelService.install($scope)
         $scope.pagRun = paginatorSettings.get_paginator("run", $scope)
         $scope.pagWait = paginatorSettings.get_paginator("wait", $scope)

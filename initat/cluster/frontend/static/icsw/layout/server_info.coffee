@@ -56,14 +56,22 @@ angular.module(
         routing_info: {}
         # current timeout object
         cur_to: null
+        # unroutable config objects
+        unroutable_configs: undefined 
+        unroutable_config_names: []
     }
     $scope.$watch(
         () ->
             return icswAcessLevelService.acl_valid()
         (new_val) ->
             if new_val
-                $scope.struct.routing_info = icswAcessLevelService.get_routing_info().routing
-                $scope.struct.local_device = icswAcessLevelService.get_routing_info().local_device
+                _ri = icswAcessLevelService.get_routing_info()
+                $scope.struct.routing_info = _ri.routing
+                $scope.struct.local_device = _ri.local_device
+                $scope.struct.unroutable_configs = _ri.unroutable_configs
+                $scope.struct.unroutable_config_names =  []
+                for key, v of _ri.unroutable_configs
+                    $scope.struct.unroutable_config_names.push(key)
     )
     $scope.reload_server_info = () ->
         $scope.struct.loading = true

@@ -2,7 +2,7 @@
 #
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -36,10 +36,19 @@ class Command(BaseCommand):
     def handle(self, **options):
         _csr = routing.SrvTypeRouting(force=True)
         _rsd = _csr.resolv_dict
-        print("local device is {}".format(unicode(_csr.local_device)))
+        print(
+            "local device is {}".format(
+                unicode(_csr.local_device)
+            )
+        )
         for _conf in sorted(_rsd):
             _c_list = _rsd[_conf]
-            print("config '{}' ({})".format(_conf, logging_tools.get_plural("entry", len(_c_list))))
+            print(
+                "config '{}' ({})".format(
+                    _conf,
+                    logging_tools.get_plural("entry", len(_c_list))
+                )
+            )
             for _name, _ip, _dev_pk, _penalty, _conf_names in _c_list:
                 print(
                     "   {0:30s} {1:20s} pk={2:<4d} penalty={3:<4d}, config names: {4}".format(

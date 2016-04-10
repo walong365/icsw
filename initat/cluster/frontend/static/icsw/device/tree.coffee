@@ -286,7 +286,6 @@ angular.module(
                                 $scope.edit_obj.put().then(
                                     (data) ->
                                         # ToDo, FIXME, handle change (test?), move to DeviceTreeService
-                                        # icswTools.handle_reset(data, cur_f, $scope.edit_obj.idx)
                                         console.log "data", data
                                         if $scope.edit_obj.root_passwd
                                             # ToDo, FIXME, to be improved
@@ -296,7 +295,6 @@ angular.module(
                                         $scope.device_tree.reorder()
                                     (reject) ->
                                         # ToDo, FIXME, handle rest (test?)
-                                        # icswTools.handle_reset(resp.data, cur_f, $scope.edit_obj.idx)
                                         # two possibilites: restore and continue or reject, right now we use the second path
                                         # dbu.restore_backup(obj)
                                         d.reject("not saved")

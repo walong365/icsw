@@ -461,12 +461,10 @@ angular.module(
                             sub_scope.edit_obj.put().then(
                                 (data) ->
                                     # ToDo, FIXME, handle change (test?), move to DeviceTreeService
-                                    # icswTools.handle_reset(data, cur_f, $scope.edit_obj.idx)
                                     console.log "data", data
                                     d.resolve("save")
                                 (reject) ->
                                     # ToDo, FIXME, handle rest (test?)
-                                    # icswTools.handle_reset(resp.data, cur_f, $scope.edit_obj.idx)
                                     # two possibilites: restore and continue or reject, right now we use the second path
                                     # dbu.restore_backup(obj)
                                     d.reject("not saved")
@@ -590,12 +588,10 @@ angular.module(
                             sub_scope.edit_obj.put().then(
                                 (data) ->
                                     # ToDo, FIXME, handle change (test?), move to DeviceTreeService
-                                    # icswTools.handle_reset(data, cur_f, $scope.edit_obj.idx)
                                     console.log "data", data
                                     d.resolve("save")
                                 (reject) ->
                                     # ToDo, FIXME, handle rest (test?)
-                                    # icswTools.handle_reset(resp.data, cur_f, $scope.edit_obj.idx)
                                     # two possibilites: restore and continue or reject, right now we use the second path
                                     # dbu.restore_backup(obj)
                                     d.reject("not saved")
@@ -750,12 +746,10 @@ angular.module(
                             sub_scope.edit_obj.put().then(
                                 (data) ->
                                     # ToDo, FIXME, handle change (test?), move to DeviceTreeService
-                                    # icswTools.handle_reset(data, cur_f, $scope.edit_obj.idx)
                                     console.log "data", data
                                     d.resolve("save")
                                 (reject) ->
                                     # ToDo, FIXME, handle rest (test?)
-                                    # icswTools.handle_reset(resp.data, cur_f, $scope.edit_obj.idx)
                                     # two possibilites: restore and continue or reject, right now we use the second path
                                     # dbu.restore_backup(obj)
                                     d.reject("not saved")

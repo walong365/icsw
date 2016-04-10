@@ -9,7 +9,27 @@
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': struct.is_open_roles, 'glyphicon-chevron-right': !struct.is_open_roles}"></i>
                 {{ num_roles() }} valid cluster roles defined (viewed from {{ struct.local_device }})
                 <span class="text-warning" ng-show="struct.loading">Updating ...</span>
+                <span class="label label-danger" ng-show="struct.unroutable_config_names.length">There are {{ struct.unroutable_config_names.length }} unroutable configs</span>
             </uib-accordion-heading>
+            <uib-alert type="warning" ng-show="struct.unroutable_config_names.length">
+                <h2>Unroutable Configs</h2>
+                <table class="table table-hover table-striped" style="width:auto;">
+                    <thead>
+                        <tr>
+                            <th>Config</th>
+                            <th># devs</th>
+                            <th>devices</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr ng-repeat="conf in struct.unroutable_config_names">
+                            <td class="text-danger">{{ conf }}</td>
+                            <td class="text-danger">{{ struct.unroutable_configs[conf].length }}</td>
+                            <td>{{ struct.unroutable_configs[conf].join(", ") }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </uib-alert>
             <table class="table table-hover table-striped" style="width:auto;">
                 <thead>
                     <tr>

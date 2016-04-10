@@ -82,6 +82,7 @@ class get_routing_info(View):
             "service_types": {key: True for key in routing.SrvTypeRouting().service_types},
             "routing": cur_routing.resolv_dict,
             "local_device": unicode(cur_routing.local_device.full_name if cur_routing.local_device is not None else "UNKNOWN"),
+            "unroutable_configs": cur_routing.unroutable_configs,
         }
         return HttpResponse(json.dumps(_return), content_type="application/json")
 

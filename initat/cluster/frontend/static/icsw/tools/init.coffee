@@ -260,7 +260,13 @@ angular.module(
             if xml != null
                 toaster.pop("error", "A critical error occured", "error parsing response", 0)
         return success
-]).factory("msgbus", ["$rootScope", ($rootScope) ->
+]
+).factory("msgbus",
+[
+    "$rootScope",
+(
+    $rootScope
+) ->
     bus = {}
     bus.emit = (msg, data) ->
         # console.log "E", msg, "E", data
@@ -661,12 +667,15 @@ angular.module(
 
         # check if permission exists for any object (used for show/hide of entries of menu)
         has_menu_permission: has_menu_permission
+
         has_service_type: has_service_type
+
         has_any_menu_permission: (permissions) ->
             for p in permissions
                 if has_menu_permission(p)
                     return true
             return false
+
         has_all_menu_permissions: (permissions) ->
             for p in permissions
                 if not has_menu_permission(p)
@@ -674,18 +683,22 @@ angular.module(
             return true
 
         has_valid_license: has_valid_license
+
         get_routing_info: () ->
             return data.routing_info
+
         has_any_valid_license: (licenses) ->
             for l in licenses
                 if has_valid_license(l)
                     return true
             return false
+
         has_all_valid_licenses: (licenses) ->
             for l in licenses
                 if not has_valid_license(l)
                     return false
             return true
+
         has_all_service_types: (stypes) ->
             for s in stypes
                 if not has_service_type(s)
@@ -713,10 +726,14 @@ angular.module(
             product.menu_gfx_big_url = "#{ICSW_URLS.STATIC_URL}/#{new_data.name.toLowerCase()}-trans.png"
     )
     return product
-]).config(['$httpProvider',
-    ($httpProvider) ->
-        $httpProvider.defaults.xsrfCookieName = 'csrftoken'
-        $httpProvider.defaults.xsrfHeaderName = 'X-CSRFToken'
+]).config([
+    "$httpProvider",
+(
+    $httpProvider
+) ->
+    $httpProvider.defaults.xsrfCookieName = 'csrftoken'
+    $httpProvider.defaults.xsrfHeaderName = 'X-CSRFToken'
+
 ]).filter("paginator", ["$filter", ($filter) ->
     return (arr, scope, pagname) ->
         cur_ps = if pagname then scope.$eval(pagname) else scope.pagSettings
@@ -1094,7 +1111,9 @@ d3js_module = angular.module(
 ) ->
     d = $q.defer()
     on_script_load = () ->
-        $rootScope.$apply(() -> d.resolve(window.d3))
+        $rootScope.$apply(
+            () -> d.resolve(window.d3)
+        )
     script_tag = $document[0].createElement('script')
     script_tag.type = "text/javascript"
     script_tag.async = true
@@ -1106,30 +1125,39 @@ d3js_module = angular.module(
     s = $document[0].getElementsByTagName('body')[0]
     s.appendChild(script_tag)
     return {
-        "d3" : () -> return d.promise
+        "d3" : ()->
+            return d.promise
     }
 ])
 
 dimple_module = angular.module(
     "icsw.dimple", []
-).factory("dimple_service", ["$document", "$q", "$rootScope", "ICSW_URLS",
-    ($document, $q, $rootScope, ICSW_URLS) ->
-        d = $q.defer()
-        on_script_load = () ->
-            $rootScope.$apply(() -> d.resolve(window.dimple))
-        script_tag = $document[0].createElement('script')
-        script_tag.type = "text/javascript" 
-        script_tag.async = true
-        script_tag.src = ICSW_URLS.DIMPLE_MIN_JS
-        script_tag.onreadystatechange = () ->
-            if this.readyState == 'complete'
-                on_script_load()
-        script_tag.onload = on_script_load
-        s = $document[0].getElementsByTagName('body')[0]
-        s.appendChild(script_tag)
-        return {
-            "dimple" : () -> return d.promise
-        }
+).factory("dimple_service",
+[
+    "$document", "$q", "$rootScope", "ICSW_URLS",
+(
+    $document, $q, $rootScope, ICSW_URLS
+) ->
+    d = $q.defer()
+    on_script_load = () ->
+        $rootScope.$apply(
+            () ->
+                d.resolve(window.dimple)
+        )
+    script_tag = $document[0].createElement('script')
+    script_tag.type = "text/javascript"
+    script_tag.async = true
+    script_tag.src = ICSW_URLS.DIMPLE_MIN_JS
+    script_tag.onreadystatechange = () ->
+        if this.readyState == 'complete'
+            on_script_load()
+    script_tag.onload = on_script_load
+    s = $document[0].getElementsByTagName('body')[0]
+    s.appendChild(script_tag)
+    return {
+        "dimple" : () ->
+            return d.promise
+    }
 ])
 
 
@@ -1166,10 +1194,6 @@ angular.module(
             else
                 return null_msg
 ).filter(
-    "array_length", () ->
-        return (array) ->
-            return array.length
-).filter(
     "array_lookup", () ->
         return (in_value, f_array, fk_key, null_msg) ->
             if in_value == null or in_value == undefined
@@ -1202,10 +1226,6 @@ angular.module(
     "yesno2", () ->
         return (in_value) ->
             return if in_value then "yes" else "no"
-).filter(
-    "isset", () ->
-        return (in_value) ->
-            return if in_value then "set" else "not set"
 ).filter("limit_text", () ->
     return (text, max_len, show_info) ->
         if text.length > max_len
@@ -1356,13 +1376,13 @@ angular.module(
             return _defer.promise
     }
 
-]).directive("icswLogDomCreation", [() ->
-    return {
-        restrict: 'A'
-        link : (scope, el, attrs) ->
-            mom = moment()
-            console.log("creating element: ", attrs.icswLogDomCreation, scope.$index, mom.format(), mom.milliseconds())
-    }
+#]).directive("icswLogDomCreation", [() ->
+#    return {
+#        restrict: 'A'
+#        link : (scope, el, attrs) ->
+#            mom = moment()
+#            console.log("creating element: ", attrs.icswLogDomCreation, scope.$index, mom.format(), mom.milliseconds())
+#    }
 ]).filter('capitalize', () ->
     return (input, all) ->
         if (!!input)

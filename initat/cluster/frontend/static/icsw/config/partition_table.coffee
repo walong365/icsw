@@ -305,11 +305,11 @@ partition_table_module = angular.module(
 ]).controller("icswDevicePartitionEditOverviewCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular",
-    "restDataSource", "$q", "$timeout", "ICSW_URLS", "icswToolsSimpleModalService",
+    "$q", "$timeout", "ICSW_URLS", "icswToolsSimpleModalService",
     "icswPartitionTableTreeService", "blockUI", "icswComplexModalService", "toaster",
 (
     $scope, $compile, $filter, $templateCache, Restangular,
-    restDataSource, $q, $timeout, ICSW_URLS, icswToolsSimpleModalService,
+    $q, $timeout, ICSW_URLS, icswToolsSimpleModalService,
     icswPartitionTableTreeService, blockUI, icswComplexModalService, toaster,
 ) ->
     $scope.struct = {
