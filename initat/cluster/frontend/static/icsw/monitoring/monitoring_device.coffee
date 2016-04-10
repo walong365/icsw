@@ -106,7 +106,6 @@ monitoring_device_module = angular.module(
                 $scope.struct.devices.length = 0
                 for entry in devs
                     if not entry.is_meta_device
-                        console.log entry
                         $scope.struct.devices.push(entry)
         )
     $scope.edit = ($event, obj) ->

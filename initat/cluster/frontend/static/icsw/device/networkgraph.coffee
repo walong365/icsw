@@ -315,9 +315,11 @@ angular.module(
     }
 ]).directive("icswDeviceNetworkGraphInner",
 [
-    "d3_service", "dragging", "svg_tools", "blockUI", "ICSW_URLS", "$templateCache", "icswSimpleAjaxCall", "ICSW_SIGNALS", "$rootScope",
+    "d3_service", "dragging", "svg_tools", "blockUI", "ICSW_URLS", "$templateCache",
+    "icswSimpleAjaxCall", "ICSW_SIGNALS", "$rootScope",
 (
-    d3_service, dragging, svg_tools, blockUI, ICSW_URLS, $templateCache, icswSimpleAjaxCall, ICSW_SIGNALS, $rootScope
+    d3_service, dragging, svg_tools, blockUI, ICSW_URLS, $templateCache,
+    icswSimpleAjaxCall, ICSW_SIGNALS, $rootScope
 ) ->
     return {
         restrict : "EA"
@@ -347,11 +349,11 @@ angular.module(
                 )
                 console.log scope.draw_settings
                 icswSimpleAjaxCall(
-                    url      : ICSW_URLS.NETWORK_JSON_NETWORK
-                    data     :
-                        "graph_sel" : scope.draw_settings.draw_mode
-                        "devices": angular.toJson((dev.idx for dev in scope.draw_settings.devices))
-                    dataType : "json"
+                    url: ICSW_URLS.NETWORK_JSON_NETWORK
+                    data:
+                        graph_sel: scope.draw_settings.draw_mode
+                        devices: angular.toJson((dev.idx for dev in scope.draw_settings.devices))
+                    dataType: "json"
                 ).then(
                     (json) ->
                         blockUI.stop()
@@ -474,10 +476,16 @@ angular.module(
             # point.exit().remove()
 
 
-]).service("icswD3Element", ["svg_tools", (svg_tools) ->
+]).service("icswD3Element",
+[
+    "svg_tools",
+(
+    svg_tools
+) ->
     class icswD3Element
         constructor: () ->
         create: (selector, data) ->
+            console.log "data=", data
             ds = selector.data(data, (d) -> return d.id)
             ds.enter().append("circle").attr("class", "d3-point draggable")
             ds.attr('cx', (d) -> return d.x)
@@ -488,18 +496,49 @@ angular.module(
             # EXIT
             # point.exit().remove()
 
+]).service("icswD3Link",
+[
+    "svg_tools",
+(
+    svg_tools
+) ->
+    class icswD3Link
+        constructor: () ->
+        create: (selector, link, points) ->
+            console.log "link=", link
+            _id = 0
+            ds = selector.data(link, (d) ->
+                _id++
+                return _id
+            )
+            ds.enter().append("line")
+            .attr("class", "d3-link")
+            .attr("stroke", "#ff7788")
+            .attr("stroke-width", "4")
+            .attr("opacity", "1")
+            #ds.attr('x1', (d) -> return points[d.source].x)
+            #.attr('y1', (d) -> return points[d.source].y)
+            #.attr('x2', (d) -> return points[d.target].x)
+            #.attr("y2", (d) -> return points[d.target].y)
+            #.attr("id", (d) -> return d.id)
+            return ds
+            # EXIT
+            # point.exit().remove()
 
 ]).service("icswD3Test",
 [
-    "$templateCache", "d3_service", "svg_tools", "dragging", "mouseCaptureFactory", "icswTools", "icswD3Element",
+    "$templateCache", "d3_service", "svg_tools", "dragging", "mouseCaptureFactory",
+    "icswTools", "icswD3Element", "icswD3Link",
 (
-    $templateCache, d3_service, svg_tools, dragging, mouseCaptureFactory, icswTools, icswD3Element
+    $templateCache, d3_service, svg_tools, dragging, mouseCaptureFactory,
+    icswTools, icswD3Element, icswD3Link,
 ) ->
     class icswD3Test
 
         constructor: () ->
 
         create: (element, props, state, update_scale_fn) =>
+            @element = element
             draw_settings = state.settings
             _lut = {}
             for node in state.data
@@ -561,33 +600,33 @@ angular.module(
                                                 svg_tools.get_abs_coordinate(svg, x, y)
                                                 draw_settings
                                             )
-                                            $(drag_node).attr("cx", cur_point.x)
-                                            $(drag_node).attr("cy", cur_point.y)
                                             node = _lut[parseInt($(drag_node).attr("id"))]
                                             node.x = cur_point.x
                                             node.y = cur_point.y
                                             node.px = cur_point.x
                                             node.py = cur_point.y
+                                            @tick()
                                         dragEnded: () =>
                                     })
                     )
-                    Hamster(element).wheel((event, delta, dx, dy) =>
-                        # console.log "msd", delta, dx, dy
-                        svg = $(element).find("svg")[0]
-                        scale_point = @_rescale(
-                            svg_tools.get_abs_coordinate(svg, event.originalEvent.clientX, event.originalEvent.clientY)
-                            draw_settings
-                        )
-                        prev_factor = draw_settings.zoom.factor
-                        if delta > 0
-                            draw_settings.zoom.factor *= 1.05
-                        else
-                            draw_settings.zoom.factor /= 1.05
-                        draw_settings.offset.x += scale_point.x * (prev_factor - draw_settings.zoom.factor)
-                        draw_settings.offset.y += scale_point.y * (prev_factor - draw_settings.zoom.factor)
-                        @_update_transform(element, draw_settings, update_scale_fn)
-                        event.stopPropagation()
-                        event.preventDefault()
+                    Hamster(element).wheel(
+                        (event, delta, dx, dy) =>
+                            # console.log "msd", delta, dx, dy
+                            svg = $(element).find("svg")[0]
+                            scale_point = @_rescale(
+                                svg_tools.get_abs_coordinate(svg, event.originalEvent.clientX, event.originalEvent.clientY)
+                                draw_settings
+                            )
+                            prev_factor = draw_settings.zoom.factor
+                            if delta > 0
+                                draw_settings.zoom.factor *= 1.05
+                            else
+                                draw_settings.zoom.factor /= 1.05
+                            draw_settings.offset.x += scale_point.x * (prev_factor - draw_settings.zoom.factor)
+                            draw_settings.offset.y += scale_point.y * (prev_factor - draw_settings.zoom.factor)
+                            @_update_transform(element, draw_settings, update_scale_fn)
+                            event.stopPropagation()
+                            event.preventDefault()
                     )
                     force = undefined
                     if draw_settings.force? and draw_settings.force.enabled?
@@ -600,24 +639,37 @@ angular.module(
                             (d) ->
                                 return 100
                         ).on("tick", () =>
-                            # update coordinates
-                            g = @d3.select(element).selectAll(".d3-point").attr(
-                                "cx", (d) -> return d.x
-                            ).attr(
-                                "cy", (d) -> return d.y
-                            )
+                            @tick()
                         )
-                    svg.append("rect").attr("x", "0").attr("y", "0")
+                    # reactangle around drawing area
+                    svg.append("rect")
+                    .attr("x", "0")
+                    .attr("y", "0")
                     .attr("width", "100%")
                     .attr("height", "100%")
                     .attr("style", "stroke:black; stroke-width:2px; fill-opacity:0;")
                     svg.append('g').attr('class', 'd3-points')
+                    svg.append('g').attr('class', 'd3-links')
                     @update(element, state, update_scale_fn)
                     if draw_settings.force? and draw_settings.force.enabled?
                         force.stop()
                         force.nodes(state.data).links(state.links)
                         force.start()
             )
+
+        tick: () =>
+            # updates all coordinates, attention: not very effective for dragging
+            # update
+            @d3.select(@element).selectAll(".d3-point").attr(
+                "cx", (d) -> return d.x
+            ).attr(
+                "cy", (d) -> return d.y
+            )
+            @d3.select(@element).selectAll(".d3-link")
+            .attr("x1", (d) -> return d.source.x)
+            .attr("y1", (d) -> return d.source.y)
+            .attr("x2", (d) -> return d.target.x)
+            .attr("y2", (d) -> return d.target.y)
 
         _drag_start: (event, ui) ->
             console.log "ds", event, ui
@@ -633,6 +685,7 @@ angular.module(
             console.log "up", element, state
             scales = @_scales(element, state.domain)
             @_draw_points(element, scales, state.data)
+            @_draw_links(element, scales, state.links, state.data)
             @_update_transform(element, state.settings, update_scale_fn)
 
         _scales: (element, domain) =>
@@ -651,12 +704,20 @@ angular.module(
             g.attr("transform", _t_str)
             update_scale_fn()
 
-        _draw_points: (element, scales, data) =>
+        _draw_points: (element, scales, points) =>
             _pc = new icswD3Element()
             # select g
             g = @d3.select(element).selectAll(".d3-points")
 
-            ds_sel = _pc.create(g.selectAll(".d3-point"), data)
+            ds_sel = _pc.create(g.selectAll(".d3-point"), points)
+            ds_sel.exit().remove()
+
+        _draw_links: (element, scales, links, points) =>
+            _pc = new icswD3Link()
+            # select g
+            g = @d3.select(element).selectAll(".d3-links")
+
+            ds_sel = _pc.create(g.selectAll(".d3-link"), links, points)
             ds_sel.exit().remove()
 
         destroy: (element) =>
@@ -669,6 +730,7 @@ angular.module(
         propTypes: {
             # required types
             data: React.PropTypes.array
+            links: React.PropTypes.array
             domain: React.PropTypes.object
             settings: React.PropTypes.object
         }
@@ -729,11 +791,11 @@ angular.module(
                 console.log "new size", new_val
             )
             icswSimpleAjaxCall(
-                url      : ICSW_URLS.NETWORK_JSON_NETWORK
-                data     :
-                    "graph_sel" : "all"
-                    "devices": angular.toJson([])
-                dataType : "json"
+                url: ICSW_URLS.NETWORK_JSON_NETWORK
+                data:
+                    graph_sel: "all"
+                    devices: angular.toJson([])
+                dataType: "json"
             ).then(
                 (json) ->
                     idx = 0
@@ -747,6 +809,8 @@ angular.module(
                         if idy > 100
                             idy = 0
                         # console.log "node=", node
+                    console.log "N=", json.nodes
+                    console.log "L=", json.links
                     _settings = {
                         data: json.nodes
                         links: json.links
