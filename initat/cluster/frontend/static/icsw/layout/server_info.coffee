@@ -123,15 +123,17 @@ angular.module(
         icswSimpleAjaxCall(
             url     : ICSW_URLS.MAIN_SERVER_CONTROL
             data    : {
-                "cmd": angular.toJson(
-                    "server_id": srv_info.get_server_id()
-                    "instance": instance
-                    "type": type
+                cmd: angular.toJson(
+                    server_id: srv_info.get_server_id()
+                    instance: instance
+                    type: type
                 )
             }
         ).then(
             (xml) ->
                 blockUI.stop()
+                if $scope.struct.cur_tu
+                    $timeout.cancel($scope.struct.cur_to)
                 $scope.struct.cur_to = $timeout($scope.reload_server_info, 100)
         )
         return false
@@ -143,6 +145,7 @@ angular.module(
 
     $scope.reload_server_info()
 ]).service("icswLayoutServerInfoService", () ->
+
     class icswLayoutServerInfoService
         constructor: (@xml) ->
             _round = 8 * 1024 * 1024

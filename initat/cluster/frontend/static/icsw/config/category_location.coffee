@@ -111,14 +111,22 @@ angular.module(
             scope.get_active_tab = () ->
                 return scope.active_tab
     }
-]).directive("icswConfigLocationGfxEnhanceHelper", [() ->
+]).directive("icswConfigLocationGfxEnhanceHelper",
+[
+    "$timeout",
+(
+    $timeout,
+) ->
     return {
         restrict: "A"
         link: (scope, element, attrs) ->
             scope.gfx_list = []
             scope.remove_gfx = ($event, obj) ->
-                # hm, not working, FIXME, ToDo
-                _.remove(scope.gfx_list, (entry) -> return entry.idx == obj.idx)
+                $timeout(
+                    () ->
+                        _.remove(scope.gfx_list, (entry) -> return entry.idx == obj.idx)
+                    10
+                )
     }
 ]).controller("icswConfigCategoryLocationCtrl", [
     "$scope", "$compile", "$templateCache", "Restangular", "$timeout",

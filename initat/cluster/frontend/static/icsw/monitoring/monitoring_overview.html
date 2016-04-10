@@ -1,19 +1,19 @@
-
-<script type="text/ng-template" id="monitoring_overview_template.html">
+<script type="text/ng-template" id="icsw.monitoring.list.overview">
     <div class="panel panel-default" style="width: auto">
         <div class="panel-body">
             <!-- entries_displayed is st-table interal -->
             <form class="form-inline">
                 <label class="control-label">Filter:</label>
                 <div class="form-group">
-                    <input class="form-control input-sm" placeholder="filter" ng-model="filter_settings.str_filter"/>
+                    <input class="form-control input-sm" placeholder="filter" ng-model="struct.str_filter"/>
                 </div>
-                ,
-                <input type="button" ng-class="filter_settings.only_selected && 'btn btn-sm btn-success' || 'btn btn-sm'"
-                    ng-click="filter_settings.only_selected = ! filter_settings.only_selected" value="only selected"/>
-
             </form>
-            <table st-table="entries_displayed" st-safe-src="entries_filtered" class="table table-hover table-condensed table-striped" style="width:auto;">
+            <table
+                st-table="entries_displayed"
+                st-safe-src="struct.devices_filtered"
+                class="table table-hover table-condensed table-striped"
+                style="width:auto;"
+            >
                 <thead>
                     <tr>
                         <td colspan="99">
@@ -23,11 +23,14 @@
                     <tr>
                         <th st-sort='name' rowspan="2">Name</th>
                         <!-- todo: sort -->
-                        <th rowspan="2">Now</th>
+                        <th rowspan="2" class="text-center">Now</th>
                         <th colspan="2" class="text-center">Yesterday</th>
                         <th colspan="2" class="text-center">Last Week</th>
+                        <th colspan="2" class="text-center">Last Month</th>
                     </tr>
                     <tr>
+                        <th class="text-center">Host</th>
+                        <th class="text-center">Services</th>
                         <th class="text-center">Host</th>
                         <th class="text-center">Services</th>
                         <th class="text-center">Host</th>
@@ -36,21 +39,28 @@
                 </thead>
                 <tbody>
                     <tr ng-repeat="entry in entries_displayed">
-                        <td>{{entry.name}}</td>
+                        <td>{{ entry.full_name }}</td>
                         <td>
-                            <icsw-device-livestatus-brief devicepk="entry.idx" redraw-sunburst="ignore_shit"></icsw-device-livestatus-brief>
+                            <icsw-device-livestatus-brief icsw-device="entry" redraw-sunburst="ignore_shit">
+                            </icsw-device-livestatus-brief>
                         </td>
                         <td class="text-center">
-                            <icsw-tools-device-hist-status-overview data="entry.device_data_yesterday" detailed-view="false"></icsw-tools-device-hist-status-overview>
+                            <icsw-tools-device-hist-status-overview data="entry.$$device_data_yesterday" detailed-view="false"></icsw-tools-device-hist-status-overview>
                         </td>
                         <td class="text-center">
-                            <icsw-tools-service-hist-status-overview data="entry.service_data_yesterday" detailed-view="false"></icsw-tools-service-hist-status-overview>
+                            <icsw-tools-service-hist-status-overview data="entry.$$service_data_yesterday" detailed-view="false"></icsw-tools-service-hist-status-overview>
                         </td>
                         <td class="text-center">
-                            <icsw-tools-device-hist-status-overview data="entry.device_data_last_week" detailed-view="false"></icsw-tools-device-hist-status-overview>
+                            <icsw-tools-device-hist-status-overview data="entry.$$device_data_last_week" detailed-view="false"></icsw-tools-device-hist-status-overview>
                         </td>
                         <td class="text-center">
-                            <icsw-tools-service-hist-status-overview data="entry.service_data_last_week" detailed-view="false"></icsw-tools-service-hist-status-overview>
+                            <icsw-tools-service-hist-status-overview data="entry.$$service_data_last_week" detailed-view="false"></icsw-tools-service-hist-status-overview>
+                        </td>
+                        <td class="text-center">
+                            <icsw-tools-device-hist-status-overview data="entry.$$device_data_last_month" detailed-view="false"></icsw-tools-device-hist-status-overview>
+                        </td>
+                        <td class="text-center">
+                            <icsw-tools-service-hist-status-overview data="entry.$$service_data_last_month" detailed-view="false"></icsw-tools-service-hist-status-overview>
                         </td>
                     </tr>
                 </tbody>

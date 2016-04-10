@@ -48,7 +48,12 @@ angular.module(
                 )
             )
     }
-]).directive("icswToolsEnsureDeviceSelection", ["icswLayoutSelectionDialogService", "blockUI", (icswLayoutSelectionDialogService, blockUI) ->
+]).directive("icswToolsEnsureDeviceSelection",
+[
+    "icswLayoutSelectionDialogService", "blockUI",
+(
+    icswLayoutSelectionDialogService, blockUI
+) ->
     return {
         template: """
 <div ng-if="listReady == undefined || listReady">
@@ -56,7 +61,7 @@ angular.module(
         <!--
         <icsw-tools-button type="select_devices" ng-click="do_select()"></icsw-tools-button>
         -->
-        <alert type="warning" style="max-width: 500px">No devices selected.</alert>
+        <uib-alert type="warning" style="max-width: 500px">No devices selected.</uib-alert>
     </div>
     <div ng-transclude ng-if="devList.length > 0"></div>
 </div>
@@ -71,7 +76,7 @@ angular.module(
             # only watch if this isn't undefined.
             # NOTE: you need make to sure that the variable is set before the template is initialized to use this
             if scope.listReady? && scope.useBlockui()
-                scope.$watch('listReady', (new_val) ->
+                scope.$watch("listReady", (new_val) ->
                     if !new_val
                         blockUI.start()
                     else
@@ -81,8 +86,15 @@ angular.module(
             scope.do_select = () ->
                 icswLayoutSelectionDialogService.quick_dialog()
     }
-]).directive('icswToolsAddAclFunctions', ["icswAcessLevelService", (icswAcessLevelService) ->
-    restrict: "A"
-    link: (scope, el, attrs) ->
-        icswAcessLevelService.install(scope)
+]).directive('icswToolsAddAclFunctions',
+[
+    "icswAcessLevelService",
+(
+    icswAcessLevelService
+) ->
+    return {
+        restrict: "A"
+        link: (scope, el, attrs) ->
+            icswAcessLevelService.install(scope)
+    }
 ])

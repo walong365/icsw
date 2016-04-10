@@ -70,17 +70,19 @@ angular.module(
                     time_frame = icswStatusHistorySettings.get_time_frame()
                     $q.all(
                         [
-                            status_utils_functions.get_device_data([scope.device.idx], time_frame.date_gui, time_frame.duration_type)
-                            status_utils_functions.get_device_data([scope.device.idx], time_frame.date_gui, time_frame.duration_type, true)
+                            status_utils_functions.get_device_data([scope.device], time_frame.date_gui, time_frame.duration_type)
+                            status_utils_functions.get_device_data([scope.device], time_frame.date_gui, time_frame.duration_type, true)
                         ]
                     ).then(
                         (new_data) ->
                             srv_data = new_data[0].plain()[0]
                             srv_data = srv_data[_.keys(srv_data)[0]]
-                            [scope.host_data, scope.pie_data] =
-                                status_utils_functions.preprocess_state_data(
-                                    srv_data, weights, status_utils_functions.host_colors, scope.float_format
-                                )
+                            [scope.host_data, scope.pie_data] = status_utils_functions.preprocess_state_data(
+                                srv_data
+                                weights
+                                status_utils_functions.host_colors
+                                scope.float_format
+                            )
                             line_data = new_data[1].plain()[0]
                             line_data = line_data[_.keys(line_data)[0]]
                             if line_data?
@@ -95,8 +97,12 @@ angular.module(
 
             scope.update_from_local_data = () ->
                 if scope.data?
-                    [scope.host_data, scope.pie_data] =
-                        status_utils_functions.preprocess_state_data(scope.data, weights, status_utils_functions.host_colors, scope.float_format)
+                    [scope.host_data, scope.pie_data] = status_utils_functions.preprocess_state_data(
+                        scope.data
+                        weights
+                        status_utils_functions.host_colors
+                        scope.float_format
+                    )
 
             if attrs.data?
                 scope.$watch('data', (unused) -> scope.update_from_local_data())
@@ -112,7 +118,12 @@ angular.module(
                             scope.update_from_server()
                 )
     }
-]).directive('icswToolsServiceHistStatusOverview', ["$parse", "status_utils_functions", ($parse, status_utils_functions) ->
+]).directive('icswToolsServiceHistStatusOverview',
+[
+    "$parse", "status_utils_functions",
+(
+    $parse, status_utils_functions
+) ->
     # shows piechart of state of service. shows how many service are in which state at a given time frame
     # currently only used in monitoring_overview
     return {
@@ -120,7 +131,7 @@ angular.module(
         scope: {
             data: "="  # if data is passed right through here, the other attributes are discarded
                        # data must be defined if we are not below the status history ctrl
-            deviceid: "="
+            device: "=icswDevice"
         },
         templateUrl: "icsw.tools.service_hist_status"
         require: '?^icswDeviceStatusHistoryCtrl'
@@ -150,7 +161,9 @@ angular.module(
                     [scope.service_data, scope.pie_data] = status_utils_functions.preprocess_service_state_data(scope.data)
 
             if attrs.data?
-                scope.$watch('data', (unused) -> scope.update_from_local_data())
+                scope.$watch('data', (unused) ->
+                    scope.update_from_local_data()
+                )
             else
                 scope.$watchGroup(
                     ['deviceid', () -> return status_history_ctrl.time_frame]
@@ -185,11 +198,11 @@ angular.module(
     }
     # olive? "#808000"
 
-    get_device_data = (device_ids, start_date, timerange, line_graph_data=false) ->
+    get_device_data = (devices, start_date, timerange, line_graph_data=false) ->
         query_data = {
-            'device_ids': angular.toJson(device_ids)
-            'date': moment(start_date).unix()  # ask server in utc
-            'duration_type': timerange,
+            device_ids: angular.toJson((_dev.idx for _dev in devices))
+            date: moment(start_date).unix()  # ask server in utc
+            duration_type: timerange
         }
         if line_graph_data
             base = Restangular.all(ICSW_URLS.MON_GET_HIST_DEVICE_LINE_GRAPH_DATA.slice(1))
@@ -197,14 +210,14 @@ angular.module(
             base = Restangular.all(ICSW_URLS.MON_GET_HIST_DEVICE_DATA.slice(1))
         return base.getList(query_data)
 
-    get_service_data = (device_ids, start_date, timerange, merge_services=0, line_graph_data=false) ->
+    get_service_data = (devices, start_date, timerange, merge_services=0, line_graph_data=false) ->
         # merge_services: boolean as int
         # line_graph_data: boolean as int, get only line graph data
         query_data = {
-            'device_ids': angular.toJson(device_ids)
-            'date': moment(start_date).unix()  # ask server in utc
-            'duration_type': timerange
-            'merge_services': merge_services
+            device_ids: angular.toJson((_dev.idx for _dev in devices))
+            date: moment(start_date).unix()  # ask server in utc
+            duration_type: timerange
+            merge_services: merge_services
         }
         if line_graph_data
             base = Restangular.all(ICSW_URLS.MON_GET_HIST_SERVICE_LINE_GRAPH_DATA.slice(1))
@@ -252,11 +265,11 @@ angular.module(
 
     preprocess_service_state_data = (new_data, float_format) ->
         weights = {
-            "Ok": -10
-            "Warning": -9
-            "Critical": -8
-            "Unknown": -5
-            "Undetermined": -4
+            Ok: -10
+            Warning: -9
+            Critical: -8
+            Unknown: -5
+            Undetermined: -4
         }
         return preprocess_state_data(new_data, weights, service_colors, float_format)
 

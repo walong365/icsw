@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2015 init.at
+# Copyright (C) 2012-2016 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -36,61 +36,85 @@ dashboard_module = angular.module(
                   pageTitle: "Dashboard"
           }
     )
-]).controller("icswUserJobInfoCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$timeout", "$uibModal", "ICSW_URLS", "icswSimpleAjaxCall",
-    ($scope, $compile, $filter, $templateCache, Restangular, $q, $timeout, $uibModal, ICSW_URLS, icswSimpleAjaxCall)->
-        $scope.jobs_waiting = []
-        $scope.jobs_running = []
-        $scope.jobs_finished = []
-        $scope.jobinfo_valid = false
-        class jobinfo_timedelta
-            constructor: (@name, @timedelta_description) ->
-        $scope.all_timedeltas = [
-            new jobinfo_timedelta("last 15 minutes", [15, "minutes"])
-            new jobinfo_timedelta("last hour", [1, "hours"])
-            new jobinfo_timedelta("last 4 hours", [4, "hours"])
-            new jobinfo_timedelta("last day", [1, "days"])
-            new jobinfo_timedelta("last week", [1, "weeks"])
-        ]
-        $scope.set_jobinfo_timedelta = (ts) ->
-            $scope.last_jobinfo_timedelta = ts
-            jobsfrom = moment().subtract(
-                ts.timedelta_description[0],
-                ts.timedelta_description[1]
-            ).unix()
-            icswSimpleAjaxCall(
-                url      : ICSW_URLS.RMS_GET_RMS_JOBINFO
-                data     :
-                    "jobinfo_jobsfrom" : jobsfrom
-                dataType : "json"
-            ).then((json) ->
-              $scope.jobinfo_valid = true
-              $scope.jobs_running = json.jobs_running
-              $scope.jobs_waiting = json.jobs_waiting
-              $scope.jobs_finished = json.jobs_finished
-            )
-        $scope.set_jobinfo_timedelta( $scope.all_timedeltas[1] )
-        listmax = 15
-        jobidToString = (j) -> 
-            if j[1] != ""
-                return " "+j[0]+":"+j[1]
-            else
-                return " "+j[0]
-                    
-        $scope.longListToString = (l) ->
-            if l.length < listmax
-                return [jobidToString(i) for i in l].toString()
-            else
-                return (jobidToString(i) for i in l[0..listmax]).toString() + ", ..."
-]).directive("icswUserJobInfo", ["$templateCache", ($templateCache) ->
-        restrict : "EA"
-        template : $templateCache.get("icsw.user.job.info")
-        link: (scope, element, attrs) ->
-]).directive("icswUserVduOverview", ["$compile", "$window", "$templateCache", "icswTools", "ICSW_URLS", "icswSimpleAjaxCall", ($compile, $window, $templateCache, icswTools, ICSW_URLS, icswSimpleAjaxCall) ->
-        restrict : "EA"
-        template : $templateCache.get("icsw.user.vdu.overview")
+]).directive("icswUserJobInfo",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.user.job.info")
+        controller: "icswUserJobInfoCtrl"
+    }
+]).controller("icswUserJobInfoCtrl",
+[
+    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q",
+    "$timeout", "$uibModal", "ICSW_URLS", "icswSimpleAjaxCall",
+(
+    $scope, $compile, $filter, $templateCache, Restangular, $q,
+    $timeout, $uibModal, ICSW_URLS, icswSimpleAjaxCall
+)->
+    class jobinfo_timedelta
+        constructor: (@name, @timedelta_description) ->
+
+    $scope.jobs_waiting = []
+    $scope.jobs_running = []
+    $scope.jobs_finished = []
+    $scope.jobinfo_valid = false
+
+    $scope.all_timedeltas = [
+        new jobinfo_timedelta("last 15 minutes", [15, "minutes"])
+        new jobinfo_timedelta("last hour", [1, "hours"])
+        new jobinfo_timedelta("last 4 hours", [4, "hours"])
+        new jobinfo_timedelta("last day", [1, "days"])
+        new jobinfo_timedelta("last week", [1, "weeks"])
+    ]
+
+    $scope.set_jobinfo_timedelta = (ts) ->
+        $scope.last_jobinfo_timedelta = ts
+        jobsfrom = moment().subtract(
+            ts.timedelta_description[0],
+            ts.timedelta_description[1]
+        ).unix()
+        icswSimpleAjaxCall(
+            url: ICSW_URLS.RMS_GET_RMS_JOBINFO
+            data:
+                "jobinfo_jobsfrom": jobsfrom
+            dataType: "json"
+        ).then(
+            (json) ->
+                $scope.jobinfo_valid = true
+                $scope.jobs_running = json.jobs_running
+                $scope.jobs_waiting = json.jobs_waiting
+                $scope.jobs_finished = json.jobs_finished
+        )
+    $scope.set_jobinfo_timedelta( $scope.all_timedeltas[1] )
+    listmax = 15
+    jobidToString = (j) ->
+        if j[1] != ""
+            return " "+j[0]+":"+j[1]
+        else
+            return " "+j[0]
+
+    $scope.longListToString = (l) ->
+        if l.length < listmax
+            return [jobidToString(i) for i in l].toString()
+        else
+            return (jobidToString(i) for i in l[0..listmax]).toString() + ", ..."
+
+]).directive("icswUserVduOverview",
+[
+    "$compile", "$window", "$templateCache", "icswTools", "ICSW_URLS", "icswSimpleAjaxCall",
+(
+    $compile, $window, $templateCache, icswTools, ICSW_URLS, icswSimpleAjaxCall
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.user.vdu.overview")
         link: (scope, element, attrs) ->
             scope.object = undefined
-            
+
             scope.ips_for_devices = {}
             scope.ips_loaded = false
 
@@ -103,9 +127,9 @@ dashboard_module = angular.module(
             scope.virtual_desktop_user_setting = []
             scope.$watch(attrs["object"], (new_val) ->
                 scope.object = new_val
-                    
+
                 if scope.object?
-                    scope.virtual_desktop_sessions = scope.virtual_desktop_user_setting.filter((vdus) ->  vdus.user == scope.object.idx && vdus.to_delete == false)
+                    scope.virtual_desktop_sessions = scope.virtual_desktop_user_setting.filter((vdus) -> vdus.user == scope.object.idx && vdus.to_delete == false)
                     # get all ips
                     scope.retrieve_device_ip vdus.device for vdus in scope.virtual_desktop_sessions
 
@@ -115,7 +139,7 @@ dashboard_module = angular.module(
             )
             scope.get_vnc_display_attribute_value = (geometry) ->
                 [w, h] = screen_size.parse_screen_size(geometry)
-                return "{width:"+w+",height:"+h+",fitTo:'width',}"
+                return "{width:" + w + ",height:" + h + ",fitTo:'width',}"
             scope.get_device_by_index = (index) ->
                 return _.find(scope.device, (vd) -> vd.idx == index)
             scope.get_virtual_desktop_protocol = (index) ->
@@ -134,10 +158,10 @@ dashboard_module = angular.module(
                 dummy_ip = "0.0.0.0"
                 scope.ips_for_devices[index] = dummy_ip
                 icswSimpleAjaxCall(
-                    url      : ICSW_URLS.USER_GET_DEVICE_IP
-                    data     :
-                        "device" : index
-                    dataType : "json"
+                    url: ICSW_URLS.USER_GET_DEVICE_IP
+                    data:
+                        "device": index
+                    dataType: "json"
                 ).then((json) ->
                     scope.ips_for_devices[index] = json.ip
                     if _.indexOf(scope.ips_for_devices, dummy_ip) == -1
@@ -151,34 +175,46 @@ dashboard_module = angular.module(
 
             scope.download_vdus_start_script = (vdus) ->
                 # create .vnc file (supported by at least tightvnc and realvnc on windows)
-                content = ["[Connection]\n",
-                          "Host=#{ scope.ips_for_devices[vdus.device] }:#{ vdus.effective_port }\n",
-                          "Password=#{ vdus.vnc_obfuscated_password }\n"]
+                content = [
+                    "[Connection]\n",
+                    "Host=#{ scope.ips_for_devices[vdus.device] }:#{ vdus.effective_port }\n",
+                    "Password=#{ vdus.vnc_obfuscated_password }\n"
+                ]
                 blob = new Blob(content, {type: "text/plain;charset=utf-8"});
                 # use FileSaver.js
                 saveAs(blob, "#{ scope.get_device_by_index(vdus.device).name }.vnc");
-]).controller("icswUserIndexCtrl", ["$scope", "$timeout", "$window", "ICSW_URLS", "icswAcessLevelService", "icswSimpleAjaxCall",
-    ($scope, $timeout, $window, ICSW_URLS, icswAcessLevelService, icswSimpleAjaxCall) ->
-        $scope.ICSW_URLS = ICSW_URLS
-        $scope.show_index = true
-        $scope.quick_open = true
-        $scope.ext_open = false
-        $scope.diskusage_open = true
-        $scope.vdesktop_open = true
-        $scope.jobinfo_open = true
-        $scope.show_devices = false
-        $scope.NUM_QUOTA_SERVERS = 0
-        icswSimpleAjaxCall(
-            {
-                "url": ICSW_URLS.USER_GET_NUM_QUOTA_SERVERS
-                "dataType": "json"
-            }
-        ).then(
-            (json) ->
-                $scope.NUM_QUOTA_SERVERS = json.num_quota_servers
-        )
-        $scope.has_menu_permission = icswAcessLevelService.has_menu_permission
-]).directive("indexView", ["$templateCache", "icswAcessLevelService", "icswUserLicenseDataService", ($templateCache, icswAcessLevelService, icswUserLicenseDataService) ->
+    }
+]).controller("icswUserIndexCtrl",
+[
+    "$scope", "$timeout", "$window", "ICSW_URLS", "icswAcessLevelService", "icswSimpleAjaxCall",
+(
+    $scope, $timeout, $window, ICSW_URLS, icswAcessLevelService, icswSimpleAjaxCall
+) ->
+    $scope.ICSW_URLS = ICSW_URLS
+    $scope.show_index = true
+    $scope.quick_open = true
+    $scope.ext_open = false
+    $scope.diskusage_open = true
+    $scope.vdesktop_open = true
+    $scope.jobinfo_open = true
+    $scope.show_devices = false
+    $scope.NUM_QUOTA_SERVERS = 0
+    icswSimpleAjaxCall(
+        {
+            "url": ICSW_URLS.USER_GET_NUM_QUOTA_SERVERS
+            "dataType": "json"
+        }
+    ).then(
+        (json) ->
+            $scope.NUM_QUOTA_SERVERS = json.num_quota_servers
+    )
+    $scope.has_menu_permission = icswAcessLevelService.has_menu_permission
+]).directive("indexView",
+[
+    "$templateCache", "icswAcessLevelService", "icswUserLicenseDataService",
+(
+    $templateCache, icswAcessLevelService, icswUserLicenseDataService
+) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.user.index")
@@ -238,7 +274,12 @@ dashboard_module = angular.module(
             icswAcessLevelService.install(scope)
             scope.lds = icswUserLicenseDataService
     }
-]).directive("icswDashboardElement", ["$templateCache", "$compile", ($templateCache, $compile) ->
+]).directive("icswDashboardElement",
+[
+    "$templateCache", "$compile",
+(
+    $templateCache, $compile
+) ->
     return {
         restrict: "E"
         link: (scope, element, attrs) ->

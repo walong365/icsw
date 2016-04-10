@@ -311,44 +311,54 @@ angular.module(
                return true
         }
 ]).controller("icswDeviceLiveStatusCtrl",
-    ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$uibModal", "$timeout",
-     "icswTools", "ICSW_URLS", "icswSimpleAjaxCall", "icswDeviceLivestatusDataService",
-     "icswCachingCall", "icswLivestatusFilterFactory", "icswDeviceTreeService", "icswLivestatusDevSelFactory", "$state",
-    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource,
-     $q, $uibModal, $timeout, icswTools, ICSW_URLS, icswSimpleAjaxCall, icswDeviceLivestatusDataService,
-     icswCachingCall, icswLivestatusFilterFactory, icswDeviceTreeService, icswLivestatusDevSelFactory, $state) ->
-        $scope.host_entries = []
-        $scope.service_entries = []
-        $scope.filtered_entries = []
-        $scope.layouts = ["simple1", "simple2"]
-        if not $scope.ls_filter?
-            # init ls_filter if not set
-            $scope.ls_filter = new icswLivestatusFilterFactory("lsc")
-        $scope.ls_devsel = new icswLivestatusDevSelFactory()
-        $scope.activate_layout = (name) ->
-            $scope.cur_layout = name
-            # $state.go($scope.cur_layout)
-        $scope.activate_layout($scope.layouts[0])
-        $scope.data_timeout = undefined
-        $scope.$watch(
-            $scope.ls_filter.changed
-            (new_filter) ->
-                $scope.apply_filter()
-        )
-        # selected categories
-        $scope.new_devsel = (_dev_sel, _devg_sel) ->
-            $scope.dev_sel = _dev_sel
-            # cancel data_timeout if set
-            if $scope.data_timeout
-                $timeout.cancel($scope.data_timeout)
-                $scope.data_timeout = undefined
-            #pre_sel = (dev.idx for dev in $scope.devices when dev.expanded)
-            #restDataSource.reset()
-            wait_list = [
-                icswDeviceTreeService.load($scope.$id)
-                icswDeviceLivestatusDataService.retain($scope.$id, _dev_sel)
-            ]
-            $q.all(wait_list).then((data) ->
+[
+    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource",
+    "$q", "$uibModal", "$timeout", "icswTools", "ICSW_URLS", "icswSimpleAjaxCall",
+    "icswDeviceLivestatusDataService", "icswCachingCall", "icswLivestatusFilterFactory",
+    "icswDeviceTreeService", "icswLivestatusDevSelFactory", "$state",
+(
+    $scope, $compile, $filter, $templateCache, Restangular, restDataSource,
+    $q, $uibModal, $timeout, icswTools, ICSW_URLS, icswSimpleAjaxCall,
+    icswDeviceLivestatusDataService, icswCachingCall, icswLivestatusFilterFactory,
+    icswDeviceTreeService, icswLivestatusDevSelFactory, $state
+) ->
+    $scope.host_entries = []
+    $scope.service_entries = []
+    $scope.filtered_entries = []
+    $scope.layouts = ["simple1", "simple2"]
+    if not $scope.ls_filter?
+        # init ls_filter if not set
+        $scope.ls_filter = new icswLivestatusFilterFactory("lsc")
+    $scope.ls_devsel = new icswLivestatusDevSelFactory()
+    $scope.activate_layout = (name) ->
+        $scope.cur_layout = name
+        # $state.go($scope.cur_layout)
+    $scope.activate_layout($scope.layouts[0])
+    $scope.data_timeout = undefined
+    $scope.$watch(
+        $scope.ls_filter.changed
+        (new_filter) ->
+            $scope.apply_filter()
+    )
+
+    # selected categories
+    $scope.new_devsel = (_dev_sel, _devg_sel) ->
+        $scope.dev_sel = _dev_sel
+        # console.log "nds=", $scope.dev_sel
+        # cancel data_timeout if set
+        if $scope.data_timeout
+            $timeout.cancel($scope.data_timeout)
+            $scope.data_timeout = undefined
+
+        #pre_sel = (dev.idx for dev in $scope.devices when dev.expanded)
+        #restDataSource.reset()
+        wait_list = [
+            icswDeviceTreeService.load($scope.$id)
+            icswDeviceLivestatusDataService.retain($scope.$id, _dev_sel)
+        ]
+        $q.all(wait_list).then(
+            (data) ->
+                # console.log "data=", data
                 $scope.ls_devsel.set(_dev_sel)
                 $scope.dev_tree_lut = data[0].enabled_lut
                 $scope.new_data(data[1])
@@ -361,24 +371,25 @@ angular.module(
                         # console.log "Changed", data[1].generation
                         $scope.new_data(data[1])
                 )
-            )
-        $scope.new_data = (mres) ->
-            host_entries = mres.hosts
-            service_entries = mres.services
-            used_cats = mres.used_cats
-            $scope.host_entries = host_entries
-            $scope.service_entries = service_entries
-            $scope.ls_filter.set_total_num(host_entries.length, service_entries.length)
-            $scope.ls_filter.set_used_cats(used_cats)
-            $scope.apply_filter()
-        $scope.apply_filter = () ->
-            # filter entries for table
-            $scope.filtered_entries = _.filter($scope.service_entries, (_v) -> return $scope.ls_filter.apply_filter(_v, true))
-            $scope.ls_filter.set_filtered_num($scope.host_entries.length, $scope.filtered_entries.length)
-
-        $scope.$on("$destroy", () ->
-            icswDeviceLivestatusDataService.destroy($scope.$id)
         )
+    $scope.new_data = (mres) ->
+        host_entries = mres.hosts
+        service_entries = mres.services
+        used_cats = mres.used_cats
+        $scope.host_entries = host_entries
+        $scope.service_entries = service_entries
+        $scope.ls_filter.set_total_num(host_entries.length, service_entries.length)
+        $scope.ls_filter.set_used_cats(used_cats)
+        $scope.apply_filter()
+
+    $scope.apply_filter = () ->
+        # filter entries for table
+        $scope.filtered_entries = _.filter($scope.service_entries, (_v) -> return $scope.ls_filter.apply_filter(_v, true))
+        $scope.ls_filter.set_filtered_num($scope.host_entries.length, $scope.filtered_entries.length)
+
+    $scope.$on("$destroy", () ->
+        icswDeviceLivestatusDataService.destroy($scope.$id)
+    )
 ]).directive('icswDeviceLivestatusFullburst', ["$templateCache", ($templateCache) ->
     return {
         restrict: "EA"
@@ -455,7 +466,12 @@ angular.module(
     return {
         edit_template: "network.type.form"
     }
-]).service("icswDeviceLivestatusDataService", ["ICSW_URLS", "$interval", "$timeout", "icswSimpleAjaxCall", "$q", "icswDeviceTreeService", (ICSW_URLS, $interval, $timeout, icswSimpleAjaxCall, $q, icswDeviceTreeService) ->
+]).service("icswDeviceLivestatusDataService",
+[
+    "ICSW_URLS", "$interval", "$timeout", "icswSimpleAjaxCall", "$q", "icswDeviceTreeService",
+(
+    ICSW_URLS, $interval, $timeout, icswSimpleAjaxCall, $q, icswDeviceTreeService
+) ->
     watch_list = {}
     defer_list = {}
     result_list = {}
@@ -541,9 +557,9 @@ angular.module(
                     watched_devs.push(dev)
 
             icswSimpleAjaxCall(
-                url  : ICSW_URLS.MON_GET_NODE_STATUS
-                data : {
-                    "pk_list" : angular.toJson(watched_devs)
+                url: ICSW_URLS.MON_GET_NODE_STATUS
+                data: {
+                    "pk_list": angular.toJson(watched_devs)
                 }
             ).then(
                 (xml) ->
@@ -556,6 +572,7 @@ angular.module(
                             host_entries = []
                             $(xml).find("value[name='host_result']").each (idx, node) =>
                                 host_entries = host_entries.concat(angular.fromJson($(node).text()))
+                            # console.log "*", service_entries, host_entries
                             host_lut = {}
                             used_cats = []
                             host_id = 0
@@ -623,6 +640,7 @@ angular.module(
     return {
         resolve_host: (name) ->
             return _host_lut[name]
+
         retain: (client, dev_list) ->
             _defer = $q.defer()
             # get data for devices of dev_list for client (same client instance must be passed to cancel())
@@ -637,12 +655,13 @@ angular.module(
                     start_interval()
 
                 if dev_list.length
+                    # console.log "w", dev_list
                     for dev in dev_list
-                        if not watch_list[dev]?
-                            watch_list[dev] = []
+                        if not watch_list[dev.idx]?
+                            watch_list[dev.idx] = []
 
-                        if not _.some(watch_list[dev], (elem) -> return elem == dev)
-                            watch_list[dev].push(client)
+                        if not _.some(watch_list[dev], (elem) -> return elem == dev.idx)
+                            watch_list[dev.idx].push(client)
 
                         result_list[client] = new MonitoringResult()
                         defer_list[client] = _defer
@@ -652,7 +671,6 @@ angular.module(
 
                 schedule_load()
             return _defer.promise
-
 
         destroy: (client) ->
             client = client.toString()
@@ -761,8 +779,12 @@ angular.module(
             $scope.host_entries = mres.hosts
             $scope.service_entries = mres.services
             $scope.host_lut = mres.host_lut
-            $scope.burst_data = $scope.build_sunburst($scope.host_entries, $scope.service_entries)
+            $scope.burst_data = $scope.build_sunburst(
+                $scope.host_entries
+                $scope.service_entries
+            )
             $scope.md_filter_changed()
+
         $scope.$watch("ls_filter", (new_val) ->
             if new_val
                 # wait until ls_filter is set
@@ -798,9 +820,11 @@ angular.module(
             if $scope.ls_filter?
                 # filter burstData
                 if $scope.burst_data? and $scope.dev_tree_lut?
-                    (_check_filter(_v) for _v in $scope.burst_data.get_childs((node) -> return node.filter))
+                    (_check_filter(_v) for _v in $scope.burst_data.get_childs(
+                        (node) -> return node.filter)
+                    )
                     if $scope.single_selection
-                        $scope.set_data($scope.burst_data, $scope.dev_tree_lut[$scope._burst_sel[0]].full_name)
+                        $scope.set_data($scope.burst_data, $scope._burst_sel[0].full_name)
                     else
                         $scope.set_data($scope.burst_data, "")
 
@@ -869,7 +893,12 @@ angular.module(
             icswDeviceLivestatusDataService.destroy($scope.$id)
         )
 
-]).directive("newburst", ["$compile", "$templateCache", "msgbus", ($compile, $templateCache, msgbus) ->
+]).directive("newburst",
+[
+    "$compile", "$templateCache",
+(
+    $compile, $templateCache,
+) ->
     return {
         restrict : "E"
         replace: true
@@ -877,7 +906,7 @@ angular.module(
         template: $templateCache.get("icsw.device.livestatus.network_graph")
         controller: "icswDeviceLivestatusBurstCtrl"
         scope:
-            device_pk: "=devicePk"
+            device: "=icswDevice"
             serviceFocus: "=serviceFocus"
             omittedSegments: "=omittedSegments"
             ls_filter: "=lsFilter"
@@ -894,20 +923,21 @@ angular.module(
             scope.noninteractive = attrs["noninteractive"]  # defaults to false
             scope.active_part = null
             scope.propagate_filter = if attrs["propagateFilter"] then true else false
-            if not attrs["devicePk"]
-                scope.$watch(
-                    scope.ls_devsel.changed
-                    (changed) ->
-                        scope.burst_sel(scope.ls_devsel.get(), false)
-                )
-            scope.$watch("device_pk", (new_val) ->
-                if new_val
-                    if angular.isString(new_val)
-                        data = (parseInt(_v) for _v in new_val.split(","))
-                    else
-                        data = [new_val]
-                    scope.burst_sel(data, true)
-            )
+            #if not attrs["devicePk"]
+            #    scope.$watch(
+            #        scope.ls_devsel.changed
+            #        (changed) ->
+            #            scope.burst_sel(scope.ls_devsel.get(), false)
+            #    )
+            #scope.$watch("device_pk", (new_val) ->
+            #    if new_val
+            #        if angular.isString(new_val)
+            #            data = (parseInt(_v) for _v in new_val.split(","))
+            #        else
+            #            data = [new_val]
+            #        scope.burst_sel(data, true)
+            #)
+            scope.burst_sel([scope.device], true)
             if attrs["drawAll"]?
                 scope.draw_all = true
             else
@@ -1128,27 +1158,33 @@ angular.module(
                     else
                         break
     }
-]).directive("icswDeviceLivestatus", ["$templateCache", "msgbus", ($templateCache, msgbus) ->
+]).directive("icswDeviceLivestatus",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.device.livestatus.overview")
         controller: "icswDeviceLiveStatusCtrl"
-        link : (scope, el, attrs) ->
     }
-]).directive("icswDeviceLivestatusBrief", ["icswLivestatusFilterFactory", "$templateCache", (icswLivestatusFilterFactory, $templateCache) ->
+]).directive("icswDeviceLivestatusBrief",
+[
+    "icswLivestatusFilterFactory", "$templateCache",
+(
+    icswLivestatusFilterFactory, $templateCache
+) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.device.livestatus.brief")
         controller: "icswDeviceLiveStatusCtrl"
         scope:
-             devicepk: "=devicepk"
+             device: "=icswDevice"
         replace: true
         link : (scope, element, attrs) ->
             scope.ls_filter = new icswLivestatusFilterFactory()
-            scope.$watch("devicepk", (data) ->
-                if data
-                    scope.new_devsel([data], [])
-            )
+            scope.new_devsel([scope.device])
     }
 ]).directive("icswDeviceLivestatusMap", ["icswLivestatusFilterFactory", "$templateCache", (icswLivestatusFilterFactory, $templateCache) ->
     return {

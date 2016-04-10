@@ -28,127 +28,148 @@ monitoring_overview_module = angular.module(
     $stateProvider.state(
         "main.monitorov", {
             url: "/monitorov"
-            template: "<div ng-controller='icswMonitoringOverviewCtrl'><icsw-monitoring-overview></icsw-monitoring-overview></div>"
+            template: "<icsw-monitoring-list-overview icsw-sel-man='0'></icsw-monitoring-list-overview>"
             data:
-                pageTitle: "Monitoring Dashboard"
+                pageTitle: "Monitoring List"
                 rights: ["mon_check_command.setup_monitoring"]
                 menuEntry:
                     menukey: "mon"
-                    name: "Monitoring dashboard"
-                    icon: "fa-bars"
+                    name: "Monitoring list"
+                    icon: "fa-list"
                     ordering: 0
         }
     )
-]).controller("icswMonitoringOverviewCtrl",
-    ["$scope", "$compile", "$filter", "Restangular", "$q", "$uibModal", "restDataSource",
-     "icswAcessLevelService", "$timeout", "msgbus", "status_utils_functions", "ICSW_URLS",
-    ($scope, $compile, $filter, Restangular, $q, $uibModal, restDataSource, icswAcessLevelService,
-     $timeout, msgbus, status_utils_functions, ICSW_URLS) ->
-        $scope.filter_settings = {"str_filter": "", "only_selected": true}
-
-        $scope.filter_predicate = (entry) ->
-            selected = $scope.get_selected_entries()
-            if !$scope.filter_settings.only_selected || selected.length == 0
-                sel_flag = true
-            else
-                sel_flag = _.includes(selected, entry)
-                    
-            try
-                str_re = new RegExp($scope.filter_settings.str_filter, "gi")
-            catch err
-                str_re = new RegExp("^$", "gi")
-
-            # string filter
-            sf_flag = entry.name.match(str_re)
-
-            return sf_flag and sel_flag
-
-        wait_list = restDataSource.add_sources([
-            [ICSW_URLS.REST_DEVICE_LIST, {}],
-        ])
-        $scope.device_list = []
-        $q.all(wait_list).then( (data) ->
-            $scope.device_list = data[0]
-            $scope.update_device_list()
-        )
-
-        $scope.get_selected_entries = () ->
-            return (entry for entry in $scope.entries when entry.selected)
-
-        $scope.yesterday = moment().subtract(1, "days")
-        $scope.last_week = moment().subtract(1, "weeks")
-
-        $scope.entries = []
-        $scope.$watch(
-                () -> [$scope.entries, $scope.filter_settings]
-                () ->
-                    $scope.entries_filtered = (entry for entry in $scope.entries when $scope.filter_predicate(entry))
-                    $scope.load_monitoring_overview_data($scope.entries_filtered)
-                true)
-
-        $scope.update_device_list = () ->
-            # currently only called on external selection change
-            # if this is to be called more often, take care to not destroy selection
-            
-            if $scope.device_list
-                set_initial_sel = $scope.initial_sel.length > 0
-
-                new_entries = []
-                for dev in $scope.device_list
-                    if ! dev.is_meta_device
-                        entry = {
-                            'idx': dev.idx
-                            'name': dev.name
-                        }
-                        if set_initial_sel
-                            entry['selected'] = _.includes($scope.initial_sel, dev.idx)
-                        new_entries.push(entry)
-                $scope.entries = new_entries
-
-                $scope.initial_sel = []
-
-        $scope.load_monitoring_overview_data = (new_entries) ->
-            if new_entries.length > 0
-                # historic
-                historic_cont = (entry_property_name) ->
-                    (new_data) ->
-                        for device_id, data of new_data
-                            device_id = parseInt(device_id)  # fuck javascript
-                            entry = _.find(new_entries, (entry) ->
-                                return entry.idx == device_id)
-
-                            if entry
-                                entry[entry_property_name] = data
-                            else
-                                console.log 'failed to find device with id', device_id, 'in list', new_entries
-
-
-                indexes = (entry.idx for entry in new_entries)
-                status_utils_functions.get_device_data(indexes, $scope.yesterday, 'day', historic_cont("device_data_yesterday"))
-                status_utils_functions.get_device_data(indexes, $scope.last_week, 'week', historic_cont("device_data_last_week"))
-
-                status_utils_functions.get_service_data(indexes, $scope.yesterday, 'day', historic_cont("service_data_yesterday"), merge_services=1)
-                status_utils_functions.get_service_data(indexes, $scope.last_week, 'week', historic_cont("service_data_last_week"), merge_services=1)
-
-
-        $scope.initial_sel = []
-        $scope.new_devsel = (_dev_sel, _devg_sel) ->
-            $scope.initial_sel = _dev_sel
-            $scope.update_device_list()
-            $scope.entries = $scope.entries
-            # TODO: since single-app move, this now seems to be executed from apply. Use whichever version works in final single-app version
-            #$scope.$apply(  # if we do update_device_list() from this path, angular doesn't realise it
-            #    $scope.entries = $scope.entries
-            #)
-         
-        msgbus.emit("devselreceiver")
-        msgbus.receive("devicelist", $scope, (name, args) ->
-            $scope.new_devsel(args[1])
-        )
-
-]).directive("icswMonitoringOverview", () ->
+]).directive("icswMonitoringListOverview",
+[
+    "$templateCache",
+(
+    $templateCache,
+) ->
     return {
         restrict : "EA"
-        templateUrl: "monitoring_overview_template.html"
+        template: $templateCache.get("icsw.monitoring.list.overview")
+        controller: "icswMonitoringOverviewCtrl"
     }
-)
+]).controller("icswMonitoringOverviewCtrl",
+[
+    "$scope", "$compile", "$filter", "Restangular", "$q", "$uibModal",
+    "icswAcessLevelService", "$timeout", "msgbus", "status_utils_functions", "ICSW_URLS",
+    "icswDeviceTreeService",
+(
+    $scope, $compile, $filter, Restangular, $q, $uibModal,
+    icswAcessLevelService, $timeout, msgbus, status_utils_functions, ICSW_URLS,
+    icswDeviceTreeService,
+) ->
+    $scope.struct = {
+        # filter settings
+        str_filter: ""
+        # device tree
+        device_tree: undefined
+        # loading flag
+        loading: false
+        # devices
+        devices: []
+        # devices filetered
+        devices_filtered: []
+    }
+
+    _filter_predicate = (entry, str_re) ->
+        # string filter
+        sf_flag = entry.full_name.match(str_re)
+
+        return sf_flag
+
+    _update_filter = () ->
+        try
+            str_re = new RegExp($scope.struct.str_filter, "gi")
+        catch err
+            str_re = new RegExp("^$", "gi")
+        $scope.struct.devices_filtered.length = 0
+
+        for entry in $scope.struct.devices
+            if _filter_predicate(entry, str_re)
+                $scope.struct.devices_filtered.push(entry)
+
+    $scope.new_devsel = (devs) ->
+        $scope.struct.loading = true
+        $q.all(
+            [
+                icswDeviceTreeService.load($scope.$id)
+            ]
+        ).then(
+            (data) ->
+                $scope.struct.device_tree = data[0]
+                $scope.struct.devices.length = 0
+                for entry in devs
+                    if not entry.is_meta_device
+                        $scope.struct.devices.push(entry)
+                _update_filter()
+                $scope.load_monitoring_overview_data()
+                $scope.struct.loading = false
+        )
+
+    _filter_to = undefined
+    $scope.$watch(
+        "struct.str_filter"
+        () ->
+            if _filter_to
+                $timeout.cancel(_filter_to)
+
+            _filter_to = $timeout(
+                _update_filter
+                200
+            )
+    )
+
+    #() -> [$scope.entries, $scope.filter_settings]
+    #    () ->
+    #        $scope.entries_filtered = (entry for entry in $scope.entries when $scope.filter_predicate(entry))
+    #            $scope.load_monitoring_overview_data($scope.entries_filtered)
+    #        true)
+
+    #$scope.device_list = []
+    #$q.all(wait_list).then( (data) ->
+    #    $scope.device_list = data[0]
+    #    $scope.update_device_list()
+    #)
+
+    $scope.get_selected_entries = () ->
+        return (entry for entry in $scope.entries when entry.selected)
+
+    $scope.yesterday = moment().subtract(1, "days")
+    $scope.last_week = moment().subtract(1, "weeks")
+    $scope.last_month = moment().subtract(1, "month")
+
+    $scope.load_monitoring_overview_data = (new_entries) ->
+        if $scope.struct.devices.length
+            _lut = $scope.struct.device_tree.all_lut
+            # historic
+            historic_cont = (entry_property_name, new_data) ->
+                for device_id, data of new_data
+                    device_id = parseInt(device_id)  # fuck javascript (OMG)
+                    if device_id of _lut
+                        _lut[device_id][entry_property_name] = data
+                    else
+                        console.warn 'failed to find device with id #{device_id} in list'
+
+
+            _devs = $scope.struct.devices
+            $q.all(
+                [
+                    status_utils_functions.get_device_data(_devs, $scope.yesterday, 'day')
+                    status_utils_functions.get_device_data(_devs, $scope.last_week, 'week')
+                    status_utils_functions.get_device_data(_devs, $scope.last_month, 'month')
+                    status_utils_functions.get_service_data(_devs, $scope.yesterday, 'day', merge_services=1)  #, historic_cont("service_data_yesterday"), merge_services=1)
+                    status_utils_functions.get_service_data(_devs, $scope.last_week, 'week', merge_services=1)  #, historic_cont("service_data_last_week"), merge_services=1)
+                    status_utils_functions.get_service_data(_devs, $scope.last_month, 'month', merge_services=1)  #, historic_cont("service_data_last_week"), merge_services=1)
+                ]
+            ).then(
+                (data) ->
+                    historic_cont("$$device_data_yesterday", data[0][0].plain())
+                    historic_cont("$$device_data_last_week", data[1][0].plain())
+                    historic_cont("$$device_data_last_month", data[2][0].plain())
+                    historic_cont("$$service_data_yesterday", data[3][0].plain())
+                    historic_cont("$$service_data_last_week", data[4][0].plain())
+                    historic_cont("$$service_data_last_month", data[5][0].plain())
+            )
+])
