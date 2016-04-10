@@ -52,13 +52,11 @@ monitoring_overview_module = angular.module(
     }
 ]).controller("icswMonitoringOverviewCtrl",
 [
-    "$scope", "$compile", "$filter", "Restangular", "$q", "$uibModal",
+    "$scope", "$compile", "$filter", "Restangular", "$q", "icswDeviceTreeService",
     "icswAcessLevelService", "$timeout", "msgbus", "status_utils_functions", "ICSW_URLS",
-    "icswDeviceTreeService",
 (
-    $scope, $compile, $filter, Restangular, $q, $uibModal,
+    $scope, $compile, $filter, Restangular, $q, icswDeviceTreeService,
     icswAcessLevelService, $timeout, msgbus, status_utils_functions, ICSW_URLS,
-    icswDeviceTreeService,
 ) ->
     $scope.struct = {
         # filter settings
@@ -104,8 +102,8 @@ monitoring_overview_module = angular.module(
                     if not entry.is_meta_device
                         $scope.struct.devices.push(entry)
                 _update_filter()
-                $scope.load_monitoring_overview_data()
                 $scope.struct.loading = false
+                $scope.load_monitoring_overview_data()
         )
 
     _filter_to = undefined
@@ -141,6 +139,7 @@ monitoring_overview_module = angular.module(
     $scope.last_month = moment().subtract(1, "month")
 
     $scope.load_monitoring_overview_data = (new_entries) ->
+        $scope.struct.loading = true
         if $scope.struct.devices.length
             _lut = $scope.struct.device_tree.all_lut
             # historic
@@ -171,5 +170,6 @@ monitoring_overview_module = angular.module(
                     historic_cont("$$service_data_yesterday", data[3][0].plain())
                     historic_cont("$$service_data_last_week", data[4][0].plain())
                     historic_cont("$$service_data_last_month", data[5][0].plain())
+                    $scope.struct.loading = false
             )
 ])
