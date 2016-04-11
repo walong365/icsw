@@ -461,37 +461,37 @@ angular.module(
                     link.y2c = d_node.y
                 $rootScope.$emit(ICSW_SIGNALS("ICSW_NETWORK_REDRAW_D3_ELEMENT"))
     }
-]).service("icswD3Elementx", ["svg_tools", (svg_tools) ->
-    class icswD3Elementx
-        constructor: () ->
-        create: (selector, data) ->
-            ds = selector.data(data, (d) -> return d.id)
-            ds.enter().append("circle").attr("class", "d3-point draggable")
-            ds.attr('cx', (d) -> return d.x)
-            .attr('cy', (d) -> return d.y)
-            .attr('r', (d) -> return d.r)
-            .attr("id", (d) -> return d.id)
-            return ds
-            # EXIT
-            # point.exit().remove()
-
-
-]).service("icswD3Element",
+]).service("icswD3Device",
 [
     "svg_tools",
 (
     svg_tools
 ) ->
-    class icswD3Element
-        constructor: () ->
+    class icswD3Device
+        constructor: (@container) ->
         create: (selector, data) ->
             console.log "data=", data
             ds = selector.data(data, (d) -> return d.id)
-            ds.enter().append("circle").attr("class", "d3-point draggable")
-            ds.attr('cx', (d) -> return d.x)
-            .attr('cy', (d) -> return d.y)
-            .attr('r', (d) -> return d.r)
+            _g = ds.enter().append("g")
+            _g.attr("class", "d3-point draggable")
             .attr("id", (d) -> return d.id)
+            .attr("transform", (d) -> return "translate(#{d.x}, #{d.y})")
+            _g.append("circle")
+            # <circle r="18" fill="{{ fill_color }}" stroke-width="{{ stroke_width }}" stroke="{{ stroke_color }}" cursor="crosshair"></circle>
+            .attr('r', (d) -> return d.r)
+            .attr("stroke-width", "2")
+            .attr("stroke", "grey")
+            .attr("fill", "white")
+            .attr("cursor", "crosshair")
+            _g.append("text").text((d) -> return d.full_name or "node")
+            # <text text-anchor="middle" alignment-baseline="middle" cursor="crosshair">{{ node.name }}</text>
+            .attr("text-anchor", "middle")
+            .attr("alignment-baseline", "middle")
+            .attr("cursor", "crosshair")
+            # mouse handling
+            _g.on("click", (node) =>
+                @container.click(node)
+            )
             return ds
             # EXIT
             # point.exit().remove()
@@ -528,14 +528,21 @@ angular.module(
 ]).service("icswD3Test",
 [
     "$templateCache", "d3_service", "svg_tools", "dragging", "mouseCaptureFactory",
-    "icswTools", "icswD3Element", "icswD3Link",
+    "icswTools", "icswD3Device", "icswD3Link", "icswDeviceTreeService", "$q",
 (
     $templateCache, d3_service, svg_tools, dragging, mouseCaptureFactory,
-    icswTools, icswD3Element, icswD3Link,
+    icswTools, icswD3Device, icswD3Link, icswDeviceTreeService, $q,
 ) ->
     class icswD3Test
 
         constructor: () ->
+            @tree_present = $q.defer()
+            @device_tree = undefined
+            icswDeviceTreeService.load("N/A").then(
+                (tree) ->
+                    @device_tree = tree
+                    @tree_present.resolve("ok")
+            )
 
         create: (element, props, state, update_scale_fn) =>
             @element = element
@@ -543,8 +550,23 @@ angular.module(
             _lut = {}
             for node in state.data
                 _lut[node.id] = node
-            d3_service.d3().then(
-                (d3) =>
+            $q.all(
+                [
+                    d3_service.d3()
+                    @tree_present.promise
+                ]
+            ).then(
+                (result) ->
+                    d3 = result[0]
+                    _find_element = (s_target) ->
+                        # iterative search
+                        if svg_tools.has_class_svg(s_target, "draggable")
+                            return s_target
+                        s_target = s_target.parent()
+                        if s_target.length
+                            return _find_element(s_target)
+                        else
+                            return null
                     @d3 = d3
                     svg = d3.select(element).append("svg")
                     .attr('class', 'draggable')
@@ -552,18 +574,15 @@ angular.module(
                     .attr('height', props.height)
                     .attr("onStart", @_drag_start)
                     .attr("pointer-events", "all")
+                    $(element).on("mouseclick", (event) =>
+                        drag_el = _find_element($(event.target))
+                        if drag_el? and drag_el.length
+                            drag_el = $(drag_el[0])
+                            console.log "d=", drag_el
+                    )
                     $(element).mousedown(
                         (event) =>
                             mouseCaptureFactory.register_element(element)
-                            _find_element = (s_target) ->
-                                # iterative search
-                                if svg_tools.has_class_svg(s_target, "draggable")
-                                    return s_target
-                                s_target = s_target.parent()
-                                if s_target.length
-                                    return _find_element(s_target)
-                                else
-                                    return null
                             drag_el = _find_element($(event.target))
                             if drag_el? and drag_el.length
                                 drag_el = $(drag_el[0])
@@ -585,6 +604,7 @@ angular.module(
                                     })
                                 else
                                     drag_node = drag_el[0]
+                                    drag_dev = _lut[parseInt($(drag_node).attr("id"))]
                                     start_drag_point = undefined
                                     dragging.start_drag(event, 1, {
                                         dragStarted: (x, y, event) =>
@@ -594,19 +614,25 @@ angular.module(
                                                 draw_settings
                                             )
                                             console.log start_drag_point
+                                            # node = _lut[parseInt($(drag_node).attr("id"))]
+                                            @set_fixed(drag_node, drag_dev, true)
                                         dragging: (x, y) =>
                                             svg = $(element).find("svg")[0]
                                             cur_point = @_rescale(
                                                 svg_tools.get_abs_coordinate(svg, x, y)
                                                 draw_settings
                                             )
-                                            node = _lut[parseInt($(drag_node).attr("id"))]
+                                            node = drag_dev # _lut[parseInt($(drag_node).attr("id"))]
                                             node.x = cur_point.x
                                             node.y = cur_point.y
                                             node.px = cur_point.x
                                             node.py = cur_point.y
                                             @tick()
+                                            if @force?
+                                                # restart moving
+                                                @force.start()
                                         dragEnded: () =>
+                                            @set_fixed(drag_node, drag_dev, false)
                                     })
                     )
                     Hamster(element).wheel(
@@ -648,28 +674,36 @@ angular.module(
                     .attr("width", "100%")
                     .attr("height", "100%")
                     .attr("style", "stroke:black; stroke-width:2px; fill-opacity:0;")
-                    svg.append('g').attr('class', 'd3-points')
                     svg.append('g').attr('class', 'd3-links')
+                    svg.append('g').attr('class', 'd3-points')
                     @update(element, state, update_scale_fn)
                     if draw_settings.force? and draw_settings.force.enabled?
                         force.stop()
                         force.nodes(state.data).links(state.links)
                         force.start()
+                    @force = force
             )
+
+        set_fixed: (dom_node, device, flag) ->
+            device.fixed = flag
+            fill_color = if flag then "red" else "white"
+            $(dom_node).find("circle").attr("fill", fill_color)
 
         tick: () =>
             # updates all coordinates, attention: not very effective for dragging
             # update
-            @d3.select(@element).selectAll(".d3-point").attr(
-                "cx", (d) -> return d.x
-            ).attr(
-                "cy", (d) -> return d.y
-            )
+            @d3.select(@element).selectAll(".d3-point")
+            .attr("transform", (d) -> return "translate(#{d.x}, #{d.y})")
             @d3.select(@element).selectAll(".d3-link")
             .attr("x1", (d) -> return d.source.x)
             .attr("y1", (d) -> return d.source.y)
             .attr("x2", (d) -> return d.target.x)
             .attr("y2", (d) -> return d.target.y)
+
+        click: (dom_node) =>
+            drag_dev = @device_tree.all_lut[parseInt($(dom_node).attr("id"))]
+            console.log "node with id #{dom_node.id} clicked"
+            @set_fixed(dom_node, drag_dev, !drag_dev.fixed)
 
         _drag_start: (event, ui) ->
             console.log "ds", event, ui
@@ -705,7 +739,7 @@ angular.module(
             update_scale_fn()
 
         _draw_points: (element, scales, points) =>
-            _pc = new icswD3Element()
+            _pc = new icswD3Device(@)
             # select g
             g = @d3.select(element).selectAll(".d3-points")
 
@@ -746,9 +780,11 @@ angular.module(
                 @update_scale
             )
         componentDidUpdate: () ->
-            console.log "comp update"
+            console.log "component update"
+
         update_scale: () ->
             @forceUpdate()
+
         get_chart_state: () ->
             return {
                 data: @props.data
@@ -756,10 +792,12 @@ angular.module(
                 domain: @props.domain
                 settings: @props.settings
             }
+
         componentWillUnmount: () ->
             console.log "main_umount"
             el = react_dom.findDOMNode(@)
             my_test.destroy(el)
+
         render: () ->
             return div(
                 {key: "top"}

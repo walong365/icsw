@@ -131,7 +131,8 @@ class SrvTypeRouting(object):
 
     @property
     def unroutable_configs(self):
-        return self._resolv_dict["_unroutable_configs"]
+        # unroutable configs may be unset in case of dev / prod mixture
+        return self._resolv_dict.get("_unroutable_configs", {})
 
     @property
     def service_types(self):
