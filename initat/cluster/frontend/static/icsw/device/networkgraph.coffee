@@ -474,7 +474,7 @@ angular.module(
             ds = selector.data(data, (d) -> return d.id)
             _g = ds.enter().append("g")
             _g.attr("class", "d3-point draggable")
-            .attr("id", (d) -> return d.id)
+            .attr("id", (d) -> return "d#{d.id}")
             .attr("transform", (d) -> return "translate(#{d.x}, #{d.y})")
             _g.append("circle")
             # <circle r="18" fill="{{ fill_color }}" stroke-width="{{ stroke_width }}" stroke="{{ stroke_color }}" cursor="crosshair"></circle>
@@ -489,8 +489,9 @@ angular.module(
             .attr("alignment-baseline", "middle")
             .attr("cursor", "crosshair")
             # mouse handling
-            _g.on("click", (node) =>
-                @container.click(node)
+            that = @
+            _g.on("click", (node) ->
+                that.container.click(this, node)
             )
             return ds
             # EXIT
@@ -539,7 +540,7 @@ angular.module(
             @tree_present = $q.defer()
             @device_tree = undefined
             icswDeviceTreeService.load("N/A").then(
-                (tree) ->
+                (tree) =>
                     @device_tree = tree
                     @tree_present.resolve("ok")
             )
@@ -548,15 +549,20 @@ angular.module(
             @element = element
             draw_settings = state.settings
             _lut = {}
-            for node in state.data
-                _lut[node.id] = node
             $q.all(
                 [
                     d3_service.d3()
                     @tree_present.promise
                 ]
             ).then(
-                (result) ->
+                (result) =>
+                    for node in state.data
+                        _dev = @device_tree.all_lut[node.id]
+                        _dev.$$node = node
+                        node.dev = _dev
+                    for node in state.data
+                        _lut[node.id] = node
+                        # console.log node.id, @device_tree.all_lut[node.id]
                     d3 = result[0]
                     _find_element = (s_target) ->
                         # iterative search
@@ -576,6 +582,7 @@ angular.module(
                     .attr("pointer-events", "all")
                     $(element).on("mouseclick", (event) =>
                         drag_el = _find_element($(event.target))
+                        console.log "DRAG_EL=", drag_el
                         if drag_el? and drag_el.length
                             drag_el = $(drag_el[0])
                             console.log "d=", drag_el
@@ -604,7 +611,7 @@ angular.module(
                                     })
                                 else
                                     drag_node = drag_el[0]
-                                    drag_dev = _lut[parseInt($(drag_node).attr("id"))]
+                                    drag_dev = _lut[parseInt($(drag_node).attr("id").slice(1))]
                                     start_drag_point = undefined
                                     dragging.start_drag(event, 1, {
                                         dragStarted: (x, y, event) =>
@@ -613,8 +620,7 @@ angular.module(
                                                 svg_tools.get_abs_coordinate(svg, x, y)
                                                 draw_settings
                                             )
-                                            console.log start_drag_point
-                                            # node = _lut[parseInt($(drag_node).attr("id"))]
+                                            # console.log "DS", drag_node, drag_dev
                                             @set_fixed(drag_node, drag_dev, true)
                                         dragging: (x, y) =>
                                             svg = $(element).find("svg")[0]
@@ -622,7 +628,7 @@ angular.module(
                                                 svg_tools.get_abs_coordinate(svg, x, y)
                                                 draw_settings
                                             )
-                                            node = drag_dev # _lut[parseInt($(drag_node).attr("id"))]
+                                            node = drag_dev
                                             node.x = cur_point.x
                                             node.y = cur_point.y
                                             node.px = cur_point.x
@@ -687,6 +693,7 @@ angular.module(
         set_fixed: (dom_node, device, flag) ->
             device.fixed = flag
             fill_color = if flag then "red" else "white"
+            console.log dom_node
             $(dom_node).find("circle").attr("fill", fill_color)
 
         tick: () =>
@@ -700,9 +707,8 @@ angular.module(
             .attr("x2", (d) -> return d.target.x)
             .attr("y2", (d) -> return d.target.y)
 
-        click: (dom_node) =>
-            drag_dev = @device_tree.all_lut[parseInt($(dom_node).attr("id"))]
-            console.log "node with id #{dom_node.id} clicked"
+        click: (dom_node, drag_dev) =>
+            console.log "D", dom_node, drag_dev
             @set_fixed(dom_node, drag_dev, !drag_dev.fixed)
 
         _drag_start: (event, ui) ->
