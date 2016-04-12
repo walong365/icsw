@@ -999,6 +999,10 @@ angular.module(
         
         dom_id_to_link: (id) =>
             return @links_lut[parseInt(id.slice(1))]
+            
+        device_list: () =>
+            # returns the device list
+            return (node.$$device for node in @nodes)
 
 ]).service("icswDeviceTreeService",
 [

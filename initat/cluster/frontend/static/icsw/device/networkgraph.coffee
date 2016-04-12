@@ -524,19 +524,24 @@ angular.module(
 ]).service("icswNetworkTopologyDrawService",
 [
     "$templateCache", "d3_service", "svg_tools", "dragging", "mouseCaptureFactory",
-    "icswTools", "icswD3Device", "icswD3Link", "$q",
+    "icswTools", "icswD3Device", "icswD3Link", "$q", "icswDeviceLivestatusDataService",
+    "$timeout",
 (
     $templateCache, d3_service, svg_tools, dragging, mouseCaptureFactory,
-    icswTools, icswD3Device, icswD3Link, $q,
+    icswTools, icswD3Device, icswD3Link, $q, icswDeviceLivestatusDataService,
+    $timeout,
 ) ->
 
     # acts as a helper class for drawing Networks as SVG-graphs
     class icswNetworkTopologyDrawService
 
         constructor: () ->
+            @id = parseInt(Math.random() * 10000)
+            @status_timeout = undefined
 
         create: (element, props, state) =>
             @element = element
+            @state = state
             draw_settings = state.settings
             @livestatus_state = props.with_livestatus
             $q.all(
@@ -751,12 +756,32 @@ angular.module(
 
         destroy: (element) =>
             console.log "destroy"
+            if @livestatus_timeout
+                $timeout.cancel(@livestatus_timeout)
+            icswDeviceLivestatusDataService.destroy(@id)
 
         set_livestatus_state: (new_state) =>
             # set state of livestatus display
             if new_state != @livestatus_state
                 console.log "set state of livestatus to #{new_state}"
                 @livestatus_state = new_state
+                if @livestatus_state
+                    @load_livestatus()
+                else
+                    @stop_livestatus()
+
+        stop_livestatus: () =>
+            if @livestatus_timeout
+                icswDeviceLivestatusDataService.stop(@id)
+                $timeout.cancel(@livestatus_timeout)
+                @livestatus_timeout = undefined
+
+        load_livestatus: () =>
+            icswDeviceLivestatusDataService.retain(@id, @state.graph.device_list()).then(
+                (result) =>
+                    console.log "R=", result
+                    @livestatus_timeout = $timeout(@load_livestatus, 5000)
+            )
 
 ]).factory("icswNetworkTopologyReactSVGContainer",
 [
