@@ -525,6 +525,7 @@ angular.module(
     class icswMonitoringResult
         constructor: () ->
             @generation = 0
+            @notifier = $q.defer()
             @hosts = []
             @services = []
             @host_lut = {}
@@ -533,6 +534,7 @@ angular.module(
         update: (hosts, services, host_lut, used_cats) =>
             @generation++
             console.log "update", @generation
+            @notifier.notify(@generation)
             @hosts = hosts
             @services = services
             @host_lut = host_lut
@@ -775,7 +777,7 @@ angular.module(
             if not watchers_present()
                 stop_interval()
 
-        destroy: (stop) ->
+        stop: (client) ->
             client = client.toString()
             # don't watch for client anymore
             remove_watchers_by_client(client)

@@ -766,7 +766,7 @@ angular.module(
                 console.log "set state of livestatus to #{new_state}"
                 @livestatus_state = new_state
                 if @livestatus_state
-                    @load_livestatus()
+                    @start_livestatus()
                 else
                     @stop_livestatus()
 
@@ -776,11 +776,17 @@ angular.module(
                 $timeout.cancel(@livestatus_timeout)
                 @livestatus_timeout = undefined
 
-        load_livestatus: () =>
+        start_livestatus: () =>
             icswDeviceLivestatusDataService.retain(@id, @state.graph.device_list()).then(
                 (result) =>
                     console.log "R=", result
-                    @livestatus_timeout = $timeout(@load_livestatus, 5000)
+                    result.notifier.promise.then(
+                        () ->
+                        () ->
+                        (generation) ->
+                            console.log "g=", generation
+                    )
+                    # @livestatus_timeout = $timeout(@load_livestatus, 5000)
             )
 
 ]).factory("icswNetworkTopologyReactSVGContainer",

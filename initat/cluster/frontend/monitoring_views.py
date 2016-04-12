@@ -203,11 +203,17 @@ class get_node_status(View):
                             try:
                                 dev_pk = int(split[1])
                                 locked = LicenseLockListDeviceService.objects.is_device_locked(
-                                    LicenseEnum.monitoring_dashboard, dev_pk)
+                                    LicenseEnum.monitoring_dashboard,
+                                    dev_pk
+                                )
                                 if not locked:
                                     devices_used.add(dev_pk)
                             except ValueError:
-                                logger.warn("Invalid device pk in get_node_result access logging: {}".format(entry))
+                                logger.warn(
+                                    "Invalid device pk in get_node_result access logging: {}".format(
+                                        entry
+                                    )
+                                )
 
                     if not locked:
                         host_results_filtered.append(dev_res)
@@ -238,11 +244,16 @@ class get_node_status(View):
 
                     any_locked |= locked
 
-                LicenseUsage.log_usage(LicenseEnum.monitoring_dashboard, LicenseParameterTypeEnum.service,
-                                       services_used)
+                LicenseUsage.log_usage(
+                    LicenseEnum.monitoring_dashboard,
+                    LicenseParameterTypeEnum.service,
+                    services_used
+                )
 
                 if any_locked:
-                    request.xml_response.info("Some entries are on the license lock list and therefore not displayed.")
+                    request.xml_response.info(
+                        "Some entries are on the license lock list and therefore not displayed."
+                    )
 
                 # simply copy json dump
                 request.xml_response["host_result"] = json.dumps(host_results_filtered)
