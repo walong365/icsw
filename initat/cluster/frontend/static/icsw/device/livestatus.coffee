@@ -128,6 +128,63 @@ angular.module(
             "changed": () ->
                 return _changed
         }
+]).service("icswLivestatusFilterService",
+[
+    "$q", "$rootScope",
+(
+    $q, $rootScope,
+) ->
+    running_id = 0
+    class icswLivestatusFilter
+        constructor: () ->
+            running_id++
+            @id = running_id
+            console.log "new LivestatusFilter with id #{@id}"
+            @categories = []
+            @num_hosts = 0
+            @num_checks = 0
+            @md_states = [
+                [0, "O", true, "show OK states", "btn-success"]
+                [1, "W", true, "show warning states", "btn-warning"]
+                [2, "C", true, "show critical states", "btn-danger"]
+                [3, "U", true, "show unknown states", "btn-danger"]
+            ]
+            @md_luts = {}
+
+            @sh_states = [
+                [0, "S", true, "show soft states", "btn-primary"]
+                [1, "H", true, "show hard states", "btn-primary"]
+            ]
+            @sh_luts = {}
+
+            # default value
+            @md_state = {}
+            for entry in @md_states
+                @md_luts[entry[0]] = entry
+                @md_luts[entry[1]] = entry
+                @md_state[entry[0]] = entry[2]
+
+            @sh_state = {}
+            for entry in @sh_states
+                @sh_luts[entry[0]] = entry
+                @sh_luts[entry[1]] = entry
+                @sh_state[entry[0]] = entry[2]
+
+        toggle_md: (code) =>
+            _md_idx = @md_luts[code][0]
+            @md_state[_md_idx] = !@md_state[_md_idx]
+
+        toggle_sh: (code) =>
+            _sh_idx = @sh_luts[code][0]
+            @sh_state[_sh_idx] = !@sh_state[_sh_idx]
+            
+        # get state strings for ReactJS, a little hack ...
+        get_md_state: () =>
+            return (entry[1] for entry in @md_states when @md_state[entry[0]]).join(":")
+
+        get_sh_state: () =>
+            return (entry[1] for entry in @sh_states when @sh_state[entry[0]]).join(":")
+
 ]).factory("icswLivestatusFilterFactory", [() ->
     _filter_id = 0
     return () ->

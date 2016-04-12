@@ -538,6 +538,7 @@ angular.module(
         create: (element, props, state) =>
             @element = element
             draw_settings = state.settings
+            @livestatus_state = props.with_livestatus
             $q.all(
                 [
                     d3_service.d3()
@@ -750,13 +751,19 @@ angular.module(
 
         destroy: (element) =>
             console.log "destroy"
+
+        set_livestatus_state: (new_state) =>
+            # set state of livestatus display
+            if new_state != @livestatus_state
+                console.log "set state of livestatus to #{new_state}"
+                @livestatus_state = new_state
+
 ]).factory("icswNetworkTopologyReactSVGContainer",
 [
     "icswNetworkTopologyDrawService",
 (
     icswNetworkTopologyDrawService
 ) ->
-    draw_service = new icswNetworkTopologyDrawService()
 
     react_dom = ReactDOM
     {div} = React.DOM
@@ -767,6 +774,7 @@ angular.module(
             graph: React.PropTypes.object
             settings: React.PropTypes.object
             scale_changed_cb: React.PropTypes.func
+            with_livestatus: React.PropTypes.bool
         }
         getInitialState: () ->
             return {
@@ -774,14 +782,16 @@ angular.module(
             }
 
         componentDidMount: () ->
+            @draw_service = new icswNetworkTopologyDrawService()
             console.log "mount"
             el = ReactDOM.findDOMNode(@)
-            draw_service.create(
+            @draw_service.create(
                 el
                 {
                     width: @props.settings.size.width
                     height: @props.settings.size.height
                     update_scale_cb: @update_scale
+                    with_livestatus: @props.with_livestatus
                 }
                 {
                     graph: @props.graph
@@ -796,16 +806,121 @@ angular.module(
         componentWillUnmount: () ->
             console.log "main_umount"
             el = react_dom.findDOMNode(@)
-            draw_service.destroy(el)
+            @draw_service.destroy(el)
+
+        componentDidUpdate: () ->
+            # called when the props have changed
+            @draw_service.set_livestatus_state(@props.with_livestatus)
 
         render: () ->
             return div({key: "div"})
     )
+]).factory("icswLivestatusFilterReactDisplay",
+[
+    "$q",
+(
+    $q
+) ->
+    # display of livestatus filter
+    react_dom = ReactDOM
+    {div, h4, select, option, p, input, span} = React.DOM
+
+    return React.createClass(
+        propTypes: {
+            livestatus_filter: React.PropTypes.object
+        }
+        getInitialState: () ->
+            return {
+                md_state: @props.livestatus_filter.get_md_state()
+                sh_state: @props.livestatus_filter.get_sh_state()
+            }
+
+        shouldComponentUpdate: (next_props, next_state) ->
+            _redraw = false
+            if next_state.md_state != @state.md_state
+                _redraw = true
+            else if next_state.sh_state != @state.sh_state
+                _redraw = true
+            return _redraw
+
+        render: () ->
+
+            console.log "r", @props.livestatus_filter
+            _lf = @props.livestatus_filter
+            _list = []
+            _list.push(
+                span(
+                    {key: "hco"}
+                    "# of hosts / checks: #{_lf.num_hosts} / #{_lf.num_checks}"
+                )
+                ", filter options: "
+            )
+            _md_buttons = []
+            for entry in _lf.md_states
+                _md_buttons.push(
+                    input(
+                        {
+                            key: "md.#{entry[1]}"
+                            type: "button"
+                            className: "btn btn-xs " + if _lf.md_state[entry[0]] then entry[4] else "btn-default"
+                            value: entry[1]
+                            title: entry[3]
+                            onClick: (event) =>
+                                # _lf.toggle_md(event.target_value)
+                                _lf.toggle_md(event.target.value)
+                                # force redraw
+                                @setState({md_state: _lf.get_md_state()})
+                        }
+                    )
+                )
+            _sh_buttons = []
+            for entry in _lf.sh_states
+                _sh_buttons.push(
+                    input(
+                        {
+                            key: "sh.#{entry[1]}"
+                            type: "button"
+                            className: "btn btn-xs " + if _lf.sh_state[entry[0]] then entry[4] else "btn-default"
+                            value: entry[1]
+                            title: entry[3]
+                            onClick: (event) =>
+                                _lf.toggle_sh(event.target.value)
+                                # force redraw
+                                @setState({sh_state: _lf.get_sh_state()})
+                        }
+                    )
+                )
+            _list.push(
+                div(
+                    {
+                        key: "md.buttons"
+                        className: "btn-group"
+                    }
+                    _md_buttons
+                )
+            )
+            _list.push(" ")
+            _list.push(
+                div(
+                    {
+                        key: "sh.buttons"
+                        className: "btn-group"
+                    }
+                    _sh_buttons
+                )
+            )
+            return span(
+                {key: "top"}
+                _list
+            )
+    )
 ]).factory("icswNetworkTopologyReactContainer",
 [
     "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswNetworkTopologyReactSVGContainer",
+    "icswLivestatusFilterService", "icswLivestatusFilterReactDisplay",
 (
     $q, ICSW_URLS, icswSimpleAjaxCall, icswNetworkTopologyReactSVGContainer,
+    icswLivestatusFilterService, icswLivestatusFilterReactDisplay,
 ) ->
     # Network topology container, including selection and redraw button
     react_dom = ReactDOM
@@ -818,16 +933,18 @@ angular.module(
         }
 
         getInitialState: () ->
-            console.log "gis"
             return {
                 draw_type: "all_with_peers"
                 loading: false
+                with_livestatus: false
                 data_present: false
                 graph: undefined
                 settings: undefined
                 graph_id: 0
                 scale_iteration: 0
+                livestatus_filter: new icswLivestatusFilterService()
             }
+
         componentWillUnmount: () ->
             console.log "TopCont umount"
             el = react_dom.findDOMNode(@)
@@ -869,24 +986,16 @@ angular.module(
                 ", "
                 input(
                     {
-                        key: "input"
+                        key: "b.redraw"
                         type: "button"
                         className: "btn btn-warning btn-sm"
                         defaultValue: "Redraw"
                         onClick: (event) =>
-                            console.log "redraw", @state.draw_type
                             @setState({loading: true})
                             @load_data()
                     }
                 )
             ]
-            if @state.loading
-                _list.push(
-                    span(
-                        {className: "text-danger", key: "infospan"}
-                        " Fetching data from server..."
-                    )
-                )
             _top_list = [
                 div(
                     {key: "div0", className: "form-group form-inline"}
@@ -894,6 +1003,18 @@ angular.module(
                 )
             ]
             if @state.data_present
+                _list.push(
+                    input(
+                        {
+                            key: "b.livestatus"
+                            type: "button"
+                            className: if @state.with_livestatus then "btn btn-success btn-sm" else "btn btn-default btn-sm"
+                            defaultValue: "Livestatus"
+                            onClick: (event) =>
+                                @setState({with_livestatus: not @state.with_livestatus})
+                        }
+                    )
+                )
                 _top_list.push(
                     h4(
                         {key: "header"}
@@ -909,7 +1030,24 @@ angular.module(
                             graph: @state.graph
                             settings: @state.settings
                             scale_changed_cb: @scale_changed
+                            with_livestatus: @state.with_livestatus
                         }
+                    )
+                )
+            if @state.with_livestatus
+                _list.push(
+                    React.createElement(
+                        icswLivestatusFilterReactDisplay
+                        {
+                            livestatus_filter: @state.livestatus_filter
+                        }
+                    )
+                )
+            if @state.loading
+                _list.push(
+                    span(
+                        {className: "text-danger", key: "infospan"}
+                        " Fetching data from server..."
                     )
                 )
             return div(
