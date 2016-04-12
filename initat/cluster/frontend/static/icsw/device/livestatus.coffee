@@ -143,47 +143,56 @@ angular.module(
             @categories = []
             @num_hosts = 0
             @num_checks = 0
-            @md_states = [
+            # possible service states
+            @service_state_list = [
                 [0, "O", true, "show OK states", "btn-success"]
                 [1, "W", true, "show warning states", "btn-warning"]
                 [2, "C", true, "show critical states", "btn-danger"]
                 [3, "U", true, "show unknown states", "btn-danger"]
             ]
-            @md_luts = {}
+            @service_state_lut = {}
 
-            @sh_states = [
+            @host_state_list = [
                 [0, "S", true, "show soft states", "btn-primary"]
                 [1, "H", true, "show hard states", "btn-primary"]
             ]
-            @sh_luts = {}
+            @host_state_lut = {}
 
-            # default value
-            @md_state = {}
-            for entry in @md_states
-                @md_luts[entry[0]] = entry
-                @md_luts[entry[1]] = entry
-                @md_state[entry[0]] = entry[2]
+            # default values for service states
+            @service_states = {}
+            for entry in @service_state_list
+                @service_state_lut[entry[0]] = entry
+                @service_state_lut[entry[1]] = entry
+                @service_states[entry[0]] = entry[2]
 
-            @sh_state = {}
-            for entry in @sh_states
-                @sh_luts[entry[0]] = entry
-                @sh_luts[entry[1]] = entry
-                @sh_state[entry[0]] = entry[2]
+            # device values for host states
+            @host_states = {}
+            for entry in @host_state_list
+                @host_state_lut[entry[0]] = entry
+                @host_state_lut[entry[1]] = entry
+                @host_states[entry[0]] = entry[2]
 
-        toggle_md: (code) =>
-            _md_idx = @md_luts[code][0]
-            @md_state[_md_idx] = !@md_state[_md_idx]
+        toggle_service_state: (code) =>
+            _srvc_idx = @service_state_lut[code][0]
+            @service_states[_srvc_idx] = !@service_states[_srvc_idx]
+            # ensure that any service state is set
+            if not _.some(_.values(@service_states))
+                @service_states[0] = true
 
-        toggle_sh: (code) =>
-            _sh_idx = @sh_luts[code][0]
-            @sh_state[_sh_idx] = !@sh_state[_sh_idx]
-            
+
+        toggle_host_state: (code) =>
+            _host_idx = @host_state_lut[code][0]
+            @host_states[_host_idx] = !@host_states[_host_idx]
+            # ensure that any host state is set
+            if not _.some(_.values(@host_states))
+                @host_states[0] = true
+
         # get state strings for ReactJS, a little hack ...
-        get_md_state: () =>
-            return (entry[1] for entry in @md_states when @md_state[entry[0]]).join(":")
+        get_service_state_str: () =>
+            return (entry[1] for entry in @service_state_list when @service_states[entry[0]]).join(":")
 
-        get_sh_state: () =>
-            return (entry[1] for entry in @sh_states when @sh_state[entry[0]]).join(":")
+        get_host_state_str: () =>
+            return (entry[1] for entry in @host_state_list when @host_states[entry[0]]).join(":")
 
 ]).factory("icswLivestatusFilterFactory", [() ->
     _filter_id = 0

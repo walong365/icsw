@@ -831,15 +831,15 @@ angular.module(
         }
         getInitialState: () ->
             return {
-                md_state: @props.livestatus_filter.get_md_state()
-                sh_state: @props.livestatus_filter.get_sh_state()
+                setvice_state_str: @props.livestatus_filter.get_service_state_str()
+                host_state_str: @props.livestatus_filter.get_host_state_str()
             }
 
         shouldComponentUpdate: (next_props, next_state) ->
             _redraw = false
-            if next_state.md_state != @state.md_state
+            if next_state.service_state_str != @state.service_state_str
                 _redraw = true
-            else if next_state.sh_state != @state.sh_state
+            else if next_state.host_state_str != @state.host_state_str
                 _redraw = true
             return _redraw
 
@@ -855,58 +855,58 @@ angular.module(
                 )
                 ", filter options: "
             )
-            _md_buttons = []
-            for entry in _lf.md_states
-                _md_buttons.push(
+            _service_buttons = []
+            for entry in _lf.service_state_list
+                _service_buttons.push(
                     input(
                         {
-                            key: "md.#{entry[1]}"
+                            key: "srvc.#{entry[1]}"
                             type: "button"
-                            className: "btn btn-xs " + if _lf.md_state[entry[0]] then entry[4] else "btn-default"
+                            className: "btn btn-xs " + if _lf.service_states[entry[0]] then entry[4] else "btn-default"
                             value: entry[1]
                             title: entry[3]
                             onClick: (event) =>
                                 # _lf.toggle_md(event.target_value)
-                                _lf.toggle_md(event.target.value)
+                                _lf.toggle_service_state(event.target.value)
                                 # force redraw
-                                @setState({md_state: _lf.get_md_state()})
+                                @setState({service_state_str: _lf.get_service_state_str()})
                         }
                     )
                 )
-            _sh_buttons = []
-            for entry in _lf.sh_states
-                _sh_buttons.push(
+            _host_buttons = []
+            for entry in _lf.host_state_list
+                _host_buttons.push(
                     input(
                         {
-                            key: "sh.#{entry[1]}"
+                            key: "host.#{entry[1]}"
                             type: "button"
-                            className: "btn btn-xs " + if _lf.sh_state[entry[0]] then entry[4] else "btn-default"
+                            className: "btn btn-xs " + if _lf.host_states[entry[0]] then entry[4] else "btn-default"
                             value: entry[1]
                             title: entry[3]
                             onClick: (event) =>
-                                _lf.toggle_sh(event.target.value)
+                                _lf.toggle_host_state(event.target.value)
                                 # force redraw
-                                @setState({sh_state: _lf.get_sh_state()})
+                                @setState({host_state_str: _lf.get_host_state_str()})
                         }
                     )
                 )
             _list.push(
                 div(
                     {
-                        key: "md.buttons"
+                        key: "srvc.buttons"
                         className: "btn-group"
                     }
-                    _md_buttons
+                    _service_buttons
                 )
             )
             _list.push(" ")
             _list.push(
                 div(
                     {
-                        key: "sh.buttons"
+                        key: "host.buttons"
                         className: "btn-group"
                     }
-                    _sh_buttons
+                    _host_buttons
                 )
             )
             return span(
