@@ -963,8 +963,21 @@ angular.module(
 ) ->
     class icswDeviceTreeGraph
         constructor: (@nodes, @links, tree) ->
+            _set_coords = false
             for node in @nodes
                 node.$$device = tree.all_lut[node.id]
+                if not node.x?
+                    _set_coords = true
+
+            if _set_coords
+                _id = 0
+                for node in @nodes
+                    _id++
+                    # init coordinates if needed
+                    _angle = 2 * Math.PI * @nodes.length / _id
+                    node.x = Math.cos(_angle) * 50
+                    node.y = Math.sin(_angle) * 50
+                    node.radius = 10
             # enumerate links
             _id = 0
             for link in @links

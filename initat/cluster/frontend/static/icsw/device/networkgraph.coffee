@@ -478,7 +478,7 @@ angular.module(
             .attr("transform", (d) -> return "translate(#{d.x}, #{d.y})")
             _g.append("circle")
             # <circle r="18" fill="{{ fill_color }}" stroke-width="{{ stroke_width }}" stroke="{{ stroke_color }}" cursor="crosshair"></circle>
-            .attr('r', (d) -> return d.r)
+            .attr('r', (d) -> return d.radius)
             .attr("stroke-width", "2")
             .attr("stroke", "grey")
             .attr("fill", "white")
@@ -521,7 +521,7 @@ angular.module(
             # EXIT
             # point.exit().remove()
 
-]).service("icswD3Test",
+]).service("icswNetworkTopologyDrawService",
 [
     "$templateCache", "d3_service", "svg_tools", "dragging", "mouseCaptureFactory",
     "icswTools", "icswD3Device", "icswD3Link", "$q",
@@ -529,7 +529,9 @@ angular.module(
     $templateCache, d3_service, svg_tools, dragging, mouseCaptureFactory,
     icswTools, icswD3Device, icswD3Link, $q,
 ) ->
-    class icswD3Test
+
+    # acts as a helper class for drawing Networks as SVG-graphs
+    class icswNetworkTopologyDrawService
 
         constructor: () ->
 
@@ -707,7 +709,7 @@ angular.module(
             return point
 
         update: (element, state, update_scale_fn) =>
-            scales = @_scales(element, state.domain)
+            scales = @_scales(element, state.settings.domain)
             @_draw_points(scales, state.graph)
             @_draw_links(scales, state.graph)
             @_update_transform(element, state.settings, update_scale_fn)
@@ -747,66 +749,221 @@ angular.module(
 
         destroy: (element) =>
             console.log "destroy"
-]).factory("icswD3T2", ["icswD3Test", (icswD3Test) ->
-    my_test = new icswD3Test()
+]).factory("icswNetworkTopologyReactSVGContainer",
+[
+    "icswNetworkTopologyDrawService",
+(
+    icswNetworkTopologyDrawService
+) ->
+    draw_service = new icswNetworkTopologyDrawService()
+
     react_dom = ReactDOM
-    {div, h4} = React.DOM
-    test = React.createClass(
+    {div} = React.DOM
+
+    return React.createClass(
         propTypes: {
             # required types
             graph: React.PropTypes.object
-            domain: React.PropTypes.object
             settings: React.PropTypes.object
+            scale_changed_cb: React.PropTypes.func
         }
+        getInitialState: () ->
+            return {
+                iteration: 0
+            }
+
         componentDidMount: () ->
+            console.log "mount"
             el = ReactDOM.findDOMNode(@)
-            my_test.create(
+            draw_service.create(
                 el
                 {
                     width: "80%"
-                    height: "300px"
+                    height: "400px"
                 }
                 @get_chart_state()
                 @update_scale
             )
-        componentDidUpdate: () ->
-            console.log "component update"
 
         update_scale: () ->
-            @forceUpdate()
+            @setState({iteration: @state.iteration + 1})
+            @props.scale_changed_cb()
 
         get_chart_state: () ->
             return {
                 graph: @props.graph
-                domain: @props.domain
                 settings: @props.settings
             }
 
         componentWillUnmount: () ->
             console.log "main_umount"
             el = react_dom.findDOMNode(@)
-            my_test.destroy(el)
+            draw_service.destroy(el)
 
         render: () ->
-            return div(
-                {key: "top"}
-                [
+            return div({key: "div"})
+    )
+]).factory("icswNetworkTopologyReactContainer",
+[
+    "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswNetworkTopologyReactSVGContainer",
+(
+    $q, ICSW_URLS, icswSimpleAjaxCall, icswNetworkTopologyReactSVGContainer,
+) ->
+    # Network topology container, including selection and redraw button
+    react_dom = ReactDOM
+    {div, h4, select, option, p, input, span} = React.DOM
+
+    return React.createClass(
+        propTypes: {
+            # required types
+            device_tree: React.PropTypes.object
+        }
+
+        getInitialState: () ->
+            console.log "gis"
+            return {
+                draw_type: "all_with_peers"
+                loading: false
+                data_present: false
+                graph: undefined
+                settings: undefined
+                graph_id: 0
+                scale_iteration: 0
+            }
+        componentWillUnmount: () ->
+            console.log "TopCont umount"
+            el = react_dom.findDOMNode(@)
+
+        render: () ->
+            _draw_options = [
+                ["none", "None"]
+                ["all_with_peers", "All peered"]
+                ["all", "All devices"]
+                ["sel", "selected devices"]
+                ["selp1", "selected devices + 1 (next ring)"]
+                ["selp2", "selected devices + 2"]
+                ["selp3", "selected devices + 3"]
+                ["core", "Core network"]
+            ]
+            _opts = (
+                option(
+                    {
+                        key: "sel_#{key}"
+                        value: key
+                    }
+                    info
+                ) for [key, info] in _draw_options
+            )
+            _list = [
+                "Show network topology for "
+                select(
+                    {
+                        key: "inpsel"
+                        className: "form-control"
+                        defaultValue: "#{@state.draw_type}"
+                        style: {width: "200px"}
+                        onChange: (event) =>
+                            @setState({draw_type: event.target.value})
+
+                    }
+                    _opts
+                )
+                ", "
+                input(
+                    {
+                        key: "input"
+                        type: "button"
+                        className: "btn btn-warning btn-sm"
+                        defaultValue: "Redraw"
+                        onClick: (event) =>
+                            console.log "redraw", @state.draw_type
+                            @setState({loading: true})
+                            @load_data()
+                    }
+                )
+            ]
+            if @state.loading
+                _list.push(
+                    span(
+                        {className: "text-danger", key: "infospan"}
+                        " Fetching data from server..."
+                    )
+                )
+            _top_list = [
+                div(
+                    {key: "div0", className: "form-group form-inline"}
+                    _list
+                )
+            ]
+            if @state.data_present
+                _top_list.push(
                     h4(
                         {key: "header"}
-                        "Header #{@props.settings.zoom.factor} #{@props.settings.offset.x} / #{@props.settings.offset.y}"
+                        "Settings: #{_.round(@state.settings.offset.x, 3)} / #{_.round(@state.settings.offset.y, 3)} @ #{_.round(@state.settings.zoom.factor, 3)}"
                     )
-                    div(
-                        {key: "div", className: "chart"}
+                )
+                graph_id = @state.graph_id
+                _top_list.push(
+                    React.createElement(
+                        icswNetworkTopologyReactSVGContainer
+                        {
+                            key: "graph#{graph_id}"
+                            graph: @state.graph
+                            settings: @state.settings
+                            scale_changed_cb: @scale_changed
+                        }
                     )
-                ]
+                )
+            return div(
+                {key: "top"}
+                _top_list
             )
-    )
-    return test
+
+        scale_changed: () ->
+            @setState({scale_iteration: @state.scale_iteration + 1})
+
+        load_data: () ->
+            icswSimpleAjaxCall(
+                url: ICSW_URLS.NETWORK_JSON_NETWORK
+                data:
+                    graph_sel: @state.draw_type
+                    devices: angular.toJson([])
+                dataType: "json"
+            ).then(
+                (json) =>
+                    console.log json
+                    @setState(
+                        {
+                            loading: false
+                            data_present: true
+                            graph_id: @state.graph_id + 1
+                            graph: @props.device_tree.seed_network_graph(json.nodes, json.links)
+                            settings: {
+                                offset: {
+                                    x: 0
+                                    y: 0
+                                }
+                                zoom: {
+                                    factor: 1.0
+                                }
+                                force: {
+                                    enabled: true
+                                }
+                                domain: {
+                                    x: [0, 10]
+                                    y: [0, 20]
+                                }
+                            }
+                        }
+                    )
+            )
+)
+
 ]).directive("icswTestG",
 [
-    "icswD3T2", "ICSW_URLS", "icswSimpleAjaxCall", "icswDeviceTreeService",
+    "ICSW_URLS", "icswDeviceTreeService", "icswNetworkTopologyReactContainer",
 (
-    icswD3T2, ICSW_URLS, icswSimpleAjaxCall, icswDeviceTreeService,
+    ICSW_URLS, icswDeviceTreeService, icswNetworkTopologyReactContainer,
 ) ->
     return {
         restrict: "EA"
@@ -822,52 +979,14 @@ angular.module(
                     _load_graph(tree)
             )
             _load_graph = (tree) ->
-                icswSimpleAjaxCall(
-                    url: ICSW_URLS.NETWORK_JSON_NETWORK
-                    data:
-                        graph_sel: "all"
-                        devices: angular.toJson([])
-                    dataType: "json"
-                ).then(
-                    (json) ->
-                        idx = 0
-                        idy = 0
-                        for node in json.nodes
-                            node.x = idx
-                            node.y = idy
-                            node.r = 10
-                            idx += 10
-                            idy += 25
-                            if idy > 100
-                                idy = 0
-                            # console.log "node=", node
-                        console.log "N=", json.nodes
-                        console.log "L=", json.links
-                        _settings = {
-                            graph: tree.seed_network_graph(json.nodes, json.links) 
-                            domain: {x: [0, 10], y: [0,20]}
-                            settings: {
-                                offset: {
-                                    x: 0
-                                    y: 0
-                                }
-                                zoom: {
-                                    factor: 1.0
-                                }
-                                force: {
-                                    enabled: true
-                                }
-                            }
+                ReactDOM.render(
+                    React.createElement(
+                        icswNetworkTopologyReactContainer
+                        {
+                            device_tree: tree
                         }
-                        _render = () ->
-                            ReactDOM.render(
-                                React.createElement(
-                                    icswD3T2
-                                    _settings
-                                )
-                                element[0]
-                            )
-                        _render()
+                    )
+                    element[0]
                 )
                 scope.$on("$destroy", (d) ->
                     ReactDOM.unmountComponentAtNode(element[0])
