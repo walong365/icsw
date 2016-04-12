@@ -470,7 +470,7 @@ angular.module(
     class icswD3Device
         constructor: (@container) ->
         create: (selector, graph) ->
-            console.log "data=", graph.nodes
+            # console.log "data=", graph.nodes
             ds = selector.data(graph.nodes, (d) -> return d.id)
             _g = ds.enter().append("g")
             _g.attr("class", "d3-point draggable")
@@ -505,7 +505,7 @@ angular.module(
     class icswD3Link
         constructor: (@container) ->
         create: (selector, graph) ->
-            console.log "link=", graph.links
+            # console.log "link=", graph.links
             ds = selector.data(graph.links, (l) -> return graph.link_to_dom_id(l))
             ds.enter().append("line")
             .attr("class", "d3-link")
@@ -535,7 +535,7 @@ angular.module(
 
         constructor: () ->
 
-        create: (element, props, state, update_scale_fn) =>
+        create: (element, props, state) =>
             @element = element
             draw_settings = state.settings
             $q.all(
@@ -565,10 +565,10 @@ angular.module(
                     .attr("pointer-events", "all")
                     $(element).on("mouseclick", (event) =>
                         drag_el = _find_element($(event.target))
-                        console.log "DRAG_EL=", drag_el
+                        # console.log "DRAG_EL=", drag_el
                         if drag_el? and drag_el.length
                             drag_el = $(drag_el[0])
-                            console.log "d=", drag_el
+                            # console.log "d=", drag_el
                     )
                     $(element).mousedown(
                         (event) =>
@@ -589,7 +589,7 @@ angular.module(
                                                x: x - _sx
                                                y: y - _sy
                                             }
-                                            @_update_transform(element, draw_settings, update_scale_fn)
+                                            @_update_transform(element, draw_settings, props.update_scale_cb)
                                         dragEnded: () =>
                                     })
                                 else
@@ -639,7 +639,7 @@ angular.module(
                                 draw_settings.zoom.factor /= 1.05
                             draw_settings.offset.x += scale_point.x * (prev_factor - draw_settings.zoom.factor)
                             draw_settings.offset.y += scale_point.y * (prev_factor - draw_settings.zoom.factor)
-                            @_update_transform(element, draw_settings, update_scale_fn)
+                            @_update_transform(element, draw_settings, props.update_scale_cb)
                             event.stopPropagation()
                             event.preventDefault()
                     )
@@ -669,7 +669,7 @@ angular.module(
                         ).on("tick", () =>
                             @tick()
                         )
-                    @update(element, state, update_scale_fn)
+                    @update(element, state, props.update_scale_cb)
                     if draw_settings.force? and draw_settings.force.enabled?
                         force.stop()
                         force.nodes(state.graph.nodes).links(state.graph.links)
@@ -681,7 +681,6 @@ angular.module(
         set_fixed: (dom_node, device, flag) ->
             device.fixed = flag
             fill_color = if flag then "red" else "white"
-            console.log dom_node
             $(dom_node).find("circle").attr("fill", fill_color)
 
         tick: () =>
@@ -699,7 +698,8 @@ angular.module(
             @set_fixed(dom_node, drag_dev, !drag_dev.fixed)
 
         _drag_start: (event, ui) ->
-            console.log "ds", event, ui
+            # console.log "ds", event, ui
+            true
 
         _rescale: (point, settings) =>
             point.x -= settings.offset.x
@@ -708,11 +708,11 @@ angular.module(
             point.y /= settings.zoom.factor
             return point
 
-        update: (element, state, update_scale_fn) =>
+        update: (element, state, update_scale_cb) =>
             scales = @_scales(element, state.settings.domain)
             @_draw_points(scales, state.graph)
             @_draw_links(scales, state.graph)
-            @_update_transform(element, state.settings, update_scale_fn)
+            @_update_transform(element, state.settings, update_scale_cb)
             @tick()
 
         _scales: (element, domain) =>
@@ -720,16 +720,17 @@ angular.module(
             jq_el = $(element).find("svg")
             width = jq_el.width()
             height = jq_el.height()
+            # console.log "domain=", domain
             x = @d3.scale.linear().range([0, width]).domain(domain.x)
             y = @d3.scale.linear().range([height, 0]).domain(domain.y)
             z = @d3.scale.linear().range([5, 20]).domain([1, 10])
             return {x: x, y: y, z: z}
 
-        _update_transform: (element, settings, update_scale_fn) =>
+        _update_transform: (element, settings, update_scale_cb) =>
             g = $(element).find("g#top")
             _t_str = "translate(#{settings.offset.x}, #{settings.offset.y}) scale(#{settings.zoom.factor})"
             g.attr("transform", _t_str)
-            update_scale_fn()
+            update_scale_cb()
 
         _draw_points: (scales, graph) =>
             _pc = new icswD3Device(@)
@@ -778,22 +779,19 @@ angular.module(
             draw_service.create(
                 el
                 {
-                    width: "80%"
-                    height: "400px"
+                    width: @props.settings.size.width
+                    height: @props.settings.size.height
+                    update_scale_cb: @update_scale
                 }
-                @get_chart_state()
-                @update_scale
+                {
+                    graph: @props.graph
+                    settings: @props.settings
+                }
             )
 
         update_scale: () ->
             @setState({iteration: @state.iteration + 1})
             @props.scale_changed_cb()
-
-        get_chart_state: () ->
-            return {
-                graph: @props.graph
-                settings: @props.settings
-            }
 
         componentWillUnmount: () ->
             console.log "main_umount"
@@ -952,6 +950,10 @@ angular.module(
                                 domain: {
                                     x: [0, 10]
                                     y: [0, 20]
+                                }
+                                size: {
+                                    width: "95%"
+                                    height: "600px"
                                 }
                             }
                         }
