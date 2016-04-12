@@ -416,11 +416,11 @@ angular.module(
 ]).service("icswDeviceTree",
 [
     "icswTools", "ICSW_URLS", "$q", "Restangular", "icswEnrichmentInfo",
-    "icswSimpleAjaxCall", "$rootScope", "$timeout",
+    "icswSimpleAjaxCall", "$rootScope", "$timeout", "icswDeviceTreeGraph",
     "ICSW_SIGNALS", "icswDeviceTreeHelper", "icswNetworkTreeService",
 (
     icswTools, ICSW_URLS, $q, Restangular, icswEnrichmentInfo,
-    icswSimpleAjaxCall, $rootScope, $timeout,
+    icswSimpleAjaxCall, $rootScope, $timeout, icswDeviceTreeGraph,
     ICSW_SIGNALS, icswDeviceTreeHelper, icswNetworkTreeService
 ) ->
     class icswDeviceTree
@@ -951,6 +951,41 @@ angular.module(
                     hs.post_g_device_connection_info()
                     defer.resolve(msg)
             )
+
+        # network graph functions
+        seed_network_graph: (nodes, links) =>
+            return new icswDeviceTreeGraph(nodes, links, @)
+]).service("icswDeviceTreeGraph",
+[
+    "$q",
+(
+    $q,
+) ->
+    class icswDeviceTreeGraph
+        constructor: (@nodes, @links, tree) ->
+            for node in @nodes
+                node.$$device = tree.all_lut[node.id]
+            # enumerate links
+            _id = 0
+            for link in @links
+                link.id = _id
+                _id++
+            # create luts
+            @nodes_lut = _.keyBy(@nodes, "id")
+            @links_lut = _.keyBy(@links, "id") 
+
+        # helper functions
+        node_to_dom_id: (node) ->
+            return "n#{node.id}"
+        
+        dom_id_to_node: (id) =>
+            return @nodes_lut[parseInt(id.slice(1))]
+
+        link_to_dom_id: (link) ->
+            return "l#{link.id}"
+        
+        dom_id_to_link: (id) =>
+            return @links_lut[parseInt(id.slice(1))]
 
 ]).service("icswDeviceTreeService",
 [

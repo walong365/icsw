@@ -469,12 +469,12 @@ angular.module(
 ) ->
     class icswD3Device
         constructor: (@container) ->
-        create: (selector, data) ->
-            console.log "data=", data
-            ds = selector.data(data, (d) -> return d.id)
+        create: (selector, graph) ->
+            console.log "data=", graph.nodes
+            ds = selector.data(graph.nodes, (d) -> return d.id)
             _g = ds.enter().append("g")
             _g.attr("class", "d3-point draggable")
-            .attr("id", (d) -> return "d#{d.id}")
+            .attr("id", (d) -> return graph.node_to_dom_id(d))
             .attr("transform", (d) -> return "translate(#{d.x}, #{d.y})")
             _g.append("circle")
             # <circle r="18" fill="{{ fill_color }}" stroke-width="{{ stroke_width }}" stroke="{{ stroke_color }}" cursor="crosshair"></circle>
@@ -483,7 +483,7 @@ angular.module(
             .attr("stroke", "grey")
             .attr("fill", "white")
             .attr("cursor", "crosshair")
-            _g.append("text").text((d) -> return d.full_name or "node")
+            _g.append("text").text((d) -> return d.$$device.full_name)
             # <text text-anchor="middle" alignment-baseline="middle" cursor="crosshair">{{ node.name }}</text>
             .attr("text-anchor", "middle")
             .attr("alignment-baseline", "middle")
@@ -491,11 +491,10 @@ angular.module(
             # mouse handling
             that = @
             _g.on("click", (node) ->
+                # important to use thin arrows here
                 that.container.click(this, node)
             )
             return ds
-            # EXIT
-            # point.exit().remove()
 
 ]).service("icswD3Link",
 [
@@ -504,14 +503,10 @@ angular.module(
     svg_tools
 ) ->
     class icswD3Link
-        constructor: () ->
-        create: (selector, link, points) ->
-            console.log "link=", link
-            _id = 0
-            ds = selector.data(link, (d) ->
-                _id++
-                return _id
-            )
+        constructor: (@container) ->
+        create: (selector, graph) ->
+            console.log "link=", graph.links
+            ds = selector.data(graph.links, (l) -> return graph.link_to_dom_id(l))
             ds.enter().append("line")
             .attr("class", "d3-link")
             .attr("stroke", "#ff7788")
@@ -529,41 +524,28 @@ angular.module(
 ]).service("icswD3Test",
 [
     "$templateCache", "d3_service", "svg_tools", "dragging", "mouseCaptureFactory",
-    "icswTools", "icswD3Device", "icswD3Link", "icswDeviceTreeService", "$q",
+    "icswTools", "icswD3Device", "icswD3Link", "$q",
 (
     $templateCache, d3_service, svg_tools, dragging, mouseCaptureFactory,
-    icswTools, icswD3Device, icswD3Link, icswDeviceTreeService, $q,
+    icswTools, icswD3Device, icswD3Link, $q,
 ) ->
     class icswD3Test
 
         constructor: () ->
-            @tree_present = $q.defer()
-            @device_tree = undefined
-            icswDeviceTreeService.load("N/A").then(
-                (tree) =>
-                    @device_tree = tree
-                    @tree_present.resolve("ok")
-            )
 
         create: (element, props, state, update_scale_fn) =>
             @element = element
             draw_settings = state.settings
-            _lut = {}
             $q.all(
                 [
                     d3_service.d3()
-                    @tree_present.promise
                 ]
             ).then(
                 (result) =>
-                    for node in state.data
-                        _dev = @device_tree.all_lut[node.id]
-                        _dev.$$node = node
-                        node.dev = _dev
-                    for node in state.data
-                        _lut[node.id] = node
-                        # console.log node.id, @device_tree.all_lut[node.id]
                     d3 = result[0]
+                    # base settings
+                    @d3 = d3
+                    @d3_element = d3.select(@element)
                     _find_element = (s_target) ->
                         # iterative search
                         if svg_tools.has_class_svg(s_target, "draggable")
@@ -573,8 +555,7 @@ angular.module(
                             return _find_element(s_target)
                         else
                             return null
-                    @d3 = d3
-                    svg = d3.select(element).append("svg")
+                    svg = @d3_element.append("svg")
                     .attr('class', 'draggable')
                     .attr('width', props.width)
                     .attr('height', props.height)
@@ -611,7 +592,7 @@ angular.module(
                                     })
                                 else
                                     drag_node = drag_el[0]
-                                    drag_dev = _lut[parseInt($(drag_node).attr("id").slice(1))]
+                                    drag_dev = state.graph.dom_id_to_node($(drag_node).attr("id"))
                                     start_drag_point = undefined
                                     dragging.start_drag(event, 1, {
                                         dragStarted: (x, y, event) =>
@@ -660,6 +641,19 @@ angular.module(
                             event.stopPropagation()
                             event.preventDefault()
                     )
+                    # enclosing rectangular and top-level g
+                    svg.append("rect")
+                    .attr("x", "0")
+                    .attr("y", "0")
+                    .attr("width", "100%")
+                    .attr("height", "100%")
+                    .attr("style", "stroke:black; stroke-width:2px; fill-opacity:0;")
+                    _top_g = svg.append("g").attr("id", "top")
+                    _top_g.append('g').attr('class', 'd3-links')
+                    _top_g.append('g').attr('class', 'd3-points')
+
+                    # force settings
+
                     force = undefined
                     if draw_settings.force? and draw_settings.force.enabled?
                         force = d3.layout.force().charge(-220).gravity(0.01).linkDistance(100).size(
@@ -673,21 +667,13 @@ angular.module(
                         ).on("tick", () =>
                             @tick()
                         )
-                    # reactangle around drawing area
-                    svg.append("rect")
-                    .attr("x", "0")
-                    .attr("y", "0")
-                    .attr("width", "100%")
-                    .attr("height", "100%")
-                    .attr("style", "stroke:black; stroke-width:2px; fill-opacity:0;")
-                    svg.append('g').attr('class', 'd3-links')
-                    svg.append('g').attr('class', 'd3-points')
                     @update(element, state, update_scale_fn)
                     if draw_settings.force? and draw_settings.force.enabled?
                         force.stop()
-                        force.nodes(state.data).links(state.links)
+                        force.nodes(state.graph.nodes).links(state.graph.links)
                         force.start()
                     @force = force
+
             )
 
         set_fixed: (dom_node, device, flag) ->
@@ -699,16 +685,15 @@ angular.module(
         tick: () =>
             # updates all coordinates, attention: not very effective for dragging
             # update
-            @d3.select(@element).selectAll(".d3-point")
+            @d3_element.selectAll(".d3-point")
             .attr("transform", (d) -> return "translate(#{d.x}, #{d.y})")
-            @d3.select(@element).selectAll(".d3-link")
+            @d3_element.selectAll(".d3-link")
             .attr("x1", (d) -> return d.source.x)
             .attr("y1", (d) -> return d.source.y)
             .attr("x2", (d) -> return d.target.x)
             .attr("y2", (d) -> return d.target.y)
 
         click: (dom_node, drag_dev) =>
-            console.log "D", dom_node, drag_dev
             @set_fixed(dom_node, drag_dev, !drag_dev.fixed)
 
         _drag_start: (event, ui) ->
@@ -722,11 +707,11 @@ angular.module(
             return point
 
         update: (element, state, update_scale_fn) =>
-            console.log "up", element, state
             scales = @_scales(element, state.domain)
-            @_draw_points(element, scales, state.data)
-            @_draw_links(element, scales, state.links, state.data)
+            @_draw_points(scales, state.graph)
+            @_draw_links(scales, state.graph)
             @_update_transform(element, state.settings, update_scale_fn)
+            @tick()
 
         _scales: (element, domain) =>
             # hm, to be improved ...
@@ -739,25 +724,25 @@ angular.module(
             return {x: x, y: y, z: z}
 
         _update_transform: (element, settings, update_scale_fn) =>
-            g = $(element).find("g")
+            g = $(element).find("g#top")
             _t_str = "translate(#{settings.offset.x}, #{settings.offset.y}) scale(#{settings.zoom.factor})"
             g.attr("transform", _t_str)
             update_scale_fn()
 
-        _draw_points: (element, scales, points) =>
+        _draw_points: (scales, graph) =>
             _pc = new icswD3Device(@)
             # select g
-            g = @d3.select(element).selectAll(".d3-points")
+            g = @d3_element.selectAll(".d3-points")
 
-            ds_sel = _pc.create(g.selectAll(".d3-point"), points)
+            ds_sel = _pc.create(g.selectAll(".d3-point"), graph)
             ds_sel.exit().remove()
 
-        _draw_links: (element, scales, links, points) =>
-            _pc = new icswD3Link()
+        _draw_links: (scales, graph) =>
+            _pc = new icswD3Link(@)
             # select g
-            g = @d3.select(element).selectAll(".d3-links")
+            g = @d3_element.selectAll(".d3-links")
 
-            ds_sel = _pc.create(g.selectAll(".d3-link"), links, points)
+            ds_sel = _pc.create(g.selectAll(".d3-link"), graph)
             ds_sel.exit().remove()
 
         destroy: (element) =>
@@ -769,8 +754,7 @@ angular.module(
     test = React.createClass(
         propTypes: {
             # required types
-            data: React.PropTypes.array
-            links: React.PropTypes.array
+            graph: React.PropTypes.object
             domain: React.PropTypes.object
             settings: React.PropTypes.object
         }
@@ -793,8 +777,7 @@ angular.module(
 
         get_chart_state: () ->
             return {
-                data: @props.data
-                links: @props.links
+                graph: @props.graph
                 domain: @props.domain
                 settings: @props.settings
             }
@@ -821,9 +804,9 @@ angular.module(
     return test
 ]).directive("icswTestG",
 [
-    "icswD3T2", "ICSW_URLS", "icswSimpleAjaxCall",
+    "icswD3T2", "ICSW_URLS", "icswSimpleAjaxCall", "icswDeviceTreeService",
 (
-    icswD3T2, ICSW_URLS, icswSimpleAjaxCall
+    icswD3T2, ICSW_URLS, icswSimpleAjaxCall, icswDeviceTreeService,
 ) ->
     return {
         restrict: "EA"
@@ -834,57 +817,61 @@ angular.module(
                 # hm, not working
                 console.log "new size", new_val
             )
-            icswSimpleAjaxCall(
-                url: ICSW_URLS.NETWORK_JSON_NETWORK
-                data:
-                    graph_sel: "all"
-                    devices: angular.toJson([])
-                dataType: "json"
-            ).then(
-                (json) ->
-                    idx = 0
-                    idy = 0
-                    for node in json.nodes
-                        node.x = idx
-                        node.y = idy
-                        node.r = 10
-                        idx += 10
-                        idy += 25
-                        if idy > 100
-                            idy = 0
-                        # console.log "node=", node
-                    console.log "N=", json.nodes
-                    console.log "L=", json.links
-                    _settings = {
-                        data: json.nodes
-                        links: json.links
-                        domain: {x: [0, 10], y: [0,20]}
-                        settings: {
-                            offset: {
-                                x: 0
-                                y: 0
-                            }
-                            zoom: {
-                                factor: 1.0
-                            }
-                            force: {
-                                enabled: true
+            icswDeviceTreeService.load(scope.$id).then(
+                (tree) ->
+                    _load_graph(tree)
+            )
+            _load_graph = (tree) ->
+                icswSimpleAjaxCall(
+                    url: ICSW_URLS.NETWORK_JSON_NETWORK
+                    data:
+                        graph_sel: "all"
+                        devices: angular.toJson([])
+                    dataType: "json"
+                ).then(
+                    (json) ->
+                        idx = 0
+                        idy = 0
+                        for node in json.nodes
+                            node.x = idx
+                            node.y = idy
+                            node.r = 10
+                            idx += 10
+                            idy += 25
+                            if idy > 100
+                                idy = 0
+                            # console.log "node=", node
+                        console.log "N=", json.nodes
+                        console.log "L=", json.links
+                        _settings = {
+                            graph: tree.seed_network_graph(json.nodes, json.links) 
+                            domain: {x: [0, 10], y: [0,20]}
+                            settings: {
+                                offset: {
+                                    x: 0
+                                    y: 0
+                                }
+                                zoom: {
+                                    factor: 1.0
+                                }
+                                force: {
+                                    enabled: true
+                                }
                             }
                         }
-                    }
-                    _render = () ->
-                        ReactDOM.render(
-                            React.createElement(
-                                icswD3T2
-                                _settings
+                        _render = () ->
+                            ReactDOM.render(
+                                React.createElement(
+                                    icswD3T2
+                                    _settings
+                                )
+                                element[0]
                             )
-                            element[0]
-                        )
-                    _render()
-            )
-            scope.$on("$destroy", (d) ->
-                ReactDOM.unmountComponentAtNode(element[0])
-            )
+                        _render()
+                )
+                scope.$on("$destroy", (d) ->
+                    ReactDOM.unmountComponentAtNode(element[0])
+                )
 
     }
 ])

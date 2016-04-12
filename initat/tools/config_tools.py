@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+#
 # Copyright (C) 2007-2008,2012-2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
@@ -35,7 +37,7 @@ import sys
 import time
 
 import networkx
-from django.db.models import Q
+from django.db.models import Q, Count
 
 from initat.cluster.backbone.models import config, device, net_ip, device_config, \
     netdevice, peer_information, config_int, config_blob, config_str, config_bool
@@ -215,15 +217,15 @@ class router_object(object):
         return sorted(clusters, key=lambda _c: _c["devices"], reverse=True)
 
 
-class topology_object(object):
+class TopologyObject(object):
     def __init__(self, log_com, graph_mode="all", **kwargs):
         self.__log_com = log_com
         self.nx = None
         # ignore device-internal links
         self.ignore_self = kwargs.get("ignore_self", True)
         self.__graph_mode = graph_mode
-        if self.__graph_mode.startswith("sel"):
-            self.__dev_pks = kwargs["dev_list"]
+        # if self.__graph_mode.startswith("sel"):
+        #     self.__dev_pks = kwargs["dev_list"]
         self.__user = kwargs.get("user", None)
         if self.__user is not None:
             if self.__user.is_superuser:
@@ -234,8 +236,8 @@ class topology_object(object):
             self.__only_allowed_device_groups = False
         self._update()
 
-    def add_nodes(self):
-        self.nx.add_nodes_from(self.dev_dict.keys())
+    def add_nodes(self, pks):
+        self.nx.add_nodes_from(pks)  # self.dev_dict.keys())
 
     def add_edges(self):
         # for node_pair, network_idx_list in self.simple_peer_dict.iteritems():
@@ -250,33 +252,25 @@ class topology_object(object):
 
     def _update(self):
         s_time = time.time()
-        dev_sel = device.all_real_enabled.select_related("domain_tree_node")
-        if self.__graph_mode.startswith("sel"):
-            dev_sel = dev_sel.filter(Q(pk__in=self.__dev_pks))
+        # dev_sel = device.all_real_enabled.select_related("domain_tree_node")
+        # if self.__graph_mode.startswith("sel"):
+        #    dev_sel = dev_sel.filter(Q(pk__in=self.__dev_pks))
+        _dev_pks = set(device.all_real_enabled.values_list("pk", flat=True))
         if self.__graph_mode == "none":
-            self.dev_dict = {}
+            _dev_pks = set()
         else:
-            self.dev_dict = {cur_dev.pk: cur_dev for cur_dev in dev_sel}
             if self.__graph_mode.startswith("selp"):
                 # add further rings
                 for _idx in range(int(self.__graph_mode[-1])):
                     new_dev_pks = set(
                         device.objects.filter(
-                            Q(netdevice__peer_s_netdevice__d_netdevice__device__in=self.dev_dict.keys())
+                            Q(netdevice__peer_s_netdevice__d_netdevice__device__in=_dev_pks)  # self.dev_dict.keys())
                         ).values_list("idx", flat=True)) | set(device.objects.filter(
-                            Q(netdevice__peer_d_netdevice__s_netdevice__device__in=self.dev_dict.keys())
+                            Q(netdevice__peer_d_netdevice__s_netdevice__device__in=_dev_pks)  # self.dev_dict.keys())
                         ).values_list("idx", flat=True)
                     )
                     if new_dev_pks:
-                        self.dev_dict.update(
-                            {
-                                value.pk: value for value in device.objects.filter(
-                                    Q(enabled=True) & Q(device_group__enabled=True) & Q(pk__in=new_dev_pks)
-                                ).select_related(
-                                    "domain_tree_node"
-                                )
-                            }
-                        )
+                        _dev_pks |= new_dev_pks
                     else:
                         break
             elif self.__graph_mode == "core":
@@ -299,74 +293,75 @@ class topology_object(object):
                     rem_devs = set([key for key in dev_list if dev_list.count(key) == 1])
                     rem_nds = set([key for key, value in nd_dict.iteritems() if value in rem_devs])
                     p_list = [(s_val, d_val) for s_val, d_val in p_list if s_val not in rem_nds and d_val not in rem_nds]
-                    self.dev_dict = {key: value for key, value in self.dev_dict.iteritems() if key not in rem_devs}
+                    _dev_pks -= rem_devs
+                    # self.dev_dict = {key: value for key, value in self.dev_dict.iteritems() if key not in rem_devs}
                     if not rem_devs:
                         break
         if self.__only_allowed_device_groups:
             print self.__user
             _allowed_dev_pks = device.objects.filter(Q(device_group__in=self.__user.allowed_device_groups.all())).values_list("pk", flat=True)
-            self.dev_dict = {_key: _value for _key, _value in self.dev_dict.iteritems() if _key in _allowed_dev_pks}
-            print self.dev_dict.keys()
-        nd_dict = {value[0]: value[1] for value in netdevice.objects.all().values_list("pk", "device")}
-        ip_dict = {value[0]: (value[1], value[2]) for value in net_ip.objects.all().values_list("pk", "netdevice", "network")}
+            _dev_pks &= _allowed_dev_pks
+            # self.dev_dict = {_key: _value for _key, _value in self.dev_dict.iteritems() if _key in _allowed_dev_pks}
+            # print self.dev_dict.keys()
+        nd_dict = {
+            value[0]: value[1] for value in netdevice.objects.all().values_list("pk", "device")
+        }
+        ip_dict = {
+            value[0]: (value[1], value[2]) for value in net_ip.objects.all().values_list("pk", "netdevice", "network")
+        }
         # reorder ip_dict
         nd_lut = {}
         for _net_ip_pk, (nd_pk, nw_pk) in ip_dict.iteritems():
             nd_lut.setdefault(nd_pk, []).append(nw_pk)
         self.log(
             "init topology helper object, {} / {}, device_groups={}".format(
-                logging_tools.get_plural("device", len(self.dev_dict)),
+                logging_tools.get_plural("device", len(_dev_pks)),
                 logging_tools.get_plural("peer information", peer_information.objects.count()),
                 "only allowed" if self.__only_allowed_device_groups else "all",
             )
         )
-        self.add_num_nds()
         # peer dict
         self.peer_dict, self.simple_peer_dict = ({}, {})
         all_peers = peer_information.objects.all().values_list("s_netdevice_id", "d_netdevice_id", "penalty")
         # all devices which are connected to another device
         foreign_devs = set()
         for s_nd_id, d_nd_id, penalty in all_peers:
-            if nd_dict[s_nd_id] in self.dev_dict and nd_dict[d_nd_id] in self.dev_dict:
+            if nd_dict[s_nd_id] in _dev_pks and nd_dict[d_nd_id] in _dev_pks:
                 src_device_id = nd_dict[s_nd_id]
                 dst_device_id = nd_dict[d_nd_id]
                 src_device_id, dst_device_id = (
                     min(src_device_id, dst_device_id),
-                    max(src_device_id, dst_device_id))
+                    max(src_device_id, dst_device_id)
+                )
                 if src_device_id != dst_device_id:
                     foreign_devs.add(src_device_id)
                     foreign_devs.add(dst_device_id)
-                self.simple_peer_dict.setdefault((src_device_id, dst_device_id), []).append(penalty)
+                self.simple_peer_dict.setdefault(
+                    (src_device_id, dst_device_id),
+                    []
+                ).append(penalty)
         if self.nx:
             del self.nx
         self.nx = networkx.Graph()
         if self.ignore_self and not (self.__graph_mode.startswith("sel") or self.__graph_mode in ["all"]):
             # remove all devices which are not connected to another device
             # only ignore self-references when the graph_mode is not selected* (?)
-            self.dev_dict = {key: value for key, value in self.dev_dict.iteritems() if key in foreign_devs}
-        self.add_nodes()
+            _dev_pks &= set(foreign_devs)
+            # self.dev_dict = {key: value for key, value in self.dev_dict.iteritems() if key in foreign_devs}
+        self.add_nodes(_dev_pks)
         self.add_edges()
         # add num_nds / num_peers (only nds)
-        for dev_pk in self.nx.nodes():
-            self.nx.node[dev_pk]["num_nds"] = self.dev_dict[dev_pk].num_nds
+        for _dev_pk, _num_nds in device.objects.filter(Q(pk__in=_dev_pks)).annotate(num_nds=Count("netdevice")).values_list("pk", "num_nds"):
+            self.nx.node[_dev_pk]["num_nds"] = _num_nds
         e_time = time.time()
-        self.log("creation took {}".format(logging_tools.get_diff_time_str(e_time - s_time)))
-
-    def add_num_nds(self):
-        # init counters
-        for _dev_pk, cur_dev in self.dev_dict.iteritems():
-            cur_dev.num_nds = 0
-        # add nd num, exclude lo
-        for used_pk in netdevice.objects.exclude(devname='lo').values_list("device", flat=True):
-            if used_pk in self.dev_dict:
-                self.dev_dict[used_pk].num_nds += 1
-
-    def add_full_names(self):
-        for dev_pk in self.nx.nodes():
-            self.nx.node[dev_pk]["name"] = unicode(self.dev_dict[dev_pk].full_name)
+        self.log(
+            "creation took {}".format(
+                logging_tools.get_diff_time_str(e_time - s_time)
+            )
+        )
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__log_com("[topology] {}".format(what), log_level)
+        self.__log_com("[TopObj] {}".format(what), log_level)
 
 
 _VAR_LUT = {

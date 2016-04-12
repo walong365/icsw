@@ -1,4 +1,3 @@
-#!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2013-2016 Andreas Lang-Nevyjel
@@ -58,14 +57,14 @@ class json_network(View):
                 logging_tools.get_plural("device", len(dev_list)),
             )
         )
-        r_obj = config_tools.topology_object(
+        r_obj = config_tools.TopologyObject(
             self.log,
             graph_mode,
             dev_list=dev_list,
             only_allowed_device_groups=True,
             user=request.user
         )
-        r_obj.add_full_names()
+        # r_obj.add_full_names()
         json_obj = json.dumps(json_graph.node_link_data(r_obj.nx))
         # import time
         # time.sleep(10)
