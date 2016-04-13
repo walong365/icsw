@@ -125,8 +125,12 @@ angular.module(
             @id = running_id
             console.log "new LivestatusFilter with id #{@id}"
             @categories = []
-            @num_hosts = 0
-            @num_checks = 0
+            # number of entries
+            @n_hosts = 0
+            @n_services = 0
+            # filtered entries
+            @f_hosts = 0
+            @f_services = 0
             # possible service states
             @service_state_list = [
                 [0, "O", true, "show OK states", "btn-success"]
@@ -136,12 +140,21 @@ angular.module(
             ]
             @service_state_lut = {}
 
+            # possible host states
             @host_state_list = [
-                [0, "S", true, "show soft states", "btn-primary"]
-                [1, "H", true, "show hard states", "btn-primary"]
+                [0, "U", true, "show Up states", "btn-success"]
+                [1, "D", true, "show Down states", "btn-warning"]
+                [2, "?", true, "show unreachable states", "btn-danger"]
             ]
             @host_state_lut = {}
 
+            # possibel service type states
+            @service_type_list = [
+                [0, "S", true, "show soft states", "btn-primary"]
+                [1, "H", true, "show hard states", "btn-primary"]
+            ]
+            @service_type_lut = {}
+            
             # default values for service states
             @service_states = {}
             for entry in @service_state_list
@@ -149,12 +162,21 @@ angular.module(
                 @service_state_lut[entry[1]] = entry
                 @service_states[entry[0]] = entry[2]
 
-            # device values for host states
+            # default values for host states
             @host_states = {}
             for entry in @host_state_list
                 @host_state_lut[entry[0]] = entry
                 @host_state_lut[entry[1]] = entry
                 @host_states[entry[0]] = entry[2]
+                
+            # default values for service types
+            @service_types = {}
+            for entry in @service_type_list
+                @service_type_lut[entry[0]] = entry
+                @service_type_lut[entry[1]] = entry
+                @service_types[entry[0]] = entry[2]
+
+            @change_notifier = $q.defer()
 
         toggle_service_state: (code) =>
             _srvc_idx = @service_state_lut[code][0]
@@ -171,12 +193,40 @@ angular.module(
             if not _.some(_.values(@host_states))
                 @host_states[0] = true
 
+        toggle_service_type: (code) =>
+            _type_idx = @service_type_lut[code][0]
+            @service_types[_type_idx] = !@service_types[_type_idx]
+            # ensure that any service state is set
+            if not _.some(_.values(@service_types))
+                @service_types[0] = true
+
         # get state strings for ReactJS, a little hack ...
-        get_service_state_str: () =>
+        _get_service_state_str: () =>
             return (entry[1] for entry in @service_state_list when @service_states[entry[0]]).join(":")
 
-        get_host_state_str: () =>
+        _get_host_state_str: () =>
             return (entry[1] for entry in @host_state_list when @host_states[entry[0]]).join(":")
+            
+        _get_service_type_str: () =>
+            return (entry[1] for entry in @service_type_list when @service_types[entry[0]]).join(":")
+            
+        get_filter_state_str: () ->
+            return [
+                @_get_service_state_str()
+                @_get_host_state_str()
+                @_get_service_type_str()
+            ].join(";")
+
+        stop_notifying: () ->
+            @change_notifier.reject("stop")
+            
+        set_monitoring_data: (data) ->
+            @n_hosts = data.hosts.length
+            @n_services = data.services.length
+            data.filter(@)
+            @f_hosts = data.filtered_hosts.length
+            @f_services = data.filtered_services.length
+            @change_notifier.notify()
 
 ]).factory("icswLivestatusFilterFactory", [() ->
     _filter_id = 0
@@ -540,6 +590,24 @@ angular.module(
             @host_lut = host_lut
             @used_cats = used_cats
 
+        filter: (filter) =>
+            # apply livestatus filter
+
+            _hosts = []
+            for entry in @hosts
+                if filter.service_types[entry.state_type] and filter.host_states[entry.state]
+                    _hosts.push(entry)
+            @filtered_hosts = _hosts
+
+            _services = []
+            for entry in @services
+                if filter.service_types[entry.state_type] and filter.service_states[entry.state]
+                    _services.push(entry)
+            @filtered_services = _services
+            
+            # bump generation counter
+            @generation++
+
 ]).service("icswDeviceLivestatusDataService",
 [
     "ICSW_URLS", "$interval", "$timeout", "icswSimpleAjaxCall", "$q", "icswDeviceTreeService",
@@ -550,7 +618,7 @@ angular.module(
 ) ->
     # dict: device.idx -> watcher ids
     watch_list = {}
-    defer_list = {}
+    # defer_list = {}
     # dict: watcher ids -> Monitoring result
     result_list = {}
     _host_lut = {}
@@ -599,7 +667,7 @@ angular.module(
 
     watchers_present = () ->
         # whether any watchers are present
-        return _.keys(defer_list).length > 0
+        return _.keys(result_list).length > 0
 
     schedule_load = () ->
         # called when new listeners register
@@ -626,7 +694,7 @@ angular.module(
         client = client.toString()
         for dev, watchers of watch_list
             _.remove(watchers, (elem) -> return elem == client)
-        delete defer_list[client]
+        # delete defer_list[client]
         delete result_list[client]
 
     load_data = () ->
@@ -683,7 +751,7 @@ angular.module(
                         _sanitize_entries(entry)
                         # list of checks for host
                         entry.checks = []
-                        entry.ct = "host"
+                        entry.$$ct = "host"
                         # dummy link
                         entry.host = entry
                         entry.custom_variables = _parse_custom_variables(entry.custom_variables)
@@ -701,7 +769,7 @@ angular.module(
                         _sanitize_entries(entry)
                         entry.custom_variables = _parse_custom_variables(entry.custom_variables)
                         entry.description = entry.display_name  # this is also what icinga displays
-                        entry.ct = "service"
+                        entry.$$ct = "service"
                         entry._srv_id = "srvc#{srv_id}"
                         # populate list of checks
                         host_lut[entry.custom_variables.device_pk].checks.push(entry)
@@ -713,8 +781,7 @@ angular.module(
                             used_cats = _.union(used_cats, [0])
                     _host_lut = host_lut
 
-                    for client, _defer of defer_list
-                        _result = result_list[client]
+                    for client, _result of result_list
                         hosts_client = []
                         services_client = []
                         host_lut_client = {}
@@ -727,7 +794,7 @@ angular.module(
                                 host_lut_client[dev] = entry
                                 host_lut_client[entry.host_name] = entry
                         _result.update(hosts_client, services_client, host_lut_client, used_cats)
-                        _defer.resolve(_result) #[hosts_client, services_client, host_lut_client, used_cats, _data_generation])
+                        # _defer.resolve(_result) #[hosts_client, services_client, host_lut_client, used_cats, _data_generation])
             )
 
     return {
@@ -758,7 +825,8 @@ angular.module(
                             watch_list[dev.idx].push(client)
 
                     result_list[client] = new icswMonitoringResult()
-                    defer_list[client] = _defer
+                    # defer_list[client] = _defer
+                    _defer.resolve(result_list[client])
                 else
                     # resolve to empty list(s) if no devices are required
                     _defer.resolve(new icswMonitoringResult())
@@ -766,6 +834,7 @@ angular.module(
                 schedule_load()
             else
                 console.warn "client #{client} in destroyed_list"
+            # the promise resolves always immediately
             return _defer.promise
 
         destroy: (client) ->

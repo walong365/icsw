@@ -963,9 +963,11 @@ angular.module(
 ) ->
     class icswDeviceTreeGraph
         constructor: (@nodes, @links, tree) ->
+            @device_list = []
             _set_coords = false
             for node in @nodes
                 node.$$device = tree.all_lut[node.id]
+                @device_list.push(node.$$device)
                 if not node.x?
                     _set_coords = true
 
@@ -1000,10 +1002,6 @@ angular.module(
         dom_id_to_link: (id) =>
             return @links_lut[parseInt(id.slice(1))]
             
-        device_list: () =>
-            # returns the device list
-            return (node.$$device for node in @nodes)
-
 ]).service("icswDeviceTreeService",
 [
     "$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall",

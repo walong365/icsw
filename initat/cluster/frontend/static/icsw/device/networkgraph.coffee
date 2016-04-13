@@ -347,7 +347,7 @@ angular.module(
                 blockUI.start(
                     "loading, please wait..."
                 )
-                console.log scope.draw_settings
+                # console.log scope.draw_settings
                 icswSimpleAjaxCall(
                     url: ICSW_URLS.NETWORK_JSON_NETWORK
                     data:
@@ -461,6 +461,169 @@ angular.module(
                     link.y2c = d_node.y
                 $rootScope.$emit(ICSW_SIGNALS("ICSW_NETWORK_REDRAW_D3_ELEMENT"))
     }
+]).service("icswDeviceLivestatusFunctions",
+[
+    "$q",
+(
+    $q,
+) ->
+    get_fill_color = (res) ->
+        if res.$$ct == "service"
+            color = {
+                0: "#66dd66"
+                1: "#dddd88"
+                2: "#ff7777"
+                3: "#ff0000"
+            }[res.state]
+        else if res.$$ct == "host"
+            color = {
+                0: "#66dd66"
+                1: "#ff7777"
+                2: "#ff0000"
+            }[res.state]
+        else
+            color = "000000"
+        return color
+
+    build_burst_ring = (inner, outer, key_prefix, r_data) ->
+        end_arc = 0
+        end_num = 0
+        _len = r_data.length
+        _result = []
+        _idx = 0
+        for srvc in r_data
+            _idx++
+            start_arc = end_arc
+            end_num += 1
+            end_arc = 2 * Math.PI * end_num / _len
+            start_sin = Math.sin(start_arc)
+            start_cos = Math.cos(start_arc)
+            end_sin = Math.sin(end_arc)
+            end_cos = Math.cos(end_arc)
+            if end_arc > start_arc + Math.PI
+                _large_arc_flag = 1
+            else
+                _large_arc_flag = 0
+            _path = "M#{start_cos * inner},#{start_sin * inner} L#{start_cos * outer},#{start_sin * outer} " + \
+                "A#{outer},#{outer} 0 #{_large_arc_flag} 1 #{end_cos * outer},#{end_sin * outer} " + \
+                "L#{end_cos * inner},#{end_sin * inner} " + \
+                "A#{inner},#{inner} 0 #{_large_arc_flag} 0 #{start_cos * inner},#{start_sin * inner} " + \
+                "Z"
+            _result.push(
+                {
+                    key: "path.#{key_prefix}.#{_idx}"
+                    d: _path
+                    fill: get_fill_color(srvc)
+                    stroke: "black"
+                    "stroke-width": "0.5"
+                }
+            )
+        return _result
+
+    build_single_device_burst = (h_data, s_data) ->
+        _result = []
+        if h_data?
+            _result = _.concat(_result, build_burst_ring(10, 20, "host", [h_data]))
+        if s_data.length
+            _result = _.concat(_result, build_burst_ring(20, 30, "srvc", s_data))
+        return _result
+
+
+    return {
+        build_single_device_burst: (host_data, srvc_data) ->
+            return build_single_device_burst(host_data, srvc_data)
+    }
+
+]).factory("icswDeviceLivestatusReactBurst",
+[
+    "$q", "icswDeviceLivestatusFunctions",
+(
+    $q, icswDeviceLivestatusFunctions,
+) ->
+
+    react_dom = ReactDOM
+    {div, g, text, circle, path} = React.DOM
+
+    return React.createClass(
+        propTypes: {
+            # required types
+            node: React.PropTypes.object
+            monitoring_data: React.PropTypes.object
+        }
+        componentDidMount: () ->
+            el = react_dom.findDOMNode(@)
+            # d3js hack
+            el.__data__ = @props.node
+
+        render: () ->
+            node = @props.node
+            if node.id of @props.monitoring_data.host_lut
+                host_data = @props.monitoring_data.host_lut[node.id]
+            else
+                host_data = undefined
+            # should be optmized
+            srvc_data = (entry for entry in @props.monitoring_data.filtered_services when entry.host.host_name  == node.$$device.full_name)
+
+            # console.log host_data, srvc_data
+            # if host_data and srvc_data.length
+            _pathes = icswDeviceLivestatusFunctions.build_single_device_burst(host_data, srvc_data)
+            # else
+            #    _pathes = []
+
+            return g(
+                {
+                    key: "node.#{node.id}"
+                    className: "d3-livestatus"
+                    id: "#{node.id}"
+                    transform: "translate(#{node.x}, #{node.y})"
+                }
+                (
+                    path(_path) for _path in _pathes
+                )
+            )
+    )
+]).service("icswD3DeviceLivestatiReactBurst",
+[
+    "svg_tools", "icswDeviceLivestatusReactBurst",
+(
+    svg_tools, icswDeviceLivestatusReactBurst,
+) ->
+    # container for all device bursts
+    react_dom = ReactDOM
+    {div, g, text} = React.DOM
+
+    return React.createClass(
+        propTypes: {
+            # required types
+            nodes: React.PropTypes.array
+            show_livestatus: React.PropTypes.bool
+            monitoring_data: React.PropTypes.object
+        }
+        #shouldComponentUpdate: (next_props, next_state) ->
+        #    console.log "*", next_props, @props
+        #    return _redraw
+
+        render: () ->
+            _bursts = []
+            if @props.show_livestatus
+                for node in @props.nodes
+                    _bursts.push(
+                        React.createElement(
+                            icswDeviceLivestatusReactBurst
+                            {
+                                node: node
+                                monitoring_data: @props.monitoring_data
+                            }
+                        )
+                    )
+            return g(
+                {
+                    key: "top.stati"
+                    className: "d3-livestati"
+                }
+                _bursts
+            )
+    )
 ]).service("icswD3Device",
 [
     "svg_tools",
@@ -469,8 +632,11 @@ angular.module(
 ) ->
     class icswD3Device
         constructor: (@container) ->
+
         create: (selector, graph) ->
             # console.log "data=", graph.nodes
+            # not working, TODO
+            # selector.data([]).exit().remove()
             ds = selector.data(graph.nodes, (d) -> return d.id)
             _g = ds.enter().append("g")
             _g.attr("class", "d3-point draggable")
@@ -483,7 +649,14 @@ angular.module(
             .attr("stroke", "grey")
             .attr("fill", "white")
             .attr("cursor", "crosshair")
-            _g.append("text").text((d) -> return d.$$device.full_name)
+            _g.append("text")
+            .attr("stroke-width", "2")
+            .attr("stroke", "white")
+            .attr("paint-order", "stroke")
+            .text(
+                (d) ->
+                    return d.$$device.full_name
+            )
             # <text text-anchor="middle" alignment-baseline="middle" cursor="crosshair">{{ node.name }}</text>
             .attr("text-anchor", "middle")
             .attr("alignment-baseline", "middle")
@@ -494,7 +667,7 @@ angular.module(
                 # important to use thin arrows here
                 that.container.click(this, node)
             )
-            return ds
+            ds.exit().remove()
 
 ]).service("icswD3Link",
 [
@@ -517,19 +690,17 @@ angular.module(
             #.attr('x2', (d) -> return points[d.target].x)
             #.attr("y2", (d) -> return points[d.target].y)
             #.attr("id", (d) -> return d.id)
-            return ds
-            # EXIT
-            # point.exit().remove()
+            ds.exit().remove()
 
 ]).service("icswNetworkTopologyDrawService",
 [
     "$templateCache", "d3_service", "svg_tools", "dragging", "mouseCaptureFactory",
     "icswTools", "icswD3Device", "icswD3Link", "$q", "icswDeviceLivestatusDataService",
-    "$timeout",
+    "$timeout", "icswD3DeviceLivestatiReactBurst",
 (
     $templateCache, d3_service, svg_tools, dragging, mouseCaptureFactory,
     icswTools, icswD3Device, icswD3Link, $q, icswDeviceLivestatusDataService,
-    $timeout,
+    $timeout, icswD3DeviceLivestatiReactBurst,
 ) ->
 
     # acts as a helper class for drawing Networks as SVG-graphs
@@ -538,12 +709,18 @@ angular.module(
         constructor: () ->
             @id = parseInt(Math.random() * 10000)
             @status_timeout = undefined
+            @livestatus_state = false
+            @filter_state_str = ""
+            @device_gen = new icswD3Device(@)
+            @link_gen = new icswD3Link(@)
+            # current monitoring data
+            @monitoring_data = undefined
 
         create: (element, props, state) =>
             @element = element
+            @props = props
             @state = state
             draw_settings = state.settings
-            @livestatus_state = props.with_livestatus
             $q.all(
                 [
                     d3_service.d3()
@@ -658,6 +835,7 @@ angular.module(
                     .attr("style", "stroke:black; stroke-width:2px; fill-opacity:0;")
                     _top_g = svg.append("g").attr("id", "top")
                     _top_g.append('g').attr('class', 'd3-links')
+                    _top_g.append('g').attr('class', 'd3-livestati')
                     _top_g.append('g').attr('class', 'd3-points')
 
                     # force settings
@@ -680,7 +858,11 @@ angular.module(
                         force.stop()
                         force.nodes(state.graph.nodes).links(state.graph.links)
                         force.start()
+                    @_draw_points()
+                    @_draw_links()
                     @force = force
+                    # for correct initial handling of livestatus display
+                    @set_livestatus_state(props.with_livestatus)
 
             )
 
@@ -693,6 +875,8 @@ angular.module(
             # updates all coordinates, attention: not very effective for dragging
             # update
             @d3_element.selectAll(".d3-point")
+            .attr("transform", (d) -> return "translate(#{d.x}, #{d.y})")
+            @d3_element.selectAll(".d3-livestatus")
             .attr("transform", (d) -> return "translate(#{d.x}, #{d.y})")
             @d3_element.selectAll(".d3-link")
             .attr("x1", (d) -> return d.source.x)
@@ -716,8 +900,6 @@ angular.module(
 
         update: (element, state, update_scale_cb) =>
             scales = @_scales(element, state.settings.domain)
-            @_draw_points(scales, state.graph)
-            @_draw_links(scales, state.graph)
             @_update_transform(element, state.settings, update_scale_cb)
             @tick()
 
@@ -738,27 +920,46 @@ angular.module(
             g.attr("transform", _t_str)
             update_scale_cb()
 
-        _draw_points: (scales, graph) =>
-            _pc = new icswD3Device(@)
+        _draw_points: () =>
             # select g
             g = @d3_element.selectAll(".d3-points")
 
-            ds_sel = _pc.create(g.selectAll(".d3-point"), graph)
-            ds_sel.exit().remove()
+            @device_gen.create(g.selectAll(".d3-point"), @state.graph)
 
-        _draw_links: (scales, graph) =>
-            _pc = new icswD3Link(@)
+        _draw_links: () =>
             # select g
             g = @d3_element.selectAll(".d3-links")
 
-            ds_sel = _pc.create(g.selectAll(".d3-link"), graph)
-            ds_sel.exit().remove()
+            @link_gen.create(g.selectAll(".d3-link"), @state.graph)
+
+        _draw_livestatus: () =>
+            # select g
+            g = @d3_element.select(".d3-livestati")
+            ReactDOM.render(
+                React.createElement(
+                    icswD3DeviceLivestatiReactBurst
+                    {
+                        nodes: @state.graph.nodes
+                        show_livestatus: @livestatus_state
+                        monitoring_data: @monitoring_data
+                    }
+                )
+                g[0][0]
+            )
 
         destroy: (element) =>
             console.log "destroy"
             if @livestatus_timeout
                 $timeout.cancel(@livestatus_timeout)
             icswDeviceLivestatusDataService.destroy(@id)
+
+        set_livestatus_filter: (filter) =>
+            state_str = filter.get_filter_state_str()
+            if state_str != @filter_state_str
+                @filter_state_str = state_str
+                if @monitoring_data
+                    @props.livestatus_filter.set_monitoring_data(@monitoring_data)
+                    @_draw_livestatus()
 
         set_livestatus_state: (new_state) =>
             # set state of livestatus display
@@ -769,24 +970,27 @@ angular.module(
                     @start_livestatus()
                 else
                     @stop_livestatus()
+                    @_draw_livestatus()
 
         stop_livestatus: () =>
             if @livestatus_timeout
                 icswDeviceLivestatusDataService.stop(@id)
                 $timeout.cancel(@livestatus_timeout)
                 @livestatus_timeout = undefined
+                @monitoring_data = undefined
 
         start_livestatus: () =>
-            icswDeviceLivestatusDataService.retain(@id, @state.graph.device_list()).then(
+            icswDeviceLivestatusDataService.retain(@id, @state.graph.device_list).then(
                 (result) =>
-                    console.log "R=", result
                     result.notifier.promise.then(
                         () ->
                         () ->
-                        (generation) ->
-                            console.log "g=", generation
+                        (generation) =>
+                            @monitoring_data = result
+                            console.log "gen", @props.livestatus_filter, @monitoring_data
+                            @props.livestatus_filter.set_monitoring_data(@monitoring_data)
+                            @_draw_livestatus()
                     )
-                    # @livestatus_timeout = $timeout(@load_livestatus, 5000)
             )
 
 ]).factory("icswNetworkTopologyReactSVGContainer",
@@ -806,6 +1010,7 @@ angular.module(
             settings: React.PropTypes.object
             scale_changed_cb: React.PropTypes.func
             with_livestatus: React.PropTypes.bool
+            livestatus_filter: React.PropTypes.object
         }
         getInitialState: () ->
             return {
@@ -823,6 +1028,7 @@ angular.module(
                     height: @props.settings.size.height
                     update_scale_cb: @update_scale
                     with_livestatus: @props.with_livestatus
+                    livestatus_filter: @props.livestatus_filter
                 }
                 {
                     graph: @props.graph
@@ -842,6 +1048,7 @@ angular.module(
         componentDidUpdate: () ->
             # called when the props have changed
             @draw_service.set_livestatus_state(@props.with_livestatus)
+            @draw_service.set_livestatus_filter(@props.livestatus_filter)
 
         render: () ->
             return div({key: "div"})
@@ -859,30 +1066,48 @@ angular.module(
     return React.createClass(
         propTypes: {
             livestatus_filter: React.PropTypes.object
+            filter_changed_cb: React.PropTypes.func
         }
         getInitialState: () ->
             return {
-                setvice_state_str: @props.livestatus_filter.get_service_state_str()
-                host_state_str: @props.livestatus_filter.get_host_state_str()
+                filter_state_str: @props.livestatus_filter.get_filter_state_str()
+                display_iter: 0
             }
+
+        componentWillMount: () ->
+            @umount_defer = $q.defer()
+            @props.livestatus_filter.change_notifier.promise.then(
+                () ->
+                () ->
+                    # will get called when the component unmounts
+                (c) =>
+                    @setState({display_iter: @state.display_iter + 1})
+            )
+
+        componentWillUnmount: () ->
+            @props.livestatus_filter.stop_notifying()
 
         shouldComponentUpdate: (next_props, next_state) ->
             _redraw = false
-            if next_state.service_state_str != @state.service_state_str
+            if next_state.display_iter != @state.display_iter
                 _redraw = true
-            else if next_state.host_state_str != @state.host_state_str
+            else if next_state.filter_state_str != @state.filter_state_str
                 _redraw = true
             return _redraw
 
         render: () ->
 
-            console.log "r", @props.livestatus_filter
+            _filter_changed = () =>
+                if @props.filter_changed_cb?
+                    @props.filter_changed_cb()
+
+            # console.log "r", @props.livestatus_filter
             _lf = @props.livestatus_filter
             _list = []
             _list.push(
                 span(
                     {key: "hco"}
-                    "# of hosts / checks: #{_lf.num_hosts} / #{_lf.num_checks}"
+                    "# of hosts / services: #{_lf.f_hosts} or #{_lf.n_hosts} / #{_lf.f_services} of #{_lf.n_services}"
                 )
                 ", filter options: "
             )
@@ -900,7 +1125,8 @@ angular.module(
                                 # _lf.toggle_md(event.target_value)
                                 _lf.toggle_service_state(event.target.value)
                                 # force redraw
-                                @setState({service_state_str: _lf.get_service_state_str()})
+                                @setState({filter_state_str: _lf.get_filter_state_str()})
+                                _filter_changed()
                         }
                     )
                 )
@@ -917,7 +1143,26 @@ angular.module(
                             onClick: (event) =>
                                 _lf.toggle_host_state(event.target.value)
                                 # force redraw
-                                @setState({host_state_str: _lf.get_host_state_str()})
+                                @setState({filter_state_str: _lf.get_filter_state_str()})
+                                _filter_changed()
+                        }
+                    )
+                )
+            _type_buttons = []
+            for entry in _lf.service_type_list
+                _type_buttons.push(
+                    input(
+                        {
+                            key: "stype.#{entry[1]}"
+                            type: "button"
+                            className: "btn btn-xs " + if _lf.service_types[entry[0]] then entry[4] else "btn-default"
+                            value: entry[1]
+                            title: entry[3]
+                            onClick: (event) =>
+                                _lf.toggle_service_type(event.target.value)
+                                # force redraw
+                                @setState({filter_state_str: _lf.get_filter_state_str()})
+                                _filter_changed()
                         }
                     )
                 )
@@ -938,6 +1183,16 @@ angular.module(
                         className: "btn-group"
                     }
                     _host_buttons
+                )
+            )
+            _list.push(" ")
+            _list.push(
+                div(
+                    {
+                        key: "type.buttons"
+                        className: "btn-group"
+                    }
+                    _type_buttons
                 )
             )
             return span(
@@ -972,7 +1227,7 @@ angular.module(
                 graph: undefined
                 settings: undefined
                 graph_id: 0
-                scale_iteration: 0
+                redraw_trigger: 0
                 livestatus_filter: new icswLivestatusFilterService()
             }
 
@@ -1062,6 +1317,7 @@ angular.module(
                             settings: @state.settings
                             scale_changed_cb: @scale_changed
                             with_livestatus: @state.with_livestatus
+                            livestatus_filter: @state.livestatus_filter
                         }
                     )
                 )
@@ -1071,6 +1327,7 @@ angular.module(
                         icswLivestatusFilterReactDisplay
                         {
                             livestatus_filter: @state.livestatus_filter
+                            filter_changed_cb: @filter_changed
                         }
                     )
                 )
@@ -1086,8 +1343,11 @@ angular.module(
                 _top_list
             )
 
+        filter_changed: () ->
+            @setState({redraw_trigger: @state.redraw_trigger + 1})
+
         scale_changed: () ->
-            @setState({scale_iteration: @state.scale_iteration + 1})
+            @setState({redraw_trigger: @state.redraw_trigger + 1})
 
         load_data: () ->
             icswSimpleAjaxCall(
