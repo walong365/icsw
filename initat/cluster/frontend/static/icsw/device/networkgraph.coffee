@@ -713,6 +713,7 @@ angular.module(
             @filter_state_str = ""
             @device_gen = new icswD3Device(@)
             @link_gen = new icswD3Link(@)
+            @zoom_counter = 0
             # current monitoring data
             @monitoring_data = undefined
 
@@ -883,6 +884,7 @@ angular.module(
             .attr("y1", (d) -> return d.source.y)
             .attr("x2", (d) -> return d.target.x)
             .attr("y2", (d) -> return d.target.y)
+            @d3_element.selectAll(".d3-point")
 
         click: (dom_node, drag_dev) =>
             @set_fixed(dom_node, drag_dev, !drag_dev.fixed)
@@ -953,6 +955,15 @@ angular.module(
                 $timeout.cancel(@livestatus_timeout)
             icswDeviceLivestatusDataService.destroy(@id)
 
+        set_zoom_counter: (counter) =>
+            if @zoom_counter != counter
+                @zoom_counter = counter
+                _n = @state.graph.nodes
+                _xs = (d.x for d in _n)
+                _ys = (d.y for d in _n)
+                console.log _.min(_xs), _.max(_xs)
+                console.log _.min(_ys), _.max(_ys)
+
         set_livestatus_filter: (filter) =>
             state_str = filter.get_filter_state_str()
             if state_str != @filter_state_str
@@ -1011,6 +1022,7 @@ angular.module(
             scale_changed_cb: React.PropTypes.func
             with_livestatus: React.PropTypes.bool
             livestatus_filter: React.PropTypes.object
+            zoom_counter: React.PropTypes.number
         }
         getInitialState: () ->
             return {
@@ -1049,6 +1061,7 @@ angular.module(
             # called when the props have changed
             @draw_service.set_livestatus_state(@props.with_livestatus)
             @draw_service.set_livestatus_filter(@props.livestatus_filter)
+            @draw_service.set_zoom_counter(@props.zoom_counter)
 
         render: () ->
             return div({key: "div"})
@@ -1228,6 +1241,7 @@ angular.module(
                 settings: undefined
                 graph_id: 0
                 redraw_trigger: 0
+                zoom_counter: 0
                 livestatus_filter: new icswLivestatusFilterService()
             }
 
@@ -1292,6 +1306,18 @@ angular.module(
                 _list.push(
                     input(
                         {
+                            key: "b.zoom"
+                            type: "button"
+                            className: "btn btn-success btn-sm"
+                            defaultValue: "Zoom"
+                            onClick: (event) =>
+                                @setState({zoom_counter: @state.zoom_counter + 1})
+                        }
+                    )
+                )
+                _list.push(
+                    input(
+                        {
                             key: "b.livestatus"
                             type: "button"
                             className: if @state.with_livestatus then "btn btn-success btn-sm" else "btn btn-default btn-sm"
@@ -1318,6 +1344,7 @@ angular.module(
                             scale_changed_cb: @scale_changed
                             with_livestatus: @state.with_livestatus
                             livestatus_filter: @state.livestatus_filter
+                            zoom_counter: @state.zoom_counter
                         }
                     )
                 )

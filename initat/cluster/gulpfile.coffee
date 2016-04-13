@@ -421,6 +421,7 @@ gulp.task("d3", ["clean"], () ->
         [
             "frontend/static/js/d3js/d3.min.js"
             "frontend/static/js/dimple.v2.1.6.min.js"
+            "frontend/static/js/topojson.js"
         ]
     ).pipe(
         gulp.dest(DEPLOY_DIR + "/static/")
