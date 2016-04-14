@@ -365,14 +365,14 @@ angular.module(
                 @[_setter_name](@device, result)
             else
                 _attr_name = @get_attr_name(key)
-                if @device[_attr_name]?
-                    if @is_element(key)
-                        @device[_attr_name] = result
-                    else
-                        @device[_attr_name].push(result)
+                if @is_element(key)
+                    @device[_attr_name] = result
                 else
-                    # this can happen for device-connections
-                    console.warn "device #{@device.full_name} has no attribute #{_attr_name}"
+                    if @device[_attr_name]?
+                        @device[_attr_name].push(result)
+                    else
+                        # this can happen for device-connections
+                        console.warn "device #{@device.full_name} has no attribute #{_attr_name}"
 
         feed_empty_result: (key) =>
             if key not in @loaded

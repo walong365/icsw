@@ -412,12 +412,12 @@ angular.module(
         }
 ]).controller("icswDeviceLiveStatusCtrl",
 [
-    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource",
+    "$scope", "$compile", "$filter", "$templateCache", "Restangular",
     "$q", "$uibModal", "$timeout", "icswTools", "ICSW_URLS", "icswSimpleAjaxCall",
     "icswDeviceLivestatusDataService", "icswCachingCall", "icswLivestatusFilterFactory",
     "icswDeviceTreeService", "icswLivestatusDevSelFactory", "$state",
 (
-    $scope, $compile, $filter, $templateCache, Restangular, restDataSource,
+    $scope, $compile, $filter, $templateCache, Restangular,
     $q, $uibModal, $timeout, icswTools, ICSW_URLS, icswSimpleAjaxCall,
     icswDeviceLivestatusDataService, icswCachingCall, icswLivestatusFilterFactory,
     icswDeviceTreeService, icswLivestatusDevSelFactory, $state
@@ -451,7 +451,6 @@ angular.module(
             $scope.data_timeout = undefined
 
         #pre_sel = (dev.idx for dev in $scope.devices when dev.expanded)
-        #restDataSource.reset()
         wait_list = [
             icswDeviceTreeService.load($scope.$id)
             icswDeviceLivestatusDataService.retain($scope.$id, _dev_sel)
