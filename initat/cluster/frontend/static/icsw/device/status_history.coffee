@@ -227,9 +227,9 @@ angular.module(
 
 ]).directive("icswDeviceStatusHistoryDevice",
 [
-    "status_utils_functions", "Restangular", "ICSW_URLS", "msgbus", "$q", "icswStatusHistorySettings",
+    "status_utils_functions", "Restangular", "ICSW_URLS", "$q", "icswStatusHistorySettings",
 (
-    status_utils_functions, Restangular, ICSW_URLS, msgbus, $q, icswStatusHistorySettings,
+    status_utils_functions, Restangular, ICSW_URLS, $q, icswStatusHistorySettings,
 ) ->
     return {
         restrict : "EA"

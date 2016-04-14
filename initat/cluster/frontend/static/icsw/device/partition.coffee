@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2015 init.at
+# Copyright (C) 2012-2016 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -65,11 +65,11 @@ angular.module(
 ]).controller("icswDevicePartitionOverviewCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular",
-    "$q", "$uibModal", "blockUI", "ICSW_URLS",
+    "$q", "blockUI", "ICSW_URLS",
     "icswSimpleAjaxCall", "icswDeviceTreeService", "icswDeviceTreeHelperService",
 (
     $scope, $compile, $filter, $templateCache, Restangular,
-    $q, $uibModal, blockUI, ICSW_URLS,
+    $q, blockUI, ICSW_URLS,
     icswSimpleAjaxCall, icswDeviceTreeService, icswDeviceTreeHelperService,
 ) ->
     $scope.struct = {
