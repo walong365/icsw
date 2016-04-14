@@ -1315,6 +1315,10 @@ angular.module(
             el = react_dom.findDOMNode(@)
 
         render: () ->
+            _load_data = () =>
+                @setState({loading: true})
+                @load_data()
+
             _draw_options = [
                 ["none", "None"]
                 ["all_with_peers", "All peered"]
@@ -1343,7 +1347,10 @@ angular.module(
                         defaultValue: "#{@state.draw_type}"
                         style: {width: "200px"}
                         onChange: (event) =>
+                            _dt = @state.draw_type
                             @setState({draw_type: event.target.value})
+                            if _dt != event.target.value
+                                _load_data()
 
                     }
                     _opts
@@ -1355,8 +1362,7 @@ angular.module(
                         type: "button"
                         className: "btn btn-warning btn-sm fa fa-pencil"
                         onClick: (event) =>
-                            @setState({loading: true})
-                            @load_data()
+                            _load_data()
                     }
                     " Redraw"
                 )
