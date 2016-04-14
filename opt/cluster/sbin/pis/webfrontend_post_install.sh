@@ -3,7 +3,7 @@
 # delete modules install via npm
 rm -rf /opt/cluster/lib/node_modules/yuglify/node_modules
 
-MANAGE=/opt/python-init/lib/python/site-packages/initat/cluster/manage.py
+MANAGE=/opt/python-init/lib/python2.7/site-packages/initat/cluster/manage.py
 
 # static dir
 STATIC_DIR=/srv/www/htdocs/icsw/static
