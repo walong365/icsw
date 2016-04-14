@@ -34,7 +34,7 @@ from initat.tools import logging_tools, process_tools
 import psutil
 
 from .constants import *
-
+from initat.constants import INITAT_BASE
 
 class Service(object):
     _COMPAT_DICT = {
@@ -718,7 +718,7 @@ class MetaService(Service):
         if debug:
             _daemon_path = os.path.split(os.path.split(os.path.dirname(__file__))[0])[0]
         else:
-            _daemon_path = "/opt/python-init/lib/python/site-packages/initat"
+            _daemon_path = INITAT_BASE
         _arg_list = [
             os.path.join(_daemon_path, "tools", "daemonize.py"),
             "--progname",
