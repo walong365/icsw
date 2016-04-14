@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export PREFIX_INIT=/opt/python-init/lib/python/site-packages
+export PREFIX_INIT=/opt/python-init/lib/python2.7/site-packages
 export CLUSTER_PATH=/opt/cluster
 
 # remove cached urls.py files

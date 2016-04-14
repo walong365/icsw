@@ -435,6 +435,11 @@ def check_for_0800(opts):
         os.rename(MODELS_DIR, MODELS_DIR_SAVE)
         os.rename(Z800_MODELS_DIR, MODELS_DIR)
         # migrate
+        migrate_app("contenttypes")
+        migrate_app("sites")
+        migrate_app("auth")
+        migrate_app("static_precompiler")
+        migrate_app("reversion")
         migrate_app("backbone")
         # move back
         os.rename(MODELS_DIR, Z800_MODELS_DIR)
