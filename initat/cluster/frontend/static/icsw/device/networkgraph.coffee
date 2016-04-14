@@ -563,6 +563,9 @@ angular.module(
                                             node = drag_dev
                                             node.x = cur_point.x
                                             node.y = cur_point.y
+                                            # the p-coordiantes are important for moving (dragging) nodes
+                                            node.px = cur_point.x
+                                            node.py = cur_point.y
                                             @tick()
                                             if @force?
                                                 # restart moving
