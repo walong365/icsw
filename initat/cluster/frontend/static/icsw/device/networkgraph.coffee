@@ -30,6 +30,7 @@ angular.module(
             if !classes
                 return false
             return if classes.search(has) == -1 then false else true
+
         get_abs_coordinate : (svg_el, x, y) ->
             screen_ctm = svg_el.getScreenCTM()
             svg_point = svg_el.createSVGPoint()
@@ -147,20 +148,20 @@ angular.module(
 ) ->
     icswAcessLevelService.install($scope)
     $scope.settings = {
-        "draw_mode": "sel"
-        "show_livestatus": false
+    #    "draw_mode": "sel"
+    #    "show_livestatus": false
         "devices": []
-        "size": {
-            width: 1200
-            height: 800
-        }
-        "zoom": {
-            factor: 1.0
-        }
-        "offset": {
-            x: 0
-            y: 0
-        }
+    #    "size": {
+    #        width: 1200
+    #        height: 800
+    #    }
+    #    "zoom": {
+    #        factor: 1.0
+    #    }
+    #    "offset": {
+    #        x: 0
+    #        y: 0
+    #    }
     }
     $scope.raw_draw_selections = [
         {"value": "none", "info": "None", "dr": false}
@@ -172,295 +173,22 @@ angular.module(
         {"value": "selp3", "info": "selected + 3", "dr": true}
         {"value": "core", info: "Core network", "dr": false}
     ]
-    update_draw_selections = () ->
-        sles = []
-        for entry in $scope.raw_draw_selections
-            _add = true
-            if entry.dr and not $scope.settings.devices.length
-                _add = false
-            if _add
-                sles.push(entry)
-        $scope.draw_selections = sles
+    #update_draw_selections = () ->
+    #    sles = []
+    #    for entry in $scope.raw_draw_selections
+    #        _add = true
+    #        if entry.dr and not $scope.settings.devices.length
+    #            _add = false
+    #        if _add
+    #            sles.push(entry)
+    #    $scope.draw_selections = sles
 
     $scope.new_devsel = (_dev_sel) ->
         $scope.settings.devices = _dev_sel
-        update_draw_selections()
-        $scope.redraw_graph()
 
-    $scope.redraw_graph = () ->
-        $rootScope.$emit(ICSW_SIGNALS("ICSW_NETWORK_REDRAW_TOPOLOGY"))
+    # update_draw_selections()
 
-    update_draw_selections()
-
-    $scope.ls_filter = new icswLivestatusFilterFactory()
-]).directive("icswDeviceNetworkNodeTransform", ["$rootScope", "ICSW_SIGNALS", ($rootScope, ICSW_SIGNALS) ->
-    return {
-        restrict: "A"
-        link: (scope, element, attrs) ->
-            scope.$watch(attrs["icswDeviceNetworkNodeTransform"], (transform_node) ->
-                $rootScope.$on(ICSW_SIGNALS("ICSW_NETWORK_REDRAW_D3_ELEMENT"), (event) ->
-                    if transform_node.x?
-                        element.attr("transform", "translate(#{transform_node.x},#{transform_node.y})")
-                )
-            )
-    }
-]).directive("icswDeviceNetworkNodeDblClick", ["DeviceOverviewService", (DeviceOverviewService) ->
-    return {
-        restrict: "A"
-        link: (scope, element, attrs) ->
-            scope.click_node = null
-            scope.double_click = (event) ->
-                # beef up node structure
-                if scope.click_node?
-                    scope.click_node.idx = scope.click_node.id
-                    #scope.click_node.device_type_identifier = "D"
-                    DeviceOverviewService.NewOverview(event, [scope.click_node])
-            scope.$watch(attrs["icswDeviceNetworkNodeDblClick"], (click_node) ->
-                scope.click_node = click_node
-            )
-    }
-]).directive("icswDeviceNetworkHostLivestatus", ["$templateCache", ($templateCache) ->
-    return {
-        restrict : "EA"
-        template : $templateCache.get("icsw.device.network.host.livestatus")
-        scope:
-             devicepk: "=devicepk"
-             ls_filter: "=lsFilter"
-        replace: true
-    }
-]).directive("icswDeviceNetworkHostNode", ["dragging", "$templateCache", (dragging, $templateCache) ->
-    return {
-        restrict : "EA"
-        templateNamespace: "svg"
-        replace: true
-        scope:
-            node: "=node"
-        template: $templateCache.get("icsw.device.network.host.node")
-        link : (scope, element, attrs) ->
-            scope.stroke_width = 1
-            scope.focus = true
-            scope.mousedown = false
-            scope.$watch("node", (new_val) ->
-                scope.node = new_val
-                scope.fill_color = "white"
-                scope.stroke_width = Math.max(Math.min(new_val.num_nds, 3), 1)
-                scope.stroke_color = if new_val.num_nds then "grey" else "red"
-            )
-            scope.mouse_click = () ->
-                if scope.node.ignore_click
-                    scope.node.ignore_click = false
-                else
-                    scope.node.fixed = !scope.node.fixed
-                    scope.fill_color = if scope.node.fixed then "red" else "white"
-            scope.mouse_enter = () ->
-                scope.focus = true
-                scope.stroke_width++
-            scope.mouse_leave = () ->
-                scope.focus = false
-                scope.mousedown = false
-                scope.stroke_width--
-    }
-]).directive("icswDeviceNetworkHostLink", ["$templateCache", "$rootScope", "ICSW_SIGNALS", ($templateCache, $rootScope, ICSW_SIGNALS) ->
-    return {
-        restrict : "EA"
-        templateNamespace: "svg"
-        replace: true
-        scope: 
-            link: "=link"
-        template: $templateCache.get("icsw.device.network.host.link")
-        link : (scope, element, attrs) ->
-            scope.$watch("link", (new_val) ->
-                scope.link = new_val
-                #scope.stroke_width = if new_val.num_nds then new_val.num_nds else 1
-                #scope.stroke_color = if new_val.num_nds then "grey" else "red"
-            )
-            $rootScope.$on(ICSW_SIGNALS("ICSW_NETWORK_REDRAW_D3_ELEMENT"), (event) ->
-                element.attr("x1", scope.link.x1c)
-                element.attr("y1", scope.link.y1c)
-                element.attr("x2", scope.link.x2c)
-                element.attr("y2", scope.link.y2c)
-            )
-    }
-]).directive("icswDeviceNetworkGraph", ["$templateCache", "msgbus", ($templateCache, msgbus) ->
-    return {
-        restrict : "EA"
-        replace: true
-        scope:
-            ls_filter: "=lsFilter"
-            draw_settings: "=drawSettings"
-        template: $templateCache.get("icsw.device.network.graph")
-        link: (scope, element, attrs) ->
-            if not attrs["devicepk"]?
-                msgbus.emit("devselreceiver")
-                msgbus.receive("devicelist", scope, (name, args) ->
-                    scope.new_devsel(args[1])
-                )
-            scope.prev_size = {width:100, height:100}
-            scope.get_element_dimensions = () ->
-                return {"h": element.height(), "w": element.width()}
-            scope.$watch(
-                scope.get_element_dimensions
-                (new_val) ->
-                    # needed ? why ?
-                    scope.prev_size = {width: scope.draw_settings.size.width, height:scope.draw_settings.size.height}
-                    #scope.size.width = new_val["w"]
-                    #scope.size.height = new_val["h"]
-                    #console.log scope.prev_size, scope.size
-                true
-            )
-            element.bind("resize", () ->
-                console.log "Resize NetworkGraph"
-                scope.$apply()
-            )
-    }
-]).directive("icswDeviceNetworkGraphInner",
-[
-    "d3_service", "dragging", "svg_tools", "blockUI", "ICSW_URLS", "$templateCache",
-    "icswSimpleAjaxCall", "ICSW_SIGNALS", "$rootScope",
-(
-    d3_service, dragging, svg_tools, blockUI, ICSW_URLS, $templateCache,
-    icswSimpleAjaxCall, ICSW_SIGNALS, $rootScope
-) ->
-    return {
-        restrict : "EA"
-        templateNamespace: "svg"
-        replace: true
-        template: $templateCache.get("icsw.device.network.graph.inner")
-        scope:
-            ls_filter: "=lsFilter"
-            draw_settings: "=drawSettings"
-        link : (scope, element, attrs) ->
-            scope.cur_scale = 1.0
-            scope.cur_trans = [0, 0]
-            scope.nodes = []
-            scope.links = []
-            d3_service.d3().then(
-                (d3) ->
-                    scope.svg_el = element[0]
-                    svg = d3.select(scope.svg_el)
-                    #svg.attr("height", scope.size.height)
-                    scope.force = d3.layout.force().charge(-220).gravity(0.02).linkDistance(150).size([scope.draw_settings.size.width, scope.draw_settings.size.height])
-                      .linkDistance((d) -> return 100).on("tick", scope.tick)
-                    # scope.fetch_data()
-            )
-            $rootScope.$on(ICSW_SIGNALS("ICSW_NETWORK_REDRAW_TOPOLOGY"), (event) ->
-                blockUI.start(
-                    "loading, please wait..."
-                )
-                # console.log scope.draw_settings
-                icswSimpleAjaxCall(
-                    url: ICSW_URLS.NETWORK_JSON_NETWORK
-                    data:
-                        graph_sel: scope.draw_settings.draw_mode
-                        devices: angular.toJson((dev.idx for dev in scope.draw_settings.devices))
-                    dataType: "json"
-                ).then(
-                    (json) ->
-                        blockUI.stop()
-                        scope.json_data = json
-                        scope.draw_graph()
-                )
-            )
-            scope.draw_graph = () ->
-                scope.force.nodes(scope.json_data.nodes).links(scope.json_data.links)
-                scope.node_lut = {}
-                scope.nodes = scope.json_data.nodes
-                scope.links = scope.json_data.links
-                for node in scope.nodes
-                    node.fixed = false
-                    node.dragging = false
-                    node.ignore_click = false
-                    scope.node_lut[node.id] = node
-                $rootScope.$emit(ICSW_SIGNALS("ICSW_NETWORK_REDRAW_D3_ELEMENT"))
-                scope.force.start()
-            scope.find_element = (s_target) ->
-                if svg_tools.has_class_svg(s_target, "draggable")
-                    return s_target
-                s_target = s_target.parent()
-                if s_target.length
-                    return scope.find_element(s_target)
-                else
-                    return null
-            scope.mouse_down = (event) ->
-                drag_el = scope.find_element($(event.target))
-                if drag_el.length
-                    el_scope = angular.element(drag_el[0]).scope()
-                else
-                    el_scope = null
-                if el_scope
-                    drag_el_tag = drag_el.prop("tagName")
-                    if drag_el_tag == "svg"
-                        dragging.start_drag(event, 0, {
-                            dragStarted: (x, y, event) ->
-                                scope.sx = x - scope.draw_settings.offset.x
-                                scope.sy = y - scope.draw_settings.offset.y
-                            dragging: (x, y) ->
-                                scope.draw_settings.offset = {
-                                   x: x - scope.sx
-                                   y: y - scope.sy
-                                }
-                            dragEnded: () ->
-                        })
-                    else
-                        drag_node = el_scope.node
-                        scope.redraw_nodes++
-                        dragging.start_drag(event, 1, {
-                            dragStarted: (x, y, event) ->
-                                drag_node.dragging = true
-                                drag_node.fixed = true
-                                drag_node.ignore_click = true
-                                scope.start_drag_point = scope.rescale(
-                                    svg_tools.get_abs_coordinate(scope.svg_el, x, y)
-                                )
-                                scope.force.start()
-                            dragging: (x, y) ->
-                                cur_point = scope.rescale(
-                                    svg_tools.get_abs_coordinate(scope.svg_el, x, y)
-                                )
-                                drag_node.x = cur_point.x
-                                drag_node.y = cur_point.y
-                                drag_node.px = cur_point.x
-                                drag_node.py = cur_point.y
-                                scope.tick()
-                            dragEnded: () ->
-                                drag_node.dragging = false
-                        })
-            scope.rescale = (point) ->
-                point.x -= scope.draw_settings.offset.x
-                point.y -= scope.draw_settings.offset.y
-                point.x /= scope.draw_settings.zoom.factor
-                point.y /= scope.draw_settings.zoom.factor
-                return point
-            scope.mouse_wheel = (event, delta, deltax, deltay) ->
-                scale_point = scope.rescale(
-                    svg_tools.get_abs_coordinate(scope.svg_el, event.originalEvent.clientX, event.originalEvent.clientY)
-                )
-                prev_factor = scope.draw_settings.zoom.factor
-                if delta > 0
-                    scope.draw_settings.zoom.factor *= 1.05
-                else
-                    scope.draw_settings.zoom.factor /= 1.05
-                scope.draw_settings.offset.x += scale_point.x * (prev_factor - scope.draw_settings.zoom.factor)
-                scope.draw_settings.offset.y += scale_point.y * (prev_factor - scope.draw_settings.zoom.factor)
-                event.stopPropagation()
-                event.preventDefault()
-            scope.tick = () ->
-                #console.log "t"
-                for node in scope.force.nodes()
-                    t_node = scope.node_lut[node.id]
-                    #if t_node.fixed
-                        #console.log "*", t_node
-                    #    t_node.x = node.x
-                    #    t_node.y = node.y
-                for link in scope.links
-                    s_node = scope.node_lut[link.source.id]
-                    d_node = scope.node_lut[link.target.id]
-                    link.x1c = s_node.x
-                    link.y1c = s_node.y
-                    link.x2c = d_node.x
-                    link.y2c = d_node.y
-                $rootScope.$emit(ICSW_SIGNALS("ICSW_NETWORK_REDRAW_D3_ELEMENT"))
-    }
+    # $scope.ls_filter = new icswLivestatusFilterFactory()
 ]).service("icswDeviceLivestatusFunctions",
 [
     "$q",
@@ -780,8 +508,10 @@ angular.module(
                             return null
                     svg = @d3_element.append("svg")
                     .attr('class', 'draggable')
-                    .attr('width', props.width)
-                    .attr('height', props.height)
+                    # viewBox not viewbox
+                    .attr("viewBox", "0 0 1200 760")
+                    .attr("preserveAspectRatio", "xMidYMin slice")
+                    .attr("version", "1.1")
                     .attr("onStart", @_drag_start)
                     .attr("pointer-events", "all")
                     $(element).on("mouseclick", (event) =>
@@ -799,18 +529,22 @@ angular.module(
                                 drag_el = $(drag_el[0])
                                 drag_el_tag = drag_el.prop("tagName")
                                 # disable autoscale
+                                svg = $(element).find("svg")[0]
                                 @do_autoscale = false
                                 if drag_el_tag == "svg"
                                     _sx = 0
                                     _sy = 0
-                                    dragging.start_drag(event, 0, {
+                                    start_drag_point = undefined
+                                    dragging.start_drag(event, 1, {
                                         dragStarted: (x, y, event) =>
-                                            _sx = x - draw_settings.offset.x
-                                            _sy = y - draw_settings.offset.y
+                                            start_drag_point = svg_tools.get_abs_coordinate(svg, x, y)
+                                            _sx = draw_settings.offset.x
+                                            _sy = draw_settings.offset.y
                                         dragging: (x, y) =>
+                                            cur_point = svg_tools.get_abs_coordinate(svg, x, y)
                                             draw_settings.offset = {
-                                               x: x - _sx
-                                               y: y - _sy
+                                                x: _sx + cur_point.x - start_drag_point.x
+                                                y: _sy + cur_point.y - start_drag_point.y
                                             }
                                             @_update_transform(element, draw_settings, props.update_scale_cb)
                                         dragEnded: () =>
@@ -818,18 +552,10 @@ angular.module(
                                 else
                                     drag_node = drag_el[0]
                                     drag_dev = state.graph.dom_id_to_node($(drag_node).attr("id"))
-                                    start_drag_point = undefined
                                     dragging.start_drag(event, 1, {
                                         dragStarted: (x, y, event) =>
-                                            svg = $(element).find("svg")[0]
-                                            start_drag_point = @_rescale(
-                                                svg_tools.get_abs_coordinate(svg, x, y)
-                                                draw_settings
-                                            )
-                                            # console.log "DS", drag_node, drag_dev
                                             @set_fixed(drag_node, drag_dev, true)
                                         dragging: (x, y) =>
-                                            svg = $(element).find("svg")[0]
                                             cur_point = @_rescale(
                                                 svg_tools.get_abs_coordinate(svg, x, y)
                                                 draw_settings
@@ -837,8 +563,6 @@ angular.module(
                                             node = drag_dev
                                             node.x = cur_point.x
                                             node.y = cur_point.y
-                                            node.px = cur_point.x
-                                            node.py = cur_point.y
                                             @tick()
                                             if @force?
                                                 # restart moving
@@ -1005,16 +729,22 @@ angular.module(
             _ys = (d.y for d in _n)
             [_min_x, _max_x] = [_.min(_xs), _.max(_xs)]
             [_min_y, _max_y] = [_.min(_ys), _.max(_ys)]
-            # add boundard
+
+            # add boundaries
+
             _size_x = _max_x - _min_x
             _size_y = _max_y - _min_y
             _min_x -= _size_x / 20
             _max_x += _size_x / 20
             _min_y -= _size_y / 20
             _max_y += _size_y / 20
-            jq_el = $(@element).find("svg")
-            _width = jq_el.width()
-            _height = jq_el.height()
+
+            # parse current viewBox settings
+
+            _vbox = _.map($(@element).find("svg")[0].getAttribute("viewBox").split(" "), (elem) -> return parseInt(elem))
+            _width = parseInt(_vbox[2])
+            _height = parseInt(_vbox[3])
+
             _fact_x = _width / (_max_x - _min_x)
             _fact_y = _height / (_max_y - _min_y)
             if _fact_x < _fact_y
@@ -1479,10 +1209,10 @@ angular.module(
                                 force: {
                                     enabled: true
                                 }
-                                domain: {
-                                    x: [0, 10]
-                                    y: [0, 20]
-                                }
+                                # domain: {
+                                #     x: [0, 10]
+                                #     y: [0, 20]
+                                # }
                                 size: {
                                     width: "95%"
                                     height: "600px"

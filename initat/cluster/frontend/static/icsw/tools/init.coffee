@@ -340,6 +340,7 @@ angular.module(
     # save size of element in scope (specified via icswElementSize)
     return (scope, element, attrs) ->
         fn = $parse(attrs["icswElementSize"])
+        # console.log "fn=", fn
         scope.$watch(
             ->
                 return {
@@ -347,6 +348,7 @@ angular.module(
                     "height": element.height()
                 }
             (new_val) ->
+                console.log "F", new_val, element, element.outerHeight(), element.parent().height()
                 fn.assign(scope, new_val)
             true
         )
@@ -369,8 +371,6 @@ angular.module(
         ICSW_NETWORK_TAB_SELECTED: "icsw.network.tab.selected"
         ICSW_DEVICE_SCAN_CHANGED: "icsw.device.scan.changed"
         ICSW_MENU_PROGRESS_BAR_CHANGED: "icsw.menu.progress.bar.changed"
-        ICSW_NETWORK_REDRAW_TOPOLOGY: "icsw.network.redraw.topology",
-        ICSW_NETWORK_REDRAW_D3_ELEMENT: "icsw.network.redraw.d3.element",
         ICSW_CONFIG_UPLOADED: "icsw.config.uploaded",
         ICSW_DEVICE_CONFIG_CHANGED: "icsw.device.config.changed",
         ICSW_DOMAIN_NAME_TREE_CHANGED: "icsw.domain.name.tree.changed",
