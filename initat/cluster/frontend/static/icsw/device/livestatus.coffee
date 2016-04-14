@@ -851,6 +851,7 @@ angular.module(
             # don't watch for client anymore
             remove_watchers_by_client(client)
 
+            console.log "wp=", watchers_present()
             if not watchers_present()
                 stop_interval()
     }

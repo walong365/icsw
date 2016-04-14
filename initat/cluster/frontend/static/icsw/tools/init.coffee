@@ -390,7 +390,18 @@ angular.module(
         else
             return _dict[name]
 ).factory("icswTools", [() ->
+    id_seed = parseInt(Math.random() * 10000)
+
+    get_unique_id = () ->
+        id_seed++
+        id = "unique-ID-#{id_seed}"
+        console.log "emited unique id #{id}"
+        return id
+
     return {
+        get_unique_id: () ->
+            return get_unique_id()
+
         "get_size_str" : (size, factor, postfix) ->
             f_idx = 0
             while size > factor

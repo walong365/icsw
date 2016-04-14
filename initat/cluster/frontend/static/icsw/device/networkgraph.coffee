@@ -490,32 +490,55 @@ angular.module(
         end_num = 0
         _len = r_data.length
         _result = []
-        _idx = 0
-        for srvc in r_data
-            _idx++
-            start_arc = end_arc
-            end_num += 1
-            end_arc = 2 * Math.PI * end_num / _len
-            start_sin = Math.sin(start_arc)
-            start_cos = Math.cos(start_arc)
-            end_sin = Math.sin(end_arc)
-            end_cos = Math.cos(end_arc)
-            if end_arc > start_arc + Math.PI
-                _large_arc_flag = 1
-            else
-                _large_arc_flag = 0
-            _path = "M#{start_cos * inner},#{start_sin * inner} L#{start_cos * outer},#{start_sin * outer} " + \
-                "A#{outer},#{outer} 0 #{_large_arc_flag} 1 #{end_cos * outer},#{end_sin * outer} " + \
-                "L#{end_cos * inner},#{end_sin * inner} " + \
-                "A#{inner},#{inner} 0 #{_large_arc_flag} 0 #{start_cos * inner},#{start_sin * inner} " + \
-                "Z"
+        if _len
+            _idx = 0
+            for srvc in r_data
+                _idx++
+                start_arc = end_arc
+                end_num += 1
+                end_arc = 2 * Math.PI * end_num / _len
+                start_sin = Math.sin(start_arc)
+                start_cos = Math.cos(start_arc)
+                end_sin = Math.sin(end_arc)
+                end_cos = Math.cos(end_arc)
+                if end_arc > start_arc + Math.PI
+                    _large_arc_flag = 1
+                else
+                    _large_arc_flag = 0
+                _path = "M#{start_cos * inner},#{start_sin * inner} L#{start_cos * outer},#{start_sin * outer} " + \
+                    "A#{outer},#{outer} 0 #{_large_arc_flag} 1 #{end_cos * outer},#{end_sin * outer} " + \
+                    "L#{end_cos * inner},#{end_sin * inner} " + \
+                    "A#{inner},#{inner} 0 #{_large_arc_flag} 0 #{start_cos * inner},#{start_sin * inner} " + \
+                    "Z"
+                _result.push(
+                    {
+                        key: "path.#{key_prefix}.#{_idx}"
+                        d: _path
+                        fill: get_fill_color(srvc)
+                        stroke: "black"
+                        # hm, stroke-width seems to be ignored
+                        strokeWidth: "0.5"
+                    }
+                )
+        else
+            _path = "M#{outer},0 " + \
+            "A#{outer},#{outer} 0 1,1 #{-outer},0 " + \
+            "A#{outer},#{outer} 0 1,1 #{outer},0 " + \
+            "L#{outer},0 " + \
+            "M#{inner},0 " + \
+            "A#{inner},#{inner} 0 1,0 #{-inner},0 " + \
+            "A#{inner},#{inner} 0 1,0 #{inner},0 " + \
+            "L#{inner},0 " + \
+            "Z"
+
+            # draw an empty (== grey) ring
             _result.push(
                 {
-                    key: "path.#{key_prefix}.#{_idx}"
+                    key: "path.#{key_prefix}.empty"
                     d: _path
-                    fill: get_fill_color(srvc)
+                    fill: "#dddddd"
                     stroke: "black"
-                    "stroke-width": "0.5"
+                    strokeWidth: "0.3"
                 }
             )
         return _result
@@ -524,8 +547,9 @@ angular.module(
         _result = []
         if h_data?
             _result = _.concat(_result, build_burst_ring(10, 20, "host", [h_data]))
-        if s_data.length
-            _result = _.concat(_result, build_burst_ring(20, 30, "srvc", s_data))
+        else
+            _result = _.concat(_result, build_burst_ring(10, 20, "host", []))
+        _result = _.concat(_result, build_burst_ring(20, 30, "srvc", s_data))
         return _result
 
 
@@ -707,20 +731,36 @@ angular.module(
     class icswNetworkTopologyDrawService
 
         constructor: () ->
-            @id = parseInt(Math.random() * 10000)
+            @id = icswTools.get_unique_id()
             @status_timeout = undefined
             @livestatus_state = false
             @filter_state_str = ""
             @device_gen = new icswD3Device(@)
             @link_gen = new icswD3Link(@)
-            @zoom_counter = 0
+            # pipe for graph commands
+            @graph_command_pipe = undefined
             # current monitoring data
             @monitoring_data = undefined
+            # autoscale during initial force run
+            @do_autoscale = false
 
         create: (element, props, state) =>
             @element = element
             @props = props
             @state = state
+            @graph_command_pipe = $q.defer()
+            if @props.graph_command_cb?
+                @props.graph_command_cb(@graph_command_pipe)
+                @graph_command_pipe.promise.then(
+                    () ->
+                    (exit) ->
+                        console.log "exit"
+                    (cmd) =>
+                        if cmd == "scale"
+                            @graph_cmd_scale()
+                        else
+                            console.error "unknown graph command '#{cmd}'"
+                )
             draw_settings = state.settings
             $q.all(
                 [
@@ -761,6 +801,8 @@ angular.module(
                             if drag_el? and drag_el.length
                                 drag_el = $(drag_el[0])
                                 drag_el_tag = drag_el.prop("tagName")
+                                # disable autoscale
+                                @do_autoscale = false
                                 if drag_el_tag == "svg"
                                     _sx = 0
                                     _sy = 0
@@ -854,11 +896,12 @@ angular.module(
                         ).on("tick", () =>
                             @tick()
                         )
-                    @update(element, state, props.update_scale_cb)
+                    @update(element, state)
                     if draw_settings.force? and draw_settings.force.enabled?
                         force.stop()
                         force.nodes(state.graph.nodes).links(state.graph.links)
                         force.start()
+                    @do_autoscale = true
                     @_draw_points()
                     @_draw_links()
                     @force = force
@@ -885,6 +928,8 @@ angular.module(
             .attr("x2", (d) -> return d.target.x)
             .attr("y2", (d) -> return d.target.y)
             @d3_element.selectAll(".d3-point")
+            if @do_autoscale
+                @graph_cmd_scale()
 
         click: (dom_node, drag_dev) =>
             @set_fixed(dom_node, drag_dev, !drag_dev.fixed)
@@ -900,9 +945,10 @@ angular.module(
             point.y /= settings.zoom.factor
             return point
 
-        update: (element, state, update_scale_cb) =>
-            scales = @_scales(element, state.settings.domain)
-            @_update_transform(element, state.settings, update_scale_cb)
+        update: () =>
+            # scales are not needed
+            # scales = @_scales(@element, @state.settings.domain)
+            @_update_transform(@element, @state.settings, @props.update_scale_cb)
             @tick()
 
         _scales: (element, domain) =>
@@ -914,6 +960,7 @@ angular.module(
             x = @d3.scale.linear().range([0, width]).domain(domain.x)
             y = @d3.scale.linear().range([height, 0]).domain(domain.y)
             z = @d3.scale.linear().range([5, 20]).domain([1, 10])
+            console.log x, y, z
             return {x: x, y: y, z: z}
 
         _update_transform: (element, settings, update_scale_cb) =>
@@ -951,18 +998,42 @@ angular.module(
 
         destroy: (element) =>
             console.log "destroy"
-            if @livestatus_timeout
-                $timeout.cancel(@livestatus_timeout)
+            if @force?
+                @force.stop()
             icswDeviceLivestatusDataService.destroy(@id)
 
-        set_zoom_counter: (counter) =>
-            if @zoom_counter != counter
-                @zoom_counter = counter
-                _n = @state.graph.nodes
-                _xs = (d.x for d in _n)
-                _ys = (d.y for d in _n)
-                console.log _.min(_xs), _.max(_xs)
-                console.log _.min(_ys), _.max(_ys)
+        graph_cmd_scale: () =>
+            _n = @state.graph.nodes
+            _xs = (d.x for d in _n)
+            _ys = (d.y for d in _n)
+            [_min_x, _max_x] = [_.min(_xs), _.max(_xs)]
+            [_min_y, _max_y] = [_.min(_ys), _.max(_ys)]
+            # add boundard
+            _size_x = _max_x - _min_x
+            _size_y = _max_y - _min_y
+            _min_x -= _size_x / 20
+            _max_x += _size_x / 20
+            _min_y -= _size_y / 20
+            _max_y += _size_y / 20
+            jq_el = $(@element).find("svg")
+            _width = jq_el.width()
+            _height = jq_el.height()
+            _fact_x = _width / (_max_x - _min_x)
+            _fact_y = _height / (_max_y - _min_y)
+            if _fact_x < _fact_y
+                # x domain is wider than y domain
+                @state.settings.zoom.factor = _fact_x
+                @state.settings.offset = {
+                    x: -_min_x * _fact_x
+                    y: (_height - (_max_y + _min_y) * _fact_x) / 2
+                }
+            else
+                @state.settings.zoom.factor = _fact_y
+                @state.settings.offset = {
+                    x: (_width - (_max_x + _min_x) * _fact_y) / 2
+                    y: -_min_y * _fact_y
+                }
+            @_update_transform(@element, @state.settings, @props.update_scale_cb)
 
         set_livestatus_filter: (filter) =>
             state_str = filter.get_filter_state_str()
@@ -984,11 +1055,8 @@ angular.module(
                     @_draw_livestatus()
 
         stop_livestatus: () =>
-            if @livestatus_timeout
-                icswDeviceLivestatusDataService.stop(@id)
-                $timeout.cancel(@livestatus_timeout)
-                @livestatus_timeout = undefined
-                @monitoring_data = undefined
+            icswDeviceLivestatusDataService.stop(@id)
+            @monitoring_data = undefined
 
         start_livestatus: () =>
             icswDeviceLivestatusDataService.retain(@id, @state.graph.device_list).then(
@@ -1022,7 +1090,7 @@ angular.module(
             scale_changed_cb: React.PropTypes.func
             with_livestatus: React.PropTypes.bool
             livestatus_filter: React.PropTypes.object
-            zoom_counter: React.PropTypes.number
+            graph_command_cb: React.PropTypes.func
         }
         getInitialState: () ->
             return {
@@ -1041,6 +1109,7 @@ angular.module(
                     update_scale_cb: @update_scale
                     with_livestatus: @props.with_livestatus
                     livestatus_filter: @props.livestatus_filter
+                    graph_command_cb: @props.graph_command_cb
                 }
                 {
                     graph: @props.graph
@@ -1061,7 +1130,6 @@ angular.module(
             # called when the props have changed
             @draw_service.set_livestatus_state(@props.with_livestatus)
             @draw_service.set_livestatus_filter(@props.livestatus_filter)
-            @draw_service.set_zoom_counter(@props.zoom_counter)
 
         render: () ->
             return div({key: "div"})
@@ -1241,12 +1309,12 @@ angular.module(
                 settings: undefined
                 graph_id: 0
                 redraw_trigger: 0
-                zoom_counter: 0
                 livestatus_filter: new icswLivestatusFilterService()
             }
 
         componentWillUnmount: () ->
             console.log "TopCont umount"
+            @graph_command.reject("exit")
             el = react_dom.findDOMNode(@)
 
         render: () ->
@@ -1306,12 +1374,12 @@ angular.module(
                 _list.push(
                     input(
                         {
-                            key: "b.zoom"
+                            key: "b.scale"
                             type: "button"
                             className: "btn btn-success btn-sm"
-                            defaultValue: "Zoom"
+                            defaultValue: "Scale"
                             onClick: (event) =>
-                                @setState({zoom_counter: @state.zoom_counter + 1})
+                                @graph_command.notify("scale")
                         }
                     )
                 )
@@ -1344,7 +1412,7 @@ angular.module(
                             scale_changed_cb: @scale_changed
                             with_livestatus: @state.with_livestatus
                             livestatus_filter: @state.livestatus_filter
-                            zoom_counter: @state.zoom_counter
+                            graph_command_cb: @graph_command_cb
                         }
                     )
                 )
@@ -1369,6 +1437,9 @@ angular.module(
                 {key: "top"}
                 _top_list
             )
+
+        graph_command_cb: (defer) ->
+            @graph_command = defer
 
         filter_changed: () ->
             @setState({redraw_trigger: @state.redraw_trigger + 1})
