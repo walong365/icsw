@@ -348,7 +348,7 @@ angular.module(
                     "height": element.height()
                 }
             (new_val) ->
-                console.log "F", new_val, element, element.outerHeight(), element.parent().height()
+                # console.log "F", new_val, element, element.outerHeight(), element.parent().height()
                 fn.assign(scope, new_val)
             true
         )

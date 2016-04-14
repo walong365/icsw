@@ -52,15 +52,22 @@
                                                 class="btn btn-xs"
                                                 ng-click="table.toggle_column(attr)"
                                                 ng-class="table.columns_enabled[attr] && 'btn-success' || 'btn-default'"
-                                                title="{{ get_long_attr_name(attr) }}"
-                                                value="{{ get_short_attr_name(attr) }}"
-                                            >{{ get_short_attr_name(attr) }}</button>
+                                                title="{{ table.attr_dict[attr].long }}"
+                                                value="{{ table.attr_dict[attr].short }}"
+                                            >
+                                                {{ table.attr_dict[attr].short }}
+                                            </button>
                                         </div>
                                     </th>
                                 </tr>
                                 <tr>
-                                    <th ng-repeat="attr in table.attr_list" title="{{ get_long_attr_name(attr) }}" ng-show="table.columns_enabled[attr]" ng-click="table.toggle_order(attr)">
-                                        {{ get_short_attr_name(attr) }}
+                                    <th
+                                        ng-repeat="attr in table.attr_list"
+                                        title="{{ table.attr_dict[attr].long }}"
+                                        ng-show="table.columns_enabled[attr]"
+                                        ng-click="table.toggle_order(attr)"
+                                    >
+                                        {{ table.attr_dict[attr].short }}
                                     </th>
                                 </tr>
                             </thead>
@@ -118,6 +125,9 @@
     <td>{{ device.device_group_name }}</td>
     <td>{{ device.comment }}</td>
     <td>hints : {{ device.monitoring_hint_set.length }}</td>
+    <td>
+        <icsw-tools-button type="delete" size="xs" value="delete selected hints" ng-click="delete_multiple_hints($event, device)"></icsw-tools-button>
+    </td>
 </script>
 
 <script type="text/ng-template" id="icsw.monitoring.hint.table">
@@ -175,29 +185,29 @@
     </td>
     <td>{{ hint.datasource }}</td>
     <td class="text-center">{{ hint.persistent | yesno2 }}</td>
-    <td>{{ get_v_type() }}</td>
-    <td class="text-right" ng-class="get_td_class('lower_crit')" ng-attr-title="{{ get_td_title('lower_crit') }}">{{ get_limit('lower_crit') }}</td>
-    <td class="text-right" ng-class="get_td_class('lower_warn')" ng-attr-title="{{ get_td_title('lower_warn') }}">{{ get_limit('lower_warn') }}</td>
-    <td class="text-right" ng-class="get_td_class('upper_warn')" ng-attr-title="{{ get_td_title('upper_warn') }}">{{ get_limit('upper_warn') }}</td>
-    <td class="text-right" ng-class="get_td_class('upper_crit')" ng-attr-title="{{ get_td_title('upper_crit') }}">{{ get_limit('upper_crit') }}</td>
-    <td class="text-right success">{{ get_value() }}</td>>
+    <td>{{ hint.$$v_type }}</td>
+    <td class="text-right" ng-class="{{ hint.$$lower_crit_class }}" ng-attr-title="{{ hint.$$lower_crit_title }}">{{ hint.$$lower_crit_limit }}</td>
+    <td class="text-right" ng-class="{{ hint.$$lower_warn_class }}" ng-attr-title="{{ hint.$$lower_warn_title }}">{{ hint.$$lower_warn_limit }}</td>
+    <td class="text-right" ng-class="{{ hint.$$upper_warn_class }}" ng-attr-title="{{ hint.$$upper_warn_title }}">{{ hint.$$upper_warn_limit }}</td>
+    <td class="text-right" ng-class="{{ hint.$$upper_crit_class }}" ng-attr-title="{{ hint.$$upper_crit_title }}">{{ hint.$$upper_crit_limit }}</td>
+    <td class="text-right success">{{ hint.$$value }}</td>>
     <td class="text-center">{{ hint.is_active | yesno2 }}</td>
     <td class="text-center">
-        <icsw-tools-button type="delete" ng-click="delete(hint, $event)" size="xs"></icsw-tools-button>
+        <icsw-tools-button type="delete" ng-click="delete_hint($event, hint)" size="xs"></icsw-tools-button>
     </td>
     <td class="text-center">
-        <input type="button" class="btn btn-xs" ng-class="hint.enabled && 'btn-success' || 'btn-warning'" ng-value="hint.enabled && 'disable' || 'enable'" ng-click="toggle_enabled(hint, $event)"/></input>
+        <input type="button" class="btn btn-xs" ng-class="hint.enabled && 'btn-success' || 'btn-warning'" ng-value="hint.enabled && 'disable' || 'enable'" ng-click="toggle_enabled($event, hint)"/></input>
     </td>
     <td class="text-center">
-        <icsw-tools-button ng-show="show_modify(hint)" type="modify" ng-click="modify_hint(hint, $event)" size="xs"></icsw-tools-button>
+        <icsw-tools-button type="modify" ng-show="hint.$$show_modify" ng-click="edit_hint($event, hint)" size="xs"></icsw-tools-button>
     </td>
     <td>{{ hint.info }}</td>
-    <td>{{ from_now(hint.date) }}</td>
+    <td>{{ hint.$$from_now }}</td>
 </script>
 
-<script type="text/ng-template" id="monitoring.hint.form">
+<script type="text/ng-template" id="icsw.monitoring.hint.form">
     <form class="form-horizontal" name="form_data">
-        <h2>Monitoring hint '{{ _dit_obj.m_type }} / {{ edit_obj.key }}'</h2>
+        <h2>Monitoring hint '{{ edit_obj.m_type }} / {{ edit_obj.key }}'</h2>
         <fieldset>
             <legend>lower bounds</legend>
             <div class="form-group">

@@ -557,4 +557,21 @@ angular.module(
                 "size", "size_string", "sys_vendor", "sys_version", "sys_release",
                 "bitcount", "architecture", "full_build", "enabled",
             ]
+
+]).service("icswMonitoringHintBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswMonitoringHintBackupDefinition extends icswBackupDefinition
+
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "value_float", "value_int", "value_string", "value_blob",
+                "lower_crit_float", "lower_warn_float", "upper_crit_float", "upper_warn_float",
+                "lower_crit_int", "lower_warn_int", "upper_crit_int", "upper_warn_int",
+                "lower_crit_float_source", "lower_warn_float_source", "upper_crit_float_source", "upper_warn_float_source",
+                "lower_crit_int_source", "lower_warn_int_source", "upper_crit_int_source", "upper_warn_int_source",
+                "info", "enabled", "check_created", "changed",
+                "persistent", "is_active", "datasource",
+            ]
+
 ])

@@ -1,4 +1,4 @@
-# Copyright (C) 2014-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2014-2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of cluster-backbone-sql
 #
@@ -1077,7 +1077,7 @@ class monitoring_hint(models.Model):
     value_float = models.FloatField(default=0.0)
     value_int = models.IntegerField(default=0)
     value_string = models.CharField(default="", max_length=256, blank=True)
-    value_blob = models.TextField(default="")
+    value_blob = models.TextField(default="", blank=True)
     # limits
     lower_crit_float = models.FloatField(default=0.0)
     lower_warn_float = models.FloatField(default=0.0)
