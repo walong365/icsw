@@ -181,24 +181,24 @@ angular.module(
         toggle_service_state: (code) =>
             _srvc_idx = @service_state_lut[code][0]
             @service_states[_srvc_idx] = !@service_states[_srvc_idx]
-            # ensure that any service state is set
-            if not _.some(_.values(@service_states))
-                @service_states[0] = true
+            # ensure that any service state is set, should be implemented as option
+            # if not _.some(_.values(@service_states))
+            #    @service_states[0] = true
 
 
         toggle_host_state: (code) =>
             _host_idx = @host_state_lut[code][0]
             @host_states[_host_idx] = !@host_states[_host_idx]
-            # ensure that any host state is set
-            if not _.some(_.values(@host_states))
-                @host_states[0] = true
+            # ensure that any host state is set, should be implemented as option
+            # if not _.some(_.values(@host_states))
+            #     @host_states[0] = true
 
         toggle_service_type: (code) =>
             _type_idx = @service_type_lut[code][0]
             @service_types[_type_idx] = !@service_types[_type_idx]
-            # ensure that any service state is set
-            if not _.some(_.values(@service_types))
-                @service_types[0] = true
+            # ensure that any service state is set, should be implemented as option
+            # if not _.some(_.values(@service_types))
+            #    @service_types[0] = true
 
         # get state strings for ReactJS, a little hack ...
         _get_service_state_str: () =>
@@ -596,13 +596,19 @@ angular.module(
             _hosts = []
             for entry in @hosts
                 if filter.service_types[entry.state_type] and filter.host_states[entry.state]
+                    entry.$$show = true
                     _hosts.push(entry)
+                else
+                    entry.$$show = false
             @filtered_hosts = _hosts
 
             _services = []
             for entry in @services
                 if filter.service_types[entry.state_type] and filter.service_states[entry.state]
+                    entry.$$show = true
                     _services.push(entry)
+                else
+                    entry.$$show = false
             @filtered_services = _services
             
             # bump generation counter

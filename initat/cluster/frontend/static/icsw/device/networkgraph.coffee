@@ -583,6 +583,8 @@ angular.module(
             node = @props.node
             if node.id of @props.monitoring_data.host_lut
                 host_data = @props.monitoring_data.host_lut[node.id]
+                if not host_data.$$show
+                    host_data = undefined
             else
                 host_data = undefined
             # should be optmized
@@ -709,11 +711,6 @@ angular.module(
             .attr("stroke", "#ff7788")
             .attr("stroke-width", "4")
             .attr("opacity", "1")
-            #ds.attr('x1', (d) -> return points[d.source].x)
-            #.attr('y1', (d) -> return points[d.source].y)
-            #.attr('x2', (d) -> return points[d.target].x)
-            #.attr("y2", (d) -> return points[d.target].y)
-            #.attr("id", (d) -> return d.id)
             ds.exit().remove()
 
 ]).service("icswNetworkTopologyDrawService",
@@ -1046,7 +1043,7 @@ angular.module(
         set_livestatus_state: (new_state) =>
             # set state of livestatus display
             if new_state != @livestatus_state
-                console.log "set state of livestatus to #{new_state}"
+                # console.log "set state of livestatus to #{new_state}"
                 @livestatus_state = new_state
                 if @livestatus_state
                     @start_livestatus()
@@ -1066,7 +1063,7 @@ angular.module(
                         () ->
                         (generation) =>
                             @monitoring_data = result
-                            console.log "gen", @props.livestatus_filter, @monitoring_data
+                            # console.log "gen", @props.livestatus_filter, @monitoring_data
                             @props.livestatus_filter.set_monitoring_data(@monitoring_data)
                             @_draw_livestatus()
                     )
@@ -1291,7 +1288,7 @@ angular.module(
 ) ->
     # Network topology container, including selection and redraw button
     react_dom = ReactDOM
-    {div, h4, select, option, p, input, span} = React.DOM
+    {div, h4, select, option, p, input, span, button} = React.DOM
 
     return React.createClass(
         propTypes: {
@@ -1352,16 +1349,16 @@ angular.module(
                     _opts
                 )
                 ", "
-                input(
+                button(
                     {
                         key: "b.redraw"
                         type: "button"
-                        className: "btn btn-warning btn-sm"
-                        defaultValue: "Redraw"
+                        className: "btn btn-warning btn-sm fa fa-pencil"
                         onClick: (event) =>
                             @setState({loading: true})
                             @load_data()
                     }
+                    " Redraw"
                 )
             ]
             _top_list = [
@@ -1372,35 +1369,37 @@ angular.module(
             ]
             if @state.data_present
                 _list.push(
-                    input(
+                    button(
                         {
                             key: "b.scale"
                             type: "button"
-                            className: "btn btn-success btn-sm"
-                            defaultValue: "Scale"
+                            className: "btn btn-success btn-sm fa fa-arrows-alt"
                             onClick: (event) =>
                                 @graph_command.notify("scale")
                         }
+                        " Scale"
                     )
                 )
                 _list.push(
-                    input(
+                    button(
                         {
                             key: "b.livestatus"
                             type: "button"
-                            className: if @state.with_livestatus then "btn btn-success btn-sm" else "btn btn-default btn-sm"
-                            defaultValue: "Livestatus"
+                            className: if @state.with_livestatus then "btn btn-success btn-sm fa fa-bar-chart" else "btn btn-default btn-sm fa fa-bar-chart"
                             onClick: (event) =>
                                 @setState({with_livestatus: not @state.with_livestatus})
                         }
+                        " Livestatus"
                     )
                 )
-                _top_list.push(
-                    h4(
-                        {key: "header"}
-                        "Settings: #{_.round(@state.settings.offset.x, 3)} / #{_.round(@state.settings.offset.y, 3)} @ #{_.round(@state.settings.zoom.factor, 3)}"
+                if false
+                    # no longer needed, too much details
+                    _top_list.push(
+                        h4(
+                            {key: "header"}
+                            "Settings: #{_.round(@state.settings.offset.x, 3)} / #{_.round(@state.settings.offset.y, 3)} @ #{_.round(@state.settings.zoom.factor, 3)}"
+                        )
                     )
-                )
                 graph_id = @state.graph_id
                 _top_list.push(
                     React.createElement(
