@@ -1077,10 +1077,12 @@ angular.module(
                         defaultValue: "#{@state.draw_type}"
                         style: {width: "200px"}
                         onChange: (event) =>
-                            _dt = @state.draw_type
-                            @setState({draw_type: event.target.value})
-                            if _dt != event.target.value
-                                _load_data()
+                            _cur_dt = @state.draw_type
+                            _new_dt = event.target.value
+                            @setState({draw_type: event.target.value}, () =>
+                                if _cur_dt != _new_dt
+                                    _load_data()
+                            )
 
                     }
                     _opts
