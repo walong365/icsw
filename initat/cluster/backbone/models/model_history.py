@@ -90,7 +90,7 @@ def icsw_register(model):
 
     def create_save_with_reversion(original_save):
         def save_with_reversion(*args, **kwargs):
-            if not reversion.revisions.revision_context_manager.is_active():
+            if not reversion.revision_context_manager.is_active():
                 with reversion.create_revision():
                     original_save(*args, **kwargs)
             else:
