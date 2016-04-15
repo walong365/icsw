@@ -18,137 +18,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-class paginator_root
-    constructor: (@$filter) ->
-        @dict = {}
-    get_paginator: (name, $scope) =>
-        if name not in @dict
-            @dict[name] = new paginator_class(name, @$filter, $scope)
-        return @dict[name]
-
-class paginator_class
-    constructor: (@name, @$filter, @$scope) ->
-        @conf = {
-            per_page         : 10
-            filtered_len     : 0
-            unfiltered_len   : 0
-            # length currently shown in header
-            shown_len        : 0
-            num_pages        : 0
-            start_idx        : 0
-            end_idx          : 0
-            act_page         : 0
-            page_list        : []
-            modify_epp       : false
-            entries_per_page : []
-            init             : false
-            filter_changed   : false
-            filter_mode      : false
-            filter           : undefined
-            filter_func      : undefined
-        }
-        if @$scope and @$scope.settings and @$scope.settings.filter_settings
-            @conf.filter_settings = @$scope.settings.filter_settings
-        else
-            @conf.filter_settings = {}
-    get_laquo_class : () =>
-        if @conf.act_page == 1
-            return "disabled"
-        else
-            return ""
-    get_raquo_class : () =>
-        if @conf.act_page == @conf.num_pages
-            return "disabled"
-        else
-            return ""
-    page_back: () =>
-        if @conf.act_page > 1
-            @conf.act_page--
-            @activate_page()
-    page_forward: () =>
-        if @conf.act_page < @conf.num_pages
-            @conf.act_page++
-            @activate_page()
-    get_filtered_pl: () =>
-        # return a filtered page list around the current page
-        s_page = @conf.act_page
-        m_page = @conf.act_page
-        e_page = @conf.act_page
-        for idx in [1..10]
-            if s_page > 1 and e_page - s_page < 10
-                s_page--
-            if e_page < @conf.num_pages and e_page - s_page < 10
-                e_page++
-        return (idx for idx in [s_page..e_page])
-    get_range_info: (num) =>
-        num = parseInt(num)
-        s_val = (num - 1 ) * @conf.per_page + 1
-        e_val = s_val + @conf.per_page - 1
-        if e_val > @conf.filtered_len
-            e_val = @conf.filtered_len
-        return "page #{num} (#{s_val} - #{e_val})"
-    activate_page: (num) =>
-        if num != undefined
-            @conf.act_page = parseInt(num)
-        # indices start at zero
-        pp = @conf.per_page
-        @conf.start_idx = (@conf.act_page - 1 ) * pp
-        @conf.end_idx = (@conf.act_page - 1) * pp + pp - 1
-        if @conf.end_idx >= @conf.filtered_len
-            @conf.end_idx = @conf.filtered_len - 1
-    get_li_class: (num) =>
-        if num == @conf.act_page
-            return "active"
-        else
-            return ""
-    set_epp: (in_str) =>
-        @conf.modify_epp = true
-        @conf.entries_per_page = (parseInt(entry) for entry in in_str.split(","))
-    set_entries: (el_list) =>
-        # can also be used to reapply the filter
-        #@conf.unfiltered_len = el_list.length
-        el_list = @apply_filter(el_list)
-        #@filtered_list = el_list
-        @conf.init = true
-        @recalculate()
-        #@conf.filtered_len = el_list.length
-    recalculate: () =>
-        pp = @conf.per_page
-        @conf.shown_len = @conf.filtered_len
-        @conf.num_pages = parseInt((@conf.filtered_len + pp - 1) / pp)
-        if @conf.num_pages > 0
-            @conf.page_list = (idx for idx in [1..@conf.num_pages])
-        else
-            @conf.page_list = []
-        if @conf.act_page == 0
-            @activate_page(1)
-        else
-            if @conf.act_page > @conf.page_list.length
-                @activate_page(@conf.page_list.length)
-            else
-                @activate_page(@conf.act_page)
-    simple_filter_mode: () =>
-        return @conf.filter_mode == "simple"
-    clear_filter: () =>
-        if @conf.filter_mode
-            @conf.filter = ""
-    apply_filter: (el_list) =>
-        @conf.unfiltered_len = el_list.length
-        if @conf.filter_changed
-            @conf.filter_changed(@)
-        if @conf.filter_mode
-            if @conf.filter_func
-                el_list = (entry for entry in el_list when @conf.filter_func()(entry, @$scope))
-            else
-                el_list = @$filter("filter")(el_list, @conf.filter)
-        @conf.filtered_len = el_list.length
-        @filtered_list = el_list
-        if @conf.filtered_len != @conf.shown_len
-            # force recalculation of header
-            @recalculate()
-        return el_list
-
-
 angular.module(
     "icsw.tools",
     [
@@ -745,24 +614,6 @@ angular.module(
     $httpProvider.defaults.xsrfCookieName = 'csrftoken'
     $httpProvider.defaults.xsrfHeaderName = 'X-CSRFToken'
 
-]).filter("paginator", ["$filter", ($filter) ->
-    return (arr, scope, pagname) ->
-        cur_ps = if pagname then scope.$eval(pagname) else scope.pagSettings
-        if cur_ps.conf.init
-            arr = cur_ps.apply_filter(arr)
-            return arr.slice(cur_ps.conf.start_idx, cur_ps.conf.end_idx + 1)
-        else
-            return arr
-]).filter("paginator2", ["$filter", ($filter) ->
-    return (arr, pag_settings) ->
-        if pag_settings.conf.init
-            arr = pag_settings.apply_filter(arr)
-            return arr.slice(pag_settings.conf.start_idx, pag_settings.conf.end_idx + 1)
-        else
-            return arr
-]).filter("paginator_filter", ["$filter", ($filter) ->
-    return (arr, scope) ->
-        return scope.pagSettings.apply_filter(arr)
 ]).run(["Restangular", "toaster", (Restangular, toaster) ->
     Restangular.setRestangularFields(
         {
@@ -812,10 +663,6 @@ angular.module(
                 toaster.pop("error", _err, "", 0)
         return true
     )
-]).service("paginatorSettings", ["$filter", ($filter) ->
-# in fact identical ?
-# cur_mod.service("paginatorSettings", (paginator_class))
-    return new paginator_root($filter)
 ]).service("restDataSource", ["$q", "Restangular", ($q, Restangular) ->
     _data = {}
     _build_key = (url, options) =>

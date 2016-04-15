@@ -289,16 +289,6 @@ class get_rms_jobinfo(View):
         return HttpResponse(json.dumps(json_resp), content_type="application/json")
 
 
-class get_node_info(View):
-    @method_decorator(login_required)
-    def post(self, request):
-        _post = request.POST
-        _dev_names = json.loads(_post["devnames"])
-        dev_list = device.objects.filter(Q(name__in=_dev_names)).select_related("domain_tree_node")
-        json_resp = {_entry.name: (_entry.idx, _entry.has_active_rrds, _entry.full_name) for _entry in dev_list}
-        return HttpResponse(json.dumps(json_resp), content_type="application/json")
-
-
 class control_job(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)

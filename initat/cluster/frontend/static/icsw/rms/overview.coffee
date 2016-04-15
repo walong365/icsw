@@ -19,66 +19,6 @@
 #
 LOAD_RE = /(\d+.\d+).*/
 
-class header_struct
-    constructor: (@table, h_struct, @hidden_headers, @ICSW_URLS, @icswSimpleAjaxCall) ->
-        _dict = {}
-        @headers = []
-        @attributes = {}
-        for entry in h_struct
-            @headers.push(entry[0])
-            @attributes[entry[0]] = entry[1]
-            _dict[entry[0]] = true
-        @toggle = _dict
-        @build_cache()
-    set_disabled : (in_list) =>
-        for entry in in_list
-            @toggle[entry] = false
-        @build_cache()
-    build_cache : () =>
-        _c = []
-        for entry in @headers
-            if @toggle[entry]
-                _c.push([true, entry])
-            else
-                _c.push([false, entry])
-        @togglec = _c
-    change_entry : (entry) =>
-        @toggle[entry] = ! @toggle[entry]
-        @icswSimpleAjaxCall(
-            url      : @ICSW_URLS.RMS_SET_USER_SETTING
-            dataType : "json"
-            data:
-                "data" : angular.toJson({"table" : @table, "row" : entry, "enabled" : @toggle[entry]})
-        ).then((json) ->
-        )
-        @build_cache()
-    display_headers : () =>
-        return (v[0] for v in _.zip.apply(null, [@headers, @togglec]) when v[1][0] and v[0] not in @hidden_headers)
-    add_headers : (data) =>
-        # get display list
-        return ([v[1][1], v[0]] for v in _.zip.apply(null, [data, @togglec]))
-    display_data : (data) =>
-        # get display list
-        return (v[0] for v in _.zip.apply(null, [data, @togglec]) when v[1][0])
-    get_btn_class : (entry) ->
-        if @toggle[entry]
-            return "btn btn-sm btn-success"
-        else
-            return "btn btn-sm"
-    map_headers : (simple_list) =>
-        return (_.zipObject(@headers, _line) for _line in simple_list)
-    header_not_hidden : (entry) ->
-        return entry not in @hidden_headers
-    get_span: (entry) ->
-        if @attributes[entry].span?
-            return @attributes[entry].span
-        else
-            return 1
-    get_header: (h_str) ->
-        # CamelCase
-        h_str = (_entry.substr(0, 1).toUpperCase() + _entry.substr(1) for _entry in h_str.split("_")).join("")
-        return h_str
-        
 class io_struct
     constructor : (@job_id, @task_id, @type) ->
         @resp_xml = undefined
@@ -141,24 +81,6 @@ class device_info
         # not needed right now?
         @full_name = in_list[2]
 
-class slot_info
-    constructor: () ->
-        @reset()
-    reset: () =>
-        @total = 0
-        @used = 0
-        @reserved = 0
-    feed_vector: (in_vec) =>
-        if in_vec[0]?
-            @total += in_vec[0]
-        if in_vec[1]?
-            @used += in_vec[1]
-        if in_vec[2]?
-            @reserved += in_vec[2]
-
-class Queue
-    constructor: (@name) ->
-
 DT_FORM = "D. MMM YYYY, HH:mm:ss"
 
 rms_module = angular.module(
@@ -193,189 +115,517 @@ rms_module = angular.module(
                     ordering: 0
         }
     )
-]).controller("icswRmsOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "$q", "$uibModal", "icswAcessLevelService", "$timeout", "$sce", "ICSW_URLS", "icswSimpleAjaxCall", "$window"
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, $q, $uibModal, icswAcessLevelService, $timeout, $sce, ICSW_URLS, icswSimpleAjaxCall, $window) ->
+]).directive("icswRmsOverview",
+[
+    "$templateCache",
+(
+    $templateCache,
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.rms.overview")
+        controller: "icswRMSOverviewCtrl"
+    }
+]).service("icswRMSTools",
+[
+    "$q",
+(
+    $q,
+) ->
+    failed_lut = {
+        0 : [true, "no failure", "ran and exited normally"]
+        1 : [false, "assumedly before job", "failed early in execd"]
+        3 : [false, "before writing config", "failed before execd set up local spool"]
+        4 : [false, "before writing PID", "shepherd failed to record its pid"]
+        6 : [false, "setting processor set", "failed setting up processor set"]
+        7 : [false, "before prolog", "failed before prolog"]
+        8 : [false, "in prolog", "failed in prolog"]
+        9 : [false, "before pestart", "failed before starting PE"]
+        10 : [false, "in pestart", "failed in PE starter"]
+        11 : [false, "before job", "failed in shepherd before starting job"]
+        12 : [true, "before pestop", "ran, but failed before calling PE stop proecdure"]
+        13 : [true, "in pestop", "ran, but PE stop procedure failed"]
+        14 : [true, "before epilog", "ran, but failed before calling epilog script"]
+        15 : [true, "in epilog", "ran, but failed in epilog script"]
+        16 : [true, "releasing processor set", "ran, but processor set could not be released"]
+        17 : [true, "through signal", "job killed by signal (possibly qdel)"]
+        18 : [false, "shepherd returned error", "shepherd died"]
+        19 : [false, "before writing exit_status", "shepherd didn't write reports correctly"]
+        20 : [false, "found unexpected error file", "shepherd encountered a problem"]
+        21 : [false, "in recognizing job", "qmaster asked about an unknown job (not in accounting?)"]
+        24 : [true, "migrating (checkpointing jobs)", "ran, will be migrated"]
+        25 : [true, "rescheduling", "ran, will be rescheduled"]
+        26 : [false, "opening output file", "failed opening stderr/stdout file"]
+        27 : [false, "searching requested shell", "failed finding specified shell"]
+        28 : [false, "changing to working directory", "failed changing to start directory"]
+        29 : [false, "AFS setup", "failed setting up AFS security"]
+        30 : [true, "application error returned", "ran and exited 100 - maybe re-scheduled"]
+        31 : [false, "accessing sgepasswd file", "failed because sgepasswd not readable (MS Windows)"]
+        32 : [false, "entry is missing in password file", "failed because user not in sgepasswd (MS Windows)"]
+        33 : [false, "wrong password", "failed because of wrong password against sgepasswd (MS Windows)"]
+        34 : [false, "communicating with GE Helper Service", "failed because of failure of helper service (MS Windows)"]
+        35 : [false, "before job in GE Helper Service", "failed because of failure running helper service (MS Windows)"]
+        36 : [false, "checking configured daemons", "failed because of configured remote startup daemon"]
+        37 : [true, "qmaster enforced h_rt, h_cpu or h_vmem limit", "ran, but killed due to exceeding run time limit"]
+        38 : [false, "adding supplementary group", "failed adding supplementary gid to job "]
+        100 : [true, "assumedly after job", "ran, but killed by a signal (perhaps due to exceeding resources), task died, shepherd died (e.g. node crash),"]
+    }
+
+    exit_status_lut = {
+        0 : [1, "ok", ""]
+        137 : [-1, "killed", "glyphicon-remove-circle"]
+        99 : [0, "rescheduled", "glyphicon-repeat"]
+    }
+
+    return {
+        failed_lut: failed_lut
+        exit_status_lut: exit_status_lut
+    }
+
+]).service("icswRMSQueue",
+[
+    "$q",
+(
+    $q,
+) ->
+    class icswRMSQueue
+        constructor: (@name) ->
+
+]).service("icswRMSSlotInfo",
+[
+    "$q",
+(
+    $q,
+) ->
+    class icswRMSSlotInfo
+        constructor: () ->
+            @reset()
+
+        reset: () =>
+            @total = 0
+            @used = 0
+            @reserved = 0
+
+        feed_vector: (in_vec) =>
+            if in_vec[0]?
+                @total += in_vec[0]
+
+            if in_vec[1]?
+                @used += in_vec[1]
+
+            if in_vec[2]?
+                @reserved += in_vec[2]
+
+]).service("icswRMSHeaderStruct",
+[
+    "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswRMSQueue", "icswRMSTools",
+(
+    $q, ICSW_URLS, icswSimpleAjaxCall, icswRMSQueue, icswRMSTools,
+) ->
+    class icswRMSHeaderStruct
+        constructor: (@name, h_struct) ->
+            _dict = {}
+            @headers = []
+            @hidden_headers = []
+            @attributes = {}
+            for entry in h_struct
+                @headers.push(entry[0])
+                @attributes[entry[0]] = entry[1]
+                _dict[entry[0]] = true
+            @toggle = _dict
+
+            # initial info string
+            @info = "waiting"
+
+            # list of entries
+            @list = []
+
+            if @name == "node"
+                @queue_list = []
+
+            @build_cache()
+
+        set_user_disabled : (in_list) =>
+            for entry in in_list
+                @toggle[entry] = false
+            @build_cache()
+
+        build_cache : () =>
+            _c = []
+            for entry in @headers
+                if @toggle[entry]
+                    _c.push([true, entry])
+                else
+                    _c.push([false, entry])
+            @togglec = _c
+
+        change_entry : (entry) =>
+            @toggle[entry] = ! @toggle[entry]
+            icswSimpleAjaxCall(
+                url: ICSW_URLS.RMS_SET_USER_SETTING
+                dataType : "json"
+                data:
+                    data: angular.toJson(
+                        {
+                            table: @name
+                            row: entry
+                            enabled: @toggle[entry]
+                        }
+                    )
+            ).then(
+                (json) ->
+                    # done
+            )
+            @build_cache()
+
+        display_headers : () =>
+            return (
+                v[0] for v in _.zip.apply(
+                    null
+                    [@headers, @togglec]
+                ) when v[1][0] and v[0] not in @hidden_headers
+            )
+
+        add_headers : (data) =>
+            # get display list
+            return (
+                [v[1][1], v[0]] for v in _.zip.apply(
+                    null
+                    [data, @togglec]
+                )
+            )
+
+        display_data : (data) =>
+            # get display list
+            return (
+                v[0] for v in _.zip.apply(
+                    null
+                    [data, @togglec]
+                ) when v[1][0]
+            )
+
+        get_btn_class : (entry) ->
+            if @toggle[entry]
+                return "btn btn-sm btn-success"
+            else
+                return "btn btn-sm"
+
+        feed_list : (simple_list, device_tree) =>
+            LOAD_RE = /(\d+.\d+).*/
+            _dt_name_lut = {}
+            for entry in device_tree.all_list
+                _dt_name_lut[entry.name] = entry
+                _dt_name_lut[entry.full_name] = entry
+
+            _salt_datetimes = (entry) ->
+                for _name in ["queue_time", "start_time", "end_time"]
+                    if entry[_name]?
+                        entry["$$#{_name}"] = moment(entry[_name]).format(DT_FORM)
+                    else
+                        entry["$$#{_name}"] = "---"
+                if @name == "done"
+                    if entry.start_time and entry.end_time
+                        _et = moment(entry.end_time)
+                        _st = moment(entry.start_time)
+                        _diff = moment.duration(_et.diff(_st, "seconds"), "seconds")
+                        entry.$$runtime = _diff.humanize()
+                    else
+                        entry.$$runtime = "---"
+                    if entry.queue_time and entry.start_time
+                        _et = moment(entry.start_time)
+                        _st = moment(entry.queue_time)
+                        _diff = moment.duration(_et.diff(_st, "seconds"), "seconds")
+                        entry.$$waittime = _diff.humanize()
+                    else
+                        entry.$$waittime = "---"
+                
+            @list.length = 0
+            if @name == "done"
+                # the done-list is already in the correct format
+                for entry in simple_list
+                    _salt_datetimes(entry)
+                    @list.push(entry)
+            else
+                for entry in (_.zipObject(@headers, _line) for _line in simple_list)
+                    # console.log entry
+                    _salt_datetimes(entry)
+                    @list.push(entry)
+
+            if @name == "done"
+                # set exit states
+                for entry in @list
+                    # exit status
+
+                    if entry.exit_status of icswRMSTools.exit_status_lut
+                        _td_entry = icswRMSTools.exit_status_lut[entry.exit_status]
+                        if _td_entry[0] == 0
+                            [_cls, _glyph, _str] = ["warn", _td_entry[2], _td_entry[1]]
+                        else if _td_entry[0] == 1
+                            [_cls, _glyph, _str] = ["ok", _td_entry[2], _td_entry[1]]
+                        else
+                            [_cls, _glyph, _str] = ["danger", _td_entry[2], _td_entry[1]]
+                    else
+                        if entry.exit_status > 128
+                            [_cls, _glyph, _str] = ["danger", "", entry.exit_status]
+                        else if entry.exit_status
+                            [_cls, _glyph, _str] = ["warn", "", entry.exit_status]
+                        else
+                            [_cls, _glyph, _str] = ["ok", "", entry.exit_status]
+                    if _glyph
+                        _glyph = "glyphicon #{_glyph}"
+                    entry.$$exit_status_class = _cls
+                    entry.$$exit_status_glyph = _glyph
+                    entry.$$exit_status_str = _str
+
+                    # failed state
+                    if entry.failed of icswRMSTools.failed_lut
+                        [_cls, _str, _title] = icswRMSTools.failed_lut[entry.failed]
+                        if _title
+                            _glyph = "glyphicon glyphicon-ok"
+                        else
+                            _glyph = "glyphicon glyphicon-minus"
+                    else
+                        [_cls, _str, _title, _glyph] = ["label-warning", entry.failed, "", "glyphicon glyphicon-minus"]
+                    entry.$$failed_class = _cls
+                    entry.$$failed_str = _str
+                    entry.$$failed_glyph = _glyph
+                    entry.$$failed_title = _title
+                    # pe_info
+                    r_list = []
+                    if entry.rms_pe? and entry.rms_pe.length
+                        console.log "*", entry.pe
+                        for _entry in entry.rms_pe
+                            r_list.push("#{_entry.hostname} (#{_entry.slots})")
+                    else
+                        if entry.device of _dt_name_lut
+                            r_list.push("#{_dt_name_lut[entry.device].full_name} (#{entry.slots})")
+                        else
+                            r_list.push("---")
+                    entry.$$pe_info = r_list.join(",")
+
+            if @name == "node"
+                # init queue list
+                valid_loads = (parseFloat(entry.load.value) for entry in @list when entry.load.value.match(LOAD_RE))
+
+                if valid_loads.length
+                    @max_load = _.max(valid_loads)
+                    # round to next multiple of 4
+                    @max_load = 4 * parseInt((@max_load + 3.9999  ) / 4)
+                else
+                    @max_load = 4
+                if @max_load == 0
+                    @max_load = 4
+
+                # build queue list
+                @build_queue_list()
+
+            if @name == "running"
+                for entry in @list
+                    nodes = entry.nodelist.value.split(",")
+                    r_list = []
+                    _.forEach(_.countBy(nodes), (key, value) ->
+                        if key == 1
+                            r_list.push(value)
+                        else
+                            r_list.push("#{value}(#{key})")
+                    )
+                    entry.$$nodelist = r_list.join(",")
+
+        build_queue_list: () =>
+            i_split = (in_str, nq) ->
+                parts = in_str.split("/")
+                if parts.length != nq
+                    parts = (parts[0] for _x in [1..nq])
+                return parts
+
+            # empty old list
+            @queue_list.length = 0
+
+            for entry in @list
+
+                queues = entry.queues.value.split("/")
+                _number_queues = queues.length
+
+                states = i_split(entry.state.value, _number_queues)
+                loads = i_split(entry.load.value, _number_queues)
+                types = i_split(entry.type.value, _number_queues)
+                complexes = i_split(entry.complex.value, _number_queues)
+                pe_lists = i_split(entry.pe_list.value, _number_queues)
+
+                _idx = 0
+                for _vals in _.zip(
+                    queues, states, loads, types, complexes, pe_lists,
+                    i_split(entry.slots_used.value, _number_queues),
+                    i_split(entry.slots_reserved.value, _number_queues),
+                    i_split(entry.slots_total.value, _number_queues),
+                    i_split(entry.jobs.value, _number_queues),
+                )
+                    queue = new icswRMSQueue(_vals[0])
+                    queue.host = entry
+                    queue.state = {value: _vals[1], raw: entry.state.raw[_idx]}
+                    queue.load = {value: _vals[2]}
+                    if queue.load.value.match(LOAD_RE)
+                        queue.$$load_is_valid = true
+                        queue.$$load_percentage = String((100 * parseFloat(queue.load.value)) / @max_load)
+                    else
+                        queue.$$load_is_valid = false
+                        queue.$$load_percentage = 0
+                    queue.type = {value: _vals[3]}
+                    queue.complex = {value: _vals[4]}
+                    queue.pe_list = {value: _vals[5]}
+                    queue.slots_used = {value: _vals[6]}
+                    queue.slots_reserved = {value: _vals[7]}
+                    queue.slots_total = {value: _vals[8]}
+                    # job display still buggy, FIXME
+                    queue.jobs = {value: _vals[9]}
+                    @queue_list.push(queue)
+                    _idx++
+
+        header_not_hidden : (entry) ->
+            return entry not in @hidden_headers
+
+        get_span: (entry) ->
+            if @attributes[entry].span?
+                return @attributes[entry].span
+            else
+                return 1
+
+        get_header: (h_str) ->
+            # CamelCase
+            h_str = (_entry.substr(0, 1).toUpperCase() + _entry.substr(1) for _entry in h_str.split("_")).join("")
+            return h_str
+
+        set_rrd_flags: (device_tree) =>
+            _dt_name_lut = {}
+            for entry in device_tree.all_list
+                _dt_name_lut[entry.name] = entry
+                _dt_name_lut[entry.full_name] = entry
+            for entry in @list
+                _names = []
+                if entry.rms_pe_info? and entry.rms_pe_info.length
+                    # done list
+                    _names = entry.rms_pe_info
+                else if entry.nodelist? and entry.nodelist.raw? and entry.nodelist.raw.devs?
+                    # running list
+                    _names = entry.nodelist.raw.devs
+                else if entry.device?
+                    # queue / node list
+                    _names = [entry.device]
+
+                _rrds = false
+                for _name in _names
+                    if _name of _dt_name_lut and _dt_name_lut[_name].has_active_rrds
+                        _rrds = true
+                entry.$$has_rrds = _rrds
+
+        set_alter_job_flags: (user, is_oper) ->
+            for entry in @list
+                _alter = false
+                if is_oper
+                    _alter = true
+                entry.$$alter_job = _alter
+
+]).controller("icswRMSOverviewCtrl",
+[
+    "$scope", "$compile", "$filter", "$templateCache", "Restangular",
+    "$q", "$uibModal", "icswAcessLevelService", "$timeout", "$sce", "ICSW_URLS",
+    "icswSimpleAjaxCall", "$window", "icswDeviceTreeService", "icswUserService",
+    "icswRMSTools", "icswRMSHeaderStruct", "icswRMSSlotInfo", "icswRMSQueue",
+(
+    $scope, $compile, $filter, $templateCache, Restangular,
+    $q, $uibModal, icswAcessLevelService, $timeout, $sce, ICSW_URLS,
+    icswSimpleAjaxCall, $window, icswDeviceTreeService, icswUserService,
+    icswRMSTools, icswRMSHeaderStruct, icswRMSSlotInfo, icswRMSQueue,
+) ->
         icswAcessLevelService.install($scope)
-        $scope.pagRun = paginatorSettings.get_paginator("run", $scope)
-        $scope.pagWait = paginatorSettings.get_paginator("wait", $scope)
-        $scope.pagDone = paginatorSettings.get_paginator("done", $scope)
-        $scope.pagNode = paginatorSettings.get_paginator("node", $scope)
-        $scope.header_filter_set = false
-        $scope.io_dict = {}
-        $scope.io_list = []
-        $scope.run_list = []
-        $scope.wait_list = []
-        $scope.node_list = []
-        $scope.queue_list = []
-        $scope.done_list = []
-        $scope.device_dict = {}
-        $scope.device_dict_set = false
-        # slot info
-        $scope.slot_info = new slot_info()
-        $scope.running_slots = 0
-        $scope.waiting_slots = 0
-        # set to false to avoid destroying of subscopes (graphs)
-        $scope.refresh = true
-        # fileinfostruct
-        $scope.fis = {}
-        $scope.failed_lut = {
-            0 : [true, "no failure", "ran and exited normally"]
-            1 : [false, "assumedly before job", "failed early in execd"]
-            3 : [false, "before writing config", "failed before execd set up local spool"]
-            4 : [false, "before writing PID", "shepherd failed to record its pid"]
-            6 : [false, "setting processor set", "failed setting up processor set"]
-            7 : [false, "before prolog", "failed before prolog"]
-            8 : [false, "in prolog", "failed in prolog"]
-            9 : [false, "before pestart", "failed before starting PE"]
-            10 : [false, "in pestart", "failed in PE starter"]
-            11 : [false, "before job", "failed in shepherd before starting job"]
-            12 : [true, "before pestop", "ran, but failed before calling PE stop proecdure"]
-            13 : [true, "in pestop", "ran, but PE stop procedure failed"]
-            14 : [true, "before epilog", "ran, but failed before calling epilog script"]
-            15 : [true, "in epilog", "ran, but failed in epilog script"]
-            16 : [true, "releasing processor set", "ran, but processor set could not be released"]
-            17 : [true, "through signal", "job killed by signal (possibly qdel)"]
-            18 : [false, "shepherd returned error", "shepherd died"]
-            19 : [false, "before writing exit_status", "shepherd didn't write reports correctly"]
-            20 : [false, "found unexpected error file", "shepherd encountered a problem"]
-            21 : [false, "in recognizing job", "qmaster asked about an unknown job (not in accounting?)"]
-            24 : [true, "migrating (checkpointing jobs)", "ran, will be migrated"]
-            25 : [true, "rescheduling", "ran, will be rescheduled"]
-            26 : [false, "opening output file", "failed opening stderr/stdout file"]
-            27 : [false, "searching requested shell", "failed finding specified shell"]
-            28 : [false, "changing to working directory", "failed changing to start directory"]
-            29 : [false, "AFS setup", "failed setting up AFS security"]
-            30 : [true, "application error returned", "ran and exited 100 - maybe re-scheduled"]
-            31 : [false, "accessing sgepasswd file", "failed because sgepasswd not readable (MS Windows)"]
-            32 : [false, "entry is missing in password file", "failed because user not in sgepasswd (MS Windows)"]
-            33 : [false, "wrong password", "failed because of wrong password against sgepasswd (MS Windows)"]
-            34 : [false, "communicating with GE Helper Service", "failed because of failure of helper service (MS Windows)"]
-            35 : [false, "before job in GE Helper Service", "failed because of failure running helper service (MS Windows)"]
-            36 : [false, "checking configured daemons", "failed because of configured remote startup daemon"]
-            37 : [true, "qmaster enforced h_rt, h_cpu or h_vmem limit", "ran, but killed due to exceeding run time limit"]
-            38 : [false, "adding supplementary group", "failed adding supplementary gid to job "]
-            100 : [true, "assumedly after job", "ran, but killed by a signal (perhaps due to exceeding resources), task died, shepherd died (e.g. node crash),"]
+        $scope.struct = {
+            # loading flag
+            loading: false
+            # device tree
+            device_tree: undefined
+            # is rms operator
+            rms_operator: false
+            # current user
+            user: undefined
+            # initial data present
+            initial_data_present: false
+            # rms structs
+            rms: {}
+            # IO list
+            io_list: []
+            # file info struct
+            file_info_struct: {}
+            # file list
+            files: []
+            # fetch timeout
+            fetch_timeout: undefined
+            # do fetch ?
+            do_fetch: true
+            # slot info
+            slot_info: new icswRMSSlotInfo()
         }
-        $scope.exit_status_lut = {
-            0 : [1, "ok", ""]
-            137 : [-1, "killed", "glyphicon-remove-circle"]
-            99 : [0, "rescheduled", "glyphicon-repeat"]
-        }
-        $scope.rms_operator = false
-        $q.all(
-            [
-                icswSimpleAjaxCall(
-                    url      : ICSW_URLS.RMS_GET_USER_SETTING
-                    dataType : "json"
-                )
-                icswSimpleAjaxCall(
-                    url: ICSW_URLS.RMS_GET_HEADER_DICT
-                    dataType: "json"
-                )
-            ]
-        ).then(
-            (data) ->
-                $scope.rms_headers = data[1]
-                $scope.running_struct = new header_struct("running", $scope.rms_headers.running_headers, [], ICSW_URLS, icswSimpleAjaxCall)
-                $scope.waiting_struct = new header_struct("waiting", $scope.rms_headers.waiting_headers, [], ICSW_URLS, icswSimpleAjaxCall)
-                $scope.done_struct = new header_struct("done", $scope.rms_headers.done_headers, [], ICSW_URLS, icswSimpleAjaxCall)
-                $scope.node_struct = new header_struct("node", $scope.rms_headers.node_headers, ["state"], ICSW_URLS, icswSimpleAjaxCall)
-                $scope.structs = {
-                    "running" : $scope.running_struct
-                    "waiting" : $scope.waiting_struct
-                    "done" : $scope.done_struct
-                    "node" : $scope.node_struct
-                }
-                for key, value of data[0]
-                    $scope.structs[key].set_disabled(value)
-                $scope.header_filter_set = true
-                $scope.reload()
-        )
-        $scope.$on("icsw.disable_refresh", () ->
-            $scope.refresh = false
-        )
-        $scope.$on("icsw.enable_refresh", () ->
-            $scope.refresh = true
-        )
-        $scope.set_filter_values = (job) ->
-            if job.granted_pe?
-                job.sv0 = job.granted_pe.value
-            if job.name?
-                job.sv1 = job.name.value
-            if job.owner?
-                job.sv2 = job.owner.value
-            if job.queue_name?
-                job.sv3 = job.queue_name.value
-            if job.real_user?
-                job.sv4 = job.real_user.value
         $scope.reload = () ->
-            $scope.rms_operator = $scope.acl_modify(null, "backbone.user.rms_operator")
-            if $scope.update_info_timeout
-                $timeout.cancel($scope.update_info_timeout)
-            # refresh every 10 seconds
-            $scope.update_info_timeout = $timeout($scope.reload, 10000)
-            if $scope.refresh
+            $scope.struct.loading = true
+            $q.all(
+                [
+                    icswDeviceTreeService.load($scope.$id)
+                    icswUserService.load($scope.$id)
+                    icswSimpleAjaxCall(
+                        url: ICSW_URLS.RMS_GET_HEADER_DICT
+                        dataType: "json"
+                    )
+                    icswSimpleAjaxCall(
+                        url: ICSW_URLS.RMS_GET_USER_SETTING
+                        dataType: "json"
+                    )
+                ]
+            ).then(
+                (data) ->
+                    $scope.struct.device_tree = data[0]
+                    $scope.struct.user = data[1]
+                    $scope.struct.rms_operator = $scope.acl_modify(null, "backbone.user.rms_operator")
+                    $scope.struct.loading = false
+                    $scope.struct.initial_data_present = true
+                    $scope.struct.rms = {
+                        running: new icswRMSHeaderStruct("running", data[2].running_headers)
+                        waiting: new icswRMSHeaderStruct("waiting", data[2].waiting_headers)
+                        done: new icswRMSHeaderStruct("done", data[2].done_headers)
+                        node: new icswRMSHeaderStruct("node", data[2].node_headers)
+                    }
+                    # apply user settings
+                    for key, value of data[3]
+                        $scope.struct.rms[key].set_user_disabled(value)
+                    # start reload cycle
+                    fetch_data()
+            )
+
+        $scope.reload()
+
+        fetch_data = () ->
+            if $scope.struct.fetch_timeout
+                $timeout.cancel($scope.struct.fetch_timeout)
+            if $scope.struct.do_fetch
                 icswSimpleAjaxCall(
-                    url      : ICSW_URLS.RMS_GET_RMS_JSON
-                    dataType : "json"
+                    url: ICSW_URLS.RMS_GET_RMS_JSON
+                    dataType: "json"
                 ).then(
                     (json) ->
+                        console.log "json=", json
                         # reset counter
                         $scope.running_slots = 0
                         $scope.waiting_slots = 0
-                        $scope.files = json.files
-                        $scope.run_list = $scope.running_struct.map_headers(json.run_table)
-                        $scope.wait_list = $scope.waiting_struct.map_headers(json.wait_table)
-                        $scope.node_list = $scope.node_struct.map_headers(json.node_table)
-                        $scope.done_list = json.done_table
-                        # calculate max load
-                        valid_loads = (parseFloat(entry.load.value) for entry in $scope.node_list when entry.load.value.match(LOAD_RE))
-                        if valid_loads.length
-                            $scope.max_load = _.max(valid_loads)
-                            # round to next multiple of 4
-                            $scope.max_load = 4 * parseInt(($scope.max_load + 3.9999  ) / 4)
-                        else
-                            $scope.max_load = 4
-                        if $scope.max_load == 0
-                            $scope.max_load = 4
-                        $scope.slot_info.reset()
+                        $scope.struct.files = json.files
+                        $scope.struct.rms.running.feed_list(json.run_table, $scope.struct.device_tree)
+                        $scope.struct.rms.waiting.feed_list(json.wait_table, $scope.struct.device_tree)
+                        $scope.struct.rms.done.feed_list(json.done_table, $scope.struct.device_tree)
+                        $scope.struct.rms.node.feed_list(json.node_table, $scope.struct.device_tree)
+
+                        ($scope.struct.rms[_type].set_rrd_flags($scope.struct.device_tree) for _type in ["running", "done", "node"])
+                        ($scope.struct.rms[_type].set_alter_job_flags($scope.struct.user, $scope.struct.rms_operator) for _type in ["running", "waiting"])
+
+                        $scope.struct.slot_info.reset()
+
                         # build queue list
-                        $scope.queue_list = []
-                        for entry in $scope.node_list
-                            i_split = (in_str) ->
-                                parts = in_str.split("/")
-                                if parts.length != _nq
-                                    parts = (parts[0] for _x in [1.._nq])
-                                return parts
-                            queues = entry.queues.value.split("/")
-                            _nq = queues.length
-                            states = i_split(entry.state.value)
-                            loads = i_split(entry.load.value)
-                            types = i_split(entry.type.value)
-                            complexes = i_split(entry.complex.value)
-                            pe_lists = i_split(entry.pe_list.value)
-                            _idx = 0
-                            for _vals in _.zip(
-                                queues, states, loads, types, complexes, pe_lists,
-                                i_split(entry.slots_used.value),
-                                i_split(entry.slots_reserved.value),
-                                i_split(entry.slots_total.value),
-                                i_split(entry.jobs.value),
-                            )
-                                queue = new Queue(_vals[0])
-                                queue.host = entry
-                                queue.state = {"value": _vals[1], "raw": entry.state.raw[_idx]}
-                                queue.load = {"value": _vals[2]}
-                                queue.type = {"value": _vals[3]}
-                                queue.complex = {"value": _vals[4]}
-                                queue.pe_list = {"value": _vals[5]}
-                                queue.slots_used = {"value": _vals[6]}
-                                queue.slots_reserved = {"value": _vals[7]}
-                                queue.slots_total = {"value": _vals[8]}
-                                # job display still buggy, FIXME
-                                queue.jobs = {"value": _vals[9]}
-                                $scope.queue_list.push(queue)
-                                _idx++
                         for entry in $scope.node_list
                             # for filter function
                             entry.sv0 = entry.host.value
@@ -409,20 +659,6 @@ rms_module = angular.module(
                                 $scope.waiting_slots += 1
                             else
                                 $scope.waiting_slots += parseInt(_job.requested_pe.value.split("(")[1].split(")")[0])
-                        if not $scope.device_dict_set
-                            node_names = (entry[0].value for entry in json.node_table)
-                            $scope.device_dict_set = true
-                            icswSimpleAjaxCall(
-                                url      : ICSW_URLS.RMS_GET_NODE_INFO
-                                data     :
-                                    devnames : angular.toJson(node_names)
-                                dataType : "json"
-                            ).then((json) ->
-                                for name of json
-                                    _new_di = new device_info(name, json[name])
-                                    $scope.device_dict[name] = _new_di
-                                    $scope.device_dict[_new_di.pk] = _new_di
-                            )
                         # fetch file ids
                         fetch_list = []
                         for _id in $scope.io_list
@@ -446,6 +682,44 @@ rms_module = angular.module(
                                         $scope.io_dict[_id].file_read_error()
                             )
             )
+
+        $scope.get_info = (t_type) ->
+            return $scope.struct.rms[t_type].info
+
+        $scope.get_running_info = () ->
+            return "running (#{$scope.run_list.length} jobs, #{$scope.running_slots} slots)"
+        $scope.get_waiting_info = () ->
+            return "waiting (#{$scope.wait_list.length} jobs, #{$scope.waiting_slots} slots)"
+        $scope.get_done_info = () ->
+            return "done (#{$scope.done_list.length} jobs)"
+        $scope.get_queue_info = () ->
+            return "queue (#{$scope.queue_list.length} queues on #{$scope.node_list.length} nodes, #{$scope.slot_info.used} of #{$scope.slot_info.total} slots used)"
+
+        $scope.io_dict = {}
+        $scope.io_list = []
+        $scope.run_list = []
+        $scope.wait_list = []
+        $scope.node_list = []
+        $scope.queue_list = []
+        $scope.done_list = []
+        # slot info
+        # $scope.slot_info = new slot_info()
+        $scope.running_slots = 0
+        $scope.waiting_slots = 0
+        # set to false to avoid destroying of subscopes (graphs)
+        $scope.refresh = true
+
+        $scope.set_filter_values = (job) ->
+            if job.granted_pe?
+                job.sv0 = job.granted_pe.value
+            if job.name?
+                job.sv1 = job.name.value
+            if job.owner?
+                job.sv2 = job.owner.value
+            if job.queue_name?
+                job.sv3 = job.queue_name.value
+            if job.real_user?
+                job.sv4 = job.real_user.value
         $scope.get_io_link_class = (job, io_type) ->
             io_id = "#{job.job_id.value}.#{job.task_id.value}.#{io_type}"
             if io_id in $scope.io_list
@@ -482,7 +756,7 @@ rms_module = angular.module(
                 data     : {
                     "job_id"  : job.job_id.value
                     "task_id" : job.task_id.value
-                    "command" : command 
+                    "command" : command
                 }
             ).then((xml) ->
             )
@@ -553,99 +827,138 @@ rms_module = angular.module(
             #        # destroy scopes
             #        $scope.refresh = true
             #        $.simplemodal.close()
-]).directive("icswRmsJobRunningTable", ["$templateCache", ($templateCache) ->
+]).directive("icswRmsJobRunningTable",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.rms.job.running.table")
-        link : (scope, el, attrs) ->
-            if "filter" of attrs
-                scope.pagRun.conf.filter = attrs["filter"]
+        scope:
+            struct: "=icswRmsStruct"
+            gstruct: "=icswRmsGlobal"
+        controller: "icswRmsJobRunningCtrl"
     }
-]).directive("icswRmsJobWaitingTable", ["$templateCache", ($templateCache) ->
+]).controller("icswRmsJobRunningCtrl",
+[
+    "$scope",
+(
+    $scope,
+) ->
+    console.log "r", $scope.struct
+]).directive("icswRmsJobWaitingTable",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.rms.job.waiting.table")
-        link : (scope, el, attrs) ->
-            if "filter" of attrs
-                scope.pagWait.conf.filter = attrs["filter"]
+        scope:
+            struct: "=icswRmsStruct"
+            gstruct: "=icswRmsGlobal"
+        controller: "icswRmsJobWaitingCtrl"
     }
-]).directive("icswRmsJobDoneTable", ["$templateCache", ($templateCache) ->
+]).controller("icswRmsJobWaitingCtrl",
+[
+    "$scope",
+(
+    $scope,
+) ->
+    console.log "w", $scope.struct
+]).directive("icswRmsJobDoneTable",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.rms.job.done.table")
-        link : (scope, el, attrs) ->
-            if "filter" of attrs
-                scope.pagDone.conf.filter = attrs["filter"]
+        scope:
+            struct: "=icswRmsStruct"
+            gstruct: "=icswRmsGlobal"
+        controller: "icswRmsJobDoneCtrl"
     }
-]).directive("icswRmsQueueTable", ["$templateCache",($templateCache) ->
+]).controller("icswRmsJobDoneCtrl",
+[
+    "$scope",
+(
+    $scope,
+) ->
+    console.log "d", $scope
+
+]).directive("icswRmsQueueTable",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
     return {
-        restrict : "EA"
-        template : $templateCache.get("icsw.rms.queue.table")
-        link : (scope, el, attrs) ->
-            scope.get_class = (data) ->
-                parts = data.state.raw  # .join("").split("")
-                if _.indexOf(parts, "a") >= 0 or _.indexOf(parts, "u") >= 0
-                    return "danger"
-                else if _.indexOf(parts, "d") >= 0
-                    return "warning"
-                else
-                    return ""
+        restrict: "EA"
+        template: $templateCache.get("icsw.rms.queue.table")
+        scope:
+            struct: "=icswRmsStruct"
+            gstruct: "=icswRmsGlobal"
+        controller: "icswRmsJobQueueCtrl"
     }
+]).controller("icswRmsJobQueueCtrl",
+[
+    "$scope",
+(
+    $scope,
+) ->
+    $scope.get_class = (queue) ->
+        parts = queue.state.raw  # .join("").split("")
+        if _.indexOf(parts, "a") >= 0 or _.indexOf(parts, "u") >= 0
+            return "danger"
+        else if _.indexOf(parts, "d") >= 0
+            return "warning"
+        else
+            return ""
+
+    $scope.show_node_rrd = (event, node) ->
+        scope.show_rrd(event, [node.host.value], undefined, undefined, "node #{node.host.value}", "none", 0)
+
 ]).directive("icswRmsIoStruct", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.rms.iostruct")
-        link : (scope, el, attrs) ->
     }
-]).directive("icswRmsTableHeaders", ["$templateCache", ($templateCache) ->
+]).directive("icswRmsTableHeaders",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.rms.table.headers")
         scope:
-            struct : "="
-        link : (scope, el, attrs) ->
+            struct : "=icswRmsStruct"
+    }
+]).directive("icswRmsTableHeaderToggle",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("icsw.rms.table.header.toggle")
+        scope:
+            struct : "=icswRmsStruct"
     }
 ]).directive("icswRmsJobDoneLine", ["$templateCache", "$sce", ($templateCache, $sce) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.rms.job.done.line")
         link : (scope, el, attrs) ->
-            scope.struct_name = attrs["struct"]
-            scope.get_datetime = (dt) ->
-                if dt
-                    return moment(dt).format(DT_FORM)
-                else
-                    return "---"
-            scope.get_runtime = (data) ->
-                if data.start_time and data.end_time
-                    _et = moment(data.end_time)
-                    _st = moment(data.start_time)
-                    _diff = moment.duration(_et.diff(_st, "seconds"), "seconds")
-                    return _diff.humanize()
-                else
-                    return "---"     
-            scope.get_waittime = (data) ->
-                if data.queue_time and data.start_time
-                    _et = moment(data.start_time)
-                    _st = moment(data.queue_time)
-                    _diff = moment.duration(_et.diff(_st, "seconds"), "seconds")
-                    return _diff.humanize()
-                else
-                    return "---"     
-            scope.get_display_data = (data) ->
-                return scope[scope.struct_name].display_data(data)
-            scope.show_pe_info = (data) ->
-                r_list = []
-                if data.rms_pe_info.length
-                    for _entry in data.rms_pe_info
-                        r_list.push("#{_entry.hostname} (#{_entry.slots})")
-                else
-                    if data.device of scope.device_dict
-                        r_list.push("#{scope.device_dict[data.device].full_name} (#{data.slots})")
-                    else
-                        r_list.push("---")
-                return r_list.join(",")
             scope.has_rrd = (data) ->
+
                 if data.rms_pe_info.length
                     any_rrd = false
                     for _entry in data.rms_pe_info
@@ -657,8 +970,9 @@ rms_module = angular.module(
                     if data.device of scope.device_dict
                         return scope.device_dict[data.device].has_rrd
                     else
-                        return false    
+                        return false
             scope.get_rrd_nodes = (nodelist) ->
+                return  []
                 rrd_nodes = (scope.device_dict[entry].name for entry in nodelist when entry of scope.device_dict and scope.device_dict[entry].has_rrd)
                 return rrd_nodes
             scope.show_done_rrd = (event, data) ->
@@ -675,79 +989,27 @@ rms_module = angular.module(
                 else
                     rrd_title = "finished job #{job_id} on node " + rrd_nodes[0]
                 scope.show_rrd(event, rrd_nodes, data.start_time, data.end_time, rrd_title, "selected", job_id)
-            scope.exit_status_wrapper_class = (data) ->
-                if data.exit_status of scope.exit_status_lut
-                    _td_type = scope.exit_status_lut[data.exit_status][0]
-                    if _td_type == 0
-                        return "warn"
-                    else if _td_type == 1
-                        return "ok"
-                    else
-                        return "danger"     
-                else
-                    if data.exit_status > 128
-                        return "danger"
-                    else if data.exit_status
-                        return "warn"
-                    else
-                        return "ok"
-            scope.exit_status_class = (data) ->
-                if data.exit_status of scope.exit_status_lut
-                    _glyph = scope.exit_status_lut[data.exit_status][2]
-                    if _glyph
-                        return "glyphicon #{_glyph}"
-                    else
-                        return ""
-                else
-                    return ""        
-            scope.get_exit_status_str = (data) ->
-                if data.exit_status of scope.exit_status_lut
-                    return scope.exit_status_lut[data.exit_status][1]
-                else
-                    return data.exit_status
-            scope.get_failed_str = (data) ->
-                if data.failed of scope.failed_lut
-                    return scope.failed_lut[data.failed][1]
-                else
-                    return data.failed
-            scope.get_failed_class = (data) ->
-                if data.failed of scope.failed_lut
-                    return if scope.failed_lut[data.failed][0] then "label-success" else "label-danger"
-                else
-                    return "label-warning"
-            scope.get_failed_glyphicon = (data) ->
-                if data.failed of scope.failed_lut
-                    return if scope.failed_lut[data.failed][0] then "glyphicon glyphicon-ok" else "glyphicon glyphicon-remove"
-                else
-                    return "glyphicon glyphicon-minus"
-            scope.get_failed_title = (data) ->
-                if data.failed of scope.failed_lut
-                    return scope.failed_lut[data.failed][2]
-                else
-                    return ""
     }
 ]).directive("icswRmsJobWaitLine", ["$templateCache", "$sce", ($templateCache, $sce) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.rms.job.wait.line")
-        link : (scope, el, attrs) ->
-            scope.struct_name = attrs["struct"]
-            scope.get_display_data = (data) ->
-                return scope[scope.struct_name].display_data(data)
     }
 ]).directive("icswRmsJobVarInfo", ["$templateCache", ($templateCache) ->
     return {
         restrict: "EA"
         template: $templateCache.get("icsw.rms.job.var.info")
         scope:
-            job: "=job"
+            job: "=icswRmsJob"
         link : (scope, el, attrs) ->
             scope.popover =
                 title: "Jobvars vor Job " + scope.job.rms_job.jobid
                 template: "icsw.rms.job.var.info.template"
+
             scope.popover_int =
                 title: "Jobvars vor Job " + scope.job.rms_job.jobid
                 template: "icsw.rms.job.var.info.int_template"
+
             _len = parseInt((scope.job.rmsjobvariable_set.length + 1) / 2)
             _vars = scope.job.rmsjobvariable_set
             _new_vars = []
@@ -760,7 +1022,12 @@ rms_module = angular.module(
                 )
             scope.new_vars = _new_vars
     }
-]).directive("icswRmsJobRunLine", ["$templateCache", "$sce", ($templateCache, $sce) ->
+]).directive("icswRmsJobRunLine",
+[
+    "$templateCache",
+(
+    $templateCache,
+) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.rms.job.run.line")
@@ -771,22 +1038,7 @@ rms_module = angular.module(
                     return 0
                 else
                     return 1
-            scope.get_nodelist = (job) ->
-                nodes = job.nodelist.value.split(",")
-                r_list = []
-                _.forEach(_.countBy(nodes), (key, value) ->
-                    if key == 1
-                        r_list.push(value)
-                    else
-                        r_list.push("#{value}(#{key})")
-                )
-                return r_list.join(",")
-            scope.get_rrd_nodes = (nodelist) ->
-                rrd_nodes = (entry for entry in nodelist.devs when entry of scope.device_dict and scope.device_dict[entry].has_rrd)
-                return rrd_nodes
-            scope.has_rrd = (nodelist) ->
-                rrd_nodes = scope.get_rrd_nodes(nodelist.raw)
-                return if rrd_nodes.length then true else false
+
             scope.show_job_rrd = (event, job) ->
                 rrd_nodes = scope.get_rrd_nodes(job.nodelist.raw)
                 job_id = job.job_id.value
@@ -798,103 +1050,103 @@ rms_module = angular.module(
                     rrd_title = "running job #{job_id} on node " + rrd_nodes[0]
                 scope.show_rrd(event, rrd_nodes, job.start_time.raw, undefined, rrd_title, "selected", job_id)
     }
-]).directive("icswRmsQueueLine", ["$templateCache", "$sce", "$compile", ($templateCache, $sce, $compile) ->
+]).directive("icswRmsQueueLine",
+[
+    "$templateCache", "$sce", "$compile",
+(
+    $templateCache, $sce, $compile
+) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.rms.queue.line")
-        link : (scope, el, attrs) ->
-            scope.valid_load = (load) ->
-                # return 1 or 0, not true or false
-                if load.value
-                    return if load.value.match(LOAD_RE) then 1 else 0
-                else
-                    return false
-            scope.get_load = (load) ->
-                cur_m = load.value.match(LOAD_RE)
-                if cur_m
-                    return String((100 * parseFloat(load.value)) / scope.max_load)
-                else
-                    return 0
-            scope.has_rrd = (name) ->
-                if name.value of scope.device_dict
-                    return scope.device_dict[name.value].has_rrd
-                else
-                    return false
-            scope.show_node_rrd = (event, node) ->
-                scope.show_rrd(event, [node.host.value], undefined, undefined, "node #{node.host.value}", "none", 0)
     }
-]).directive("icswRmsTableHeaderToggle", ["$templateCache", ($templateCache) ->
+]).directive("icswRmsJobAction",
+[
+    "$compile", "$templateCache", "$uibModal", "icswUserService", "ICSW_URLS", "$q",
+    "icswSimpleAjaxCall", "icswComplexModalService", "blockUI", "icswToolsSimpleModalService",
+(
+    $compile, $templateCache, $uibModal, icswUserService, ICSW_URLS, $q,
+    icswSimpleAjaxCall, icswComplexModalService, blockUI, icswToolsSimpleModalService,
+) ->
     return {
-        restrict : "EA"
-        template : $templateCache.get("icsw.rms.table.header.toggle")
+        restrict: "EA"
+        template: $templateCache.get("icsw.rms.job.action")
         scope:
-            struct : "="
-    }
-]).directive("icswRmsJobAction", ["$compile", "$templateCache", "$uibModal", "icswUserService", "ICSW_URLS", "icswSimpleAjaxCall", ($compile, $templateCache, $uibModal, icswUserService, ICSW_URLS, icswSimpleAjaxCall) ->
-    return {
-        restrict : "EA"
-        #template : $templateCache.get("queue_state.html")
-        scope:
-            job : "="
-            operator : "="
-            mode : "="
+            job: "=icswRmsJob"
+            job_type: "=icswRmsJobType"
+            is_oper: "=icswRmsIsOperator"
         replace : true
-        compile : (tElement, tAttr) ->
-            return (scope, el, attrs) ->
-                scope.job_control = (command, force) ->
-                    scope.$emit("job_control", scope.job, command, force)
+        link: (scope, el, attrs) ->
 
-                is_oper = false
-                scope.$watch("job", (job) ->
-                    scope.job = job
+            _get_full_id = () ->
+                _id = scope.job.job_id.value
+                if scope.job.task_id.value
+                    _id = "#{_id}.#{scope.job.task_id.value}"
+                return _id
+
+            scope.job_control = (command, force) ->
+                _cmd = if force then "force delete" else "delete"
+                icswToolsSimpleModalService("Really #{_cmd} job #{_get_full_id()} ?").then(
+                    (doit) ->
+                        blockUI.start("deleting job")
+                        icswSimpleAjaxCall(
+                            url: ICSW_URLS.RMS_CONTROL_JOB
+                            data: {
+                                job_id: scope.job.job_id.value
+                                task_id: scope.job.task_id.value
+                                command: command
+                            }
+                        ).then(
+                            (xml) ->
+                                blockUI.stop()
+                            (error) ->
+                                blockUI.stop()
+                        )
                 )
 
-                scope.change_priority = () ->
-                    child_scope = scope.$new()
-                    child_scope.cur_priority = parseInt(scope.job.priority.value)
-                    child_scope.get_job_id = () ->
-                        _id = scope.job.job_id.value
-                        if scope.job.task_id.value
-                            _id = "#{_id}." + scope.job.task_id.value
-                        return _id
-                    child_scope.get_max_priority = () ->
-                        return if is_oper then 1024 else 0
-                    msg = $compile($templateCache.get("icsw.rms.change.priority"))(child_scope)
+            scope.change_priority = () ->
+                
+                # new isolated scope
+                child_scope = scope.$new(false)
 
-                    on_ok = (new_pri, job_id) ->
-                        icswSimpleAjaxCall(
-                            url      : ICSW_URLS.RMS_CHANGE_JOB_PRIORITY
-                            data:
-                                "job_id": job_id
-                                "new_pri" : new_pri
-                        ).then((xml) ->
-                            scope.job.priority.value = new_pri
-                        )
-                    child_scope.modal = BootstrapDialog.show
-                        title: "Change priority of job #{child_scope.get_job_id()}"
-                        message: msg
-                        draggable: true
-                        closable: true
-                        closeByBackdrop: false
-                        onshow: (modal) =>
-                            height = $(window).height() - 100
-                            modal.getModal().find(".modal-body").css("max-height", height)
+                child_scope.job = scope.job
+                child_scope.cur_priority = parseInt(scope.job.priority.value)
 
-                    child_scope.ok = () ->
-                        on_ok(child_scope.cur_priority, child_scope.get_job_id())
-                        child_scope.modal.close()
+                child_scope.job_id = _get_full_id()
 
-                    child_scope.cancel = () ->
-                        child_scope.modal.close()
-
-                icswUserService.load().then((user) ->
-                    if scope.operator
-                        is_oper = true
-                    else if scope.job.real_user == user.login
-                        is_oper = true
-                    else
-                        is_oper = false
-                    el.append($compile($templateCache.get(if is_oper then "icsw.rms.job.action.oper" else "icsw.rms.job.action"))(scope))
+                child_scope.max_priority = if scope.is_oper then 1024 else 0
+                    
+                icswComplexModalService(
+                    {
+                        message: $compile($templateCache.get("icsw.rms.change.priority"))(child_scope) 
+                        ok_label: "Modify"
+                        title: "Modify priority of job #{child_scope.job_id}"
+                        ok_callback: (modal) ->
+                            d = $q.defer()
+                            blockUI.start("modifying priority")
+                            icswSimpleAjaxCall(
+                                url: ICSW_URLS.RMS_CHANGE_JOB_PRIORITY
+                                data:
+                                    job_id: child_scope.job_id
+                                    new_pri: child_scope.cur_priority
+                            ).then(
+                                (xml) ->
+                                    scope.job.priority.value = child_scope.cur_priority
+                                    blockUI.stop()
+                                    d.resolve("done")
+                                (error) ->
+                                    blockUI.stop()
+                                    d.resolve("done")
+                            )
+                            return d.promise
+                        cancel_callback: (modal) ->
+                            d = $q.defer()
+                            d.resolve("done")
+                            return d.promise
+                    }
+                ).then(
+                    (fin) ->
+                        child_scope.$destroy()
                 )
     }
 ]).directive("icswRmsQueueState", ["$compile", "$templateCache", ($compile, $templateCache) ->
@@ -917,6 +1169,7 @@ rms_module = angular.module(
                 scope.clear_error_ok = (state) ->
                     return if state.match(/e/gi) then true else false
                 scope.get_queue_class = (state, prefix) ->
+                    return "----???"
                     if state.match(/a|u/gi)
                         return "#{prefix}-danger"
                     else if state.match(/d/gi)
@@ -932,9 +1185,9 @@ rms_module = angular.module(
     return {
         restrict : "EA"
         scope:
-            job   : "="
-            files : "="
-            fis   : "="
+            job: "=icswRmsJob"
+            files: "=icswRmsFiles"
+            fis: "=icswRmsFileInfoStruct"
         template : $templateCache.get("icsw.rms.file.info")
         link : (scope, el, attrs) ->
             full_id = if scope.job.task_id.value then "#{scope.job.job_id.value}.#{scope.job.task_id.value}" else scope.job.job_id.value
@@ -948,6 +1201,7 @@ rms_module = angular.module(
                         }
             else
                 scope.jfiles = []
+
             scope.change_display = (file_name) ->
                 scope.fis[file_name].show = !scope.fis[file_name].show
     }
