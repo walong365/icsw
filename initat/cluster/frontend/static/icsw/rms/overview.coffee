@@ -1151,35 +1151,34 @@ rms_module = angular.module(
     }
 ]).directive("icswRmsQueueState", ["$compile", "$templateCache", ($compile, $templateCache) ->
     return {
-        restrict : "EA"
-        #template : $templateCache.get("queue_state.html")
+        restrict: "EA"
+        template: $templateCache.get("icsw.rms.queue.state.oper")
         scope:
-            queue : "="
-            operator : "="
+            queue: "=icswRmsQueue"
         replace : true
-        compile : (tElement, tAttr) ->
-            return (scope, el, attrs) ->
-                scope.queues_defined = () ->
-                    return true
-                    return if scope.host.state.value.length then true else false
-                scope.enable_ok = (state) ->
-                    return if state.match(/d/g) then true else false
-                scope.disable_ok = (state) ->
-                    return if not state.match(/d/g) then true else false
-                scope.clear_error_ok = (state) ->
-                    return if state.match(/e/gi) then true else false
-                scope.get_queue_class = (state, prefix) ->
-                    return "----???"
-                    if state.match(/a|u/gi)
-                        return "#{prefix}-danger"
-                    else if state.match(/d/gi)
-                        return "#{prefix}-warning"
-                    else
-                        return "#{prefix}-success"
-                scope.queue_control = (command, queue) ->
-                    scope.$emit("queue_control", queue, command)
-                el.append($compile($templateCache.get(if scope.operator then "icsw.rms.queue.state.oper" else "icsw.rms.queue.state"))(scope))
-      
+        link: (scope, element, attrs) ->
+            scope.queues_defined = () ->
+                return true
+                return if scope.host.state.value.length then true else false
+            scope.enable_ok = (state) ->
+                return if state.match(/d/g) then true else false
+            scope.disable_ok = (state) ->
+                return if not state.match(/d/g) then true else false
+            scope.clear_error_ok = (state) ->
+                return if state.match(/e/gi) then true else false
+
+            scope.get_queue_class = (state, prefix) ->
+                return "----???"
+                if state.match(/a|u/gi)
+                    return "#{prefix}-danger"
+                else if state.match(/d/gi)
+                    return "#{prefix}-warning"
+                else
+                    return "#{prefix}-success"
+
+            scope.queue_control = (command, queue) ->
+                scope.$emit("queue_control", queue, command)
+
     }
 ]).directive("icswRmsFileInfo", ["$compile", "$templateCache", ($compile, $templateCache) ->
     return {

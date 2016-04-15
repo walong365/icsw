@@ -195,7 +195,13 @@
         </icsw-tools-button>
     </td>
     <td ng-show="struct.toggle['queues']">
-        <icsw-rms-queue-state operator="rms_operator" queue="queue"></icsw-rms-queue-state>
+        <icsw-rms-queue-state icsw-rms-queue="queue" ng-if="gstruct.rms_operator"></icsw-rms-queue-state>
+        <span
+            ng-if="!gstruct.rms_operator"
+            ng-class="get_queue_class(queue.state.value, 'label')"
+        >
+            {{ queue.name }} : {{ queue.state.value }}
+        </span>
     </td>
     <td ng-show="struct.toggle['type']">
         {{ queue.type.value }}
@@ -237,12 +243,12 @@
 </script>
 
 <script type="text/ng-template" id="icsw.rms.queue.state.oper">
-    <div class="row">
-        <div class="col-sm-12 btn-group">
-            <button type="button" class="btn btn-xs dropdown-toggle" ng-class="get_queue_class(queue.state.value, 'btn')" data-toggle="dropdown">
+    <div>
+        <span uib-dropdown ng-show="queues_defined()">
+            <button type="button" class="btn btn-xs dropdown-toggle" ng-class="get_queue_class(queue.state.value, 'btn')" uib-dropdown-toggle>
                 {{ queue.name }} : {{ queue.state.value }} <span class="caret"></span>
             </button>
-            <ul class="dropdown-menu">
+            <ul class="dropdown-menu" uib-dropdown-menu>
                 <li ng-show="enable_ok(queue.state.value)" ng-click="queue_control('enable', queue)">
                     <a>Enable {{ queue.name }}@{{ queue.host.host.value }}</a>
                 </li>
@@ -253,11 +259,11 @@
                     <a>Clear error on {{ queue.name }}@{{ queue.host.host.value }}</a>
                 </li>
             </ul>
-        </div>
+        </span>
+        <span ng-show="!queues_defined()">
+            N/A
+        </span>
     </div>
-    <span ng-show="!queues_defined()">
-        N/A
-    </span>
 </script>
 
 <script type="text/ng-template" id="icsw.rms.queue.state">
