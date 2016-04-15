@@ -20,7 +20,7 @@
 LOAD_RE = /(\d+.\d+).*/
 
 class io_struct
-    constructor : (@job_id, @task_id, @type) ->
+    constructor: (@job_id, @task_id, @type) ->
         @resp_xml = undefined
         @text = ""
         # is set to true as soon as we got any data
@@ -180,16 +180,44 @@ rms_module = angular.module(
     return {
         failed_lut: failed_lut
         exit_status_lut: exit_status_lut
+        load_re: /(\d+.\d+).*/
     }
 
 ]).service("icswRMSQueue",
 [
-    "$q",
+    "$q", "icswRMSTools",
 (
-    $q,
+    $q, icswRMSTools,
 ) ->
     class icswRMSQueue
-        constructor: (@name) ->
+        constructor: (@name, @host, state_value, host_state, load_value, max_load) ->
+            @state = {
+                value: state_value
+                raw: host_state
+            }
+            @load = {value: load_value}
+            _sv = @state.value
+            # display flags
+            @$$enable_ok = if _sv.match(/d/g) then true else false
+            @$$disable_ok = if not _sv.match(/d/g) then true else false
+            @$$clear_error_ok = if _sv.match(/e/g) then true else false
+            # full queue name
+            @$$queue_name = "#{@name}@#{@host.host.value}"
+            if _sv.match(/a|u/gi)
+                _cls = "danger"
+            else if _sv.match(/d/gi)
+                _cls = "warning"
+            else
+                _cls = "success"
+            @$$queue_btn_class = "btn-#{_cls}"
+            @$$queue_label_class = "label-#{_cls}"
+
+            if @load.value.match(icswRMSTools.load_re)
+                @$$load_is_valid = true
+                @$$load_percentage = String((100 * parseFloat(@load.value)) / max_load)
+            else
+                @$$load_is_valid = false
+                @$$load_percentage = 0
 
 ]).service("icswRMSSlotInfo",
 [
@@ -223,7 +251,7 @@ rms_module = angular.module(
     $q, ICSW_URLS, icswSimpleAjaxCall, icswRMSQueue, icswRMSTools,
 ) ->
     class icswRMSHeaderStruct
-        constructor: (@name, h_struct) ->
+        constructor: (@name, h_struct, @struct) ->
             _dict = {}
             @headers = []
             @hidden_headers = []
@@ -239,9 +267,6 @@ rms_module = angular.module(
 
             # list of entries
             @list = []
-
-            if @name == "node"
-                @queue_list = []
 
             @build_cache()
 
@@ -310,126 +335,253 @@ rms_module = angular.module(
             else
                 return "btn btn-sm"
 
-        feed_list : (simple_list, device_tree) =>
-            LOAD_RE = /(\d+.\d+).*/
-            _dt_name_lut = {}
-            for entry in device_tree.all_list
-                _dt_name_lut[entry.name] = entry
-                _dt_name_lut[entry.full_name] = entry
+        header_not_hidden : (entry) ->
+            return entry not in @hidden_headers
 
-            _salt_datetimes = (entry) ->
+        get_span: (entry) ->
+            if @attributes[entry].span?
+                return @attributes[entry].span
+            else
+                return 1
+
+        get_header: (h_str) ->
+            # CamelCase
+            h_str = (_entry.substr(0, 1).toUpperCase() + _entry.substr(1) for _entry in h_str.split("_")).join("")
+            return h_str
+
+        salt_datetimes: () =>
+            for entry in @list
                 for _name in ["queue_time", "start_time", "end_time"]
                     if entry[_name]?
                         entry["$$#{_name}"] = moment(entry[_name]).format(DT_FORM)
                     else
                         entry["$$#{_name}"] = "---"
                 if @name == "done"
-                    if entry.start_time and entry.end_time
+                    if entry.start_time? and entry.end_time?
                         _et = moment(entry.end_time)
                         _st = moment(entry.start_time)
                         _diff = moment.duration(_et.diff(_st, "seconds"), "seconds")
                         entry.$$runtime = _diff.humanize()
                     else
                         entry.$$runtime = "---"
-                    if entry.queue_time and entry.start_time
+                    if entry.queue_time? and entry.start_time?
                         _et = moment(entry.start_time)
                         _st = moment(entry.queue_time)
                         _diff = moment.duration(_et.diff(_st, "seconds"), "seconds")
                         entry.$$waittime = _diff.humanize()
                     else
                         entry.$$waittime = "---"
-                
+
+        feed_xml_list: (simple_list) =>
+            # source is XML (running, waiting, node)
             @list.length = 0
-            if @name == "done"
-                # the done-list is already in the correct format
-                for entry in simple_list
-                    _salt_datetimes(entry)
-                    @list.push(entry)
-            else
-                for entry in (_.zipObject(@headers, _line) for _line in simple_list)
-                    # console.log entry
-                    _salt_datetimes(entry)
-                    @list.push(entry)
+            for entry in (_.zipObject(@headers, _line) for _line in simple_list)
+                # console.log entry
+                @list.push(entry)
 
-            if @name == "done"
-                # set exit states
-                for entry in @list
-                    # exit status
+        feed_json_list: (simple_list) =>
+            # source is json (done)
+            # the done-list is already in the correct format
+            @list.length = 0
+            for entry in simple_list
+                # console.log entry
+                @list.push(entry)
 
-                    if entry.exit_status of icswRMSTools.exit_status_lut
-                        _td_entry = icswRMSTools.exit_status_lut[entry.exit_status]
-                        if _td_entry[0] == 0
-                            [_cls, _glyph, _str] = ["warn", _td_entry[2], _td_entry[1]]
-                        else if _td_entry[0] == 1
-                            [_cls, _glyph, _str] = ["ok", _td_entry[2], _td_entry[1]]
-                        else
-                            [_cls, _glyph, _str] = ["danger", _td_entry[2], _td_entry[1]]
-                    else
-                        if entry.exit_status > 128
-                            [_cls, _glyph, _str] = ["danger", "", entry.exit_status]
-                        else if entry.exit_status
-                            [_cls, _glyph, _str] = ["warn", "", entry.exit_status]
-                        else
-                            [_cls, _glyph, _str] = ["ok", "", entry.exit_status]
-                    if _glyph
-                        _glyph = "glyphicon #{_glyph}"
-                    entry.$$exit_status_class = _cls
-                    entry.$$exit_status_glyph = _glyph
-                    entry.$$exit_status_str = _str
+        set_rrd_flags: () =>
+            {device_tree, name_lut} = @struct
+            for entry in @list
+                _names = []
+                if entry.rms_pe_info? and entry.rms_pe_info.length
+                    # done list
+                    _names = entry.rms_pe_info
+                else if entry.nodelist? and entry.nodelist.raw? and entry.nodelist.raw.devs?
+                    # running list
+                    _names = entry.nodelist.raw.devs
+                else if entry.device?
+                    # queue / node list
+                    _names = [entry.device]
 
-                    # failed state
-                    if entry.failed of icswRMSTools.failed_lut
-                        [_cls, _str, _title] = icswRMSTools.failed_lut[entry.failed]
-                        if _title
-                            _glyph = "glyphicon glyphicon-ok"
-                        else
-                            _glyph = "glyphicon glyphicon-minus"
-                    else
-                        [_cls, _str, _title, _glyph] = ["label-warning", entry.failed, "", "glyphicon glyphicon-minus"]
-                    entry.$$failed_class = _cls
-                    entry.$$failed_str = _str
-                    entry.$$failed_glyph = _glyph
-                    entry.$$failed_title = _title
-                    # pe_info
-                    r_list = []
-                    if entry.rms_pe? and entry.rms_pe.length
-                        console.log "*", entry.pe
-                        for _entry in entry.rms_pe
-                            r_list.push("#{_entry.hostname} (#{_entry.slots})")
-                    else
-                        if entry.device of _dt_name_lut
-                            r_list.push("#{_dt_name_lut[entry.device].full_name} (#{entry.slots})")
-                        else
-                            r_list.push("---")
-                    entry.$$pe_info = r_list.join(",")
+                _rrds = false
+                for _name in _names
+                    if _name of name_lut and name_lut[_name].has_active_rrds
+                        _rrds = true
+                entry.$$has_rrds = _rrds
 
-            if @name == "node"
-                # init queue list
-                valid_loads = (parseFloat(entry.load.value) for entry in @list when entry.load.value.match(LOAD_RE))
+        set_alter_job_flags: () ->
+            {user, rms_operator} = @struct
+            for entry in @list
+                _alter = rms_operator
+                if entry.owner.value == user.login
+                    # check for aliases, FIXME
+                    _alter = true
+                entry.$$alter_job = _alter
 
-                if valid_loads.length
-                    @max_load = _.max(valid_loads)
-                    # round to next multiple of 4
-                    @max_load = 4 * parseInt((@max_load + 3.9999  ) / 4)
+        set_full_ids: () ->
+            for entry in @list
+                if entry.rms_job
+                    # for done list
+                    full_id = if entry.rms_job.taskid then "#{entry.rms_job.jobid}.#{entry.rms_job.taskid}" else entry.rms_job.jobid
                 else
-                    @max_load = 4
-                if @max_load == 0
-                    @max_load = 4
+                    # for running, waiting, node
+                    full_id = if entry.task_id.value then "#{entry.job_id.value}.#{entry.task_id.value}" else entry.job_id.value
+                entry.$$full_id = full_id
+                # job lookup table
+                entry.jobs = {}
 
-                # build queue list
-                @build_queue_list()
+]).service("icswRMSRunningStruct",
+[
+    "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswRMSQueue", "icswRMSTools",
+    "icswRMSHeaderStruct",
+(
+    $q, ICSW_URLS, icswSimpleAjaxCall, icswRMSQueue, icswRMSTools,
+    icswRMSHeaderStruct,
+) ->
+    class icswRMSRunningStruct extends icswRMSHeaderStruct
+        constructor: (h_struct, struct) ->
+            super("running", h_struct, struct)
+            # to save settings after reloads
+            @file_info_dict = {}
 
-            if @name == "running"
-                for entry in @list
-                    nodes = entry.nodelist.value.split(",")
-                    r_list = []
-                    _.forEach(_.countBy(nodes), (key, value) ->
-                        if key == 1
-                            r_list.push(value)
-                        else
-                            r_list.push("#{value}(#{key})")
-                    )
-                    entry.$$nodelist = r_list.join(",")
+        feed_list : (simple_list, file_dict) =>
+            @feed_xml_list(simple_list)
+            @set_rrd_flags()
+            @set_alter_job_flags()
+            @set_full_ids()
+            for entry in @list
+                nodes = entry.nodelist.value.split(",")
+                r_list = []
+                _.forEach(_.countBy(nodes), (key, value) ->
+                    if key == 1
+                        r_list.push(value)
+                    else
+                        r_list.push("#{value}(#{key})")
+                )
+                entry.$$nodelist = r_list.join(",")
+                # check files
+                if entry.$$full_id of file_dict
+                    entry.files = file_dict[entry.$$full_id]
+                    for file in entry.files
+                        if file[0] not of @file_info_dict
+                            @file_info_dict[file[0]] = {
+                                show: true
+                            }
+                    entry.file_info_dict = @file_info_dict
+                else
+                    entry.files = []
+
+]).service("icswRMSWaitingStruct",
+[
+    "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswRMSQueue", "icswRMSTools",
+    "icswRMSHeaderStruct",
+(
+    $q, ICSW_URLS, icswSimpleAjaxCall, icswRMSQueue, icswRMSTools,
+    icswRMSHeaderStruct,
+) ->
+    class icswRMSWaitingStruct extends icswRMSHeaderStruct
+        constructor: (h_struct, struct) ->
+            super("waiting", h_struct, struct)
+
+        feed_list : (simple_list) =>
+            @feed_xml_list(simple_list)
+            @set_alter_job_flags()
+            @set_full_ids()
+]).service("icswRMSDoneStruct",
+[
+    "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswRMSQueue", "icswRMSTools",
+    "icswRMSHeaderStruct",
+(
+    $q, ICSW_URLS, icswSimpleAjaxCall, icswRMSQueue, icswRMSTools,
+    icswRMSHeaderStruct,
+) ->
+    class icswRMSDoneStruct extends icswRMSHeaderStruct
+        constructor: (h_struct, struct) ->
+            super("done", h_struct, struct)
+
+        feed_list : (simple_list) =>
+            @feed_json_list(simple_list)
+            @salt_datetimes()
+            @set_rrd_flags()
+            @set_full_ids()
+            {name_lut} = @struct
+            for entry in @list
+                # exit status
+
+                if entry.exit_status of icswRMSTools.exit_status_lut
+                    _td_entry = icswRMSTools.exit_status_lut[entry.exit_status]
+                    if _td_entry[0] == 0
+                        [_cls, _glyph, _str] = ["warn", _td_entry[2], _td_entry[1]]
+                    else if _td_entry[0] == 1
+                        [_cls, _glyph, _str] = ["ok", _td_entry[2], _td_entry[1]]
+                    else
+                        [_cls, _glyph, _str] = ["danger", _td_entry[2], _td_entry[1]]
+                else
+                    if entry.exit_status > 128
+                        [_cls, _glyph, _str] = ["danger", "", entry.exit_status]
+                    else if entry.exit_status
+                        [_cls, _glyph, _str] = ["warn", "", entry.exit_status]
+                    else
+                        [_cls, _glyph, _str] = ["ok", "", entry.exit_status]
+                if _glyph
+                    _glyph = "glyphicon #{_glyph}"
+                entry.$$exit_status_class = _cls
+                entry.$$exit_status_glyph = _glyph
+                entry.$$exit_status_str = _str
+
+                # failed state
+                if entry.failed of icswRMSTools.failed_lut
+                    [_cls, _str, _title] = icswRMSTools.failed_lut[entry.failed]
+                    if _title
+                        _glyph = "glyphicon glyphicon-ok"
+                    else
+                        _glyph = "glyphicon glyphicon-minus"
+                else
+                    [_cls, _str, _title, _glyph] = ["label-warning", entry.failed, "", "glyphicon glyphicon-minus"]
+                entry.$$failed_class = _cls
+                entry.$$failed_str = _str
+                entry.$$failed_glyph = _glyph
+                entry.$$failed_title = _title
+                # pe_info
+                r_list = []
+                if entry.rms_pe? and entry.rms_pe.length
+                    console.log "*", entry.pe
+                    for _entry in entry.rms_pe
+                        r_list.push("#{_entry.hostname} (#{_entry.slots})")
+                else
+                    if entry.device of name_lut
+                        r_list.push("#{name_lut[entry.device].full_name} (#{entry.slots})")
+                    else
+                        r_list.push("---")
+                entry.$$pe_info = r_list.join(",")
+
+]).service("icswRMSNodeStruct",
+[
+    "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswRMSQueue", "icswRMSTools",
+    "icswRMSHeaderStruct",
+(
+    $q, ICSW_URLS, icswSimpleAjaxCall, icswRMSQueue, icswRMSTools,
+    icswRMSHeaderStruct,
+) ->
+    class icswRMSNodeStruct extends icswRMSHeaderStruct
+        constructor: (h_struct, struct) ->
+            super("node", h_struct, struct)
+            @queue_list = []
+
+        feed_list : (simple_list) =>
+            @feed_xml_list(simple_list)
+            @set_rrd_flags()
+            valid_loads = (parseFloat(entry.load.value) for entry in @list when entry.load.value.match(LOAD_RE))
+
+            if valid_loads.length
+                @max_load = _.max(valid_loads)
+                # round to next multiple of 4
+                @max_load = 4 * parseInt((@max_load + 3.9999  ) / 4)
+            else
+                @max_load = 4
+            if @max_load == 0
+                @max_load = 4
+
+            # build queue list
+            @build_queue_list()
 
         build_queue_list: () =>
             i_split = (in_str, nq) ->
@@ -460,16 +612,14 @@ rms_module = angular.module(
                     i_split(entry.slots_total.value, _number_queues),
                     i_split(entry.jobs.value, _number_queues),
                 )
-                    queue = new icswRMSQueue(_vals[0])
-                    queue.host = entry
-                    queue.state = {value: _vals[1], raw: entry.state.raw[_idx]}
-                    queue.load = {value: _vals[2]}
-                    if queue.load.value.match(LOAD_RE)
-                        queue.$$load_is_valid = true
-                        queue.$$load_percentage = String((100 * parseFloat(queue.load.value)) / @max_load)
-                    else
-                        queue.$$load_is_valid = false
-                        queue.$$load_percentage = 0
+                    queue = new icswRMSQueue(
+                        _vals[0]
+                        entry
+                        _vals[1]
+                        entry.state.raw[_idx]
+                        _vals[2]
+                        @max_load
+                    )
                     queue.type = {value: _vals[3]}
                     queue.complex = {value: _vals[4]}
                     queue.pe_list = {value: _vals[5]}
@@ -480,62 +630,19 @@ rms_module = angular.module(
                     queue.jobs = {value: _vals[9]}
                     @queue_list.push(queue)
                     _idx++
-
-        header_not_hidden : (entry) ->
-            return entry not in @hidden_headers
-
-        get_span: (entry) ->
-            if @attributes[entry].span?
-                return @attributes[entry].span
-            else
-                return 1
-
-        get_header: (h_str) ->
-            # CamelCase
-            h_str = (_entry.substr(0, 1).toUpperCase() + _entry.substr(1) for _entry in h_str.split("_")).join("")
-            return h_str
-
-        set_rrd_flags: (device_tree) =>
-            _dt_name_lut = {}
-            for entry in device_tree.all_list
-                _dt_name_lut[entry.name] = entry
-                _dt_name_lut[entry.full_name] = entry
-            for entry in @list
-                _names = []
-                if entry.rms_pe_info? and entry.rms_pe_info.length
-                    # done list
-                    _names = entry.rms_pe_info
-                else if entry.nodelist? and entry.nodelist.raw? and entry.nodelist.raw.devs?
-                    # running list
-                    _names = entry.nodelist.raw.devs
-                else if entry.device?
-                    # queue / node list
-                    _names = [entry.device]
-
-                _rrds = false
-                for _name in _names
-                    if _name of _dt_name_lut and _dt_name_lut[_name].has_active_rrds
-                        _rrds = true
-                entry.$$has_rrds = _rrds
-
-        set_alter_job_flags: (user, is_oper) ->
-            for entry in @list
-                _alter = false
-                if is_oper
-                    _alter = true
-                entry.$$alter_job = _alter
-
 ]).controller("icswRMSOverviewCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular",
     "$q", "$uibModal", "icswAcessLevelService", "$timeout", "$sce", "ICSW_URLS",
     "icswSimpleAjaxCall", "$window", "icswDeviceTreeService", "icswUserService",
-    "icswRMSTools", "icswRMSHeaderStruct", "icswRMSSlotInfo", "icswRMSQueue",
+    "icswRMSTools", "icswRMSHeaderStruct", "icswRMSSlotInfo", "icswRMSRunningStruct",
+    "icswRMSWaitingStruct", "icswRMSDoneStruct", "icswRMSNodeStruct",
 (
     $scope, $compile, $filter, $templateCache, Restangular,
     $q, $uibModal, icswAcessLevelService, $timeout, $sce, ICSW_URLS,
     icswSimpleAjaxCall, $window, icswDeviceTreeService, icswUserService,
-    icswRMSTools, icswRMSHeaderStruct, icswRMSSlotInfo, icswRMSQueue,
+    icswRMSTools, icswRMSHeaderStruct, icswRMSSlotInfo, icswRMSRunningStruct,
+    icswRMSWaitingStruct, icswRMSDoneStruct, icswRMSNodeStruct,
 ) ->
         icswAcessLevelService.install($scope)
         $scope.struct = {
@@ -582,15 +689,21 @@ rms_module = angular.module(
             ).then(
                 (data) ->
                     $scope.struct.device_tree = data[0]
+                    # build name lookup dict
+                    _dt_name_lut = {}
+                    for entry in $scope.struct.device_tree.all_list
+                        _dt_name_lut[entry.name] = entry
+                        _dt_name_lut[entry.full_name] = entry
+                    $scope.struct.name_lut = _dt_name_lut
                     $scope.struct.user = data[1]
                     $scope.struct.rms_operator = $scope.acl_modify(null, "backbone.user.rms_operator")
                     $scope.struct.loading = false
                     $scope.struct.initial_data_present = true
                     $scope.struct.rms = {
-                        running: new icswRMSHeaderStruct("running", data[2].running_headers)
-                        waiting: new icswRMSHeaderStruct("waiting", data[2].waiting_headers)
-                        done: new icswRMSHeaderStruct("done", data[2].done_headers)
-                        node: new icswRMSHeaderStruct("node", data[2].node_headers)
+                        running: new icswRMSRunningStruct(data[2].running_headers, $scope.struct)
+                        waiting: new icswRMSWaitingStruct(data[2].waiting_headers, $scope.struct)
+                        done: new icswRMSDoneStruct(data[2].done_headers, $scope.struct)
+                        node: new icswRMSNodeStruct(data[2].node_headers, $scope.struct)
                     }
                     # apply user settings
                     for key, value of data[3]
@@ -615,13 +728,10 @@ rms_module = angular.module(
                         $scope.running_slots = 0
                         $scope.waiting_slots = 0
                         $scope.struct.files = json.files
-                        $scope.struct.rms.running.feed_list(json.run_table, $scope.struct.device_tree)
-                        $scope.struct.rms.waiting.feed_list(json.wait_table, $scope.struct.device_tree)
-                        $scope.struct.rms.done.feed_list(json.done_table, $scope.struct.device_tree)
-                        $scope.struct.rms.node.feed_list(json.node_table, $scope.struct.device_tree)
-
-                        ($scope.struct.rms[_type].set_rrd_flags($scope.struct.device_tree) for _type in ["running", "done", "node"])
-                        ($scope.struct.rms[_type].set_alter_job_flags($scope.struct.user, $scope.struct.rms_operator) for _type in ["running", "waiting"])
+                        $scope.struct.rms.running.feed_list(json.run_table, json.files)
+                        $scope.struct.rms.waiting.feed_list(json.wait_table)
+                        $scope.struct.rms.done.feed_list(json.done_table)
+                        $scope.struct.rms.node.feed_list(json.node_table)
 
                         $scope.struct.slot_info.reset()
 
@@ -720,12 +830,14 @@ rms_module = angular.module(
                 job.sv3 = job.queue_name.value
             if job.real_user?
                 job.sv4 = job.real_user.value
+
         $scope.get_io_link_class = (job, io_type) ->
             io_id = "#{job.job_id.value}.#{job.task_id.value}.#{io_type}"
             if io_id in $scope.io_list
                 return "btn btn-xs btn-success"
             else
                 return "btn btn-xs"
+
         $scope.activate_io = (job, io_type) ->
             io_id = "#{job.job_id.value}.#{job.task_id.value}.#{io_type}"
             if io_id not in $scope.io_list
@@ -736,9 +848,11 @@ rms_module = angular.module(
             $scope.io_dict[io_id].active = true
             # reload
             $scope.reload()
+
         $scope.close_io = (io_struct) ->
             $scope.io_list = (entry for entry in $scope.io_list when entry != io_struct.get_id())
             delete $scope.io_dict[io_struct.get_id()]
+
         $scope.$on("queue_control", (event, queue, command) ->
             icswSimpleAjaxCall(
                 url      : ICSW_URLS.RMS_CONTROL_QUEUE
@@ -1157,25 +1271,6 @@ rms_module = angular.module(
             queue: "=icswRmsQueue"
         replace : true
         link: (scope, element, attrs) ->
-            scope.queues_defined = () ->
-                return true
-                return if scope.host.state.value.length then true else false
-            scope.enable_ok = (state) ->
-                return if state.match(/d/g) then true else false
-            scope.disable_ok = (state) ->
-                return if not state.match(/d/g) then true else false
-            scope.clear_error_ok = (state) ->
-                return if state.match(/e/gi) then true else false
-
-            scope.get_queue_class = (state, prefix) ->
-                return "----???"
-                if state.match(/a|u/gi)
-                    return "#{prefix}-danger"
-                else if state.match(/d/gi)
-                    return "#{prefix}-warning"
-                else
-                    return "#{prefix}-success"
-
             scope.queue_control = (command, queue) ->
                 scope.$emit("queue_control", queue, command)
 
@@ -1185,23 +1280,6 @@ rms_module = angular.module(
         restrict : "EA"
         scope:
             job: "=icswRmsJob"
-            files: "=icswRmsFiles"
-            fis: "=icswRmsFileInfoStruct"
         template : $templateCache.get("icsw.rms.file.info")
-        link : (scope, el, attrs) ->
-            full_id = if scope.job.task_id.value then "#{scope.job.job_id.value}.#{scope.job.task_id.value}" else scope.job.job_id.value
-            scope.full_id = full_id
-            if full_id of scope.files
-                scope.jfiles = scope.files[full_id]
-                for file in scope.jfiles
-                    if not scope.fis[file[0]]?
-                        scope.fis[file[0]] = {
-                            "show" : true
-                        }
-            else
-                scope.jfiles = []
-
-            scope.change_display = (file_name) ->
-                scope.fis[file_name].show = !scope.fis[file_name].show
     }
 ])

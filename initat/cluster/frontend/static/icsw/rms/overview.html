@@ -50,7 +50,7 @@
             <tr icsw-rms-job-run-line ng-repeat-start="job in struct.displayed_entries" ></tr>
             <tr ng-repeat-end ng-show="job.files.value != '0' && struct.toggle['files']">
                 <td colspan="99">
-                    <icsw-rms-file-info icsw-rms-job="job" icsw-rms-files="gstruct.files" icsw-rms-file-info-struct="gstruct.file_info_struct"></icsw-rms-file-info>
+                    <icsw-rms-file-info icsw-rms-job="job"></icsw-rms-file-info>
                 </td>
             </tr>
         </tbody>
@@ -173,16 +173,17 @@
 </script>
 
 <script type="text/ng-template" id="icsw.rms.file.info">
-    <div ng-repeat="file in jfiles">
+    <div ng-repeat="file in job.files">
         <div>
             <input
                 type="button"
-                ng-class="fis[file[0]].show && 'btn btn-xs btn-success' || 'btn btn-xs'"
-                ng-click="change_display(file[0])"
-                ng-value="fis[file[0]].show && 'hide' || 'show'"/>
+                ng-class="job.file_info_dict[file[0]].show && 'btn btn-xs btn-success' || 'btn btn-xs'"
+                ng-click="job.file_info_dict[file[0]].show = !job.file_info_dict[file[0]].show"
+                ng-value="job.file_info_dict[file[0]].show && 'hide' || 'show'"
+            />
             {{ file[0] }}, {{ file[2] }} Bytes
         </div>
-        <div ng-show="fis[file[0]].show">
+        <div ng-show="job.file_info_dict[file[0]].show">
             <textarea rows="{{ file[4] }}" cols="120" readonly="readonly">{{ file[1] }}</textarea>
         </div>
     </div>
@@ -243,32 +244,27 @@
 </script>
 
 <script type="text/ng-template" id="icsw.rms.queue.state.oper">
-    <div>
-        <span uib-dropdown ng-show="queues_defined()">
-            <button type="button" class="btn btn-xs dropdown-toggle" ng-class="get_queue_class(queue.state.value, 'btn')" uib-dropdown-toggle>
-                {{ queue.name }} : {{ queue.state.value }} <span class="caret"></span>
-            </button>
-            <ul class="dropdown-menu" uib-dropdown-menu>
-                <li ng-show="enable_ok(queue.state.value)" ng-click="queue_control('enable', queue)">
-                    <a>Enable {{ queue.name }}@{{ queue.host.host.value }}</a>
-                </li>
-                <li ng-show="disable_ok(queue.state.value)" ng-click="queue_control('disable', queue)">
-                    <a>Disable {{ queue.name }}@{{ queue.host.host.value }}</a>
-                </li>
-                <li ng-show="clear_error_ok(queue.state.value)" ng-click="queue_control('clear_error', queue)">
-                    <a>Clear error on {{ queue.name }}@{{ queue.host.host.value }}</a>
-                </li>
-            </ul>
-        </span>
-        <span ng-show="!queues_defined()">
-            N/A
-        </span>
-    </div>
+    <span uib-dropdown>
+        <button type="button" class="btn btn-xs dropdown-toggle" ng-class="queue.$$queue_btn_class" uib-dropdown-toggle>
+            {{ queue.name }} : {{ queue.state.value }} <span class="caret"></span>
+        </button>
+        <ul class="dropdown-menu" uib-dropdown-menu>
+            <li ng-show="queue.$$enable_ok" ng-click="queue_control('enable', queue)">
+                <a>Enable {{ queue.$$queue_name }}</a>
+            </li>
+            <li ng-show="queue.$$disable_ok" ng-click="queue_control('disable', queue)">
+                <a>Disable {{ queue.name }}@{{ queue.host.host.value }}</a>
+            </li>
+            <li ng-show="queue.$$clear_error_ok" ng-click="queue_control('clear_error', queue)">
+                <a>Clear error on {{ queue.name }}@{{ queue.host.host.value }}</a>
+            </li>
+        </ul>
+    </span>
 </script>
 
 <script type="text/ng-template" id="icsw.rms.queue.state">
     <div>
-        <span class="label" ng-class="get_queue_class(queue.state.value, 'label')">
+        <span class="label" ng-class="queue.$$queue_label_class">
             {{ queue.name }} : {{ queue.state.value }}
         </span>
     </div>
@@ -286,7 +282,7 @@
         {{ job.rms_job.name }}
     </td>
     <td ng-show="struct.toggle['granted_pe']">
-        {{ job.granted_pe }}<span ng-show="job.granted_pe">({{ job.slots }})</span>
+        {{ job.granted_pe }} <span ng-show="job.granted_pe">({{ job.slots }})</span>
     </td>
     <td ng-show="struct.toggle['owner']">
         {{ job.rms_job.owner }}
