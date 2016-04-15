@@ -167,7 +167,6 @@ monitoring_patterns = [
     # url("^build_info$", monitoring_views.build_info.as_view(), name="build_info"),
     # url("^overview$", monitoring_views.overview.as_view(), name="overview"),
     url("^resolve_name$", monitoring_views.resolve_name.as_view(), name="resolve_name"),
-    url("^delete_hint$", monitoring_views.delete_hint.as_view(), name="delete_hint"),
     url("^get_mon_vars$", monitoring_views.get_mon_vars.as_view(), name="get_mon_vars"),
     url("^get_hist_timespan$", monitoring_views.get_hist_timespan.as_view(), name="get_hist_timespan"),
     url("^get_hist_device_data$", monitoring_views.get_hist_device_data.as_view(), name="get_hist_device_data"),

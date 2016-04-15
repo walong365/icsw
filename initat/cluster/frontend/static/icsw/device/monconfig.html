@@ -2,26 +2,23 @@
     <h2 ng-show="struct.devices.length">
         Monitoring Hints for {{ struct.devices.length }} devices
         <span class="text-danger" ng-show="struct.fetching">Fetching MonitoringData from server</span>
+        <div class="btn-group btn-xs">
+            <button type="button" ladda="struct.fetching" class="btn btn-success btn-xs dropdown-toggle" data-spinner-size="12" data-toggle="dropdown">
+                reload config <span class="caret"></span>
+            </button>
+            <ul class="dropdown-menu">
+                <li ng-click="load_data('ALWAYS')"><a>cached (fast)</a></li>
+                <li ng-click="load_data('REFRESH')"><a>refresh (contact device if necessary)</a></li>
+            </ul>
+        </div>
     </h2>
     <uib-alert type="warning" ng-show="struct.loading">Fetching data from server ...</uib-alert>
     <icsw-tools-ensure-device-selection dev-list="struct.devices"> <!-- don't need list-ready since it's handled in the page below -->
-        <h4>
-            Action:
-            <div class="btn-group btn-xs">
-                <button type="button" ladda="reload_pending" class="btn btn-success btn-xs dropdown-toggle" data-spinner-size="12" data-toggle="dropdown">
-                    reload config <span class="caret"></span>
-                </button>
-                <ul class="dropdown-menu">
-                    <li ng-click="load_data('ALWAYS')"><a>cached (fast)</a></li>
-                    <li ng-click="load_data('REFRESH')"><a>refresh (contact device if necessary)</a></li>
-                </ul>
-            </div>
-        </h4>
-        <uib-accordion close-others="no" ng-show="!struct.fetching">
-            <uib-accordion-group is-open="struct.monconfig_open">
+        <uib-accordion close-others="no">
+            <uib-accordion-group is-open="struct.monconfig_open" ng-show="!struct.fetching">
                 <uib-accordion-heading>
                     <i class="glyphicon" ng-class="{'glyphicon-chevron-down': struct.monconfig_open, 'glyphicon-chevron-right': !struct.monconfig_open}"></i>
-                    Monitoring config, {{ struct.mc_tables.length }} tables shown,
+                    Monitoring config, {{ struct.mc_tables.length }} tables shown
                 </uib-accordion-heading>
                 <uib-tabset>
                     <uib-tab ng-repeat="table in struct.mc_tables" heading="{{ table.name }} ({{ table.entries.length }})">
@@ -103,7 +100,7 @@
                     </thead>
                     <tbody>
                         <tr icsw-monitoring-hint-device-row ng-repeat-start="device in struct.devices" ng-class="get_tr_class(device)"></tr>
-                        <tr ng-repeat-end ng-if="device.$$hints_expanded && device.monitoring_hint_set.length">
+                        <tr ng-repeat-end ng-if="device.$$hints_expanded && device.monitoring_hint_set.length && !struct.fetching">
                             <td colspan="9">
                                 <icsw-monitoring-hint-table icsw-device="device"></icsw-monitoring-hint-table>
                             </td>
@@ -117,7 +114,7 @@
 
 <script type="text/ng-template" id="icsw.monitoring.hint.device.row">
     <td>
-        <button class="btn btn-primary btn-xs" ng-click="expand_vt(device)">
+        <button class="btn btn-primary btn-xs" ng-click="expand_vt(device)" ng-show="device.monitoring_hint_set.length">
             <span ng_class="get_expand_class(device)"/>
         </button>
     <td/>
@@ -172,7 +169,7 @@
             {{ hint.m_type }}
         </span>
         <span ng-show="!hint.enabled">
-            <em><strike>{{ hint.m_type }}</strike></em>
+            <em><del>{{ hint.m_type }}</del></em>
         </span>
     </td>
     <td>
@@ -180,7 +177,7 @@
             {{ hint.key }}
         </span>
         <span ng-show="!hint.enabled">
-            <em><strike>{{ hint.key }}</strike></em>
+            <em><del>{{ hint.key }}</del></em>
         </span>
     </td>
     <td>{{ hint.datasource }}</td>

@@ -87,7 +87,7 @@ sources = {
         "parta.js"
         [
             "frontend/static/js/modernizr-2.8.1.min.js",
-            "frontend/static/js/jquery-2.2.1.min.js",
+            "frontend/static/js/jquery-2.2.3.min.js",
         ]
         "js"
         true

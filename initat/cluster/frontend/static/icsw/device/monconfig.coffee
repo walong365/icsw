@@ -81,12 +81,12 @@ angular.module(
 ]).controller("icswDeviceMonConfigCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$uibModal",
-    "$timeout", "icswAcessLevelService", "ICSW_URLS",
+    "$timeout", "icswAcessLevelService", "ICSW_URLS", "blockUI",
     "icswSimpleAjaxCall", "toaster", "icswDeviceTreeService", "icswMonConfigTable",
     "icswDeviceTreeHelperService", "icswToolsSimpleModalService",
 (
     $scope, $compile, $filter, $templateCache, Restangular, $q, $uibModal,
-    $timeout, icswAcessLevelService, ICSW_URLS,
+    $timeout, icswAcessLevelService, ICSW_URLS, blockUI,
     icswSimpleAjaxCall, toaster, icswDeviceTreeService, icswMonConfigTable,
     icswDeviceTreeHelperService, icswToolsSimpleModalService,
 ) ->
@@ -133,6 +133,7 @@ angular.module(
                 $scope.struct.mc_tables.length = 0
                 $scope.struct.fetching = false
         )
+
     $scope.new_devsel = (_dev_sel) ->
         # console.log "DS", _dev_sel
         $scope.struct.loading = true
@@ -156,9 +157,7 @@ angular.module(
 
 
     $scope.load_data = (mode) ->
-        _reset_entries = () ->
-            $scope.mc_tables = []
-            $scope.reload_pending = false
+        fetch_mon_config(mode)
 
     $scope.get_tr_class = (obj) ->
         if obj.is_meta_device
@@ -174,6 +173,7 @@ angular.module(
         if _to_del.length
             icswToolsSimpleModalService("Really delete #{_to_del.length} hints ?").then(
                 (ok) ->
+                    blockUI.start("deleting hints")
                     (
                         Restangular.restangularizeElement(null, hint, ICSW_URLS.REST_MONITORING_HINT_DETAIL.slice(1).slice(0, -2)) for hint in _to_del
                     )
@@ -183,6 +183,7 @@ angular.module(
                         (done) ->
                             _keys = (hint.key for hint in _to_del)
                             _.remove(device.monitoring_hint_set, (entry) -> return entry.key in _keys)
+                            blockUI.stop()
                     )
             )
 
@@ -191,16 +192,6 @@ angular.module(
             return "glyphicon glyphicon-chevron-down"
         else
             return "glyphicon glyphicon-chevron-right"
-
-    $scope.remove_hint = (hint) ->
-        _.remove($scope.device_lut[hint.device].monitoring_hint_set, (entry) -> return entry.idx == hint.idx)
-        icswSimpleAjaxCall(
-            url     :ICSW_URLS.MON_DELETE_HINT
-            data    :
-                hint_pk : hint.idx
-        ).then((xml) ->
-            toaster.pop("success", "", "removed hint")
-        )
 
     $scope.$on("$destroy", () ->
         #if $scope.cur_timeout?

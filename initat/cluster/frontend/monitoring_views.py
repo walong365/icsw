@@ -263,13 +263,6 @@ class get_node_status(View):
                 request.xml_response.error("no service or node_results", logger=logger)
 
 
-class delete_hint(View):
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        monitoring_hint.objects.get(Q(pk=_post["hint_pk"])).delete()
-
-
 class get_mon_vars(View):
     def post(self, request):
         _post = request.POST
