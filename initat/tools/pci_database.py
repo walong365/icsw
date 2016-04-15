@@ -29,7 +29,7 @@ def get_pci_dicts(fname=None):
         search_names = [fname]
     else:
         search_names = [
-            "/opt/python-init/lib/python/site-packages/pci.ids",
+            "/opt/python-init/lib/python2.7/site-packages/pci.ids",
         ]
     lines = []
     for search_name in search_names:

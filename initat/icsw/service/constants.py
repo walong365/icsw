@@ -76,5 +76,5 @@ TARGET_STATE_STOPPED = 0
 TARGET_STATE_RUNNING = 1
 
 # path definitions
-INIT_BASE = "/opt/python-init/lib/python/site-packages/initat"
+INIT_BASE = "/opt/python-init/lib/python2.7/site-packages/initat"
 SERVERS_DIR = "/opt/cluster/etc/servers.d"

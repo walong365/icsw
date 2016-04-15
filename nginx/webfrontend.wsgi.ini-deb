@@ -2,7 +2,7 @@
 
 exec-as-root = /opt/cluster/sbin/pis/webfrontend_pre_start.sh
 
-django_app_dir = /opt/python-init/lib/python/site-packages/initat/cluster/
+django_app_dir = /opt/python-init/lib/python2.7/site-packages/initat/cluster/
 django_app = webfrontend
 
 ini=webfrontend-common.include

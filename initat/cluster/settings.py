@@ -58,7 +58,7 @@ OLD_CONF_FILE = "/etc/sysconfig/cluster/mysql.cf"
 SLAVE_MODE = os.path.exists("/etc/sysconfig/cluster/is_slave")
 SATELLITE_MODE = os.path.exists("/etc/sysconfig/cluster/is_satellite")
 if not SLAVE_MODE:
-    SLAVE_MODE = not os.path.exists("/opt/python-init/lib/python/site-packages/initat/cluster/frontend")
+    SLAVE_MODE = not os.path.exists("/opt/python-init/lib/python2.7/site-packages/initat/cluster/frontend")
 
 if SATELLITE_MODE:
     # satellite mode, no database configured
@@ -322,7 +322,7 @@ if os.path.isdir("/opt/icinga/share/images/logos"):
         ("icinga", "/opt/icinga/share/images/logos")
     )
 STATICFILES_DIRS.append(
-    ("admin", "/opt/python-init/lib/python/site-packages/django/contrib/admin/static/admin"),
+    ("admin", "/opt/python-init/lib/python2.7/site-packages/django/contrib/admin/static/admin"),
 )
 STATICFILES_DIRS = list(STATICFILES_DIRS)
 
