@@ -712,6 +712,13 @@ rms_module = angular.module(
             user: undefined
             # initial data present
             initial_data_present: false
+            # search fields
+            search: {
+                running: ""
+                waiting: ""
+                done: ""
+                node: ""
+            }
             # rms structs
             rms: {}
             # IO dict (for stdout / stderr display)
@@ -879,21 +886,6 @@ rms_module = angular.module(
                     modal.getModal().find(".modal-body").css("max-height", height)
                 onhidden: () ->
                     $scope.refresh = true
-            #$scope.rrd_div.simplemodal
-            #    opacity      : 50
-            #    position     : [event.pageY, event.pageX]
-            #    autoResize   : true
-            #    autoPosition : true
-            #    minWidth     : "1280px"
-            #    minHeight   : "800px"
-            #    onShow: (dialog) ->
-            #        dialog.container.draggable()
-            #        #$("#simplemodal-container").css("height", "auto")
-            #        #$("#simplemodal-container").css("width", "auto")
-            #    onClose: =>
-            #        # destroy scopes
-            #        $scope.refresh = true
-            #        $.simplemodal.close()
 ]).directive("icswRmsJobRunningTable",
 [
     "$templateCache",

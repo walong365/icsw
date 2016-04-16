@@ -5,7 +5,7 @@
 <script type="text/ng-template" id="icsw.rms.overview">
     <h2>
         RMS Overview
-        <span class="text-danger" ng-show="struct.loading">Fethcing initial data from server...</span>
+        <span class="text-danger" ng-show="struct.loading">Fetching initial data from server...</span>
         <span class="text-danger" ng-show="struct.updating">Updating data</span>
     </h2>
     <uib-tabset ng-if="struct.initial_data_present">
@@ -43,7 +43,7 @@
             </tr>
             <tr>
                 <td colspan="99">
-                    <input st-search="" class="form-control" placeholder="filter ..." type="text"/>
+                    <input st-search="" ng-model="gstruct.search.running" class="form-control" placeholder="filter ..." type="text"/>
                 </td>
             </tr>
         </thead>
@@ -73,7 +73,7 @@
             </tr>
             <tr>
                 <td colspan="99">
-                    <input st-search="" class="form-control" placeholder="filter ..." type="text"/>
+                    <input st-search="" ng-model="gstruct.search.waiting" class="form-control" placeholder="filter ..." type="text"/>
                 </td>
             </tr>
         </thead>
@@ -98,7 +98,7 @@
             </tr>
             <tr>
                 <td colspan="99">
-                    <input st-search="" class="form-control" placeholder="filter ..." type="text"/>
+                    <input st-search="" ng-model="gstruct.search.done" class="form-control" placeholder="filter ..." type="text"/>
                 </td>
             </tr>
         </thead>
@@ -123,7 +123,7 @@
             </tr>
             <tr>
                 <td colspan="99">
-                    <input st-search="" class="form-control" placeholder="filter ..." type="text"/>
+                    <input st-search="" ng-model="gstruct.search.node" class="form-control" placeholder="filter ..." type="text"/>
                 </td>
             </tr>
         </thead>
