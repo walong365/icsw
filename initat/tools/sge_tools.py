@@ -978,9 +978,10 @@ class sge_info(object):
 
     def get_job(self, j_id, default=None):
         # for strange errors happening at LWN
-        if hasattr(self, "__job_lut"):
+        try:
+            # hasattr on private entries does not work
             return self.__job_lut.get(j_id, default)
-        else:
+        except:
             return default
 
     def build_luts(self):

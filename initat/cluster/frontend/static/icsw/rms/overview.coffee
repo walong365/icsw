@@ -19,61 +19,6 @@
 #
 LOAD_RE = /(\d+.\d+).*/
 
-class io_struct
-    constructor: (@job_id, @task_id, @type) ->
-        @resp_xml = undefined
-        @text = ""
-        # is set to true as soon as we got any data
-        @valid = false
-        @waiting = true
-        @refresh = 0
-        @update = true
-        @editorOptions = {
-            lineWrapping : false
-            lineNumbers : true
-            readOnly : true
-            styleActiveLine: true
-            indentUnit : 4
-            followTail : false
-            trackPosition : true
-        }
-    get_name : () =>
-        if @task_id
-            return "#{@job_id}.#{@task_id} (#{@type})"
-        else
-            return "#{@job_id} (#{@type})"
-    get_id : () ->
-        return "#{@job_id}.#{@task_id}.#{@type}"
-    file_name : () ->
-        return @resp_xml.attr("name")
-    file_lines : () ->
-        return @resp_xml.attr("lines")
-    file_size : () ->
-        return @resp_xml.attr("size_str")
-    get_file_info : () ->
-        if @valid
-            return "File " + @file_name() + " (" + @file_size() + " in " + @file_lines() + " lines)"
-        else if @waiting
-            return "waiting for data"
-        else
-            return "nothing found"
-    file_read_error: (xml) =>
-        @waiting = false
-        @update = false
-
-    feed : (xml) => 
-        @waiting = false
-        found_xml = $(xml).find("response file_info[id='" + @get_id() + "']")
-        if found_xml.length
-            @valid = true
-            @resp_xml = found_xml
-            if @text != @resp_xml.text()
-                @text = @resp_xml.text()
-                @refresh++
-        else
-            @update = false
-            @refresh++
-          
 class device_info
     constructor: (@name, in_list) ->
         @pk = in_list[0]
@@ -183,6 +128,60 @@ rms_module = angular.module(
         load_re: /(\d+.\d+).*/
     }
 
+]).service("icswRMSIOStruct",
+[
+    "$q", "icswRMSTools",
+(
+    $q, icswRMSTools,
+) ->
+    class icswRMSIOStruct
+        constructor: (@full_job_id, @type) ->
+            @id = "#{@full_job_id}.#{@type}"
+            @text = ""
+            # is set to true as soon as we got any data
+            @valid = false
+            @waiting = true
+            @refresh = 0
+            @update = true
+            @editorOptions = {
+                lineWrapping: false
+                lineNumbers: true
+                readOnly: true
+                styleActiveLine: true
+                indentUnit: 4
+                followTail: false
+                trackPosition: true
+            }
+
+        get_file_info: () ->
+            if @valid
+                return "File #{@file_name} (#{@file_size} in #{@file_lines} lines)"
+            else if @waiting
+                return "waiting for data"
+            else
+                return "nothing found"
+
+        file_read_error: (xml) =>
+            @waiting = false
+            @update = false
+    
+        feed: (xml) =>
+            @waiting = false
+            found_xml = $(xml).find("response file_info[id='#{@id}']")
+            if found_xml.length
+                @valid = true
+                # set attributes
+                @file_name = found_xml.attr("name")
+                @file_lines = found_xml.attr("lines")
+                @file_size = found_xml.attr("size_str")
+                _new_text = found_xml.text()
+                if @text != _new_text
+                    @text = _new_text
+                    @refresh++
+            else
+                @update = false
+                @refresh++
+              
 ]).service("icswRMSQueue",
 [
     "$q", "icswRMSTools",
@@ -218,6 +217,13 @@ rms_module = angular.module(
             else
                 @$$load_is_valid = false
                 @$$load_percentage = 0
+
+            if _.indexOf(@state.raw, "a") >= 0 or _.indexOf(@state.raw, "u") >= 0
+                @$$tr_class = "danger"
+            else if _.indexOf(@state.raw, "d") >= 0
+                @$$tr_class = "warning"
+            else
+                @$$tr_class = ""
 
 ]).service("icswRMSSlotInfo",
 [
@@ -424,7 +430,7 @@ rms_module = angular.module(
                 else
                     # for running, waiting, node
                     full_id = if entry.task_id.value then "#{entry.job_id.value}.#{entry.task_id.value}" else entry.job_id.value
-                entry.$$full_id = full_id
+                entry.$$full_job_id = String(full_id)
                 # job lookup table
                 entry.jobs = {}
 
@@ -443,10 +449,12 @@ rms_module = angular.module(
             @file_info_dict = {}
 
         feed_list : (simple_list, file_dict) =>
+            {io_dict} = @struct
             @feed_xml_list(simple_list)
             @set_rrd_flags()
             @set_alter_job_flags()
             @set_full_ids()
+            _running_slots = 0
             for entry in @list
                 nodes = entry.nodelist.value.split(",")
                 r_list = []
@@ -458,8 +466,8 @@ rms_module = angular.module(
                 )
                 entry.$$nodelist = r_list.join(",")
                 # check files
-                if entry.$$full_id of file_dict
-                    entry.files = file_dict[entry.$$full_id]
+                if entry.$$full_job_id of file_dict
+                    entry.files = file_dict[entry.$$full_job_id]
                     for file in entry.files
                         if file[0] not of @file_info_dict
                             @file_info_dict[file[0]] = {
@@ -468,6 +476,26 @@ rms_module = angular.module(
                     entry.file_info_dict = @file_info_dict
                 else
                     entry.files = []
+                # check stdout / stderr state
+                for _io_name in ["stdout", "stderr"]
+                    _f_name = "$$#{_io_name}_valid"
+                    _fc_name = "$$#{_io_name}_class"
+                    _io_id = "#{entry.$$full_job_id}.#{_io_name}"
+                    if entry[_io_name].value in ["---", "err", "error", "0 B"]
+                        entry[_f_name] = false
+                        entry[_fc_name] = "btn btn-xs btn-danger"
+                    else
+                        entry[_f_name] = true
+                        if _io_id of io_dict
+                            entry[_fc_name] = "btn btn-xs btn-success"
+                        else
+                            entry[_fc_name] = "btn btn-xs"
+
+                if entry.granted_pe.value == "-"
+                    _running_slots++
+                else
+                    _running_slots += parseInt(entry.granted_pe.value.split("(")[1].split(")")[0])
+            @info = "running (#{@list.length} jobs, #{_running_slots} slots)"
 
 ]).service("icswRMSWaitingStruct",
 [
@@ -485,6 +513,14 @@ rms_module = angular.module(
             @feed_xml_list(simple_list)
             @set_alter_job_flags()
             @set_full_ids()
+            _waiting_slots = 0
+            for entry in @list
+                if entry.requested_pe.value == "-"
+                    _waiting_slots++
+                else
+                    _waiting_slots += parseInt(entry.requested_pe.value.split("(")[1].split(")")[0])
+            @info = "waiting (#{@list.length} jobs, #{_waiting_slots} slots)"
+
 ]).service("icswRMSDoneStruct",
 [
     "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswRMSQueue", "icswRMSTools",
@@ -552,6 +588,7 @@ rms_module = angular.module(
                     else
                         r_list.push("---")
                 entry.$$pe_info = r_list.join(",")
+            @info = "done (#{@list.length} jobs)"
 
 ]).service("icswRMSNodeStruct",
 [
@@ -584,6 +621,7 @@ rms_module = angular.module(
             @build_queue_list()
 
         build_queue_list: () =>
+            {slot_info} = @struct
             i_split = (in_str, nq) ->
                 parts = in_str.split("/")
                 if parts.length != nq
@@ -603,6 +641,19 @@ rms_module = angular.module(
                 types = i_split(entry.type.value, _number_queues)
                 complexes = i_split(entry.complex.value, _number_queues)
                 pe_lists = i_split(entry.pe_list.value, _number_queues)
+
+                _total = (parseInt(_val) for _val in entry.slots_total.value.split("/"))
+                _used = (parseInt(_val) for _val in entry.slots_used.value.split("/"))
+                _reserved = (parseInt(_val) for _val in entry.slots_reserved.value.split("/"))
+                _size = _.max([_total.length, _used.length, _reserved.length])
+                if _total.length < _size
+                    _total = (_total[0] for _idx in _.range(_size))
+                if _used.length < _size
+                    _used = (_used[0] for _idx in _.range(_size))
+                if _reserved.length < _size
+                    _reserved = (_reserved[0] for _idx in _.range(_size))
+                entry.$$load_vector = _.zip(_total, _used, _reserved)
+                (slot_info.feed_vector(_lv) for _lv in entry.$$load_vector)
 
                 _idx = 0
                 for _vals in _.zip(
@@ -630,17 +681,20 @@ rms_module = angular.module(
                     queue.jobs = {value: _vals[9]}
                     @queue_list.push(queue)
                     _idx++
+            @info = "queue (#{@queue_list.length} queues on #{@list.length} nodes, #{slot_info.used} of #{slot_info.total} slots used)"
+
+
 ]).controller("icswRMSOverviewCtrl",
 [
-    "$scope", "$compile", "$filter", "$templateCache", "Restangular",
-    "$q", "$uibModal", "icswAcessLevelService", "$timeout", "$sce", "ICSW_URLS",
-    "icswSimpleAjaxCall", "$window", "icswDeviceTreeService", "icswUserService",
+    "$scope", "$compile", "$templateCache", "Restangular", "ICSW_SIGNALS",
+    "$q", "icswAcessLevelService", "$timeout", "ICSW_URLS",
+    "icswSimpleAjaxCall", "icswDeviceTreeService", "icswUserService",
     "icswRMSTools", "icswRMSHeaderStruct", "icswRMSSlotInfo", "icswRMSRunningStruct",
     "icswRMSWaitingStruct", "icswRMSDoneStruct", "icswRMSNodeStruct",
 (
-    $scope, $compile, $filter, $templateCache, Restangular,
-    $q, $uibModal, icswAcessLevelService, $timeout, $sce, ICSW_URLS,
-    icswSimpleAjaxCall, $window, icswDeviceTreeService, icswUserService,
+    $scope, $compile, $templateCache, Restangular, ICSW_SIGNALS,
+    $q, icswAcessLevelService, $timeout, ICSW_URLS,
+    icswSimpleAjaxCall, icswDeviceTreeService, icswUserService,
     icswRMSTools, icswRMSHeaderStruct, icswRMSSlotInfo, icswRMSRunningStruct,
     icswRMSWaitingStruct, icswRMSDoneStruct, icswRMSNodeStruct,
 ) ->
@@ -648,6 +702,8 @@ rms_module = angular.module(
         $scope.struct = {
             # loading flag
             loading: false
+            # updating flag
+            updating: false
             # device tree
             device_tree: undefined
             # is rms operator
@@ -658,12 +714,8 @@ rms_module = angular.module(
             initial_data_present: false
             # rms structs
             rms: {}
-            # IO list
-            io_list: []
-            # file info struct
-            file_info_struct: {}
-            # file list
-            files: []
+            # IO dict (for stdout / stderr display)
+            io_dict: {}
             # fetch timeout
             fetch_timeout: undefined
             # do fetch ?
@@ -671,8 +723,12 @@ rms_module = angular.module(
             # slot info
             slot_info: new icswRMSSlotInfo()
         }
-        $scope.reload = () ->
+
+        $scope.initial_load = () ->
             $scope.struct.loading = true
+            $scope.struct.initial_data_present = false
+            # init io-dict
+            $scope.struct.io_dict = {}
             $q.all(
                 [
                     icswDeviceTreeService.load($scope.$id)
@@ -698,7 +754,6 @@ rms_module = angular.module(
                     $scope.struct.user = data[1]
                     $scope.struct.rms_operator = $scope.acl_modify(null, "backbone.user.rms_operator")
                     $scope.struct.loading = false
-                    $scope.struct.initial_data_present = true
                     $scope.struct.rms = {
                         running: new icswRMSRunningStruct(data[2].running_headers, $scope.struct)
                         waiting: new icswRMSWaitingStruct(data[2].waiting_headers, $scope.struct)
@@ -708,181 +763,79 @@ rms_module = angular.module(
                     # apply user settings
                     for key, value of data[3]
                         $scope.struct.rms[key].set_user_disabled(value)
+                    # initial data is now present
+                    $scope.struct.initial_data_present = true
                     # start reload cycle
                     fetch_data()
             )
 
-        $scope.reload()
+        $scope.$on("$destroy", () ->
+            if $scope.struct.fetch_timeout
+                $timeout.cancel($scope.struct.fetch_timeout)
+        )
+
+        $scope.initial_load()
+
+        $scope.$on(ICSW_SIGNALS("_ICSW_RMS_UPDATE_DATA"), () ->
+            if not $scope.struct.updating
+                fetch_data()
+        )
 
         fetch_data = () ->
             if $scope.struct.fetch_timeout
                 $timeout.cancel($scope.struct.fetch_timeout)
-            if $scope.struct.do_fetch
+            if $scope.struct.do_fetch and not $scope.struct.updating
+                # only one update
+                $scope.struct.updating = true
                 icswSimpleAjaxCall(
                     url: ICSW_URLS.RMS_GET_RMS_JSON
                     dataType: "json"
                 ).then(
                     (json) ->
-                        console.log "json=", json
+                        # console.log "json=", json
                         # reset counter
-                        $scope.running_slots = 0
-                        $scope.waiting_slots = 0
-                        $scope.struct.files = json.files
+                        $scope.struct.slot_info.reset()
+
                         $scope.struct.rms.running.feed_list(json.run_table, json.files)
                         $scope.struct.rms.waiting.feed_list(json.wait_table)
                         $scope.struct.rms.done.feed_list(json.done_table)
                         $scope.struct.rms.node.feed_list(json.node_table)
 
-                        $scope.struct.slot_info.reset()
 
-                        # build queue list
-                        for entry in $scope.node_list
-                            # for filter function
-                            entry.sv0 = entry.host.value
-                            entry.sv1 = entry.queues.value
-                            entry.sv2 = entry.state.value
-                            entry.sv3 = entry.pe_list.value
-                            _total = (parseInt(_val) for _val in entry.slots_total.value.split("/"))
-                            _used = (parseInt(_val) for _val in entry.slots_used.value.split("/"))
-                            _reserved = (parseInt(_val) for _val in entry.slots_reserved.value.split("/"))
-                            _size = _.max([_total.length, _used.length, _reserved.length])
-                            if _total.length < _size
-                                _total = (_total[0] for _idx in _.range(_size))
-                            if _used.length < _size
-                                _used = (_used[0] for _idx in _.range(_size))
-                            if _reserved.length < _size
-                                _reserved = (_reserved[0] for _idx in _.range(_size))
-                            entry.load_vector = _.zip(_total, _used, _reserved)
-                            for _lv in entry.load_vector
-                                if _lv.length and not isNaN(_lv[0])
-                                    $scope.slot_info.feed_vector(_lv)
-                        # get slot info
-                        for _job in $scope.run_list
-                            $scope.set_filter_values(_job)
-                            if _job.granted_pe.value == "-"
-                                $scope.running_slots += 1
-                            else
-                                $scope.running_slots += parseInt(_job.granted_pe.value.split("(")[1].split(")")[0])
-                        for _job in $scope.wait_list
-                            $scope.set_filter_values(_job)
-                            if _job.requested_pe.value == "-"
-                                $scope.waiting_slots += 1
-                            else
-                                $scope.waiting_slots += parseInt(_job.requested_pe.value.split("(")[1].split(")")[0])
                         # fetch file ids
-                        fetch_list = []
-                        for _id in $scope.io_list
-                            if $scope.io_dict[_id].update
-                                fetch_list.push($scope.io_dict[_id].get_id())
+                        fetch_list = (struct.id for key, struct of $scope.struct.io_dict when struct.update)
                         if fetch_list.length
                             is_ie_below_eleven = /MSIE/.test($window.navigator.userAgent)
                             icswSimpleAjaxCall(
-                                url     : ICSW_URLS.RMS_GET_FILE_CONTENT
-                                data    :
+                                url: ICSW_URLS.RMS_GET_FILE_CONTENT
+                                data:
                                     file_ids: angular.toJson(fetch_list)
                                     is_ie: if is_ie_below_eleven then 1 else 0
                             ).then(
                                 (xml) ->
                                     xml = $(xml)
-                                    for _id in $scope.io_list
-                                        $scope.io_dict[_id].feed(xml)
+                                    for key, struct of $scope.struct.io_dict
+                                        struct.feed(xml)
                                 (error) ->
                                     # mark all io_structs with an update stop
-                                    for _id in $scope.io_list
-                                        $scope.io_dict[_id].file_read_error()
+                                    for key, struct of $scope.struct.io_dict
+                                        struct.file_read_error()
                             )
+                        $scope.struct.updating = false
+                        $scope.struct.fetch_timeout = $timeout(fetch_data, 10000)
+                    (error) ->
+                        $scope.struct.updating = false
+                        $scope.struct.fetch_timeout = $timeout(fetch_data, 10000)
             )
-
-        $scope.get_info = (t_type) ->
-            return $scope.struct.rms[t_type].info
-
-        $scope.get_running_info = () ->
-            return "running (#{$scope.run_list.length} jobs, #{$scope.running_slots} slots)"
-        $scope.get_waiting_info = () ->
-            return "waiting (#{$scope.wait_list.length} jobs, #{$scope.waiting_slots} slots)"
-        $scope.get_done_info = () ->
-            return "done (#{$scope.done_list.length} jobs)"
-        $scope.get_queue_info = () ->
-            return "queue (#{$scope.queue_list.length} queues on #{$scope.node_list.length} nodes, #{$scope.slot_info.used} of #{$scope.slot_info.total} slots used)"
-
-        $scope.io_dict = {}
-        $scope.io_list = []
-        $scope.run_list = []
-        $scope.wait_list = []
-        $scope.node_list = []
-        $scope.queue_list = []
-        $scope.done_list = []
-        # slot info
-        # $scope.slot_info = new slot_info()
-        $scope.running_slots = 0
-        $scope.waiting_slots = 0
-        # set to false to avoid destroying of subscopes (graphs)
-        $scope.refresh = true
-
-        $scope.set_filter_values = (job) ->
-            if job.granted_pe?
-                job.sv0 = job.granted_pe.value
-            if job.name?
-                job.sv1 = job.name.value
-            if job.owner?
-                job.sv2 = job.owner.value
-            if job.queue_name?
-                job.sv3 = job.queue_name.value
-            if job.real_user?
-                job.sv4 = job.real_user.value
-
-        $scope.get_io_link_class = (job, io_type) ->
-            io_id = "#{job.job_id.value}.#{job.task_id.value}.#{io_type}"
-            if io_id in $scope.io_list
-                return "btn btn-xs btn-success"
-            else
-                return "btn btn-xs"
-
-        $scope.activate_io = (job, io_type) ->
-            io_id = "#{job.job_id.value}.#{job.task_id.value}.#{io_type}"
-            if io_id not in $scope.io_list
-                # create new tab
-                $scope.io_list.push(io_id)
-                $scope.io_dict[io_id] = new io_struct(job.job_id.value, job.task_id.value, io_type)
-            # activate tab
-            $scope.io_dict[io_id].active = true
-            # reload
-            $scope.reload()
 
         $scope.close_io = (io_struct) ->
-            $scope.io_list = (entry for entry in $scope.io_list when entry != io_struct.get_id())
-            delete $scope.io_dict[io_struct.get_id()]
+            # delay closing
+            $timeout(
+                () ->
+                    delete $scope.struct.io_dict[io_struct.id]
+                5
+            )
 
-        $scope.$on("queue_control", (event, queue, command) ->
-            icswSimpleAjaxCall(
-                url      : ICSW_URLS.RMS_CONTROL_QUEUE
-                data     : {
-                    "queue"   : queue.name
-                    "host"    : queue.host.host.value
-                    "command" : command 
-                }
-            ).then((xml) ->
-            )
-        )
-        $scope.$on("job_control", (event, job, command, force) ->
-            icswSimpleAjaxCall(
-                url      : ICSW_URLS.RMS_CONTROL_JOB
-                data     : {
-                    "job_id"  : job.job_id.value
-                    "task_id" : job.task_id.value
-                    "command" : command
-                }
-            ).then((xml) ->
-            )
-        )
-        $scope.get_running_info = () ->
-            return "running (#{$scope.run_list.length} jobs, #{$scope.running_slots} slots)"
-        $scope.get_waiting_info = () ->
-            return "waiting (#{$scope.wait_list.length} jobs, #{$scope.waiting_slots} slots)"
-        $scope.get_done_info = () ->
-            return "done (#{$scope.done_list.length} jobs)"
-        $scope.get_queue_info = () ->
-            return "queue (#{$scope.queue_list.length} queues on #{$scope.node_list.length} nodes, #{$scope.slot_info.used} of #{$scope.slot_info.total} slots used)"
         $scope.show_rrd = (event, name_list, start_time, end_time, title, job_mode, selected_job) ->
             dev_pks = ($scope.device_dict[name].pk for name in name_list).join(",")
             start_time = if start_time then start_time else 0
@@ -957,11 +910,19 @@ rms_module = angular.module(
     }
 ]).controller("icswRmsJobRunningCtrl",
 [
-    "$scope",
+    "$scope", "icswRMSIOStruct", "ICSW_SIGNALS",
 (
-    $scope,
+    $scope, icswRMSIOStruct, ICSW_SIGNALS,
 ) ->
-    console.log "r", $scope.struct
+    $scope.activate_io = (job, io_type) ->
+        io_id = "#{job.$$full_job_id}.#{io_type}"
+        if io_id not of $scope.gstruct.io_dict
+            new_io = new icswRMSIOStruct(job.$$full_job_id, io_type)
+            $scope.gstruct.io_dict[io_id] = new_io 
+            # activate tab
+            new_io.active = true
+            $scope.$emit(ICSW_SIGNALS("_ICSW_RMS_UPDATE_DATA"))
+            
 ]).directive("icswRmsJobWaitingTable",
 [
     "$templateCache",
@@ -974,15 +935,7 @@ rms_module = angular.module(
         scope:
             struct: "=icswRmsStruct"
             gstruct: "=icswRmsGlobal"
-        controller: "icswRmsJobWaitingCtrl"
     }
-]).controller("icswRmsJobWaitingCtrl",
-[
-    "$scope",
-(
-    $scope,
-) ->
-    console.log "w", $scope.struct
 ]).directive("icswRmsJobDoneTable",
 [
     "$templateCache",
@@ -995,16 +948,7 @@ rms_module = angular.module(
         scope:
             struct: "=icswRmsStruct"
             gstruct: "=icswRmsGlobal"
-        controller: "icswRmsJobDoneCtrl"
     }
-]).controller("icswRmsJobDoneCtrl",
-[
-    "$scope",
-(
-    $scope,
-) ->
-    console.log "d", $scope
-
 ]).directive("icswRmsQueueTable",
 [
     "$templateCache",
@@ -1025,15 +969,6 @@ rms_module = angular.module(
 (
     $scope,
 ) ->
-    $scope.get_class = (queue) ->
-        parts = queue.state.raw  # .join("").split("")
-        if _.indexOf(parts, "a") >= 0 or _.indexOf(parts, "u") >= 0
-            return "danger"
-        else if _.indexOf(parts, "d") >= 0
-            return "warning"
-        else
-            return ""
-
     $scope.show_node_rrd = (event, node) ->
         scope.show_rrd(event, [node.host.value], undefined, undefined, "node #{node.host.value}", "none", 0)
 
@@ -1071,24 +1006,7 @@ rms_module = angular.module(
         restrict : "EA"
         template : $templateCache.get("icsw.rms.job.done.line")
         link : (scope, el, attrs) ->
-            scope.has_rrd = (data) ->
 
-                if data.rms_pe_info.length
-                    any_rrd = false
-                    for _entry in data.rms_pe_info
-                        if _entry.device of scope.device_dict
-                            if scope.device_dict[_entry.device].has_rrd
-                                any_rrd = true
-                    return any_rrd
-                else
-                    if data.device of scope.device_dict
-                        return scope.device_dict[data.device].has_rrd
-                    else
-                        return false
-            scope.get_rrd_nodes = (nodelist) ->
-                return  []
-                rrd_nodes = (scope.device_dict[entry].name for entry in nodelist when entry of scope.device_dict and scope.device_dict[entry].has_rrd)
-                return rrd_nodes
             scope.show_done_rrd = (event, data) ->
                 if data.rms_pe_info.length
                     nodelist = (entry.device for entry in data.rms_pe_info)
@@ -1146,13 +1064,6 @@ rms_module = angular.module(
         restrict : "EA"
         template : $templateCache.get("icsw.rms.job.run.line")
         link : (scope, el, attrs) ->
-            scope.valid_file = (std_val) ->
-                # to be improved, transfer raw data (error = -1, 0 = no file, > 0 = file with content)
-                if std_val == "---" or std_val == "err" or std_val == "error" or std_val == "0 B"
-                    return 0
-                else
-                    return 1
-
             scope.show_job_rrd = (event, job) ->
                 rrd_nodes = scope.get_rrd_nodes(job.nodelist.raw)
                 job_id = job.job_id.value
@@ -1166,9 +1077,9 @@ rms_module = angular.module(
     }
 ]).directive("icswRmsQueueLine",
 [
-    "$templateCache", "$sce", "$compile",
+    "$templateCache",
 (
-    $templateCache, $sce, $compile
+    $templateCache,
 ) ->
     return {
         restrict : "EA"
@@ -1178,9 +1089,11 @@ rms_module = angular.module(
 [
     "$compile", "$templateCache", "$uibModal", "icswUserService", "ICSW_URLS", "$q",
     "icswSimpleAjaxCall", "icswComplexModalService", "blockUI", "icswToolsSimpleModalService",
+    "ICSW_SIGNALS",
 (
     $compile, $templateCache, $uibModal, icswUserService, ICSW_URLS, $q,
     icswSimpleAjaxCall, icswComplexModalService, blockUI, icswToolsSimpleModalService,
+    ICSW_SIGNALS,
 ) ->
     return {
         restrict: "EA"
@@ -1192,15 +1105,9 @@ rms_module = angular.module(
         replace : true
         link: (scope, el, attrs) ->
 
-            _get_full_id = () ->
-                _id = scope.job.job_id.value
-                if scope.job.task_id.value
-                    _id = "#{_id}.#{scope.job.task_id.value}"
-                return _id
-
             scope.job_control = (command, force) ->
                 _cmd = if force then "force delete" else "delete"
-                icswToolsSimpleModalService("Really #{_cmd} job #{_get_full_id()} ?").then(
+                icswToolsSimpleModalService("Really #{_cmd} job #{scope.job.$$full_job_id} ?").then(
                     (doit) ->
                         blockUI.start("deleting job")
                         icswSimpleAjaxCall(
@@ -1212,6 +1119,7 @@ rms_module = angular.module(
                             }
                         ).then(
                             (xml) ->
+                                scope.$emit(ICSW_SIGNALS("_ICSW_RMS_UPDATE_DATA"))
                                 blockUI.stop()
                             (error) ->
                                 blockUI.stop()
@@ -1226,15 +1134,13 @@ rms_module = angular.module(
                 child_scope.job = scope.job
                 child_scope.cur_priority = parseInt(scope.job.priority.value)
 
-                child_scope.job_id = _get_full_id()
-
                 child_scope.max_priority = if scope.is_oper then 1024 else 0
                     
                 icswComplexModalService(
                     {
                         message: $compile($templateCache.get("icsw.rms.change.priority"))(child_scope) 
                         ok_label: "Modify"
-                        title: "Modify priority of job #{child_scope.job_id}"
+                        title: "Modify priority of job #{child_scope.job.$$full_job_id}"
                         ok_callback: (modal) ->
                             d = $q.defer()
                             blockUI.start("modifying priority")
@@ -1247,6 +1153,7 @@ rms_module = angular.module(
                                 (xml) ->
                                     scope.job.priority.value = child_scope.cur_priority
                                     blockUI.stop()
+                                    scope.$emit(ICSW_SIGNALS("_ICSW_RMS_UPDATE_DATA"))
                                     d.resolve("done")
                                 (error) ->
                                     blockUI.stop()
@@ -1263,7 +1170,14 @@ rms_module = angular.module(
                         child_scope.$destroy()
                 )
     }
-]).directive("icswRmsQueueState", ["$compile", "$templateCache", ($compile, $templateCache) ->
+]).directive("icswRmsQueueState",
+[
+    "$compile", "$templateCache", "blockUI", "icswSimpleAjaxCall",
+    "ICSW_URLS", "ICSW_SIGNALS",
+(
+    $compile, $templateCache, blockUI, icswSimpleAjaxCall,
+    ICSW_URLS, ICSW_SIGNALS,
+) ->
     return {
         restrict: "EA"
         template: $templateCache.get("icsw.rms.queue.state.oper")
@@ -1272,7 +1186,21 @@ rms_module = angular.module(
         replace : true
         link: (scope, element, attrs) ->
             scope.queue_control = (command, queue) ->
-                scope.$emit("queue_control", queue, command)
+                blockUI.start("modifying queue #{queue.$$queue_name}...")
+                icswSimpleAjaxCall(
+                    url: ICSW_URLS.RMS_CONTROL_QUEUE
+                    data: {
+                        queue: queue.name
+                        host: queue.host.host.value
+                        command: command
+                    }
+                ).then(
+                    (xml) ->
+                        scope.$emit(ICSW_SIGNALS("_ICSW_RMS_UPDATE_DATA"))
+                        blockUI.stop()
+                    (error) ->
+                        blockUI.stop()
+                )
 
     }
 ]).directive("icswRmsFileInfo", ["$compile", "$templateCache", ($compile, $templateCache) ->

@@ -326,9 +326,12 @@ class get_file_content(View):
         if "file_ids" in _post:
             file_id_list = []
             for file_id in json.loads(_post["file_ids"]):
-                file_parts = file_id.split(".")
-                std_type = file_parts[2]
-                job_id = "{}.{}".format(file_parts[0], file_parts[1]) if file_parts[1] else file_parts[0]
+                _parts = file_id.split(".")
+                if len(_parts) == 3:
+                    job_id = _parts[:2].join(".")
+                    std_type = _parts[2]
+                else:
+                    job_id, std_type = _parts
                 file_id_list.append((file_id, job_id, std_type))
         elif _post["file_id"].count(":"):
             file_parts = _post["file_id"].split(":")

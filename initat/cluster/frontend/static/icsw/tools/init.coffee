@@ -249,6 +249,7 @@ angular.module(
         ICSW_USER_GROUP_TREE_CHANGED: "icsw.user.group.tree.changed",
         # local signals (for local $emit / $on)
         _ICSW_CLOSE_USER_GROUP: "_icsw.close.user.group"
+        _ICSW_RMS_UPDATE_DATA: "_icsw.rms.update.data"
         # not needed up to now
         # "ICSW_RENDER_MENUBAR": "icsw.render.menubar",
         # "ICSW_READY_TO_RECEIVE_SELECTION": "icsw.ready.to.receive.selection"

@@ -5,24 +5,25 @@
 <script type="text/ng-template" id="icsw.rms.overview">
     <h2>
         RMS Overview
-        <span class="text-danger" ng-show="struct.loading">Loading data from server...</span>
+        <span class="text-danger" ng-show="struct.loading">Fethcing initial data from server...</span>
+        <span class="text-danger" ng-show="struct.updating">Updating data</span>
     </h2>
     <uib-tabset ng-if="struct.initial_data_present">
-        <uib-tab heading="{{ get_info('running') }}">
+        <uib-tab heading="{{ struct.rms.running.info }}">
             <icsw-rms-job-running-table icsw-rms-struct="struct.rms.running" icsw-rms-global="struct"></icsw-rms-job-running-table>
         </uib-tab>
-        <uib-tab heading="{{ get_info('waiting') }}">
+        <uib-tab heading="{{ struct.rms.waiting.info }}">
             <icsw-rms-job-waiting-table icsw-rms-struct="struct.rms.waiting" icsw-rms-global="struct"></icsw-rms-job-waiting-table>
         </uib-tab>
-        <uib-tab heading="{{ get_info('done') }}">
+        <uib-tab heading="{{ struct.rms.done.info }}">
             <icsw-rms-job-done-table icsw-rms-struct="struct.rms.done" icsw-rms-global="struct"></icsw-rms-job-done-table>
         </uib-tab>
-        <uib-tab heading="{{ get_info('node') }}">
+        <uib-tab heading="{{ struct.rms.node.info }}">
             <icsw-rms-queue-table icsw-rms-struct="struct.rms.node" icsw-rms-global="struct"></icsw-rms-queue-table>
         </uib-tab>
-        <uib-tab ng-repeat="io_struct in struct.io_list" active="io_struct.active">
+        <uib-tab ng-repeat="(key, io_struct) in struct.io_dict" active="io_struct.active">
             <uib-tab-heading>
-                {{ io_struct.get_name() }}
+                {{ key }}
                 <icsw-tools-button size="xs" type="close" ng-click="close_io(io_struct)"></icsw-tools-button>
             </uib-tab-heading>
             <icsw-rms-io-struct struct="io_struct"></icsw-rms-io-struct>
@@ -127,7 +128,7 @@
             </tr>
         </thead>
         <tbody>
-            <tr icsw-rms-queue-line ng-repeat="queue in struct.displayed_entries" ng-class="get_class(queue)"></tr>
+            <tr icsw-rms-queue-line ng-repeat="queue in struct.displayed_entries" ng-class="queue.$$tr_class"></tr>
         </tbody>
         <tfoot>
             <tr icsw-rms-table-header-toggle icsw-rms-struct="struct"></tr>
@@ -482,14 +483,20 @@
         {{ job.load.value }}
     </td>
     <td ng-show="struct.toggle['stdout']">
-        <span ng-switch on="valid_file(job.stdout.value)">
-            <input type="button" ng-class="get_io_link_class(data, 'stdout')" ng-value="job.stdout.value" ng-click="activate_io(data, 'stdout')"/>
-        </span>
+        <button
+            ng-show="job.$$stdout_valid"
+            type="button"
+            ng-class="job.$$stdout_class"
+            ng-click="activate_io(job, 'stdout')"
+        >{{ job.stdout.value }}</button>
     </td>
     <td ng-show="struct.toggle['stderr']">
-        <span ng-switch on="valid_file(job.stderr.value)">
-            <input type="button" ng-class="get_io_link_class(data, 'stderr')" ng-value="job.stderr.value" ng-click="activate_io(data, 'stderr')"/>
-        </span>
+        <button
+            ng-show="job.$$stderr_valid"
+            type="button"
+            ng-class="job.$$stderr_class"
+            ng-click="activate_io(job, 'stderr')"
+        >{{ job.stderr.value }}</button>
     </td>
     <td ng-show="struct.toggle['files']">
         {{ job.files.value }}
@@ -498,7 +505,7 @@
         {{ job.$$nodelist }}
     </td>
     <td ng-show="struct.toggle['action']">
-        <icsw-rms-job-action icsw-rms-job="data" ng-if="job.$$alter_job" icsw-rms-job-type="'r'" icsw-rms-is-operator="gstruct.rms_operator"></icsw-rms-job-action>
+        <icsw-rms-job-action icsw-rms-job="job" ng-if="job.$$alter_job" icsw-rms-job-type="'r'" icsw-rms-is-operator="gstruct.rms_operator"></icsw-rms-job-action>
         <span ng-if="!job.$$alter_job">---</span>
     </td>
 </script>
