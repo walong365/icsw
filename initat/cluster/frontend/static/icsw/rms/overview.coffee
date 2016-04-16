@@ -17,16 +17,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-LOAD_RE = /(\d+.\d+).*/
-
-class device_info
-    constructor: (@name, in_list) ->
-        @pk = in_list[0]
-        @has_rrd = in_list[1]
-        # not needed right now?
-        @full_name = in_list[2]
-
-DT_FORM = "D. MMM YYYY, HH:mm:ss"
 
 rms_module = angular.module(
     "icsw.rms",
@@ -356,6 +346,8 @@ rms_module = angular.module(
             return h_str
 
         salt_datetimes: () =>
+            DT_FORM = "D. MMM YYYY, HH:mm:ss"
+
             for entry in @list
                 for _name in ["queue_time", "start_time", "end_time"]
                     if entry[_name]?
@@ -394,24 +386,30 @@ rms_module = angular.module(
                 @list.push(entry)
 
         set_rrd_flags: () =>
-            {device_tree, name_lut} = @struct
+            {name_lut} = @struct
             for entry in @list
+                # if entry.rms_pe?
+                #     console.log "*", entry
                 _names = []
                 if entry.rms_pe_info? and entry.rms_pe_info.length
+                    # hm, this is not correct ...
                     # done list
                     _names = entry.rms_pe_info
                 else if entry.nodelist? and entry.nodelist.raw? and entry.nodelist.raw.devs?
                     # running list
                     _names = entry.nodelist.raw.devs
-                else if entry.device?
-                    # queue / node list
-                    _names = [entry.device]
+                else if entry.host?
+                    # device name via host
+                    _names = [entry.host.value]
 
                 _rrds = false
                 for _name in _names
                     if _name of name_lut and name_lut[_name].has_active_rrds
                         _rrds = true
-                entry.$$has_rrds = _rrds
+                    if _rrds
+                        entry.$$rrd_device_ids = (name_lut[_name].idx for _name in _names when _name of name_lut)
+                        # console.log entry.$$rrd_device_ids
+                entry.$$has_rrd = _rrds
 
         set_alter_job_flags: () ->
             {user, rms_operator} = @struct
@@ -606,7 +604,8 @@ rms_module = angular.module(
         feed_list : (simple_list) =>
             @feed_xml_list(simple_list)
             @set_rrd_flags()
-            valid_loads = (parseFloat(entry.load.value) for entry in @list when entry.load.value.match(LOAD_RE))
+
+            valid_loads = (parseFloat(entry.load.value) for entry in @list when entry.load.value.match(icswRMSTools.load_re))
 
             if valid_loads.length
                 @max_load = _.max(valid_loads)
@@ -686,19 +685,95 @@ rms_module = angular.module(
 
 ]).controller("icswRMSOverviewCtrl",
 [
-    "$scope", "$compile", "$templateCache", "Restangular", "ICSW_SIGNALS",
+    "$scope", "$compile", "Restangular", "ICSW_SIGNALS",
     "$q", "icswAcessLevelService", "$timeout", "ICSW_URLS",
     "icswSimpleAjaxCall", "icswDeviceTreeService", "icswUserService",
     "icswRMSTools", "icswRMSHeaderStruct", "icswRMSSlotInfo", "icswRMSRunningStruct",
     "icswRMSWaitingStruct", "icswRMSDoneStruct", "icswRMSNodeStruct",
+    "icswComplexModalService",
 (
-    $scope, $compile, $templateCache, Restangular, ICSW_SIGNALS,
+    $scope, $compile, Restangular, ICSW_SIGNALS,
     $q, icswAcessLevelService, $timeout, ICSW_URLS,
     icswSimpleAjaxCall, icswDeviceTreeService, icswUserService,
     icswRMSTools, icswRMSHeaderStruct, icswRMSSlotInfo, icswRMSRunningStruct,
     icswRMSWaitingStruct, icswRMSDoneStruct, icswRMSNodeStruct,
+    icswComplexModalService,
 ) ->
         icswAcessLevelService.install($scope)
+
+        #    scope.show_done_rrd = (event, data) ->
+        #        if data.rms_pe_info.length
+        #            nodelist = (entry.device for entry in data.rms_pe_info)
+        #        else
+        #            nodelist = [data.device]
+        #        rrd_nodes = scope.get_rrd_nodes(nodelist)
+        #        job_id = data.rms_job.jobid
+        #        if data.rms_job.taskid
+        #            job_id = "#{job_id}.#{data.rms_job.taskid}"
+        #        if rrd_nodes.length > 1
+        #            rrd_title = "finished job #{job_id} on nodes " + rrd_nodes.join(",")
+        #        else
+        #            rrd_title = "finished job #{job_id} on node " + rrd_nodes[0]
+        #        scope.show_rrd(event, rrd_nodes, data.start_time, data.end_time, rrd_title, "selected", job_id)
+
+        #        scope.show_job_rrd = (event, job) ->
+        #        rrd_nodes = scope.get_rrd_nodes(job.nodelist.raw)
+        #        job_id = job.job_id.value
+        #        if job.task_id.value
+        #            job_id = "#{job_id}.#{job.task_id.value}"
+        #        if rrd_nodes.length > 1
+        #            rrd_title = "running job #{job_id} on nodes " + rrd_nodes.join(",")
+        #        else
+        #            rrd_title = "running job #{job_id} on node " + rrd_nodes[0]
+        #        scope.show_rrd(event, rrd_nodes, job.start_time.raw, undefined, rrd_title, "selected", job_id)
+
+        $scope.draw_rrd = (args...) ->
+            # disable fetching
+            $scope.struct.do_fetch = false
+            # first argument is $event
+            entry = args[1]
+            # console.log "Draw", args
+            sub_scope = $scope.$new(false)
+            # set devices
+            devices = ($scope.struct.device_tree.all_lut[_pk] for _pk in entry.$$rrd_device_ids)
+            # console.log "devs=", devices
+            sub_scope.devices = devices
+            start_time = 0
+            end_time = 0
+            job_mode = 0
+            selected_job = 0
+            _template = """
+<icsw-rrd-graph
+    icsw-sel-man="1"
+    icsw-device-list="devices"
+    icsw-select-keys="load.*,net.all.*,mem.used.phys$,^swap.*"
+    draw="1"
+    mergedevices="0"
+    graphsize="240x100"
+    <!-- fromdt="#{start_time}"
+    # todt="#{end_time}"
+    # jobmode="#{job_mode}"
+    # selectedjob="#{selected_job}" -->
+></icsw-rrd-graph>
+"""
+            icswComplexModalService(
+                {
+                    message: $compile(_template)(sub_scope)
+                    title: "RRD"
+                    cancel_label: "Close"
+                    cancel_callback: (modal) ->
+                        defer = $q.defer()
+                        defer.resolve("close")
+                        return defer.promise
+                }
+            ).then(
+                (fin) ->
+                    sub_scope.$destroy()
+                    $scope.struct.do_fetch = true
+                    # trigger fetch
+                    fetch_data()
+            )
+
         $scope.struct = {
             # loading flag
             loading: false
@@ -729,6 +804,8 @@ rms_module = angular.module(
             do_fetch: true
             # slot info
             slot_info: new icswRMSSlotInfo()
+            # draw RRD overlay, not beautifull but working ...
+            draw_rrd: $scope.draw_rrd
         }
 
         $scope.initial_load = () ->
@@ -755,6 +832,7 @@ rms_module = angular.module(
                     # build name lookup dict
                     _dt_name_lut = {}
                     for entry in $scope.struct.device_tree.all_list
+                        _dt_name_lut[entry.idx] = entry
                         _dt_name_lut[entry.name] = entry
                         _dt_name_lut[entry.full_name] = entry
                     $scope.struct.name_lut = _dt_name_lut
@@ -869,23 +947,7 @@ rms_module = angular.module(
     </div>
 </div>
 """
-            # disable refreshing
-            $scope.refresh = false
-            $scope.rrd_div = angular.element(rrd_txt)
-            $compile($scope.rrd_div)($scope)
-            $scope.my_modal = BootstrapDialog.show
-                message: $scope.rrd_div
-                draggable: true
-                size: BootstrapDialog.SIZE_WIDE
-                title: "device RRDs"
-                closable: true
-                closeByBackdrop: false
-                cssClass: "modal-tall"
-                onshow: (modal) =>
-                    height = $(window).height() - 100
-                    modal.getModal().find(".modal-body").css("max-height", height)
-                onhidden: () ->
-                    $scope.refresh = true
+
 ]).directive("icswRmsJobRunningTable",
 [
     "$templateCache",
@@ -953,18 +1015,13 @@ rms_module = angular.module(
         scope:
             struct: "=icswRmsStruct"
             gstruct: "=icswRmsGlobal"
-        controller: "icswRmsJobQueueCtrl"
     }
-]).controller("icswRmsJobQueueCtrl",
+]).directive("icswRmsIoStruct",
 [
-    "$scope",
+    "$templateCache",
 (
-    $scope,
+    $templateCache
 ) ->
-    $scope.show_node_rrd = (event, node) ->
-        scope.show_rrd(event, [node.host.value], undefined, undefined, "node #{node.host.value}", "none", 0)
-
-]).directive("icswRmsIoStruct", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.rms.iostruct")
@@ -997,22 +1054,6 @@ rms_module = angular.module(
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.rms.job.done.line")
-        link : (scope, el, attrs) ->
-
-            scope.show_done_rrd = (event, data) ->
-                if data.rms_pe_info.length
-                    nodelist = (entry.device for entry in data.rms_pe_info)
-                else
-                    nodelist = [data.device]
-                rrd_nodes = scope.get_rrd_nodes(nodelist)
-                job_id = data.rms_job.jobid
-                if data.rms_job.taskid
-                    job_id = "#{job_id}.#{data.rms_job.taskid}"
-                if rrd_nodes.length > 1
-                    rrd_title = "finished job #{job_id} on nodes " + rrd_nodes.join(",")
-                else
-                    rrd_title = "finished job #{job_id} on node " + rrd_nodes[0]
-                scope.show_rrd(event, rrd_nodes, data.start_time, data.end_time, rrd_title, "selected", job_id)
     }
 ]).directive("icswRmsJobWaitLine", ["$templateCache", "$sce", ($templateCache, $sce) ->
     return {
@@ -1055,17 +1096,6 @@ rms_module = angular.module(
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.rms.job.run.line")
-        link : (scope, el, attrs) ->
-            scope.show_job_rrd = (event, job) ->
-                rrd_nodes = scope.get_rrd_nodes(job.nodelist.raw)
-                job_id = job.job_id.value
-                if job.task_id.value
-                    job_id = "#{job_id}.#{job.task_id.value}"
-                if rrd_nodes.length > 1
-                    rrd_title = "running job #{job_id} on nodes " + rrd_nodes.join(",")
-                else
-                    rrd_title = "running job #{job_id} on node " + rrd_nodes[0]
-                scope.show_rrd(event, rrd_nodes, job.start_time.raw, undefined, rrd_title, "selected", job_id)
     }
 ]).directive("icswRmsQueueLine",
 [

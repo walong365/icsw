@@ -279,8 +279,7 @@ angular.module(
                 $scope.peer_list.enrich_device_tree($scope.device_tree, $scope.local_helper_obj, $scope.remote_helper_obj)
                 $scope.device_tree.build_helper_luts(
                     ["network_info"]
-                    $scope.local_helper_obj
-                )
+                    $scope.local_helper_ob )
         )
         return
 

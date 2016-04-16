@@ -172,7 +172,6 @@ angular.module(
             _new_sel = (sel) ->
                 selman_mode = attrs["icswSelManSelMode"] || "d"
                 # console.log "SelMan new selection (mode #{selman_mode})", sel
-                selman_mode = attrs["icswSelManSelMode"] || "d"
                 if scope.new_devsel?
                     scope.$icsw_selman_list.length = 0
                     for entry in sel
@@ -184,6 +183,7 @@ angular.module(
             if parseInt(attrs.icswSelMan)
                 # popup mode, watch for changes (i.e. tab activation)
                 scope.$watch(attrs["icswDeviceList"], (new_val) ->
+                    console.log "***", new_val
                     if new_val?
                         _new_sel(new_val)
                 )
@@ -874,7 +874,7 @@ angular.module(
         if in_dict.cancel_callback
             buttons.push(
                 {
-                    label: "Cancel"
+                    label: if in_dict.cancel_label? then in_dict.cancel_label else "Cancel"
                     hotkey: 27
                     icon: "fa fa-undo"
                     cssClass: "btn-warning"

@@ -183,13 +183,14 @@ angular.module(
         $scope.cur_selected = []
         # to be set by directive
         $scope.auto_select_keys = []
-        $scope.draw_on_init = false
         $scope.graph_list = []
         # none, all or selected
         $scope.job_modes = ["none", "all", "selected"]
         $scope.job_mode = $scope.job_modes[0]
         $scope.selected_job = 0
         $scope.struct = {
+            # draw when called
+            draw_on_init: false
             # search string
             searchstr: ""
             # is drawing
@@ -216,10 +217,10 @@ angular.module(
             vector_valid: false
             # vector data
             vectordata: {
-                "num_struct": 0
-                "num_mve": 0
-                "num_devices": 0
-                "num_mve_sel": 0
+                num_struct: 0
+                num_mve: 0
+                num_devices: 0
+                num_mve_sel: 0
             }
             # error string, if not empty show as top-level warning-div
             error_string: "Init structures"
@@ -263,10 +264,10 @@ angular.module(
         $scope.load_tree = () ->
             $scope.struct.error_string = "Loading VectorTree"
             $scope.struct.vectordata = {
-                "num_struct": 0
-                "num_mve": 0
-                "num_devices": 0
-                "num_mve_sel": 0
+                num_struct: 0
+                num_mve: 0
+                num_devices: 0
+                num_mve_sel: 0
             }
             icswSimpleAjaxCall(
                 url  : ICSW_URLS.RRD_DEVICE_RRDS
@@ -317,7 +318,7 @@ angular.module(
                         # recalc tree when an autoselect_re is present
                         $scope.struct.g_tree.show_selected(false)
                         $scope.selection_changed()
-                        if $scope.draw_on_init and $scope.vectordata.num_mve_sel
+                        if $scope.struct.draw_on_init and $scope.struct.vectordata.num_mve_sel
                             $scope.draw_graph()
                 else
                     $scope.struct.error_string = "No vector found"
@@ -571,14 +572,21 @@ angular.module(
         $scope.$on("$destroy", () ->
             #console.log "dest"
         )                
-]).directive("icswRrdGraph", ["$templateCache", ($templateCache) ->
+]).directive("icswRrdGraph",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
     return {
         scope: true
         restrict : "EA"
         template : $templateCache.get("icsw.rrd.graph.overview")
         link : (scope, el, attrs) ->
-            if attrs["selectkeys"]?
-                scope.auto_select_keys = attrs["selectkeys"].split(",")
+            # to be improved
+            # console.log attrs
+            if attrs["icswSelectKeys"]?
+                scope.auto_select_keys = attrs["icswSelectKeys"].split(",")
             if attrs["fromdt"]? and parseInt(attrs["fromdt"])
                 scope.from_date_mom = moment.unix(parseInt(attrs["fromdt"]))
             if attrs["todt"]? and parseInt(attrs["todt"])
@@ -587,7 +595,7 @@ angular.module(
                 scope.job_mode = attrs["jobmode"]
             if attrs["selectedjob"]?
                 scope.selected_job = attrs["selectedjob"]
-            scope.draw_on_init = attrs["draw"] ? false
+            scope.struct.draw_on_init = attrs["draw"] ? false
         controller: "icswGraphOverviewCtrl"
     }
 ]).service("icswRRDGraphTree", ["icswTreeConfig", (icswTreeConfig) ->
