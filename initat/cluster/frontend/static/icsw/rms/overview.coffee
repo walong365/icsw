@@ -118,6 +118,121 @@ rms_module = angular.module(
         load_re: /(\d+.\d+).*/
     }
 
+]).service("icswRMSJobVarStruct",
+[
+    "$q", "icswRMSTools", "icswRMSJobVariable",
+(
+    $q, icswRMSTools, icswRMSJobVariable,
+) ->
+    class icswRMSJobVarStruct
+        constructor: () ->
+            @job_list = []
+            @var_list = []
+            @reset()
+        
+        reset: () =>
+            @job_list.length = 0
+            @build_luts()
+            
+        build_luts: () =>
+            @job_lut = _.keyBy(@job_list, "$$full_job_id")
+            if @job_list.length
+                @show = true
+                if @job_list.length == 1
+                    @info = "JobVars for #{@job_list.length} job"
+                else
+                    @info = "JobVars for #{@job_list.length} jobs"
+            else
+                @show = false
+                @info = "---"
+            @build_table(@job_list)
+
+        toggle: (job) =>
+            if job.$$full_job_id of @job_lut
+                @remove(job)
+            else
+                @add(job)
+
+        remove: (job) =>
+            id = job.$$full_job_id
+            _.remove(@job_list, (entry) -> return entry.$$full_job_id == id)
+            job.$$jv_shown = false
+            job.$$jv_button_class = "btn btn-xs"
+            @build_luts()
+            
+        add: (job) =>
+            id = job.$$full_job_id
+            if id not of @job_lut
+                job.$$jv_shown = true
+                job.$$jv_button_class = "btn btn-xs btn-success"
+                @job_list.push(job)
+                @build_luts()
+
+        feed_start: () ->
+            # start feeding of data from server
+            @feed_list = []
+
+        feed_job: (job) ->
+            @feed_list.push(job)
+
+        feed_end: () ->
+            # console.log "f", @feed_list
+            @build_table(@feed_list)
+
+        build_table: (in_list) ->
+            @num_jobs = in_list.length
+            @used_list = in_list
+            _names = []
+            for job in in_list
+                job.$$jv_lut = _.keyBy(job.rmsjobvariable_set, "name")
+                for _loc_name in (jv.name for jv in job.rmsjobvariable_set)
+                    if _loc_name not in _names
+                        _names.push(_loc_name)
+            _names.sort()
+            @var_list.length = 0
+            for _name in _names
+                jvar = new icswRMSJobVariable(_name)
+                for job in in_list
+                    if _name of job.$$jv_lut
+                        jvar.feed_var(job, job.$$jv_lut[_name])
+                    else
+                        jvar.feed_dummy(job)
+                @var_list.push(jvar)
+            @num_vars = @var_list.length
+                
+]).service("icswRMSJobVariable",
+[
+    "$q",
+(
+    $q,
+) ->
+    class icswRMSJobVariable
+        constructor: (@name) ->
+            @values = []
+        
+        feed_var: (job, jvar) =>
+            ivalue = parseInt(jvar.value) || ""
+            _cls = if @values.length % 2 then "success" else ""
+            @values.push(
+                {
+                    present: true
+                    lcls: "text-left #{_cls}"
+                    rcls: "text-right #{_cls}"
+                    value: jvar.value
+                    int_value: ivalue
+                    unit: jvar.unit
+                }
+            )
+        feed_dummy: (job) ->
+            _cls = "warning"
+            @values.push(
+                {
+                    present: false
+                    lcls: "text-left #{_cls}"
+                    rcls: "text-right #{_cls}"
+                }
+            )
+        
 ]).service("icswRMSIOStruct",
 [
     "$q", "icswRMSTools",
@@ -284,7 +399,7 @@ rms_module = angular.module(
             @toggle[entry] = ! @toggle[entry]
             icswSimpleAjaxCall(
                 url: ICSW_URLS.RMS_SET_USER_SETTING
-                dataType : "json"
+                dataType: "json"
                 data:
                     data: angular.toJson(
                         {
@@ -431,6 +546,26 @@ rms_module = angular.module(
                 entry.$$full_job_id = String(full_id)
                 # job lookup table
                 entry.jobs = {}
+        
+        check_jobvar_display: () ->
+            {jv_struct} = @struct
+            for entry in @list
+                if entry.rmsjobvariable_set?
+                    _num_jv = entry.rmsjobvariable_set.length
+                else
+                    _num_jv = 0
+                entry.$$jv_info = "#{_num_jv} Vars"
+                if _num_jv
+                    entry.$$jv_present = true
+                    if entry.$$full_job_id of jv_struct.job_lut
+                        jv_struct.feed_job(entry)
+                        entry.$$jv_shown = true
+                        entry.$$jv_button_class = "btn btn-xs btn-success"
+                    else
+                        entry.$$jv_shown = false
+                        entry.$$jv_button_class = "btn btn-xs"
+                else
+                    entry.$$jv_present = false
 
 ]).service("icswRMSRunningStruct",
 [
@@ -452,6 +587,7 @@ rms_module = angular.module(
             @set_rrd_flags()
             @set_alter_job_flags()
             @set_full_ids()
+            @check_jobvar_display()
             _running_slots = 0
             for entry in @list
                 nodes = entry.nodelist.value.split(",")
@@ -488,12 +624,14 @@ rms_module = angular.module(
                             entry[_fc_name] = "btn btn-xs btn-success"
                         else
                             entry[_fc_name] = "btn btn-xs"
-
                 if entry.granted_pe.value == "-"
                     _running_slots++
                 else
                     _running_slots += parseInt(entry.granted_pe.value.split("(")[1].split(")")[0])
-            @info = "running (#{@list.length} jobs, #{_running_slots} slots)"
+            if @list.length
+                @info = "running (#{@list.length} jobs, #{_running_slots} slots)"
+            else
+                @info = "no running"
 
 ]).service("icswRMSWaitingStruct",
 [
@@ -517,7 +655,10 @@ rms_module = angular.module(
                     _waiting_slots++
                 else
                     _waiting_slots += parseInt(entry.requested_pe.value.split("(")[1].split(")")[0])
-            @info = "waiting (#{@list.length} jobs, #{_waiting_slots} slots)"
+            if @list.length
+                @info = "waiting (#{@list.length} jobs, #{_waiting_slots} slots)"
+            else
+                @info = "no jobs waiting"
 
 ]).service("icswRMSDoneStruct",
 [
@@ -536,6 +677,7 @@ rms_module = angular.module(
             @salt_datetimes()
             @set_rrd_flags()
             @set_full_ids()
+            @check_jobvar_display()
             {name_lut} = @struct
             for entry in @list
                 # exit status
@@ -586,7 +728,10 @@ rms_module = angular.module(
                     else
                         r_list.push("---")
                 entry.$$pe_info = r_list.join(",")
-            @info = "done (#{@list.length} jobs)"
+            if @list.length
+                @info = "done (#{@list.length} jobs)"
+            else
+                @info = "no jobs finished"
 
 ]).service("icswRMSNodeStruct",
 [
@@ -690,14 +835,14 @@ rms_module = angular.module(
     "icswSimpleAjaxCall", "icswDeviceTreeService", "icswUserService",
     "icswRMSTools", "icswRMSHeaderStruct", "icswRMSSlotInfo", "icswRMSRunningStruct",
     "icswRMSWaitingStruct", "icswRMSDoneStruct", "icswRMSNodeStruct",
-    "icswComplexModalService",
+    "icswComplexModalService", "icswRMSJobVarStruct",
 (
     $scope, $compile, Restangular, ICSW_SIGNALS,
     $q, icswAcessLevelService, $timeout, ICSW_URLS,
     icswSimpleAjaxCall, icswDeviceTreeService, icswUserService,
     icswRMSTools, icswRMSHeaderStruct, icswRMSSlotInfo, icswRMSRunningStruct,
     icswRMSWaitingStruct, icswRMSDoneStruct, icswRMSNodeStruct,
-    icswComplexModalService,
+    icswComplexModalService, icswRMSJobVarStruct,
 ) ->
         icswAcessLevelService.install($scope)
 
@@ -798,6 +943,8 @@ rms_module = angular.module(
             rms: {}
             # IO dict (for stdout / stderr display)
             io_dict: {}
+            # JobVar Struct (for Job variables, referencing jobs)
+            jv_struct: new icswRMSJobVarStruct()
             # fetch timeout
             fetch_timeout: undefined
             # do fetch ?
@@ -813,6 +960,8 @@ rms_module = angular.module(
             $scope.struct.initial_data_present = false
             # init io-dict
             $scope.struct.io_dict = {}
+            # init jv-dict
+            $scope.struct.jv_struct.reset()
             $q.all(
                 [
                     icswDeviceTreeService.load($scope.$id)
@@ -880,12 +1029,14 @@ rms_module = angular.module(
                         # console.log "json=", json
                         # reset counter
                         $scope.struct.slot_info.reset()
+                        $scope.struct.jv_struct.feed_start()
 
                         $scope.struct.rms.running.feed_list(json.run_table, json.files)
                         $scope.struct.rms.waiting.feed_list(json.wait_table)
                         $scope.struct.rms.done.feed_list(json.done_table)
                         $scope.struct.rms.node.feed_list(json.node_table)
 
+                        $scope.struct.jv_struct.feed_end()
 
                         # fetch file ids
                         fetch_list = (struct.id for key, struct of $scope.struct.io_dict when struct.update)
@@ -972,11 +1123,11 @@ rms_module = angular.module(
         io_id = "#{job.$$full_job_id}.#{io_type}"
         if io_id not of $scope.gstruct.io_dict
             new_io = new icswRMSIOStruct(job.$$full_job_id, io_type)
-            $scope.gstruct.io_dict[io_id] = new_io 
+            $scope.gstruct.io_dict[io_id] = new_io
             # activate tab
             new_io.active = true
             $scope.$emit(ICSW_SIGNALS("_ICSW_RMS_UPDATE_DATA"))
-            
+
 ]).directive("icswRmsJobWaitingTable",
 [
     "$templateCache",
@@ -1002,7 +1153,14 @@ rms_module = angular.module(
         scope:
             struct: "=icswRmsStruct"
             gstruct: "=icswRmsGlobal"
+        controller: "icswRmsJobDoneCtrl"
     }
+]).controller("icswRmsJobDoneCtrl",
+[
+    "$scope", "icswRMSIOStruct", "ICSW_SIGNALS",
+(
+    $scope, icswRMSIOStruct, ICSW_SIGNALS,
+) ->
 ]).directive("icswRmsQueueTable",
 [
     "$templateCache",
@@ -1065,27 +1223,7 @@ rms_module = angular.module(
         restrict: "EA"
         template: $templateCache.get("icsw.rms.job.var.info")
         scope:
-            job: "=icswRmsJob"
-        link : (scope, el, attrs) ->
-            scope.popover =
-                title: "Jobvars vor Job " + scope.job.rms_job.jobid
-                template: "icsw.rms.job.var.info.template"
-
-            scope.popover_int =
-                title: "Jobvars vor Job " + scope.job.rms_job.jobid
-                template: "icsw.rms.job.var.info.int_template"
-
-            _len = parseInt((scope.job.rmsjobvariable_set.length + 1) / 2)
-            _vars = scope.job.rmsjobvariable_set
-            _new_vars = []
-            for _idx in [0.._len - 1]
-                _new_vars.push(
-                  [
-                      _vars[_idx],
-                      _vars[_idx + _len]
-                  ]
-                )
-            scope.new_vars = _new_vars
+            struct: "=icswRmsJvStruct"
     }
 ]).directive("icswRmsJobRunLine",
 [

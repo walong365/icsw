@@ -28,6 +28,12 @@
             </uib-tab-heading>
             <icsw-rms-io-struct struct="io_struct"></icsw-rms-io-struct>
         </uib-tab>
+        <uib-tab ng-if="struct.jv_struct.show">
+            <uib-tab-heading>
+                {{ struct.jv_struct.info }}
+            </uib-tab-heading>
+            <icsw-rms-job-var-info icsw-rms-jv-struct="struct.jv_struct"></icsw-rms-job-var-info>
+        </uib-tab>
     </uib-tabset>
 </script>
 
@@ -324,69 +330,74 @@
         {{ job.$$pe_info }}
     </td>
     <td ng-show="struct.toggle['jobvars']">
-        <icsw-rms-job-var-info icsw-rms-job="job"></icsw-rms-job-var-info>
+        <button
+            ng-show="job.$$jv_present"
+            type="button"
+            ng-class="job.$$jv_button_class"
+            ng-click="gstruct.jv_struct.toggle(job)"
+        >{{ job.$$jv_info }}</button>
     </td>
 </script>
 
-<script type="text/ng-template" id="icsw.rms.job.var.info.template">
-    <div width="500px">
-        <table class="table table-condensed table-hover table-striped" style="width:auto;">
-            <tbody>
-                <tr ng-repeat="var_tuple in new_vars">
-                    <td>{{ var_tuple[0].name }}</td>
-                    <td class="text-right"><small>{{ var_tuple[0].value}}</small></td>
-                    <td class="text-left"">&nbsp;{{ var_tuple[0].unit }}</td>
-                    <td>{{ var_tuple[1].name }}</td>
-                    <td class="text-right"><small>{{ var_tuple[1].value}}</small></td>
-                    <td class="text-left"">&nbsp;{{ var_tuple[1].unit }}</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-</script>
-
-<script type="text/ng-template" id="icsw.rms.job.var.info.int_template">
-    <div width="500px">
-        <table class="table table-condensed table-hover table-striped" style="width:auto;">
-            <tbody>
-                <tr ng-repeat="var_tuple in new_vars">
-                    <td>{{ var_tuple[0].name }}</td>
-                    <td class="text-right"><small>{{ var_tuple[0].value_int}}</small></td>
-                    <td class="text-left"">&nbsp;{{ var_tuple[0].unit }}</td>
-                    <td>{{ var_tuple[1].name }}</td>
-                    <td class="text-right"><small>{{ var_tuple[1].value_int}}</small></td>
-                    <td class="text-left"">&nbsp;{{ var_tuple[1].unit }}</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-</script>
-
 <script type="text/ng-template" id="icsw.rms.job.var.info">
-    <div ng-if="job.rmsjobvariable_set.length" class="pull-right">
-        {{  job.rmsjobvariable_set.length }} vars
-        <button type="button"
-            class="btn btn-xs btn-success"
-            uib-popover-title="{{ popover.title }}"
-            uib-popover-template="popover.template"
-            uib-popover-append-to-body="1"
-            uib-popover-placement="left"
-        >
-            Float
-        </button>&nbsp;
-        <button type="button"
-            class="btn btn-xs btn-success"
-            uib-popover-title="{{ popover_int.title }}"
-            uib-popover-template="popover_int.template"
-            uib-popover-append-to-body="1"
-            uib-popover-placement="left"
-        >
-            Int
-        </button>
-    </div>
-    <div ng-if="!job.rmsjobvariable_set.length" class="text-center">
-        ---
-    </div>
+    <h3>
+        {{ struct.num_vars }} Variables for {{ struct.num_jobs }} Jobs
+    </h3>
+    <table
+        st-table="displayed_entries"
+        st-safe-src="struct.var_list"
+        class="table table-hover table-striped"
+        style="width:auto;"
+    >
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th ng-repeat-start="job in struct.used_list">
+                    Value
+                </th>
+                <th>Value (int)</th>
+                <th ng-repeat-end>Unit</th>
+            </tr>
+            <tr>
+                <th></th>
+                <th
+                    ng-repeat="job in struct.used_list"
+                    colspan="3"
+                    class="text-center"
+                >Job {{ job.$$full_job_id }}</th>
+            </tr>
+            <tr>
+                <td colspan="99">
+                    <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                         possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                </td>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="var in displayed_entries">
+                <td>{{ var.name }}</td>
+                <td ng-repeat-start="svar in var.values"
+                    ng-class="svar.rcls"
+                >
+                    <span ng-show="svar.present">
+                        {{ svar.value }}
+                    </span>
+                </td>
+                <td ng-class="svar.lcls">
+                    <span ng-show="svar.present">
+                        {{ svar.int_value}}
+                    </span>
+                </td>
+                <td ng-repeat-end
+                    ng-class="svar.lcls"
+                >
+                    <span ng-show="svar.present">
+                        {{ svar.unit }}
+                    </span>
+                </td>
+            </tr>
+        </tbody>
+    </table>
 </script>
 
 <script type="text/ng-template" id="icsw.rms.job.wait.line">

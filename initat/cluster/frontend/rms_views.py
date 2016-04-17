@@ -39,7 +39,7 @@ from django.utils.decorators import method_decorator
 from django.views.generic import View
 from lxml.builder import E
 
-from initat.cluster.backbone.models import device, user_variable, rms_job_run
+from initat.cluster.backbone.models import user_variable, rms_job_run
 from initat.cluster.backbone.routing import SrvTypeRouting
 from initat.cluster.backbone.serializers import rms_job_run_serializer
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
@@ -236,6 +236,8 @@ class get_rms_json(View):
                             )
                         )
                 fc_dict[file_el.attrib["full_id"]] = list(reversed(sorted(cur_fcd, cmp=lambda x, y: cmp(x[3], y[3]))))
+        # todo: add jobvars to running (waiting for rescheduled ?) list
+        # print dir(rms_info.run_job_list)
         done_jobs = rms_job_run.objects.all().exclude(
             Q(end_time=None)
         ).prefetch_related(
@@ -299,7 +301,8 @@ class control_job(View):
         srv_com = server_command.srv_command(command="job_control", action=c_action)
         srv_com["job_list"] = srv_com.builder(
             "job_list",
-            srv_com.builder("job", job_id=job_id))
+            srv_com.builder("job", job_id=job_id)
+        )
         contact_server(request, "rms", srv_com, timeout=10)
 
 

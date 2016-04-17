@@ -580,9 +580,9 @@ angular.module(
 ) ->
     return {
         scope: true
-        restrict : "EA"
-        template : $templateCache.get("icsw.rrd.graph.overview")
-        link : (scope, el, attrs) ->
+        restrict: "EA"
+        template: $templateCache.get("icsw.rrd.graph.overview")
+        link: (scope, el, attrs) ->
             # to be improved
             # console.log attrs
             if attrs["icswSelectKeys"]?
@@ -598,7 +598,12 @@ angular.module(
             scope.struct.draw_on_init = attrs["draw"] ? false
         controller: "icswGraphOverviewCtrl"
     }
-]).service("icswRRDGraphTree", ["icswTreeConfig", (icswTreeConfig) ->
+]).service("icswRRDGraphTree",
+[
+    "icswTreeConfig",
+(
+    icswTreeConfig
+) ->
     class icswRRDGraphTree extends icswTreeConfig
         constructor: (@scope, args) ->
             super(args)
@@ -978,7 +983,12 @@ angular.module(
             }
         )
     ]
-).directive("icswRrdVectorInfo", ["icswRRDVectorInfoFactory", (icswRRDVectorInfoFactory) ->
+).directive("icswRrdVectorInfo",
+[
+    "icswRRDVectorInfoFactory",
+(
+    icswRRDVectorInfoFactory
+) ->
     return {
         restrict: "EA"
         replace: true
