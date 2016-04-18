@@ -1044,7 +1044,8 @@ angular.module(
 
         componentWillUnmount: () ->
             console.log "TopCont umount"
-            @graph_command.reject("exit")
+            if @graph_command?
+                @graph_command.reject("exit")
             el = react_dom.findDOMNode(@)
 
         render: () ->

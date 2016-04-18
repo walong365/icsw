@@ -340,7 +340,9 @@ angular.module(
     _svg_to_png = (loc_pk, dev_pks) ->
         defer = $q.defer()
         sub_scope = $scope.$new(true, $scope)
-        sub_scope.response = {"drawn": 0}
+        sub_scope.response = {
+            drawn: 0
+        }
         sub_scope.ls_filter = $scope.ls_filter
         pk_str = _.uniq(dev_pks).join(",")
         _el = $compile("<icsw-device-livestatus-map devicepk='#{pk_str}' is-drawn='response.drawn' ls-filter='ls_filter'></icsw-device-livestatus-map>")(sub_scope)
@@ -418,18 +420,18 @@ angular.module(
                 zoom: 6
                 control: {}
                 options: {
-                    "streetViewControl": false
-                    "minZoom" : 1
-                    "maxZoom" : 20
+                    streetViewControl: false
+                    minZoom: 1
+                    maxZoom: 20
                 }
                 bounds: {
-                    "northeast" : {
-                        "latitude": 4
-                        "longitude": 4
+                    northeast: {
+                        latitude: 4
+                        longitude: 4
                     }
-                    "southwest": {
-                        "latitude": 20
-                        "longitude": 30
+                    southwest: {
+                        latitude: 20
+                        longitude: 30
                     }
                 }
             }
@@ -504,16 +506,17 @@ angular.module(
                     scope.marker_lut = marker_lut
 
             scope.maps_control = (fn_name, args) ->
-                if fn_name == "refresh"
-                    [lat, long] = args
-                    scope.map.control.refresh(
-                        {
-                            latitude: lat
-                            longitude: long
-                        }
-                    )
-                else if fn_name == "zoom"
-                    scope.map.control.getGMap().setZoom(args)
+                if scope.map? and scope.map.control?
+                    if fn_name == "refresh"
+                        [lat, long] = args
+                        scope.map.control.refresh(
+                            {
+                                latitude: lat
+                                longitude: long
+                            }
+                        )
+                    else if fn_name == "zoom"
+                        scope.map.control.getGMap().setZoom(args)
 
             _update = () ->
                 if scope.map_active and scope.locations? and scope.locations.length and not scope.maps_ready
@@ -530,8 +533,8 @@ angular.module(
                             _map = scope.map
                             _map.control.refresh(
                                 {
-                                    "latitude": _map.center.latitude
-                                    "longitude": _map.center.longitude
+                                    latitude: _map.center.latitude
+                                    longitude: _map.center.longitude
                                 }
                             )
                         100
@@ -581,38 +584,38 @@ angular.module(
 
             scope.rotate = (degrees) ->
                 scope.modify_image(
-                     {
-                        "id": scope.preview_gfx.idx
-                        "mode": "rotate"
-                        "degrees" : degrees
-                     }
+                    {
+                        id: scope.preview_gfx.idx
+                        mode: "rotate"
+                        degrees: degrees
+                    }
                 )
 
             scope.resize = (factor) ->
                 scope.modify_image(
-                     {
-                        "id": scope.preview_gfx.idx
-                        "mode": "resize"
-                        "factor": factor
-                     }
+                    {
+                        id: scope.preview_gfx.idx
+                        mode: "resize"
+                        factor: factor
+                    }
                 )
 
             scope.brightness = (factor) ->
                 scope.modify_image(
-                     {
-                        "id": scope.preview_gfx.idx
-                        "mode": "brightness"
-                        "factor" : factor
-                     }
+                    {
+                        id: scope.preview_gfx.idx
+                        mode: "brightness"
+                        factor : factor
+                    }
                 )
 
             scope.sharpen = (factor) ->
                 scope.modify_image(
-                     {
-                        "id": scope.preview_gfx.idx
-                        "mode": "sharpen"
-                        "factor" : factor
-                     }
+                    {
+                        id: scope.preview_gfx.idx
+                        mode: "sharpen"
+                        factor : factor
+                    }
                 )
 
             scope.restore = () ->
