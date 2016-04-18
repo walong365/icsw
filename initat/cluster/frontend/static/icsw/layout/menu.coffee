@@ -315,20 +315,39 @@ menu_module = angular.module(
                     a_attrs = {href: @props.href, key: "a"}
                 else
                     a_attrs = {href: @props.sref, key: "a"}
-                return li(
-                    {key: "li"}
-                    [
-                        a(
-                            a_attrs
-                            [
+                if @props.labelClass
+                    return li(
+                        {key: "li"}
+                        [
+                            a(
+                                a_attrs
                                 span(
-                                    {className: "fa #{@props.icon} fa_icsw", key: "span"}
+                                    {className: "label #{@props.labelClass}", key: "spanl"}
+                                    [
+                                        span(
+                                            {className: "fa #{@props.icon} fa_icsw", key: "span"}
+                                        )
+                                        " #{@props.name}"
+                                    ]
                                 )
-                                " #{@props.name}"
-                            ]
-                        )
-                    ]
-                )
+                            )
+                        ]
+                    )
+                else
+                    return li(
+                        {key: "li"}
+                        [
+                            a(
+                                a_attrs
+                                [
+                                    span(
+                                        {className: "fa #{@props.icon} fa_icsw", key: "span"}
+                                    )
+                                    " #{@props.name}"
+                                ]
+                            )
+                        ]
+                    )
         )
         menu_header = React.createClass(
             displayName: "menuheader"
@@ -419,7 +438,7 @@ menu_module = angular.module(
                 )
 
         class MenuEntry
-            constructor: (@name, @rights, @licenses, @service_types, @icon, @ordering, @sref, @preSpacer, @postSpacer) ->
+            constructor: (@name, @rights, @licenses, @service_types, @icon, @ordering, @sref, @preSpacer, @postSpacer, @labelClass) ->
             get_react: () =>
                 return {
                     name: @name
@@ -430,6 +449,7 @@ menu_module = angular.module(
                     service_types: @service_types
                     preSpacer: @preSpacer
                     postSpacer: @postSpacer
+                    labelClass: @labelClass
                 }
 
         menu_comp = React.createClass(
@@ -490,6 +510,7 @@ menu_module = angular.module(
                                     $state.href(state)
                                     _entry.preSpacer?
                                     _entry.postSpacer?
+                                    if _entry.labelClass? then _entry.labelClass else ""
                                 )
                             )
                         else

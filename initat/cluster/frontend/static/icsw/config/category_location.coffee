@@ -490,16 +490,16 @@ angular.module(
                         _draggable = false
                     scope.marker_list.push(
                         {
-                            "latitude": _entry.latitude
-                            "longitude": _entry.longitude
-                            "key": _entry.idx
-                            "comment": comment
-                            "options": {
-                                "draggable": _draggable
-                                "title": comment
-                                "opacity": if _entry.locked then 1.0 else 0.7
+                            latitude: _entry.latitude
+                            longitude: _entry.longitude
+                            key: _entry.idx
+                            comment: comment
+                            options: {
+                                draggable: _draggable
+                                title: comment
+                                opacity: if _entry.locked then 1.0 else 0.7
                             }
-                            "icon": if _entry.svg_url then _entry.svg_url else null
+                            icon: if _entry.svg_url then _entry.svg_url else null
                         }
                     )
                     marker_lut[_entry.idx] = _entry
@@ -628,12 +628,12 @@ angular.module(
                 # scope.show_preview(obj)
                 if angular.isString(data)
                     data = {
-                        "id": scope.preview_gfx.idx
-                        "mode": data
+                        id: scope.preview_gfx.idx
+                        mode: data
                     }
                 blockUI.start()
                 icswSimpleAjaxCall(
-                    url : ICSW_URLS.BASE_MODIFY_LOCATION_GFX
+                    url: ICSW_URLS.BASE_MODIFY_LOCATION_GFX
                     data: data
                 ).then(
                     (xml) ->
