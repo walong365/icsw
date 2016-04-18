@@ -371,6 +371,35 @@ class WmiScanBatch(ScanBatch):
 
         # TODO; check peers? (cf. snmp)
 
+class NRPEScanBatch(ScanBatch):
+    SCAN_TYPE = 'NRPE'
+
+    def __init__(self, dev_com, scan_dev):
+        super(NRPEScanBatch, self).__init__(dev_com, scan_dev)
+
+        self._command = dev_com.attrib.get('command')
+
+        if not self._command:
+            self.log("no valid command found for {}".format(unicode(self.device)), logging_tools.LOG_LEVEL_ERROR)
+            self.start_result = ResultNode(error="no valid command found")
+            self.finish()
+
+        elif self.device.target_ip:
+            self._ext_com = ExtCom(self.log, self._build_command())
+            self._ext_com.run()
+            self.start_result = ResultNode(ok="started NRPE_scan")
+
+    def _build_command(self):
+        _com = "/opt/cluster/bin/check_nrpe -H {} -n -c {}".format(self.device.target_ip, self._command)
+        print _com
+        return _com
+
+    def check_ext_com(self):
+        _res = self._ext_com.finished()
+        if _res is not None:
+            _output = self._ext_com.communicate()
+            print _output
+            self.finish()
 
 class _ExtComScanMixin(object):
     """ Base class for all scan mixins """
@@ -394,3 +423,8 @@ class WmiScanMixin(_ExtComScanMixin):
     def wmi_scan(self, dev_com, scan_dev):
         self._register_timer()
         return WmiScanBatch(dev_com, scan_dev).start_result
+
+class NRPEScanMixin(_ExtComScanMixin):
+    def nrpe_scan(self, dev_com, scan_dev):
+        self._register_timer()
+        return NRPEScanBatch(dev_com, scan_dev).start_result
