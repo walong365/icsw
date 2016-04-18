@@ -371,6 +371,35 @@ class WmiScanBatch(ScanBatch):
 
         # TODO; check peers? (cf. snmp)
 
+import gzip
+import json
+import zlib
+import bz2
+import base64
+
+LIST_SOFTWARE_CMD = "list-software-py3"
+LIST_KEYS_CMD = "list-keys-py3"
+LIST_METRICS_CMD = "list-metrics-py3"
+LIST_PROCESSES_CMD = "list-processes-py3"
+
+VALID_COMMANDS = [LIST_SOFTWARE_CMD, LIST_KEYS_CMD, LIST_METRICS_CMD, LIST_PROCESSES_CMD]
+
+class NRPECommandInterpreter:
+    def __init__(self, _command, _output):
+        self.output = _output
+        self.command = _command
+        print _command
+
+    def interpret(self):
+        if self.command == LIST_SOFTWARE_CMD:
+            l = json.loads(self.output)
+            for (name, version, size, date) in l:
+                print name
+                print version
+                print size
+                print date
+                print
+
 class NRPEScanBatch(ScanBatch):
     SCAN_TYPE = 'NRPE'
 
@@ -379,7 +408,7 @@ class NRPEScanBatch(ScanBatch):
 
         self._command = dev_com.attrib.get('command')
 
-        if not self._command:
+        if not self._command and not (self._command in VALID_COMMANDS):
             self.log("no valid command found for {}".format(unicode(self.device)), logging_tools.LOG_LEVEL_ERROR)
             self.start_result = ResultNode(error="no valid command found")
             self.finish()
@@ -390,7 +419,7 @@ class NRPEScanBatch(ScanBatch):
             self.start_result = ResultNode(ok="started NRPE_scan")
 
     def _build_command(self):
-        _com = "/opt/cluster/bin/check_nrpe -H {} -n -c {}".format(self.device.target_ip, self._command)
+        _com = "/opt/cluster/sbin/check_nrpe -H {} -n -c {} -t20".format(self.device.target_ip, self._command)
         print _com
         return _com
 
@@ -398,7 +427,12 @@ class NRPEScanBatch(ScanBatch):
         _res = self._ext_com.finished()
         if _res is not None:
             _output = self._ext_com.communicate()
-            print _output
+
+            nci = NRPECommandInterpreter(self._command, _output[0])
+            nci.interpret()
+
+
+            #print _output
             self.finish()
 
 class _ExtComScanMixin(object):
