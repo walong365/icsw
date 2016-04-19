@@ -144,7 +144,7 @@ angular.module(
                     _cls = "glyphicon glyphicon-ok-circle"
             return _cls
 
-        update_active_configs: (name_re, only_selected) =>
+        update_active_configs: (name_re, only_selected, with_system) =>
             @active_configs.length = 0
 
             for entry in @config_tree.list
@@ -161,6 +161,8 @@ angular.module(
                             if entry.idx in cur_md.$local_selected
                                 entry.$selected = true
                                 break
+                if not with_system and entry.system_config
+                    entry.$selected = false
                 if entry.$selected
                     @active_configs.push(entry)
             $rootScope.$emit(ICSW_SIGNALS("ICSW_DEVICE_CONFIG_CHANGED"))
@@ -172,9 +174,9 @@ angular.module(
                 {
                     url: ICSW_URLS.CONFIG_ALTER_CONFIG_CB
                     data: {
-                        "meta_pk": @md_lut[device.idx].idx
-                        "dev_pk": device.idx
-                        "conf_pk": config.idx
+                        meta_pk: @md_lut[device.idx].idx
+                        dev_pk: device.idx
+                        conf_pk: config.idx
                     }
                 }
             ).then(
@@ -217,7 +219,12 @@ angular.module(
     $scope.name_filter = ""
     $scope.new_config_name = ""
     $scope.matrix = true
-    $scope.only_selected = false
+    $scope.struct = {
+        # only selected configs
+        only_selected: false
+        # show system configs
+        with_system: true
+    }
     $scope.new_devsel = (_dev_sel) ->
         local_defer = $q.defer()
         if not $scope.device_tree
@@ -264,10 +271,14 @@ angular.module(
         catch exc
             cur_re = new RegExp("^$", "gi")
 
-        $scope.helper.update_active_configs(cur_re, $scope.only_selected)
+        $scope.helper.update_active_configs(cur_re, $scope.struct.only_selected, $scope.struct.with_system)
 
     $scope.toggle_only_selected = () ->
-        $scope.only_selected = !$scope.only_selected
+        $scope.struct.only_selected = !$scope.struct.only_selected
+        $scope.new_filter_set($scope.name_filter, true)
+
+    $scope.toggle_with_system = () ->
+        $scope.struct.with_system = !$scope.struct.with_system
         $scope.new_filter_set($scope.name_filter, true)
 
     $scope.create_config = (cur_cat) ->
