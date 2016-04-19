@@ -1,3 +1,5 @@
+<!--- todo: split timeframesetting into separate page -->
+
 <script type="text/ng-template" id="icsw.rrd.graphsetting.overview">
     <div class="input-group">
         <ui-select ng-model="current" on-select="select_setting($item, $model)" style="width:160px;">
@@ -222,43 +224,44 @@
             <span class="input-group">
                 <input type="text"
                     class="form-control"
-                    ng-model="val.from_date_mom"
-                    is-open="date_options.$$opened"
+                    ng-model="val.from_date"
+                    is-open="from_picker.open"
                     datetime-picker="dd.MM.yyyy HH:mm"
+                    datepicker-options="from_picker.date_options"
+                    timepicker-options="from_picker.time_options"
+                    button-bar="button_bar"
                     close-text="Close"
                 >
                     <span class="input-group-btn">
-                        <button type="button" class="btn btn-default" ng-click="open_popup()">
+                        <button type="button" class="btn btn-default" ng-click="open_calendar($event, 'from_picker')">
                             <i class="glyphicon glyphicon-calendar"></i>
                         </button>
                     </span>
                 </input>
 
-                <!-- <div class="dropdown">
-                    <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">
-                         <i class="glyphicon glyphicon-calendar"></i>
-                    </button>
-                    <ul class="dropdown-menu" role="menu">
-                        <datetimepicker ng-model="val.from_date_mom" data-datetimepicker-config="{ dropdownSelector: '#dropdownfrom' }"/>
-                    </ul>
-                </div> -->
             </span>
         </div>
         <div class="input-group" ng-if="show_detail">
             <span class="input-group-addon">
                  to
             </span>
-            <input type="text" class="form-control" ng-model="val.to_date_mom">
-            </input>
-            <span class="dropdown-toggle input-group-addon">
-                <div class="dropdown">
-                    <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">
-                         <i class="glyphicon glyphicon-calendar"></i>
-                    </button>
-                    <ul class="dropdown-menu" role="menu">
-                        <datetimepicker ng-model="val.to_date_mom" data-datetimepicker-config="{ dropdownSelector: '#dropdownfrom' }"/>
-                    </ul>
-                </div>
+            <span class="input-group">
+                <input type="text"
+                    class="form-control"
+                    ng-model="val.to_date"
+                    is-open="to_picker.open"
+                    datetime-picker="dd.MM.yyyy HH:mm"
+                    datepicker-options="to_picker.date_options"
+                    timepicker-options="to_picker.time_options"
+                    button-bar="button_bar"
+                    close-text="Close"
+                >
+                    <span class="input-group-btn">
+                        <button type="button" class="btn btn-default" ng-click="open_calendar($event, 'to_picker')">
+                            <i class="glyphicon glyphicon-calendar"></i>
+                        </button>
+                    </span>
+                </input>
             </span>
         </div>
     </div>

@@ -130,7 +130,7 @@ angular.module(
         enabled_device_lut: {}
     }
 
-    # datetimepicker options
+    # datepicker options
     $scope.date_options = {
         format: "dd.MM.yyyy"
         formatYear: "yyyy"

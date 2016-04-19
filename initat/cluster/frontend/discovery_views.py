@@ -48,22 +48,30 @@ class GetEventLogDeviceInfo(View):
             ret = MongoDbConnector.json_error_dict()
         else:
             try:
-                _wmi_res = mongo.event_log_db.wmi_event_log.aggregate([{
-                    '$group': {
-                        '_id': {
-                            'device_pk': '$device_pk',
+                _wmi_res = mongo.event_log_db.wmi_event_log.aggregate(
+                    [
+                        {
+                            '$group': {
+                                '_id': {
+                                    'device_pk': '$device_pk',
+                                }
+                            }
                         }
-                    }
-                }])
+                    ]
+                )
                 devices_with_wmi = {entry['_id']['device_pk'] for entry in _wmi_res}
 
-                _ipmi_res = mongo.event_log_db.ipmi_event_log.aggregate([{
-                    '$group': {
-                        '_id': {
-                            'device_pk': '$device_pk',
+                _ipmi_res = mongo.event_log_db.ipmi_event_log.aggregate(
+                    [
+                        {
+                            '$group': {
+                                '_id': {
+                                    'device_pk': '$device_pk',
+                                }
+                            }
                         }
-                    }
-                }])
+                    ]
+                )
                 devices_with_ipmi = {entry['_id']['device_pk'] for entry in _ipmi_res}
 
                 _syslog_res = mongo.event_log_db.system_log.aggregate(
@@ -111,16 +119,23 @@ class GetEventLog(View):
     ):
         # this pattern allows for default values:
         def __new__(cls, grouping_keys=None, mode_specific_parameters=None, *args, **kwargs):
-            return super(GetEventLog.EventLogResult, cls).__new__(
-                cls, grouping_keys=grouping_keys, mode_specific_parameters=mode_specific_parameters, *args, **kwargs
+            return super(
+                GetEventLog.EventLogResult,
+                cls
+            ).__new__(
+                cls,
+                grouping_keys=grouping_keys,
+                mode_specific_parameters=mode_specific_parameters, *args, **kwargs
             )
 
     @classmethod
     def _parse_datetime(cls, datetime_str):
         try:
-            return dateutil.parser.parse(datetime_str)
+            _dt = dateutil.parser.parse(datetime_str)
         except ValueError as e:
             raise RuntimeError("Failed to parse date time {}: {}".format(datetime_str, e))
+        else:
+            return _dt
 
     @classmethod
     def _paginate_list(cls, l, skip, limit):
@@ -252,8 +267,12 @@ class GetEventLog(View):
             if include_device_info:
                 keys_ordered = ['Device'] + keys_ordered
 
-            return GetEventLog.EventLogResult(total_num=total_num, keys_ordered=keys_ordered, entries=result_merged,
-                                              grouping_keys=grouping_keys.keys())
+            return GetEventLog.EventLogResult(
+                total_num=total_num,
+                keys_ordered=keys_ordered,
+                entries=result_merged,
+                grouping_keys=grouping_keys.keys()
+            )
 
     class GetSystemLogEventLog(object):
         def __init__(self, device_pks, pagination_skip, pagination_limit,
@@ -281,9 +300,10 @@ class GetEventLog(View):
             if self.filter_str is not None:
                 query_obj["$text"] = {'$search': self.filter_str}
             if self.from_date is not None:
-                query_obj.setdefault('time_generated', {})['$gte'] = GetEventLog._parse_datetime(self.from_date)
+                query_obj.setdefault('line_datetime', {})['$gte'] = GetEventLog._parse_datetime(self.from_date)
             if self.to_date is not None:
-                query_obj.setdefault('time_generated', {})['$lte'] = GetEventLog._parse_datetime(self.to_date)
+                query_obj.setdefault('line_datetime', {})['$lte'] = GetEventLog._parse_datetime(self.to_date)
+            print "Q=", query_obj
             return query_obj
 
         def _regular_query(self):
@@ -415,7 +435,10 @@ class GetEventLog(View):
                 keys = ['Device'] + list(keys)
 
             return GetEventLog.EventLogResult(
-                total_num=total_num, keys_ordered=keys, entries=result, grouping_keys=grouping_keys,
+                total_num=total_num,
+                keys_ordered=keys,
+                entries=result,
+                grouping_keys=grouping_keys,
                 mode_specific_parameters=mode_specific_parameters
             )
 
@@ -491,5 +514,7 @@ class GetEventLog(View):
 
         ret_dict = {field_name: getattr(event_log_result, field_name) for field_name in event_log_result._fields}
 
-        return HttpResponse(bson.json_util.dumps(ret_dict),
-                            content_type="application/json")
+        return HttpResponse(
+            bson.json_util.dumps(ret_dict),
+            content_type="application/json"
+        )
