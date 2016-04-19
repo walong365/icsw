@@ -460,6 +460,19 @@ angular.module(
                 from_data_mom: undefined
                 to_date_mom: undefined
                 valid: false
+            scope.date_options = {
+                format: "dd.MM.yyyy"
+                formatYear: "yyyy"
+                maxDate: new Date()
+                minDate: new Date(2000, 1, 1)
+                startingDay: 1
+                minMode: "day"
+                datepickerMode: "day"
+                $$opened: false
+            }
+            scope.open_popup = () ->
+                scope.date_options.$$opened = true
+
             scope.timeframe = scope.val
             icswRRDGraphBaseSettingService.load(scope.$id).then(
                 (base) ->

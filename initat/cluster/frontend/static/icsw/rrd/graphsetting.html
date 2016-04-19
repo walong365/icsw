@@ -219,16 +219,29 @@
             <span class="input-group-addon">
                  from
             </span>
-            <input type="text" class="form-control" ng-model="val.from_date_mom"/>
-            <span class="dropdown-toggle input-group-addon">
-                <div class="dropdown">
+            <span class="input-group">
+                <input type="text"
+                    class="form-control"
+                    ng-model="val.from_date_mom"
+                    is-open="date_options.$$opened"
+                    datetime-picker="dd.MM.yyyy HH:mm"
+                    close-text="Close"
+                >
+                    <span class="input-group-btn">
+                        <button type="button" class="btn btn-default" ng-click="open_popup()">
+                            <i class="glyphicon glyphicon-calendar"></i>
+                        </button>
+                    </span>
+                </input>
+
+                <!-- <div class="dropdown">
                     <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">
                          <i class="glyphicon glyphicon-calendar"></i>
                     </button>
                     <ul class="dropdown-menu" role="menu">
                         <datetimepicker ng-model="val.from_date_mom" data-datetimepicker-config="{ dropdownSelector: '#dropdownfrom' }"/>
                     </ul>
-                </div>
+                </div> -->
             </span>
         </div>
         <div class="input-group" ng-if="show_detail">

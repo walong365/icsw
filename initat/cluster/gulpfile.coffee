@@ -146,7 +146,8 @@ sources = {
             "frontend/static/js/angular-ui-router.js",
             # must use minified version, otherwise the minifier destroys injection info
             "frontend/static/js/ui-codemirror.js",
-            "frontend/static/js/angular-datetimepicker.js",
+            "frontend/static/js/datetime-picker.js",
+            "frontend/static/js/datetime-picker.tpls.js",
             # "frontend/static/js/angular-strap.min.js",
             # "frontend/static/js/angular-strap.tpl.min.js",
             "frontend/static/js/angular-noVNC.js",

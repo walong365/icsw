@@ -22,7 +22,9 @@
                         {{ get_job_mode(job_mode) }}<span class="caret"></span>
                     </button>
                     <ul class="dropdown-menu">
-                        <li ng-repeat="_jm in job_modes" ng-show="job_mode_allowed(_jm)" ng-click="set_job_mode(_jm)"><a href="#">{{ get_job_mode(_jm) }}</a></li>
+                        <li ng-repeat="_jm in job_modes" ng-show="job_mode_allowed(_jm)" ng-click="set_job_mode(_jm)">
+                            <a href="#">{{ get_job_mode(_jm) }}</a>
+                        </li>
                     </ul>
                 </div>
             </div>

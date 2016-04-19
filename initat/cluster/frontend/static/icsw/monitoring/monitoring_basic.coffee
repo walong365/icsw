@@ -89,7 +89,10 @@ monitoring_basic_module = angular.module(
                     menukey: "mon"
                     name: "rebuild config cached"
                     icon: "fa-share-alt"
+                    labelClass: "label-warning"
                     ordering: 101
+                    preSpacer: true
+                    postSpacer: true
             resolve:
                 redirect: ["icswSimpleAjaxCall", "ICSW_URLS", "$q", "blockUI", (icswSimpleAjaxCall, ICSW_URLS, $q, blockUI) ->
                     # todo: add icswMenuProgressService
