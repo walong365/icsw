@@ -95,6 +95,109 @@ monitoring_cluster_module = angular.module(
             for entry in ELIST
                 @["#{entry}_lut"] = _.keyBy(@["#{entry}_list"], "idx")
 
+        # create / delete mon_host_cluster
+
+        create_mon_host_cluster: (new_obj) =>
+            d = $q.defer()
+            Restangular.all(ICSW_URLS.REST_MON_HOST_CLUSTER_LIST.slice(1)).post(new_obj).then(
+                (created) =>
+                    @mon_host_cluster_list.push(created)
+                    @build_luts()
+                    d.resolve(created)
+                (not_cr) =>
+                    d.reject("not created")
+            )
+            return d.promise
+
+        delete_mon_host_cluster: (del_obj) =>
+            d = $q.defer()
+            Restangular.restangularizeElement(null, del_obj, ICSW_URLS.REST_MON_HOST_CLUSTER_DETAIL.slice(1).slice(0, -2))
+            del_obj.remove().then(
+                (removed) =>
+                    _.remove(@mon_host_cluster_list, (entry) -> return entry.idx == del_obj.idx)
+                    d.resolve("deleted")
+                (not_removed) ->
+                    d.resolve("not deleted")
+            )
+            return d.promise
+
+        # create / delete mon_service_cluster
+
+        create_mon_service_cluster: (new_obj) =>
+            d = $q.defer()
+            Restangular.all(ICSW_URLS.REST_MON_SERVICE_CLUSTER_LIST.slice(1)).post(new_obj).then(
+                (created) =>
+                    @mon_service_cluster_list.push(created)
+                    @build_luts()
+                    d.resolve(created)
+                (not_cr) =>
+                    d.reject("not created")
+            )
+            return d.promise
+
+        delete_mon_service_cluster: (del_obj) =>
+            d = $q.defer()
+            Restangular.restangularizeElement(null, del_obj, ICSW_URLS.REST_MON_SERVICE_CLUSTER_DETAIL.slice(1).slice(0, -2))
+            del_obj.remove().then(
+                (removed) =>
+                    _.remove(@mon_service_cluster_list, (entry) -> return entry.idx == del_obj.idx)
+                    d.resolve("deleted")
+                (not_removed) ->
+                    d.resolve("not deleted")
+            )
+            return d.promise
+
+        # create / delete mon_host_dependency_templ
+
+        create_mon_host_dependency_templ: (new_obj) =>
+            d = $q.defer()
+            Restangular.all(ICSW_URLS.REST_MON_HOST_DEPENDENCY_TEMPL_LIST.slice(1)).post(new_obj).then(
+                (created) =>
+                    @mon_host_dependency_templ_list.push(created)
+                    @build_luts()
+                    d.resolve(created)
+                (not_cr) =>
+                    d.reject("not created")
+            )
+            return d.promise
+
+        delete_mon_host_dependency_templ: (del_obj) =>
+            d = $q.defer()
+            Restangular.restangularizeElement(null, del_obj, ICSW_URLS.REST_MON_HOST_DEPENDENCY_TEMPL_DETAIL.slice(1).slice(0, -2))
+            del_obj.remove().then(
+                (removed) =>
+                    _.remove(@mon_host_dependency_templ_list, (entry) -> return entry.idx == del_obj.idx)
+                    d.resolve("deleted")
+                (not_removed) ->
+                    d.resolve("not deleted")
+            )
+            return d.promise
+
+        # create / delete mon_service_dependency_templ
+
+        create_mon_service_dependency_templ: (new_obj) =>
+            d = $q.defer()
+            Restangular.all(ICSW_URLS.REST_MON_SERVICE_DEPENDENCY_TEMPL_LIST.slice(1)).post(new_obj).then(
+                (created) =>
+                    @mon_service_dependency_templ_list.push(created)
+                    @build_luts()
+                    d.resolve(created)
+                (not_cr) =>
+                    d.reject("not created")
+            )
+            return d.promise
+
+        delete_mon_service_dependency_templ: (del_obj) =>
+            d = $q.defer()
+            Restangular.restangularizeElement(null, del_obj, ICSW_URLS.REST_MON_SERVICE_DEPENDENCY_TEMPL_DETAIL.slice(1).slice(0, -2))
+            del_obj.remove().then(
+                (removed) =>
+                    _.remove(@mon_service_dependency_templ_list, (entry) -> return entry.idx == del_obj.idx)
+                    d.resolve("deleted")
+                (not_removed) ->
+                    d.resolve("not deleted")
+            )
+            return d.promise
 
 ]).service("icswMonitoringClusterTreeService",
 [
@@ -187,15 +290,14 @@ monitoring_cluster_module = angular.module(
                 # console.log $scope.struct
         )
     $scope.reload()
-]).service("icswMonitoringClusterRestService", [() ->
 ]).service("icswMonitoringHostClusterService",
 [
     "ICSW_URLS", "icswMonitoringClusterTreeService", "$q", "Restangular",
-    "icswToolsSimpleModalService", "icswMonPeriodBackup", "icswMonitoringUtilService",
+    "icswToolsSimpleModalService", "icswMonHostClusterBackup", "icswMonitoringUtilService",
     "icswDeviceTreeService",
 (
     ICSW_URLS, icswMonitoringClusterTreeService, $q, Restangular,
-    icswToolsSimpleModalService, icswMonPeriodBackup, icswMonitoringUtilService,
+    icswToolsSimpleModalService, icswMonHostClusterBackup, icswMonitoringUtilService,
     icswDeviceTreeService,
 ) ->
     cluster_tree = undefined
@@ -231,7 +333,7 @@ monitoring_cluster_module = angular.module(
                 create
                 obj
                 "mon_host_cluster"
-                icswMonPeriodBackup
+                icswMonHostClusterBackup
                 "icsw.mon.host.cluster.form"
                 "Monitoring HostCluster"
             )
@@ -251,11 +353,11 @@ monitoring_cluster_module = angular.module(
 ]).service("icswMonitoringServiceClusterService",
 [
     "ICSW_URLS", "icswMonitoringClusterTreeService", "$q", "Restangular",
-    "icswToolsSimpleModalService", "icswMonPeriodBackup", "icswMonitoringUtilService",
+    "icswToolsSimpleModalService", "icswMonServiceClusterBackup", "icswMonitoringUtilService",
     "icswDeviceTreeService",
 (
     ICSW_URLS, icswMonitoringClusterTreeService, $q, Restangular,
-    icswToolsSimpleModalService, icswMonPeriodBackup, icswMonitoringUtilService,
+    icswToolsSimpleModalService, icswMonServiceClusterBackup, icswMonitoringUtilService,
     icswDeviceTreeService,
 ) ->
     cluster_tree = undefined
@@ -292,7 +394,7 @@ monitoring_cluster_module = angular.module(
                 create
                 obj
                 "mon_service_cluster"
-                icswMonPeriodBackup
+                icswMonServiceClusterBackup
                 "icsw.mon.service.cluster.form"
                 "Monitoring ServiceCluster"
             )
@@ -309,84 +411,238 @@ monitoring_cluster_module = angular.module(
         get_data_incomplete_error: () ->
             return icswMonitoringUtilService.get_data_incomplete_error(cluster_tree, "mon_service_cluster")
     }
-]).service('icswMonitoringHostDependencyTemplateService', ["ICSW_URLS", "icswMonitoringClusterRestService", "icswMonitoringUtilService", (ICSW_URLS, icswMonitoringClusterRestService, icswMonitoringUtilService) ->
-    ret = {
-        rest_handle         : icswMonitoringClusterRestService.mon_host_dependency_templ
-        edit_template       : "mon.host.dependency.templ.form"
-        delete_confirm_str  : (obj) ->
-            return "Really delete Host dependency template '#{obj.name}' ?"
-        new_object          : () ->
-            return {
-                "name" : ""
-                "priority" : 0
-                "dependency_period" : (entry.idx for entry in icswMonitoringClusterRestService.mon_period)[0]
-                "efc_up" : true
-                "efc_down" : true
-                "nfc_up" : true
-                "nfc_down" : true
-            }
-        object_created  : (new_obj) -> new_obj.name = ""
-        get_data_incomplete_error: () ->
-            return icswMonitoringUtilService.get_data_incomplete_error(icswMonitoringClusterRestService,
-                [["mon_period", "period"]])
-    }
+]).service("icswMonitoringHostDependencyTemplateService",
+[
+    "ICSW_URLS", "icswMonitoringClusterTreeService", "$q", "Restangular",
+    "icswToolsSimpleModalService", "icswMonHostDependencyTemplBackup", "icswMonitoringUtilService",
+    "icswDeviceTreeService",
+(
+    ICSW_URLS, icswMonitoringClusterTreeService, $q, Restangular,
+    icswToolsSimpleModalService, icswMonHostDependencyTemplBackup, icswMonitoringUtilService,
+    icswDeviceTreeService,
+) ->
+    cluster_tree = undefined
+    return {
+        fetch: (scope) ->
+            defer = $q.defer()
+            $q.all(
+                [
+                    icswMonitoringClusterTreeService.load(scope.$id)
+                    icswDeviceTreeService.load(scope.$id)
+                ]
+            ).then(
+                (data) ->
+                    cluster_tree = data[0]
+                    scope.cluster_tree = cluster_tree
+                    scope.device_tree = data[1]
+                    defer.resolve(cluster_tree.mon_host_dependency_templ_list)
+            )
+            return defer.promise
 
-    for k, v of icswMonitoringClusterRestService
-        ret[k] = v
-    return ret
-]).service('icswMonitoringServiceDependencyTemplateService', ["ICSW_URLS", "icswMonitoringClusterRestService", "icswMonitoringUtilService", (ICSW_URLS, icswMonitoringClusterRestService, icswMonitoringUtilService) ->
-    ret =  {
-        rest_handle         : icswMonitoringClusterRestService.mon_service_dependency_templ
-        edit_template       : "mon.service.dependency.templ.form"
-        delete_confirm_str  : (obj) ->
-            return "Really delete Service dependency template '#{obj.name}' ?"
-        new_object          : () ->
-            return {
-                "name" : ""
-                "priority" : 0
-                "dependency_period" : (entry.idx for entry in icswMonitoringClusterRestService.mon_period)[0]
-                "efc_ok" : true
-                "efc_warn" : true
-                "nfc_ok" : true
-                "nfc_warn" : true
-            }
-        object_created  : (new_obj) -> new_obj.name = ""
-        get_data_incomplete_error: () ->
-            return icswMonitoringUtilService.get_data_incomplete_error(icswMonitoringClusterRestService,
-                [["mon_period", "period"]])
-    }
-    for k, v of icswMonitoringClusterRestService
-        ret[k] = v
-    return ret
-]).service('icswMonitoringHostDependencyService', ["ICSW_URLS", "icswMonitoringClusterRestService", "icswMonitoringUtilService", (ICSW_URLS, icswMonitoringClusterRestService, icswMonitoringUtilService) ->
-    ret =  {
-        rest_handle         : icswMonitoringClusterRestService.mon_host_dependency
-        edit_template       : "mon.host.dependency.form"
-        delete_confirm_str  : (obj) ->
-            return "Really delete host dependency ?"
-        new_object          : {}
-        object_created  : (new_obj) ->
-        get_data_incomplete_error: () ->
-            return icswMonitoringUtilService.get_data_incomplete_error(icswMonitoringClusterRestService,
-                [["device", "device"], ["mon_host_dependency_templ", "host dependency template"]])
-    }
-    for k, v of icswMonitoringClusterRestService
-        ret[k] = v
-    return ret
-]).service('icswMonitoringServiceDependencyService', ["ICSW_URLS", "icswMonitoringClusterRestService", "icswMonitoringUtilService", (ICSW_URLS, icswMonitoringClusterRestService, icswMonitoringUtilService) ->
-    ret =  {
-        rest_handle         : icswMonitoringClusterRestService.mon_service_dependency
-        edit_template       : "mon.service.dependency.form"
-        delete_confirm_str  : (obj) ->
-            return "Really delete service dependency ?"
-        new_object          : {}
-        object_created  : (new_obj) ->
+        create_or_edit: (scope, $event, create, obj) ->
+            if create
+                obj = {
+                    name: ""
+                    description: "new HostDependency template"
+                    priority: 0
+                    dependency_period: cluster_tree.basic_tree.mon_period_list[0].idx
+                    efc_up: true
+                    efc_down: true
+                    nfc_up: true
+                    nfc_down: true
+                }
+            return icswMonitoringUtilService.create_or_edit(
+                cluster_tree
+                scope
+                create
+                obj
+                "mon_host_dependency_templ"
+                icswMonHostDependencyTemplBackup
+                "icsw.mon.host.dependency.templ.form"
+                "Monitoring HostDependencyTemplate"
+            )
+
+        delete: (scope, $event, obj) ->
+            icswToolsSimpleModalService("Really delete MonitoringHostDependencyTemplate '#{obj.name}' ?").then(
+                () =>
+                    cluster_tree.delete_mon_host_dependency_templ(obj).then(
+                        () ->
+                            console.log "mon_host_dependency_templ deleted"
+                    )
+            )
 
         get_data_incomplete_error: () ->
-            return icswMonitoringUtilService.get_data_incomplete_error(icswMonitoringClusterRestService,
-                [["device", "device"], ["mon_service_dependency_templ", "service dependency template"], ["mon_check_command", "check command"]])
+            return icswMonitoringUtilService.get_data_incomplete_error(cluster_tree, "mon_host_dependency_templ")
     }
-    for k, v of icswMonitoringClusterRestService
-        ret[k] = v
-    return ret
+]).service("icswMonitoringServiceDependencyTemplateService",
+[
+    "ICSW_URLS", "icswMonitoringClusterTreeService", "$q", "Restangular",
+    "icswToolsSimpleModalService", "icswMonServiceDependencyTemplBackup", "icswMonitoringUtilService",
+    "icswDeviceTreeService",
+(
+    ICSW_URLS, icswMonitoringClusterTreeService, $q, Restangular,
+    icswToolsSimpleModalService, icswMonServiceDependencyTemplBackup, icswMonitoringUtilService,
+    icswDeviceTreeService,
+) ->
+    cluster_tree = undefined
+    return {
+        fetch: (scope) ->
+            defer = $q.defer()
+            $q.all(
+                [
+                    icswMonitoringClusterTreeService.load(scope.$id)
+                    icswDeviceTreeService.load(scope.$id)
+                ]
+            ).then(
+                (data) ->
+                    cluster_tree = data[0]
+                    scope.cluster_tree = cluster_tree
+                    scope.device_tree = data[1]
+                    defer.resolve(cluster_tree.mon_service_dependency_templ_list)
+            )
+            return defer.promise
+
+        create_or_edit: (scope, $event, create, obj) ->
+            if create
+                obj = {
+                    name: ""
+                    description: "new ServiceDependency template"
+                    priority: 0
+                    dependency_period: cluster_tree.basic_tree.mon_period_list[0].idx
+                    efc_up: true
+                    efc_down: true
+                    nfc_up: true
+                    nfc_down: true
+                }
+            return icswMonitoringUtilService.create_or_edit(
+                cluster_tree
+                scope
+                create
+                obj
+                "mon_service_dependency_templ"
+                icswMonServiceDependencyTemplBackup
+                "icsw.mon.service.dependency.templ.form"
+                "Monitoring ServiceDependencyTemplate"
+            )
+
+        delete: (scope, $event, obj) ->
+            icswToolsSimpleModalService("Really delete MonitoringServiceDependencyTemplate '#{obj.name}' ?").then(
+                () =>
+                    cluster_tree.delete_mon_service_dependency_templ(obj).then(
+                        () ->
+                            console.log "mon_service_dependency_templ deleted"
+                    )
+            )
+
+        get_data_incomplete_error: () ->
+            return icswMonitoringUtilService.get_data_incomplete_error(cluster_tree, "mon_service_dependency_templ")
+    }
+]).service("icswMonitoringHostDependencyService",
+[
+    "ICSW_URLS", "icswMonitoringClusterTreeService", "$q", "Restangular",
+    "icswToolsSimpleModalService", "icswMonHostDependencyBackup", "icswMonitoringUtilService",
+    "icswDeviceTreeService",
+(
+    ICSW_URLS, icswMonitoringClusterTreeService, $q, Restangular,
+    icswToolsSimpleModalService, icswMonHostDependencyBackup, icswMonitoringUtilService,
+    icswDeviceTreeService,
+) ->
+    cluster_tree = undefined
+    return {
+        fetch: (scope) ->
+            defer = $q.defer()
+            $q.all(
+                [
+                    icswMonitoringClusterTreeService.load(scope.$id)
+                    icswDeviceTreeService.load(scope.$id)
+                ]
+            ).then(
+                (data) ->
+                    cluster_tree = data[0]
+                    scope.cluster_tree = cluster_tree
+                    scope.device_tree = data[1]
+                    defer.resolve(cluster_tree.mon_host_dependency_list)
+            )
+            return defer.promise
+
+        create_or_edit: (scope, $event, create, obj) ->
+            if create
+                obj = {}
+            return icswMonitoringUtilService.create_or_edit(
+                cluster_tree
+                scope
+                create
+                obj
+                "mon_host_dependency"
+                icswMonHostDependencyBackup
+                "icsw.mon.host.dependency.form"
+                "Monitoring HostDependency"
+            )
+
+        delete: (scope, $event, obj) ->
+            icswToolsSimpleModalService("Really delete MonitoringHostDependency '#{obj.name}' ?").then(
+                () =>
+                    cluster_tree.delete_mon_host_dependency(obj).then(
+                        () ->
+                            console.log "mon_host_dependency deleted"
+                    )
+            )
+
+        get_data_incomplete_error: () ->
+            return icswMonitoringUtilService.get_data_incomplete_error(cluster_tree, "mon_host_dependency")
+    }
+]).service("icswMonitoringServiceDependencyService",
+[
+    "ICSW_URLS", "icswMonitoringClusterTreeService", "$q", "Restangular",
+    "icswToolsSimpleModalService", "icswMonServiceDependencyBackup", "icswMonitoringUtilService",
+    "icswDeviceTreeService",
+(
+    ICSW_URLS, icswMonitoringClusterTreeService, $q, Restangular,
+    icswToolsSimpleModalService, icswMonServiceDependencyBackup, icswMonitoringUtilService,
+    icswDeviceTreeService,
+) ->
+    cluster_tree = undefined
+    return {
+        fetch: (scope) ->
+            defer = $q.defer()
+            $q.all(
+                [
+                    icswMonitoringClusterTreeService.load(scope.$id)
+                    icswDeviceTreeService.load(scope.$id)
+                ]
+            ).then(
+                (data) ->
+                    cluster_tree = data[0]
+                    scope.cluster_tree = cluster_tree
+                    scope.device_tree = data[1]
+                    defer.resolve(cluster_tree.mon_service_dependency_list)
+            )
+            return defer.promise
+
+        create_or_edit: (scope, $event, create, obj) ->
+            if create
+                obj = {}
+            return icswMonitoringUtilService.create_or_edit(
+                cluster_tree
+                scope
+                create
+                obj
+                "mon_service_dependency"
+                icswMonServiceDependencyBackup
+                "icsw.mon.service.dependency.form"
+                "Monitoring ServiceDependency"
+            )
+
+        delete: (scope, $event, obj) ->
+            icswToolsSimpleModalService("Really delete MonitoringServiceDependency '#{obj.name}' ?").then(
+                () =>
+                    cluster_tree.delete_mon_service_dependency(obj).then(
+                        () ->
+                            console.log "mon_service_dependency deleted"
+                    )
+            )
+
+        get_data_incomplete_error: () ->
+            return icswMonitoringUtilService.get_data_incomplete_error(cluster_tree, "mon_service_dependency")
+    }
 ])

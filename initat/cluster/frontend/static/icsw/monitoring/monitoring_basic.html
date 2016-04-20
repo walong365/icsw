@@ -1,5 +1,6 @@
 <script type="text/ng-template" id="icsw.monitoring.basic">
 
+    <uib-alert type="warning" ng-show="!struct.tree_valid">Loading tree...</uib-alert>
     <uib-tabset ng-show="struct.tree_valid">
         <uib-tab heading="Periods">
             <icsw-tools-rest-table-new target-list="entries" config-service="icswMonitoringBasicPeriodService">
@@ -1048,7 +1049,7 @@
                     Monitoring period<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.nsc_period" style="max-width:400px; min-width:240px;" ng-disabled="false" title="Monitoring check is active during this period">
+                    <ui-select ng-model="edit_obj.nsc_period" style="max-width:400px; min-width:240px;" title="Monitoring check is active during this period">
                         <ui-select-match class="ui-select-match" placeholder="please select a time period">
                             {{ $select.selected.name }}
                         </ui-select-match>
@@ -1092,7 +1093,7 @@
                     Notification period<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.nsn_period" style="max-width:400px; min-width:100px;" ng-disabled="false" title="Notification is active during this period">
+                    <ui-select ng-model="edit_obj.nsn_period" style="max-width:400px; min-width:100px;" title="Notification is active during this period">
                         <ui-select-match class="ui-select-match" placeholder="please select a time period">
                             {{ $select.selected.name }}
                         </ui-select-match>

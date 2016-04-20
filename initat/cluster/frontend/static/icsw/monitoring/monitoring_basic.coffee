@@ -237,7 +237,7 @@ monitoring_basic_module = angular.module(
             d = $q.defer()
             Restangular.restangularizeElement(null, del_per, ICSW_URLS.REST_MON_PERIOD_DETAIL.slice(1).slice(0, -2))
             del_per.remove().then(
-                (removed) ->
+                (removed) =>
                     _.remove(@mon_period_list, (entry) -> return entry.idx == del_per.idx)
                     d.resolve("deleted")
                 (not_removed) ->
@@ -263,7 +263,7 @@ monitoring_basic_module = angular.module(
             d = $q.defer()
             Restangular.restangularizeElement(null, del_not, ICSW_URLS.REST_MON_NOTIFICATION_DETAIL.slice(1).slice(0, -2))
             del_not.remove().then(
-                (removed) ->
+                (removed) =>
                     _.remove(@mon_notification_list, (entry) -> return entry.idx == del_per.idx)
                     d.resolve("deleted")
                 (not_removed) ->
@@ -289,7 +289,7 @@ monitoring_basic_module = angular.module(
             d = $q.defer()
             Restangular.restangularizeElement(null, del_st, ICSW_URLS.REST_MON_SERVICE_TEMPL_DETAIL.slice(1).slice(0, -2))
             del_st.remove().then(
-                (removed) ->
+                (removed) =>
                     _.remove(@mon_service_templ_list, (entry) -> return entry.idx == del_st.idx)
                     d.resolve("deleted")
                 (not_removed) ->
@@ -315,7 +315,7 @@ monitoring_basic_module = angular.module(
             d = $q.defer()
             Restangular.restangularizeElement(null, del_dt, ICSW_URLS.REST_MON_DEVICE_TEMPL_DETAIL.slice(1).slice(0, -2))
             del_dt.remove().then(
-                (removed) ->
+                (removed) =>
                     _.remove(@mon_device_templ_list, (entry) -> return entry.idx == del_dt.idx)
                     d.resolve("deleted")
                 (not_removed) ->
@@ -341,7 +341,7 @@ monitoring_basic_module = angular.module(
             d = $q.defer()
             Restangular.restangularizeElement(null, del_hcc, ICSW_URLS.REST_HOST_CHECK_COMMAND_DETAIL.slice(1).slice(0, -2))
             del_hcc.remove().then(
-                (removed) ->
+                (removed) =>
                     _.remove(@host_check_command_list, (entry) -> return entry.idx == del_hcc.idx)
                     d.resolve("deleted")
                 (not_removed) ->
@@ -367,7 +367,7 @@ monitoring_basic_module = angular.module(
             d = $q.defer()
             Restangular.restangularizeElement(null, del_obj, ICSW_URLS.REST_MON_CONTACT_DETAIL.slice(1).slice(0, -2))
             del_obj.remove().then(
-                (removed) ->
+                (removed) =>
                     _.remove(@mon_contact_list, (entry) -> return entry.idx == del_obj.idx)
                     d.resolve("deleted")
                 (not_removed) ->
@@ -393,7 +393,7 @@ monitoring_basic_module = angular.module(
             d = $q.defer()
             Restangular.restangularizeElement(null, del_obj, ICSW_URLS.REST_MON_CONTACTGROUP_DETAIL.slice(1).slice(0, -2))
             del_obj.remove().then(
-                (removed) ->
+                (removed) =>
                     _.remove(@mon_contactgroup_list, (entry) -> return entry.idx == del_obj.idx)
                     d.resolve("deleted")
                 (not_removed) ->

@@ -574,4 +574,76 @@ angular.module(
                 "persistent", "is_active", "datasource",
             ]
 
+]).service("icswMonHostClusterBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswMonHostClusterBackupDefinition extends icswBackupDefinition
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "name", "description", "main_device", "mon_service_templ",
+                "warn_value", "error_value", "user_editable",
+            ]
+            @list_attributes = [
+                "devices",
+            ]
+]).service("icswMonServiceClusterBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswMonServiceClusterBackupDefinition extends icswBackupDefinition
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "name", "description", "main_device", "mon_service_templ",
+                "mon_check_command",
+                "warn_value", "error_value", "user_editable",
+            ]
+            @list_attributes = [
+                "devices",
+            ]
+]).service("icswMonHostDependencyTemplBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswMonHostDependencyTemplBackupDefinition extends icswBackupDefinition
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "name", "inherits_parent", "priority", 
+                "efc_up", "efc_down", "efc_unreachable", "efc_pending",
+                "nfc_up", "nfc_down", "nfc_unreachable", "nfc_pending",
+                "dependency_period",
+            ]
+]).service("icswMonServiceDependencyTemplBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswMonServiceDependencyTemplBackupDefinition extends icswBackupDefinition
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "name", "inherits_parent", "priority", 
+                "efc_ok", "efc_warn", "efc_unknown", "efc_critical", "efc_pending",
+                "nfc_ok", "nfc_warn", "nfc_unknown", "nfc_critical", "nfc_pending",
+                "dependency_period",
+            ]
+]).service("icswMonHostDependencyBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswMonHostDependencyBackupDefinition extends icswBackupDefinition
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "devices", "mon_host_dependency_templ", "mon_host_cluster",
+            ]
+            @list_attributes = [
+                "dependent_devices",
+            ]
+            
+]).service("icswMonServiceDependencyBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswMonServiceDependencyBackupDefinition extends icswBackupDefinition
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "devices",
+                "mon_check_command", "dependent_mon_check_command",
+                "mon_service_dependency_templ", "mon_service_cluster",
+            ]
+            @list_attributes = [
+                "dependent_devices",
+            ]
 ])

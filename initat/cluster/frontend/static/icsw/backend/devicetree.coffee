@@ -430,6 +430,8 @@ angular.module(
             @enabled_list = []
             # enabled non-system group list
             @enabled_ns_group_list = []
+            # enabled non-meta device list
+            @enabled_nm_list = []
             @disabled_list = []
             @domain_tree = domain_tree
             @cat_tree = cat_tree
@@ -471,6 +473,7 @@ angular.module(
             @disabled_list.length = 0
             @enabled_ns_group_list.length = 0
             @enabled_lut = {}
+            @enabled_nm_list.length = 0
             @disabled_lut = {}
             @cluster_device_group_device = undefined
             @cluster_device_group = undefined
@@ -484,6 +487,8 @@ angular.module(
                     @disabled_list.push(_entry)
                 else if _entry.enabled
                     @enabled_list.push(_entry)
+                    if not _entry.is_meta_device
+                        @enabled_nm_list.push(_entry)
                 else
                     if _entry.is_meta_device
                         _disabled_groups.push(_entry.device_group)

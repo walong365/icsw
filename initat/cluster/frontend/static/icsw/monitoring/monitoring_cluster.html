@@ -1,6 +1,7 @@
 
 <script type="text/ng-template" id="icsw.monitoring.cluster">
-    <uib-tabset ng-cloak>
+    <uib-alert type="warning" ng-show="!struct.tree_valid">Loading tree...</uib-alert>
+    <uib-tabset ng-cloak ng-show="struct.tree_valid">
 
         <uib-tab heading="Host Clusters">
             <icsw-tools-rest-table-new target-list="entries" config-service="icswMonitoringHostClusterService">
@@ -45,14 +46,14 @@
                         <tr ng-repeat="obj in entries_displayed">
                             <td>{{ obj.name }}</td>
                             <td>{{ obj.description }}</td>
-                            <td>{{ obj.mon_service_templ | array_lookup:config_service.mon_service_templ:'name' }}</td>
-                            <td>{{ obj.main_device | array_lookup:config_service.device:'name' }}</td>
-                            <td>{{ obj.devices | resolve_n2m:config_service.device:'name' }}</td>
+                            <td>{{ tree.basic_tree.mon_service_templ_lut[obj.mon_service_templ].name }}</td>
+                            <td>{{ device_tree.all_lut[obj.main_device].full_name }}</td>
+                            <td>{{ obj.devices.length }}</td>
                             <td>{{ obj.warn_value }}</td>
                             <td>{{ obj.error_value }}</td>
                             <td>{{ obj.user_editable | yesno1 }}</td>
                             <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
-                            <td><icsw-tools-button type="delete" size="xs" ng-click="delete(obj)"></icsw-tools-button></td>
+                            <td><icsw-tools-button type="delete" size="xs" ng-click="delete($event, obj)"></icsw-tools-button></td>
                         </tr>
                     </tbody>
                 </table>
@@ -60,73 +61,80 @@
         </uib-tab>
 
         <uib-tab heading="Service Clusters">
-             <icsw-tools-rest-table-new target-list="entries" config-service="icswMonitoringServiceClusterService">
-                 <h3>
-                     Service Cluster ({{ entries_filtered.length }} entries),
-                     <icsw-tools-button
-                         disabled="config_service.get_data_incomplete_error()"
-                         type="create"
-                         value="create new"
-                         size="xs"
-                         style="display: inline-block"
-                         title="{{ config_service.get_data_incomplete_error() }}"
-                         ng-click="create($event, null)"
-                     ></icsw-tools-button>
-                 </h3>
-                 <table st-table="entries_displayed" st-safe-src="entries" class="table table-condensed table-hover table-striped" style="width:auto;">
-                     <thead>
-                         <tr>
-                             <td colspan="99">
-                                 <input st-search="" class="form-control" placeholder="filter ..." type="text"/>
-                             </td>
-                         </tr>
-                         <tr>
-                             <td colspan="99">
-                                 <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
-                                      possible-items-by-page="10,20,50,100,200,500,1000"></div>
-                             </td>
-                         </tr>
-                         <tr>
-                             <th st-sort="name" st-sort-default="true">Name</th>
-                             <th st-sort="description">Description</th>
-                             <th st-sort="mon_service_templ">ServiceTemplate</th>
-                             <th st-sort="main_device">Main device</th>
-                             <th st-sort="mon_check_command">Check command</th>
-                             <th st-sort="devices">Members</th>
-                             <th st-sort="warn_value">warn</th>
-                             <th st-sort="error_value">error</th>
-                             <th st-sort="user_editable">Edit</th>
-                             <th colspan="2" class="text-center">Action</th>
-                         </tr>
-                     </thead>
-                     <tbody>
-                         <tr ng-repeat="obj in entries_displayed">
-                             <td>{{ obj.name }}</td>
-                             <td>{{ obj.description }}</td>
-                             <td>{{ obj.mon_service_templ | array_lookup:config_service.mon_service_templ:'name' }}</td>
-                             <td>{{ obj.main_device | array_lookup:config_service.device:'name' }}</td>
-                             <td>{{ obj.mon_check_command | array_lookup:config_service.mon_check_command:'name' }}</td>
-                             <td>{{ obj.devices | resolve_n2m:config_service.device:'name' }}</td>
-                             <td>{{ obj.warn_value }}</td>
-                             <td>{{ obj.error_value }}</td>
-                             <td>{{ obj.user_editable | yesno1 }}</td>
-                             <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
-                             <td><icsw-tools-button type="delete" size="xs" ng-click="delete(obj)"></icsw-tools-button></td>
-                         </tr>
-                     </tbody>
-                 </table>
-             </icsw-tools-rest-table-new>
+            <icsw-tools-rest-table-new target-list="entries" config-service="icswMonitoringServiceClusterService">
+                <h3>
+                    Service Cluster ({{ entries.length }} entries),
+                    <icsw-tools-button
+                        disabled="config_service.get_data_incomplete_error()"
+                        type="create"
+                        value="create new"
+                        size="xs"
+                        style="display: inline-block"
+                        title="{{ config_service.get_data_incomplete_error() }}"
+                        ng-click="create($event, null)"
+                    ></icsw-tools-button>
+                </h3>
+                <table st-table="entries_displayed" st-safe-src="entries" class="table table-condensed table-hover table-striped" style="width:auto;">
+                    <thead>
+                        <tr>
+                            <td colspan="99">
+                                <input st-search="" class="form-control" placeholder="filter ..." type="text"/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="99">
+                                <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                                     possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th st-sort="name" st-sort-default="true">Name</th>
+                            <th st-sort="description">Description</th>
+                            <th st-sort="mon_service_templ">ServiceTemplate</th>
+                            <th st-sort="main_device">Main device</th>
+                            <th st-sort="mon_check_command">Check command</th>
+                            <th st-sort="devices">Members</th>
+                            <th st-sort="warn_value">warn</th>
+                            <th st-sort="error_value">error</th>
+                            <th st-sort="user_editable">Edit</th>
+                            <th colspan="2" class="text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr ng-repeat="obj in entries_displayed">
+                            <td>{{ obj.name }}</td>
+                            <td>{{ obj.description }}</td>
+                            <td>{{ tree.basic_tree.mon_service_templ_lut[obj.mon_service_templ].name }}</td>
+                            <td>{{ device_tree.all_lut[obj.main_device].full_name }}</td>
+                            <td>{{ tree.basic_tree.mon_check_command_lut[obj.mon_check_command].name }}</td>
+                            <td>{{ obj.devices.length }}</td>
+                            <td>{{ obj.warn_value }}</td>
+                            <td>{{ obj.error_value }}</td>
+                            <td>{{ obj.user_editable | yesno1 }}</td>
+                            <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
+                            <td><icsw-tools-button type="delete" size="xs" ng-click="delete($event , obj)"></icsw-tools-button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </icsw-tools-rest-table-new>
         </uib-tab>
 
         <uib-tab heading="Host dependency templates">
-            <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringHostDependencyTemplateService"
-                st-table="entries_displayed" st-safe-src="entries" icsw-tools-table-leak-filtered="entries_filtered">
-                <h2>Host dependency templates ({{entries_filtered.length}} entries),
-                    <icsw-tools-button disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
-                                       style="display: inline-block" title="{{config_service.get_data_incomplete_error()}}"
-                                       ng-click="create($event)"></icsw-tools-button>
-                </h2>
-                 <table class="table table-condensed table-hover" style="width:auto;">
+            <icsw-tools-rest-table-new target-list="entries" config-service="icswMonitoringHostDependencyTemplateService"
+                >
+                <h3>
+                    Host dependency templates ({{ entries.length }} entries),
+                    <icsw-tools-button
+                            disabled="config_service.get_data_incomplete_error()"
+                            type="create"
+                            value="create new"
+                            size="xs"
+                            style="display: inline-block"
+                            title="{{ config_service.get_data_incomplete_error() }}"
+                            ng-click="create($event, null)"
+                    ></icsw-tools-button>
+                </h3>
+                 <table st-table="entries_displayed" st-safe-src="entries" class="table table-condensed table-hover table-striped" style="width:auto;">
                      <thead>
                          <tr>
                              <td colspan="99">
@@ -160,7 +168,7 @@
                              <td>{{ obj.name }}</td>
                              <td>{{ obj.inherits_parent | yesno1 }}</td>
                              <td>{{ obj.priority }}</td>
-                             <td>{{ obj.dependency_period | array_lookup:config_service.mon_period:'name' }}</td>
+                             <td>{{ tree.basic_tree.mon_perod_lut[obj.dependency_period].name }}</td>
                              <td>{{ obj.efc_up | yesno1 }}</td>
                              <td>{{ obj.efc_down | yesno1 }}</td>
                              <td>{{ obj.efc_unreachable | yesno1 }}</td>
@@ -170,22 +178,29 @@
                              <td>{{ obj.nfc_unreachable | yesno1 }}</td>
                              <td>{{ obj.nfc_pending | yesno1 }}</td>
                              <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
-                             <td><icsw-tools-button type="delete" size="xs" ng-click="delete(obj)"></icsw-tools-button></td>
+                             <td><icsw-tools-button type="delete" size="xs" ng-click="delete($event, obj)"></icsw-tools-button></td>
                          </tr>
                      </tbody>
                  </table>
-            </icsw-tools-rest-table>
+            </icsw-tools-rest-table-new>
         </uib-tab>
 
         <uib-tab heading="Service dependency templates">
-            <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringServiceDependencyTemplateService"
-                st-table="entries_displayed" st-safe-src="entries" icsw-tools-table-leak-filtered="entries_filtered">
-                <h2>Service dependency templates ({{entries_filtered.length}} entries),
-                    <icsw-tools-button disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
-                                       style="display: inline-block" title="{{config_service.get_data_incomplete_error()}}"
-                                       ng-click="create($event)"></icsw-tools-button>
-                </h2>
-                 <table class="table table-condensed table-hover" style="width:auto;">
+            <icsw-tools-rest-table-new target-list="entries" config-service="icswMonitoringServiceDependencyTemplateService"
+                >
+                <h3>
+                    Service dependency templates ({{ entries.length }} entries),
+                    <icsw-tools-button
+                            disabled="config_service.get_data_incomplete_error()"
+                            type="create"
+                            value="create new"
+                            size="xs"
+                            style="display: inline-block"
+                            title="{{ config_service.get_data_incomplete_error() }}"
+                            ng-click="create($event, null)"
+                    ></icsw-tools-button>
+                </h3>
+                 <table st-table="entries_displayed" st-safe-src="entries" class="table table-condensed table-hover" style="width:auto;">
                      <thead>
                          <tr>
                              <td colspan="99">
@@ -221,7 +236,7 @@
                              <td>{{ obj.name }}</td>
                              <td>{{ obj.inherits_parent | yesno1 }}</td>
                              <td>{{ obj.priority }}</td>
-                             <td>{{ obj.dependency_period | array_lookup:config_service.mon_period:'name' }}</td>
+                             <td>{{ tree.basic_tree.mon_perod_lut[obj.dependency_period].name }}</td>
                              <td>{{ obj.efc_ok | yesno1 }}</td>
                              <td>{{ obj.efc_warn | yesno1 }}</td>
                              <td>{{ obj.efc_unknown | yesno1 }}</td>
@@ -233,22 +248,29 @@
                              <td>{{ obj.nfc_critical | yesno1 }}</td>
                              <td>{{ obj.nfc_pending | yesno1 }}</td>
                              <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
-                             <td><icsw-tools-button type="delete" size="xs" ng-click="delete(obj)"></icsw-tools-button></td>
+                             <td><icsw-tools-button type="delete" size="xs" ng-click="delete($event, obj)"></icsw-tools-button></td>
                          </tr>
                      </tbody>
                  </table>
-            </icsw-tools-rest-table>
+            </icsw-tools-rest-table-new>
         </uib-tab>
 
         <uib-tab heading="Host dependencies">
-            <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringHostDependencyService"
-                st-table="entries_displayed" st-safe-src="entries" icsw-tools-table-leak-filtered="entries_filtered">
-                <h2>Host dependencies ({{entries_filtered.length}} entries),
-                    <icsw-tools-button disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
-                                       style="display: inline-block" title="{{config_service.get_data_incomplete_error()}}"
-                                       ng-click="create($event)"></icsw-tools-button>
-                </h2>
-                <table class="table table-condensed table-hover" style="width:auto;">
+            <icsw-tools-rest-table-new target-list="entries" config-service="icswMonitoringHostDependencyService"
+                >
+                <h3>
+                    Host dependencies ({{ entries.length }} entries),
+                    <icsw-tools-button
+                        disabled="config_service.get_data_incomplete_error()"
+                        type="create"
+                        value="create new"
+                        size="xs"
+                        style="display: inline-block"
+                        title="{{ config_service.get_data_incomplete_error() }}"
+                        ng-click="create($event)"
+                    ></icsw-tools-button>
+                </h3>
+                <table st-table="entries_displayed" st-safe-src="entries" class="table table-condensed table-hover table-striped" style="width:auto;">
                     <thead>
                         <tr>
                             <td colspan="99">
@@ -278,23 +300,30 @@
                             </td>
                             <td>{{ obj.mon_host_cluster | array_lookup:config_service.mon_host_cluster:'name' }}</td>
                             <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
-                            <td><icsw-tools-button type="delete" size="xs" ng-click="delete(obj)"></icsw-tools-button></td>
+                            <td><icsw-tools-button type="delete" size="xs" ng-click="delete($event, obj)"></icsw-tools-button></td>
                         </tr>
                     </tbody>
                 </table>
-            </icsw-tools-rest-table>
+            </icsw-tools-rest-table-new>
         </uib-tab>
 
         <uib-tab heading="Service dependencies">
-            <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringServiceDependencyService"
-                st-table="entries_displayed" st-safe-src="entries" icsw-tools-table-leak-filtered="entries_filtered">
-                <h2>Service dependencies ({{entries_filtered.length}} entries),
-                    <icsw-tools-button disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
-                                       style="display: inline-block" title="{{config_service.get_data_incomplete_error()}}"
-                                       title="{{config_service.get_data_incomplete_error()}}"
-                                       ng-click="create($event)"></icsw-tools-button>
-                </h2>
-                <table class="table table-condensed table-hover" style="width:auto;">
+            <icsw-tools-rest-table-new target-list="entries" config-service="icswMonitoringServiceDependencyService"
+                >
+                <h3>
+                    Service dependencies ({{ entries.length }} entries),
+                    <icsw-tools-button
+                        disabled="config_service.get_data_incomplete_error()"
+                        type="create"
+                        value="create new"
+                        size="xs"
+                        style="display: inline-block"
+                        title="{{config_service.get_data_incomplete_error()}}"
+                        title="{{config_service.get_data_incomplete_error()}}"
+                        ng-click="create($event, null)"
+                    ></icsw-tools-button>
+                </h3>
+                <table st-table="entries_displayed" st-safe-src="entries" class="table table-condensed table-hover" style="width:auto;">
                     <thead>
                         <tr>
                             <td colspan="99">
@@ -326,368 +355,14 @@
                             <td>{{ obj.mon_service_dependency_templ | array_lookup:config_service.mon_service_dependency_templ:'name' }} </td>
                             <td>{{ obj.mon_service_cluster | array_lookup:config_service.mon_service_cluster:'name' }}</td>
                             <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
-                            <td><icsw-tools-button type="delete" size="xs" ng-click="delete(obj)"></icsw-tools-button></td>
+                            <td><icsw-tools-button type="delete" size="xs" ng-click="delete($event, obj)"></icsw-tools-button></td>
                         </tr>
                     </tbody>
                 </table>
-            </icsw-tools-rest-table>
+            </icsw-tools-rest-table-new>
         </uib-tab>
 
     </uib-tabset>
-</script>
-
-<script type="text/ng-template" id="mon.host.dependency.templ.form">
-    <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
-        <h2>Host dependency template</h2>
-        <fieldset>
-            <legend>Base data</legend>
-            <div id="div_id_name" class="form-group">
-                <label for="id_name" class="control-label col-sm-3 requiredField">
-                    Name<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text"></input></div>
-            </div>
-            <div id="div_id_dependency_period" class="form-group">
-                <label for="id_dependency_period" class="control-label col-sm-3 requiredField">
-                    Dependency period<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.dependency_period" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                        <ui-select-match class="ui-select-match" placeholder="please select a period">{{$select.selected.name}}
-                        </ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.mon_period | orderBy:'name'| props_filter:{name:$select.search}">
-                            <div ng-bind-html="value.name | highlight: $select.search"></div>
-                        </ui-select-choices>
-                    </ui-select>
-                </div>
-            </div>
-            <div id="div_id_priority" class="form-group">
-                <label for="id_priority" class="control-label col-sm-3 requiredField">
-                    Priority<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_priority" max="128" min="-128" name="priority" ng-model="edit_obj.priority" required="True" type="number" value="0"></input></div>
-            </div>
-            <div class="form-group">
-                <div id="div_id_inherits_parent" class="checkbox">
-                    <div class="controls col-lg-offset-0 col-sm-7"><label for="id_inherits_parent"><input class="checkboxinput checkbox" id="id_inherits_parent" name="inherits_parent" ng-model="edit_obj.inherits_parent" type="checkbox"></input>
-                        Inherits parent
-                    </label></div>
-                </div>
-            </div>
-        </fieldset>
-        <fieldset>
-            <legend>Execution failure criteria</legend>
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <div id="div_id_efc_up" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_efc_up"><input class="checkboxinput checkbox" id="id_efc_up" name="efc_up" ng-model="edit_obj.efc_up" type="checkbox"></input>
-                                Efc up
-                            </label></div>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <div id="div_id_efc_down" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_efc_down"><input checked="checked" class="checkboxinput checkbox" id="id_efc_down" name="efc_down" ng-model="edit_obj.efc_down" type="checkbox"></input>
-                                Efc down
-                            </label></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <div id="div_id_efc_unreachable" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_efc_unreachable"><input checked="checked" class="checkboxinput checkbox" id="id_efc_unreachable" name="efc_unreachable" ng-model="edit_obj.efc_unreachable" type="checkbox"></input>
-                                Efc unreachable
-                            </label></div>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <div id="div_id_efc_pending" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_efc_pending"><input class="checkboxinput checkbox" id="id_efc_pending" name="efc_pending" ng-model="edit_obj.efc_pending" type="checkbox"></input>
-                                Efc pending
-                            </label></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </fieldset>
-        <fieldset>
-            <legend>Notification failure criteria</legend>
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <div id="div_id_nfc_up" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nfc_up"><input class="checkboxinput checkbox" id="id_nfc_up" name="nfc_up" ng-model="edit_obj.nfc_up" type="checkbox"></input>
-                                Nfc up
-                            </label></div>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <div id="div_id_nfc_down" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nfc_down"><input checked="checked" class="checkboxinput checkbox" id="id_nfc_down" name="nfc_down" ng-model="edit_obj.nfc_down" type="checkbox"></input>
-                                Nfc down
-                            </label></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <div id="div_id_nfc_unreachable" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nfc_unreachable"><input checked="checked" class="checkboxinput checkbox" id="id_nfc_unreachable" name="nfc_unreachable" ng-model="edit_obj.nfc_unreachable" type="checkbox"></input>
-                                Nfc unreachable
-                            </label></div>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <div id="div_id_nfc_pending" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nfc_pending"><input class="checkboxinput checkbox" id="id_nfc_pending" name="nfc_pending" ng-model="edit_obj.nfc_pending" type="checkbox"></input>
-                                Nfc pending
-                            </label></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </fieldset>
-        <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="get_action_string()"></input></div>
-    </form>
-</script>
-
-<script type="text/ng-template" id="mon.service.dependency.form">
-    <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
-        <h2>Service dependency</h2>
-        <fieldset>
-            <legend>Basic settings</legend>
-            <div id="div_id_mon_service_dependency_templ" class="form-group">
-                <label for="id_mon_service_dependency_templ" class="control-label col-sm-3 requiredField">
-                    Mon service dependency templ<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.mon_service_dependency_templ" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                        <ui-select-match class="ui-select-match" placeholder="please select a service dependency template">
-                            {{$select.selected.name}}
-                        </ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.mon_service_dependency_templ | orderBy:'name'| props_filter:{name:$select.search}">
-                            <div ng-bind-html="value.name | highlight: $select.search"></div>
-                        </ui-select-choices>
-                    </ui-select>
-                </div>
-            </div>
-        </fieldset>
-        <fieldset>
-            <legend>Parent</legend>
-            <div id="div_id_devices" class="form-group">
-                <label for="id_devices" class="control-label col-sm-3">
-                    Devices
-                </label>
-
-                <div class="controls col-sm-7">
-                    <ui-select multiple="multiple" ng-model="edit_obj.devices" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                        <ui-select-match class="ui-select-match" placeholder="please select one or more devices">{{$item.name}}
-                        </ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.device | orderBy:'name'| props_filter:{name:$select.search}">
-                            <div ng-bind-html="value.name | highlight: $select.search"></div>
-                        </ui-select-choices>
-                    </ui-select>
-                </div>
-            </div>
-            <div id="div_id_mon_check_command" class="form-group">
-                <label for="id_mon_check_command" class="control-label col-sm-3 requiredField">
-                    Mon check command<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.mon_check_command" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                        <ui-select-match class="ui-select-match" placeholder="please select a check command">{{$select.selected.name}}
-                        </ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.mon_check_command | orderBy:'name'| props_filter:{name:$select.search}">
-                            <div ng-bind-html="value.name | highlight: $select.search"></div>
-                        </ui-select-choices>
-                    </ui-select>
-                </div>
-            </div>
-        </fieldset>
-        <fieldset>
-            <legend>Child</legend>
-            <div id="div_id_dependent_devices" class="form-group">
-                <label for="id_dependent_devices" class="control-label col-sm-3 requiredField">
-                    Dependent devices<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7">
-                    <ui-select multiple="multiple" ng-model="edit_obj.dependent_devices" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                        <ui-select-match class="ui-select-match" placeholder="please select one or more devices">{{$item.name}}
-                        </ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.device | orderBy:'name'| props_filter:{name:$select.search}">
-                            <div ng-bind-html="value.name | highlight: $select.search"></div>
-                        </ui-select-choices>
-                    </ui-select>
-                </div>
-            </div>
-            <div id="div_id_dependent_mon_check_command" class="form-group">
-                <label for="id_dependent_mon_check_command" class="control-label col-sm-3 requiredField">
-                    Dependent mon check command<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.dependent_mon_check_command" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                        <ui-select-match class="ui-select-match" placeholder="please select a check command">{{$select.selected.name}}
-                        </ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.mon_check_command | orderBy:'name'| props_filter:{name:$select.search}">
-                            <div ng-bind-html="value.name | highlight: $select.search"></div>
-                        </ui-select-choices>
-                    </ui-select>
-                </div>
-            </div>
-        </fieldset>
-        <fieldset>
-            <legend>Cluster</legend>
-            <div id="div_id_mon_service_cluster" class="form-group">
-                <label for="id_mon_service_cluster" class="control-label col-sm-3">
-                    Mon service cluster
-                </label>
-
-                <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.mon_service_cluster" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                        <ui-select-match class="ui-select-match" placeholder="please select a service cluster">{{$select.selected.name}}
-                        </ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.mon_service_cluster | orderBy:'name'| props_filter:{name:$select.search}">
-                            <div ng-bind-html="value.name | highlight: $select.search"></div>
-                        </ui-select-choices>
-                    </ui-select>
-                </div>
-            </div>
-        </fieldset>
-        <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="get_action_string()"></input></div>
-    </form>
-</script>
-
-<script type="text/ng-template" id="mon.service.dependency.templ.form">
-    <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
-        <h2>Service dependence template</h2>
-        <fieldset>
-            <legend>Base data</legend>
-            <div id="div_id_name" class="form-group">
-                <label for="id_name" class="control-label col-sm-3 requiredField">
-                    Name<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text"></input></div>
-            </div>
-            <div id="div_id_dependency_period" class="form-group">
-                <label for="id_dependency_period" class="control-label col-sm-3 requiredField">
-                    Dependency period<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.dependency_period" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                        <ui-select-match class="ui-select-match" placeholder="please select a period">{{$select.selected.name}}
-                        </ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.mon_period | orderBy:'name'| props_filter:{name:$select.search}">
-                            <div ng-bind-html="value.name | highlight: $select.search"></div>
-                        </ui-select-choices>
-                    </ui-select>
-                </div>
-            </div>
-            <div id="div_id_priority" class="form-group">
-                <label for="id_priority" class="control-label col-sm-3 requiredField">
-                    Priority<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_priority" max="128" min="-128" name="priority" ng-model="edit_obj.priority" required="True" type="number" value="0"></input></div>
-            </div>
-            <div class="form-group">
-                <div id="div_id_inherits_parent" class="checkbox">
-                    <div class="controls col-lg-offset-0 col-sm-7"><label for="id_inherits_parent"><input class="checkboxinput checkbox" id="id_inherits_parent" name="inherits_parent" ng-model="edit_obj.inherits_parent" type="checkbox"></input>
-                        Inherits parent
-                    </label></div>
-                </div>
-            </div>
-        </fieldset>
-        <fieldset>
-            <legend>Execution failure criteria</legend>
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <div id="div_id_efc_ok" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_efc_ok"><input class="checkboxinput checkbox" id="id_efc_ok" name="efc_ok" ng-model="edit_obj.efc_ok" type="checkbox"></input>
-                                Efc ok
-                            </label></div>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <div id="div_id_efc_warn" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_efc_warn"><input checked="checked" class="checkboxinput checkbox" id="id_efc_warn" name="efc_warn" ng-model="edit_obj.efc_warn" type="checkbox"></input>
-                                Efc warn
-                            </label></div>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <div id="div_id_efc_unknown" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_efc_unknown"><input checked="checked" class="checkboxinput checkbox" id="id_efc_unknown" name="efc_unknown" ng-model="edit_obj.efc_unknown" type="checkbox"></input>
-                                Efc unknown
-                            </label></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <div id="div_id_efc_critical" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_efc_critical"><input class="checkboxinput checkbox" id="id_efc_critical" name="efc_critical" ng-model="edit_obj.efc_critical" type="checkbox"></input>
-                                Efc critical
-                            </label></div>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <div id="div_id_efc_pending" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_efc_pending"><input class="checkboxinput checkbox" id="id_efc_pending" name="efc_pending" ng-model="edit_obj.efc_pending" type="checkbox"></input>
-                                Efc pending
-                            </label></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </fieldset>
-        <fieldset>
-            <legend>Notification failure criteria</legend>
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <div id="div_id_nfc_ok" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nfc_ok"><input class="checkboxinput checkbox" id="id_nfc_ok" name="nfc_ok" ng-model="edit_obj.nfc_ok" type="checkbox"></input>
-                                Nfc ok
-                            </label></div>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <div id="div_id_nfc_warn" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nfc_warn"><input checked="checked" class="checkboxinput checkbox" id="id_nfc_warn" name="nfc_warn" ng-model="edit_obj.nfc_warn" type="checkbox"></input>
-                                Nfc warn
-                            </label></div>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <div id="div_id_nfc_unknown" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nfc_unknown"><input checked="checked" class="checkboxinput checkbox" id="id_nfc_unknown" name="nfc_unknown" ng-model="edit_obj.nfc_unknown" type="checkbox"></input>
-                                Nfc unknown
-                            </label></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <div id="div_id_nfc_critical" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nfc_critical"><input class="checkboxinput checkbox" id="id_nfc_critical" name="nfc_critical" ng-model="edit_obj.nfc_critical" type="checkbox"></input>
-                                Nfc critical
-                            </label></div>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <div id="div_id_nfc_pending" class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nfc_pending"><input class="checkboxinput checkbox" id="id_nfc_pending" name="nfc_pending" ng-model="edit_obj.nfc_pending" type="checkbox"></input>
-                                Nfc pending
-                            </label></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </fieldset>
-        <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="get_action_string()"></input></div>
-    </form>
 </script>
 
 <script type="text/ng-template" id="icsw.mon.host.cluster.form">
@@ -719,13 +394,13 @@
                     Main device<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.main_device" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                    <ui-select ng-model="edit_obj.main_device" style="max-width:400px; min-width:240px;">
                         <ui-select-match class="ui-select-match" placeholder="please select a device">
                             {{ $select.selected.name }}
                         </ui-select-match>
                         <ui-select-choices
                             class="ui-select-choices"
-                            repeat="value.idx as value in device_tree.enabled_list | orderBy:'name'| props_filter:{name:$select.search}"
+                            repeat="value.idx as value in device_tree.enabled_nm_list | orderBy:'name'| props_filter:{name:$select.search}"
                             group-by="'device_group_name'"
                         >
                             <div ng-bind-html="value.name | highlight: $select.search"></div>
@@ -738,13 +413,13 @@
                     Devices<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
-                    <ui-select multiple="multiple" ng-model="edit_obj.devices" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                    <ui-select multiple="multiple" ng-model="edit_obj.devices" style="max-width:400px; min-width:240px;">
                         <ui-select-match class="ui-select-match" placeholder="please select one ore more devices">
                             {{ $item.name }}
                         </ui-select-match>
                         <ui-select-choices
                             class="ui-select-choices"
-                            repeat="value.idx as value in device_tree.enabled_list | orderBy:'name'| props_filter:{name:$select.search}"
+                            repeat="value.idx as value in device_tree.enabled_nm_list | orderBy:'name'| props_filter:{name:$select.search}"
                             group-by="'device_group_name'"
                         >
                             <div ng-bind-html="value.name | highlight: $select.search"></div>
@@ -760,7 +435,7 @@
                     Mon service templ<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.mon_service_templ" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                    <ui-select ng-model="edit_obj.mon_service_templ" style="max-width:400px; min-width:240px;">
                         <ui-select-match class="ui-select-match" placeholder="please select a service template">
                             {{ $select.selected.name }}
                         </ui-select-match>
@@ -828,7 +503,7 @@
                         </ui-select-match>
                         <ui-select-choices
                             class="ui-select-choices"
-                            repeat="value.idx as value in device_tree.enabled_list | orderBy:'name'| props_filter:{name:$select.search}"
+                            repeat="value.idx as value in device_tree.enabled_nm_list | orderBy:'name'| props_filter:{name:$select.search}"
                             group-by="'device_group_name'"
                         >
                             <div ng-bind-html="value.name | highlight: $select.search"></div>
@@ -847,7 +522,7 @@
                         </ui-select-match>
                         <ui-select-choices
                             class="ui-select-choices"
-                            repeat="value.idx as value in device_tree.enabled_list | orderBy:'name'| props_filter:{name:$select.search}"
+                            repeat="value.idx as value in device_tree.enabled_nm_list | orderBy:'name'| props_filter:{name:$select.search}"
                             group-by="'device_group_name'"
                         >
                             <div ng-bind-html="value.name | highlight: $select.search"></div>
@@ -911,3 +586,468 @@
     </form>
 </script>
 
+<script type="text/ng-template" id="icsw.mon.host.dependency.templ.form">
+    <form class="form-horizontal" name="form_data">
+        <h2>Host dependency template</h2>
+        <fieldset>
+            <legend>Base data</legend>
+            <div class="form-group row">
+                <label class="control-label col-sm-3 requiredField">
+                    Name<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text"/>
+                </div>
+            </div>
+            <div class="form-group row">
+                <label class="control-label col-sm-3 requiredField">
+                    Dependency period<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <ui-select ng-model="edit_obj.dependency_period" style="max-width:400px; min-width:240px;">
+                        <ui-select-match class="ui-select-match" placeholder="please select a period">
+                            {{ $select.selected.name }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in tree.basic_tree.mon_period_list | orderBy:'name'| props_filter:{name:$select.search}">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+            <div class="form-group row">
+                <label class="control-label col-sm-3 requiredField">
+                    Priority<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="numberinput form-control" max="128" min="-128" name="priority" ng-model="edit_obj.priority" required="True" type="number" value="0"/>
+                </div>
+            </div>
+            <div class="form-group row">
+                <label class="col-sm-7 control-label">
+                    Inherits parent
+                </label>
+                <div class="col-sm-3 controls">
+                    <icsw-tools-yes-no flag="edit_obj.inherits_parent"></icsw-tools-yes-no>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Execution failure criteria</legend>
+            <div class="row">
+                <div class="col-xs-6">
+                    <div class="form-group">
+                        <label class="col-sm-7 control-label">
+                            Efc up
+                        </label>
+                        <div class="col-sm-5 controls">
+                            <icsw-tools-yes-no flag="edit_obj.efc_up"></icsw-tools-yes-no>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-sm-7 control-label">
+                            Efc down
+                        </label>
+                        <div class="col-sm-5 controls">
+                            <icsw-tools-yes-no flag="edit_obj.efc_down"></icsw-tools-yes-no>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xs-6">
+                    <div class="row">
+                        <div class="form-group">
+                            <label class="col-sm-7 control-label">
+                                Efc unreachable
+                            </label>
+                            <div class="col-sm-5 controls">
+                                <icsw-tools-yes-no flag="edit_obj.efc_unreachable"></icsw-tools-yes-no>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="col-sm-7 control-label">
+                                Efc pending
+                            </label>
+                            <div class="col-sm-5 controls">
+                                <icsw-tools-yes-no flag="edit_obj.efc_pending"></icsw-tools-yes-no>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Notification failure criteria</legend>
+            <div class="row">
+                <div class="col-xs-6">
+                    <div class="form-group">
+                        <label class="col-sm-7 control-label">
+                            Nfc up
+                        </label>
+                        <div class="col-sm-3 controls">
+                            <icsw-tools-yes-no flag="edit_obj.nfc_up"></icsw-tools-yes-no>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-sm-7 control-label">
+                            Nfc down
+                        </label>
+                        <div class="col-sm-3 controls">
+                            <icsw-tools-yes-no flag="edit_obj.nfc_down"></icsw-tools-yes-no>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xs-6">
+                    <div class="form-group">
+                        <label class="col-sm-7 control-label">
+                            Nfc unreachable
+                        </label>
+                        <div class="col-sm-3 controls">
+                            <icsw-tools-yes-no flag="edit_obj.nfc_unreachable"></icsw-tools-yes-no>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-sm-7 control-label">
+                            Nfc pending
+                        </label>
+                        <div class="col-sm-3 controls">
+                            <icsw-tools-yes-no flag="edit_obj.nfc_pending"></icsw-tools-yes-no>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </fieldset>
+    </form>
+</script>
+
+<script type="text/ng-template" id="icsw.mon.service.dependency.templ.form">
+    <form class="form-horizontal" name="form_data">
+        <h2>Service dependence template</h2>
+        <fieldset>
+            <legend>Base data</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Name<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Dependency period<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <ui-select ng-model="edit_obj.dependency_period" style="max-width:400px; min-width:240px;">
+                        <ui-select-match class="ui-select-match" placeholder="please select a period">
+                            {{ $select.selected.name }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in tree.basic_tree.mon_period_list | orderBy:'name'| props_filter:{name:$select.search}">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Priority<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="numberinput form-control" max="128" min="-128" name="priority" ng-model="edit_obj.priority" required="True" type="number" value="0"/>
+                </div>
+            </div>
+            <div class="form-group row">
+                <label class="col-sm-7 control-label">
+                    Inherits parent
+                </label>
+                <div class="col-sm-3 controls">
+                    <icsw-tools-yes-no flag="edit_obj.inherits_parent"></icsw-tools-yes-no>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Execution failure criteria</legend>
+            <div class="row">
+                <div class="col-xs-6">
+                    <div class="form-group">
+                        <label class="col-sm-7 control-label">
+                            Efc OK
+                        </label>
+                        <div class="col-sm-5 controls">
+                            <icsw-tools-yes-no flag="edit_obj.efc_ok"></icsw-tools-yes-no>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-sm-7 control-label">
+                            Efc warn
+                        </label>
+                        <div class="col-sm-5 controls">
+                            <icsw-tools-yes-no flag="edit_obj.efc_warn"></icsw-tools-yes-no>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-sm-7 control-label">
+                            Efc unknown
+                        </label>
+                        <div class="col-sm-5 controls">
+                            <icsw-tools-yes-no flag="edit_obj.efc_unknown"></icsw-tools-yes-no>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xs-6">
+                    <div class="row">
+                        <div class="form-group">
+                            <label class="col-sm-7 control-label">
+                                Efc critical
+                            </label>
+                            <div class="col-sm-5 controls">
+                                <icsw-tools-yes-no flag="edit_obj.efc_critical"></icsw-tools-yes-no>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="col-sm-7 control-label">
+                                Efc pending
+                            </label>
+                            <div class="col-sm-5 controls">
+                                <icsw-tools-yes-no flag="edit_obj.efc_pending"></icsw-tools-yes-no>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Notification failure criteria</legend>
+            <div class="row">
+                <div class="col-xs-6">
+                    <div class="form-group">
+                        <label class="col-sm-7 control-label">
+                            Nfc OK
+                        </label>
+                        <div class="col-sm-5 controls">
+                            <icsw-tools-yes-no flag="edit_obj.nfc_ok"></icsw-tools-yes-no>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-sm-7 control-label">
+                            Nfc warn
+                        </label>
+                        <div class="col-sm-5 controls">
+                            <icsw-tools-yes-no flag="edit_obj.nfc_warn"></icsw-tools-yes-no>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-sm-7 control-label">
+                            Nfc unknown
+                        </label>
+                        <div class="col-sm-5 controls">
+                            <icsw-tools-yes-no flag="edit_obj.nfc_unknown"></icsw-tools-yes-no>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xs-6">
+                    <div class="form-group">
+                        <label class="col-sm-7 control-label">
+                            Nfc critical
+                        </label>
+                        <div class="col-sm-5 controls">
+                            <icsw-tools-yes-no flag="edit_obj.nfc_critical"></icsw-tools-yes-no>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-sm-7 control-label">
+                            Nfc pending
+                        </label>
+                        <div class="col-sm-5 controls">
+                            <icsw-tools-yes-no flag="edit_obj.nfc_pending"></icsw-tools-yes-no>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </fieldset>
+    </form>
+</script>
+
+<script type="text/ng-template" id="icsw.mon.host.dependency.form">
+    <form class="form-horizontal" name="form_data">
+        <h2>Host dependency</h2>
+        <fieldset>
+            <legend>Basic settings</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Mon host dependency templ<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <ui-select ng-model="edit_obj.mon_host_dependency_templ" style="max-width:400px; min-width:240px;">
+                        <ui-select-match class="ui-select-match" placeholder="please select a host dependency template">
+                            {{ $select.selected.name }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.mon_host_dependency_templ | orderBy:'name'| props_filter:{name:$select.search}">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Parent</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-3">
+                    Devices
+                </label>
+                <div class="controls col-sm-7">
+                    <ui-select multiple="multiple" ng-model="edit_obj.devices" style="max-width:400px; min-width:240px;">
+                        <ui-select-match class="ui-select-match" placeholder="please select one or more devices">
+                            {{ $item.name }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.device | orderBy:'name'| props_filter:{name:$select.search}">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Child</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Dependent devices<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <ui-select multiple="multiple" ng-model="edit_obj.dependent_devices" style="max-width:400px; min-width:240px;">
+                        <ui-select-match class="ui-select-match" placeholder="please select one or more devices">
+                            {{ $item.name }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.device | orderBy:'name'| props_filter:{name:$select.search}">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Cluster</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-3">
+                    Mon host cluster
+                </label>
+                <div class="controls col-sm-7">
+                    <ui-select ng-model="edit_obj.mon_host_cluster" style="max-width:400px; min-width:240px;">
+                        <ui-select-match class="ui-select-match" placeholder="please select a host cluster">
+                            {{ $select.selected.name }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.mon_host_cluster | orderBy:'name'| props_filter:{name:$select.search}">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+        </fieldset>
+    </form>
+</script>
+
+<script type="text/ng-template" id="icsw.mon.service.dependency.form">
+    <form class="form-horizontal" name="form_data">
+        <h2>Service dependency</h2>
+        <fieldset>
+            <legend>Basic settings</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Mon service dependency templ<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <ui-select ng-model="edit_obj.mon_service_dependency_templ" style="max-width:400px; min-width:240px;">
+                        <ui-select-match class="ui-select-match" placeholder="please select a service dependency template">
+                            {{ $select.selected.name }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in tree.mon_service_dependency_templ_list | orderBy:'name'| props_filter:{name:$select.search}">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Parent</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-3">
+                    Devices
+                </label>
+                <div class="controls col-sm-7">
+                    <ui-select multiple="multiple" ng-model="edit_obj.devices" style="max-width:400px; min-width:240px;">
+                        <ui-select-match class="ui-select-match" placeholder="please select one or more devices">
+                            {{ $item.name }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in device_tree.enabled_nm_list | orderBy:'name'| props_filter:{name:$select.search}">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Mon check command<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <ui-select ng-model="edit_obj.mon_check_command" style="max-width:400px; min-width:240px;">
+                        <ui-select-match class="ui-select-match" placeholder="please select a check command">
+                            {{ $select.selected.name }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in tree.basic_tree.mon_check_command_list | orderBy:'name'| props_filter:{name:$select.search}">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Child</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Dependent devices<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <ui-select multiple="multiple" ng-model="edit_obj.dependent_devices" style="max-width:400px; min-width:240px;">
+                        <ui-select-match class="ui-select-match" placeholder="please select one or more devices">
+                            {{ $item.name }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in device_tree.all_nm_enabled | orderBy:'name'| props_filter:{name:$select.search}">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Dependent mon check command<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <ui-select ng-model="edit_obj.dependent_mon_check_command" style="max-width:400px; min-width:240px;">
+                        <ui-select-match class="ui-select-match" placeholder="please select a check command">
+                            {{ $select.selected.name }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in tree.basic_tree.mon_check_command_list | orderBy:'name'| props_filter:{name:$select.search}">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Cluster</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-3">
+                    Mon service cluster
+                </label>
+                <div class="controls col-sm-7">
+                    <ui-select ng-model="edit_obj.mon_service_cluster" style="max-width:400px; min-width:240px;">
+                        <ui-select-match class="ui-select-match" placeholder="please select a service cluster">
+                            {{ $select.selected.name }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.mon_service_cluster | orderBy:'name'| props_filter:{name:$select.search}">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+        </fieldset>
+    </form>
+</script>
