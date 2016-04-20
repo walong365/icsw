@@ -39,7 +39,7 @@ monitoring_cluster_module = angular.module(
                 rights: ["mon_check_command.setup_monitoring"]
                 menuEntry:
                     menukey: "mon"
-                    name: "Escalatin setup"
+                    name: "Escalation setup"
                     icon: "fa-bolt"
                     ordering: 30
         }

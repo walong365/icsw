@@ -516,6 +516,8 @@ monitoring_basic_module = angular.module(
 
     return {
         get_data_incomplete_error: (tree, table) ->
+            # FIXME, just for testing
+            return ""
             if not tree?
                 return "missing tree"
             if not table of tree.missing_info

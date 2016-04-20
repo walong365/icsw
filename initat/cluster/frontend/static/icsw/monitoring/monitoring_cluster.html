@@ -3,14 +3,20 @@
     <uib-tabset ng-cloak>
 
         <uib-tab heading="Host Clusters">
-            <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringHostClusterService"
-                st-table="entries_displayed" st-safe-src="entries" icsw-tools-table-leak-filtered="entries_filtered">
-                <h2>Host Cluster ({{entries_filtered.length}} entries),
-                    <icsw-tools-button disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
-                                       style="display: inline-block" title="{{config_service.get_data_incomplete_error()}}"
-                                       ng-click="create($event)"></icsw-tools-button>
-                </h2>
-                <table class="table table-condensed table-hover" style="width:auto;">
+            <icsw-tools-rest-table-new target-list="entries" config-service="icswMonitoringHostClusterService">
+                <h3>
+                    Host Cluster ({{ entries.length }} entries),
+                    <icsw-tools-button
+                        disabled="config_service.get_data_incomplete_error()"
+                        type="create"
+                        value="create new"
+                        size="xs"
+                        style="display: inline-block"
+                        itle="{{ config_service.get_data_incomplete_error() }}"
+                        ng-click="create($event, null)">
+                    </icsw-tools-button>
+                </h3>
+                <table st-table="entries_displayed" st-safe-src="entries" class="table table-condensed table-hover table-striped" style="width:auto;">
                     <thead>
                         <tr>
                             <td colspan="99">
@@ -50,18 +56,24 @@
                         </tr>
                     </tbody>
                 </table>
-                </icsw-tools-rest-table>
+                </icsw-tools-rest-table-new>
         </uib-tab>
 
         <uib-tab heading="Service Clusters">
-             <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringServiceClusterService"
-                 st-table="entries_displayed" st-safe-src="entries" icsw-tools-table-leak-filtered="entries_filtered">
-                 <h2>Service Cluster ({{entries_filtered.length}} entries),
-                     <icsw-tools-button disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
-                                        style="display: inline-block" title="{{config_service.get_data_incomplete_error()}}"
-                                        ng-click="create($event)"></icsw-tools-button>
-                 </h2>
-                 <table class="table table-condensed table-hover" style="width:auto;">
+             <icsw-tools-rest-table-new target-list="entries" config-service="icswMonitoringServiceClusterService">
+                 <h3>
+                     Service Cluster ({{ entries_filtered.length }} entries),
+                     <icsw-tools-button
+                         disabled="config_service.get_data_incomplete_error()"
+                         type="create"
+                         value="create new"
+                         size="xs"
+                         style="display: inline-block"
+                         title="{{ config_service.get_data_incomplete_error() }}"
+                         ng-click="create($event, null)"
+                     ></icsw-tools-button>
+                 </h3>
+                 <table st-table="entries_displayed" st-safe-src="entries" class="table table-condensed table-hover table-striped" style="width:auto;">
                      <thead>
                          <tr>
                              <td colspan="99">
@@ -103,7 +115,7 @@
                          </tr>
                      </tbody>
                  </table>
-             </icsw-tools-rest-table>
+             </icsw-tools-rest-table-new>
         </uib-tab>
 
         <uib-tab heading="Host dependency templates">
@@ -678,49 +690,63 @@
     </form>
 </script>
 
-<script type="text/ng-template" id="mon.host.cluster.form">
-    <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
+<script type="text/ng-template" id="icsw.mon.host.cluster.form">
+    <form class="form-horizontal" name="form_data">
         <h2>Host Cluster</h2>
         <fieldset>
             <legend>Base data</legend>
-            <div id="div_id_name" class="form-group">
-                <label for="id_name" class="control-label col-sm-3 requiredField">
-                    Name<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="128" name="name" ng-model="edit_obj.name" required="True" type="text"></input></div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Name<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="128" name="name" ng-model="edit_obj.name" required="True" type="text"/>
+                </div>
             </div>
-            <div id="div_id_description" class="form-group">
-                <label for="id_description" class="control-label col-sm-3 requiredField">
-                    Description<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_description" maxlength="255" name="description" ng-model="edit_obj.description" required="True" type="text"></input></div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Description<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="255" name="description" ng-model="edit_obj.description" required="True" type="text"/>
+                </div>
             </div>
         </fieldset>
         <fieldset>
             <legend>Devices</legend>
-            <div id="div_id_main_device" class="form-group">
-                <label for="id_main_device" class="control-label col-sm-3 requiredField">
-                    Main device<span class="asteriskField">*</span></label>
-
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Main device<span class="asteriskField">*</span>
+                </label>
                 <div class="controls col-sm-7">
                     <ui-select ng-model="edit_obj.main_device" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                        <ui-select-match class="ui-select-match" placeholder="please select a device">{{$select.selected.name}}
+                        <ui-select-match class="ui-select-match" placeholder="please select a device">
+                            {{ $select.selected.name }}
                         </ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.device | orderBy:'name'| props_filter:{name:$select.search}">
+                        <ui-select-choices
+                            class="ui-select-choices"
+                            repeat="value.idx as value in device_tree.enabled_list | orderBy:'name'| props_filter:{name:$select.search}"
+                            group-by="'device_group_name'"
+                        >
                             <div ng-bind-html="value.name | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
                 </div>
             </div>
-            <div id="div_id_devices" class="form-group">
-                <label for="id_devices" class="control-label col-sm-3 requiredField">
-                    Devices<span class="asteriskField">*</span></label>
-
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Devices<span class="asteriskField">*</span>
+                </label>
                 <div class="controls col-sm-7">
                     <ui-select multiple="multiple" ng-model="edit_obj.devices" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                        <ui-select-match class="ui-select-match" placeholder="please select one ore more devices">{{$item.name}}
+                        <ui-select-match class="ui-select-match" placeholder="please select one ore more devices">
+                            {{ $item.name }}
                         </ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.device | orderBy:'name'| props_filter:{name:$select.search}">
+                        <ui-select-choices
+                            class="ui-select-choices"
+                            repeat="value.idx as value in device_tree.enabled_list | orderBy:'name'| props_filter:{name:$select.search}"
+                            group-by="'device_group_name'"
+                        >
                             <div ng-bind-html="value.name | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
@@ -729,80 +755,101 @@
         </fieldset>
         <fieldset>
             <legend>Service</legend>
-            <div id="div_id_mon_service_templ" class="form-group">
-                <label for="id_mon_service_templ" class="control-label col-sm-3 requiredField">
-                    Mon service templ<span class="asteriskField">*</span></label>
-
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Mon service templ<span class="asteriskField">*</span>
+                </label>
                 <div class="controls col-sm-7">
                     <ui-select ng-model="edit_obj.mon_service_templ" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                        <ui-select-match class="ui-select-match" placeholder="please select a service template">{{$select.selected.name}}
+                        <ui-select-match class="ui-select-match" placeholder="please select a service template">
+                            {{ $select.selected.name }}
                         </ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.mon_service_templ | orderBy:'name'| props_filter:{name:$select.search}">
+                        <ui-select-choices
+                            class="ui-select-choices"
+                            repeat="value.idx as value in tree.basic_tree.mon_service_templ_list | orderBy:'name'| props_filter:{name:$select.search}"
+                        >
                             <div ng-bind-html="value.name | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
                 </div>
             </div>
-            <div id="div_id_warn_value" class="form-group">
-                <label for="id_warn_value" class="control-label col-sm-3 requiredField">
-                    Warn value<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_warn_value" max="128" min="0" name="warn_value" ng-model="edit_obj.warn_value" required="True" type="number" value="0"></input></div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Warn value<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="numberinput form-control" max="128" min="0" name="warn_value" ng-model="edit_obj.warn_value" required="True" type="number" value="0"/>
+                </div>
             </div>
-            <div id="div_id_error_value" class="form-group">
-                <label for="id_error_value" class="control-label col-sm-3 requiredField">
-                    Error value<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_error_value" max="128" min="0" name="error_value" ng-model="edit_obj.error_value" required="True" type="number" value="1"></input></div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Error value<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="numberinput form-control" max="128" min="0" name="error_value" ng-model="edit_obj.error_value" required="True" type="number" value="1"/>
+                </div>
             </div>
         </fieldset>
-        <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="get_action_string()"></input></div>
     </form>
 </script>
 
-<script type="text/ng-template" id="mon.service.cluster.form">
-    <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
+<script type="text/ng-template" id="icsw.mon.service.cluster.form">
+    <form class="form-horizontal" name="form_data">
         <h2>Service Cluster</h2>
         <fieldset>
             <legend>Base data</legend>
-            <div id="div_id_name" class="form-group">
-                <label for="id_name" class="control-label col-sm-3 requiredField">
-                    Name<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="128" name="name" ng-model="edit_obj.name" required="True" type="text"></input></div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Name<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="128" name="name" ng-model="edit_obj.name" required="True" type="text"/>
+                </div>
             </div>
-            <div id="div_id_description" class="form-group">
-                <label for="id_description" class="control-label col-sm-3 requiredField">
-                    Description<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_description" maxlength="255" name="description" ng-model="edit_obj.description" required="True" type="text"></input></div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Description<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="255" name="description" ng-model="edit_obj.description" required="True" type="text"/>
+                </div>
             </div>
         </fieldset>
         <fieldset>
             <legend>Devices</legend>
-            <div id="div_id_main_device" class="form-group">
-                <label for="id_main_device" class="control-label col-sm-3 requiredField">
-                    Main device<span class="asteriskField">*</span></label>
-
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Main device<span class="asteriskField">*</span>
+                </label>
                 <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.main_device" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                        <ui-select-match class="ui-select-match" placeholder="please select a device">{{$select.selected.name}}
+                    <ui-select ng-model="edit_obj.main_device" style="max-width:400px; min-width:240px;">
+                        <ui-select-match class="ui-select-match" placeholder="please select a device">
+                            {{ $select.selected.name }}
                         </ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.device | orderBy:'name'| props_filter:{name:$select.search}">
+                        <ui-select-choices
+                            class="ui-select-choices"
+                            repeat="value.idx as value in device_tree.enabled_list | orderBy:'name'| props_filter:{name:$select.search}"
+                            group-by="'device_group_name'"
+                        >
                             <div ng-bind-html="value.name | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
                 </div>
             </div>
-            <div id="div_id_devices" class="form-group">
-                <label for="id_devices" class="control-label col-sm-3 requiredField">
-                    Devices<span class="asteriskField">*</span></label>
-
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Devices<span class="asteriskField">*</span>
+                </label>
                 <div class="controls col-sm-7">
-                    <ui-select multiple="multiple" ng-model="edit_obj.devices" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                        <ui-select-match class="ui-select-match" placeholder="please select one ore more devices">{{$item.name}}
+                    <ui-select multiple="multiple" ng-model="edit_obj.devices" style="max-width:400px; min-width:240px;">
+                        <ui-select-match class="ui-select-match" placeholder="please select one ore more devices">
+                            {{ $item.name }}
                         </ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.device | orderBy:'name'| props_filter:{name:$select.search}">
+                        <ui-select-choices
+                            class="ui-select-choices"
+                            repeat="value.idx as value in device_tree.enabled_list | orderBy:'name'| props_filter:{name:$select.search}"
+                            group-by="'device_group_name'"
+                        >
                             <div ng-bind-html="value.name | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
@@ -811,48 +858,56 @@
         </fieldset>
         <fieldset>
             <legend>Service</legend>
-            <div id="div_id_mon_service_templ" class="form-group">
-                <label for="id_mon_service_templ" class="control-label col-sm-3 requiredField">
-                    Mon service templ<span class="asteriskField">*</span></label>
-
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Mon service templ<span class="asteriskField">*</span>
+                </label>
                 <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.mon_service_templ" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                        <ui-select-match class="ui-select-match" placeholder="please select a service template">{{$select.selected.name}}
+                    <ui-select ng-model="edit_obj.mon_service_templ" style="max-width:400px; min-width:240px;">
+                        <ui-select-match class="ui-select-match" placeholder="please select a service template">
+                            {{ $select.selected.name }}
                         </ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.mon_service_templ | orderBy:'name'| props_filter:{name:$select.search}">
+                        <ui-select-choices
+                            class="ui-select-choices"
+                            repeat="value.idx as value in tree.basic_tree.mon_service_templ_list | orderBy:'name'| props_filter:{name:$select.search}"
+                        >
                             <div ng-bind-html="value.name | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
                 </div>
             </div>
-            <div id="div_id_mon_check_command" class="form-group">
-                <label for="id_mon_check_command" class="control-label col-sm-3 requiredField">
-                    Mon check command<span class="asteriskField">*</span></label>
-
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Mon check command<span class="asteriskField">*</span>
+                </label>
                 <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.mon_check_command" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                        <ui-select-match class="ui-select-match" placeholder="please select a check command">{{$select.selected.name}}
+                    <ui-select ng-model="edit_obj.mon_check_command" style="max-width:400px; min-width:240px;">
+                        <ui-select-match class="ui-select-match" placeholder="please select a check command">
+                            {{ $select.selected.name }}
                         </ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.mon_check_command | orderBy:'name'| props_filter:{name:$select.search}">
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in tree.basic_tree.mon_check_command_list | orderBy:'name'| props_filter:{name:$select.search}">
                             <div ng-bind-html="value.name | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
                 </div>
             </div>
-            <div id="div_id_warn_value" class="form-group">
-                <label for="id_warn_value" class="control-label col-sm-3 requiredField">
-                    Warn value<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_warn_value" max="128" min="0" name="warn_value" ng-model="edit_obj.warn_value" required="True" type="number" value="0"></input></div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Warn value<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="numberinput form-control" max="128" min="0" name="warn_value" ng-model="edit_obj.warn_value" required="True" type="number" value="0"/>
+                </div>
             </div>
-            <div id="div_id_error_value" class="form-group">
-                <label for="id_error_value" class="control-label col-sm-3 requiredField">
-                    Error value<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_error_value" max="128" min="0" name="error_value" ng-model="edit_obj.error_value" required="True" type="number" value="1"></input></div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Error value<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="numberinput form-control" max="128" min="0" name="error_value" ng-model="edit_obj.error_value" required="True" type="number" value="1"/>
+                </div>
             </div>
         </fieldset>
-        <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="get_action_string()"></input></div>
     </form>
 </script>
 
