@@ -21,6 +21,47 @@
 from django.db import models
 from enum import IntEnum
 import uuid
+import json
+
+class Package:
+    def __init__(self, name, version = None, size = None, install_date = None):
+        self.name = name
+        self.version = version
+        self.size = size
+        self.install_date = install_date
+
+    def __repr__(self):
+        s = "Name: %s" % self.name
+        if self.version:
+            s += " Version: %s" % self.version
+        if self.size:
+            s += " Size: %s" % self.size
+        if self.install_date:
+            s += " InstallDate: %s" % self.install_date
+
+        return s
+
+def get_packages_from_blob(blob):
+    packages = []
+    if str(blob[:3]) == "w32":
+        l = json.loads(blob[:3])
+        for (name, version, size, date) in l:
+            packages.append(Package(name, version=version, size=size, install_date=date))
+
+    return packages
+
+class Hardware:
+    pass
+
+class License:
+    pass
+
+class Update:
+    pass
+
+class Software_Version:
+    pass
+
 
 class AssetType(IntEnum):
     PACKAGE = 1
@@ -28,6 +69,7 @@ class AssetType(IntEnum):
     LICENSE = 3
     UPDATE = 4
     SOFTWARE_VERSION = 5
+
 
 class Asset(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -39,6 +81,23 @@ class Asset(models.Model):
     name = models.UUIDField(default=uuid.uuid4)
 
     asset_run = models.ForeignKey("AssetRun")
+
+    def getAssetInstance(self):
+        if self.type == AssetType.PACKAGE:
+            return get_packages_from_blob(self.value)
+        elif self.type == AssetType.HARDWARE:
+            # todo interpret value blob
+            return Hardware()
+        elif self.type == AssetType.LICENSE:
+            # todo interpret value blob
+            return License()
+        elif self.type == AssetType.UPDATE:
+            # todo interpret value blob
+            return Update()
+        elif self.type == AssetType.SOFTWARE_VERSION:
+            # todo interpret value blob
+            return Software_Version()
+
 
 class RunStatus(IntEnum):
     PLANNED = 1
@@ -64,5 +123,3 @@ class AssetRun(models.Model):
 
 class AssetBatch(models.Model):
     idx = models.AutoField(primary_key=True)
-
-
