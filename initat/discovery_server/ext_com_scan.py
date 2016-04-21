@@ -381,14 +381,15 @@ LIST_SOFTWARE_CMD = "list-software-py3"
 LIST_KEYS_CMD = "list-keys-py3"
 LIST_METRICS_CMD = "list-metrics-py3"
 LIST_PROCESSES_CMD = "list-processes-py3"
+LIST_UPDATES_CMD = "list-updates-alt-py3"
+LIST_PENDING_UPDATES_CMD = "list-pending-updates-py3"
 
-VALID_COMMANDS = [LIST_SOFTWARE_CMD, LIST_KEYS_CMD, LIST_METRICS_CMD, LIST_PROCESSES_CMD]
+VALID_COMMANDS = [LIST_SOFTWARE_CMD, LIST_KEYS_CMD, LIST_METRICS_CMD, LIST_PROCESSES_CMD, LIST_UPDATES_CMD, LIST_PENDING_UPDATES_CMD]
 
 class NRPECommandInterpreter:
     def __init__(self, _command, _output):
         self.output = _output
         self.command = _command
-        print _command
 
     def interpret(self):
         if self.command == LIST_SOFTWARE_CMD:
@@ -399,6 +400,8 @@ class NRPECommandInterpreter:
                 print size
                 print date
                 print
+        else:
+            print self.output
 
 class NRPEScanBatch(ScanBatch):
     SCAN_TYPE = 'NRPE'
@@ -419,7 +422,7 @@ class NRPEScanBatch(ScanBatch):
             self.start_result = ResultNode(ok="started NRPE_scan")
 
     def _build_command(self):
-        _com = "/opt/cluster/sbin/check_nrpe -H {} -n -c {} -t20".format(self.device.target_ip, self._command)
+        _com = "/opt/cluster/sbin/check_nrpe -H {} -n -c {} -t120".format(self.device.target_ip, self._command)
         print _com
         return _com
 
