@@ -531,12 +531,13 @@ angular.module(
                     $timeout(
                         () ->
                             _map = scope.map
-                            _map.control.refresh(
-                                {
-                                    latitude: _map.center.latitude
-                                    longitude: _map.center.longitude
-                                }
-                            )
+                            if _map.control? and _map.control.refresh?
+                                _map.control.refresh(
+                                    {
+                                        latitude: _map.center.latitude
+                                        longitude: _map.center.longitude
+                                    }
+                                )
                         100
                     )
             $rootScope.$on(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), (event) ->

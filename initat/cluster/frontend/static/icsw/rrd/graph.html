@@ -30,7 +30,7 @@
             </div>
         </div>
     </h4>
-    <div class="row">
+    <div class="row" ng-if="struct.vector_valid">
         <div class="col-md-3" ng-show="struct.show_tree">
             <div class="input-group">
                 <input type="text" class="form-control" ng-disabled="struct.error_string.length" ng-model="struct.searchstr" placeholder="search ..." ng-change="update_search()"/>

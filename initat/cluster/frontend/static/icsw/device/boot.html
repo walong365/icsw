@@ -629,3 +629,24 @@
     </form>
 </script>
 
+
+<script type="text/ng-template" id="boot.form">
+    <form id="form" class="form-horizontal" method="post" name="form">
+        <h2>Connection {{ get_cd_info() }}</h2>
+        <fieldset>
+            <legend>Settings</legend>
+            <div id="div_id_image" class="form-group">
+                <label for="id_image" class="control-label col-sm-4">
+                    Image
+                </label>
+
+                <div class="controls col-sm-7">
+                    <select multiple="multiple" class="selectmultiple form-control" id="id_image" name="image"></select>
+
+                    <p id="hint_id_image" class="help-block"> Hold down "Control", or "Command" on a Mac, to select more than one.</p>
+                </div>
+            </div>
+        </fieldset>
+        <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="action_string"></input></div>
+    </form>
+</script>

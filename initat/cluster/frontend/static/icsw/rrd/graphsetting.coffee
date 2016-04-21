@@ -38,21 +38,20 @@ angular.module(
             @sensor_action_list = []
             @update(size_list, timeshift_list, forecast_list, timeframe_list, sensor_action_list)
             @legend_mode_list = [
-                {"short": "f", "long": "full"}
-                {"short": "t", "long": "only text"}
-                {"short": "n", "long": "nothing"}
+                {short: "f", long: "full"}
+                {short: "t", long: "only text"}
+                {short: "n", long: "nothing"}
             ]
             @scale_mode_list = [
-                {"short": "l", "long": "level"}
-                {"short": "n", "long": "none"}
-                {"short": "t", "long": "to100"}
+                {short: "l", long: "level"}
+                {short: "n", long: "none"}
+                {short: "t", long: "to100"}
             ]
             @cf_list = [
-                {"short": "MIN", long: "minimum"}
-                {"short": "AVERAGE", long: "average"}
-                {"short": "MAX", long: "maximum"}
+                {short: "MIN", long: "minimum"}
+                {short: "AVERAGE", long: "average"}
+                {short: "MAX", long: "maximum"}
             ]
-
         update: (size_list, timeshift_list, forecast_list, timeframe_list, sensor_action_list) =>
             for [attr_name, in_list] in [["size_list", size_list], ["timeshift_list", timeshift_list],
             ["forecast_list", forecast_list], ["timeframe_list", timeframe_list],
@@ -204,7 +203,7 @@ angular.module(
                     _mv_lut[entry.mv_value_entry] = []
                 _mv_lut[entry.mv_value_entry].push(entry)
             @threshold_lut_by_mvv_id = _mv_lut
-            console.log _mv_lut
+            console.log "mv_lut=", _mv_lut
 
         get_active: () =>
             return @_active
@@ -454,25 +453,81 @@ angular.module(
             else
                 scope.show_detail = false
             moment().utc()
+
+            _mom_to_date = () ->
+                scope.val.from_date = scope.val.from_date_mom.toDate()
+                scope.val.to_date = scope.val.to_date_mom.toDate()
+
             scope.timeframes = []
             scope.val =
                 current: undefined
-                from_data_mom: undefined
+                from_date_mom: undefined
                 to_date_mom: undefined
                 valid: false
-            scope.date_options = {
-                format: "dd.MM.yyyy"
-                formatYear: "yyyy"
-                maxDate: new Date()
-                minDate: new Date(2000, 1, 1)
-                startingDay: 1
-                minMode: "day"
-                datepickerMode: "day"
-                $$opened: false
-            }
-            scope.open_popup = () ->
-                scope.date_options.$$opened = true
 
+            scope.button_bar = {
+                show: true
+                now: {
+                    show: true
+                    text: 'Now'
+                },
+                today: {
+                    show: true
+                    text: 'Today'
+                },
+                clear: {
+                    show: false
+                    text: 'Clear'
+                },
+                date: {
+                    show: true
+                    text: 'Date'
+                },
+                time: {
+                    show: true
+                    text: 'Time'
+                },
+                close: {
+                    show: true
+                    text: 'Close'
+                }
+            }
+            # from / to picker options
+            scope.from_picker = {
+                date_options: {
+                    format: "dd.MM.yyyy"
+                    formatYear: "yyyy"
+                    maxDate: new Date()
+                    minDate: new Date(2000, 1, 1)
+                    startingDay: 1
+                    minMode: "day"
+                    datepickerMode: "day"
+                }
+                time_options: {
+                    showMeridian: false
+                }
+                open: false
+            }
+
+            scope.to_picker = {
+                date_options: {
+                    format: "dd.MM.yyyy"
+                    formatYear: "yyyy"
+                    minDate: new Date(2000, 1, 1)
+                    startingDay: 1
+                    minMode: "day"
+                    datepickerMode: "day"
+                }
+                time_options: {
+                    showMeridian: false
+                }
+                open: false
+            }
+
+            scope.open_calendar = ($event, picker) ->
+                scope[picker].open = true
+
+            # set timeframe from parent scope
             scope.timeframe = scope.val
             icswRRDGraphBaseSettingService.load(scope.$id).then(
                 (base) ->
@@ -481,7 +536,7 @@ angular.module(
                     scope.change_tf()
                     scope.$watch(
                         () ->
-                            return scope.val.from_date_mom
+                            return scope.val.from_date
                         (new_val) ->
                             if scope.change_dt_to
                                 $timeout.cancel(scope.change_dt_to)
@@ -489,7 +544,7 @@ angular.module(
                     )
                     scope.$watch(
                         () ->
-                            return scope.val.to_date_mom
+                            return scope.val.to_date
                         (new_val) ->
                             if scope.change_dt_to
                                 $timeout.cancel(scope.change_dt_to)
@@ -501,31 +556,37 @@ angular.module(
                 _timeframe = moment.duration(scope.val.to_date_mom.unix() - scope.val.from_date_mom.unix(), "seconds")
                 scope.val.from_date_mom = moment().subtract(_timeframe)
                 scope.val.to_date_mom = moment()
+                _mom_to_date()
+
             scope.set_to_now = () ->
                 # set to_date to now
                 scope.val.to_date_mom = moment()
+                _mom_to_date()
+
             scope.update_dt = () ->
                 # force moment
-                from_date = moment(scope.val.from_date_mom)
-                to_date = moment(scope.val.to_date_mom)
+                from_date = moment(scope.val.from_date)
+                to_date = moment(scope.val.to_date)
                 scope.val.valid = from_date.isValid() and to_date.isValid()
+                [scope.val.from_date_mom, scope.val.to_date_mom] = [from_date, to_date]
                 if scope.val.valid
                     diff = to_date - from_date
                     if diff < 0
                         toaster.pop("warning", "", "exchanged from with to date")
-                        scope.val.to_date_mom = from_date
-                        scope.val.from_date_mom = to_date
+                        [scope.val.from_date, scope.val.to_date] = [scope.val.to_date, scope.val.from_date]
+                        [scope.val.from_date_mom, scope.val.to_date_mom] = [scope.val.to_date_mom, scope.val.from_date_mom]
                     else if diff < 60000
                         scope.val.valid = false
+
             scope.change_tf = () ->
                 get_time_string = (short) ->
                     return {
-                        "h": "hour"
-                        "d": "day"
-                        "w": "week"
-                        "m": "month"
-                        "y": "year"
-                        "D": "year"
+                        h: "hour"
+                        d: "day"
+                        w: "week"
+                        m: "month"
+                        y: "year"
+                        D: "year"
                     }[short]
                 _tf = scope.val.current
                 _now = moment()
@@ -546,5 +607,6 @@ angular.module(
                             _start = _start.subtract(-_tf.timeframe_offset, tfs)
                     scope.val.from_date_mom = _start
                     scope.val.to_date_mom = moment(_start).add(_tf.seconds, "seconds")
+                _mom_to_date()
     }
 ])

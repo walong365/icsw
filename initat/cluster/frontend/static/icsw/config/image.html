@@ -21,13 +21,12 @@
         class="table table-hover table-condensed table-striped"
         style="width:auto;"
     >
-            <thead icsw-image-head></thead>
-            <tbody>
-                <tr icsw-image-row ng-repeat="obj in entries_displayed" ng-class="{warning: obj.build_lock}"></tr>
-            </tbody>
-        </table>
-        <icsw-image-new-images></icsw-image-new-images>
-    </icsw-tools-rest-table>
+        <thead icsw-image-head></thead>
+        <tbody>
+            <tr icsw-image-row ng-repeat="obj in entries_displayed" ng-class="{warning: obj.build_lock}"></tr>
+        </tbody>
+    </table>
+    <icsw-image-new-images></icsw-image-new-images>
 </script>
 
 <script type="text/ng-template" id="icsw.image.head">

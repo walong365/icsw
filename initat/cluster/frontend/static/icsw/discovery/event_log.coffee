@@ -76,6 +76,7 @@ angular.module(
         _schedule_reload_timeout_promise = $timeout(init_reload, 350)
 
     $scope.$watch('tab_query_parameters', $scope.query_parameter_changed, true)
+    $scope.$watch('struct.timeframe', $scope.query_parameter_changed, true)
 
     $scope.struct = {
         # loading
@@ -102,6 +103,8 @@ angular.module(
         entries: []
         entries_is_loading: false
         entries_reload_observable: 0
+        # timeframe from rrd-graph-timeframe
+        timeframe: undefined
     }
 
     $scope.new_devsel = (sel) ->
@@ -216,6 +219,9 @@ angular.module(
     xhr = {}
     # actually contact server
     $scope.get_event_log_promise = (device_pk, skip, limit, query_parameters) ->
+        # copy from / to 
+        query_parameters.from_date = $scope.struct.timeframe.from_date
+        query_parameters.to_date = $scope.struct.timeframe.to_date
         query_parameters = angular.copy(query_parameters)
         for key in Object.keys(query_parameters)
             if query_parameters[key] == ""

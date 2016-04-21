@@ -270,14 +270,16 @@ angular.module(
                 num_mve_sel: 0
             }
             icswSimpleAjaxCall(
-                url  : ICSW_URLS.RRD_DEVICE_RRDS
-                data : {
-                    "pks" : (dev.idx for dev in $scope.struct.devices)
+                url: ICSW_URLS.RRD_DEVICE_RRDS
+                data: {
+                    pks: (dev.idx for dev in $scope.struct.devices)
                 }
                 dataType: "json"
             ).then(
                 (json) ->
                     $scope.feed_rrd_json(json)
+                (error) ->
+                    $scope.struct.error_string = "Error loading tree"
             )
 
         $scope.set_job_mode = (new_jm) ->

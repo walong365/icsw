@@ -11,13 +11,8 @@
     </h2>
     <div class="form-inline">
         <input class="form-control" ng-model="name_filter" placeholder="filter"/>,
-        <input
-            type="button"
-            ng-class="only_selected && 'btn btn-sm btn-success' || 'btn btn-sm'"
-            ng-click="toggle_only_selected()"
-            value="only selected"
-            title="show only configs selected anywhere in the current selection"
-        />
+        <icsw-tools-button type="show" is-show="struct.only_selected" show-value="only selected" hide-value="all" ng-click="toggle_only_selected()"></icsw-tools-button>
+        <icsw-tools-button type="show" is-show="struct.with_system" show-value="with system" hide-value="without system" ng-click="toggle_with_system()"></icsw-tools-button>
         <div class="form-group" ng-show="acl_create(null, 'backbone.config.modify_config') && helper.config_tree.catalog_list.length > 0">
             <input placeholder="new config" ng-model="new_config_name" class="form-control input-sm"/>
             <div class="btn-group" ng-show="new_config_name">
@@ -48,7 +43,7 @@
                         <th>Type</th>
                         <td>local</td>
                         <td>meta</td>
-                        <th ng-repeat="conf in active_configs">
+                        <th ng-repeat="conf in helper.active_configs">
                              <span class="badge">{{ conf.config_type_str }}</span>
                         </th>
                     </tr>
