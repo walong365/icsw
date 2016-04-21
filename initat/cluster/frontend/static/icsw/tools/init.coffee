@@ -1023,16 +1023,6 @@ dimple_module = angular.module(
 angular.module(
     "init.csw.filters", []
 ).filter(
-    "follow_fk", () ->
-        return (in_value, scope, fk_model, fk_key, null_msg) ->
-            if in_value != null
-                if scope[fk_model] and scope[fk_model][in_value]
-                    return scope[fk_model][in_value][fk_key]
-                else
-                    return null_msg
-            else
-                return null_msg
-).filter(
     "array_lookup", () ->
         return (in_value, f_array, fk_key, null_msg) ->
             if in_value == null or in_value == undefined

@@ -34,7 +34,7 @@
             </uib-accordion-heading>
             <icsw-tools-show-hide-columns ng-show="devices.length" columns="idx port ips peers bridge bond mac devtype mtu speed penalty flags status desired" create-show-column="true">
             </icsw-tools-show-hide-columns>
-            <table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
+            <table st-table="display_entries" st-safe-src="local_helper_obj.netdevice_list" ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
                 <thead>
                     <tr>
                         <th>Device</th>
@@ -54,9 +54,20 @@
                         <th ng-show="show_column.desired">desired</th>
                         <th colspan="4">action</th>
                     </tr>
+                    <tr>
+                        <td colspan="99">
+                            <input st-search="" class="form-control" placeholder="filter ..." type="text"/>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="99">
+                            <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                                 possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                        </td>
+                    </tr>
                 </thead>
                 <tbody>
-                    <tr icsw-device-network-netdevice-row ng-repeat="ndip_obj in local_helper_obj.netdevice_list"></tr>
+                    <tr icsw-device-network-netdevice-row ng-repeat="ndip_obj in display_entries"></tr>
                 </tbody>
             </table>
         </uib-accordion-group>

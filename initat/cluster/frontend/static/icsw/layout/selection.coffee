@@ -621,8 +621,11 @@ angular.module(
             )
 
         else  # regular search
+            _with_slash = false
             try
                 cur_re = new RegExp($scope.vars.search_str, "gi")
+                if $scope.vars.search_str.match(/\//)
+                    _with_slash = true
             catch exc
                 cur_re = new RegExp("^$", "gi")
             cur_tree = $scope.get_tc($scope.active_tab)
@@ -641,7 +644,11 @@ angular.module(
                         if _sel
                             num_found++
                     else if entry._node_type == "c"
-                        _sel = if $scope.tree.cat_tree.lut[entry.obj].name.match(cur_re) then true else false
+                        # console.log $scope.tree.cat_tree.lut[entry.obj]
+                        if _with_slash
+                            _sel = if $scope.tree.cat_tree.lut[entry.obj].full_name.match(cur_re) then true else false
+                        else
+                            _sel = if $scope.tree.cat_tree.lut[entry.obj].name.match(cur_re) then true else false
                         entry.set_selected(_sel)
                         if _sel
                             num_found++

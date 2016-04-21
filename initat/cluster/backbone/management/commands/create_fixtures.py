@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -22,12 +22,12 @@
 # from lxml.builder import E # @UnresolvedImport
 from django.core.management.base import BaseCommand
 from django.db.models import Q
+
 from initat.cluster.backbone import factories
 from initat.cluster.backbone.management.commands.fixtures import add_fixtures
 from initat.cluster.backbone.models import ComCapability as ComCapability_Model, SensorAction
-from initat.tools import logging_tools
 from initat.icsw.service.instance import InstanceXML
-
+from initat.tools import logging_tools
 
 SNMP_NET_TYPES = [
     (1, 'other'),
@@ -337,11 +337,22 @@ def _add_snmp_fixtures():
             )
             if _handler.Meta.initial:
                 initials.append(_handler)
+            _set_oids = _handler.Meta.tl_oids
+            _del_oids = [entry for entry in cur_scheme.snmp_scheme_tl_oid_set.all() if entry.oid not in _set_oids]
+            if _del_oids:
+                print(
+                    "Removing {:d} OIDs for {}".format(
+                        len(_del_oids),
+                        unicode(cur_scheme)
+                    )
+                )
+                [_del_oid.delete() for _del_oid in _del_oids]
             for tl_oid in _handler.Meta.tl_oids:
                 factories.SNMPSchemeTLOID(
                     oid=tl_oid,
                     snmp_scheme=cur_scheme,
                 )
+            # print cur_scheme.snmp_scheme_tl_oid_set.all()
         print(
             "{} found, {}: {}".format(
                 logging_tools.get_plural("handler", len(handlers)),

@@ -292,8 +292,11 @@ angular.module(
             # build luts
             for req in en_list
                 _gp_call_name = "post_g_#{req}"
-                if dth_obj[_gp_call_name]?
-                    dth_obj[_gp_call_name]()
+                if dth_obj?
+                    if dth_obj[_gp_call_name]?
+                        dth_obj[_gp_call_name]()
+                else
+                    console.warn "build_g_luts problem", en_list, dth_obj
 
         # post calls
 
