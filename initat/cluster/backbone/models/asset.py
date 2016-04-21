@@ -43,7 +43,7 @@ class Asset(models.Model):
 class RunStatus(IntEnum):
     PLANNED = 1
     RUNNING = 2
-    ENDED = 2
+    ENDED = 3
 
 
 class AssetRun(models.Model):
@@ -51,15 +51,15 @@ class AssetRun(models.Model):
 
     run_index = models.IntegerField(default=1)
 
-    run_status = models.IntegerField(choices=[(status.value, status.name) for status in RunStatus])
+    run_status = models.IntegerField(choices=[(status.value, status.name) for status in RunStatus], null=True)
 
-    run_start_time = models.DateTimeField(auto_now_add=True)
+    run_start_time = models.DateTimeField(null=True, blank=True)
 
-    run_end_time = models.DateTimeField()
+    run_end_time = models.DateTimeField(null=True, blank=True)
 
-    asset_batch = models.ForeignKey("AssetBatch")
+    asset_batch = models.ForeignKey("AssetBatch", null=True)
 
-    device = models.ForeignKey("backbone.models.device")
+    device = models.ForeignKey("backbone.device", null=True)
 
 
 class AssetBatch(models.Model):
