@@ -3,7 +3,7 @@
 </script>
 
 <script type="text/ng-template" id="icsw.background.job.info.table">
-    <icsw-tools-rest-table target-list="bi_lines" config-service="icswBackgroundInfoListService">
+    <icsw-tools-rest-table-new target-list="bi_lines" config-service="icswBackgroundInfoListService">
         <table st-table="bi_lines_displayed" st-safe-src="bi_lines" icsw-tools-table-leak-filtered="filtered"
                class="table table-hover table-condensed table-striped" style="width:100%;">
             <h2>{{ bi_lines.length }} background job info, {{ filtered.length }} shown</h2>
@@ -36,5 +36,5 @@
                 <tr icsw-background-job-line line="line"></tr>
             </tbody>
         </table>
-    </icsw-tools-rest-table>
+    </icsw-tools-rest-table-new>
 </script>
