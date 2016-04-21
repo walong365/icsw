@@ -646,4 +646,25 @@ angular.module(
             @list_attributes = [
                 "dependent_devices",
             ]
+]).service("icswMonServiceEscTemplBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswMonServiceEscTemplBackupDefinition extends icswBackupDefinition
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "name", "first_notification", "last_notification", "ninterval",
+                "esc_period", "nrecovery", "ncritical", "nwarning",
+                "nunknown", "nflapping", "nplanned_downtime",
+            ]
+]).service("icswMonDeviceEscTemplBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswMonDeviceEscTemplBackupDefinition extends icswBackupDefinition
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "name", "first_notification", "last_notification", "ninterval",
+                "mon_service_esc_templ",
+                "esc_period", "nrecovery", "ndown", "nunreachable",
+                "nflapping", "nplanned_downtime",
+            ]
 ])

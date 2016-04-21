@@ -1,18 +1,29 @@
 
 <script type="text/ng-template" id="icsw.monitoring.escalation">
 
-    <uib-tabset ng-cloack>
+    <uib-alert type="warning" ng-show="!struct.tree_valid">Loading tree...</uib-alert>
+    <uib-tabset ng-cloack ng-show="struct.tree_valid">
 
-        <uib-tab heading="Service escalation">
-            <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringServiceEscalationService">
-                <h2>Service escalation templates ({{entries.length}} entries),
-                    <icsw-tools-button disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
-                                       style="display: inline-block" title="{{config_service.get_data_incomplete_error()}}"
-                                       ng-click="create($event)"></icsw-tools-button>
-                </h2>
+        <uib-tab heading="Service escalation Templates">
+            <icsw-tools-rest-table-new target-list="entries" config-service="icswMonitoringServiceEscalationTemplateService">
+                <h3>
+                    Service escalation templates ({{ entries.length }} entries),
+                    <icsw-tools-button
+                        disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
+                        style="display: inline-block"
+                        size="xs"
+                        title="{{ config_service.get_data_incomplete_error() }}"
+                        ng-click="create($event)"
+                    ></icsw-tools-button>
+                </h3>
                 <table st-table="entries_displayed" st-safe-src="entries"
-                       class="table table-condensed table-hover" style="width:auto;">
+                       class="table table-condensed table-hover table-striped" style="width:auto;">
                     <thead>
+                        <tr>
+                            <td colspan="99">
+                                <input st-search="" class="form-control" placeholder="filter ..." type="text"/>
+                            </td>
+                        </tr>
                         <tr>
                             <td colspan="99">
                                 <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
@@ -40,7 +51,7 @@
                             <td>{{ obj.first_notification }}</td>
                             <td>{{ obj.last_notification }}</td>
                             <td>{{ obj.ninterval }}</td>
-                            <td>{{ obj.esc_period | array_lookup:config_service.mon_period:'name' }}</td>
+                            <td>{{ basic_tree.mon_period_lut[obj.esc_period].name }}</td>
                             <td>{{ obj.nrecovery | yesno1 }}</td>
                             <td>{{ obj.ncritical | yesno1 }}</td>
                             <td>{{ obj.nwarning | yesno1 }}</td>
@@ -48,23 +59,35 @@
                             <td>{{ obj.nflapping | yesno1 }}</td>
                             <td>{{ obj.nplanned_downtime | yesno1 }}</td>
                             <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
-                            <td><icsw-tools-button type="delete" size="xs" ng-click="delete(obj)"></icsw-tools-button></td>
+                            <td><icsw-tools-button type="delete" size="xs" ng-click="delete($event, obj)"></icsw-tools-button></td>
                         </tr>
                     </tbody>
                 </table>
-            </icsw-tools-rest-table>
+            </icsw-tools-rest-table-new>
         </uib-tab>
 
         <uib-tab heading="Device escalation">
-            <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringDeviceEscalationService">
-                <h2>Device escalation templates ({{entries.length}} entries),
-                    <icsw-tools-button disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
-                                       style="display: inline-block" title="{{config_service.get_data_incomplete_error()}}"
-                                       ng-click="create($event)"></icsw-tools-button>
-                </h2>
+            <icsw-tools-rest-table-new target-list="entries" config-service="icswMonitoringDeviceEscalationTemplateService">
+                <h3>
+                    Device escalation templates ({{ entries.length }} entries),
+                    <icsw-tools-button
+                        disabled="config_service.get_data_incomplete_error()"
+                        type="create"
+                        value="create new"
+                        size="xs"
+                        style="display: inline-block"
+                        title="{{ config_service.get_data_incomplete_error() }}"
+                        ng-click="create($event, null)"
+                    ></icsw-tools-button>
+                </h3>
                 <table st-table="entries_displayed" st-safe-src="entries"
-                       class="table table-condensed table-hover" style="width:auto;">
+                       class="table table-condensed table-hover table-striped" style="width:auto;">
                     <thead>
+                        <tr>
+                            <td colspan="99">
+                                <input st-search="" class="form-control" placeholder="filter ..." type="text"/>
+                            </td>
+                        </tr>
                         <tr>
                             <td colspan="99">
                                 <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
@@ -92,46 +115,48 @@
                             <td>{{ obj.first_notification }}</td>
                             <td>{{ obj.last_notification }}</td>
                             <td>{{ obj.ninterval }}</td>
-                            <td>{{ obj.esc_period | array_lookup:config_service.mon_period:'name' }}</td>
-                            <td>{{ obj.mon_service_esc_templ | array_lookup:config_service.mon_service_esc_templ:'name' }}</td>
+                            <td>{{ basic_tree.mon_period_lut[obj.esc_period].name }}</td>
+                            <td>{{ esc_tree.mon_service_esc_templ_lut[obj.mon_service_esc_templ].name }}</td>
                             <td>{{ obj.nrecovery | yesno1 }}</td>
                             <td>{{ obj.ndown | yesno1 }}</td>
                             <td>{{ obj.nunreachable | yesno1 }}</td>
                             <td>{{ obj.nflapping | yesno1 }}</td>
                             <td>{{ obj.nplanned_downtime | yesno1 }}</td>
                             <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
-                            <td><icsw-tools-button type="delete" size="xs" ng-click="delete(obj)"></icsw-tools-button></td>
+                            <td><icsw-tools-button type="delete" size="xs" ng-click="delete($event, obj)"></icsw-tools-button></td>
                         </tr>
                     </tbody>
                 </table>
-            </icsw-tools-rest-table>
+            </icsw-tools-rest-table-new>
         </uib-tab>
 
     </uib-tabset>
 
 </script>
 
-<script type="text/ng-template" id="mon.device.esc.templ.form">
-    <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
-        <h2>Device Escalation template</h2>
+<script type="text/ng-template" id="icsw.mon.device.esc.templ.form">
+    <form class="form-horizontal" name="form_data">
+        <h3>Device Escalation template</h3>
         <fieldset>
             <legend>Base data</legend>
-            <div id="div_id_name" class="form-group">
-                <label for="id_name" class="control-label col-sm-3 requiredField">
-                    Name<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text"></input></div>
-            </div>
-            <div id="div_id_mon_service_esc_templ" class="form-group">
-                <label for="id_mon_service_esc_templ" class="control-label col-sm-3 requiredField">
-                    Mon service esc templ<span class="asteriskField">*</span></label>
-
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Name<span class="asteriskField">*</span>
+                </label>
                 <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.mon_service_esc_templ" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                    <input class="textinput textInput form-control" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Mon service esc templ<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <ui-select ng-model="edit_obj.mon_service_esc_templ" style="max-width:400px; min-width:240px;">
                         <ui-select-match class="ui-select-match" placeholder="please select a service escalation template">
-                            {{$select.selected.name}}
+                            {{ $select.selected.name }}
                         </ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.mon_service_esc_templ | orderBy:'name'| props_filter:{name:$select.search}">
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in tree.mon_service_esc_templ_list | orderBy:'name'| props_filter:{name:$select.search}">
                             <div ng-bind-html="value.name | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
@@ -140,208 +165,211 @@
         </fieldset>
         <fieldset>
             <legend>Notifications</legend>
-            <div id="div_id_first_notification" class="form-group">
-                <label for="id_first_notification" class="control-label col-sm-3 requiredField">
-                    First notification<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_first_notification" max="10" min="1" name="first_notification" ng-model="edit_obj.first_notification" required="True" type="number" value="1"></input></div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    First notification<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="numberinput form-control" max="10" min="1" name="first_notification" ng-model="edit_obj.first_notification" required="True" type="number" value="1"/>
+                </div>
             </div>
-            <div id="div_id_last_notification" class="form-group">
-                <label for="id_last_notification" class="control-label col-sm-3 requiredField">
-                    Last notification<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_last_notification" max="10" min="1" name="last_notification" ng-model="edit_obj.last_notification" required="True" type="number" value="1"></input></div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Last notification<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="numberinput form-control" max="10" min="1" name="last_notification" ng-model="edit_obj.last_notification" required="True" type="number" value="1"/>
+                </div>
             </div>
-            <div id="div_id_esc_period" class="form-group">
-                <label for="id_esc_period" class="control-label col-sm-3 requiredField">
-                    Esc period<span class="asteriskField">*</span></label>
-
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Esc period<span class="asteriskField">*</span>
+                </label>
                 <div class="controls col-sm-7">
                     <ui-select ng-model="edit_obj.esc_period" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                        <ui-select-match class="ui-select-match" placeholder="please select a time period">{{$select.selected.name}}
+                        <ui-select-match class="ui-select-match" placeholder="please select a time period">
+                            {{ $select.selected.name }}
                         </ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.mon_period | orderBy:'name'| props_filter:{name:$select.search}">
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in basic_tree.mon_period_list | orderBy:'name'| props_filter:{name:$select.search}">
                             <div ng-bind-html="value.name | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
                 </div>
             </div>
-            <div id="div_id_ninterval" class="form-group">
-                <label for="id_ninterval" class="control-label col-sm-3 requiredField">
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
                     Ninterval<span class="asteriskField">*</span>
                 </label>
-                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_ninterval" max="10080" min="0" name="ninterval" ng-model="edit_obj.ninterval" required="True" type="number" value="1"></input></div>
+                <div class="controls col-sm-7">
+                    <input class="numberinput form-control" max="10080" min="0" name="ninterval" ng-model="edit_obj.ninterval" required="True" type="number" value="1"/>
+                </div>
             </div>
         </fieldset>
         <fieldset>
             <legend>Notification</legend>
-        </fieldset>
-        <div class="row">
-            <div class="col-md-4">
-                <div class="form-group">
-                    <div id="div_id_nrecovery" class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nrecovery"><input class="checkboxinput checkbox" id="id_nrecovery" name="nrecovery" ng-model="edit_obj.nrecovery" type="checkbox"></input>
+            <div class="row">
+                <div class="col-xs-6">
+                    <div class="form-group">
+                        <label class="col-sm-7 control-label">
                             Notify on recovery
-                        </label></div>
+                        </label>
+                        <div class="col-sm-5 controls">
+                            <icsw-tools-yes-no flag="edit_obj.nrecovery"></icsw-tools-yes-no>
+                        </div>
                     </div>
-                </div>
-                <div class="form-group">
-                    <div id="div_id_ndown" class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_ndown"><input class="checkboxinput checkbox" id="id_ndown" name="ndown" ng-model="edit_obj.ndown" type="checkbox"></input>
+                    <div class="form-group">
+                        <label class="col-sm-7 control-label">
                             Notify when down
-                        </label></div>
+                        </label>
+                        <div class="col-sm-5 controls">
+                            <icsw-tools-yes-no flag="edit_obj.ndown"></icsw-tools-yes-no>
+                        </div>
                     </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="form-group">
-                    <div id="div_id_nunreachable" class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nunreachable"><input class="checkboxinput checkbox" id="id_nunreachable" name="nunreachable" ng-model="edit_obj.nunreachable" type="checkbox"></input>
-                            Notify when unreachable
-                        </label></div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="form-group">
-                    <div id="div_id_nflapping" class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nflapping"><input class="checkboxinput checkbox" id="id_nflapping" name="nflapping" ng-model="edit_obj.nflapping" type="checkbox"></input>
-                            Notify when flapping
-                        </label></div>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <div id="div_id_nplanned_downtime" class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nplanned_downtime"><input class="checkboxinput checkbox" id="id_nplanned_downtime" name="nplanned_downtime" ng-model="edit_obj.nplanned_downtime" type="checkbox"></input>
+                    <div class="form-group">
+                        <label class="col-sm-7 control-label">
                             Notify on planned downtime
-                        </label></div>
+                        </label>
+                        <div class="col-sm-5 controls">
+                            <icsw-tools-yes-no flag="edit_obj.nplanned_downtime"></icsw-tools-yes-no>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xs-6">
+                    <div class="form-group">
+                        <label class="col-sm-7 control-label">
+                            Notify when unreachable
+                        </label>
+                        <div class="col-sm-5 controls">
+                            <icsw-tools-yes-no flag="edit_obj.nunreachable"></icsw-tools-yes-no>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-sm-7 control-label">
+                            Notify when flapping
+                        </label>
+                        <div class="col-sm-5 controls">
+                            <icsw-tools-yes-no flag="edit_obj.nflapping"></icsw-tools-yes-no>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-        <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="get_action_string()"></input></div>
+        </fieldset>
     </form>
 </script>
 
-<script type="text/ng-template" id="mon.service.esc.templ.form">
-    <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
-        <h2>Service Escalation template</h2>
+<script type="text/ng-template" id="icsw.mon.service.esc.templ.form">
+    <form class="form-horizontal" name="form_data">
+        <h3>Service Escalation template</h3>
         <fieldset>
             <legend>Base data</legend>
-            <div id="div_id_name" class="form-group">
-                <label for="id_name" class="control-label col-sm-3 requiredField">
-                    Name<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_name" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text"></input></div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Name<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text"/>
+                </div>
             </div>
         </fieldset>
         <fieldset>
             <legend>Notifications</legend>
-            <div id="div_id_first_notification" class="form-group">
-                <label for="id_first_notification" class="control-label col-sm-3 requiredField">
-                    First notification<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_first_notification" max="10" min="1" name="first_notification" ng-model="edit_obj.first_notification" required="True" type="number" value="1"></input></div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    First notification<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="numberinput form-control" max="10" min="1" name="first_notification" ng-model="edit_obj.first_notification" required="True" type="number" value="1"/>
+                </div>
             </div>
-            <div id="div_id_last_notification" class="form-group">
-                <label for="id_last_notification" class="control-label col-sm-3 requiredField">
-                    Last notification<span class="asteriskField">*</span></label>
-
-                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_last_notification" max="10" min="1" name="last_notification" ng-model="edit_obj.last_notification" required="True" type="number" value="1"></input></div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Last notification<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="numberinput form-control" max="10" min="1" name="last_notification" ng-model="edit_obj.last_notification" required="True" type="number" value="1"/>
+                </div>
             </div>
-            <div id="div_id_esc_period" class="form-group">
-                <label for="id_esc_period" class="control-label col-sm-3 requiredField">
-                    Esc period<span class="asteriskField">*</span></label>
-
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Esc period<span class="asteriskField">*</span>
+                </label>
                 <div class="controls col-sm-7">
                     <ui-select ng-model="edit_obj.esc_period" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                        <ui-select-match class="ui-select-match" placeholder="please select a time period">{{$select.selected.name}}
+                        <ui-select-match class="ui-select-match" placeholder="please select a time period">
+                            {{ $select.selected.name }}
                         </ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.mon_period | orderBy:'name'| props_filter:{name:$select.search}">
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in basic_tree.mon_period_list | orderBy:'name'| props_filter:{name:$select.search}">
                             <div ng-bind-html="value.name | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
                 </div>
             </div>
-            <div id="div_id_ninterval" class="form-group">
-                <label for="id_ninterval" class="control-label col-sm-3 requiredField">
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
                     Ninterval<span class="asteriskField">*</span>
                 </label>
-                <div class="controls col-sm-7"><input class="numberinput form-control" id="id_ninterval" max="10080" min="0" name="ninterval" ng-model="edit_obj.ninterval" required="True" type="number" value="1"></input></div>
-            </div>
-        </fieldset>
-        <div class="row">
-            <div class="col-md-4">
-                <div class="form-group">
-                    <div id="div_id_nrecovery" class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nrecovery"><input class="checkboxinput checkbox" id="id_nrecovery" name="nrecovery" ng-model="edit_obj.nrecovery" type="checkbox"></input>
-                            Nrecovery
-                        </label></div>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <div id="div_id_ncritical" class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_ncritical"><input class="checkboxinput checkbox" id="id_ncritical" name="ncritical" ng-model="edit_obj.ncritical" type="checkbox"></input>
-                            Ncritical
-                        </label></div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="form-group">
-                    <div id="div_id_nwarning" class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nwarning"><input class="checkboxinput checkbox" id="id_nwarning" name="nwarning" ng-model="edit_obj.nwarning" type="checkbox"></input>
-                            Nwarning
-                        </label></div>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <div id="div_id_nunknown" class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nunknown"><input class="checkboxinput checkbox" id="id_nunknown" name="nunknown" ng-model="edit_obj.nunknown" type="checkbox"></input>
-                            Nunknown
-                        </label></div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="form-group">
-                    <div id="div_id_nflapping" class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nflapping"><input class="checkboxinput checkbox" id="id_nflapping" name="nflapping" ng-model="edit_obj.nflapping" type="checkbox"></input>
-                            Nflapping
-                        </label></div>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <div id="div_id_nplanned_downtime" class="checkbox">
-                        <div class="controls col-lg-offset-0 col-sm-7"><label for="id_nplanned_downtime"><input class="checkboxinput checkbox" id="id_nplanned_downtime" name="nplanned_downtime" ng-model="edit_obj.nplanned_downtime" type="checkbox"></input>
-                            Nplanned downtime
-                        </label></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="get_action_string()"></input></div>
-    </form>
-</script>
-
-<script type="text/ng-template" id="boot.form">
-    <form id="form" class="form-horizontal" method="post" name="form">
-        <h2>Connection {{ get_cd_info() }}</h2>
-        <fieldset>
-            <legend>Settings</legend>
-            <div id="div_id_image" class="form-group">
-                <label for="id_image" class="control-label col-sm-4">
-                    Image
-                </label>
-
                 <div class="controls col-sm-7">
-                    <select multiple="multiple" class="selectmultiple form-control" id="id_image" name="image"></select>
-
-                    <p id="hint_id_image" class="help-block"> Hold down "Control", or "Command" on a Mac, to select more than one.</p>
+                    <input class="numberinput form-control" max="10080" min="0" name="ninterval" ng-model="edit_obj.ninterval" required="True" type="number" value="1"/>
                 </div>
             </div>
         </fieldset>
-        <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="action_string"></input></div>
+        <fieldset>
+            <legend>Notification</legend>
+            <div class="row">
+                <div class="col-xs-6">
+                    <div class="form-group">
+                        <label class="col-sm-7 control-label">
+                            Notify on recovery
+                        </label>
+                        <div class="col-sm-5 controls">
+                            <icsw-tools-yes-no flag="edit_obj.nrecovery"></icsw-tools-yes-no>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-sm-7 control-label">
+                            Notify when critical
+                        </label>
+                        <div class="col-sm-5 controls">
+                            <icsw-tools-yes-no flag="edit_obj.ncritical"></icsw-tools-yes-no>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-sm-7 control-label">
+                            Notify on warning
+                        </label>
+                        <div class="col-sm-5 controls">
+                            <icsw-tools-yes-no flag="edit_obj.nwarning"></icsw-tools-yes-no>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xs-6">
+                    <div class="form-group">
+                        <label class="col-sm-7 control-label">
+                            Notify when unknown
+                        </label>
+                        <div class="col-sm-5 controls">
+                            <icsw-tools-yes-no flag="edit_obj.nunknown"></icsw-tools-yes-no>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-sm-7 control-label">
+                            Notify when flapping
+                        </label>
+                        <div class="col-sm-5 controls">
+                            <icsw-tools-yes-no flag="edit_obj.nflapping"></icsw-tools-yes-no>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-sm-7 control-label">
+                            Notify on planned downtime
+                        </label>
+                        <div class="col-sm-5 controls">
+                            <icsw-tools-yes-no flag="edit_obj.nplanned_downtime"></icsw-tools-yes-no>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </fieldset>
     </form>
 </script>
 

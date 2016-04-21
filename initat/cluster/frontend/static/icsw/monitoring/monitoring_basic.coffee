@@ -513,19 +513,35 @@ monitoring_basic_module = angular.module(
     Restangular, ICSW_URLS,
 ) ->
     # helper functions for monitoring_basic
+    _device_list_warned = false
 
     return {
         get_data_incomplete_error: (tree, table) ->
-            # FIXME, just for testing
-            return ""
             if not tree?
                 return "missing tree"
             if not table of tree.missing_info
                 ret = ""
             else
-                missing = (
-                    human_name for [model_name, human_name] in tree.missing_info[table] when not tree["#{model_name}_list"].length
-                )
+                missing = []
+                for _tuple in tree.missing_info[table]
+                    if _tuple.length == 3
+                        # handle extra reference name
+                        [_ref, model_name, human_name] = _tuple
+                        _ref = tree[_ref]
+                    else
+                        _ref = tree
+                        [model_name, human_name] = _tuple
+                    _list_name = "#{model_name}_list"
+                    if _list_name of _ref
+                        if not _ref[_list_name].length
+                            missing.push(human_name)
+                    else
+                        if _list_name == "device_list"
+                            if not _device_list_warned
+                                console.warn "device_list is not set in cluster_tree, fixme"
+                                _device_list_warned = true
+                        else
+                            console.error "missing list #{_list_name}"
 
                 if missing.length
                     missing_str = ("a #{n}" for n in missing).join(" and ")
@@ -534,7 +550,7 @@ monitoring_basic_module = angular.module(
                     ret = ""
             return ret
 
-        create_or_edit: (basic_tree, scope, create, obj, obj_name, bu_def, template_name, template_title)  ->
+        create_or_edit: (tree, scope, create, obj, obj_name, bu_def, template_name, template_title)  ->
             if not create
                 dbu = new bu_def()
                 dbu.create_backup(obj)
@@ -543,12 +559,14 @@ monitoring_basic_module = angular.module(
             sub_scope.create = create
             sub_scope.edit_obj = obj
 
-            # for fields
-            sub_scope.tree = basic_tree
+            # for fields, tree can be the basic or the cluster tree
+            sub_scope.tree = tree
             if scope.user_group_tree?
                 sub_scope.user_group_tree = scope.user_group_tree
             if scope.device_tree?
                 sub_scope.device_tree = scope.device_tree
+            if tree.basic_tree?
+                sub_scope.basic_tree = tree.basic_tree
 
             # form error
             sub_scope.form_error = (field_name) ->
@@ -571,7 +589,7 @@ monitoring_basic_module = angular.module(
                             d.reject("form not valid")
                         else
                             if create
-                                basic_tree["create_#{obj_name}"](sub_scope.edit_obj).then(
+                                tree["create_#{obj_name}"](sub_scope.edit_obj).then(
                                     (new_period) ->
                                         d.resolve("created")
                                     (notok) ->
@@ -582,7 +600,7 @@ monitoring_basic_module = angular.module(
                                 Restangular.restangularizeElement(null, sub_scope.edit_obj, _URL)
                                 sub_scope.edit_obj.put().then(
                                     (ok) ->
-                                        basic_tree.build_luts()
+                                        tree.build_luts()
                                         d.resolve("updated")
                                     (not_ok) ->
                                         d.reject("not updated")
