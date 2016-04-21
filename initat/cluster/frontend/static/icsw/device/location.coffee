@@ -160,9 +160,6 @@ angular.module(
     }
     $scope.DEBUG = false
 
-    # msgbus.receive("icsw.config.locations.changed.tree", $scope, () ->
-    #     $scope.reload()
-    # )
     $scope.$on("$destroy", () ->
         $scope.struct.device_list_ready = false
     )
