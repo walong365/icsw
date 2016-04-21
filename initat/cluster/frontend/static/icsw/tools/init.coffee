@@ -1023,26 +1023,6 @@ dimple_module = angular.module(
 angular.module(
     "init.csw.filters", []
 ).filter(
-    "resolve_n2m", () ->
-        return (in_array, f_array, n2m_key, null_msg) ->
-            if typeof(in_array) == "string"
-                # handle strings for chaining
-                in_array = (parseInt(value) for value in in_array.split(/,\s*/))
-
-            if null_msg
-                ret = null_msg
-            else
-                ret = "N/A"
-
-            if in_array
-                res = (value for key, value of f_array when typeof(value) == "object" and value and value.idx in in_array)
-                #ret_str = (f_array[key][n2m_key] for key in in_array).join(", ")
-                if res.length
-                    ret = (value[n2m_key] for value in res).join(", ")
-
-            return ret
-
-).filter(
     "follow_fk", () ->
         return (in_value, scope, fk_model, fk_key, null_msg) ->
             if in_value != null
