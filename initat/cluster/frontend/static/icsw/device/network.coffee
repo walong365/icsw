@@ -1315,6 +1315,7 @@ angular.module(
                     console.log "finish"
                     sub_scope.$destroy()
             )
+
         delete: (scope, event, obj) ->
             icswToolsSimpleModalService("Really delete Network DeviceType '#{obj.description}' ?").then(
                 (ok) ->

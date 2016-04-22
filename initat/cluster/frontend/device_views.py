@@ -38,13 +38,13 @@ from initat.cluster.backbone.models import device_group, device, \
     cd_connection, domain_tree_node, category, netdevice, ComCapability, \
     partition_table, monitoring_hint, DeviceSNMPInfo, snmp_scheme, \
     domain_name_tree, net_ip, peer_information, mon_ext_host, device_variable, \
-    SensorThreshold
+    SensorThreshold, package_device_connection
 from initat.cluster.backbone.models.functions import can_delete_obj
 from initat.cluster.backbone.render import permission_required_mixin
 from initat.cluster.backbone.serializers import netdevice_serializer, ComCapabilitySerializer, \
     partition_table_serializer, monitoring_hint_serializer, DeviceSNMPInfoSerializer, \
     snmp_scheme_serializer, device_variable_serializer, cd_connection_serializer, \
-    SensorThresholdSerializer
+    SensorThresholdSerializer, package_device_connection_serializer
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from initat.tools import logging_tools, server_command, process_tools
 
@@ -480,6 +480,7 @@ class EnrichmentHelper(object):
         self._all["variable_info"] = EnrichmentObject(device_variable, device_variable_serializer)
         self._all["device_connection_info"] = DeviceConnectionEnrichment()
         self._all["sensor_threshold_info"] = SensorThresholdEnrichment()
+        self._all["package_info"] = EnrichmentObject(package_device_connection, package_device_connection_serializer)
 
     def create(self, key, pk_list):
         if key not in self._all:

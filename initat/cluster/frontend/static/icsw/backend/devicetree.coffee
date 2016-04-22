@@ -264,6 +264,7 @@ angular.module(
                 "variable_info": "device_variable_set"
                 "device_connection_info": "device_connection_set"
                 "sensor_threshold_info": "sensor_threshold_set"
+                "package_info": "package_set"
             }
             if req of _lut
                 return _lut[req]
@@ -1072,13 +1073,13 @@ angular.module(
         return _fetch_dict[client]
 
     return {
-        "load": (client) ->
+        load: (client) ->
             if load_called
                 # fetch when data is present (after sidebar)
                 return fetch_data(client).promise
             else
                 return load_data(client).promise
-        "current": () ->
+        current: () ->
             return _result
     }
 ])
