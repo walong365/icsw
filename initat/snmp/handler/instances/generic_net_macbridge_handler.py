@@ -54,8 +54,13 @@ class handler(SNMPHandler):
             # reorder dict
             _mac_dict = reorder_dict(result_dict.values()[0])
             # rewrite dict, only use entries where status == 3 (== learned)
-            _mac_dict = {":".join(["{:02x}".format(_val) for _val in _key]): _value[2]
-                         for _key, _value in _mac_dict.iteritems() if _value.get(3, None) == 3}
+            _mac_dict = {
+                ":".join(
+                    [
+                        "{:02x}".format(_val) for _val in _key
+                    ]
+                ): _value[2] for _key, _value in _mac_dict.iteritems() if _value.get(3, None) == 3
+            }
             # dict now has the form MAC Adress -> snmp idx
             self.log("MAC forward dict has {}".format(logging_tools.get_plural("entry", len(_mac_dict.keys()))))
             _nd_dict = {

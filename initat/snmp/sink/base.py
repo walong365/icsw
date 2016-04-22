@@ -1,4 +1,4 @@
-# Copyright (C) 2014-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2014-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -19,9 +19,9 @@
 #
 """ SNMP base sink """
 
-from ..snmp_struct import ResultNode
-from ..handler.instances import handlers
 from initat.tools import logging_tools, process_tools
+from ..handler.instances import handlers
+from ..snmp_struct import ResultNode
 
 
 class SNMPSink(object):

@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2015 init.at
+# Copyright (C) 2012-2016 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -37,6 +37,23 @@ package_module = angular.module(
                     ordering: 50
         }
     )
+]).directive("icswPackageInstallOverview",
+[
+    "$templateCache", "msgbus",
+(
+    $templateCache, msgbus
+) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("icsw.package.install.overview")
+        controller: "icswPackageInstallCtrl"
+        link : (scope, el, attrs) ->
+            if not attrs["devicepk"]?
+                msgbus.emit("devselreceiver")
+                msgbus.receive("devicelist", scope, (name, args) ->
+                    scope.reload_devices(args[1])
+                )
+    }
 ]).service("icswPackageInstallRepositoryService", ["Restangular", "ICSW_URLS", (Restangular, ICSW_URLS) ->
     return {
         rest_url            : ICSW_URLS.REST_PACKAGE_REPO_LIST
@@ -49,73 +66,6 @@ package_module = angular.module(
         toggle : (obj) ->
             obj.publish_to_nodes = if obj.publish_to_nodes then false else true
             obj.put()
-    }
-]).service("icswPackageInstallSearchService", ["Restangular", "ICSW_URLS", "icswSimpleAjaxCall", "$timeout", (Restangular, ICSW_URLS, icswSimpleAjaxCall, $timeout) ->
-    user_rest = Restangular.all(ICSW_URLS.REST_USER_LIST.slice(1)).getList().$object
-    _scope = undefined
-    reload_func = () ->
-        _scope.reload()
-    post_reload_func = () ->
-        if _scope.searches?
-            if (obj.current_state for obj in _scope.searches when obj.current_state != "done").length
-                # ont all searches done, trigger another reload
-                $timeout(_scope.reload, 2000)
-    return {
-        user_rest           : user_rest
-        rest_url            : ICSW_URLS.REST_PACKAGE_SEARCH_LIST
-        edit_template       : "package.search.form"
-        delete_confirm_str  : (obj) -> return "Really delete Package search '#{obj.search_string}' ?"
-        entries_filter      : {deleted : false}
-        post_delete : (scope, del_obj) ->
-            scope.clear_active_search(del_obj)
-        object_modified : (edit_obj, srv_data, $scope) ->
-            icswSimpleAjaxCall(
-                url     : ICSW_URLS.PACK_RETRY_SEARCH
-                data    : {
-                    "pk" : edit_obj.idx
-                }
-            ).then(
-                (xml) ->
-                    $scope.reload()
-                (xml) ->
-                    $scope.reload()
-            )
-        post_reload_func: () ->
-            post_reload_func()
-        reload: () ->
-            reload_func()
-        init_fn: (scope) ->
-            _scope = scope
-    }
-]).service("icswPackageInstallPackageListService", ["ICSW_URLS", (ICSW_URLS) ->
-    _scope = undefined
-    return {
-        rest_url            : ICSW_URLS.REST_PACKAGE_LIST
-        delete_confirm_str  : (obj) -> return "Really delete Package '#{obj.name}-#{obj.version}' ?"
-        init_fn: (scope) ->
-            scope.init_package_list(scope)
-        after_reload: (scope) ->
-            scope.salt_package_list()
-        toggle_grid_style : ($scope) ->
-            $scope.dp_style = !$scope.dp_style
-        get_grid_style : ($scope) ->
-            return if $scope.dp_style then "Dev/PDC grid" else "PDC/Dev grid"
-        reload: (scope) ->
-            _scope.reload()
-        init_fn: (scope) ->
-            _scope = scope
-    }
-]).service("icswPackageInstallSearchResultService", ["ICSW_URLS", (ICSW_URLS)->
-    _scope = undefined
-    return {
-        edit_template       : "package_search.html"
-        delete_confirm_str  : (obj) -> return "Really delete Package search result '#{obj.name}-#{obj.version}' ?"
-        init_fn: (scope) ->
-            _scope = scope
-        set_data: (new_data) ->
-            _scope.searchresults = new_data
-        set_repos: (repo_list) ->
-            _scope.repos = repo_list
     }
 ]).controller("icswPackageInstallCtrl", ["$scope", "$injector", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$timeout", "blockUI", "icswTools", "ICSW_URLS", "icswUserService", "icswSimpleAjaxCall",
     ($scope, $injector, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $timeout, blockUI, icswTools, ICSW_URLS, icswUserService, icswSimpleAjaxCall) ->
@@ -441,7 +391,7 @@ package_module = angular.module(
                 "image_change" : false
                 "kernel_list" : []
                 "image_list" : []
-            } 
+            }
             $scope.action_div = $compile($templateCache.get("package.action.form"))($scope)
             $scope.my_modal = BootstrapDialog.show
                 message: $scope.action_div
@@ -498,17 +448,72 @@ package_module = angular.module(
                 return moment.unix(dev.latest_contact).fromNow(true)
             else
                 return "never"
-]).directive("icswPackageInstallOverview", ["$templateCache", "msgbus", ($templateCache, msgbus) ->
+]).service("icswPackageInstallSearchService", ["Restangular", "ICSW_URLS", "icswSimpleAjaxCall", "$timeout", (Restangular, ICSW_URLS, icswSimpleAjaxCall, $timeout) ->
+    user_rest = Restangular.all(ICSW_URLS.REST_USER_LIST.slice(1)).getList().$object
+    _scope = undefined
+    reload_func = () ->
+        _scope.reload()
+    post_reload_func = () ->
+        if _scope.searches?
+            if (obj.current_state for obj in _scope.searches when obj.current_state != "done").length
+                # ont all searches done, trigger another reload
+                $timeout(_scope.reload, 2000)
     return {
-        restrict : "EA"
-        template : $templateCache.get("icsw.package.install.overview")
-        controller: "icswPackageInstallCtrl"
-        link : (scope, el, attrs) ->
-            if not attrs["devicepk"]?
-                msgbus.emit("devselreceiver")
-                msgbus.receive("devicelist", scope, (name, args) ->
-                    scope.reload_devices(args[1])
-                )
+        user_rest           : user_rest
+        rest_url            : ICSW_URLS.REST_PACKAGE_SEARCH_LIST
+        edit_template       : "package.search.form"
+        delete_confirm_str  : (obj) -> return "Really delete Package search '#{obj.search_string}' ?"
+        entries_filter      : {deleted : false}
+        post_delete : (scope, del_obj) ->
+            scope.clear_active_search(del_obj)
+        object_modified : (edit_obj, srv_data, $scope) ->
+            icswSimpleAjaxCall(
+                url     : ICSW_URLS.PACK_RETRY_SEARCH
+                data    : {
+                    "pk" : edit_obj.idx
+                }
+            ).then(
+                (xml) ->
+                    $scope.reload()
+                (xml) ->
+                    $scope.reload()
+            )
+        post_reload_func: () ->
+            post_reload_func()
+        reload: () ->
+            reload_func()
+        init_fn: (scope) ->
+            _scope = scope
+    }
+]).service("icswPackageInstallPackageListService", ["ICSW_URLS", (ICSW_URLS) ->
+    _scope = undefined
+    return {
+        rest_url            : ICSW_URLS.REST_PACKAGE_LIST
+        delete_confirm_str  : (obj) -> return "Really delete Package '#{obj.name}-#{obj.version}' ?"
+        init_fn: (scope) ->
+            scope.init_package_list(scope)
+        after_reload: (scope) ->
+            scope.salt_package_list()
+        toggle_grid_style : ($scope) ->
+            $scope.dp_style = !$scope.dp_style
+        get_grid_style : ($scope) ->
+            return if $scope.dp_style then "Dev/PDC grid" else "PDC/Dev grid"
+        reload: (scope) ->
+            _scope.reload()
+        init_fn: (scope) ->
+            _scope = scope
+    }
+]).service("icswPackageInstallSearchResultService", ["ICSW_URLS", (ICSW_URLS)->
+    _scope = undefined
+    return {
+        edit_template       : "package_search.html"
+        delete_confirm_str  : (obj) -> return "Really delete Package search result '#{obj.name}-#{obj.version}' ?"
+        init_fn: (scope) ->
+            _scope = scope
+        set_data: (new_data) ->
+            _scope.searchresults = new_data
+        set_repos: (repo_list) ->
+            _scope.repos = repo_list
     }
 ]).directive("icswPackageInstallRepositoryRow", ["$templateCache", ($templateCache) ->
     return {

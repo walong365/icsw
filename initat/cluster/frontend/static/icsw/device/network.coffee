@@ -1189,9 +1189,6 @@ angular.module(
     blockUI, ICSW_SIGNALS, $rootScope, icswComplexModalService
 ) ->
     icswAcessLevelService.install($scope)
-    # msgbus.receive("devicelist", $scope, (name, args) ->
-    #     $scope.devices = args[1]
-    # )
     $scope.clusters = []
     $scope.devices = []
 
