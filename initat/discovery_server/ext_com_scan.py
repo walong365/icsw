@@ -371,13 +371,8 @@ class WmiScanBatch(ScanBatch):
 
         # TODO; check peers? (cf. snmp)
 
-import gzip
-import json
-import zlib
-import bz2
-import base64
 import datetime
-from initat.cluster.backbone.models.asset import Asset, AssetRun, RunStatus, AssetType, W32_SCAN_TYPE_PREFIX
+from initat.cluster.backbone.models.asset import Asset, AssetRun, AssetBatch, RunStatus, AssetType, W32_SCAN_TYPE_PREFIX
 
 LIST_SOFTWARE_CMD = "list-software-py3"
 LIST_KEYS_CMD = "list-keys-py3"
@@ -395,50 +390,58 @@ class NRPEScanBatch(ScanBatch):
     def __init__(self, dev_com, scan_dev):
         super(NRPEScanBatch, self).__init__(dev_com, scan_dev)
 
-        self._command = dev_com.attrib.get('command')
-        self._assetrun = None
+        self._commands = self._command = dev_com.attrib.get('commands').split(",")
+        self._build_command()
 
-        if not self._command and not (self._command in VALID_COMMANDS):
-            self.log("no valid command found for {}".format(unicode(self.device)), logging_tools.LOG_LEVEL_ERROR)
-            self.start_result = ResultNode(error="no valid command found")
-            self.finish()
-
-        elif self.device.target_ip:
-            self._ext_com = ExtCom(self.log, self._build_command())
-            self._ext_com.run()
+        if self.device.target_ip:
+            # self._ext_com = ExtCom(self.log, self._build_command())
+            # self._ext_com.run()
             self.start_result = ResultNode(ok="started NRPE_scan")
 
     def _build_command(self):
-        _com = "/opt/cluster/sbin/check_nrpe -H {} -n -c {} -t120".format(self.device.target_ip, self._command)
-
-        runtype = None
-        if self._command == LIST_SOFTWARE_CMD:
-            runtype = AssetType.PACKAGE
-        elif self._command == LIST_KEYS_CMD:
-            runtype = AssetType.LICENSE
-        elif self._command == LIST_HARDWARE_CMD:
-            runtype = AssetType.HARDWARE
-        elif self._command == LIST_UPDATES_CMD:
-            runtype = AssetType.UPDATE
-
         asset_run_len = len(self.device.assetrun_set.all())
-        self._assetrun = self.device.assetrun_set.create(run_index=asset_run_len + 1,
-                                                         run_type=runtype,
-                                                         run_status=RunStatus.RUNNING,
-                                                         run_start_time=datetime.datetime.now())
 
-        return _com
+        execd_commands = []
 
-    def check_ext_com(self):
-        _res = self._ext_com.finished()
-        if _res is not None:
-            _output = self._ext_com.communicate()
-            self._assetrun.run_end_time = datetime.datetime.now()
-            self._assetrun.raw_result_str = W32_SCAN_TYPE_PREFIX + _output[0]
-            self._assetrun.generate_assets_from_result_str()
-            self._assetrun.save()
+        new_asset_batch = AssetBatch()
+        new_asset_batch.save()
 
-            self.finish()
+        for _command in self._commands:
+            if _command not in VALID_COMMANDS:
+                self.log("invalid command found for {}".format(unicode(self.device)), logging_tools.LOG_LEVEL_ERROR)
+                self.start_result = ResultNode(error="invalid command found")
+                self.finish()
+                return
+            elif _command in execd_commands:
+                # ignore duplicate commands
+                continue
+
+            execd_commands.append(_command)
+
+            runtype = None
+            if _command == LIST_SOFTWARE_CMD:
+                runtype = AssetType.PACKAGE
+            elif _command == LIST_KEYS_CMD:
+                runtype = AssetType.LICENSE
+            elif _command == LIST_HARDWARE_CMD:
+                runtype = AssetType.HARDWARE
+            elif _command == LIST_UPDATES_CMD:
+                runtype = AssetType.UPDATE
+
+            asset_run_len += 1
+            #_com = "/opt/cluster/sbin/check_nrpe -H {} -n -c {} -t120".format(self.device.target_ip, self._command)
+            new_asset_run = AssetRun(run_index=asset_run_len,
+                                     run_type=runtype,
+                                     run_status=RunStatus.PLANNED)
+            new_asset_run.save()
+
+            self.device.assetrun_set.add(new_asset_run)
+            new_asset_batch.assetrun_set.add(new_asset_run)
+
+        new_asset_batch.save()
+        self.device.save()
+
+        self.finish()
 
 class _ExtComScanMixin(object):
     """ Base class for all scan mixins """
@@ -467,3 +470,53 @@ class NRPEScanMixin(_ExtComScanMixin):
     def nrpe_scan(self, dev_com, scan_dev):
         self._register_timer()
         return NRPEScanBatch(dev_com, scan_dev).start_result
+
+
+class Dispatcher:
+    def __init__(self):
+        self.asset_run_ext_com_dict = {}
+
+    def dispatch_call(self):
+        completed_batches = []
+        for asset_batch in AssetBatch.objects.all():
+            completed_runs = 0
+            for asset_run in asset_batch.assetrun_set.all():
+                if asset_run.run_status == RunStatus.PLANNED:
+                    _command = None
+                    if asset_run.run_type == AssetType.PACKAGE:
+                        _command = LIST_SOFTWARE_CMD
+                    elif asset_run.run_type == AssetType.HARDWARE:
+                        _command = LIST_HARDWARE_CMD
+                    elif asset_run.run_type == AssetType.LICENSE:
+                        _command = LIST_KEYS_CMD
+                    elif asset_run.run_type == AssetType.UPDATE:
+                        _command = LIST_UPDATES_CMD
+
+                    _com = "/opt/cluster/sbin/check_nrpe -H {} -n -c {} -t120".format(asset_run.device.all_ips()[0],
+                                                                                      _command)
+
+                    ext_com = ExtCom(self.log, _com)
+                    self.asset_run_ext_com_dict[asset_run] = ext_com
+                    ext_com.run()
+
+                    asset_run.run_status = RunStatus.RUNNING
+                    asset_run.run_start_time = datetime.datetime.now()
+                    asset_run.save()
+                elif asset_run.run_status == RunStatus.RUNNING:
+                    if self.asset_run_ext_com_dict[asset_run].finished() == 0:
+                        _output = self.asset_run_ext_com_dict[asset_run].communicate()
+                        del self.asset_run_ext_com_dict[asset_run]
+
+                        asset_run.run_status = RunStatus.ENDED
+                        asset_run.raw_result_str = _output
+                        asset_run.run_end_time = datetime.datetime.now()
+                        asset_run.save()
+                elif asset_run.run_status == RunStatus.ENDED:
+                    asset_batch.assetrun_set.remove(asset_run)
+                    completed_runs += 1
+
+            if len(asset_batch.assetrun_set.all()) == completed_runs:
+                asset_batch.delete()
+
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.__class__.process.log("[{} {:d}] {}".format(self.__class__.SCAN_TYPE, self.id, what), log_level)

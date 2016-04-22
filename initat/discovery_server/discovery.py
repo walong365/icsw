@@ -30,7 +30,7 @@ from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockList
 from initat.snmp.snmp_struct import ResultNode
 from initat.tools import logging_tools, process_tools, server_command, config_tools, threading_tools
 from .config import global_config
-from .ext_com_scan import BaseScanMixin, ScanBatch, WmiScanMixin, NRPEScanMixin
+from .ext_com_scan import BaseScanMixin, ScanBatch, WmiScanMixin, NRPEScanMixin, Dispatcher
 from .hm_functions import HostMonitoringMixin
 from .snmp_functions import SNMPBatch
 
@@ -181,6 +181,8 @@ class DiscoveryProcess(threading_tools.process_obj, HostMonitoringMixin, BaseSca
     def _init_subsys(self):
         SNMPBatch.setup(self)
         ScanBatch.setup(self)
+        Dispatcher()
+        self.register_timer(Dispatcher().dispatch_call, 5)
 
     def _snmp_basic_scan(self, *args, **kwargs):
         SNMPBatch(server_command.srv_command(source=args[0]))

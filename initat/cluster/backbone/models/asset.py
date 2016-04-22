@@ -169,3 +169,9 @@ class AssetRun(models.Model):
 
 class AssetBatch(models.Model):
     idx = models.AutoField(primary_key=True)
+
+    def completed(self):
+        for assetrun in self.assetrun_set.all():
+            if not assetrun.run_status == RunStatus.ENDED:
+                return False
+        return True
