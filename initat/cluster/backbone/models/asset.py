@@ -22,8 +22,9 @@ from django.db import models
 from enum import IntEnum
 import uuid
 import json
+import pickle
 
-class Package:
+class BaseAssetPackage:
     def __init__(self, name, version = None, size = None, install_date = None):
         self.name = name
         self.version = version
@@ -41,25 +42,16 @@ class Package:
 
         return s
 
-def get_packages_from_blob(blob):
-    packages = []
-    if str(blob[:3]) == "w32":
-        l = json.loads(blob[:3])
-        for (name, version, size, date) in l:
-            packages.append(Package(name, version=version, size=size, install_date=date))
-
-    return packages
-
-class Hardware:
+class BaseAssetHardware:
     pass
 
-class License:
+class BaseAssetLicense:
     pass
 
-class Update:
+class BaseAssetUpdate:
     pass
 
-class Software_Version:
+class BaseAssetSoftwareVersion:
     pass
 
 
@@ -83,26 +75,34 @@ class Asset(models.Model):
     asset_run = models.ForeignKey("AssetRun")
 
     def getAssetInstance(self):
-        if self.type == AssetType.PACKAGE:
-            return get_packages_from_blob(self.value)
-        elif self.type == AssetType.HARDWARE:
-            # todo interpret value blob
-            return Hardware()
-        elif self.type == AssetType.LICENSE:
-            # todo interpret value blob
-            return License()
-        elif self.type == AssetType.UPDATE:
-            # todo interpret value blob
-            return Update()
-        elif self.type == AssetType.SOFTWARE_VERSION:
-            # todo interpret value blob
-            return Software_Version()
-
+        return pickle.loads(self.value)
 
 class RunStatus(IntEnum):
     PLANNED = 1
     RUNNING = 2
     ENDED = 3
+
+def get_base_assets_from_raw_result(blob, runtype):
+    assets = []
+    if runtype == AssetType.PACKAGE:
+        if str(blob[:3]) == "w32":
+            l = json.loads(blob[:3])
+            for (name, version, size, date) in l:
+                assets.append(BaseAssetPackage(name, version=version, size=size, install_date=date))
+    elif runtype == AssetType.HARDWARE:
+        # todo interpret value blob
+        pass
+    elif runtype == AssetType.LICENSE:
+        # todo interpret value blob
+        pass
+    elif runtype == AssetType.UPDATE:
+        # todo interpret value blob
+        pass
+    elif runtype == AssetType.SOFTWARE_VERSION:
+        # todo interpret value blob
+        pass
+
+    return assets
 
 
 class AssetRun(models.Model):
@@ -112,6 +112,8 @@ class AssetRun(models.Model):
 
     run_status = models.IntegerField(choices=[(status.value, status.name) for status in RunStatus], null=True)
 
+    run_type = models.IntegerField(choices=[(_type.value, _type.name) for _type in AssetType], null=True)
+
     run_start_time = models.DateTimeField(null=True, blank=True)
 
     run_end_time = models.DateTimeField(null=True, blank=True)
@@ -120,6 +122,22 @@ class AssetRun(models.Model):
 
     device = models.ForeignKey("backbone.device", null=True)
 
+    raw_result_str = models.BinaryField(null=True)
+
+    raw_result_interpreted = models.BooleanField(default=False)
+
+
+    def generate_assets_from_result_str(self):
+        if self.raw_result_interpreted:
+            return False
+        self.raw_result_interpreted = True
+
+        for _base_asset in get_base_assets_from_raw_result(self.raw_result_str, self.run_type):
+            _package_dump = pickle.dumps(_base_asset)
+            self.asset_set.create(type=self.run_type, value=_package_dump)
+
+        self.save()
+        return True
 
 class AssetBatch(models.Model):
     idx = models.AutoField(primary_key=True)
