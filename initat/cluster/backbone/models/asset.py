@@ -46,10 +46,25 @@ class BaseAssetHardware:
     pass
 
 class BaseAssetLicense:
-    pass
+    def __init__(self, name, license_key):
+        self.name = name
+        self.license_key = license_key
+
+    def __repr__(self):
+        s = "Name: %s Key: %s" % (self.name, self.license_key)
 
 class BaseAssetUpdate:
-    pass
+    def __init__(self, name, install_date = None, status = None):
+        self.name = name
+        self.install_date = install_date
+        self.status = status
+
+    def __repr__(self):
+        s = "Name: %s" % self.name
+        if self.install_date:
+            s += " InstallDate: %s" % self.install_date
+        if self.status:
+            s += " InstallStatus: %s" % self.status
 
 class BaseAssetSoftwareVersion:
     pass
@@ -91,17 +106,28 @@ def get_base_assets_from_raw_result(blob, runtype):
             l = json.loads(blob[3:])
             for (name, version, size, date) in l:
                 assets.append(BaseAssetPackage(name, version=version, size=size, install_date=date))
+        #todo check/interpret different scan types
+
     elif runtype == AssetType.HARDWARE:
-        # todo interpret value blob
+        #todo interpret value blob
         pass
+
     elif runtype == AssetType.LICENSE:
-        # todo interpret value blob
-        pass
+        if str(blob[:3]) == W32_SCAN_TYPE_PREFIX:
+            l = json.loads(blob[3:])
+            for (name, licensekey) in l:
+                assets.append(BaseAssetLicense(name, license_key=licensekey))
+        #todo check/interpret different scan types
+
     elif runtype == AssetType.UPDATE:
-        # todo interpret value blob
-        pass
+        if str(blob[:3]) == W32_SCAN_TYPE_PREFIX:
+            l = json.loads(blob[3:])
+            for (name, date, status) in l:
+                assets.append(BaseAssetUpdate(name, install_date = date, status=status))
+        #todo check/interpret different scan types
+
     elif runtype == AssetType.SOFTWARE_VERSION:
-        # todo interpret value blob
+        #todo interpret value blob
         pass
 
     return assets

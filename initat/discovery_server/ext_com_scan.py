@@ -389,23 +389,6 @@ LIST_HARDWARE_CMD = "list-hardware-py3"
 
 VALID_COMMANDS = [LIST_SOFTWARE_CMD, LIST_KEYS_CMD, LIST_METRICS_CMD, LIST_PROCESSES_CMD, LIST_UPDATES_CMD, LIST_PENDING_UPDATES_CMD]
 
-# class NRPECommandInterpreter:
-#     def __init__(self, _command, _output):
-#         self.output = _output
-#         self.command = _command
-#
-#     def interpret(self):
-#         if self.command == LIST_SOFTWARE_CMD:
-#             l = json.loads(self.output)
-#             for (name, version, size, date) in l:
-#                 print name
-#                 print version
-#                 print size
-#                 print date
-#                 print
-#         else:
-#             print self.output
-
 class NRPEScanBatch(ScanBatch):
     SCAN_TYPE = 'NRPE'
 
@@ -428,7 +411,6 @@ class NRPEScanBatch(ScanBatch):
     def _build_command(self):
         _com = "/opt/cluster/sbin/check_nrpe -H {} -n -c {} -t120".format(self.device.target_ip, self._command)
 
-
         runtype = None
         if self._command == LIST_SOFTWARE_CMD:
             runtype = AssetType.PACKAGE
@@ -441,10 +423,9 @@ class NRPEScanBatch(ScanBatch):
 
         asset_run_len = len(self.device.assetrun_set.all())
         self._assetrun = self.device.assetrun_set.create(run_index=asset_run_len + 1,
-                                                         run_type = runtype,
+                                                         run_type=runtype,
                                                          run_status=RunStatus.RUNNING,
-                                                         run_start_time=datetime.datetime.now(),
-                                                         run_end_time=datetime.datetime.now())
+                                                         run_start_time=datetime.datetime.now())
 
         return _com
 
@@ -457,11 +438,6 @@ class NRPEScanBatch(ScanBatch):
             self._assetrun.generate_assets_from_result_str()
             self._assetrun.save()
 
-            #nci = NRPECommandInterpreter(self._command, _output[0])
-            #nci.interpret()
-
-
-            #print _output
             self.finish()
 
 class _ExtComScanMixin(object):
