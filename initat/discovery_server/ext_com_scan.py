@@ -508,7 +508,7 @@ class Dispatcher:
                         del self.asset_run_ext_com_dict[asset_run]
 
                         asset_run.run_status = RunStatus.ENDED
-                        asset_run.raw_result_str = _output
+                        asset_run.raw_result_str = W32_SCAN_TYPE_PREFIX + _output[0]
                         asset_run.run_end_time = datetime.datetime.now()
                         asset_run.save()
                 elif asset_run.run_status == RunStatus.ENDED:
