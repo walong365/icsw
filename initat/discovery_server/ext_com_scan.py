@@ -376,6 +376,8 @@ import json
 import zlib
 import bz2
 import base64
+import datetime
+from initat.cluster.backbone.models.asset import Asset, AssetRun, RunStatus, AssetType, W32_SCAN_TYPE_PREFIX
 
 LIST_SOFTWARE_CMD = "list-software-py3"
 LIST_KEYS_CMD = "list-keys-py3"
@@ -383,25 +385,26 @@ LIST_METRICS_CMD = "list-metrics-py3"
 LIST_PROCESSES_CMD = "list-processes-py3"
 LIST_UPDATES_CMD = "list-updates-alt-py3"
 LIST_PENDING_UPDATES_CMD = "list-pending-updates-py3"
+LIST_HARDWARE_CMD = "list-hardware-py3"
 
 VALID_COMMANDS = [LIST_SOFTWARE_CMD, LIST_KEYS_CMD, LIST_METRICS_CMD, LIST_PROCESSES_CMD, LIST_UPDATES_CMD, LIST_PENDING_UPDATES_CMD]
 
-class NRPECommandInterpreter:
-    def __init__(self, _command, _output):
-        self.output = _output
-        self.command = _command
-
-    def interpret(self):
-        if self.command == LIST_SOFTWARE_CMD:
-            l = json.loads(self.output)
-            for (name, version, size, date) in l:
-                print name
-                print version
-                print size
-                print date
-                print
-        else:
-            print self.output
+# class NRPECommandInterpreter:
+#     def __init__(self, _command, _output):
+#         self.output = _output
+#         self.command = _command
+#
+#     def interpret(self):
+#         if self.command == LIST_SOFTWARE_CMD:
+#             l = json.loads(self.output)
+#             for (name, version, size, date) in l:
+#                 print name
+#                 print version
+#                 print size
+#                 print date
+#                 print
+#         else:
+#             print self.output
 
 class NRPEScanBatch(ScanBatch):
     SCAN_TYPE = 'NRPE'
@@ -410,6 +413,7 @@ class NRPEScanBatch(ScanBatch):
         super(NRPEScanBatch, self).__init__(dev_com, scan_dev)
 
         self._command = dev_com.attrib.get('command')
+        self._assetrun = None
 
         if not self._command and not (self._command in VALID_COMMANDS):
             self.log("no valid command found for {}".format(unicode(self.device)), logging_tools.LOG_LEVEL_ERROR)
@@ -423,16 +427,38 @@ class NRPEScanBatch(ScanBatch):
 
     def _build_command(self):
         _com = "/opt/cluster/sbin/check_nrpe -H {} -n -c {} -t120".format(self.device.target_ip, self._command)
-        print _com
+
+
+        runtype = None
+        if self._command == LIST_SOFTWARE_CMD:
+            runtype = AssetType.PACKAGE
+        elif self._command == LIST_KEYS_CMD:
+            runtype = AssetType.LICENSE
+        elif self._command == LIST_HARDWARE_CMD:
+            runtype = AssetType.HARDWARE
+        elif self._command == LIST_UPDATES_CMD:
+            runtype = AssetType.UPDATE
+
+        asset_run_len = len(self.device.assetrun_set.all())
+        self._assetrun = self.device.assetrun_set.create(run_index=asset_run_len + 1,
+                                                         run_type = runtype,
+                                                         run_status=RunStatus.RUNNING,
+                                                         run_start_time=datetime.datetime.now(),
+                                                         run_end_time=datetime.datetime.now())
+
         return _com
 
     def check_ext_com(self):
         _res = self._ext_com.finished()
         if _res is not None:
             _output = self._ext_com.communicate()
+            self._assetrun.run_end_time = datetime.datetime.now()
+            self._assetrun.raw_result_str = W32_SCAN_TYPE_PREFIX + _output[0]
+            self._assetrun.generate_assets_from_result_str()
+            self._assetrun.save()
 
-            nci = NRPECommandInterpreter(self._command, _output[0])
-            nci.interpret()
+            #nci = NRPECommandInterpreter(self._command, _output[0])
+            #nci.interpret()
 
 
             #print _output

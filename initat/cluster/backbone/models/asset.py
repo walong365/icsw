@@ -68,7 +68,7 @@ class Asset(models.Model):
 
     type = models.IntegerField(choices=[(_type.value, _type.name) for _type in AssetType])
 
-    value = models.BinaryField()
+    value = models.TextField()
 
     name = models.UUIDField(default=uuid.uuid4)
 
@@ -82,11 +82,13 @@ class RunStatus(IntEnum):
     RUNNING = 2
     ENDED = 3
 
+W32_SCAN_TYPE_PREFIX = "w32"
+
 def get_base_assets_from_raw_result(blob, runtype):
     assets = []
     if runtype == AssetType.PACKAGE:
-        if str(blob[:3]) == "w32":
-            l = json.loads(blob[:3])
+        if str(blob[:3]) == W32_SCAN_TYPE_PREFIX:
+            l = json.loads(blob[3:])
             for (name, version, size, date) in l:
                 assets.append(BaseAssetPackage(name, version=version, size=size, install_date=date))
     elif runtype == AssetType.HARDWARE:
@@ -122,7 +124,7 @@ class AssetRun(models.Model):
 
     device = models.ForeignKey("backbone.device", null=True)
 
-    raw_result_str = models.BinaryField(null=True)
+    raw_result_str = models.TextField(null=True)
 
     raw_result_interpreted = models.BooleanField(default=False)
 
