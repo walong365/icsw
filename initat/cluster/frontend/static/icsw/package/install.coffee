@@ -776,19 +776,6 @@ package_module = angular.module(
             onshow: (modal) =>
                 height = $(window).height() - 100
                 modal.getModal().find(".modal-body").css("max-height", height)
-    $scope.get_td_class = (dev_idx, pack_idx) ->
-        pdc = $scope.state_dict[dev_idx][pack_idx]
-        if pdc and pdc.idx
-            _i = pdc.installed
-            _t = pdc.target_state
-            _k = "#{_i}.#{_t}"
-            if _k in ["y.keep", "y.upgrade", "y.install"
-              "n.erase", "n.keep"]
-                return "text-center success"
-            else
-                return "text-center danger"
-        else
-            return "text-center"
     $scope.send_sync = (event) ->
         blockUI.start()
         icswSimpleAjaxCall(
@@ -1081,123 +1068,6 @@ package_module = angular.module(
         restrict : "EA"
         template : $templateCache.get("icsw.package.install.package.list.row")
     }
-]).directive("istate", ["$templateCache", "$compile", ($templateCache, $compile) ->
-    return {
-        restrict : "EA"
-        scope:
-            pdc          : "=pdc"
-            selected_pdcs: "=pdcs"
-            parent       : "=parent"
-            mode         : "=mode"
-        replace  : true
-        transclude : true
-        compile : (tElement, tAttrs) ->
-            #tElement.append($templateCache.get("pdc_state.html"))
-            return (scope, iElement, iAttrs) ->
-                #console.log "link", scope, iElement, iAttrs
-                scope.show_pdc = () ->
-                    #console.log scope.pdc
-                    if scope.pdc and scope.pdc.idx
-                        return true
-                    else
-                        return false
-                scope.get_btn_class = () ->
-                    if scope.pdc and scope.pdc.idx
-                        cur = scope.pdc
-                        if cur.installed == "y"
-                            return "btn-success"
-                        else if cur.installed == "u"
-                            return "btn-warning"
-                        else if cur.installed == "n"
-                            return "btn-danger"
-                        else
-                            return "btn-active"
-                    else
-                        return ""
-                scope.get_glyph_class = (val) ->
-                    if val
-                        if val == "keep"
-                            return "glyphicon glyphicon-minus"
-                        else if val == "install"
-                            return "glyphicon glyphicon-ok"
-                        else if val == "upgrade"
-                            return "glyphicon glyphicon-arrow-up"
-                        else if val == "erase"
-                            return "glyphicon glyphicon-remove"
-                        else
-                            # something strange ...
-                            return "glyphicon glyphicon-asterisk"
-                    else
-                        return "glyphicon"
-                scope.change_sel = (pdc) ->
-                    pdc.selected = !pdc.selected
-                    if pdc.idx
-                        if pdc.selected and pdc.idx not of scope.selected_pdcs
-                            scope.selected_pdcs[pdc.idx] = pdc
-                        else if not pdc.selected and pdc.idx of scope.selected_pdcs
-                            delete scope.selected_pdcs[pdc.idx]
-                scope.get_tooltip = () ->
-                    if scope.pdc and scope.pdc.idx
-                        pdc = scope.pdc
-                        t_field = ["target state : #{pdc.target_state}"]
-                        if pdc.installed == "n"
-                            t_field.push("<br>installed: no")
-                        else if pdc.installed == "u"
-                            t_field.push("<br>installed: unknown")
-                        else if pdc.installed == "y"
-                            t_field.push("<br>installed: yes")
-                            if pdc.install_time
-                                t_field.push("<br>installtime: " + moment.unix(pdc.install_time).format("ddd, D. MMM YYYY HH:mm:ss"))
-                            else
-                                t_field.push("<br>installtime: unknown")
-                            if pdc.installed_name
-                                inst_name = scope.get_installed_version()
-                                t_field.push("<br>installed: #{inst_name}")
-                        else
-                            t_field.push("<br>unknown install state '#{pdc.installed}")
-                        if pdc.kernel_dep
-                            t_field.push("<hr>")
-                            t_field.push("kernel dependencies enabled (#{pdc.kernel_list.length})")
-                            for _idx in pdc.kernel_list
-                                t_field.push("<br>" + (_k.name for _k in scope.parent.kernel_list when _k.idx == _idx)[0])
-                        if pdc.image_dep
-                            t_field.push("<hr>")
-                            t_field.push("image dependencies enabled (#{pdc.image_list.length})")
-                            for _idx in pdc.image_list
-                                t_field.push("<br>" + (_i.name for _i in scope.parent.image_list when _i.idx == _idx)[0])
-                        return "<div class='text-left'>" + t_field.join("") + "<div>"
-                    else
-                        return ""
-                scope.get_installed_version = () ->
-                    if scope.pdc and scope.pdc.idx
-                        pdc = scope.pdc
-                        if pdc.installed == "y" and pdc.installed_name
-                            inst_name = pdc.installed_name
-                            if pdc.installed_version
-                                inst_name = "#{inst_name}-#{pdc.installed_version}"
-                            else
-                                inst_name = "#{inst_name}-?"
-                            if pdc.installed_release
-                                inst_name = "#{inst_name}-#{pdc.installed_release}"
-                            else
-                                inst_name = "#{inst_name}-?"
-                            return inst_name
-                        else
-                            return "---"
-                    else
-                        return "---"
-                scope.draw = () ->
-                    iElement.children().remove()
-                    if scope.mode == "a"
-                        new_el = $compile($templateCache.get("icsw.package.install.pdc.state"))
-                    else if scope.mode == "v"
-                        new_el = $compile($templateCache.get("icsw.package.install.pdc.version"))
-                    iElement.append(new_el(scope))
-                scope.$watch("mode", () ->
-                    scope.draw()
-                )
-                scope.draw()
-    }
 ]).directive("icswPackageInstallDevice",
 [
     "$templateCache",
@@ -1213,22 +1083,158 @@ package_module = angular.module(
         #link: (scope, element, attrs) ->
         #    console.log "Link inst"
     }
+]).service("icswPDCEntry",
+[
+    "$q",
+(
+    $q,
+) ->
+    class icswPDCEntry
+        constructor: (device, pack) ->
+            @device_idx = device.idx
+            @package_idx = pack.idx
+            # is selected
+            @selected = false
+            @clear_set()
+
+        clear_set: () =>
+            # is a valid package (== associated ?)
+            @set = false
+            @idx = undefined
+            @$$td_class = "text-center"
+
+        feed: (pdc) =>
+            @set = true
+            @idx = pdc.idx
+            for attr_name in [
+                "installed", "package", "response_str", "response_type",
+                "target_state",
+                "install_time", "installed_name",
+                "installed_version", "installed_release"
+            ]
+                @[attr_name] = pdc[attr_name]
+            if @target_state
+                if @target_state == "keep"
+                    _gc = "glyphicon glyphicon-minus"
+                else if @target_state == "install"
+                    _gc = "glyphicon glyphicon-ok"
+                else if @target_state == "upgrade"
+                    _gc = "glyphicon glyphicon-arrow-up"
+                else if @target_state == "erase"
+                    _gc = "glyphicon glyphicon-remove"
+                else
+                    # something strange ...
+                    _gc = "glyphicon glyphicon-asterisk"
+            else
+                _gc = "glyphicon"
+            @$$ts_class = _gc
+
+            if @installed == "y"
+                _bc = "btn-success"
+            else if @installed == "u"
+                _bc = "btn-warning"
+            else if @installed == "n"
+                _bc = "btn-danger"
+            else
+                _bc = "btn-active"
+            @$$button_class = _bc
+
+
+            if @installed == "y" and @installed_name
+                inst_name = @installed_name
+                if @installed_version
+                    inst_name = "#{inst_name}-#{@installed_version}"
+                else
+                    inst_name = "#{inst_name}-?"
+                if @installed_release
+                    inst_name = "#{inst_name}-#{@installed_release}"
+                else
+                    inst_name = "#{inst_name}-?"
+            else
+                inst_name = "---"
+            @$$installed_version = inst_name
+
+            t_field = ["target state : #{pdc.target_state}"]
+            if @installed == "n"
+                t_field.push("<br>installed: no")
+            else if @installed == "u"
+                t_field.push("<br>installed: unknown")
+            else if @installed == "y"
+                t_field.push("<br>installed: yes")
+                if @install_time
+                    t_field.push("<br>installtime: " + moment.unix(@install_time).format("ddd, D. MMM YYYY HH:mm:ss"))
+                else
+                    t_field.push("<br>installtime: unknown")
+                if @installed_name
+                    t_field.push("<br>installed: #{@$$installed_version}")
+            else
+                t_field.push("<br>unknown install state '#{@installed}")
+            if @kernel_dep
+                t_field.push("<hr>")
+                t_field.push("kernel dependencies enabled (#{@kernel_list.length})")
+                # for _idx in @kernel_list
+                #    t_field.push("<br>" + (_k.name for _k in scope.parent.kernel_list when _k.idx == _idx)[0])
+            if @image_dep
+                t_field.push("<hr>")
+                t_field.push("image dependencies enabled (#{@image_list.length})")
+                # for _idx in @image_list
+                #    t_field.push("<br>" + (_i.name for _i in scope.parent.image_list when _i.idx == _idx)[0])
+            @$$tooltip = "<div class='text-left'>" + t_field.join("") + "<div>"
+
+            _i = @installed
+            _t = @target_state
+            _k = "#{_i}.#{_t}"
+            if _k in [
+                "y.keep", "y.upgrade",
+                "y.install", "n.erase", "n.keep"
+            ]
+                @$$td_class = "text-center success"
+            else
+                @$$td_class = "text-center danger"
+
+]).service("icswPDCStruct",
+[
+    "$q", "icswPDCEntry",
+(
+    $q, icswPDCEntry,
+) ->
+    class icswPDCStruct
+        constructor: (@devices, @package_tree) ->
+            # build lut
+            @lut = {}
+            for dev in @devices
+                @lut[dev.idx] = {}
+                for pack in @package_tree.list
+                    @lut[dev.idx][pack.idx] = new icswPDCEntry(dev, pack)
+
+        feed: () =>
+            # sync with devices
+            # step 1: clear all set flags
+            for dev in @devices
+                for pack in @package_tree.list
+                    @lut[dev.idx][pack.idx].clear_set()
+            # step 2: check for set
+            for dev in @devices
+                for pdc in dev.package_set
+                    @lut[dev.idx][pdc.package].feed(pdc)
 
 ]).controller("icswPackageInstallDeviceCtrl",
 [
     "$scope", "icswPackageInstallTreeService", "$q", "icswDeviceTreeService", "blockUI",
     "icswUserService", "$rootScope", "ICSW_SIGNALS", "icswActiveSelectionService",
     "icswPackageInstallRepositoryTreeService", "icswToolsSimpleModalService", "$timeout",
-    "icswDeviceTreeHelperService",
+    "icswDeviceTreeHelperService", "icswPDCStruct",
 (
     $scope, icswPackageInstallTreeService, $q, icswDeviceTreeService, blockUI,
     icswUserService, $rootScope, ICSW_SIGNALS, icswActiveSelectionService,
     icswPackageInstallRepositoryTreeService, icswToolsSimpleModalService, $timeout,
-    icswDeviceTreeHelperService,
+    icswDeviceTreeHelperService, icswPDCStruct,
 ) ->
     $scope.struct = {
         # package tree
         package_tree: undefined
+        # package tree loaded
+        package_tree_loaded: false
         # repo tree
         repo_tree: undefined
         # device tree loaded
@@ -1249,6 +1255,8 @@ package_module = angular.module(
         pdc_updating: false
         # pdc timeout
         pdc_update_timeout: undefined
+        # pdc struct
+        pdc_struct: undefined
     }
 
     load = (reload) ->
@@ -1267,6 +1275,9 @@ package_module = angular.module(
                 $scope.struct.user = data[0]
                 $scope.struct.repo_tree = data[1]
                 $scope.struct.package_tree = data[2]
+                $scope.struct.package_tree_loaded = true
+                if $scope.struct.device_tree_loaded
+                    init_pdc()
         )
 
 
@@ -1278,6 +1289,14 @@ package_module = angular.module(
     )
 
     # pdc functions
+    init_pdc = () ->
+        # init new pdc structure
+        if $scope.struct.pdc_udpate_timeout
+            $timeout.cancel($scope.struct.pdc_update_timeout)
+        new_pdc = new icswPDCStruct($scope.struct.devices, $scope.struct.package_tree)
+        $scope.struct.pdc_struct = new_pdc
+        update_pdc()
+        
     update_pdc = () ->
         if not $scope.struct.pdc_updating
             if $scope.struct.pdc_udpate_timeout
@@ -1295,8 +1314,7 @@ package_module = angular.module(
                                 dev.$$package_client_latest_contact = moment(d_var.val_date).fromNow(true)
                             else if d_var.name == "package_client_version"
                                 dev.$$package_client_version = d_var.val_str
-                        console.log dev
-                    console.log "done"
+                    $scope.struct.pdc_struct.feed()
                     $scope.struct.pdc_timeout = $timeout(
                         () ->
                             update_pdc()
@@ -1346,7 +1364,8 @@ package_module = angular.module(
                 for entry in devs
                     if not entry.is_meta_device
                         $scope.struct.devices.push(entry)
-                update_pdc()
+                if $scope.struct.package_tree_loaded
+                    init_pdc()
         )
 
     # delete package
@@ -1364,4 +1383,38 @@ package_module = angular.module(
                 )
         )
 
+]).directive("icswPdcState",
+[
+    "$templateCache", "$compile",
+(
+    $templateCache, $compile
+) ->
+    return {
+        restrict: "EA"
+        scope:
+            mode: "=mode"
+            pdc: "=icswPdcState"
+        replace: true
+        link: (scope, iElement, iAttrs) ->
+            scope.mode = "a"
+            scope.change_sel = (pdc) ->
+                pdc.selected = !pdc.selected
+                if pdc.idx
+                    if pdc.selected and pdc.idx not of scope.selected_pdcs
+                        scope.selected_pdcs[pdc.idx] = pdc
+                    else if not pdc.selected and pdc.idx of scope.selected_pdcs
+                        delete scope.selected_pdcs[pdc.idx]
+            _draw = () ->
+                iElement.children().remove()
+                if scope.mode == "a"
+                    new_el = $compile($templateCache.get("icsw.package.install.pdc.state"))
+                else #  if scope.mode == "v"
+                    new_el = $compile($templateCache.get("icsw.package.install.pdc.version"))
+                iElement.append(new_el(scope))
+            # scope.$watch("mode", () ->
+            #    scope.draw()
+            # )
+
+            _draw()
+    }
 ])

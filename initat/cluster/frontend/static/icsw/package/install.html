@@ -79,33 +79,6 @@
     </td>
 </script>
 
-<script type="text/ng-template" id="icsw.package.install.pdc.state">
-    <div>
-        <span ng-show="show_pdc()" tooltip-placement="bottom" tooltip-html-unsafe="{{ get_tooltip() }}">
-            <span ng-class="get_glyph_class(pdc.target_state)"></span>
-            <div class="btn-group btn-group-xs">
-                <input type="button" class="btn disabled" ng-class="get_btn_class()" value="{{ pdc.installed }}"/>
-                <input type="button" class="btn disabled" ng-class="pdc.force_flag && 'btn-primary' || 'btn-default'" value="F"/>
-                <input type="button" class="btn disabled" ng-class="pdc.nodeps_flag && 'btn-primary' || 'btn-default'" value="N"/>
-                <input type="button" ng-class="pdc.selected && 'btn btn-primary' || 'btn'" value="S" title="select" ng-model="pdc.selected" ng-click="change_sel(pdc)"/>
-            </div>
-        </span>
-        <span ng-show="!show_pdc()">
-            <div class="btn-group btn-group-xs">
-                <input type="button" ng-class="pdc.selected && 'btn btn-primary' || 'btn'" value="S" title="select" ng-model="pdc.selected" ng-click="change_sel(pdc)"/>
-            </div>
-        </span>
-    </div>
-</script>
-
-<script type="text/ng-template" id="icsw.package.install.pdc.version">
-    <div>
-        <span ng-show="show_pdc()" tooltip-placement="bottom" tooltip-html-unsafe="{{ get_tooltip() }}">
-            {{ get_installed_version() }}
-        </span>
-    </div>
-</script>
-
 <script type="text/ng-template" id="icsw.package.install.search.overview">
     <div ng-show="struct.tree_valid">
         <div class="form-inline">
@@ -437,7 +410,13 @@
             </div>
         </div>
     </h3>
-    <table class="table table-condensed" style="width:auto;">
+    <table
+        class="table table-condensed table-hover table-striped"
+        style="width:auto;"
+        ng-if="struct.pdc_struct"
+        st-table="pl_displayed"
+        st-safe-src="struct.package_tree.list"
+    >
         <thead>
             <tr>
                 <th>&nbsp;</th>
@@ -452,7 +431,7 @@
             <tr>
                 <th>Package</th>
                 <th>action</th>
-                <th ng-repeat="dev in devices" class="text-center">
+                <th ng-repeat="dev in struct.devices" class="text-center">
                     <div class="btn-group btn-group-xs">
                         <input type="button" class="btn btn-primary" ng-click="change_device_sel(dev, 1)" value="S"/>
                         <input type="button" class="btn btn-success" ng-click="change_device_sel(dev, 0)" value="T"/>
@@ -462,12 +441,14 @@
             </tr>
         </thead>
         <tbody>
-            <tr ng-repeat="pack in entries.packages | filter:{'name' : package_filter}">
+            <tr ng-repeat="pack in pl_displayed">
                 <td>
                     {{ pack.name }}
                     <span ng-show="pack.always_latest == false">{{ pack.version }}</span>
                     <span ng-show="pack.always_latest == true">&lt;latest&gt;</span>
-                    <span ng-show="pack.target_repo"> from {{ pack.target_repo | array_lookup:entries.repos:"name" }}</span>
+                    <span ng-show="pack.target_repo">
+                        from {{ struct.repo_tree.lut[pack.target_repo].name }}
+                    </span>
                 </td>
                 <td>
                     <div class="btn-group btn-group-xs">
@@ -476,7 +457,12 @@
                         <input type="button" class="btn btn-warning" ng-click="change_package_sel(pack, -1)" value="C"/>
                     </div>
                 </td>
-                <td ng-repeat="device in devices" istate mode="is_mode" pdc="state_dict[device.idx][pack.idx]" parent="$parent.$parent" pdcs="$parent.selected_pdcs" ng-class="get_td_class(device.idx, pack.idx)"></td>
+                <td
+                    ng-repeat="device in struct.devices"
+                    icsw-pdc-state="struct.pdc_struct.lut[device.idx][pack.idx]"
+                    mode="is_mode"
+                    ng-class="struct.pdc_struct.lut[device.idx][pack.idx].$$td_class"
+                ></td>
             </tr>
         </tbody>
     </table>
@@ -522,4 +508,31 @@
         <icsw-tools-button type="delete" size="xs" ng-click="delete($event, obj)"></icsw-tools-button>
     </td>
     <td>{{ get_pdc_list(obj) }}</td>
+</script>
+
+<script type="text/ng-template" id="icsw.package.install.pdc.state">
+    <div>
+        <span ng-show="pdc.set" uib-tooltip-placement="bottom" uib-tooltip-html="pdc.$$tooltip">
+            <span ng-class="pdc.$$ts_class"></span>
+            <div class="btn-group btn-group-xs">
+                <input type="button" class="btn disabled" ng-class="pdc.$$button_class" value="{{ pdc.installed }}"/>
+                <input type="button" class="btn disabled" ng-class="pdc.force_flag && 'btn-primary' || 'btn-default'" value="F"/>
+                <input type="button" class="btn disabled" ng-class="pdc.nodeps_flag && 'btn-primary' || 'btn-default'" value="N"/>
+                <input type="button" ng-class="pdc.selected && 'btn btn-primary' || 'btn'" value="S" title="select" ng-model="pdc.selected" ng-click="change_sel(pdc)"/>
+            </div>
+        </span>
+        <span ng-show="!pdc.set">
+            <div class="btn-group btn-group-xs">
+                <input type="button" ng-class="pdc.selected && 'btn btn-primary' || 'btn'" value="S" title="select" ng-model="pdc.selected" ng-click="change_sel(pdc)"/>
+            </div>
+        </span>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.package.install.pdc.version">
+    <div>
+        <span ng-show="obj.set" tooltip-placement="bottom" tooltip-html-unsafe="{{ get_tooltip() }}">
+            {{ pdc.$$installed_version }}
+        </span>
+    </div>
 </script>
