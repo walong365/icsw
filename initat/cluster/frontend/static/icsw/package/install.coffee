@@ -87,6 +87,7 @@ package_module = angular.module(
                     _show = false
                 if _show
                     @filtered_list.push(entry)
+            @filtered_lut = _.keyBy(@filtered_list, "idx")
 
         delete_repository: (obj) =>
             d = $q.defer()
@@ -338,7 +339,13 @@ package_module = angular.module(
     class icswPackageInstallTree
         constructor: (list, srv_list) ->
             @list = []
+            @filtered_list = []
+            @filter = ""
             @update(list)
+
+        set_filter: (new_filter) =>
+            @filter = new_filter
+            @filter_list()
 
         update: (in_list) =>
             @list.length = 0
@@ -348,6 +355,18 @@ package_module = angular.module(
 
         build_luts: () =>
             @lut = _.keyBy(@list, "idx")
+            @filter_list()
+
+        filter_list: () =>
+            try
+                filter_re = new RegExp(@filter, "gi")
+            catch error
+                filter_re = new RegExp(".", "gi")
+            @filtered_list.length = 0
+            for entry in @list
+                if entry.name.match(filter_re)
+                    @filtered_list.push(entry)
+            @filtered_lut = _.keyBy(@filtered_list, "idx")
 
         delete_package: (obj) =>
             d = $q.defer()
@@ -462,12 +481,6 @@ package_module = angular.module(
     # image / kernel list
     $scope.srv_image_list = []
     $scope.srv_kernel_list = []
-    $scope.package_filter = ""
-    # is mode
-    $scope.is_mode = "a"
-    # init state dict
-    $scope.state_dict = {}
-    $scope.selected_pdcs = {}
 
     load = (reload) ->
         $scope.struct.tree_loaded = false
@@ -554,62 +567,6 @@ package_module = angular.module(
                 blockUI.stop()
         )
 
-    $scope.reload_state = () ->
-        update_pdc = (srv_pdc, client_pdc) ->
-            for attr_name in [
-                "installed", "package", "response_str", "response_type", "target_state", "install_time",
-                "installed_name", "installed_version", "installed_release"
-            ]
-                client_pdc[attr_name] = srv_pdc[attr_name]
-
-        Restangular.all(ICSW_URLS.REST_DEVICE_TREE_LIST.slice(1)).getList({"package_state" : true, "ignore_meta_devices" : true}).then(
-            (data) ->
-                for dev in data
-                    # check if device is still in lut
-                    if dev.idx of $scope.device_lut
-                        $scope.device_lut[dev.idx].client_version = dev.client_version
-                        for pdc in dev.package_device_connection_set
-                            cur_pdc = $scope.state_dict[dev.idx][pdc.package]
-                            # cur_pdc can be undefined, FIXME
-                            if cur_pdc and cur_pdc.idx
-                                # update only relevant fields
-                                update_pdc(pdc, cur_pdc)
-                            else
-                                # use pdc from server
-                                $scope.state_dict[dev.idx][pdc.package] = pdc
-                $scope.reload_promise = $timeout($scope.reload_state, 10000)
-        )
-
-    $scope.salt_package_list = () ->
-        # init dummy pdc entries when new packages are added / removed to / from the entries list
-        for pack in $scope.entries.packages
-            for dev_idx of $scope.device_lut
-                dev_idx = parseInt(dev_idx)
-                # dummy entry for newly added packages
-                $scope.state_dict[dev_idx][pack.idx]  = {"device" : dev_idx, "package" : pack.idx}
-    $scope.change_package_sel = (cur_p, t_state) ->
-        for d_key, d_value of $scope.state_dict
-            csd = d_value[cur_p.idx]
-            $scope.change_sel(csd, t_state)
-    $scope.change_device_sel = (cur_d, t_state) ->
-        for d_key, d_value of $scope.state_dict
-            if parseInt(d_key) == cur_d.idx
-               for p_key, csd of d_value
-                    $scope.change_sel(csd, t_state)
-    $scope.change_sel = (csd, t_state) ->
-        if t_state == undefined
-            t_state = if csd.selected then 1 else -1
-        if t_state == 1
-            csd.selected = true
-        else if t_state == -1
-            csd.selected = false
-        else
-            csd.selected = not csd.selected
-        if csd.idx
-            if csd.selected and csd.idx not of $scope.selected_pdcs
-                $scope.selected_pdcs[csd.idx] = csd
-            else if not csd.selected and csd.idx of $scope.selected_pdcs
-                delete $scope.selected_pdcs[csd.idx]
     $scope.get_pdc_list = (pack) ->
         # list of devices
         dev_list = []
@@ -643,40 +600,7 @@ package_module = angular.module(
                        $scope.selected_pdcs[pdc.idx] = pdc
                    else if not pdc.selected and pdc.idx of $scope.selected_pdcs
                        delete $scope.selected_pdcs[pdc.idx]
-    $scope.$watch("package_filter", (new_filter) ->
-        for d_key, d_value of $scope.state_dict
-            for p_key, pdc of d_value
-                #console.log $scope.package_lut[pdc.package]
-                if (not $filter("filter")([$scope.package_lut[pdc.package]], {"name" : $scope.package_filter}).length) and pdc.selected
-                    pdc.selected = false
-                    delete $scope.selected_pdcs[pdc.idx]
-    )
-    $scope.selected_pdcs_length = () ->
-        sel = 0
-        for key, value of $scope.selected_pdcs
-            sel += 1
-        return sel
 
-    $scope.set_devices = (data) ->
-        if $scope.reload_promise
-            $timeout.cancel($scope.reload_promise)
-        $scope.devices = data
-        # device lookup table
-        $scope.device_lut = icswTools.build_lut($scope.devices)
-        # package lut
-        $scope.package_lut = icswTools.build_lut($scope.entries.packages)
-        #console.log $scope.entries.length, $scope.devices.length
-        for dev in $scope.devices
-            dev.latest_contact = 0
-            dev.client_version = "?.?"
-            if not (dev.idx of $scope.state_dict)
-                $scope.state_dict[dev.idx] = {}
-            dev_dict = $scope.state_dict[dev.idx]
-            for pack in $scope.entries.packages
-                if not (pack.idx of dev_dict)
-                    dev_dict[pack.idx] = {"device" : dev.idx, "package" : pack.idx}
-        $scope.salt_package_list()
-        $scope.reload_state()
     # attach / detach calls
     $scope.attach = (obj) ->
         attach_list = []
@@ -776,52 +700,6 @@ package_module = angular.module(
             onshow: (modal) =>
                 height = $(window).height() - 100
                 modal.getModal().find(".modal-body").css("max-height", height)
-    $scope.send_sync = (event) ->
-        blockUI.start()
-        icswSimpleAjaxCall(
-            url     : ICSW_URLS.PACK_REPO_OVERVIEW
-            data    : {
-                "mode" : "new_config"
-                "pks": (_dev.idx for _dev in $scope.devices)
-            }
-        ).then(
-            (xml) ->
-                blockUI.stop()
-            (xml) ->
-                blockUI.stop()
-        )
-    $scope.send_clear_caches = (event) ->
-        blockUI.start()
-        icswSimpleAjaxCall(
-            url     : ICSW_URLS.PACK_REPO_OVERVIEW
-            data    : {
-                "mode" : "clear_caches"
-                "pks": (_dev.idx for _dev in $scope.devices)
-            }
-        ).then(
-            (xml) ->
-                blockUI.stop()
-            (xml) ->
-                blockUI.stop()
-        )
-]).service("icswPackageInstallPackageListService", ["ICSW_URLS", (ICSW_URLS) ->
-    _scope = undefined
-    return {
-        rest_url            : ICSW_URLS.REST_PACKAGE_LIST
-        delete_confirm_str  : (obj) -> return "Really delete Package '#{obj.name}-#{obj.version}' ?"
-        init_fn: (scope) ->
-            scope.init_package_list(scope)
-        after_reload: (scope) ->
-            scope.salt_package_list()
-        toggle_grid_style : ($scope) ->
-            $scope.dp_style = !$scope.dp_style
-        get_grid_style : ($scope) ->
-            return if $scope.dp_style then "Dev/PDC grid" else "PDC/Dev grid"
-        reload: (scope) ->
-            _scope.reload()
-        init_fn: (scope) ->
-            _scope = scope
-    }
 ]).directive("icswPackageInstallRepositoryRow", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
@@ -853,11 +731,6 @@ package_module = angular.module(
         restrict : "EA"
         template : $templateCache.get("icsw.package.install.search.result.row")
     }
-]).directive("icswPackageInstallPackageHead", ["$templateCache", ($templateCache) ->
-    return {
-        restrict : "EA"
-        template : $templateCache.get("icsw.package.install.package.list.head")
-    }
 ]).directive("icswPackageInstallSearchOverview", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
@@ -870,12 +743,12 @@ package_module = angular.module(
 ]).controller("icswPackageInstallSearchController",
 [
     "$scope", "$templateCache", "icswUserService", "ICSW_URLS", "icswSimpleAjaxCall", "Restangular",
-    "blockUI", "icswPackageInstallPackageListService", "$rootScope", "ICSW_SIGNALS",
+    "blockUI", "$rootScope", "ICSW_SIGNALS",
     "$timeout", "$q", "icswPackageInstallSearchTreeService",
     "icswToolsSimpleModalService", "icswComplexModalService", "$compile", "toaster",
 (
     $scope, $templateCache, icswUserService, ICSW_URLS, icswSimpleAjaxCall, Restangular,
-    blockUI, icswPackageInstallPackageListService, $rootScope, ICSW_SIGNALS,
+    blockUI, $rootScope, ICSW_SIGNALS,
     $timeout, $q, icswPackageInstallSearchTreeService,
     icswToolsSimpleModalService, icswComplexModalService, $compile, toaster,
 ) ->
@@ -1103,8 +976,14 @@ package_module = angular.module(
             @idx = undefined
             @$$td_class = "text-center"
 
-        toggle_selection: () =>
-            @selected = !@selected
+
+        change_selection: (t_state) =>
+            if t_state == 1
+                @selected = true
+            else if t_state == -1
+                @selected = false
+            else
+                @selected = !@selected
             @build_info()
             @pdc_struct.update_selection()
 
@@ -1121,6 +1000,15 @@ package_module = angular.module(
             @build_info()
 
         build_info: () =>
+            if @set
+                @_build_info_set()
+            else
+                @_build_info_unset()
+
+        _build_info_unset: () =>
+                @$$td_class = "text-center"
+
+        _build_info_set: () =>
             if @target_state
                 if @target_state == "keep"
                     _gc = "glyphicon glyphicon-minus"
@@ -1147,11 +1035,10 @@ package_module = angular.module(
                 _bc = "btn-active"
             @$$button_class = _bc
 
-
-            if @installed == "y" and @installed_name
-                inst_name = @installed_name
-                if @installed_version
-                    inst_name = "#{inst_name}-#{@installed_version}"
+            if @installed == "y" and @installed_ame
+                inst_name = @installed_nam
+                if @installed_versio
+                    inst_name = "#{inst_name}-#{installed_version}"
                 else
                     inst_name = "#{inst_name}-?"
                 if @installed_release
@@ -1215,6 +1102,7 @@ package_module = angular.module(
                 for pack in @package_tree.list
                     @lut[dev.idx][pack.idx] = new icswPDCEntry(@, dev, pack)
             @selected_pdcs = []
+            @unset_selected_pdcs = []
 
         feed: () =>
             # sync with devices
@@ -1230,22 +1118,42 @@ package_module = angular.module(
 
         update_selection: () =>
             @selected_pdcs.length = 0
+            @unset_selected_pdcs.length = 0
             for dev in @devices
                 for idx, pdc of @lut[dev.idx]
                     if pdc.selected
-                        @selected_pdcs.push(pdc)
+                        if pdc.set
+                            @selected_pdcs.push(pdc)
+                        else
+                            @unset_selected_pdcs.push(pdc)
+
+        change_package_sel: (pack, t_state) =>
+            for dev in @devices
+                for idx, pdc of @lut[dev.idx]
+                    if parseInt(idx) == parseInt(pack.idx) and idx of @package_tree.filtered_lut
+                        pdc.change_selection(t_state)
+            @_selection_changed()
+
+        change_device_sel: (device, t_state) =>
+            for idx, pdc of @lut[device.idx]
+                if idx of @package_tree.filtered_lut
+                    pdc.change_selection(t_state)
+            @_selection_changed()
+
+        _selection_changed: () =>
+            @update_selection()
 
 ]).controller("icswPackageInstallDeviceCtrl",
 [
     "$scope", "icswPackageInstallTreeService", "$q", "icswDeviceTreeService", "blockUI",
     "icswUserService", "$rootScope", "ICSW_SIGNALS", "icswActiveSelectionService",
     "icswPackageInstallRepositoryTreeService", "icswToolsSimpleModalService", "$timeout",
-    "icswDeviceTreeHelperService", "icswPDCStruct",
+    "icswDeviceTreeHelperService", "icswPDCStruct", "ICSW_URLS", "icswSimpleAjaxCall",
 (
     $scope, icswPackageInstallTreeService, $q, icswDeviceTreeService, blockUI,
     icswUserService, $rootScope, ICSW_SIGNALS, icswActiveSelectionService,
     icswPackageInstallRepositoryTreeService, icswToolsSimpleModalService, $timeout,
-    icswDeviceTreeHelperService, icswPDCStruct,
+    icswDeviceTreeHelperService, icswPDCStruct, ICSW_URLS, icswSimpleAjaxCall,
 ) ->
     $scope.struct = {
         # package tree
@@ -1274,6 +1182,8 @@ package_module = angular.module(
         pdc_update_timeout: undefined
         # pdc struct
         pdc_struct: undefined
+        # package filter
+        package_filter: ""
     }
 
     load = (reload) ->
@@ -1293,6 +1203,7 @@ package_module = angular.module(
                 $scope.struct.repo_tree = data[1]
                 $scope.struct.package_tree = data[2]
                 $scope.struct.package_tree_loaded = true
+                $scope.struct.package_tree.set_filter($scope.struct.package_filter)
                 if $scope.struct.device_tree_loaded
                     init_pdc()
         )
@@ -1303,6 +1214,19 @@ package_module = angular.module(
     $scope.$on("$destroy", () ->
         if $scope.struct.pdc_udpate_timeout
             $timeout.cancel($scope.struct.pdc_update_timeout)
+    )
+
+    # watch packet filter
+
+    _filter_to = undefined
+    $scope.$watch("struct.package_filter", (new_val) ->
+        if _filter_to?
+            $timeout.cancel(_filter_to)
+        _filter_to = $timeout(
+            () ->
+                $scope.struct.package_tree.set_filter(new_val)
+            500
+        )
     )
 
     # pdc functions
@@ -1400,6 +1324,44 @@ package_module = angular.module(
                 )
         )
 
+    # selection functions
+
+    $scope.change_package_sel = ($event, cur_p, t_state) ->
+        $scope.struct.pdc_struct.change_package_sel(cur_p, t_state)
+        
+    $scope.change_device_sel = ($event, cur_d, t_state) ->
+        $scope.struct.pdc_struct.change_device_sel(cur_d, t_state)
+
+    # helper functions
+    $scope.send_sync = ($event) ->
+        blockUI.start()
+        icswSimpleAjaxCall(
+            url: ICSW_URLS.PACK_REPO_OVERVIEW
+            data: {
+                mode: "new_config"
+                pks: (_dev.idx for _dev in $scope.struct.devices)
+            }
+        ).then(
+            (xml) ->
+                blockUI.stop()
+            (xml) ->
+                blockUI.stop()
+        )
+
+    $scope.send_clear_caches = ($event) ->
+        blockUI.start()
+        icswSimpleAjaxCall(
+            url: ICSW_URLS.PACK_REPO_OVERVIEW
+            data: {
+                mode: "clear_caches"
+                pks: (_dev.idx for _dev in $scope.struct.devices)
+            }
+        ).then(
+            (xml) ->
+                blockUI.stop()
+            (xml) ->
+                blockUI.stop()
+        )
 ]).directive("icswPdcState",
 [
     "$templateCache", "$compile",
@@ -1414,14 +1376,8 @@ package_module = angular.module(
         replace: true
         link: (scope, iElement, iAttrs) ->
             scope.mode = "a"
-            scope.change_sel = (pdc) ->
-                pdc.toggle_selection()
-                # pdc.selected = !pdc.selected
-                #if pdc.idx
-                ##    if pdc.selected and pdc.idx not of scope.selected_pdcs
-                #        scope.selected_pdcs[pdc.idx] = pdc
-                #    else if not pdc.selected and pdc.idx of scope.selected_pdcs
-                #        delete scope.selected_pdcs[pdc.idx]
+            scope.change_sel = () ->
+                scope.pdc.change_selection(0)
             _draw = () ->
                 iElement.children().remove()
                 if scope.mode == "a"
