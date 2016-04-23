@@ -1090,7 +1090,7 @@ package_module = angular.module(
     $q,
 ) ->
     class icswPDCEntry
-        constructor: (device, pack) ->
+        constructor: (@pdc_struct, device, pack) ->
             @device_idx = device.idx
             @package_idx = pack.idx
             # is selected
@@ -1103,6 +1103,11 @@ package_module = angular.module(
             @idx = undefined
             @$$td_class = "text-center"
 
+        toggle_selection: () =>
+            @selected = !@selected
+            @build_info()
+            @pdc_struct.update_selection()
+
         feed: (pdc) =>
             @set = true
             @idx = pdc.idx
@@ -1113,6 +1118,9 @@ package_module = angular.module(
                 "installed_version", "installed_release"
             ]
                 @[attr_name] = pdc[attr_name]
+            @build_info()
+
+        build_info: () =>
             if @target_state
                 if @target_state == "keep"
                     _gc = "glyphicon glyphicon-minus"
@@ -1154,7 +1162,7 @@ package_module = angular.module(
                 inst_name = "---"
             @$$installed_version = inst_name
 
-            t_field = ["target state : #{pdc.target_state}"]
+            t_field = ["target state : #{@target_state}"]
             if @installed == "n"
                 t_field.push("<br>installed: no")
             else if @installed == "u"
@@ -1205,7 +1213,8 @@ package_module = angular.module(
             for dev in @devices
                 @lut[dev.idx] = {}
                 for pack in @package_tree.list
-                    @lut[dev.idx][pack.idx] = new icswPDCEntry(dev, pack)
+                    @lut[dev.idx][pack.idx] = new icswPDCEntry(@, dev, pack)
+            @selected_pdcs = []
 
         feed: () =>
             # sync with devices
@@ -1217,6 +1226,14 @@ package_module = angular.module(
             for dev in @devices
                 for pdc in dev.package_set
                     @lut[dev.idx][pdc.package].feed(pdc)
+            @update_selection()
+
+        update_selection: () =>
+            @selected_pdcs.length = 0
+            for dev in @devices
+                for idx, pdc of @lut[dev.idx]
+                    if pdc.selected
+                        @selected_pdcs.push(pdc)
 
 ]).controller("icswPackageInstallDeviceCtrl",
 [
@@ -1398,12 +1415,13 @@ package_module = angular.module(
         link: (scope, iElement, iAttrs) ->
             scope.mode = "a"
             scope.change_sel = (pdc) ->
-                pdc.selected = !pdc.selected
-                if pdc.idx
-                    if pdc.selected and pdc.idx not of scope.selected_pdcs
-                        scope.selected_pdcs[pdc.idx] = pdc
-                    else if not pdc.selected and pdc.idx of scope.selected_pdcs
-                        delete scope.selected_pdcs[pdc.idx]
+                pdc.toggle_selection()
+                # pdc.selected = !pdc.selected
+                #if pdc.idx
+                ##    if pdc.selected and pdc.idx not of scope.selected_pdcs
+                #        scope.selected_pdcs[pdc.idx] = pdc
+                #    else if not pdc.selected and pdc.idx of scope.selected_pdcs
+                #        delete scope.selected_pdcs[pdc.idx]
             _draw = () ->
                 iElement.children().remove()
                 if scope.mode == "a"

@@ -396,7 +396,11 @@
     <uib-alert type="warning" ng-show="struct.package_info_str">{{ struct.package_info_str }}</uib-alert>
     <h3>
         <div class="form-inline">
-            ({{ struct.devices.length }} devices, {{ struct.package_tree.length }} packages), {{ selected_pdcs_length() }} selected, package filter:
+            ({{ struct.devices.length }} devices, {{ struct.package_tree.length }} packages),
+            <span ng-if="struct.pdc_struct">
+                {{ struct.pdc_struct.selected_pdcs.length }} selected,
+            </span>
+            package filter:
             <div class="form-group">
                 <input ng-model="struct.package_filter" class="form-control input-sm"/>
             </div>,
