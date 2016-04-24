@@ -28,7 +28,7 @@ package_module = angular.module(
     $stateProvider.state(
         "main.packageinstall", {
             url: "/packageinstall"
-            template: "<icsw-package-install-overview ng-cloack/>"
+            template: "<icsw-package-install-overview ng-cloak/>"
             data:
                 pageTitle: "Package install"
                 rights: ["package.package_install"]
@@ -1232,7 +1232,7 @@ package_module = angular.module(
 
     $scope.new_devsel = () ->
         devs = ($scope.struct.device_tree.all_lut[pk] for pk in icswActiveSelectionService.current().tot_dev_sel when $scope.struct.device_tree.all_lut[pk]?)
-        console.log "nds", devs
+        # console.log "nds", devs
         $scope.struct.device_info_str = "Loading devices"
         $q.all(
             [
