@@ -220,7 +220,182 @@
     </td>
 </script>
 
-<script type="text/ng-template" id="package.action.form">
+<script type="text/ng-template" id="icsw.package.install.device.overview">
+    <uib-alert type="warning" ng-show="struct.device_info_str">{{ struct.device_info_str }}</uib-alert>
+    <uib-alert type="warning" ng-show="struct.package_info_str">{{ struct.package_info_str }}</uib-alert>
+    <h3>
+        <div class="form-inline">
+            ({{ struct.devices.length }} devices, {{ struct.package_tree.filtered_list.length }} of {{ struct.package_tree.list.length }} packages),
+            <span ng-if="struct.pdc_struct">
+                {{ struct.pdc_struct.selected_pdcs.length }}
+                <span ng-show="struct.pdc_struct.unset_selected_pdcs.length">
+                    ({{ struct.pdc_struct.unset_selected_pdcs.length }} unset)
+                </span>
+                selected,
+            </span>
+            <div class="btn-group" uib-dropdown>
+                <button type="button" class="btn-xs btn btn-primary" uib-dropdown-toggle>
+                    Action <span class="caret"></span>
+                </button>
+                <ul class="dropdown-menu" uib-dropdown-menu role="menu">
+                    <li role="menuitem" ng-show="struct.pdc_struct.selected_pdcs.length">
+                        <a ng-click="modify($event)" title="Modify selected PDCs">Modify</a></li>
+                    <li class="divider"></li>
+                    <li role="menuitem">
+                        <a ng-click="send_sync($event)" title="send a resync to all registered clients">Sync</a>
+                    </li>
+                    <li role="menuitem">
+                        <a ng-click="send_clear_caches($event)" title="clear caches on all registered clients">Clear caches</a>
+                    </li>
+                    <li class="divider"></li>
+                    <li role="menuitem" ng-show="struct.pdc_struct.$$any_unset_selected">
+                        <a ng-click="attach($event, null)" title="attach all unattached packages">Attach packages</a>
+                    </li>
+                    <li role="menuitem" ng-show="struct.pdc_struct.$$any_set_selected">
+                        <a ng-click="remove($event, null)" title="remove all selected PDCs">Remove packages</a>
+                    </li>
+                </ul>
+            </div>
+            show
+            <div class="btn-group btn-group-sm">
+                <input type="button" ng-class="is_mode == 'a' && 'btn btn-success' || 'btn'" ng-click="is_mode = 'a'" value="action"/>
+                <input type="button" ng-class="is_mode == 'v' && 'btn btn-success' || 'btn'" ng-click="is_mode = 'v'" value="version"/>
+            </div>
+        </div>
+    </h3>
+    <table
+        class="table table-condensed table-hover table-striped"
+        style="width:auto;"
+        ng-if="struct.pdc_struct"
+        st-table="pl_displayed"
+        st-safe-src="struct.package_tree.filtered_list"
+    >
+        <thead>
+            <tr>
+                <th>&nbsp;</th>
+                <th>Device</th>
+                <th ng-repeat="dev in struct.devices" class="text-center">{{ dev.name }}</th>
+            </tr>
+            <tr>
+                <th>&nbsp;</th>
+                <th>contact (Vers)</th>
+                <td ng-repeat="dev in struct.devices">{{ dev.$$package_client_latest_contact }} ({{ dev.$$package_client_version }})</td>
+            </tr>
+            <tr>
+                <th>Package</th>
+                <th>action</th>
+                <th ng-repeat="dev in struct.devices" class="text-center">
+                    <div class="btn-group btn-group-xs">
+                        <input type="button" class="btn btn-primary" ng-click="change_device_sel($event, dev, 1)" value="S"/>
+                        <input type="button" class="btn btn-success" ng-click="change_device_sel($event, dev, 0)" value="T"/>
+                        <input type="button" class="btn btn-warning" ng-click="change_device_sel($event, dev, -1)" value="C"/>
+                    </div>
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="pack in pl_displayed">
+                <td>
+                    {{ pack.name }}
+                    <span ng-show="pack.always_latest == false">{{ pack.version }}</span>
+                    <span ng-show="pack.always_latest == true">&lt;latest&gt;</span>
+                    <span ng-show="pack.target_repo">
+                        from {{ struct.repo_tree.lut[pack.target_repo].name }}
+                    </span>
+                </td>
+                <td>
+                    <div class="btn-group btn-group-xs">
+                        <input type="button" class="btn btn-primary" ng-click="change_package_sel($event, pack, 1)" value="S"/>
+                        <input type="button" class="btn btn-success" ng-click="change_package_sel($event, pack, 0)" value="T"/>
+                        <input type="button" class="btn btn-warning" ng-click="change_package_sel($event, pack, -1)" value="C"/>
+                    </div>
+                </td>
+                <td
+                    ng-repeat="device in struct.devices"
+                    icsw-pdc-state="struct.pdc_struct.lut[device.idx][pack.idx]"
+                    mode="is_mode"
+                    ng-class="struct.pdc_struct.lut[device.idx][pack.idx].$$td_class"
+                ></td>
+            </tr>
+        </tbody>
+    </table>
+    <h3>
+        Packages ({{ struct.package_tree.filtered_list.length }} of {{ struct.package_tree.list.length }} entries)
+    </h3>
+    <table st-table="packages_displayed" st-safe-src="struct.package_tree.list" class="table table-condensed table-hover table-striped" style="width:auto;">
+        <thead>
+            <tr>
+                <th>name</th>
+                <th>version</th>
+                <th>Repository</th>
+                <th>forced</th>
+                <th>kind</th>
+                <th>arch</th>
+                <th colspan="3" class="text-center">action</th>
+            </tr>
+            <tr>
+                <td colspan="99">
+                    <input st-search="" class="form-control" placeholder="filter ..." ng-model="struct.package_filter" type="text"/>
+                </td>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td colspan="99" icsw-tools-pagination st-items-by-page="10" possible-items-by-page="10,20,50,100"></td>
+            </tr>
+            <tr icsw-package-install-package-row ng-repeat="obj in packages_displayed"></tr>
+        </tbody>
+    </table>
+</script>
+
+<script type="text/ng-template" id="icsw.package.install.package.list.row">
+    <td>{{ obj.name }}</td>
+    <td ng-show="obj.always_latest == false">{{ obj.version }}</td>
+    <td ng-show="obj.always_latest == true">&lt;latest&gt;</td>
+    <td>{{ struct.repo_tree.lut[obj.package_repo].name }}</td>
+    <td>{{ struct.repo_tree.lut[obj.target_repo].name }}</td>
+    <td>{{ obj.kind }}</td>
+    <td>{{ obj.arch }}</td>
+    <td>
+        <icsw-tools-button type="create" ng-show="obj.$$any_unset_selected" value="attach" size="xs" ng-click="attach($event, obj)" title="attach to selected devices"></icsw-tools-button>
+    </td>
+    <td>
+        <icsw-tools-button type="clear_selection" ng-show="obj.$$any_set_selected" value="remove" size="xs" ng-click="remove($event, obj)" title="remove from selected devices"></icsw-tools-button>
+    </td>
+    <td>
+        <icsw-tools-button type="delete" ng-show="!obj.$$any_set" size="xs" ng-click="delete($event, obj)"></icsw-tools-button>
+    </td>
+    <td>{{ get_pdc_list(obj) }}</td>
+</script>
+
+<script type="text/ng-template" id="icsw.package.install.pdc.state">
+    <div>
+        <span ng-show="pdc.set" uib-tooltip-placement="bottom" uib-tooltip-html="pdc.$$tooltip">
+            <span ng-class="pdc.$$ts_class"></span>
+            <div class="btn-group btn-group-xs">
+                <input type="button" class="btn disabled" ng-class="pdc.$$button_class" value="{{ pdc.installed }}"/>
+                <input type="button" class="btn disabled" ng-class="pdc.force_flag && 'btn-primary' || 'btn-default'" value="F"/>
+                <input type="button" class="btn disabled" ng-class="pdc.nodeps_flag && 'btn-primary' || 'btn-default'" value="N"/>
+                <input type="button" ng-class="pdc.selected && 'btn btn-primary' || 'btn'" value="S" title="select" ng-model="pdc.selected" ng-click="change_sel()"/>
+            </div>
+        </span>
+        <span ng-show="!pdc.set">
+            <div class="btn-group btn-group-xs">
+                <input type="button" ng-class="pdc.selected && 'btn btn-primary' || 'btn'" value="S" title="select" ng-model="pdc.selected" ng-click="change_sel()"/>
+            </div>
+        </span>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.package.install.pdc.version">
+    <div>
+        <span ng-show="obj.set" tooltip-placement="bottom" tooltip-html-unsafe="{{ get_tooltip() }}">
+            {{ pdc.$$installed_version }}
+        </span>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.package.action.form">
     <form class="form-horizontal" name="form_data">
         <h2>PDC action</h2>
         <fieldset>
@@ -296,7 +471,7 @@
                 </label>
                 <div class="controls col-sm-7">
                     <div class="input-group" style="max-width:400px; min-width:240px;">
-                        <ui-select ng-model="edit_obj.image_dep" ng-disabled="false">
+                        <ui-select ng-model="edit_obj.image_dep">
                             <ui-select-match class="ui-select-match" placeholder="select image dependency">
                                 {{ $select.selected.info }}
                             </ui-select-match>
@@ -389,157 +564,4 @@
             </div>
         </fieldset>
     </form>
-</script>
-
-<script type="text/ng-template" id="icsw.package.install.device.overview">
-    <uib-alert type="warning" ng-show="struct.device_info_str">{{ struct.device_info_str }}</uib-alert>
-    <uib-alert type="warning" ng-show="struct.package_info_str">{{ struct.package_info_str }}</uib-alert>
-    <h3>
-        <div class="form-inline">
-            ({{ struct.devices.length }} devices, {{ struct.package_tree.filtered_list.length }} of {{ struct.package_tree.list.length }} packages),
-            <span ng-if="struct.pdc_struct">
-                {{ struct.pdc_struct.selected_pdcs.length }}
-                <span ng-show="struct.pdc_struct.unset_selected_pdcs.length">
-                    ({{ struct.pdc_struct.unset_selected_pdcs.length }} unset)
-                </span>
-                selected,
-            </span>
-            <icsw-tools-button size="xs" type="modify" ng-show="struct.pdc_struct.selected_pdcs.length" value="action" ng-click="action($event)"></icsw-tools-button>
-            <icsw-tools-button size="xs" type="reload" value="sync" title="send a resync to all registered clients" ng-click="send_sync($event)"></icsw-tools-button>
-            <icsw-tools-button size="xs" type="delete" value="clear caches" ng-click="send_clear_caches($event)"></icsw-tools-button>
-            show
-            <div class="btn-group btn-group-sm">
-                <input type="button" ng-class="is_mode == 'a' && 'btn btn-success' || 'btn'" ng-click="is_mode = 'a'" value="action"/>
-                <input type="button" ng-class="is_mode == 'v' && 'btn btn-success' || 'btn'" ng-click="is_mode = 'v'" value="version"/>
-            </div>
-        </div>
-    </h3>
-    <table
-        class="table table-condensed table-hover table-striped"
-        style="width:auto;"
-        ng-if="struct.pdc_struct"
-        st-table="pl_displayed"
-        st-safe-src="struct.package_tree.filtered_list"
-    >
-        <thead>
-            <tr>
-                <th>&nbsp;</th>
-                <th>Device</th>
-                <th ng-repeat="dev in struct.devices" class="text-center">{{ dev.name }}</th>
-            </tr>
-            <tr>
-                <th>&nbsp;</th>
-                <th>contact (Vers)</th>
-                <td ng-repeat="dev in struct.devices">{{ dev.$$package_client_latest_contact }} ({{ dev.$$package_client_version }})</td>
-            </tr>
-            <tr>
-                <th>Package</th>
-                <th>action</th>
-                <th ng-repeat="dev in struct.devices" class="text-center">
-                    <div class="btn-group btn-group-xs">
-                        <input type="button" class="btn btn-primary" ng-click="change_device_sel($event, dev, 1)" value="S"/>
-                        <input type="button" class="btn btn-success" ng-click="change_device_sel($event, dev, 0)" value="T"/>
-                        <input type="button" class="btn btn-warning" ng-click="change_device_sel($event, dev, -1)" value="C"/>
-                    </div>
-                </th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr ng-repeat="pack in pl_displayed">
-                <td>
-                    {{ pack.name }}
-                    <span ng-show="pack.always_latest == false">{{ pack.version }}</span>
-                    <span ng-show="pack.always_latest == true">&lt;latest&gt;</span>
-                    <span ng-show="pack.target_repo">
-                        from {{ struct.repo_tree.lut[pack.target_repo].name }}
-                    </span>
-                </td>
-                <td>
-                    <div class="btn-group btn-group-xs">
-                        <input type="button" class="btn btn-primary" ng-click="change_package_sel($event, pack, 1)" value="S"/>
-                        <input type="button" class="btn btn-success" ng-click="change_package_sel($event, pack, 0)" value="T"/>
-                        <input type="button" class="btn btn-warning" ng-click="change_package_sel($event, pack, -1)" value="C"/>
-                    </div>
-                </td>
-                <td
-                    ng-repeat="device in struct.devices"
-                    icsw-pdc-state="struct.pdc_struct.lut[device.idx][pack.idx]"
-                    mode="is_mode"
-                    ng-class="struct.pdc_struct.lut[device.idx][pack.idx].$$td_class"
-                ></td>
-            </tr>
-        </tbody>
-    </table>
-    <h3>Packages ({{ struct.package_tree.filtered_list.length }} of {{ struct.package_tree.list.length }} entries)</h3>
-    <table st-table="packages_displayed" st-safe-src="struct.package_tree.list" class="table table-condensed table-hover table-striped" style="width:auto;">
-        <thead>
-            <tr>
-                <th>name</th>
-                <th>version</th>
-                <th>Repository</th>
-                <th>forced</th>
-                <th>kind</th>
-                <th>arch</th>
-                <th colspan="3" class="text-center">action</th>
-            </tr>
-            <tr>
-                <td colspan="99">
-                    <input st-search="" class="form-control" placeholder="filter ..." ng-model="struct.package_filter" type="text"/>
-                </td>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td colspan="99" icsw-tools-pagination st-items-by-page="10" possible-items-by-page="10,20,50,100"></td>
-            </tr>
-            <tr icsw-package-install-package-row ng-repeat="obj in packages_displayed"></tr>
-        </tbody>
-    </table>
-</script>
-
-<script type="text/ng-template" id="icsw.package.install.package.list.row">
-    <td>{{ obj.name }}</td>
-    <td ng-show="obj.always_latest == false">{{ obj.version }}</td>
-    <td ng-show="obj.always_latest == true">&lt;latest&gt;</td>
-    <td>{{ struct.repo_tree.lut[obj.package_repo].name }}</td>
-    <td>{{ struct.repo_tree.lut[obj.target_repo].name }}</td>
-    <td>{{ obj.kind }}</td>
-    <td>{{ obj.arch }}</td>
-    <td>
-        <icsw-tools-button type="create" value="attach" size="xs" ng-click="attach($event, obj)" title="attach to selected devices"></icsw-tools-button>
-    </td>
-    <td>
-        <icsw-tools-button type="clear_selection" size="xs" ng-click="remove($event, obj)" title="remove from selected devices"></icsw-tools-button>
-    </td>
-    <td>
-        <icsw-tools-button type="delete" size="xs" ng-click="delete($event, obj)"></icsw-tools-button>
-    </td>
-    <td>{{ get_pdc_list(obj) }}</td>
-</script>
-
-<script type="text/ng-template" id="icsw.package.install.pdc.state">
-    <div>
-        <span ng-show="pdc.set" uib-tooltip-placement="bottom" uib-tooltip-html="pdc.$$tooltip">
-            <span ng-class="pdc.$$ts_class"></span>
-            <div class="btn-group btn-group-xs">
-                <input type="button" class="btn disabled" ng-class="pdc.$$button_class" value="{{ pdc.installed }}"/>
-                <input type="button" class="btn disabled" ng-class="pdc.force_flag && 'btn-primary' || 'btn-default'" value="F"/>
-                <input type="button" class="btn disabled" ng-class="pdc.nodeps_flag && 'btn-primary' || 'btn-default'" value="N"/>
-                <input type="button" ng-class="pdc.selected && 'btn btn-primary' || 'btn'" value="S" title="select" ng-model="pdc.selected" ng-click="change_sel()"/>
-            </div>
-        </span>
-        <span ng-show="!pdc.set">
-            <div class="btn-group btn-group-xs">
-                <input type="button" ng-class="pdc.selected && 'btn btn-primary' || 'btn'" value="S" title="select" ng-model="pdc.selected" ng-click="change_sel()"/>
-            </div>
-        </span>
-    </div>
-</script>
-
-<script type="text/ng-template" id="icsw.package.install.pdc.version">
-    <div>
-        <span ng-show="obj.set" tooltip-placement="bottom" tooltip-html-unsafe="{{ get_tooltip() }}">
-            {{ pdc.$$installed_version }}
-        </span>
-    </div>
 </script>
