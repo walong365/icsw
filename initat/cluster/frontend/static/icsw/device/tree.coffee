@@ -41,12 +41,12 @@ angular.module(
 ]).controller("icswDeviceTreeCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular",  "restDataSource", "$q", "$timeout", "icswComplexModalService",
-    "$uibModal", "array_lookupFilter", "msgbus", "blockUI", "icswTools", "ICSW_URLS", "icswToolsButtonConfigService",
+    "$uibModal", "array_lookupFilter", "blockUI", "icswTools", "ICSW_URLS", "icswToolsButtonConfigService",
     "icswSimpleAjaxCall", "icswToolsSimpleModalService", "toaster", "icswDialogDeleteObjects", "icswDeviceBackup",
     "icswDeviceTreeService", "icswDomainTreeService", "ICSW_SIGNALS", "$rootScope", "icswActiveSelectionService", "icswDeviceGroupBackup",
 (
     $scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $timeout, icswComplexModalService,
-    $uibModal, array_lookupFilter, msgbus, blockUI, icswTools, ICSW_URLS, icswToolsButtonConfigService,
+    $uibModal, array_lookupFilter, blockUI, icswTools, ICSW_URLS, icswToolsButtonConfigService,
     icswSimpleAjaxCall, icswToolsSimpleModalService, toaster, icswDialogDeleteObjects, icswDeviceBackup,
     icswDeviceTreeService, icswDomainTreeService, ICSW_SIGNALS, $rootScope, icswActiveSelectionService, icswDeviceGroupBackup
 ) ->
@@ -101,10 +101,11 @@ angular.module(
         $scope.trigger_redraw++
         console.log "length / filtered length: #{$scope.device_tree.all_list.length} / #{$scope.entries_filtered.length}"
 
-    msgbus.emit("devselreceiver")
+    icswActiveSelectionService.register_receiver()
 
-    msgbus.receive("devicelist", $scope, (name, args) ->
-        $scope.new_devsel(args[0])
+    $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"), (event) ->
+        # console.log "icsw_overview_emit_selection received"
+        $scope.reload()
     )
 
     $scope.new_devsel = (_dev_sel) ->
@@ -302,10 +303,10 @@ angular.module(
                             else
                                 # multi instance modify
                                 icswSimpleAjaxCall(
-                                    url     : ICSW_URLS.DEVICE_CHANGE_DEVICES
-                                    data    : {
-                                        "change_dict" : angular.toJson($scope.edit_obj)
-                                        "device_list" : angular.toJson(icswActiveSelectionService.current().get_devsel_list()[1])
+                                    url: ICSW_URLS.DEVICE_CHANGE_DEVICES
+                                    data: {
+                                        change_dict: angular.toJson($scope.edit_obj)
+                                        device_list: angular.toJson(icswActiveSelectionService.current().get_devsel_list()[1])
                                     }
                                 ).then(
                                     (xml) ->

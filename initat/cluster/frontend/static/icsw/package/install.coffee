@@ -458,11 +458,11 @@ package_module = angular.module(
 ]).controller("icswPackageInstallCtrl",
 [
     "$scope", "$injector", "$compile", "$filter", "$templateCache", "icswToolsSimpleModalService",
-    "Restangular", "restDataSource", "$q", "$timeout", "blockUI", "icswTools", "icswDeviceTreeService",
+    "Restangular", "$q", "$timeout", "blockUI", "icswTools", "icswDeviceTreeService",
     "ICSW_URLS", "icswUserService", "icswSimpleAjaxCall", "icswPackageInstallRepositoryTreeService",
 (
     $scope, $injector, $compile, $filter, $templateCache, icswToolsSimpleModalService,
-    Restangular, restDataSource, $q, $timeout, blockUI, icswTools, icswDeviceTreeService,
+    Restangular, $q, $timeout, blockUI, icswTools, icswDeviceTreeService,
     ICSW_URLS, icswUserService, icswSimpleAjaxCall, icswPackageInstallRepositoryTreeService,
 ) ->
     # structure

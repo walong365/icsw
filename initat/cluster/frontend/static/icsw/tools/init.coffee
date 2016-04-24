@@ -219,8 +219,8 @@ angular.module(
         scope.$watch(
             ->
                 return {
-                    "width": element.width()
-                    "height": element.height()
+                    width: element.width()
+                    height: element.height()
                 }
             (new_val) ->
                 # console.log "F", new_val, element, element.outerHeight(), element.parent().height()
@@ -283,26 +283,26 @@ angular.module(
         get_unique_id: () ->
             return get_unique_id()
 
-        "get_size_str" : (size, factor, postfix) ->
+        get_size_str: (size, factor, postfix) ->
             f_idx = 0
             while size > factor
                 size = parseInt(size/factor)
                 f_idx += 1
             factor = ["", "k", "M", "G", "T", "P", "E"][f_idx]
             return "#{size} #{factor}#{postfix}"
-        "build_lut" : (in_list) ->
+        build_lut: (in_list) ->
             lut = {}
             for value in in_list
                 lut[value.idx] = value
             return lut
 
-        "order_in_place": (in_array, key_list, order_list) ->
+        order_in_place: (in_array, key_list, order_list) ->
             _tmp_list = _.orderBy(in_array, key_list, order_list)
             in_array.length = 0
             for entry in _tmp_list
                 in_array.push(entry)
 
-        "remove_by_idx" : (in_array, idx) ->
+        remove_by_idx: (in_array, idx) ->
             for c_idx, val of in_array
                 if val.idx == idx
                     c_idx = parseInt(c_idx)
