@@ -57,7 +57,7 @@ class get_boot_info_json(View):
         dev_result = device.objects.filter(
             Q(pk__in=sel_list)
         ).prefetch_related(
-            "bootnetdevice__net_ip_set__network__network_device_type",
+            # "bootnetdevice__net_ip_set__network__network_device_type",
             "categories",
             "domain_tree_node",
             "kerneldevicehistory_set",

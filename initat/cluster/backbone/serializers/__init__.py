@@ -293,7 +293,7 @@ class device_serializer_boot(device_serializer):
     partition_table = serializers.SerializerMethodField()
     # current partition table
     act_partition_table = serializers.SerializerMethodField()
-    bootnetdevice = netdevice_serializer()
+    # bootnetdevice = netdevice_serializer()
     hoststatus_source = serializers.SerializerMethodField()
     # uptime = serializers.Field(source="get_uptime")
     # uptime_valid = serializers.Field(source="uptime_valid")
@@ -391,7 +391,7 @@ class device_serializer_boot(device_serializer):
             # kernel
             "new_kernel", "act_kernel", "stage1_flavour", "kernel_append",
             # boot device
-            "dhcp_mac", "dhcp_write", "dhcp_written", "dhcp_error", "bootnetdevice", "bootnetdevice",
+            "dhcp_mac", "dhcp_write", "dhcp_written", "dhcp_error", "bootnetdevice",
             # connections
             "master_connections", "slave_connections",
         )

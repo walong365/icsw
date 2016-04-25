@@ -57,7 +57,7 @@ class SourceMap
                 fs.lstatSync(f)
 
 sources = {
-    "css_base": new SourceMap(
+    css_base: new SourceMap(
         "css_base"
         "icsw.css"
         [

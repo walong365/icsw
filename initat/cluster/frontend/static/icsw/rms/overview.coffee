@@ -60,6 +60,15 @@ rms_module = angular.module(
         restrict: "EA"
         template: $templateCache.get("icsw.rms.overview")
         controller: "icswRMSOverviewCtrl"
+        link: (scope, element, attrs) ->
+            if attrs.icswRmsTitle?
+                scope.struct.header_line = attrs.icswRmsTitle
+            if attrs.icswRmsRunningSearch?
+                scope.struct.search.running = attrs.icswRmsRunningSearch
+            if attrs.icswRmsWaitingSearch?
+                scope.struct.search.waiting = attrs.icswRmsWaitingSearch
+            if attrs.icswRmsDoneSearch?
+                scope.struct.search.done = attrs.icswRmsDoneSearch
     }
 ]).service("icswRMSTools",
 [
@@ -953,6 +962,8 @@ rms_module = angular.module(
             slot_info: new icswRMSSlotInfo()
             # draw RRD overlay, not beautifull but working ...
             draw_rrd: $scope.draw_rrd
+            # header_line
+            header_line: "RMS Overview"
         }
 
         $scope.initial_load = () ->
@@ -1181,8 +1192,8 @@ rms_module = angular.module(
     $templateCache
 ) ->
     return {
-        restrict : "EA"
-        template : $templateCache.get("icsw.rms.iostruct")
+        restrict: "EA"
+        template: $templateCache.get("icsw.rms.iostruct")
     }
 ]).directive("icswRmsTableHeaders",
 [
@@ -1191,10 +1202,10 @@ rms_module = angular.module(
     $templateCache
 ) ->
     return {
-        restrict : "EA"
-        template : $templateCache.get("icsw.rms.table.headers")
+        restrict: "EA"
+        template: $templateCache.get("icsw.rms.table.headers")
         scope:
-            struct : "=icswRmsStruct"
+            struct: "=icswRmsStruct"
     }
 ]).directive("icswRmsTableHeaderToggle",
 [
@@ -1203,20 +1214,20 @@ rms_module = angular.module(
     $templateCache
 ) ->
     return {
-        restrict : "EA"
-        template : $templateCache.get("icsw.rms.table.header.toggle")
+        restrict: "EA"
+        template: $templateCache.get("icsw.rms.table.header.toggle")
         scope:
-            struct : "=icswRmsStruct"
+            struct: "=icswRmsStruct"
     }
 ]).directive("icswRmsJobDoneLine", ["$templateCache", "$sce", ($templateCache, $sce) ->
     return {
-        restrict : "EA"
-        template : $templateCache.get("icsw.rms.job.done.line")
+        restrict: "EA"
+        template: $templateCache.get("icsw.rms.job.done.line")
     }
 ]).directive("icswRmsJobWaitLine", ["$templateCache", "$sce", ($templateCache, $sce) ->
     return {
-        restrict : "EA"
-        template : $templateCache.get("icsw.rms.job.wait.line")
+        restrict: "EA"
+        template: $templateCache.get("icsw.rms.job.wait.line")
     }
 ]).directive("icswRmsJobVarInfo", ["$templateCache", ($templateCache) ->
     return {
@@ -1232,8 +1243,8 @@ rms_module = angular.module(
     $templateCache,
 ) ->
     return {
-        restrict : "EA"
-        template : $templateCache.get("icsw.rms.job.run.line")
+        restrict: "EA"
+        template: $templateCache.get("icsw.rms.job.run.line")
     }
 ]).directive("icswRmsQueueLine",
 [
@@ -1242,8 +1253,8 @@ rms_module = angular.module(
     $templateCache,
 ) ->
     return {
-        restrict : "EA"
-        template : $templateCache.get("icsw.rms.queue.line")
+        restrict: "EA"
+        template: $templateCache.get("icsw.rms.queue.line")
     }
 ]).directive("icswRmsJobAction",
 [
@@ -1262,7 +1273,7 @@ rms_module = angular.module(
             job: "=icswRmsJob"
             job_type: "=icswRmsJobType"
             is_oper: "=icswRmsIsOperator"
-        replace : true
+        replace: true
         link: (scope, el, attrs) ->
 
             scope.job_control = (command, force) ->
@@ -1343,7 +1354,7 @@ rms_module = angular.module(
         template: $templateCache.get("icsw.rms.queue.state.oper")
         scope:
             queue: "=icswRmsQueue"
-        replace : true
+        replace: true
         link: (scope, element, attrs) ->
             scope.queue_control = (command, queue) ->
                 blockUI.start("modifying queue #{queue.$$queue_name}...")
@@ -1365,9 +1376,9 @@ rms_module = angular.module(
     }
 ]).directive("icswRmsFileInfo", ["$compile", "$templateCache", ($compile, $templateCache) ->
     return {
-        restrict : "EA"
+        restrict: "EA"
         scope:
             job: "=icswRmsJob"
-        template : $templateCache.get("icsw.rms.file.info")
+        template: $templateCache.get("icsw.rms.file.info")
     }
 ])

@@ -416,7 +416,7 @@ angular.module(
     "icswActiveSelectionService", "icswConfigTreeService", "icswLogTreeService",
     "icswKernelTreeService", "icswImageTreeService", "icswUserGroupTreeService",
     "icswPartitionTableTreeService", "icswNetworkTreeService", "icswBootStatusTreeService",
-    "icswGlobalBootHelper",
+    "icswGlobalBootHelper", "icswDeviceTreeHelperService",
 (
     $scope, $compile, $filter, $templateCache, Restangular, ICSW_SIGNALS,
     $q, icswAcessLevelService, $timeout, $rootScope,
@@ -424,7 +424,7 @@ angular.module(
     icswActiveSelectionService, icswConfigTreeService, icswLogTreeService,
     icswKernelTreeService, icswImageTreeService, icswUserGroupTreeService,
     icswPartitionTableTreeService, icswNetworkTreeService, icswBootStatusTreeService,
-    icswGlobalBootHelper,
+    icswGlobalBootHelper, icswDeviceTreeHelperService,
 ) ->
     icswAcessLevelService.install($scope)
     $scope.mbl_entries = []
@@ -534,12 +534,16 @@ angular.module(
                 else
                     $scope.struct.boot_helper = new icswGlobalBootHelper($scope.struct, $scope.struct.devices, salt_devices)
                 salt_devices()
-                $scope.struct.boot_helper.fetch().then(
-                    (done) ->
-                        $scope.struct.tree_valid = true
-                    (notok) ->
-                        # strage
-                        console.error "fetch already running"
+                # init boot_helper and fetch device network
+                hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, $scope.struct.devices)
+                $q.allSettled(
+                    [
+                        $scope.struct.device_tree.enrich_devices(hs, ["network_info"])
+                        $scope.struct.boot_helper.fetch()
+                    ]
+                ).then(
+                    (result) ->
+                        console.log result
                         $scope.struct.tree_valid = true
                 )
         )
