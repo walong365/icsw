@@ -34,12 +34,18 @@ class DiscoverySource(IntEnum):
     ASU = 2
     IPMI = 3
 
+    NRPE_PACKAGE = 4
+    NRPE_HARDWARE = 5
+    NRPE_LICENSE = 6
+    NRPE_UPDATE = 7
+    NRPE_SOFTWARE_VERSION = 8
+
     def get_maximal_concurrent_runs(self):
         # TODO: move to database?
-        if self == DiscoverySource.ASU:
-            return 1
-        else:
+        if self == DiscoverySource.SNMP or self == DiscoverySource.IPMI:
             return 5
+        else:
+            return 1
 
 
 class DispatchSetting(models.Model):
