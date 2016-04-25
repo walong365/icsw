@@ -2,7 +2,7 @@
 <script type="text/ng-template" id="icsw.monitoring.escalation">
 
     <uib-alert type="warning" ng-show="!struct.tree_valid">Loading tree...</uib-alert>
-    <uib-tabset ng-cloack ng-show="struct.tree_valid">
+    <uib-tabset ng-cloak ng-show="struct.tree_valid">
 
         <uib-tab heading="Service escalation Templates">
             <icsw-tools-rest-table-new target-list="entries" config-service="icswMonitoringServiceEscalationTemplateService">

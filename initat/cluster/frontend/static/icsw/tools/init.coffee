@@ -164,46 +164,52 @@ angular.module(
     return {
         restrict: "A"
         priority: -100
-        link: (scope, el, attrs) ->
-            # console.log "link selman to scope", scope
-            # store selection list
-            scope.$icsw_selman_list  = []
+        compile: (target_el, target_attrs) ->
+            # console.log "comp selman"
+            return {
+                pre: (scope, el, attrs) ->
+                    # console.log "pre selman"
+                    # console.log "link selman to scope", scope
+                    # store selection list
+                    scope.$icsw_selman_list  = []
 
-            _new_sel = (sel) ->
-                selman_mode = attrs["icswSelManSelMode"] || "d"
-                # console.log "SelMan new selection (mode #{selman_mode})", sel
-                if scope.new_devsel?
-                    scope.$icsw_selman_list.length = 0
-                    for entry in sel
-                        scope.$icsw_selman_list.push(entry)
-                    scope.new_devsel(scope.$icsw_selman_list)
-                else
-                    console.log "no devsel_defined"
-
-            if parseInt(attrs.icswSelMan)
-                # popup mode, watch for changes (i.e. tab activation)
-                scope.$watch(attrs["icswDeviceList"], (new_val) ->
-                    console.log "***", new_val
-                    if new_val?
-                        _new_sel(new_val)
-                )
-            else
-                $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"), (event) ->
-                    # console.log "icsw_overview_emit_selection received"
-                    if DeviceOverviewSettings.is_active()
-                        console.log "ov is active"
-                    else
-                        _tree = icswDeviceTreeService.current()
-                        if _tree?
-                            # filter illegal selection elements
-                            _new_sel((_tree.all_lut[pk] for pk in icswActiveSelectionService.current().tot_dev_sel when _tree.all_lut[pk]?))
+                    _new_sel = (sel) ->
+                        selman_mode = attrs["icswSelManSelMode"] || "d"
+                        # console.log "SelMan new selection (mode #{selman_mode})", sel
+                        if scope.new_devsel?
+                            scope.$icsw_selman_list.length = 0
+                            for entry in sel
+                                scope.$icsw_selman_list.push(entry)
+                            scope.new_devsel(scope.$icsw_selman_list)
                         else
-                            console.log "tree not valid, ignoring, triggering load"
-                            icswDeviceTreeService.load(scope.$id).then(
-                                (tree) ->
-                            )
-                )
-                icswActiveSelectionService.register_receiver()
+                            console.warn "no new_devsel() function defined in scope", scope
+
+                    if parseInt(attrs.icswSelMan)
+                        # popup mode, watch for changes (i.e. tab activation)
+                        scope.$watch(attrs["icswDeviceList"], (new_val) ->
+                            if new_val?
+                                _new_sel(new_val)
+                        )
+                    else
+                        $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"), (event) ->
+                            # console.log "icsw_overview_emit_selection received"
+                            if DeviceOverviewSettings.is_active()
+                                console.log "ov is active"
+                            else
+                                _tree = icswDeviceTreeService.current()
+                                if _tree?
+                                    # filter illegal selection elements
+                                    _new_sel((_tree.all_lut[pk] for pk in icswActiveSelectionService.current().tot_dev_sel when _tree.all_lut[pk]?))
+                                else
+                                    console.log "tree not valid, ignoring, triggering load"
+                                    icswDeviceTreeService.load(scope.$id).then(
+                                        (tree) ->
+                                    )
+                        )
+                        icswActiveSelectionService.register_receiver()
+                # post: (scope, el, attrs) ->
+                #    console.log "post selman"
+            }
     }
 ]).directive("icswElementSize", ["$parse", ($parse) ->
     # save size of element in scope (specified via icswElementSize)
@@ -213,8 +219,8 @@ angular.module(
         scope.$watch(
             ->
                 return {
-                    "width": element.width()
-                    "height": element.height()
+                    width: element.width()
+                    height: element.height()
                 }
             (new_val) ->
                 # console.log "F", new_val, element, element.outerHeight(), element.parent().height()
@@ -223,7 +229,9 @@ angular.module(
         )
 ]).service("ICSW_SIGNALS", () ->
     _dict = {
+
         # global signals (for $rootScope)
+
         ICSW_ACLS_CHANGED: "icsw.acls.changed"
         ICSW_USER_CHANGED: "icsw.user.changed"
         ICSW_DSR_REGISTERED: "icsw.dsr.registered"
@@ -247,7 +255,10 @@ angular.module(
         ICSW_LOCATION_SETTINGS_CHANGED: "icsw.location.settings.changed",
         ICSW_USER_GROUP_TREE_LOADED: "icsw.user.group.tree.loaded",
         ICSW_USER_GROUP_TREE_CHANGED: "icsw.user.group.tree.changed",
+        ICSW_PACKAGE_INSTALL_LIST_CHANGED: "icsw.package.install.list.changed"
+
         # local signals (for local $emit / $on)
+
         _ICSW_CLOSE_USER_GROUP: "_icsw.close.user.group"
         _ICSW_RMS_UPDATE_DATA: "_icsw.rms.update.data"
         # not needed up to now
@@ -272,26 +283,26 @@ angular.module(
         get_unique_id: () ->
             return get_unique_id()
 
-        "get_size_str" : (size, factor, postfix) ->
+        get_size_str: (size, factor, postfix) ->
             f_idx = 0
             while size > factor
                 size = parseInt(size/factor)
                 f_idx += 1
             factor = ["", "k", "M", "G", "T", "P", "E"][f_idx]
             return "#{size} #{factor}#{postfix}"
-        "build_lut" : (in_list) ->
+        build_lut: (in_list) ->
             lut = {}
             for value in in_list
                 lut[value.idx] = value
             return lut
 
-        "order_in_place": (in_array, key_list, order_list) ->
+        order_in_place: (in_array, key_list, order_list) ->
             _tmp_list = _.orderBy(in_array, key_list, order_list)
             in_array.length = 0
             for entry in _tmp_list
                 in_array.push(entry)
 
-        "remove_by_idx" : (in_array, idx) ->
+        remove_by_idx: (in_array, idx) ->
             for c_idx, val of in_array
                 if val.idx == idx
                     c_idx = parseInt(c_idx)

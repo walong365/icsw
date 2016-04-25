@@ -605,24 +605,10 @@ class device_tree_mixin(object):
         if self.request.query_params.get("olp", ""):
             ctx["olp"] = self.request.query_params["olp"]
         _fields = []
-        if self._get_post_boolean("with_com_info", False):
-            _fields.extend(["DeviceSNMPInfo", "snmp_schemes", "com_capability_list"])
-        if self._get_post_boolean("with_disk_info", False):
-            _fields.extend(["partition_table", "act_partition_table"])
         if self._get_post_boolean("with_network", False):
             _fields.append("netdevice_set")
-        if self._get_post_boolean("with_monitoring_hint", False):
-            _fields.append("monitoring_hint_set")
         if self._get_post_boolean("with_categories", False):
             _fields.append("categories")
-        if self._get_post_boolean("with_variables", False):
-            _fields.append("device_variable_set")
-        if self._get_post_boolean("with_device_configs", False):
-            _fields.append("device_config_set")
-        if self._get_post_boolean("with_mon_locations", False):
-            _fields.append("device_mon_location_set")
-        if self._get_post_boolean("package_state", False):
-            _fields.extend(["package_device_connection_set", "latest_contact", "client_version"])
         if self._get_post_boolean("monitor_server_type", False):
             _fields.append("monitor_type")
         if _fields:
@@ -679,8 +665,6 @@ class device_tree_list(
 
     @rest_logging
     def get_queryset(self):
-        # with_variables = self._get_post_boolean("with_variables", False)
-        package_state = self._get_post_boolean("package_state", False)
         _q = device.objects
         # permission handling
         if not self.request.user.is_superuser:
@@ -774,36 +758,8 @@ class device_tree_list(
             "DeviceSNMPInfo",
             "snmp_schemes__snmp_scheme_tl_oid_set",
         )
-        if package_state:
-            _q = _q.prefetch_related(
-                "package_device_connection_set",
-                "device_variable_set",
-                "package_device_connection_set__kernel_list",
-                "package_device_connection_set__image_list",
-            )
         if self._get_post_boolean("with_categories", False):
             _q = _q.prefetch_related("categories")
-        if self._get_post_boolean("with_variables", False):
-            _q = _q.prefetch_related("device_variable_set")
-        if self._get_post_boolean("with_device_configs", False):
-            _q = _q.prefetch_related("device_config_set")
-        if self._get_post_boolean("with_mon_locations", False):
-            _q = _q.prefetch_related("device_mon_location_set")
-        if self._get_post_boolean("with_disk_info", False):
-            _q = _q.prefetch_related(
-                "partition_table__partition_disc_set__partition_set",
-                "partition_table__lvm_vg_set",
-                "partition_table__lvm_lv_set",
-                "partition_table__sys_partition_set",
-                "partition_table__new_partition_table",
-                "partition_table__act_partition_table",
-                "act_partition_table__partition_disc_set__partition_set",
-                "act_partition_table__lvm_vg_set",
-                "act_partition_table__lvm_lv_set",
-                "act_partition_table__sys_partition_set",
-                "act_partition_table__new_partition_table",
-                "act_partition_table__act_partition_table",
-            )
         if self._get_post_boolean("mark_cd_devices", False):
             _q = _q.prefetch_related(
                 "snmp_schemes",

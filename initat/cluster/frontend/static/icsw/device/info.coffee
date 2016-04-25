@@ -129,22 +129,22 @@ angular.module(
         compile: (element, attrs) ->
             return (scope, iElement, Attrs) ->
                 scope.pk_list = {
-                    "general": []
-                    "network": []
-                    "config": []
-                    "status_history": []
-                    "livestatus": []
-                    "graphing": []
-                    "device_variable": []
+                    general: []
+                    network: []
+                    config: []
+                    status_history: []
+                    livestatus: []
+                    graphing: []
+                    device_variable: []
                 }
                 scope.dev_list = {
-                    "general": []
-                    "network": []
-                    "config": []
-                    "status_history": []
-                    "livestatus": []
-                    "graphing": []
-                    "device_variable": []
+                    general: []
+                    network: []
+                    config: []
+                    status_history: []
+                    livestatus: []
+                    graphing: []
+                    device_variable: []
                 }
                 for key of scope.pk_list
                     scope["#{key}_active"] = false
@@ -196,15 +196,15 @@ angular.module(
     }
 ]).controller("icswSimpleDeviceInfoCtrl",
 [
-    "$scope", "$uibModal", "Restangular", "$q", "ICSW_URLS",
+    "$scope", "Restangular", "$q", "ICSW_URLS",
     "$rootScope", "ICSW_SIGNALS", "icswDomainTreeService", "icswDeviceTreeService", "icswMonitoringBasicTreeService",
     "icswAcessLevelService", "icswActiveSelectionService", "icswDeviceBackup", "icswDeviceGroupBackup",
-    "icswDeviceTreeHelperService",
+    "icswDeviceTreeHelperService", "icswComplexModalService", "toaster", "$compile", "$templateCache",
 (
-    $scope, $uibModal, Restangular, $q, ICSW_URLS,
+    $scope, Restangular, $q, ICSW_URLS,
     $rootScope, ICSW_SIGNALS, icswDomainTreeService, icswDeviceTreeService, icswMonitoringBasicTreeService,
     icswAcessLevelService, icswActiveSelectionService, icswDeviceBackup, icswDeviceGroupBackup,
-    icswDeviceTreeHelperService
+    icswDeviceTreeHelperService, icswComplexModalService, toaster, $compile, $templateCache,
 ) ->
     icswAcessLevelService.install($scope)
     $scope.data_valid = false
@@ -213,11 +213,42 @@ angular.module(
         if $scope.bu_obj
             $scope.bu_obj.restore_backup($scope.edit_obj)
     )
-    $scope.toggle_uuid = () ->
-        $scope.show_uuid = !$scope.show_uuid
     console.log "SDI init"
     $scope.show_uuid = false
     $scope.image_url = ""
+
+    # create info fields
+    create_info_fields = () ->
+        obj = $scope.edit_obj
+        if $scope.is_devicegroup
+            obj.$$full_device_name = obj.name.substr(8)
+            # not really needed
+            obj.$$snmp_scheme_info = "N/A"
+            obj.$$snmp_info = "N/A"
+            obj.$$ip_info = "N/A"
+        else
+            obj.$$full_device_name = obj.full_name
+            _sc = obj.snmp_schemes
+            if _sc.length
+                obj.$$snmp_scheme_info = ("#{_entry.snmp_scheme_vendor.name}.#{_entry.name}" for _entry in _sc).join(", ")
+            else
+                obj.$$snmp_scheme_info = "none"
+            ip_list = []
+            for _nd in obj.netdevice_set
+                for _ip in _nd.net_ip_set
+                    ip_list.push(_ip.ip)
+            obj.$$ip_info = if ip_list.length then ip_list.join(", ") else "none"
+            _sc = obj.DeviceSNMPInfo
+            if _sc
+                obj.$$snmp_info = _sc.description
+            else
+                obj.$$snmp_info = "none"
+        img_url = ""
+        if obj.mon_ext_host
+            for entry in $scope.monitoring_tree.mon_ext_host_list
+                if entry.idx == obj.mon_ext_host
+                    img_url = entry.data_image
+        obj.$$image_source = img_url
 
     $scope.new_devsel = (in_list) ->
         if in_list.length > 0
@@ -235,44 +266,75 @@ angular.module(
                         ]
                     ).then(
                         (data) ->
-                            console.log "******", data
                             $scope.data_valid = true
                             $scope.domain_tree = data[0]
                             $scope.monitoring_tree = data[1]
                             edit_obj = data[2][0]
                             if edit_obj.is_meta_device
                                 edit_obj = $scope.dev_tree.get_group(edit_obj)
-                                bu_obj = new icswDeviceGroupBackup()
+                                $scope.is_devicegroup = true
                                 template_name = "icsw.devicegroup.info.form"
                             else
-                                bu_obj = new icswDeviceBackup()
+                                $scope.is_devicegroup = false
                                 template_name = "icsw.device.info.form"
                             $scope.edit_obj = edit_obj
-                            $scope.bu_obj = bu_obj
                             # create backup
-                            $scope.bu_obj.create_backup($scope.edit_obj)
                             $scope.template_name = template_name
+                            create_info_fields()
                     )
             )
         else
             $scope.edit_obj = undefined
-            $scope.bu_obj = undefined
             $scope.template_name = "icsw.deviceempty.info.form"
 
     $scope.modify = () ->
-        if not $scope.form.$invalid
-            if $scope.acl_modify($scope.edit_obj, "backbone.device.change_basic")
-                console.log $scope.edit_obj
-                $scope.edit_obj.put().then(
-                    (recv) ->
-                        # overwrite current backup
-                        $scope.bu_obj.create_backup($scope.edit_obj)
-                        # rebalance tree
-                        $scope.dev_tree.reorder()
-                        console.log "saved", recv
-                )
+        if $scope.is_devicegroup
+            dbu = new icswDeviceGroupBackup()
+            template_name = "icsw.devicegroup.info.edit.form"
+            title = "Modify Devicegroup settings"
         else
-            toaster.pop("warning", "form validation problem", "", 0)
+            dbu = new icswDeviceBackup()
+            template_name = "icsw.device.info.edit.form"
+            title = "Modify Device settings"
+        dbu.create_backup($scope.edit_obj)
+        sub_scope = $scope.$new(false)
+        sub_scope.edit_obj = $scope.edit_obj
+
+        # for fields, tree can be the basic or the cluster tree
+
+        icswComplexModalService(
+            {
+                message: $compile($templateCache.get(template_name))(sub_scope)
+                title: title
+                css_class: "modal-wide"
+                ok_label: "Modify"
+                closable: true
+                ok_callback: (modal) ->
+                    d = $q.defer()
+                    if sub_scope.form_data.$invalid
+                        toaster.pop("warning", "form validation problem", "", 0)
+                        d.reject("form not valid")
+                    else
+                        sub_scope.edit_obj.put().then(
+                            (ok) ->
+                                $scope.dev_tree.reorder()
+                                d.resolve("updated")
+                            (not_ok) ->
+                                d.reject("not updated")
+                        )
+                    return d.promise
+                cancel_callback: (modal) ->
+                    dbu.restore_backup($scope.edit_obj)
+                    d = $q.defer()
+                    d.resolve("cancel")
+                    return d.promise
+            }
+        ).then(
+            (fin) ->
+                sub_scope.$destroy()
+                # recreate info fields
+                create_info_fields()
+        )
 
     # helper functions
 
@@ -282,52 +344,5 @@ angular.module(
             return "#{mhs.length} (#{(entry for entry in mhs when entry.check_created).length} used for service checks)"
         else
             return "---"
-
-    $scope.get_ip_info = () ->
-        if $scope.edit_obj?
-            ip_list = []
-            for _nd in $scope.edit_obj.netdevice_set
-                for _ip in _nd.net_ip_set
-                    ip_list.push(_ip.ip)
-            if ip_list.length
-                return ip_list.join(", ")
-            else
-                return "none"
-        else
-            return "---"
-
-    $scope.get_snmp_scheme_info = () ->
-        if $scope.edit_obj?
-            _sc = $scope.edit_obj.snmp_schemes
-            if _sc.length
-                return ("#{_entry.snmp_scheme_vendor.name}.#{_entry.name}" for _entry in _sc).join(", ")
-            else
-                return "none"
-        else
-            return "---"
-
-    $scope.get_snmp_info = () ->
-        if $scope.edit_obj?
-            _sc = $scope.edit_obj.DeviceSNMPInfo
-            if _sc
-                return _sc.description
-            else
-                return "none"
-        else
-            return "---"
-
-    $scope.get_image_src = () ->
-        img_url = ""
-        if $scope.edit_obj.mon_ext_host
-            for entry in $scope.monitoring_tree.mon_ext_host_list
-                if entry.idx == $scope.edit_obj.mon_ext_host
-                    img_url = entry.data_image
-        return img_url
-
-    $scope.get_full_name = () ->
-        if $scope.edit_obj.is_meta_device
-            return $scope.edit_obj.full_name.substr(8)
-        else
-            return $scope.edit_obj.full_name
 
 ])

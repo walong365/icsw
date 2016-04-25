@@ -162,9 +162,19 @@ class add_package(View):
             else:
                 num_error += 1
         if num_ok:
-            request.xml_response.info("added {}".format(logging_tools.get_plural("connection", num_ok)), logger)
+            request.xml_response.info(
+                "added {}".format(
+                    logging_tools.get_plural("connection", num_ok)
+                ),
+                logger
+            )
         if num_error:
-            request.xml_response.warn("{} already existed".format(logging_tools.get_plural("connection", num_error)), logger)
+            request.xml_response.warn(
+                "{} already existed".format(
+                    logging_tools.get_plural("connection", num_error)
+                ),
+                logger
+            )
         request.xml_response["result"] = JSONRenderer().render(package_device_connection_serializer(new_pdcs, many=True).data)
 
 
@@ -183,9 +193,19 @@ class remove_package(View):
                 cur_pdc.delete()
                 num_ok += 1
         if num_ok:
-            request.xml_response.info("%s removed" % (logging_tools.get_plural("connection", num_ok)), logger)
+            request.xml_response.info(
+                "{} removed".format(
+                    logging_tools.get_plural("connection", num_ok)
+                ),
+                logger
+            )
         if num_error:
-            request.xml_response.error("%s not there" % (logging_tools.get_plural("connection", num_error)), logger)
+            request.xml_response.error(
+                "{} not there".format(
+                    logging_tools.get_plural("connection", num_error)
+                ),
+                logger
+            )
 
 
 class change_package(View):
