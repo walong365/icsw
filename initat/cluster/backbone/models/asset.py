@@ -43,7 +43,13 @@ class BaseAssetPackage:
         return s
 
 class BaseAssetHardware:
-    pass
+    def __init__(self, type):
+        self.type = type
+        self.info_dict = {}
+
+    def __repr__(self):
+        s = "Type: %s" % self.type
+        return s
 
 class BaseAssetLicense:
     def __init__(self, name, license_key):
@@ -103,6 +109,17 @@ class RunStatus(IntEnum):
 
 W32_SCAN_TYPE_PREFIX = "w32"
 
+from lxml import etree
+
+#flatten xml into bahlist
+def generate_bahs(root, bahlist):
+    bah = BaseAssetHardware(root.get("type"))
+    bahlist.append(bah)
+    for elem in root.iterchildren("info"):
+        bah.info_dict[elem.get("name")] = elem.get("value")
+    for elem in root.iterchildren("object"):
+        generate_bahs(elem, bahlist)
+
 def get_base_assets_from_raw_result(blob, runtype):
     assets = []
     if runtype == AssetType.PACKAGE:
@@ -113,8 +130,14 @@ def get_base_assets_from_raw_result(blob, runtype):
         #todo check/interpret different scan types
 
     elif runtype == AssetType.HARDWARE:
-        #todo interpret value blob
-        pass
+        if str(blob[:3]) == W32_SCAN_TYPE_PREFIX:
+            root = etree.fromstring(blob[5:-4].encode("ascii"))
+            assert(root.tag == "topology")
+
+            for _child in root.iterchildren():
+                generate_bahs(_child, assets)
+            print assets
+        #todo check/interpret different scan types
 
     elif runtype == AssetType.LICENSE:
         if str(blob[:3]) == W32_SCAN_TYPE_PREFIX:

@@ -412,7 +412,7 @@ LIST_METRICS_CMD = "list-metrics-py3"
 LIST_PROCESSES_CMD = "list-processes-py3"
 LIST_UPDATES_CMD = "list-updates-alt-py3"
 LIST_PENDING_UPDATES_CMD = "list-pending-updates-py3"
-LIST_HARDWARE_CMD = "list-hardware-py3"
+LIST_HARDWARE_CMD = "list-hardware-lstopo-py3"
 
 VALID_COMMANDS = [LIST_SOFTWARE_CMD, LIST_KEYS_CMD, LIST_METRICS_CMD, LIST_PROCESSES_CMD, LIST_UPDATES_CMD, LIST_PENDING_UPDATES_CMD]
 
