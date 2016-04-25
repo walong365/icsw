@@ -508,6 +508,7 @@ class Dispatcher:
 
         self.schedule_items = []
         self.last_recalculate = None
+        self.next_recalculate = None
 
     def dispatch_call(self):
         _now = datetime.datetime.now(tz=pytz.utc)
@@ -515,11 +516,12 @@ class Dispatcher:
         _plus_five_min = _now + datetime.timedelta(minutes=5)
 
         #recalculate every hour
-        if not self.last_recalculate or self.last_recalculate > _plus_five_min:
+        if not self.last_recalculate or _now > self.next_recalculate:
             print "recalculating"
             dd = DiscoveryDispatcher()
             self.schedule_items = dd.calculate(_now, _plus_one_hour)
             self.last_recalculate = _now
+            self.next_recalculate = _plus_five_min
 
         while self.schedule_items:
             schedule_item = self.schedule_items.pop(0)

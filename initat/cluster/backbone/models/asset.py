@@ -53,6 +53,8 @@ class BaseAssetLicense:
     def __repr__(self):
         s = "Name: %s Key: %s" % (self.name, self.license_key)
 
+        return s
+
 class BaseAssetUpdate:
     def __init__(self, name, install_date = None, status = None):
         self.name = name
@@ -65,6 +67,8 @@ class BaseAssetUpdate:
             s += " InstallDate: %s" % self.install_date
         if self.status:
             s += " InstallStatus: %s" % self.status
+
+        return s
 
 class BaseAssetSoftwareVersion:
     pass
@@ -155,8 +159,8 @@ class AssetRun(models.Model):
     raw_result_interpreted = models.BooleanField(default=False)
 
 
-    def generate_assets_from_result_str(self):
-        if self.raw_result_interpreted:
+    def generate_assets(self):
+        if self.raw_result_interpreted or not self.raw_result_str:
             return False
         self.raw_result_interpreted = True
 
@@ -166,6 +170,39 @@ class AssetRun(models.Model):
 
         self.save()
         return True
+
+    def get_asset_changeset(self, other_asset_run):
+        changeset = []
+
+        for _asset in self.asset_set.all():
+            _asset_instance = _asset.getAssetInstance()
+            attributes = None
+            if _asset_instance.__class__.__name__ == BaseAssetPackage.__name__:
+                attributes = ("name", "version", "size", "install_date")
+            elif _asset_instance.__class__.__name__ == BaseAssetLicense.__name__:
+                attributes = ("name", "license_key")
+            elif _asset_instance.__class__.__name__ == BaseAssetUpdate.__name__:
+                attributes = ("name", "install_date", "status")
+
+            match_found = False
+            for _other_asset in other_asset_run.asset_set.all():
+                _other_asset_instance = _other_asset.getAssetInstance()
+
+                equal = True
+                for _attribute in attributes:
+                    this_attr = getattr(_asset_instance, _attribute)
+                    other_attr = getattr(_other_asset_instance, _attribute)
+                    if this_attr != other_attr:
+                        equal = False
+
+                if equal:
+                    match_found = True
+                    break
+
+            if not match_found:
+                changeset.append(_asset)
+
+        return changeset
 
 class AssetBatch(models.Model):
     idx = models.AutoField(primary_key=True)
