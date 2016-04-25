@@ -190,14 +190,14 @@ angular.module(
 
     # device related calls
 
-    $scope.create_device = (event, parent_obj) ->
+    $scope.create_device = ($event, parent_obj) ->
         new_obj = {
-            "enabled" : true
-            "enable_perfdata": true
-            "store_rrd_data": true
-            "flap_detection_enabled": true
-            "name": "dev"
-            "comment": "new device"
+            enabled: true
+            enable_perfdata: true
+            store_rrd_data: true
+            flap_detection_enabled: true
+            name: "dev"
+            comment: "new device"
         }
         if parent_obj
             new_obj.device_group = parent_obj.idx
@@ -205,12 +205,12 @@ angular.module(
         else
             new_obj.device_group = (entry.idx for entry in $scope.struct.device_tree.group_list when entry.cluster_device_group == false)[0]
             new_obj.domain_tree_node = (entry.idx for entry in $scope.struct.domain_tree when entry.depth == 0)[0]
-        $scope.create_or_edit(event, true, new_obj, true, false)
+        $scope.create_or_edit($event, true, new_obj, true, false)
 
-    $scope.edit_device = (event, obj) ->
-        $scope.create_or_edit(event, false, obj, true, false)
+    $scope.edit_device = ($event, obj) ->
+        $scope.create_or_edit($event, false, obj, true, false)
 
-    $scope.delete_device = (obj) ->
+    $scope.delete_device = ($event, obj) ->
         icswDialogDeleteObjects(
             [obj]
             "device"
@@ -227,19 +227,19 @@ angular.module(
 
     # device group related calls
 
-    $scope.create_device_group = (event) ->
+    $scope.create_device_group = ($event) ->
         new_obj = {
             enabled: true
             name: "nodes"
             description: "new devicegroup"
             domain_tree_node: (entry.idx for entry in $scope.struct.domain_tree when entry.depth == 0)[0]
         }
-        $scope.create_or_edit(event, true, new_obj, true, true)
+        $scope.create_or_edit($event, true, new_obj, true, true)
 
     $scope.edit_device_group = (event, obj) ->
         $scope.create_or_edit(event, false, obj, true, true)
 
-    $scope.delete_device_group = (obj) ->
+    $scope.delete_device_group = ($event, obj) ->
         icswDialogDeleteObjects(
             [obj]
             "device_group"
@@ -256,7 +256,7 @@ angular.module(
 
     # many device edit
 
-    $scope.edit_many = (event) ->
+    $scope.edit_many = ($event) ->
         $scope._array_name = "device_many"
         edit_obj = {
             many_form: true
@@ -264,9 +264,9 @@ angular.module(
             domain_tree_node: (entry.idx for entry in $scope.struct.domain_tree when entry.depth == 0)[0]
             root_passwd: ""
         }
-        $scope.create_or_edit(event, false, edit_obj, false, false)
+        $scope.create_or_edit($event, false, edit_obj, false, false)
 
-    $scope.delete_many = (event) ->
+    $scope.delete_many = ($event) ->
         sel_list = icswActiveSelectionService.current().get_devsel_list()[1]
         to_delete_list = (entry for entry in $scope.struct.device_tree.all_list when entry.is_meta_device == false and entry.idx in sel_list)
         icswDialogDeleteObjects(
@@ -278,7 +278,7 @@ angular.module(
                     $scope.handle_device_delete(arg.del_pks)
         )
 
-    $scope.create_or_edit = (event, create_mode, obj, single_instance, is_group) ->
+    $scope.create_or_edit = ($event, create_mode, obj, single_instance, is_group) ->
         if single_instance
             if is_group
                 dbu = new icswDeviceGroupBackup()

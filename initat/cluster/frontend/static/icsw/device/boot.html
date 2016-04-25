@@ -5,23 +5,29 @@
 <script type="text/ng-template" id="icsw.device.boot.table">
     <uib-alert type="warning" ng-show="!struct.tree_valid">Loading BaseData ...</uib-alert>
     <h2>
-        <span class="label label-danger" ng-show="conn_problems" title="number of connection problems">{{ conn_problems }}</span>
+        <span class="label label-danger" ng-show="struct.boot_helper.connection_problem_counter" title="number of connection problems">{{ struct.boot_helper.connection_problem_counter }}</span>
         Boot config for {{ struct.devices.length }} devices,
-        <span ng-show="num_selected">{{ num_selected }} selected,</span>
-        {{ get_global_bootserver_info() }}
+        <span ng-show="struct.num_selected">{{ struct.num_selected }} selected,</span>
+        {{ struct.global_bootserver_info }}
     </h2>
     <form class="form-inline">
         <div class="btn-group">
-            <input ng-repeat="entry in boot_options" type="button" ng-class="get_bo_class(entry[0])" value="{{ entry[1] }}" ng-click="toggle_bo(entry[0])"/>
+            <input ng-repeat="entry in boot_options" type="button" ng-class="get_bo_class(entry[0])" value="{{ entry[1] }}" ng-click="toggle_boot_option(entry[0])"/>
         </div>
-        <input class="form-control" ng-model="device_sel_filter" placeholder="selection..." ng-change="change_sel_filter()"/>
+        <input class="form-control" ng-model="struct.device_sel_filter" placeholder="selection..." ng-change="change_sel_filter()"/>
     </form>
-    <table ng-show="devices.length" class="table table-condensed table-hover" style="width:auto;">
+    <table st-table="entries_displayed" st-safe-src="struct.devices" ng-show="struct.devices.length" class="table table-condensed table-hover" style="width:auto;">
         <thead>
+            <tr>
+                <td colspan="99">
+                    <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                         possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                </td>
+            </tr>
             <tr>
                 <th>Group</th>
                 <th>Device</th>
-                <th class="center">sel</th>
+                <th class="text-center">sel</th>
                 <th>state</th>
                 <th>network</th>
                 <th ng-repeat="entry in boot_options" ng-show="bo_enabled[entry[0]] && entry[2] < 3">
@@ -36,30 +42,30 @@
             </tr>
         </thead>
         <tbody>
-            <tr icsw-device-boot-row ng-repeat-start="dev in devices" ng-class="get_row_class(dev)"></tr>
+            <tr icsw-device-boot-row ng-repeat-start="dev in entries_displayed" ng-class="dev.$$row_class"></tr>
             <tr ng-repeat-end ng-show="bo_enabled['l'] && dev.show_log && dev.logs_set">
                 <td colspan="100">
-                    <icsw-device-boot-log-table device="dev"></icsw-device-boot-log-table>
+                    <icsw-device-boot-log-table icsw-device="dev"></icsw-device-boot-log-table>
                 </td>
             </tr>
         </tbody>
-        <tfoot ng-show="devices.length > 1">
+        <tfoot ng-show="struct.devices.length > 1">
             <tr>
                 <td colspan="2">Global actions</td>
                 <td>
                     <div class="btn-group btn-group-xs">
-                        <input type="button" class="btn btn-success" value="S" ng-click="toggle_gdev_sel(1)" title="select all devices"/>
-                        <input type="button" class="btn btn-primary" value="T" ng-click="toggle_gdev_sel(0)" title="toggle device selection"/>
-                        <input type="button" class="btn btn-warning" value="C" ng-click="toggle_gdev_sel(-1)" title="clear device selection"/>
+                        <input type="button" class="btn btn-success" value="S" ng-click="toggle_dev_sel(null, 1)" title="select all devices"/>
+                        <input type="button" class="btn btn-primary" value="T" ng-click="toggle_dev_sel(null, 0)" title="toggle device selection"/>
+                        <input type="button" class="btn btn-warning" value="C" ng-click="toggle_dev_sel(null, -1)" title="clear device selection"/>
                     </div>
                 </td>
                 <td></td>
                 <td></td>
-                <td ng-repeat="entry in type_1_options()" ng-show="bo_enabled[entry[0]]"></td>
+                <td ng-repeat="entry in type_1_options" ng-show="bo_enabled[entry[0]]"></td>
                 <td ng-show="bo_enabled['s']">
-                    <div class="btn-group" ng-show="num_selected">
+                    <div class="btn-group" ng-show="struct.num_selected">
                         <button type="button" class="btn btn-warning btn-xs dropdown-toggle" data-toggle="dropdown">
-                            action ({{ num_selected }})<span class="caret"></span>
+                            action ({{ struct.num_selected }})<span class="caret"></span>
                         </button>
                         <ul class="dropdown-menu">
                             <li ng-click="soft_control('', 'reboot')"><a>reboot</a></li>
@@ -81,7 +87,7 @@
                     </div>
                 </td>
                 <td>
-                    <icsw-tools-button type="modify" size="xs" ng-show="num_selected && any_type_1_selected" value="modify many" ng-click="modify_many($event)"></icsw-tools-button>
+                    <icsw-tools-button type="modify" size="xs" ng-show="struct.num_selected && any_type_1_selected" value="modify many" ng-click="modify_many($event)"></icsw-tools-button>
                 </td>
             </tr>
         </tfoot>
@@ -153,11 +159,17 @@
 
 <script type="text/ng-template" id="icsw.device.boot.row">
     <td>{{ dev.device_group_name }}</td>
-    <td ng-class="get_device_name_class(dev)">{{ dev.full_name }}{{ get_bootserver_info(dev) }}</td>
-    <td class="center"><input type="button" ng-class="get_dev_sel_class(dev)" ng-click="toggle_dev_sel(dev, 0)" value="sel"></button></td>
-    <td ng-class="dev.recvreq_state">{{ dev.recvreq_str }}</td>
-    <td ng-class="dev.network_state">{{ dev.network }}</td>
-    <td ng-repeat="entry in type_1_options()" ng-show="bo_enabled[entry[0]]" ng-class="get_td_class(entry)" ng-bind-html="show_boot_option(entry)">
+    <td ng-class="dev.$$boot_name_class">{{ dev.full_name }} {{ dev.$$local_bootserver_info }}</td>
+    <td class="text-center">
+        <input type="button" ng-class="dev.$$boot_selection_class" ng-click="toggle_dev_sel(dev, 0)" value="sel"/>
+    </td>
+    <td ng-class="dev.$$boot_helper.recvreq_state">{{ dev.$$boot_helper.recvreq_str }}</td>
+    <td ng-class="dev.$$boot_helper.network_state">{{ dev.$$boot_helper.network }}</td>
+    <td
+        ng-repeat="field in dev.$$boot_info_fields"
+        ng-class="field.cls"
+        ng-bind-html="field.html"
+    >
     </td>
     <td ng-show="bo_enabled['s']">
         <div class="btn-group" ng-show="valid_net_state()">
@@ -205,22 +217,32 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.boot.log.table">
-    <table class="table table-condensed table-hover table-striped" style="width:auto;">
-        <tr>
-            <th>Source</th>
-            <th>User</th>
-            <th>Status</th>
-            <th>Message</th>
-            <th colspan="2">when</th>
-        </tr>
-        <tr ng-repeat="line in get_log_lines()">
-            <td style="white-space:nowrap;">{{ line.source }}</td>
-            <td style="white-space:nowrap;">{{ line.user }}</td>
-            <td style="white-space:nowrap;" ng-class="line.class">{{ line.log_level }}</td>
-            <td ng-class="line.class">{{ line.text }}</td>
-            <td style="white-space:nowrap;">{{ line.get_relative_date() }}</td>
-            <td style="white-space:nowrap;">{{ line.abs_dt }}</td>
-        </tr>
+    <table st-table="entries_displayed" st-safe-src="device.log_lines" class="table table-condensed table-hover table-striped" style="width:auto;">
+        <thead>
+            <tr>
+                <td colspan="99">
+                    <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                         possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                </td>
+            </tr>
+            <tr>
+                <th>Source</th>
+                <th>User</th>
+                <th>Status</th>
+                <th>Message</th>
+                <th colspan="2">when</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="line in entries_displayed">
+                <td style="white-space:nowrap;">{{ line.source }}</td>
+                <td style="white-space:nowrap;">{{ line.user }}</td>
+                <td style="white-space:nowrap;" ng-class="line.class">{{ line.log_level }}</td>
+                <td ng-class="line.class">{{ line.text }}</td>
+                <td style="white-space:nowrap;">{{ line.get_relative_date() }}</td>
+                <td style="white-space:nowrap;">{{ line.abs_dt }}</td>
+            </tr>
+        </tbody>
     </table>
 </script>
 

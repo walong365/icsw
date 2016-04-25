@@ -49,7 +49,7 @@ angular.module(
     # used by menu.coffee (menu_base)
     _receivers = 0
     # for testing
-    cur_selection = new icswSelection([], [], [3, 5, 16, 21], [3, 5, 16, 21])
+    cur_selection = new icswSelection([], [], [666, 3, 5, 16, 21], [3, 5, 16, 21, 666])
     # cur_selection = new icswSelection([], [], [3, 5], [3, 5])
     # cur_selection = new icswSelection([], [], [16], [16]) # only firewall
     # cur_selection = new icswSelection([], [], [], [])

@@ -97,7 +97,7 @@
         <icsw-tools-button type="modify" size="xs" ng-click="edit_device_group($event, group)"></icsw-tools-button>
     </td>
     <td>
-        <icsw-tools-button ng-show="!group.num_devices" type="delete" size="xs" ng-click="delete_device_group(group)"></icsw-tools-button>
+        <icsw-tools-button ng-show="!group.num_devices" type="delete" size="xs" ng-click="delete_device_group($event, group)"></icsw-tools-button>
         <icsw-tools-button type="create" value="create device" size="xs" ng-click="create_device($event, group)"></icsw-tools-button>
     </td>
 </script> 
@@ -122,7 +122,7 @@
         <icsw-tools-button type="modify" size="xs" ng-click="edit_device($event, obj)"></icsw-tools-button>
     </td>
     <td>
-        <icsw-tools-button type="delete" size="xs" ng-click="delete_device(obj)"></icsw-tools-button>
+        <icsw-tools-button type="delete" size="xs" ng-click="delete_device($event, obj)"></icsw-tools-button>
     </td>
 </script> 
 

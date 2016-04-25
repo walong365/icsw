@@ -163,14 +163,57 @@ angular.module(
     $q,
 ) ->
     class icswBootStatusTree
-        constructor: (status_list) ->
+        constructor: (status_list, @network_tree) ->
             @status_list = []
+            @special_states_list = []
+            @network_states_list = []
             @update(status_list)
 
         update: (status_list) =>
             @status_list.length = 0
             for entry in status_list
                 @status_list.push(entry)
+            _idx = 0
+            @special_states_list.length = 0
+            @network_states_list.length = 0
+            # does not resolve to network_states_list but one level deeper
+            @network_states_lut = {}
+            for entry in @status_list
+                if not entry.prod_link
+                    _idx++
+                    @special_states_list.push(
+                        {
+                            idx: _idx
+                            status: entry.idx
+                            network: null
+                            info: entry.info_string
+                            full_info: entry.info_string
+                        }
+                    )
+            for net in @network_tree.nw_list
+                if net.network_type_identifier == "p"
+                    net_list = {
+                        info: "#{net.info_string}"
+                        network: net.idx
+                        states: []
+                    }
+                    @network_states_list.push(net_list)
+                    for clean_flag in [false, true]
+                        for entry in @status_list
+                            if entry.prod_link and entry.is_clean == clean_flag
+                                _idx++
+                                new_state = {
+                                    idx: _idx
+                                    status: entry.idx
+                                    network: net.idx
+                                    info: "#{entry.info_string}"
+                                    full_info: "#{entry.info_string} into #{net.info_string}"
+                                }
+                                net_list.states.push(new_state)
+                                @network_states_lut[_idx] = new_state
+            @special_states_lut = _.keyBy(@special_states_list, "idx")
+
+
             @build_luts()
 
         build_luts: () =>
@@ -180,11 +223,11 @@ angular.module(
 [
     "$q", "Restangular", "ICSW_URLS", "icswCachingCall",
     "icswTools", "icswDeviceTree", "$rootScope", "ICSW_SIGNALS",
-    "icswBootStatusTree",
+    "icswBootStatusTree", "icswNetworkTreeService",
 (
     $q, Restangular, ICSW_URLS, icswCachingCall,
     icswTools, icswDeviceTree, $rootScope, ICSW_SIGNALS,
-    icswBootStatusTree,
+    icswBootStatusTree, icswNetworkTreeService,
 ) ->
     rest_map = [
         [
@@ -199,11 +242,12 @@ angular.module(
     load_data = (client) ->
         load_called = true
         _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in rest_map)
+        _wait_list.push(icswNetworkTreeService.load(client))
         _defer = $q.defer()
         $q.all(_wait_list).then(
             (data) ->
                 console.log "*** BootStatus tree loaded ***"
-                _result = new icswBootStatusTree(data[0])
+                _result = new icswBootStatusTree(data[0], data[1])
                 _defer.resolve(_result)
                 for client of _fetch_dict
                     # resolve clients
@@ -237,6 +281,133 @@ angular.module(
         template: $templateCache.get("icsw.device.boot.table")
         controller: "icswDeviceBootCtrl"
     }
+]).service("icswDeviceBootHelper",
+[
+    "$q",
+(
+    $q,
+) ->
+    class icswDeviceBootHelper
+        constructor: (@device, @g_helper) ->
+            # g_helper ist the global boothelper
+            # device logs
+            @logs_set = false
+            @logs = []
+            @network = undefined
+            @net_state = "down"
+            @recvreq_state = "warning"
+            @network_state = "warning"
+            @recvreq_str = "---"
+
+        feed: (data) =>
+            console.log "feed", data
+            if data.hoststatus_str
+                @recvreq_str = data.hoststatus_str +  "(" + data.hoststatus_source + ")"
+            else
+                @recvreq_str = "rcv: ---"
+            @net_state = data.net_state
+            tr_class = {
+                down: "danger"
+                unknown: "warning"
+                ping: "warning"
+                up: "success"
+            }[@net_state]
+            @network = "#{data.network} (#{data.net_state})"
+            @recvreq_state = tr_class
+            @network_state = tr_class
+
+            dev = @device
+            dev.target_state = 0
+            # target state
+            for _kv in ["new_state", "prod_link"]
+                dev[_kv] = data[_kv]
+            status_tree = @g_helper.struct.boot_status_tree
+            if dev.new_state
+                if dev.prod_link
+                    _list = (_entry for _entry in status_tree.network_states_list when _entry.network == dev.prod_link)
+                    if _list.length
+                        _list = (_entry for _entry in _list[0].states when _entry.status == dev.new_state)
+                else
+                    _list = (_entry for _entry in st.special_states_list when _entry.status == dev.new_state)
+                if _list.length
+                    dev.target_state = _list[0].idx
+
+            # copy image, act_image is a tuple (idx, vers, release) or none
+            for _kv in ["new_image", "act_image"]
+                dev[_kv] = data[_kv]
+            # copy kernel, act_kernel is a tuple (idx, vers, release) or none
+            for _kv in ["new_kernel", "act_kernel", "stage1_flavour", "kernel_append"]
+                dev[_kv] = data[_kv]
+            # copy partition
+            for _kv in ["act_partition_table", "partition_table"]
+                dev[_kv] = data[_kv]
+            # copy bootdevice
+            for _kv in ["dhcp_mac", "dhcp_write", "dhcp_written", "dhcp_error", "bootnetdevice"]
+                dev[_kv] = data[_kv]
+
+]).service("icswGlobalBootHelper",
+[
+    "$q", "$timeout", "icswSimpleAjaxCall", "ICSW_URLS", "icswDeviceBootHelper",
+(
+    $q, $timeout, icswSimpleAjaxCall, ICSW_URLS, icswDeviceBootHelper,
+) ->
+    class icswGlobalBootHelper
+        constructor: (@struct, devices, @salt_callback) ->
+            # @struct is the global boot structure
+            @devices = []
+            @fetch_running = false
+            @fetch_timeout = undefined
+            # connection problem counter
+            @connection_problem_counter = 0
+            @update(devices)
+
+        update: (devices) =>
+            @devices.length = 0
+            for entry in devices
+                @devices.push(entry)
+                if not entry.$$boot_helper?
+                    # install device boothelper
+                    entry.$$boot_helper = new icswDeviceBootHelper(entry, @)
+            @device_lut = _.keyBy(@devices, "idx")
+            console.log "GlobalBootHelper, devices=",  @devices.length
+
+        fetch: () =>
+            new_timeout = () =>
+                @fetch_timeout = $timeout(@fetch, 10000)
+
+            defer = $q.defer()
+            if @fetch_timeout
+                $timeout.cancel(@fetch_timeout)
+                @fetch_timeout = undefined
+            if not @fetch_running
+                @fetch_running = true
+                send_data = {
+                    sel_list: (dev.idx for dev in @devices)
+                    call_mother: 1
+                }
+                icswSimpleAjaxCall(
+                    url: ICSW_URLS.BOOT_GET_BOOT_INFO_JSON
+                    data: send_data
+                ).then(
+                    (xml) =>
+                        @fetch_running = false
+                        @connection_problem_counter = 0
+                        _resp = angular.fromJson($(xml).find("value[name='response']").text())
+                        for entry in _resp
+                            @device_lut[entry.idx].$$boot_helper.feed(entry)
+                        @salt_callback()
+                        new_timeout()
+                        defer.resolve("fetched")
+                    (notok) =>
+                        @fetch_running = false
+                        @connection_problem_counter++
+                        new_timeout()
+                        defer.reject("not fetched")
+                )
+            else
+                defer.reject("already running")
+            return defer.promise
+
 ]).controller("icswDeviceBootCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "ICSW_SIGNALS",
@@ -245,6 +416,7 @@ angular.module(
     "icswActiveSelectionService", "icswConfigTreeService", "icswLogTreeService",
     "icswKernelTreeService", "icswImageTreeService", "icswUserGroupTreeService",
     "icswPartitionTableTreeService", "icswNetworkTreeService", "icswBootStatusTreeService",
+    "icswGlobalBootHelper",
 (
     $scope, $compile, $filter, $templateCache, Restangular, ICSW_SIGNALS,
     $q, icswAcessLevelService, $timeout, $rootScope,
@@ -252,6 +424,7 @@ angular.module(
     icswActiveSelectionService, icswConfigTreeService, icswLogTreeService,
     icswKernelTreeService, icswImageTreeService, icswUserGroupTreeService,
     icswPartitionTableTreeService, icswNetworkTreeService, icswBootStatusTreeService,
+    icswGlobalBootHelper,
 ) ->
     icswAcessLevelService.install($scope)
     $scope.mbl_entries = []
@@ -260,9 +433,9 @@ angular.module(
     $scope.any_type_1_selected = false
     $scope.any_type_2_selected = false
     $scope.any_type_3_selected = false
-    $scope.device_sel_filter = ""
     # dict of all macs
     $scope.mac_dict = {}
+
     $scope.boot_options = [
         # 1 ... option to modify globally
         # 2 ... local option
@@ -276,6 +449,14 @@ angular.module(
         ["h", "hard control", 2],
         ["l", "devicelog"   , 3],
     ]
+    $scope.type_1_options = (entry for entry in $scope.boot_options when entry[2] == 1)
+
+    $scope.stage1_flavours = [
+        {val: "cpio", name: "CPIO"}
+        {val: "cramfs", name: "CramFS"}
+        {val: "lo", name: "ext2 via Loopback"}
+    ]
+
     $scope.struct = {
         # tree is valid
         tree_valid: false
@@ -302,9 +483,16 @@ angular.module(
         network_tree: undefined
         # boot status tree
         boot_status_tree: undefined
+        # global bootserver info
+        global_bootserver_info: ""
+        # number of selected devices
+        num_selected: 0
+        # device selection strings
+        device_sel_filter: ""
+        # boot helper structur
+        boot_helper: undefined
     }
     $scope.new_devsel = (dev) ->
-        console.log "d=", dev
         $q.all(
             [
                 icswDeviceTreeService.load($scope.$id)
@@ -341,32 +529,244 @@ angular.module(
                                 _mother_list.push(_dc.device)
                 $scope.struct.mother_server_list = ($scope.struct.device_tree.all_lut[_dev] for _dev in _mother_list)
                 $scope.struct.mother_server_lut = _.keyBy($scope.struct.mother_server_list, "idx")
-                $scope.struct.tree_valid = true
+                if $scope.struct.boot_helper?
+                    $scope.struct.boot_helper.update($scope.struct.devices)
+                else
+                    $scope.struct.boot_helper = new icswGlobalBootHelper($scope.struct, $scope.struct.devices, salt_devices)
+                salt_devices()
+                $scope.struct.boot_helper.fetch().then(
+                    (done) ->
+                        $scope.struct.tree_valid = true
+                    (notok) ->
+                        # strage
+                        console.error "fetch already running"
+                        $scope.struct.tree_valid = true
+                )
         )
 
-    $scope.new_devselx = (_dev_sel, _devg_sel) ->
-        if $scope.update_info_timeout
-            $timeout.cancel($scope.update_info_timeout)
-        $scope.info_ok = false
-        $scope.devsel_list = _dev_sel
-        $scope.reload()
+    # helper functions
+    salt_devices = () ->
 
-    $scope.stage1_flavours = [
-        {val: "cpio", name: "CPIO"}
-        {val: "cramfs", name: "CramFS"}
-        {val: "lo", name: "ext2 via Loopback"}
-    ]
-    $scope.get_global_bootserver_info = () ->
-        if $scope.bootserver_list.length
-            if $scope.bootserver_list.length == 1
-                if $scope.bootserver_list[0] of $scope.mother_servers
-                    return " on bootserver " + $scope.mother_servers[$scope.bootserver_list[0]].full_name
-                else
-                    return " on bootserver #" + $scope.bootserver_list[0]
+        # global bootserver info
+
+        _bs_list = _.uniq(dev.bootserver for dev in $scope.struct.devices when dev.bootserver)
+        if _bs_list.length == 1
+            if _bs_list[0] of $scope.struct.mother_server_lut
+                bs_info = "on bootserver #{$scope.struct.mother_server_lut[_bs_list[0]].full_name}"
             else
-                return ", " + $scope.bootserver_list.length + " bootservers"
+                bs_info = "on bootserver with pk=#{_bs_list[0]}"
+        else if _bs_list.length
+            bs_inof = "on #{_bs_list.length} bootservers"
         else
-            return ""
+            bs_info = "no bootserver info"
+        $scope.struct.global_bootserver_info = bs_info
+
+        # local bootserver info
+
+        for dev in $scope.struct.devices
+            if dev.bootserver
+                dev.$$row_class = ""
+                if dev.bootserver of $scope.struct.mother_server_lut
+                    bs_info = "(#{$scope.struct.mother_server_lut[dev.bootserver].full_name})"
+                    dev.$$boot_name_class= ""
+                else
+                    bs_info = "(N/A)"
+                    dev.$$boot_name_class= "warning"
+            else
+                dev.$$row_class = "danger"
+                dev.$$boot_name_class = ""
+                bs_info = "(no BS)"
+
+            dev.$$local_bootserver_info = bs_info
+
+            salt_device(dev)
+
+    get_lut_val = (s_type, val) ->
+        if s_type == "i"
+            lut = $scope.struct.image_tree.lut
+            _attr_name = "name"
+        else if s_type == "k"
+            lut = $scope.struct.kernel_tree.lut
+            _attr_name = "display_name"
+        else if s_type == "p"
+            lut = $scope.struct.partition_table_tree.lut
+            _attr_name = "name"
+        else if s_type == "i"
+            lut = $scope.struct.image_tree.lut
+            _attr_name = "name"
+        if val of lut
+            return lut[val][_attr_name]
+        else
+            return "? #{s_type}: #{val} ?"
+
+    get_info_str = (s_type, act_val, act_vers, new_val, new_vers) ->
+        if act_val == new_val
+            if act_val
+                if act_vers == new_vers
+                    # everything ok, same version
+                    if act_vers
+                        return "<span class='label label-success'><span class='glyphicon glyphicon-ok'></span></span> " + get_lut_val(s_type, act_val) + " (#{act_vers})"
+                    else
+                        return "<span class='label label-success'><span class='glyphicon glyphicon-ok'></span></span> " + get_lut_val(s_type, act_val)
+                else
+                    return "<span class='label label-warning'><span class='glyphicon glyphicon-arrow-up'></span></span> " + get_lut_val(s_type, act_val) + " (#{act_vers} != #{new_vers})"
+            else
+                # both values are empty
+                return "<span class='label label-danger'><span class='glyphicon glyphicon-ban-circle'></span></span>"
+        else
+            new_val_str = if new_val then get_lut_val(s_type, new_val) else "---"
+            act_val_str = if act_val then get_lut_val(s_type, act_val) else "---"
+            act_vers_str = if act_vers then " (#{act_vers})" else ""
+            new_vers_str = if new_vers then " (#{new_vers})" else ""
+            if act_val and new_val
+                # show source and target value
+                return "#{act_val_str}#{act_vers_str}<span class='label label-warning'><span class='glyphicon glyphicon-arrow-right'></span></span> #{new_val_str}#{new_vers_str}"
+            else if act_val
+                return "#{act_val_str}#{act_vers_str}<span class='label label-warning'><span class='glyphicon glyphicon-arrow-right'></span></span>"
+            else
+                return "<span class='label label-warning'><span class='glyphicon glyphicon-arrow-right'></span></span> #{new_val_str}#{new_vers_str}"
+
+    resolve_version = (lut, idx, attr_name) ->
+        if idx of lut
+            _obj = lut[idx]
+            if attr_name
+                return _obj[attr_name]
+            else
+                return "#{_obj.version}.#{_obj.release}"
+        else
+            return null
+
+    get_latest_entry = (hist_tuple, lut, key) ->
+        if hist_tuple?
+            _idx = hist_tuple[0]
+            if _idx of lut
+                if key?
+                    return lut[_idx][key]
+                else
+                    return lut[_idx]
+            else
+                return null
+        else
+            return null
+
+    salt_device = (dev) ->
+        # clear selection flag if not set
+
+        if not dev.$$boot_selected?
+            dev.$$boot_selected = false
+        if dev.$$boot_selected
+            dev.$$boot_selection_class = "btn btn-xs btn-success"
+        else
+            dev.$$boot_selection_class = "btn btn-xs"
+
+        # build info fields
+        out_list = []
+        for opt in $scope.type_1_options
+            _type = opt[0]
+            if $scope.bo_enabled[_type]
+                # default values
+                [_out, _class] = ["N/A", "danger"]
+                if _type == "t"
+                    # target state
+                    _class = ""
+                    if dev.target_state
+                        _out = $scope.struct.boot_status_tree.network_states_lut[dev.target_state].full_info
+                    else
+                        _out = "---"
+                else if _type == "i"
+                    # format: idx, version, release
+                    act_image = if dev.act_image then dev.act_image[0] else null
+                    if act_image
+                        _act_image_version = "#{dev.act_image[1]}.#{dev.act_image[2]}"
+                    else
+                        _act_image_version = ""
+                    _new_image_version = resolve_version($scope.struct.image_tree.lut, dev.new_image)
+                    _out = get_info_str("i", act_image, _act_image_version, dev.new_image, _new_image_version)
+                    # attentions, _act_image_version changes
+                    _act_image_version = get_latest_entry(dev.act_image, $scope.struct.image_tree.lut, "name")
+                    _class = if _act_image_version == resolve_version($scope.struct.image_tree.lut, dev.new_image, "name") then "" else "warning"
+                else if _type == "k"
+                    # kernel
+                    act_kernel = if dev.act_kernel then dev.act_kernel[0] else null
+                    if act_kernel
+                        _act_kernel_version = "#{dev.act_kernel[1]}.#{dev.act_kernel[2]}"
+                    else
+                        _act_kernel_version = ""
+                    _new_kernel_version = resolve_version($scope.struct.kernel_tree.lut, dev.new_kernel)
+                    _out = get_info_str("k", act_kernel, _act_kernel_version, dev.new_kernel, _new_kernel_version)
+                    if dev.act_kernel or dev.new_kernel
+                        _out = "#{_out}, flavour is #{dev.stage1_flavour}"
+                        if dev.kernel_append
+                            _out = "#{_out} (append '#{dev.kernel_append}')"
+                    _act_kernel_version = get_latest_entry(dev.act_kernel, $scope.struct.kernel_tree.lut, "name")
+                    _class = if _act_kernel_version == resolve_version($scope.struct.kernel_tree.lut, dev.new_kernel, "display_name") then "" else "warning"
+                else if _type == "p"
+                    _out = get_info_str("p", dev.act_partition_table, "", dev.partition_table, "")
+                    _class = if dev.act_partition_table == dev.partition_table then "" else "warning"
+                else if _type == "b"
+                    console.log _type, dev
+                    if dev.bootnetdevice
+                        nd = dev.bootnetdevice
+                        console.log "nd=", nd
+
+                out_list.push(
+                    {
+                        html: _out
+                        cls: _class
+                    }
+                )
+        dev.$$boot_info_fields = out_list
+
+
+
+    update_selection = () ->
+        $scope.struct.num_selected = 0
+        for dev in $scope.struct.devices
+            if dev.$$boot_selected
+                $scope.struct.num_selected++
+
+    # selection functions
+
+    _cur_sel_timeout = undefined
+
+    $scope.change_sel_filter = () ->
+        if _cur_sel_timeout
+            $timeout.cancel(_cur_sel_timeout)
+        _cur_sel_timeout = $timeout($scope.set_sel_filter, 500)
+
+    $scope.set_sel_filter = () ->
+        try
+            cur_re = new RegExp($scope.struct.device_sel_filter, "gi")
+        catch exc
+            cur_re = new RegExp("^$", "gi")
+        for dev in $scope.struct.devices
+            dev.$$boot_selected = if dev.full_name.match(cur_re) then true else false
+            salt_device(dev)
+        update_selection()
+
+    $scope.toggle_dev_sel = (dev, sel_mode) ->
+        if dev
+            if sel_mode == 1
+                dev.$$boot_selected = true
+            else if sel_mode == -1
+                dev.$$boot_selected = false
+            else if sel_mode == 0
+                dev.$$boot_selected = !dev.$$boot_selected
+            salt_device(dev)
+            update_selection()
+        else
+            for dev in $scope.struct.devices
+                $scope.toggle_dev_sel(dev, sel_mode)
+
+    # toggle columns
+
+    $scope.toggle_boot_option = (short) ->
+        $scope.bo_enabled[short] = ! $scope.bo_enabled[short]
+        $scope.any_type_1_selected = if (entry for entry in $scope.boot_options when entry[2] == 1 and $scope.bo_enabled[entry[0]] == true).length then true else false
+        $scope.any_type_2_selected = if (entry for entry in $scope.boot_options when entry[2] == 2 and $scope.bo_enabled[entry[0]] == true).length then true else false
+        $scope.any_type_3_selected = if (entry for entry in $scope.boot_options when entry[2] == 3 and $scope.bo_enabled[entry[0]] == true).length then true else false
+        salt_devices()
+
     $scope.get_devlog_class = (dev) ->
         if dev.show_log
             return "btn btn-xs btn-success"
@@ -374,80 +774,29 @@ angular.module(
             return "btn btn-xs"
     $scope.get_devlog_value = (dev) ->
         return if dev.show_log then "hide" else "show"
+
     $scope.change_devlog_flag = (dev) ->
         dev.show_log = !dev.show_log
-    $scope.change_sel_filter = () ->
-        if $scope.cur_sel_timeout
-            $timeout.cancel($scope.cur_sel_timeout)
-        $scope.cur_sel_timeout = $timeout($scope.set_sel_filter, 500)
-    $scope.set_sel_filter = () ->
-        try
-            cur_re = new RegExp($scope.device_sel_filter, "gi")
-        catch exc
-            cur_re = new RegExp("^$", "gi")
-        $scope.num_selected = 0
-        for dev in $scope.devices
-            dev.selected = if dev.name.match(cur_re) then true else false
-            if dev.selected
-                $scope.num_selected++
+
+
     $scope.bo_enabled = {}
-    $scope.type_1_options = () ->
-        return (entry for entry in $scope.boot_options when entry[2] == 1)
+
     for entry in $scope.boot_options
         $scope.bo_enabled[entry[0]] = false
     $scope.get_bo_class = (short) ->
         return (if $scope.bo_enabled[short] then "btn btn-sm btn-success" else "btn btn-sm")
-    $scope.toggle_bo = (short) ->
-        $scope.bo_enabled[short] = ! $scope.bo_enabled[short]
-        $scope.any_type_1_selected = if (entry for entry in $scope.boot_options when entry[2] == 1 and $scope.bo_enabled[entry[0]] == true).length then true else false
-        $scope.any_type_2_selected = if (entry for entry in $scope.boot_options when entry[2] == 2 and $scope.bo_enabled[entry[0]] == true).length then true else false
-        $scope.any_type_3_selected = if (entry for entry in $scope.boot_options when entry[2] == 3 and $scope.bo_enabled[entry[0]] == true).length then true else false
-    $scope.get_dev_sel_class = (dev) ->
-        if dev.selected
-            return "btn btn-xs btn-success"
-        else
-            return "btn btn-xs"
-    $scope.get_device_name_class = (dev) ->
-        if dev.bootserver of $scope.mother_servers
-            return ""
-        else
-            return "warning"
-    $scope.get_bootserver_info = (dev) ->
-        if dev.bootserver
-            if $scope.bootserver_list.length > 1
-                if dev.bootserver of $scope.mother_servers
-                    return " (" + $scope.mother_servers[dev.bootserver].full_name + ")"
-                else
-                    return " (N/A)"
-            else
-                return ""
-        else
-            return " (no BS)"
-    $scope.get_row_class = (dev) ->
-        if dev.bootserver
-            return ""
-        else
-            return "danger"
+
     $scope.num_selected_hc = () ->
         num_hc = 0
         for dev in $scope.devices
             if dev.selected and dev.slave_connections and dev.slave_connections.length
                 num_hc += dev.slave_connections.length
         return num_hc
-    $scope.toggle_gdev_sel = (sel_mode) ->
-        ($scope.toggle_dev_sel(dev, sel_mode) for dev in $scope.devices)
-    $scope.toggle_dev_sel = (dev, sel_mode) ->
-        if sel_mode == 1
-            dev.selected = true
-        else if sel_mode == -1
-            dev.selected = false
-        else if sel_mode == 0
-            dev.selected = !dev.selected
-        $scope.num_selected = (dev for dev in $scope.devices when dev.selected).length
     # mixins
     $scope.device_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q)
     $scope.device_edit.modify_rest_url = ICSW_URLS.BOOT_UPDATE_DEVICE.slice(1).slice(0, -2)
     $scope.device_edit.use_promise = true
+
     $scope.device_edit.modify_data_before_put = (data) ->
         # rewrite new_state / prod_link
         if data.target_state
@@ -978,11 +1327,8 @@ angular.module(
 ) ->
     return {
         restrict: "EA"
-        scope:
-            device: "=device"
         template: $templateCache.get("icsw.device.boot.log.table")
-        link: (scope, el, attrs) ->
-            scope.get_log_lines = () ->
-                return scope.device.log_lines[0..scope.device.num_show]
+        scope:
+            device: "=icswDevice"
     }
 ])

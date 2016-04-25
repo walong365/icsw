@@ -52,6 +52,7 @@ class get_boot_info_json(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
+        print _post
         sel_list = _post.getlist("sel_list[]")
         dev_result = device.objects.filter(
             Q(pk__in=sel_list)
@@ -108,8 +109,8 @@ class get_boot_info_json(View):
             context=ctx,
         ).data
         _resp = JSONRenderer().render(_json)
-        # import pprint
-        # pprint.pprint(_json)
+        import pprint
+        pprint.pprint(_json)
         request.xml_response["response"] = _resp
 
 
