@@ -1198,8 +1198,8 @@ angular.module(
     $scope.reload = () ->
         blockUI.start("loading NetworkClusters")
         icswSimpleAjaxCall(
-            url      : ICSW_URLS.NETWORK_GET_CLUSTERS
-            dataType : "json"
+            url: ICSW_URLS.NETWORK_GET_CLUSTERS
+            dataType: "json"
         ).then(
             (json) ->
                 blockUI.stop()
@@ -1211,11 +1211,10 @@ angular.module(
         return if _sel.length then "yes (#{_sel.length})" else "no"
 
     $scope.show_cluster = (cluster) ->
-        Restangular.all(ICSW_URLS.REST_DEVICE_TREE_LIST.slice(1)).getList({"pks" : angular.toJson(cluster.device_pks), "ignore_meta_devices" : true}).then(
+        Restangular.all(ICSW_URLS.REST_DEVICE_TREE_LIST.slice(1)).getList({pks: angular.toJson(cluster.device_pks), ignore_meta_devices: true}).then(
             (data) ->
                 child_scope = $scope.$new(false)
                 child_scope.cluster = cluster
-                child_scope.devices = []
                 child_scope.devices = data
                 icswComplexModalService(
                     {

@@ -73,6 +73,164 @@ angular.module(
                     ordering: 10
         }
     )
+]).service("icswLogTree",
+[
+    "$q",
+(
+    $q,
+) ->
+    class icswLogTree
+        constructor: (source_list, level_list) ->
+            @source_list = []
+            @level_list = []
+            @update(source_list, level_list)
+
+        update: (source_list, level_list) =>
+            @source_list.length = 0
+            for entry in source_list
+                @source_list.push(entry)
+            @level_list.length = 0
+            for entry in level_list
+                @level_list.push(entry)
+            @build_luts()
+
+        build_luts: () =>
+            @source_lut = _.keyBy(@source_list, "idx")
+            @level_lut = _.keyBy(@level_list, "idx")
+
+]).service("icswLogTreeService",
+[
+    "$q", "Restangular", "ICSW_URLS", "icswCachingCall",
+    "icswTools", "icswDeviceTree", "$rootScope", "ICSW_SIGNALS",
+    "icswLogTree",
+(
+    $q, Restangular, ICSW_URLS, icswCachingCall,
+    icswTools, icswDeviceTree, $rootScope, ICSW_SIGNALS,
+    icswLogTree,
+) ->
+    rest_map = [
+        [
+            ICSW_URLS.REST_LOG_SOURCE_LIST, {}
+        ]
+        [
+            ICSW_URLS.REST_LOG_LEVEL_LIST, {}
+        ]
+    ]
+    _fetch_dict = {}
+    _result = undefined
+    # load called
+    load_called = false
+
+    load_data = (client) ->
+        load_called = true
+        _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in rest_map)
+        _defer = $q.defer()
+        $q.all(_wait_list).then(
+            (data) ->
+                console.log "*** log tree loaded ***"
+                _result = new icswLogTree(data[0], data[1])
+                _defer.resolve(_result)
+                for client of _fetch_dict
+                    # resolve clients
+                    _fetch_dict[client].resolve(_result)
+                # reset fetch_dict
+                _fetch_dict = {}
+        )
+        return _defer
+
+    fetch_data = (client) ->
+        if client not of _fetch_dict
+            # register client
+            _defer = $q.defer()
+            _fetch_dict[client] = _defer
+        if _result
+            # resolve immediately
+            _fetch_dict[client].resolve(_result)
+        return _fetch_dict[client]
+
+    return {
+        load: (client) ->
+            if load_called
+                # fetch when data is present (after sidebar)
+                return fetch_data(client).promise
+            else
+                return load_data(client).promise
+    }
+]).service("icswBootStatusTree",
+[
+    "$q",
+(
+    $q,
+) ->
+    class icswBootStatusTree
+        constructor: (status_list) ->
+            @status_list = []
+            @update(status_list)
+
+        update: (status_list) =>
+            @status_list.length = 0
+            for entry in status_list
+                @status_list.push(entry)
+            @build_luts()
+
+        build_luts: () =>
+            @status_lut = _.keyBy(@status_list, "idx")
+
+]).service("icswBootStatusTreeService",
+[
+    "$q", "Restangular", "ICSW_URLS", "icswCachingCall",
+    "icswTools", "icswDeviceTree", "$rootScope", "ICSW_SIGNALS",
+    "icswBootStatusTree",
+(
+    $q, Restangular, ICSW_URLS, icswCachingCall,
+    icswTools, icswDeviceTree, $rootScope, ICSW_SIGNALS,
+    icswBootStatusTree,
+) ->
+    rest_map = [
+        [
+            ICSW_URLS.REST_STATUS_LIST, {}
+        ]
+    ]
+    _fetch_dict = {}
+    _result = undefined
+    # load called
+    load_called = false
+
+    load_data = (client) ->
+        load_called = true
+        _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in rest_map)
+        _defer = $q.defer()
+        $q.all(_wait_list).then(
+            (data) ->
+                console.log "*** BootStatus tree loaded ***"
+                _result = new icswBootStatusTree(data[0])
+                _defer.resolve(_result)
+                for client of _fetch_dict
+                    # resolve clients
+                    _fetch_dict[client].resolve(_result)
+                # reset fetch_dict
+                _fetch_dict = {}
+        )
+        return _defer
+
+    fetch_data = (client) ->
+        if client not of _fetch_dict
+            # register client
+            _defer = $q.defer()
+            _fetch_dict[client] = _defer
+        if _result
+            # resolve immediately
+            _fetch_dict[client].resolve(_result)
+        return _fetch_dict[client]
+
+    return {
+        load: (client) ->
+            if load_called
+                # fetch when data is present (after sidebar)
+                return fetch_data(client).promise
+            else
+                return load_data(client).promise
+    }
 ]).directive("icswDeviceBootTable", ["$templateCache", ($templateCache) ->
     return {
         restrict: "EA"
@@ -82,14 +240,18 @@ angular.module(
 ]).controller("icswDeviceBootCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "ICSW_SIGNALS",
-    "restDataSource", "$q", "icswAcessLevelService", "$timeout", "$rootScope",
+    "$q", "icswAcessLevelService", "$timeout", "$rootScope",
     "icswTools", "ICSW_URLS", "icswSimpleAjaxCall", "icswDeviceTreeService",
-    "icswActiveSelectionService",
+    "icswActiveSelectionService", "icswConfigTreeService", "icswLogTreeService",
+    "icswKernelTreeService", "icswImageTreeService", "icswUserGroupTreeService",
+    "icswPartitionTableTreeService", "icswNetworkTreeService", "icswBootStatusTreeService",
 (
     $scope, $compile, $filter, $templateCache, Restangular, ICSW_SIGNALS,
-    restDataSource, $q, icswAcessLevelService, $timeout, $rootScope,
+    $q, icswAcessLevelService, $timeout, $rootScope,
     icswTools, ICSW_URLS, icswSimpleAjaxCall, icswDeviceTreeService,
-    icswActiveSelectionService,
+    icswActiveSelectionService, icswConfigTreeService, icswLogTreeService,
+    icswKernelTreeService, icswImageTreeService, icswUserGroupTreeService,
+    icswPartitionTableTreeService, icswNetworkTreeService, icswBootStatusTreeService,
 ) ->
     icswAcessLevelService.install($scope)
     $scope.mbl_entries = []
@@ -119,22 +281,66 @@ angular.module(
         tree_valid: false
         # device tree
         device_tree: undefined
+        # config tree
+        config_tree: undefined
         # devices
         devices: []
+        # mother servers
+        mother_server_list: []
+        mother_server_lut: {}
+        # log tree
+        log_tree: undefined
+        # kernel tree
+        kernel_tree: undefined
+        # image tree
+        image_tree: undefined
+        # user/group tree
+        user_group_tree: undefined
+        # partition table tree
+        partition_table_tree: undefined
+        # network tree
+        network_tree: undefined
+        # boot status tree
+        boot_status_tree: undefined
     }
     $scope.new_devsel = (dev) ->
         console.log "d=", dev
         $q.all(
             [
                 icswDeviceTreeService.load($scope.$id)
+                icswConfigTreeService.load($scope.$id)
+                icswLogTreeService.load($scope.$id)
+                icswKernelTreeService.load($scope.$id)
+                icswImageTreeService.load($scope.$id)
+                icswUserGroupTreeService.load($scope.$id)
+                icswPartitionTableTreeService.load($scope.$id)
+                icswNetworkTreeService.load($scope.$id)
+                icswBootStatusTreeService.load($scope.$id)
             ]
         ).then(
             (data) ->
                 $scope.struct.device_tree = data[0]
+                $scope.struct.config_tree = data[1]
+                $scope.struct.log_tree = data[2]
+                $scope.struct.kernel_tree = data[3]
+                $scope.struct.image_tree = data[4]
+                $scope.struct.user_group_tree = data[5]
+                $scope.struct.partition_table_tree = data[6]
+                $scope.struct.network_tree = data[7]
+                $scope.struct.boot_status_tree = data[8]
                 $scope.struct.devices.length = 0
                 for _dev in dev
                     if not _dev.is_meta_device
                         $scope.struct.devices.push(_dev)
+                # get mother masters and slaves
+                _mother_list = []
+                for config in $scope.struct.config_tree.list
+                    if config.name in ["mother_server"]
+                        for _dc in config.device_config_set
+                            if _dc.device not in _mother_list
+                                _mother_list.push(_dc.device)
+                $scope.struct.mother_server_list = ($scope.struct.device_tree.all_lut[_dev] for _dev in _mother_list)
+                $scope.struct.mother_server_lut = _.keyBy($scope.struct.mother_server_list, "idx")
                 $scope.struct.tree_valid = true
         )
 
@@ -266,20 +472,20 @@ angular.module(
     $scope.conn_problems = 0
     $scope.reload = () ->
         wait_list = [
-            restDataSource.reload([ICSW_URLS.REST_DEVICE_TREE_LIST, {"with_network" : true, "pks" : angular.toJson($scope.devsel_list), "olp" : "backbone.device.change_boot"}]),
+            # restDataSource.reload([ICSW_URLS.REST_DEVICE_TREE_LIST, {"with_network" : true, "pks" : angular.toJson($scope.devsel_list), "olp" : "backbone.device.change_boot"}]),
             # 1
-            restDataSource.reload([ICSW_URLS.REST_KERNEL_LIST, {}]),
-            restDataSource.reload([ICSW_URLS.REST_IMAGE_LIST, {}])
-            restDataSource.reload([ICSW_URLS.REST_PARTITION_TABLE_LIST, {}])
+            # restDataSource.reload([ICSW_URLS.REST_KERNEL_LIST, {}]),
+            # restDataSource.reload([ICSW_URLS.REST_IMAGE_LIST, {}])
+            # restDataSource.reload([ICSW_URLS.REST_PARTITION_TABLE_LIST, {}])
             # 4
-            restDataSource.reload([ICSW_URLS.REST_STATUS_LIST, {}])
-            restDataSource.reload([ICSW_URLS.REST_NETWORK_LIST, {}])
+            # restDataSource.reload([ICSW_URLS.REST_STATUS_LIST, {}])
+            # restDataSource.reload([ICSW_URLS.REST_NETWORK_LIST, {}])
             # 6
-            restDataSource.reload([ICSW_URLS.REST_LOG_SOURCE_LIST, {}])
-            restDataSource.reload([ICSW_URLS.REST_LOG_LEVEL_LIST, {}])
+            # restDataSource.reload([ICSW_URLS.REST_LOG_SOURCE_LIST, {}])
+            # restDataSource.reload([ICSW_URLS.REST_LOG_LEVEL_LIST, {}])
             # 8
-            restDataSource.reload([ICSW_URLS.REST_USER_LIST, {}])
-            restDataSource.reload([ICSW_URLS.REST_DEVICE_TREE_LIST, {"all_mother_servers" : true}])
+            # restDataSource.reload([ICSW_URLS.REST_USER_LIST, {}])
+            # restDataSource.reload([ICSW_URLS.REST_DEVICE_TREE_LIST, {"all_mother_servers" : true}])
         ]
         $q.all(wait_list).then((data) ->
             $scope.devices = (dev for dev in data[0])
@@ -360,9 +566,9 @@ angular.module(
                 $scope.update_info_timeout = $timeout($scope.update_info, 10000)
                 return
             wait_list = [
-                restDataSource.reload([ICSW_URLS.REST_KERNEL_LIST, {}]),
-                restDataSource.reload([ICSW_URLS.REST_IMAGE_LIST, {}])
-                restDataSource.reload([ICSW_URLS.REST_PARTITION_TABLE_LIST, {}])
+                # restDataSource.reload([ICSW_URLS.REST_KERNEL_LIST, {}]),
+                # restDataSource.reload([ICSW_URLS.REST_IMAGE_LIST, {}])
+                # restDataSource.reload([ICSW_URLS.REST_PARTITION_TABLE_LIST, {}])
             ]
             $q.all(wait_list).then((data) ->
                 $scope.kernels = data[0]

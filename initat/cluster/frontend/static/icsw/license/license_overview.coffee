@@ -189,10 +189,10 @@ lic_module = angular.module("icsw.license.overview",
     }
 ]).controller("icswLicenseOverviewCtrl",
 [
-    "$scope", "$compile", "$filter", "$templateCache", "restDataSource", "$q", "$uibModal", "icswAcessLevelService",
+    "$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "icswAcessLevelService",
      "$timeout", "$sce", "d3_service", "dimple_service", "ICSW_URLS", "icswLicenseUsageTools",
 (
-    $scope, $compile, $filter, $templateCache, restDataSource, $q, $uibModal, icswAcessLevelService,
+    $scope, $compile, $filter, $templateCache, $q, $uibModal, icswAcessLevelService,
     $timeout, $sce, d3_service, dimple_service, ICSW_URLS, icswLicenseUsageTools,
 ) ->
     wait_list = restDataSource.add_sources([
