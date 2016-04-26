@@ -39,6 +39,7 @@ class DiscoverySource(IntEnum):
     NRPE_LICENSE = 6
     NRPE_UPDATE = 7
     NRPE_SOFTWARE_VERSION = 8
+    NRPE_PROCESS = 9
 
     def get_maximal_concurrent_runs(self):
         # TODO: move to database?

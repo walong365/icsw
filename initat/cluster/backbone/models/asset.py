@@ -26,6 +26,24 @@ import pickle
 
 from collections import Counter
 
+class BaseAssetProcess:
+    def __init__(self, name, pid):
+        self.name = name
+        self.pid = pid
+
+    def __repr__(self):
+        s = "Name: {} Pid: {}".format(self.name, self.pid)
+        return s
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) \
+               and self.name == other.name \
+               and self.pid == other.pid
+
+
+    def __hash__(self):
+        return hash((self.name, self.pid))
+
 class BaseAssetPackage:
     def __init__(self, name, version = None, size = None, install_date = None):
         self.name = name
@@ -115,6 +133,7 @@ class AssetType(IntEnum):
     LICENSE = 3
     UPDATE = 4
     SOFTWARE_VERSION = 5
+    PROCESS = 6
 
 
 class Asset(models.Model):
@@ -184,6 +203,12 @@ def get_base_assets_from_raw_result(blob, runtype):
     elif runtype == AssetType.SOFTWARE_VERSION:
         #todo interpret value blob
         pass
+
+    elif runtype == AssetType.PROCESS:
+        if str(blob[:3]) == W32_SCAN_TYPE_PREFIX:
+            l = json.loads(blob[3:])
+            for (name, pid) in l:
+                assets.append(BaseAssetProcess(name, pid))
 
     return assets
 

@@ -60,7 +60,6 @@ class ScanBatch(object):
             self.log("no valid IP found for {}".format(unicode(self.device)), logging_tools.LOG_LEVEL_ERROR)
             self.start_result = ResultNode(error="no valid IP found")
             self.finish()
-
         # NOTE: set self.start_result in subclass accordingly
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -413,13 +412,21 @@ LIST_PROCESSES_CMD = "list-processes-py3"
 LIST_UPDATES_CMD = "list-updates-alt-py3"
 LIST_PENDING_UPDATES_CMD = "list-pending-updates-py3"
 LIST_HARDWARE_CMD = "list-hardware-lstopo-py3"
+LIST_PROCESSES_CMD = "list-processes-py3"
 
-VALID_COMMANDS = [LIST_SOFTWARE_CMD, LIST_KEYS_CMD, LIST_METRICS_CMD, LIST_PROCESSES_CMD, LIST_UPDATES_CMD, LIST_PENDING_UPDATES_CMD]
+VALID_COMMANDS = [LIST_SOFTWARE_CMD,
+                  LIST_KEYS_CMD,
+                  LIST_METRICS_CMD,
+                  LIST_PROCESSES_CMD,
+                  LIST_UPDATES_CMD,
+                  LIST_PENDING_UPDATES_CMD,
+                  LIST_PROCESSES_CMD]
 
 class NRPEScanBatch(ScanBatch):
     SCAN_TYPE = 'NRPE'
 
     def __init__(self, dev_com, scan_dev):
+        dev_com.attrib['scan_address'] = "127.0.0.1"
         super(NRPEScanBatch, self).__init__(dev_com, scan_dev)
 
         self._commands = self._command = dev_com.attrib.get('commands').split(",")
@@ -441,6 +448,8 @@ class NRPEScanBatch(ScanBatch):
                 source = DiscoverySource.NRPE_HARDWARE
             elif _command == LIST_UPDATES_CMD:
                 source = DiscoverySource.NRPE_UPDATE
+            elif _command == LIST_PROCESSES_CMD:
+                source = DiscoverySource.NRPE_PROCESS
 
             if not source:
                 continue
@@ -480,6 +489,9 @@ class Dispatcher:
             self.last_recalculate = _now
             self.next_recalculate = _plus_five_min
 
+            for item in sorted(self.schedule_items, key=lambda si: si.expected_run_date):
+                print item
+
         while self.schedule_items:
             schedule_item = self.schedule_items.pop(0)
             if schedule_item.planned_date < _now:
@@ -495,6 +507,8 @@ class Dispatcher:
                     _command = LIST_KEYS_CMD
                 elif schedule_item.source == DiscoverySource.NRPE_UPDATE:
                     _command = LIST_UPDATES_CMD
+                elif schedule_item.source == DiscoverySource.NRPE_PROCESS:
+                    _command = LIST_PROCESSES_CMD
 
                 _com = "/opt/cluster/sbin/check_nrpe -H {} -n -c {} -t120".format(schedule_item.device.all_ips()[0],
                                                                                   _command)
@@ -513,6 +527,8 @@ class Dispatcher:
                     runtype = AssetType.LICENSE
                 elif schedule_item.source == DiscoverySource.NRPE_UPDATE:
                     runtype = AssetType.UPDATE
+                elif schedule_item.source == DiscoverySource.NRPE_PROCESS:
+                    runtype = AssetType.PROCESS
 
                 new_asset_run = AssetRun(run_index=asset_run_len,
                                          run_type=runtype,
@@ -538,6 +554,7 @@ class Dispatcher:
                     asset_run.run_status = RunStatus.RUNNING
                     asset_run.run_start_time = datetime.datetime.now()
                     asset_run.save()
+                    print "Executing: %s" % ext_com.command
                     ext_com.run()
                     self.device_running_ext_coms[_device] = 1
             elif self.device_running_ext_coms[_device] == 1:
