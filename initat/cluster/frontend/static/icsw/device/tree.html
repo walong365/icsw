@@ -1,7 +1,5 @@
 <script type="text/ng-template" id="icsw/main/device/tree.html">
-    <div ng-cloak ng-controller="icswDeviceTreeCtrl">
-        <icsw-device-tree-overview></icsw-device-tree-overview>
-    </div>
+    <icsw-device-tree-overview></icsw-device-tree-overview>
 </script>
 
 <script type="text/ng-template" id="icsw.device.tree.filters">
@@ -39,7 +37,7 @@
                     <label class="control-label">MonServer:</label>
                     <select class="form-control input-sm" ng-model="filter_settings.mon_filter">
                         <option value="i">ignore</option>
-                        <option ng-repeat="obj in rest_data.monitor_server" ng-value="obj.idx">{{ obj.full_name }} ({{ obj.monitor_type }})</option>
+                        <option ng-repeat="obj in struct.monitor_server_list" ng-value="obj.idx">{{ obj.$$full_name_with_type }})</option>
                     </select>
                 </div>
                 &nbsp;
@@ -47,7 +45,7 @@
                     <label class="control-label">BootServer:</label>
                     <select class="form-control" ng-model="filter_settings.boot_filter">
                         <option value="i">ignore</option>
-                        <option ng-repeat="obj in rest_data.mother_server" ng-value="obj.idx">{{ obj.full_name }}</option>
+                        <option ng-repeat="obj in struct.mother_server_list" ng-value="obj.idx">{{ obj.full_name }}</option>
                     </select>
                 </div>
             </form>
@@ -56,7 +54,6 @@
                 <div class="form-group">
                     <input class="form-control input-sm" placeholder="filter" ng-model="filter_settings.str_filter"/>
                 </div>
-
                 <div class="form-group">
                     <input type="button" class="btn btn-sm btn-primary" value="select shown" ng-click="select_shown()"/>
                     <input type="button" class="btn btn-sm btn-info" value="deselect all" ng-click="deselect_all()"/>
@@ -67,11 +64,12 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.tree.cdg.row">
-    <td colspan="2"><strong><em>{{ obj.device_group_obj.name }}</em></strong>
+    <td colspan="2">
+        <strong><em>{{ obj.device_group_obj.name }}</em></strong>
     </td>
     <td>{{ group.description }}</td>
     <td colspan="2"></td>
-    <td ng-show="hide_lut['tln']">{{ domain_tree.show_dtn(group.domain_tree_node) }}</td>
+    <td ng-show="hide_lut['tln']">{{ struct.domain_tree.show_dtn(group.domain_tree_node) }}</td>
     <td ng-show="num_shown(['tln'])" colspan="{{ num_shown(['tln']) }}"></td>
     <td>
         <icsw-tools-button type="modify" size="sm" ng-click="edit_device_group($event, group)"></icsw-tools-button>
@@ -93,13 +91,13 @@
         <b ng-show="group.num_devices">{{ group.num_devices }}</b>
         <b ng-show="!group.num_devices">---</b>
     </td>
-    <td ng-show="hide_lut['tln']">{{ domain_tree.show_dtn(obj) }}</td>
+    <td ng-show="hide_lut['tln']">{{ struct.domain_tree.show_dtn(obj) }}</td>
     <td ng-show="num_shown(['tln'])" colspan="{{ num_shown(['tln']) }}"></td>
     <td>
         <icsw-tools-button type="modify" size="xs" ng-click="edit_device_group($event, group)"></icsw-tools-button>
     </td>
     <td>
-        <icsw-tools-button ng-show="!group.num_devices" type="delete" size="xs" ng-click="delete_device_group(group)"></icsw-tools-button>
+        <icsw-tools-button ng-show="!group.num_devices" type="delete" size="xs" ng-click="delete_device_group($event, group)"></icsw-tools-button>
         <icsw-tools-button type="create" value="create device" size="xs" ng-click="create_device($event, group)"></icsw-tools-button>
     </td>
 </script> 
@@ -115,41 +113,47 @@
         <span ng-show="!obj.device_group_obj.enabled"><em>{{ obj.enabled | yesno1 }}</em></span>
     </td>
     <td>&nbsp;</td>
-    <td ng-show="hide_lut['tln']">{{ domain_tree.show_dtn(obj) }}</td>
+    <td ng-show="hide_lut['tln']">{{ struct.domain_tree.show_dtn(obj) }}</td>
     <td ng-show="hide_lut['rrd_store']">{{ obj.store_rrd_data | yesno2 }}</td>
     <td ng-show="hide_lut['passwd']">{{ obj.root_passwd_set && 'set' || 'not set' }}</td>
-    <td ng-show="hide_lut['mon_master']">{{ obj.monitor_server | array_lookup:rest_data.monitor_server:"full_name_wt" }}</td>
-    <td ng-show="hide_lut['boot_master']">{{ obj.bootserver | array_lookup:rest_data.mother_server:"full_name" }}</td>
+    <td ng-show="hide_lut['mon_master']">{{ struct.monitor_server_lut[obj.monitor_server].$$full_name_with_type }}</td>
+    <td ng-show="hide_lut['boot_master']">{{ struct.mother_server_lut[obj.bootserver].full_name }}</td>
     <td>
         <icsw-tools-button type="modify" size="xs" ng-click="edit_device($event, obj)"></icsw-tools-button>
     </td>
     <td>
-        <icsw-tools-button type="delete" size="xs" ng-click="delete_device(obj)"></icsw-tools-button>
+        <icsw-tools-button type="delete" size="xs" ng-click="delete_device($event, obj)"></icsw-tools-button>
     </td>
 </script> 
 
 <script type="text/ng-template" id="icsw.device.tree.overview">
     <h2>
-        Device tree ({{ entries.length }} entries, {{ entries_filtered.length }} shown<span ng-show="num_selected()">, {{ num_selected() }} selected</span>),
+        Device tree ({{ struct.device_tree.all_list.length }} entries, {{ entries_filtered.length }} shown<span ng-show="num_selected()">, {{ num_selected() }} selected</span>),
     </h2>
 
-    <icsw-device-tree-filters ng-if="device_tree_valid"></icsw-device-tree-filters>
+    <icsw-device-tree-filters ng-if="struct.tree_loaded"></icsw-device-tree-filters>
 
     <div class="panel panel-default">
         <div class="panel-body" style="padding: 6px 15px">
             <!-- entries_displayed is st-table interal -->
-            <table st-table="entries_displayed" st-safe-src="entries_filtered" st-trigger-redraw="trigger_redraw" class="table table-hover table-condensed table-striped" style="width:auto;">
+            <table
+                st-table="entries_displayed"
+                st-safe-src="entries_filtered"
+                st-trigger-redraw="struct.trigger_redraw"
+                class="table table-hover table-condensed table-striped"
+                style="width:auto;"
+            >
                 <thead>
                     <tr>
                         <td colspan="99">
                             <div class="btn-group">
-                                <button ng-attr-class="btn {{icswToolsButtonConfigService.get_css_and_icon_class('create')}}"
+                                <button ng-attr-class="btn {{ icswToolsButtonConfigService.get_css_and_icon_class('create') }}"
                                        ng-show="dg_present()" ng-click="create_device( $event)"> create device</button>
-                                <button ng-attr-class="btn {{icswToolsButtonConfigService.get_css_and_icon_class('create')}}"
+                                <button ng-attr-class="btn {{ icswToolsButtonConfigService.get_css_and_icon_class('create') }}"
                                        ng-click="create_device_group($event)"> create devicegroup</button>
-                                <button ng-disabled="num_selected() == 0" ng-attr-class="btn {{icswToolsButtonConfigService.get_css_and_icon_class('modify')}}"
+                                <button ng-disabled="num_selected() == 0" ng-attr-class="btn {{ icswToolsButtonConfigService.get_css_and_icon_class('modify') }}"
                                        ng-click="edit_many($event)"> modify selected</button>
-                                <button ng-disabled="num_selected() == 0" ng-attr-class="btn {{icswToolsButtonConfigService.get_css_and_icon_class('delete')}}"
+                                <button ng-disabled="num_selected() == 0" ng-attr-class="btn {{ icswToolsButtonConfigService.get_css_and_icon_class('delete') }}"
                                        ng-click="delete_many($event)"> delete selected</button>
                             </div>
                         </td>
@@ -196,7 +200,7 @@
     </div>
 </script>
 
-<script type="text/ng-template" id="device.tree.many.form">
+<script type="text/ng-template" id="icsw.device.tree.many.form">
     <form class="form-horizontal" name="form_data">
         <h2>Change settings of {{ num_selected() }} devices</h2>
         <fieldset>
@@ -222,9 +226,9 @@
                         <div class="controls col-sm-8">
                             <ui-select ng-model="edit_obj.device_group" style="max-width:400px; min-width:240px;" ng-disabled="false">
                                 <ui-select-match class="ui-select-match" placeholder="Select the device group">
-                                    {{$select.selected.name}}
+                                    {{ $select.selected.name }}
                                 </ui-select-match>
-                                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in device_tree.group_list | filter:ignore_cdg | props_filter:{name:$select.search}">
+                                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in struct.device_tree.group_list | filter:ignore_cdg | props_filter:{name:$select.search}">
                                     <div ng-bind-html="value.name | highlight: $select.search"></div>
                                 </ui-select-choices>
                             </ui-select>
@@ -256,9 +260,9 @@
                         <div class="controls col-sm-8">
                             <ui-select ng-model="edit_obj.domain_tree_node" style="max-width:400px; min-width:240px;" ng-disabled="false">
                                 <ui-select-match class="ui-select-match" placeholder="Select the domain tree node (for FQDN)">
-                                    {{$select.selected.tree_info}}
+                                    {{ $select.selected.tree_info }}
                                 </ui-select-match>
-                                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in domain_tree.list| props_filter:{tree_info:$select.search}">
+                                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in struct.domain_tree.list| props_filter:{tree_info:$select.search}">
                                     <div ng-bind-html="value.tree_info | highlight: $select.search"></div>
                                 </ui-select-choices>
                             </ui-select>
@@ -289,9 +293,9 @@
                             <div class="input-group" style="max-width:400px; min-width:240px;">
                                 <ui-select ng-model="edit_obj.bootserver" ng-disabled="false">
                                     <ui-select-match class="ui-select-match" placeholder="Select the bootserver">
-                                        {{$select.selected.full_name}}
+                                        {{ $select.selected.full_name }}
                                     </ui-select-match>
-                                    <ui-select-choices class="ui-select-choices" repeat="value.idx as value in rest_data.mother_server| props_filter:{full_name:$select.search}">
+                                    <ui-select-choices class="ui-select-choices" repeat="value.idx as value in struct.mother_server_list | props_filter:{full_name:$select.search}">
                                         <div ng-bind-html="value.full_name | highlight: $select.search"></div>
                                     </ui-select-choices>
                                 </ui-select>
@@ -327,10 +331,10 @@
                             <div class="input-group" style="max-width:400px; min-width:240px;">
                                 <ui-select ng-model="edit_obj.monitor_server" ng-disabled="false">
                                     <ui-select-match class="ui-select-match" placeholder="Select the monitor server">
-                                        {{$select.selected.full_name_wt}}
+                                        {{ $select.selected.$$full_name_with_type }}
                                     </ui-select-match>
-                                    <ui-select-choices class="ui-select-choices" repeat="value.idx as value in rest_data.monitor_server| props_filter:{full_name_wt:$select.search}">
-                                        <div ng-bind-html="value.full_name_wt | highlight: $select.search"></div>
+                                    <ui-select-choices class="ui-select-choices" repeat="value.idx as value in struct.monitor_server_list | props_filter:{$$full_name_with_type:$select.search}">
+                                        <div ng-bind-html="value.$$full_name_with_type | highlight: $select.search"></div>
                                     </ui-select-choices>
                                 </ui-select>
                                 <span class="input-group-btn">
@@ -481,7 +485,7 @@
     </form>
 </script>
 
-<script type="text/ng-template" id="device.group.tree.form">
+<script type="text/ng-template" id="icsw.device.group.tree.form">
     <form class="form-horizontal" name="form_data">
         <h2>Settings for devicegroup {{ edit_obj.name }}</h2>
         <fieldset>
@@ -512,9 +516,9 @@
                 <div class="controls col-sm-7">
                     <ui-select ng-model="edit_obj.domain_tree_node" style="max-width:400px; min-width:240px;" ng-disabled="false">
                         <ui-select-match class="ui-select-match" placeholder="Select the domain tree node (for FQDN)">
-                            {{$select.selected.tree_info}}
+                            {{ $select.selected.tree_info }}
                         </ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in domain_tree.list | props_filter:{tree_info:$select.search}">
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in struct.domain_tree.list | props_filter:{tree_info:$select.search}">
                             <div ng-bind-html="value.tree_info | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
@@ -542,9 +546,11 @@
     </form>
 </script>
 
-<script type="text/ng-template" id="device.tree.form">
+<script type="text/ng-template" id="icsw.device.tree.form">
     <form class="form-horizontal" name="form_data">
-        <h2>Device settings for {{ edit_obj.name }}</h2>
+        <h2>
+            Device settings for {{ edit_obj.name }}
+        </h2>
         <fieldset>
             <legend>Basic settings</legend>
             <div class="form-group">
@@ -569,8 +575,10 @@
                 </label>
                 <div class="controls col-sm-7">
                     <ui-select ng-model="edit_obj.device_group" style="max-width:400px; min-width:240px;">
-                        <ui-select-match class="ui-select-match" placeholder="Select the device group">{{$select.selected.name}}</ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in device_tree.group_list | filter:ignore_cdg | props_filter:{name:$select.search}">
+                        <ui-select-match class="ui-select-match" placeholder="Select the device group">
+                            {{ $select.selected.name }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in struct.device_tree.group_list | filter:ignore_cdg | props_filter:{name:$select.search}">
                             <div ng-bind-html="value.name | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
@@ -586,9 +594,9 @@
                 <div class="controls col-sm-7">
                     <ui-select ng-model="edit_obj.domain_tree_node" style="max-width:400px; min-width:240px;">
                         <ui-select-match class="ui-select-match" placeholder="Select the domain tree node (for FQDN)">
-                            {{$select.selected.tree_info}}
+                            {{ $select.selected.tree_info }}
                         </ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in domain_tree.list | props_filter:{tree_info:$select.search}">
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in struct.domain_tree.list | props_filter:{tree_info:$select.search}">
                             <div ng-bind-html="value.tree_info | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
@@ -602,9 +610,9 @@
                     <div class="input-group" style="max-width:400px; min-width:240px;">
                         <ui-select ng-model="edit_obj.bootserver" ng-disabled="false">
                             <ui-select-match class="ui-select-match" placeholder="Select the bootserver">
-                                {{$select.selected.full_name}}
+                                {{ $select.selected.full_name }}
                             </ui-select-match>
-                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in rest_data.mother_server| props_filter:{full_name:$select.search}">
+                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in struct.mother_server_list | props_filter:{full_name:$select.search}">
                                 <div ng-bind-html="value.full_name | highlight: $select.search"></div>
                             </ui-select-choices>
                         </ui-select>
@@ -624,10 +632,10 @@
                     <div class="input-group" style="max-width:400px; min-width:240px;">
                         <ui-select ng-model="edit_obj.monitor_server" ng-disabled="false">
                             <ui-select-match class="ui-select-match" placeholder="Select the monitor server">
-                                {{$select.selected.full_name_wt}}
+                                {{ $select.selected.$$full_name_with_type }}
                             </ui-select-match>
-                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in rest_data.monitor_server| props_filter:{full_name_wt:$select.search}">
-                                <div ng-bind-html="value.full_name_wt | highlight: $select.search"></div>
+                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in struct.monitor_server_list | props_filter:{$$full_name_with_type:$select.search}">
+                                <div ng-bind-html="value.$$full_name_with_type | highlight: $select.search"></div>
                             </ui-select-choices>
                         </ui-select>
                         <span class="input-group-btn">

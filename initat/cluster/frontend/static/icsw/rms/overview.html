@@ -4,7 +4,7 @@
 
 <script type="text/ng-template" id="icsw.rms.overview">
     <h2>
-        RMS Overview
+        {{ struct.header_line }}
         <span class="text-danger" ng-show="struct.loading">Fetching initial data from server...</span>
         <span class="text-danger" ng-show="struct.updating">Updating data</span>
     </h2>

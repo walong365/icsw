@@ -206,7 +206,7 @@ angular.module(
 ) ->
 
     return {
-        "create": (tree, devices) ->
+        create: (tree, devices) ->
             return new icswDeviceTreeHelper(tree, devices)
     }
 
@@ -242,7 +242,7 @@ angular.module(
 
         get_setter_name: (req) =>
             _lut = {
-                "scan_info": "set_scan_info"
+                scan_info: "set_scan_info"
             }
             if req of _lut
                 return _lut[req]
@@ -254,17 +254,17 @@ angular.module(
 
         get_attr_name: (req) =>
             _lut = {
-                "network_info": "netdevice_set"
-                "monitoring_hint_info": "monitoring_hint_set"
-                "disk_info": "act_partition_table"
-                "com_info": "com_capability_list"
-                "snmp_info": "devicesnmpinfo"
-                "snmp_schemes_info": "snmp_schemes"
-                "scan_info": "active_scan"
-                "variable_info": "device_variable_set"
-                "device_connection_info": "device_connection_set"
-                "sensor_threshold_info": "sensor_threshold_set"
-                "package_info": "package_set"
+                network_info: "netdevice_set"
+                monitoring_hint_info: "monitoring_hint_set"
+                disk_info: "act_partition_table"
+                com_info: "com_capability_list"
+                snmp_info: "devicesnmpinfo"
+                snmp_schemes_info: "snmp_schemes"
+                scan_info: "active_scan"
+                variable_info: "device_variable_set"
+                device_connection_info: "device_connection_set"
+                sensor_threshold_info: "sensor_threshold_set"
+                package_info: "package_set"
             }
             if req of _lut
                 return _lut[req]
@@ -509,9 +509,6 @@ angular.module(
                 @cluster_device_group = @group_lut[@cluster_device_group_device.device_group]
             # console.log @enabled_list.length, @disabled_list.length, @all_list.length
             @link()
-            
-            
-            
 
         link: () =>
             # create links between groups and devices
@@ -596,11 +593,11 @@ angular.module(
         _fetch_device: (pk, defer, msg) =>
             Restangular.all(ICSW_URLS.REST_DEVICE_TREE_LIST.slice(1)).getList(
                 {
-                    "ignore_cdg": false
-                    "tree_mode" : true
-                    "with_categories" : true
-                    "ignore_disabled": true
-                    "pks": angular.toJson([pk])
+                    ignore_cdg: false
+                    tree_mode: true
+                    with_categories: true
+                    ignore_disabled: true
+                    pks: angular.toJson([pk])
                 }
             ).then(
                 (dev_list) =>
@@ -611,7 +608,7 @@ angular.module(
                         defer.resolve(msg)
                     else
                         # new device-group added (at least the group is missing), fetch group
-                        Restangular.one(ICSW_URLS.REST_DEVICE_GROUP_LIST.slice(1)).get({"idx": dev.device_group}).then(
+                        Restangular.one(ICSW_URLS.REST_DEVICE_GROUP_LIST.slice(1)).get({idx: dev.device_group}).then(
                             (new_obj) =>
                                 new_group = new_obj[0]
                                 # add new device_group to group_list
@@ -658,7 +655,7 @@ angular.module(
             return defer.promise
 
         _fetch_netdevice: (pk, defer, msg) =>
-            Restangular.one(ICSW_URLS.REST_NETDEVICE_LIST.slice(1)).get({"idx": pk}).then(
+            Restangular.one(ICSW_URLS.REST_NETDEVICE_LIST.slice(1)).get({idx: pk}).then(
                 (new_nd) =>
                     new_nd = new_nd[0]
                     dev = @all_lut[new_nd.device]
@@ -694,7 +691,7 @@ angular.module(
             return defer.promise
 
         _fetch_netip: (pk, defer, msg, cur_nd) =>
-            Restangular.one(ICSW_URLS.REST_NET_IP_LIST.slice(1)).get({"idx": pk}).then(
+            Restangular.one(ICSW_URLS.REST_NET_IP_LIST.slice(1)).get({idx: pk}).then(
                 (new_ip) =>
                     new_ip = new_ip[0]
                     dev = @all_lut[cur_nd.device]
@@ -731,7 +728,7 @@ angular.module(
             return defer.promise
 
         _fetch_device_variable: (pk, defer, msg) =>
-            Restangular.one(ICSW_URLS.REST_DEVICE_VARIABLE_LIST.slice(1)).get({"idx": pk}).then(
+            Restangular.one(ICSW_URLS.REST_DEVICE_VARIABLE_LIST.slice(1)).get({idx: pk}).then(
                 (new_var) =>
                     new_var = new_var[0]
                     dev = @all_lut[new_var.device]
@@ -759,9 +756,9 @@ angular.module(
                 # console.log "*** enrichment:", en_list, "for", dth, "resulted in non-empty", en_req
                 # non-empty request, fetch from server
                 icswSimpleAjaxCall(
-                    "url": ICSW_URLS.DEVICE_ENRICH_DEVICES
-                    "data": {
-                        "enrich_request": angular.toJson(en_req)
+                    url: ICSW_URLS.DEVICE_ENRICH_DEVICES
+                    data: {
+                        enrich_request: angular.toJson(en_req)
                     }
                     dataType: "json"
                 ).then(
@@ -833,9 +830,9 @@ angular.module(
 
             # start scan on server
             icswSimpleAjaxCall(
-                url     : ICSW_URLS.DEVICE_SCAN_DEVICE_NETWORK
-                data    :
-                    "settings" : angular.toJson(scan_settings)
+                url: ICSW_URLS.DEVICE_SCAN_DEVICE_NETWORK
+                data:
+                    settings: angular.toJson(scan_settings)
             ).then(
                 (xml) =>
                     # scan startet (or already done for base-scan because base-scan is synchronous)
@@ -885,7 +882,7 @@ angular.module(
             if not _.isEmpty(@scans_running)
                 Restangular.all(ICSW_URLS.NETWORK_GET_ACTIVE_SCANS.slice(1)).getList(
                     {
-                        "pks" : angular.toJson(@scans_running)
+                        pks: angular.toJson(@scans_running)
                     }
                 ).then(
                     (result) =>
@@ -950,7 +947,7 @@ angular.module(
             return defer.promise
 
         _fetch_device_connection: (pk, defer, msg, hs) =>
-            Restangular.one(ICSW_URLS.REST_CD_CONNECTION_LIST.slice(1)).get({"idx": pk}).then(
+            Restangular.one(ICSW_URLS.REST_CD_CONNECTION_LIST.slice(1)).get({idx: pk}).then(
                 (new_cd) =>
                     new_cd = new_cd[0]
                     p_dev = @all_lut[new_cd.parent]
@@ -964,60 +961,13 @@ angular.module(
         # network graph functions
         seed_network_graph: (nodes, links) =>
             return new icswDeviceTreeGraph(nodes, links, @)
-]).service("icswDeviceTreeGraph",
-[
-    "$q",
-(
-    $q,
-) ->
-    class icswDeviceTreeGraph
-        constructor: (@nodes, @links, tree) ->
-            @device_list = []
-            _set_coords = false
-            for node in @nodes
-                node.$$device = tree.all_lut[node.id]
-                @device_list.push(node.$$device)
-                if not node.x?
-                    _set_coords = true
-
-            if _set_coords
-                _id = 0
-                for node in @nodes
-                    _id++
-                    # init coordinates if needed
-                    _angle = 2 * Math.PI * @nodes.length / _id
-                    node.x = Math.cos(_angle) * 50
-                    node.y = Math.sin(_angle) * 50
-                    node.radius = 10
-            # enumerate links
-            _id = 0
-            for link in @links
-                link.id = _id
-                _id++
-            # create luts
-            @nodes_lut = _.keyBy(@nodes, "id")
-            @links_lut = _.keyBy(@links, "id") 
-
-        # helper functions
-        node_to_dom_id: (node) ->
-            return "n#{node.id}"
-        
-        dom_id_to_node: (id) =>
-            return @nodes_lut[parseInt(id.slice(1))]
-
-        link_to_dom_id: (link) ->
-            return "l#{link.id}"
-        
-        dom_id_to_link: (id) =>
-            return @links_lut[parseInt(id.slice(1))]
-            
 ]).service("icswDeviceTreeService",
 [
-    "$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall",
+    "$q", "Restangular", "ICSW_URLS", "icswCachingCall",
     "icswTools", "icswDeviceTree", "$rootScope", "ICSW_SIGNALS",
     "icswDomainTreeService", "icswCategoryTreeService",
 (
-    $q, Restangular, ICSW_URLS, $window, icswCachingCall,
+    $q, Restangular, ICSW_URLS, icswCachingCall,
     icswTools, icswDeviceTree, $rootScope, ICSW_SIGNALS,
     icswDomainTreeService, icswCategoryTreeService
 ) ->
@@ -1025,11 +975,11 @@ angular.module(
         [
             ICSW_URLS.REST_DEVICE_TREE_LIST
             {
-                "ignore_cdg" : false
-                "tree_mode" : true
-                "all_devices" : true
-                "with_categories" : true
-                "ignore_disabled": true
+                ignore_cdg: false
+                tree_mode: true
+                all_devices: true
+                with_categories: true
+                ignore_disabled: true
             }
         ]
         [
@@ -1082,4 +1032,51 @@ angular.module(
         current: () ->
             return _result
     }
+]).service("icswDeviceTreeGraph",
+[
+    "$q",
+(
+    $q,
+) ->
+    class icswDeviceTreeGraph
+        constructor: (@nodes, @links, tree) ->
+            @device_list = []
+            _set_coords = false
+            for node in @nodes
+                node.$$device = tree.all_lut[node.id]
+                @device_list.push(node.$$device)
+                if not node.x?
+                    _set_coords = true
+
+            if _set_coords
+                _id = 0
+                for node in @nodes
+                    _id++
+                    # init coordinates if needed
+                    _angle = 2 * Math.PI * @nodes.length / _id
+                    node.x = Math.cos(_angle) * 50
+                    node.y = Math.sin(_angle) * 50
+                    node.radius = 10
+            # enumerate links
+            _id = 0
+            for link in @links
+                link.id = _id
+                _id++
+            # create luts
+            @nodes_lut = _.keyBy(@nodes, "id")
+            @links_lut = _.keyBy(@links, "id")
+
+        # helper functions
+        node_to_dom_id: (node) ->
+            return "n#{node.id}"
+
+        dom_id_to_node: (id) =>
+            return @nodes_lut[parseInt(id.slice(1))]
+
+        link_to_dom_id: (link) ->
+            return "l#{link.id}"
+
+        dom_id_to_link: (id) =>
+            return @links_lut[parseInt(id.slice(1))]
+
 ])

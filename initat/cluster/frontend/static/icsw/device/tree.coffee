@@ -38,27 +38,52 @@ angular.module(
                     ordering: 15
         }
     )
+]).directive("icswDeviceTreeOverview",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.device.tree.overview")
+        controller: "icswDeviceTreeCtrl"
+    }
 ]).controller("icswDeviceTreeCtrl",
 [
-    "$scope", "$compile", "$filter", "$templateCache", "Restangular",  "restDataSource", "$q", "$timeout", "icswComplexModalService",
-    "$uibModal", "array_lookupFilter", "blockUI", "icswTools", "ICSW_URLS", "icswToolsButtonConfigService",
+    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$timeout", "icswComplexModalService",
+    "$uibModal", "blockUI", "icswTools", "ICSW_URLS", "icswToolsButtonConfigService",
     "icswSimpleAjaxCall", "icswToolsSimpleModalService", "toaster", "icswDialogDeleteObjects", "icswDeviceBackup",
     "icswDeviceTreeService", "icswDomainTreeService", "ICSW_SIGNALS", "$rootScope", "icswActiveSelectionService", "icswDeviceGroupBackup",
+    "icswConfigTreeService",
 (
-    $scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $timeout, icswComplexModalService,
-    $uibModal, array_lookupFilter, blockUI, icswTools, ICSW_URLS, icswToolsButtonConfigService,
+    $scope, $compile, $filter, $templateCache, Restangular, $q, $timeout, icswComplexModalService,
+    $uibModal, blockUI, icswTools, ICSW_URLS, icswToolsButtonConfigService,
     icswSimpleAjaxCall, icswToolsSimpleModalService, toaster, icswDialogDeleteObjects, icswDeviceBackup,
-    icswDeviceTreeService, icswDomainTreeService, ICSW_SIGNALS, $rootScope, icswActiveSelectionService, icswDeviceGroupBackup
+    icswDeviceTreeService, icswDomainTreeService, ICSW_SIGNALS, $rootScope, icswActiveSelectionService, icswDeviceGroupBackup,
+    icswConfigTreeService,
 ) ->
     $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
-    $scope.initial_load = true
-    $scope.rest_data = {}
-    $scope.rest_map = [
-        # TODO: replace with specialized REST call
-        {"short" : "mother_server", "url" : ICSW_URLS.REST_DEVICE_TREE_LIST, "options": {"all_mother_servers": true}}
-        # TODO: replace with specialized REST call
-        {"short" : "monitor_server", "url" : ICSW_URLS.REST_DEVICE_TREE_LIST, "options": {"monitor_server_type": true}}
-    ]
+    $scope.struct = {
+        # tree is loaded
+        tree_loaded: false
+        # device tree
+        device_tree: undefined
+        # config tree
+        config_tree: undefined
+        # mother_server list and lut
+        mother_server_list: []
+        mother_server_lut: {}
+        # monitor_server list and lut
+        monitor_server_list: []
+        monitor_server_lut: {}
+        # monitor master
+        monitor_master: undefined
+        # domain tree
+        domain_tree: undefined
+        # redraw trigger
+        trigger_redraw: 0
+    }
     $scope.hide_list = [
         # short, full, default
         ["tln", "DTN", false, "Show top level node"]
@@ -80,11 +105,8 @@ angular.module(
     $scope.hide_lut = {}
     for entry in $scope.hide_list
         $scope.hide_lut[entry[0]] = entry[2]
-    # hack, FIXME
-    $scope.entries = []
+
     $scope.entries_filtered = []
-    $scope.trigger_redraw = 0
-    $scope.device_tree_valid = false
 
     $rootScope.$on(ICSW_SIGNALS("ICSW_DTREE_FILTER_CHANGED"), () ->
         $scope.update_filtered()
@@ -94,12 +116,12 @@ angular.module(
         # add search and filter fields
         $scope.update_entries_st_attrs()
         $scope.entries_filtered.length = 0
-        for entry in $scope.device_tree.all_list
+        for entry in $scope.struct.device_tree.all_list
             if entry._show
                 $scope.entries_filtered.push(entry)
         # force redraw
-        $scope.trigger_redraw++
-        console.log "length / filtered length: #{$scope.device_tree.all_list.length} / #{$scope.entries_filtered.length}"
+        $scope.struct.trigger_redraw++
+        console.log "length / filtered length: #{$scope.struct.device_tree.all_list.length} / #{$scope.entries_filtered.length}"
 
     icswActiveSelectionService.register_receiver()
 
@@ -109,61 +131,86 @@ angular.module(
     )
 
     $scope.new_devsel = (_dev_sel) ->
-        $scope.initial_load = true
+        $scope.struct.tree_loaded = false
         $scope.reload()
 
     $scope.reload = (block_ui=true) ->
-        $scope.device_tree_valid = false
+        $scope.struct.tree_loaded = false
         if block_ui
             blockUI.start()
-        wait_list = []
-        # $scope.rest_data.mother_server = data[0]
-        for value, idx in $scope.rest_map
-            $scope.rest_data[value.short] = restDataSource.reload([value.url, value.options])
-            wait_list.push($scope.rest_data[value.short])
-        wait_list.push(icswDeviceTreeService.load($scope.$id))
+        wait_list = [
+            icswDeviceTreeService.load($scope.$id)
+            icswConfigTreeService.load($scope.$id)
+        ]
         $q.all(wait_list).then(
             (data) ->
-                $scope.device_tree_valid = true
                 console.log "TreeData", data
-                $scope.rest_data["mother_server"] = data[0]
-                $scope.rest_data["monitor_server"] = data[1]
                 $scope.device_tree = data[2]
-                $scope.domain_tree = $scope.device_tree.domain_tree
-                $scope.entries = $scope.device_tree.all_list
+                $scope.struct.device_tree = data[0]
+                $scope.struct.config_tree = data[1]
+                $scope.struct.domain_tree = $scope.struct.device_tree.domain_tree
+                # get mother masters and slaves
+                [_mother_list, _monitor_list] = [[], []]
+                # clear monitor master
+                $scope.struct.monitor_master = undefined
+                for config in $scope.struct.config_tree.list
+                    if config.name in ["mother_server"]
+                        for _dc in config.device_config_set
+                            if _dc.device not in _mother_list
+                                _mother_list.push(_dc.device)
+                    else if config.name in ["monitor_server", "monitor_slave", "monitor_master"]
+                        for _dc in config.device_config_set
+                            if _dc.device not in (_d.idx for _d in _monitor_list)
+                                _dev = $scope.struct.device_tree.all_lut[_dc.device]
+                                if config.name in ["monitor_server", "monitor_master"]
+                                    _dev.$$monitor_type = "master"
+                                    # set monitor master
+                                    if $scope.struct.monitor_master?
+                                        console.warn "Monitor master already set to", $scope.struct.monitor_master, " overriding to ", _dev
+                                    $scope.struct.monitor_master = _dev
+                                else
+                                    _dev.$$monitor_type = "slave"
+                                _dev.$$full_name_with_type = "#{_dev.full_name} (#{_dev.$$monitor_type})"
+                                _monitor_list.push(_dev)
+                            else
+                                console.warn "device with idx #{_dc.device} already present in monitor_list", _monitor_list
+                $scope.struct.mother_server_list = ($scope.struct.device_tree.all_lut[_dev] for _dev in _mother_list)
+                $scope.struct.mother_server_lut = _.keyBy($scope.struct.mother_server_list, "idx")
+                $scope.struct.monitor_server_list = _monitor_list
+                $scope.struct.monitor_server_lut = _.keyBy($scope.struct.monitor_server_list, "idx")
                 if block_ui
                     blockUI.stop()
-                $scope.rest_data_set()
+                $scope.struct.tree_loaded = true
                 $scope.update_filtered()
         )
     $scope.dg_present = () ->
         # Todo, FIXME, make static
         return true
-        return (entry for entry in $scope.device_tree.all_list when entry.is_meta_device).length > 1
+        return (entry for entry in $scope.struct.device_tree.all_list when entry.is_meta_device).length > 1
 
     # device related calls
 
-    $scope.create_device = (event, parent_obj) ->
+    $scope.create_device = ($event, parent_obj) ->
         new_obj = {
-            "enabled" : true
-            "enable_perfdata": true
-            "store_rrd_data": true
-            "flap_detection_enabled": true
-            "name": "dev"
-            "comment": "new device"
+            enabled: true
+            enable_perfdata: true
+            store_rrd_data: true
+            flap_detection_enabled: true
+            name: "dev"
+            comment: "new device"
         }
         if parent_obj
             new_obj.device_group = parent_obj.idx
             new_obj.domain_tree_node = parent_obj.domain_tree_node
         else
-            new_obj.device_group = (entry.idx for entry in $scope.device_tree.group_list when entry.cluster_device_group == false)[0]
-            new_obj.domain_tree_node = (entry.idx for entry in $scope.domain_tree when entry.depth == 0)[0]
-        $scope.create_or_edit(event, true, new_obj, true, false)
+            new_obj.device_group = (entry.idx for entry in $scope.struct.device_tree.group_list when entry.cluster_device_group == false)[0]
+            new_obj.domain_tree_node = (entry.idx for entry in $scope.struct.domain_tree when entry.depth == 0)[0]
+        $scope.create_or_edit($event, true, new_obj, true, false)
 
-    $scope.edit_device = (event, obj) ->
-        $scope.create_or_edit(event, false, obj, true, false)
+    $scope.edit_device = ($event, obj) ->
+        $scope.create_or_edit($event, false, obj, true, false)
 
-    $scope.delete_device = (obj) ->
+    $scope.delete_device = ($event, obj) ->
         icswDialogDeleteObjects(
             [obj]
             "device"
@@ -175,24 +222,24 @@ angular.module(
 
     $scope.handle_device_delete = (pks) ->
         for pk in pks
-            $scope.device_tree.delete_device(pk)
+            $scope.struct.device_tree.delete_device(pk)
         $rootScope.$emit(ICSW_SIGNALS("ICSW_FORCE_TREE_FILTER"))
 
     # device group related calls
 
-    $scope.create_device_group = (event) ->
+    $scope.create_device_group = ($event) ->
         new_obj = {
-            "enabled" : true
-            "name": "nodes"
-            "description": "new devicegroup"
-            "domain_tree_node": (entry.idx for entry in $scope.domain_tree when entry.depth == 0)[0]
+            enabled: true
+            name: "nodes"
+            description: "new devicegroup"
+            domain_tree_node: (entry.idx for entry in $scope.struct.domain_tree when entry.depth == 0)[0]
         }
-        $scope.create_or_edit(event, true, new_obj, true, true)
+        $scope.create_or_edit($event, true, new_obj, true, true)
 
     $scope.edit_device_group = (event, obj) ->
         $scope.create_or_edit(event, false, obj, true, true)
 
-    $scope.delete_device_group = (obj) ->
+    $scope.delete_device_group = ($event, obj) ->
         icswDialogDeleteObjects(
             [obj]
             "device_group"
@@ -204,24 +251,24 @@ angular.module(
 
     $scope.handle_device_group_delete = (pks) ->
         for pk in pks
-            $scope.device_tree.delete_device_group(pk)
+            $scope.struct.device_tree.delete_device_group(pk)
         $rootScope.$emit(ICSW_SIGNALS("ICSW_FORCE_TREE_FILTER"))
 
     # many device edit
 
-    $scope.edit_many = (event) ->
+    $scope.edit_many = ($event) ->
         $scope._array_name = "device_many"
         edit_obj = {
-            "many_form"       : true
-            "device_group"    : (entry.idx for entry in $scope.device_tree.group_list when entry.cluster_device_group == false)[0]
-            "domain_tree_node": (entry.idx for entry in $scope.domain_tree when entry.depth == 0)[0]
-            "root_passwd"     : ""
+            many_form: true
+            device_group: (entry.idx for entry in $scope.struct.device_tree.group_list when entry.cluster_device_group == false)[0]
+            domain_tree_node: (entry.idx for entry in $scope.struct.domain_tree when entry.depth == 0)[0]
+            root_passwd: ""
         }
-        $scope.create_or_edit(event, false, edit_obj, false, false)
+        $scope.create_or_edit($event, false, edit_obj, false, false)
 
-    $scope.delete_many = (event) ->
+    $scope.delete_many = ($event) ->
         sel_list = icswActiveSelectionService.current().get_devsel_list()[1]
-        to_delete_list = (entry for entry in $scope.device_tree.all_list when entry.is_meta_device == false and entry.idx in sel_list)
+        to_delete_list = (entry for entry in $scope.struct.device_tree.all_list when entry.is_meta_device == false and entry.idx in sel_list)
         icswDialogDeleteObjects(
             to_delete_list
             "device"
@@ -231,23 +278,25 @@ angular.module(
                     $scope.handle_device_delete(arg.del_pks)
         )
 
-    $scope.create_or_edit = (event, create_mode, obj, single_instance, is_group) ->
+    $scope.create_or_edit = ($event, create_mode, obj, single_instance, is_group) ->
         if single_instance
             if is_group
                 dbu = new icswDeviceGroupBackup()
             else
                 dbu = new icswDeviceBackup()
             dbu.create_backup(obj)
-        $scope.edit_obj = obj
         obj.root_passwd = ""
         # which template to use
         if is_group
-            template_name = "device.group.tree.form"
+            template_name = "icsw.device.group.tree.form"
         else if single_instance
-            template_name = "device.tree.form"
+            template_name = "icsw.device.tree.form"
         else
-            template_name = "device.tree.many.form"
-        sub_scope = $scope.$new(false)
+            template_name = "icsw.device.tree.many.form"
+        sub_scope = $scope.$new(true)
+        console.log "ss=", sub_scope
+        sub_scope.edit_obj = obj
+        sub_scope.struct = $scope.struct
         # init form
         icswComplexModalService(
             {
@@ -261,14 +310,14 @@ angular.module(
                     else
                         if create_mode
                             if is_group
-                                $scope.device_tree.create_device_group($scope.edit_obj).then(
+                                $scope.struct.device_tree.create_device_group(sub_scope.edit_obj).then(
                                     (ok) ->
                                         d.resolve("device_group created")
                                     (notok) ->
                                         d.reject("device_group not created")
                                 )
                             else
-                                $scope.device_tree.create_device($scope.edit_obj).then(
+                                $scope.struct.device_tree.create_device(sub_scope.edit_obj).then(
                                     (ok) ->
                                         # device created, force refiltering
                                         $rootScope.$emit(ICSW_SIGNALS("ICSW_FORCE_TREE_FILTER"))
@@ -277,23 +326,23 @@ angular.module(
                                         name_m = node_re.exec(obj.name)
                                         if name_m
                                             new_name = ("0" for _idx in [0..name_m[2].length]).join("") + String(parseInt(name_m[2]) + 1)
-                                            $scope.edit_obj.name = name_m[1] + new_name.substr(new_name.length - name_m[2].length) + name_m[3]
+                                            sub_scope.edit_obj.name = name_m[1] + new_name.substr(new_name.length - name_m[2].length) + name_m[3]
                                         d.reject("device created")
                                     (notok) ->
                                         d.reject("device not created")
                                 )
                         else
                             if single_instance
-                                $scope.edit_obj.put().then(
+                                sub_scope.edit_obj.put().then(
                                     (data) ->
                                         # ToDo, FIXME, handle change (test?), move to DeviceTreeService
                                         console.log "data", data
-                                        if $scope.edit_obj.root_passwd
+                                        if sub_scope.edit_obj.root_passwd
                                             # ToDo, FIXME, to be improved
-                                            $scope.edit_obj.root_passwd_set = true
+                                            sub_scope.edit_obj.root_passwd_set = true
                                         d.resolve("save")
                                         # update device ordering in tree
-                                        $scope.device_tree.reorder()
+                                        $scope.struct.device_tree.reorder()
                                     (reject) ->
                                         # ToDo, FIXME, handle rest (test?)
                                         # two possibilites: restore and continue or reject, right now we use the second path
@@ -305,13 +354,13 @@ angular.module(
                                 icswSimpleAjaxCall(
                                     url: ICSW_URLS.DEVICE_CHANGE_DEVICES
                                     data: {
-                                        change_dict: angular.toJson($scope.edit_obj)
+                                        change_dict: angular.toJson(sub_scope.edit_obj)
                                         device_list: angular.toJson(icswActiveSelectionService.current().get_devsel_list()[1])
                                     }
                                 ).then(
                                     (xml) ->
                                         changes = angular.fromJson($(xml).find("value[name='json_changes']").text())
-                                        $scope.device_tree.apply_json_changes(changes)
+                                        $scope.struct.device_tree.apply_json_changes(changes)
                                         d.resolve("many changed")
                                 )
                     return d.promise
@@ -330,22 +379,6 @@ angular.module(
                 $rootScope.$emit(ICSW_SIGNALS("ICSW_FORCE_TREE_FILTER"))
         )
 
-    $scope.rest_data_set = () ->
-        # $scope.device_lut = icswTools.build_lut($scope.entries)
-        # $scope.device_group_lut = icswTools.build_lut($scope.rest_data.device_group)
-        # for entry in $scope.entries
-        #     entry.selected = false
-        #    entry.device_group_obj = $scope.device_group_lut[entry.device_group]
-        mon_masters = (entry for entry in $scope.rest_data.monitor_server when entry.monitor_type == "master")
-        if mon_masters.length
-            $scope.mon_master = mon_masters[0].idx
-        else
-            $scope.mon_master = -1
-        # monitor servers
-        for entry in $scope.rest_data.monitor_server
-            entry.full_name_wt = "#{entry.full_name} (#{entry.monitor_type})"
-        $scope.initial_load = false
-
     $scope.num_selected = () ->
         act_sel = icswActiveSelectionService.get_selection()
         return act_sel.tot_dev_sel.length
@@ -362,8 +395,8 @@ angular.module(
     $scope.update_entries_st_attrs = () ->
         # use same keys as in $scope.column_list
         # create sort entries
-        for obj in $scope.device_tree.all_list
-            group = $scope.device_tree.get_group(obj)
+        for obj in $scope.struct.device_tree.all_list
+            group = $scope.struct.device_tree.get_group(obj)
             st_attrs = {}
             if obj.is_meta_device
                 # give some value, js sucks at comparing undefined
@@ -373,34 +406,40 @@ angular.module(
                 st_attrs['boot_master'] = ""
                 st_attrs['name'] = group.name
                 st_attrs['description'] = group.description
-                if $scope.device_tree.get_meta_device(obj).is_cluster_device_group
+                if $scope.struct.device_tree.get_meta_device(obj).is_cluster_device_group
                     st_attrs['enabled'] = null
                     st_attrs['type'] = null
                 else
                     st_attrs['enabled'] = group.enabled
                     # do not count the meta device
                     st_attrs['type'] = obj.num_devices
-                st_attrs['tln'] = $scope.domain_tree.show_dtn(group)
+                st_attrs['tln'] = $scope.struct.domain_tree.show_dtn(group)
             else
                 st_attrs['name'] = obj.name
                 st_attrs['description'] = obj.comment
                 st_attrs['enabled'] = obj.enabled
-                st_attrs['tln'] = $scope.domain_tree.show_dtn(obj)
+                st_attrs['tln'] = $scope.struct.domain_tree.show_dtn(obj)
                 st_attrs['rrd_store'] = obj.store_rrd_data
                 st_attrs['passwd'] = obj.root_passwd_set
-                st_attrs['mon_master'] = array_lookupFilter(obj.monitor_server, $scope.rest_data.monitor_server, "full_name_wt")
-                st_attrs['boot_master'] = array_lookupFilter(obj.bootserver, $scope.rest_data.mother_server, "full_name")
+                if obj.monitor_server
+                    st_attrs['mon_master'] = $scope.struct.monitor_server_lut[obj.monitor_server].$$full_name_with_type
+                else
+                    st_attrs["mon_master"] = ""
+                if obj.bootserver
+                    st_attrs['boot_master'] = $scope.struct.mother_server_lut[obj.bootserver].full_name
+                else
+                    st_attrs["boot_master"] = ""
             obj.st_attrs = st_attrs
     $scope.reload()
-]).directive("icswDeviceTreeOverview", ["$templateCache", ($templateCache) ->
+]).directive("icswDeviceTreeRow",
+[
+    "$templateCache", "$compile", "icswActiveSelectionService", "icswDeviceTreeService",
+(
+    $templateCache, $compile, icswActiveSelectionService, icswDeviceTreeService
+) ->
     return {
-        restrict : "EA"
-        template : $templateCache.get("icsw.device.tree.overview")
-    }
-]).directive("icswDeviceTreeRow", ["$templateCache", "$compile", "icswActiveSelectionService", "icswDeviceTreeService", ($templateCache, $compile, icswActiveSelectionService, icswDeviceTreeService) ->
-    return {
-        restrict : "EA"
-        link : (scope, element, attrs) ->
+        restrict: "EA"
+        link: (scope, element, attrs) ->
             tree = icswDeviceTreeService.current()
             device = scope.$eval(attrs.device)
             group = tree.get_group(device)
@@ -408,7 +447,7 @@ angular.module(
             scope.group = group
             sel = icswActiveSelectionService.current()
             if device.is_meta_device
-                if scope.device_tree.get_group(device).cluster_device_group
+                if scope.struct.device_tree.get_group(device).cluster_device_group
                     new_el = $compile($templateCache.get("icsw.device.tree.cdg.row"))
                 else
                     new_el = $compile($templateCache.get("icsw.device.tree.meta.row"))
@@ -435,28 +474,33 @@ angular.module(
     }
 ]).directive("icswDeviceTreeHead", ["$templateCache", ($templateCache) ->
     return {
-        restrict : "EA"
-        template : $templateCache.get("icsw.device.tree.head")
+        restrict: "EA"
+        template: $templateCache.get("icsw.device.tree.head")
     }
-]).directive("icswDeviceTreeFilters", ["icswDeviceTreeService", "icswActiveSelectionService", "ICSW_SIGNALS", "$rootScope", (icswDeviceTreeService, icswActiveSelectionService, ICSW_SIGNALS, $rootScope) ->
+]).directive("icswDeviceTreeFilters",
+[
+    "icswDeviceTreeService", "icswActiveSelectionService", "ICSW_SIGNALS", "$rootScope",
+(
+    icswDeviceTreeService, icswActiveSelectionService, ICSW_SIGNALS, $rootScope
+) ->
     # controller to set the _show flag of entries according to filters
     return {
-        restrict : "E"
-        templateUrl : "icsw.device.tree.filters"
-        link : (scope, element, attrs) ->
+        restrict: "E"
+        templateUrl: "icsw.device.tree.filters"
+        link: (scope, element, attrs) ->
             scope.filter_settings = {
-                "dg_filter" : "b"
-                "en_filter" : "b"
-                "sel_filter" : "b"
-                "mon_filter" : "i"
-                "boot_filter" : "i"
+                dg_filter: "b"
+                en_filter: "b"
+                sel_filter: "b"
+                mon_filter: "i"
+                boot_filter: "i"
             }
 
             filter_changed = () ->
                 aft_dict = {
-                    "b" : [true, false]
-                    "f" : [false]
-                    "t" : [true]
+                    b: [true, false]
+                    f: [false]
+                    t: [true]
                 }
 
                 try
@@ -497,7 +541,7 @@ angular.module(
                         mon_flag = true
                     else
                         if entry.monitor_server == null
-                            mon_flag = parseInt(mon_f) == scope.mon_master
+                            mon_flag = parseInt(mon_f) == scope.struct.monitor_master
                         else
                             mon_flag = parseInt(mon_f) == entry.monitor_server
                     boot_f = scope.filter_settings.boot_filter
@@ -524,6 +568,7 @@ angular.module(
             )
 
             $rootScope.$on(ICSW_SIGNALS("ICSW_FORCE_TREE_FILTER"), () ->
+                console.log "filter_changed"
                 filter_changed()
             )
 

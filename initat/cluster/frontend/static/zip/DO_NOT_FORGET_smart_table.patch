@@ -1,0 +1,29 @@
+--- Smart-Table-2.1.8/dist/smart-table.js	2016-03-24 05:00:38.000000000 +0100
++++ ../js/smart-table.js	2016-04-25 08:35:05.015505030 +0200
+@@ -45,6 +45,7 @@
+     var displayGetter = $parse(propertyName);
+     var displaySetter = displayGetter.assign;
+     var safeGetter;
++    var triggerGetter;
+     var orderBy = $filter('orderBy');
+     var filter = $filter('filter');
+     var safeCopy = copyRefs(displayGetter($scope));
+@@ -86,6 +87,18 @@
+         delete object[path];
+       }
+     }
++      if ($attrs.stTriggerRedraw) {
++        triggerGetter = $parse($attrs.stTriggerRedraw);
++        $scope.$watch(function() {
++          var curCount = triggerGetter($scope);
++          return curCount;
++        }, function (newValue, oldValue) {
++          if (newValue != oldValue) {
++            updateSafeCopy();
++          }
++        });
++      }
++
+ 
+     if ($attrs.stSafeSrc) {
+       safeGetter = $parse($attrs.stSafeSrc);

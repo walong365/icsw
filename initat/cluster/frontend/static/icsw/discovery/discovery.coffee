@@ -21,7 +21,7 @@ angular.module(
     "icsw.discovery",
     [
     ]
-).directive("icswDiscoveryOverview", ['icswDiscoveryDataService', 'icswDiscoveryDialogService', 'msgbus', (icswDiscoveryDataService, icswDiscoveryDialogService, msgbus) ->
+).directive("icswDiscoveryOverview", ['icswDiscoveryDataService', 'icswDiscoveryDialogService', (icswDiscoveryDataService, icswDiscoveryDialogService) ->
     return  {
         restrict: 'EA'
         templateUrl: 'icsw.discovery.overview'
@@ -46,10 +46,10 @@ angular.module(
             scope.new_devsel = (_dev_sel, _devg_sel) ->
                 scope.selected_device_pks = _dev_sel
 
-            msgbus.emit("devselreceiver")
-            msgbus.receive("devicelist", scope, (name, args) ->
-                scope.new_devsel(args[1])
-            )
+            # msgbus.emit("devselreceiver")
+            # msgbus.receive("devicelist", scope, (name, args) ->
+            #     scope.new_devsel(args[1])
+            # )
     }
 ]).service("icswDiscoveryDialogService",
     ["Restangular", "ICSW_URLS", "$rootScope", "$q", "$compile", "$templateCache",

@@ -339,7 +339,7 @@ angular.module(
 
     _svg_to_png = (loc_pk, dev_pks) ->
         defer = $q.defer()
-        sub_scope = $scope.$new(true, $scope)
+        sub_scope = $scope.$new(true)
         sub_scope.response = {
             drawn: 0
         }

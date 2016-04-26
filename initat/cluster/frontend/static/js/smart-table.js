@@ -45,6 +45,7 @@ ng.module('smart-table')
     var displayGetter = $parse(propertyName);
     var displaySetter = displayGetter.assign;
     var safeGetter;
+    var triggerGetter;
     var orderBy = $filter('orderBy');
     var filter = $filter('filter');
     var safeCopy = copyRefs(displayGetter($scope));
@@ -86,6 +87,18 @@ ng.module('smart-table')
         delete object[path];
       }
     }
+      if ($attrs.stTriggerRedraw) {
+        triggerGetter = $parse($attrs.stTriggerRedraw);
+        $scope.$watch(function() {
+          var curCount = triggerGetter($scope);
+          return curCount;
+        }, function (newValue, oldValue) {
+          if (newValue != oldValue) {
+            updateSafeCopy();
+          }
+        });
+      }
+
 
     if ($attrs.stSafeSrc) {
       safeGetter = $parse($attrs.stSafeSrc);
