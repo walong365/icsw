@@ -99,6 +99,15 @@ angular.module(
 ]).config(["toasterConfig", (toasterConfig) ->
     # close on click
     toasterConfig["tap-to-dismiss"] = true
+
+]).config([
+    "$httpProvider",
+(
+    $httpProvider
+) ->
+    $httpProvider.defaults.xsrfCookieName = 'csrftoken'
+    $httpProvider.defaults.xsrfHeaderName = 'X-CSRFToken'
+
 ]).service("icswParseXMLResponseService",
 [
     "toaster",
@@ -129,26 +138,6 @@ angular.module(
             if xml != null
                 toaster.pop("error", "A critical error occured", "error parsing response", 0)
         return success
-]
-).factory("msgbus",
-[
-    "$rootScope",
-(
-    $rootScope
-) ->
-    bus = {}
-    bus.emit = (msg, data) ->
-        # console.log "E", msg, "E", data
-        $rootScope.$emit(msg, data)
-    bus.receive = (msg, scope, func) ->
-        unbind = $rootScope.$on(msg, func)
-        scope.$on("$destroy", unbind)
-
-    # this can be used to improve typo safety:
-    bus.event_types = {
-        CATEGORY_CHANGED: "icsw.tools.msg_bus.1"  # called when any category (membership or category itself) is changed
-    }
-    return bus
 ]).directive("icswSelMan",
 [
     "$rootScope", "ICSW_SIGNALS", "DeviceOverviewSelection", "DeviceOverviewSettings",
@@ -211,7 +200,12 @@ angular.module(
                 #    console.log "post selman"
             }
     }
-]).directive("icswElementSize", ["$parse", ($parse) ->
+]).directive("icswElementSize",
+[
+    "$parse",
+(
+    $parse
+) ->
     # save size of element in scope (specified via icswElementSize)
     return (scope, element, attrs) ->
         fn = $parse(attrs["icswElementSize"])
@@ -227,7 +221,7 @@ angular.module(
                 fn.assign(scope, new_val)
             true
         )
-]).service("ICSW_SIGNALS", () ->
+]).service("ICSW_SIGNALS", [() ->
     _dict = {
 
         # global signals (for $rootScope)
@@ -270,7 +264,7 @@ angular.module(
             throw new Error("unknown signal '#{name}'")
         else
             return _dict[name]
-).factory("icswTools", [() ->
+]).factory("icswTools", [() ->
     id_seed = parseInt(Math.random() * 10000)
 
     get_unique_id = () ->
@@ -310,17 +304,6 @@ angular.module(
                     in_array.length = if c_idx < 0 then in_array.length + c_idx else c_idx
                     in_array.push.apply(in_array, rest)
                     break
-        "handle_reset" : (data, e_list, idx) ->
-            # used to reset form fields when requested by server reply
-            if data._reset_list
-                if idx == null
-                    # special case: e_list is the element to modify
-                    scope_obj = e_list
-                else
-                    scope_obj = (entry for key, entry of e_list when key.match(/\d+/) and entry.idx == idx)[0]
-                $(data._reset_list).each (idx, entry) ->
-                    scope_obj[entry[0]] = entry[1]
-                delete data._reset_list
     }
 ]).service("icswAjaxInfoService",
 [
@@ -618,25 +601,23 @@ angular.module(
             product.menu_gfx_big_url = "#{ICSW_URLS.STATIC_URL}/#{new_data.name.toLowerCase()}-trans.png"
     )
     return product
-]).config([
-    "$httpProvider",
-(
-    $httpProvider
-) ->
-    $httpProvider.defaults.xsrfCookieName = 'csrftoken'
-    $httpProvider.defaults.xsrfHeaderName = 'X-CSRFToken'
 
 ]).run(["Restangular", "toaster", (Restangular, toaster) ->
     Restangular.setRestangularFields(
         {
-            "id" : "idx"
+            id: "idx"
         }
     )
     Restangular.setResponseInterceptor((data, operation, what, url, response, deferred) ->
         if data.log_lines
             for entry in data.log_lines
                 toaster.pop(
-                    {20 : "success", 30 : "warning", 40 : "error", 50 : "error"}[entry[0]]
+                    {
+                        20: "success"
+                        30: "warning"
+                        40: "error"
+                        50: "error"
+                    }[entry[0]]
                     entry[1]
                     ""
                 )
@@ -653,7 +634,9 @@ angular.module(
         error_list = []
         if typeof(resp.data) == "string"
             if resp.data
-                resp.data = {"error" : resp.data}
+                resp.data = {
+                    error: resp.data
+                }
             else
                 resp.data = {}
         for key, value of resp.data
@@ -675,54 +658,6 @@ angular.module(
                 toaster.pop("error", _err, "", 0)
         return true
     )
-]).directive("paginator", ["$templateCache", ($templateCache) ->
-    link = (scope, element, attrs) ->
-        #console.log attrs.pagSettings, scope.$eval(attrs.pagSettings), scope
-        #pagSettings = scope.$eval(scope.pagSettings)
-        pagSettings = scope.pagSettings
-        pagSettings.conf.per_page = parseInt(attrs.perPage)
-        #scope.pagSettings.conf.filter = attrs.paginatorFilter
-        if attrs.paginatorEpp
-            pagSettings.set_epp(attrs.paginatorEpp)
-        if attrs.paginatorFilter
-            pagSettings.conf.filter_mode = attrs.paginatorFilter
-            if pagSettings.conf.filter_mode == "simple"
-                pagSettings.conf.filter = ""
-            else if pagSettings.conf.filter_mode == "func"
-                pagSettings.conf.filter_func = scope.filterFunc
-        scope.activate_page = (page_num) ->
-            pagSettings.activate_page(page_num)
-        scope.$watch(
-            () -> return scope.entries
-            (new_el) ->
-                pagSettings.set_entries(new_el)
-        )
-        scope.$watch(
-            () -> return pagSettings.conf.filter
-            (new_el) ->
-                pagSettings.set_entries(scope.entries)
-        )
-        scope.$watch(
-            () -> return pagSettings.conf.per_page
-            (new_el) ->
-                pagSettings.set_entries(scope.entries)
-        )
-        scope.$watch(
-            () -> return pagSettings.conf.filter_settings
-            (new_el) ->
-                pagSettings.set_entries(scope.entries)
-            true
-        )
-    return {
-        restrict : "EA"
-        scope:
-            entries     : "="
-            pagSettings : "="
-            paginatorFilter : "="
-            filterFunc  : "&paginatorFilterFunc"
-        template : $templateCache.get("icsw.tools.old.paginator")
-        link     : link
-    }
 ]).service("icswInfoModalService",
 [
     "$q",

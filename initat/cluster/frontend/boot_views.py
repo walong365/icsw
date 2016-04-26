@@ -52,7 +52,7 @@ class get_boot_info_json(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        print _post
+        # print _post
         sel_list = _post.getlist("sel_list[]")
         dev_result = device.objects.filter(
             Q(pk__in=sel_list)
@@ -85,7 +85,9 @@ class get_boot_info_json(View):
                     srv_com.builder("device", pk="{:d}".format(cur_dev.pk)) for cur_dev in dev_result
                 ]
             )
-            result = contact_server(request, "mother", srv_com, timeout=10, log_result=False, connection_id="webfrontend_status")
+            result = contact_server(
+                request, "mother", srv_com, timeout=10, log_result=False, connection_id="webfrontend_status"
+            )
         else:
             result = None
         # print result.pretty_print()

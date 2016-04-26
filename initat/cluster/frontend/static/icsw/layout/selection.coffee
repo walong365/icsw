@@ -45,7 +45,12 @@ angular.module(
             defer.resolve(dev_pk of new_data.all_lut)
         )
         return defer.promise
-]).service("icswActiveSelectionService", ["$q", "Restangular", "msgbus", "$rootScope", "ICSW_URLS", "icswSelection",  "ICSW_SIGNALS", ($q, Restangular, msgbus, $rootScope, ICSW_URLS, icswSelection, ICSW_SIGNALS) ->
+]).service("icswActiveSelectionService",
+[
+    "$q", "Restangular", "$rootScope", "ICSW_URLS", "icswSelection",  "ICSW_SIGNALS",
+(
+    $q, Restangular, $rootScope, ICSW_URLS, icswSelection, ICSW_SIGNALS
+) ->
     # used by menu.coffee (menu_base)
     _receivers = 0
     # for testing
@@ -56,14 +61,6 @@ angular.module(
     $rootScope.$on(ICSW_SIGNALS("ICSW_DEVICE_TREE_LOADED"), (event) ->
         # tree loaded, re-emit selection
         send_selection()
-    )
-    msgbus.receive("devselreceiver", $rootScope, (name, args) ->
-        # args is an optional sender name to find errors
-        # console.log "ignore old devselreciever"
-        # _receivers += 1
-        # console.log "register dsr"
-        # $rootScope.$emit(ICSW_SIGNALS("ICSW_DSR_REGISTERED"))
-        # send_selection()
     )
     register_receiver = () ->
         _receivers += 1
@@ -78,7 +75,6 @@ angular.module(
     send_selection = () ->
         # console.log "emit current device selection"
         $rootScope.$emit(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"))
-        # msgbus.emit("devicelist", )
     return {
         "num_receivers": () ->
             return _receivers

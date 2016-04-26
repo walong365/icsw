@@ -12,7 +12,13 @@
     </h2>
     <form class="form-inline">
         <div class="btn-group">
-            <input ng-repeat="entry in boot_options" type="button" ng-class="get_bo_class(entry[0])" value="{{ entry[1] }}" ng-click="toggle_boot_option(entry[0])"/>
+            <input
+                ng-repeat="entry in boot_options.list"
+                type="button"
+                ng-class="entry.$$input_class"
+                value="{{ entry.name }}"
+                ng-click="toggle_boot_option(entry.short)"
+            />
         </div>
         <input class="form-control" ng-model="struct.device_sel_filter" placeholder="selection..." ng-change="change_sel_filter()"/>
     </form>
@@ -30,20 +36,20 @@
                 <th class="text-center">sel</th>
                 <th>state</th>
                 <th>network</th>
-                <th ng-repeat="entry in boot_options" ng-show="bo_enabled[entry[0]] && entry[2] < 3">
+                <th ng-repeat="entry in boot_options.list" ng-show="entry.display">
                     {{ entry[1] }}
                 </th>
-                <th ng-show="any_type_1_selected">
+                <th ng-show="boot_options.any_type_1_selected">
                     action
                 </th>
-                <th ng-show="any_type_3_selected">
+                <th ng-show="boot_options.any_type_3_selected">
                     log
                 </th>
             </tr>
         </thead>
         <tbody>
             <tr icsw-device-boot-row ng-repeat-start="dev in entries_displayed" ng-class="dev.$$row_class"></tr>
-            <tr ng-repeat-end ng-show="bo_enabled['l'] && dev.show_log && dev.logs_set">
+            <tr ng-repeat-end ng-if="boot_options.is_enabled('l') && dev.$$boot_helper.show_logs && dev.$$boot_helper.logs_received">
                 <td colspan="100">
                     <icsw-device-boot-log-table icsw-device="dev"></icsw-device-boot-log-table>
                 </td>
@@ -61,101 +67,44 @@
                 </td>
                 <td></td>
                 <td></td>
-                <td ng-repeat="entry in type_1_options" ng-show="bo_enabled[entry[0]]"></td>
-                <td ng-show="bo_enabled['s']">
+                <td ng-repeat="entry in type_1_options" ng-show="entry.enabled"></td>
+                <td ng-show="boot_options.is_enabled('s')">
                     <div class="btn-group" ng-show="struct.num_selected">
                         <button type="button" class="btn btn-warning btn-xs dropdown-toggle" data-toggle="dropdown">
                             action ({{ struct.num_selected }})<span class="caret"></span>
                         </button>
                         <ul class="dropdown-menu">
-                            <li ng-click="soft_control('', 'reboot')"><a>reboot</a></li>
-                            <li ng-click="soft_control('', 'halt')"><a>halt</a></li>
-                            <li ng-click="soft_control('', 'poweroff')"><a>poweroff</a></li>
+                            <li ng-click="soft_control($event, null, 'reboot')"><a>reboot</a></li>
+                            <li ng-click="soft_control($event, null, 'halt')"><a>halt</a></li>
+                            <li ng-click="soft_control($event, null, 'poweroff')"><a>poweroff</a></li>
                         </ul>
                     </div>
                 </td>
-                <td ng-show="bo_enabled['h']">
-                    <div class="btn-group" ng-show="num_selected_hc()">
+                <td ng-show="boot_options.is_enabled('h')">
+                    <div class="btn-group" ng-show="struct.num_selected_hc">
                         <button type="button" class="btn btn-xs btn-warning" data-toggle="dropdown">
-                            control ({{ num_selected_hc() }}) <span class="caret"></span>
+                            control ({{ struct.num_selected_hc }}) <span class="caret"></span>
                         </button>
                         <ul class="dropdown-menu">
-                            <li ng-click="hard_control('', 'cycle')"><a>cycle</a></li>
-                            <li ng-click="hard_control('', 'on')"><a>on</a></li>
-                            <li ng-click="hard_control('', 'off')"><a>off</a></li>
+                            <li ng-click="hard_control($event, null, 'cycle')"><a>cycle</a></li>
+                            <li ng-click="hard_control($event, null, 'on')"><a>on</a></li>
+                            <li ng-click="hard_control($event, null, 'off')"><a>off</a></li>
                         </ul>
                     </div>
                 </td>
                 <td>
-                    <icsw-tools-button type="modify" size="xs" ng-show="struct.num_selected && any_type_1_selected" value="modify many" ng-click="modify_many($event)"></icsw-tools-button>
+                    <icsw-tools-button type="modify" size="xs" ng-show="struct.num_selected && boot_options.any_type_1_selected" value="modify many" ng-click="modify_many($event)"></icsw-tools-button>
                 </td>
+                <!-- for log column -->
+                <td colspan="2"></td>
             </tr>
         </tfoot>
     </table>
     <form class="form-inline">
         <icsw-tools-button type="display" size="sm" value="macbootlog" ng-click="toggle_show_mbl()"></icsw-tools-button>
     </form>
-    <div ng-show="show_mbl">
-        <div class="row">
-            <div class="col-md-6">
-                <h4>Showing {{ mbl_entries.length }} Macbootlog entries</h4>
-                <table class="table table-condensed table-hover table-striped" style="width:auto;">
-                    <thead>
-                        <tr>
-                            <th>Device</th>
-                            <th>type</th>
-                            <th>IP</th>
-                            <th>MAC</th>
-                            <th>Ignored</th>
-                            <th>Logsource</th>
-                            <th>created</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr ng-repeat="mbl in mbl_entries" ng-class="{true: 'warning', false: ''}[mbl.ignore]">
-                            <td>{{ mbl.device_name }}</td>
-                            <td>{{ mbl.entry_type }}</td>
-                            <td>{{ mbl.ip_action }}</td>
-                            <td>{{ mbl.macaddr }}</td>
-                            <td>{{ get_mac_ignored(mbl) }}</td>
-                            <td style="white-space:nowrap;">{{ mbl.log_source | follow_fk:this:'log_source_lut':'name' }}</td>
-                            <td>{{ get_mbl_created(mbl) }}</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            <div class="col-md-6">
-                <h4>Showing {{ mbi_list.length }} unique MACs</h4>
-                <table class="table table-condensed table-hover table-striped" style="width:auto;">
-                    <thead>
-                        <tr>
-                            <th>MAC</th>
-                            <th>ignored</th>
-                            <th>usecount</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr ng-repeat="mbl in mbi_list" ng-class="{true: 'warning', false: ''}[mbl.ignore]">
-                            <td>{{ mbl.macaddr }}</td>
-                            <td>{{ mbl.ignore && 'yes' || 'no' }}</td>
-                            <td>{{ mbl.usecount }}</td>
-                            <td>
-                                <span ng-if="!mbl.ignore">
-                                    <icsw-tools-button type="delete" size="xs" value="Ignore Macaddr" ng-click="modify_mbl(mbl, 'ignore')"></icsw-tools-button>
-                                </span>
-                                <span ng-if="mbl.ignore">
-                                    <icsw-tools-button type="create" size="xs" value="Unignore Macaddr" ng-click="modify_mbl(mbl, 'unignore')"></icsw-tools-button>
-                                </span>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
+    <icsw-boot-mac-bootlog-info ng-if="struct.show_mbl"></icsw-boot-mac-bootlog-info>
 </script>
-
 
 <script type="text/ng-template" id="icsw.device.boot.row">
     <td>{{ dev.device_group_name }}</td>
@@ -171,53 +120,59 @@
         ng-bind-html="field.html"
     >
     </td>
-    <td ng-show="bo_enabled['s']">
-        <div class="btn-group" ng-show="valid_net_state()">
+    <td ng-show="boot_options.is_enabled('s')">
+        <div class="btn-group" ng-show="dev.$$boot_helper.valid_net_state">
             <button type="button" class="btn btn-warning btn-xs dropdown-toggle" data-toggle="dropdown">
                 action <span class="caret"></span>
             </button>
             <ul class="dropdown-menu">
-                <li ng-click="soft_control(dev, 'reboot')"><a>reboot</a></li>
-                <li ng-click="soft_control(dev, 'halt')"><a>halt</a></li>
-                <li ng-click="soft_control(dev, 'poweroff')"><a>poweroff</a></li>
+                <li ng-click="soft_control($event, dev, 'reboot')"><a>reboot</a></li>
+                <li ng-click="soft_control($event, dev, 'halt')"><a>halt</a></li>
+                <li ng-click="soft_control($event, dev, 'poweroff')"><a>poweroff</a></li>
             </ul>
         </div>
-        <span class='label label-danger' ng-show="!valid_net_state()"><span class='glyphicon glyphicon-ban-circle'></span></span>
+        <span class='label label-danger' ng-show="!dev.$$boot_helper.valid_net_state"><span class='glyphicon glyphicon-ban-circle'></span></span>
     </td>
-    <td ng-show="bo_enabled['h']">
-        <div class="btn-group" ng-repeat="cd_con in dev.slave_connections">
-            <button type="button" ng-class="get_hc_class(cd_con)" ng-disabled="get_hc_disabled(cd_con)" data-toggle="dropdown">
-                {{ get_hc_info(cd_con) }} <span class="caret"></span>
+    <td ng-show="boot_options.is_enabled('h')">
+        <div class="btn-group"
+            ng-if="dev.$$boot_helper.slave_connections_valid"
+            ng-repeat="cd_con in dev.$$boot_helper.slave_connections"
+        >
+            <button type="button" ng-class="cd_con.$$btn_class" ng-disabled="cd_con.$$disabled" data-toggle="dropdown">
+                {{ cd_con.$$info_str }} <span class="caret"></span>
             </button>
             <ul class="dropdown-menu">
-                <li ng-click="hard_control(cd_con, 'cycle')"><a>cycle</a></li>
-                <li ng-click="hard_control(cd_con, 'on')"><a>on</a></li>
-                <li ng-click="hard_control(cd_con, 'off')"><a>off</a></li>
+                <li ng-click="hard_control($event, cd_con, 'cycle')"><a>cycle</a></li>
+                <li ng-click="hard_control($event, cd_con, 'on')"><a>on</a></li>
+                <li ng-click="hard_control($event, cd_con, 'off')"><a>off</a></li>
             </ul>
             <span ng-show="!$last">,</span>
         </div>
-        <span ng-show="!dev.slave_connections">
-            waiting...
-        </span>
-        <span ng-show="dev.slave_connections && dev.slave_connections.length == 0">
-            ---
-        </span>
+        {{ dev.$$boot_helper.slave_connections_info }}
     </td>
-    <td ng-show="any_type_1_selected">
-        <icsw-tools-button type="modify" size="xs" ng-click="modify_device(dev, $event)"></icsw-tools-button>
+    <td ng-show="boot_options.any_type_1_selected">
+        <icsw-tools-button type="modify" size="xs" ng-click="modify_device($event, dev)"></icsw-tools-button>
     </td>
-    <td ng-show="any_type_3_selected">
+    <td ng-show="boot_options.any_type_3_selected">
         <form class="form-inline">
-            <input ng-show="dev.logs_set" type="button" ng-class="get_devlog_class(dev)" ng-value="get_devlog_value(dev)" ng-click="change_devlog_flag(dev)"/>
-            Number of log lines: {{ dev.num_logs }}, show
-            <select ng-model="dev.num_show" class="form-control input-sm" ng-options="value as value for value in [5, 20, 50, 100]">
-            </select>
+            <input
+                type="button"
+                ng-class="dev.$$boot_helper.log_btn_class"
+                ng-value="dev.$$boot_helper.log_btn_value"
+                ng-click="change_devlog_flag(dev)"
+            />
+            Number of log lines: {{ dev.$$boot_helper.logs_present }} of {{ dev.$$boot_helper.num_logs }}
         </form>
     </td>
 </script>
 
 <script type="text/ng-template" id="icsw.device.boot.log.table">
-    <table st-table="entries_displayed" st-safe-src="device.log_lines" class="table table-condensed table-hover table-striped" style="width:auto;">
+    <table
+        st-table="entries_displayed"
+        st-safe-src="device.$$boot_helper.logs"
+        class="table table-condensed table-hover table-striped"
+        style="width:auto;"
+    >
         <thead>
             <tr>
                 <td colspan="99">
@@ -282,7 +237,7 @@
         <h2>Device setting for {{ device_info_str }}</h2>
         <fieldset>
             <legend>basic settings</legend>
-            <div ng-repeat="netstate in network_states" class="form-group" ng-show="bo_enabled['t']">
+            <div ng-repeat="netstate in network_states" class="form-group" ng-show="boot_options.is_enabled('t')">
                 <label class="control-label col-sm-4">
                     network {{ netstate.info }}
                 </label>
@@ -295,7 +250,7 @@
                     </ui-select>
                 </div>
             </div>
-            <div class="form-group" ng-show="bo_enabled['t']">
+            <div class="form-group" ng-show="boot_options.is_enabled('t')">
                 <label class="control-label col-sm-4">
                     special state
                 </label>
@@ -308,7 +263,7 @@
                     </ui-select>
                 </div>
             </div>
-            <div class="form-group" ng_show="bo_enabled['k']">
+            <div class="form-group" ng_show="boot_options.is_enabled('k')">
                 <label class="control-label col-sm-4">
                     New kernel
                 </label>
@@ -321,7 +276,7 @@
                     </ui-select>
                 </div>
             </div>
-            <div class="form-group" ng_show="bo_enabled['k']">
+            <div class="form-group" ng_show="boot_options.is_enabled('k')">
                 <label class="control-label col-sm-4">
                     Stage1 flavour
                 </label>
@@ -334,7 +289,7 @@
                     </ui-select>
                 </div>
             </div>
-            <div class="form-group" ng_show="bo_enabled['k']">
+            <div class="form-group" ng_show="boot_options.is_enabled('k')">
                 <label class="control-label col-sm-4">
                     Kernel append
                 </label>
@@ -342,7 +297,7 @@
                     <input class="textinput textInput form-control" maxlength="384" name="kernel_append" ng-model="_edit_obj.kernel_append" type="text"/>
                 </div>
             </div>
-            <div class="form-group" ng_show="bo_enabled['i']">
+            <div class="form-group" ng_show="boot_options.is_enabled('i')">
                 <label class="control-label col-sm-4">
                     New image
                 </label>
@@ -358,7 +313,7 @@
                 </div>
             </div>
             <div ng-show="!partitions.length" class="alert alert-danger">no valid partition tables found</div>
-            <div class="form-group" ng_show="bo_enabled['p'] &amp;&amp; partitions.length">
+            <div class="form-group" ng_show="boot_options.is_enabled('p') && partitions.length">
                 <label class="control-label col-sm-4">
                     Partition table
                 </label>
@@ -379,7 +334,7 @@
             <div>
                 <div class="col-md-6">
                     <div class="form-group">
-                        <div class="checkbox" ng_show="bo_enabled['b']">
+                        <div class="checkbox" ng_show="boot_options.is_enabled('b')">
                             <div class="controls col-lg-offset-0 col-sm-7">
                                 <label>
                                     <input class="checkboxinput checkbox" name="dhcp_mac" ng-model="_edit_obj.dhcp_mac" type="checkbox"/>
@@ -391,7 +346,7 @@
                 </div>
                 <div class="col-md-6">
                     <div class="form-group">
-                        <div class="checkbox" ng_show="bo_enabled['b']">
+                        <div class="checkbox" ng_show="boot_options.is_enabled('b')">
                             <div class="controls col-lg-offset-0 col-sm-7">
                                 <label>
                                     <input class="checkboxinput checkbox" name="dhcp_write" ng-model="_edit_obj.dhcp_write" type="checkbox"/>
@@ -402,7 +357,7 @@
                     </div>
                 </div>
             </div>
-            <div class="form-group" ng_show="bo_enabled['b'] &amp;&amp; _edit_obj.bootnetdevice">
+            <div class="form-group" ng_show="boot_options.is_enabled('b') && _edit_obj.bootnetdevice">
                 <label class="control-label col-sm-4">
                     Macaddr
                 </label>
@@ -410,7 +365,7 @@
                     <input class="textinput textInput form-control" maxlength="177" name="macaddr" ng-model="_edit_obj.macaddr" type="text"/>
                 </div>
             </div>
-            <div class="form-group" ng_show="bo_enabled['b'] &amp;&amp; _edit_obj.bootnetdevice">
+            <div class="form-group" ng_show="boot_options.is_enabled('b') && _edit_obj.bootnetdevice">
                 <label class="control-label col-sm-4">
                     Driver
                 </label>
@@ -430,7 +385,7 @@
             <div>
                 <div class="col-md-3">
                     <div class="form-group">
-                        <div class="checkbox" ng_show="bo_enabled['t']">
+                        <div class="checkbox" ng_show="boot_options.is_enabled('t')">
                             <div class="controls col-lg-offset-0 col-sm-7">
                                 <label>
                                     <input class="checkboxinput checkbox" name="change_target_state" ng-model="_edit_obj.change_target_state" type="checkbox"/>
@@ -441,7 +396,7 @@
                     </div>
                 </div>
                 <div class="col-md-9">
-                    <div ng-repeat="netstate in network_states" class="row form-group" ng-show="bo_enabled['t'] && _edit_obj.change_target_state">
+                    <div ng-repeat="netstate in network_states" class="row form-group" ng-show="boot_options.is_enabled('t') && _edit_obj.change_target_state">
                         <label class="control-label col-sm-4">
                             network {{ netstate.info }}
                         </label>
@@ -456,7 +411,7 @@
                             </ui-select>
                         </div>
                     </div>
-                    <div class="row form-group" ng-show="bo_enabled['t'] && _edit_obj.change_target_state">
+                    <div class="row form-group" ng-show="boot_options.is_enabled('t') && _edit_obj.change_target_state">
                         <label class="control-label col-sm-4">
                             special state
                         </label>
@@ -479,7 +434,7 @@
             <div class="row">
                 <div class="col-md-3">
                     <div class="form-group">
-                        <div class="checkbox" ng_show="bo_enabled['k']">
+                        <div class="checkbox" ng_show="boot_options.is_enabled('k')">
                             <div class="controls col-lg-offset-0 col-sm-7">
                                 <label>
                                     <input class="checkboxinput checkbox" name="change_new_kernel" ng-model="_edit_obj.change_new_kernel" type="checkbox"/>
@@ -490,7 +445,7 @@
                     </div>
                 </div>
                 <div class="col-md-9">
-                    <div class="form-group" ng_show="_edit_obj.change_new_kernel && bo_enabled['k']">
+                    <div class="form-group" ng_show="_edit_obj.change_new_kernel && boot_options.is_enabled('k')">
                         <label class="control-label col-sm-4">
                             New kernel
                         </label>
@@ -510,7 +465,7 @@
             <div class="row">
                 <div class="col-md-3"></div>
                 <div class="col-md-9">
-                    <div class="form-group" ng_show="_edit_obj.change_new_kernel &amp;&amp; bo_enabled['k']">
+                    <div class="form-group" ng_show="_edit_obj.change_new_kernel && boot_options.is_enabled('k')">
                         <label class="control-label col-sm-4">
                             Stage1 flavour
                         </label>
@@ -530,7 +485,7 @@
             <div class="row">
                 <div class="col-md-3"></div>
                 <div class="col-md-9">
-                    <div class="form-group" ng_show="_edit_obj.change_new_kernel &amp;&amp; bo_enabled['k']">
+                    <div class="form-group" ng_show="_edit_obj.change_new_kernel && boot_options.is_enabled('k')">
                         <label class="control-label col-sm-4">
                             Kernel append
                         </label>
@@ -543,7 +498,7 @@
             <div class="row">
                 <div class="col-md-3">
                     <div class="form-group">
-                        <div class="checkbox" ng_show="bo_enabled['i']">
+                        <div class="checkbox" ng_show="boot_options.is_enabled('i')">
                             <div class="controls col-lg-offset-0 col-sm-7">
                                 <label>
                                     <input class="checkboxinput checkbox" name="change_new_image" ng-model="_edit_obj.change_new_image" type="checkbox"/>
@@ -554,7 +509,7 @@
                     </div>
                 </div>
                 <div class="col-md-9">
-                    <div class="form-group" ng_show="_edit_obj.change_new_image &amp;&amp; bo_enabled['i']">
+                    <div class="form-group" ng_show="_edit_obj.change_new_image && boot_options.is_enabled('i')">
                         <label class="control-label col-sm-4">
                             New image
                         </label>
@@ -574,7 +529,7 @@
             <div class="row">
                 <div class="col-md-3">
                     <div class="form-group">
-                        <div class="checkbox" ng_show="bo_enabled['p']">
+                        <div class="checkbox" ng_show="boot_options.is_enabled('p')">
                             <div class="controls col-lg-offset-0 col-sm-7">
                                 <label>
                                     <input class="checkboxinput checkbox" name="change_partition_table" ng-model="_edit_obj.change_partition_table" type="checkbox"/>
@@ -585,7 +540,7 @@
                     </div>
                 </div>
                 <div class="col-md-9">
-                    <div class="form-group" ng_show="_edit_obj.change_partition_table &amp;&amp; bo_enabled['p']">
+                    <div class="form-group" ng_show="_edit_obj.change_partition_table && boot_options.is_enabled('p')">
                         <label class="control-label col-sm-4">
                             Partition table
                         </label>
@@ -605,7 +560,7 @@
             <div class="row">
                 <div class="col-md-3">
                     <div class="form-group">
-                        <div class="checkbox" ng_show="bo_enabled['b']">
+                        <div class="checkbox" ng_show="boot_options.is_enabled('b')">
                             <div class="controls col-lg-offset-0 col-sm-7">
                                 <label>
                                     <input class="checkboxinput checkbox" name="change_dhcp_mac" ng-model="_edit_obj.change_dhcp_mac" type="checkbox"/>
@@ -617,7 +572,7 @@
                 </div>
                 <div class="col-md-9">
                     <div class="form-group">
-                        <div class="checkbox" ng_show="_edit_obj.change_dhcp_mac &amp;&amp; bo_enabled['b']">
+                        <div class="checkbox" ng_show="_edit_obj.change_dhcp_mac && boot_options.is_enabled('b')">
                             <div class="controls col-lg-offset-0 col-sm-7">
                                 <label>
                                     <input class="checkboxinput checkbox" name="dhcp_mac" ng-model="_edit_obj.dhcp_mac" type="checkbox"/>
@@ -632,7 +587,7 @@
                 <div class="col-md-3"></div>
                 <div class="col-md-9">
                     <div class="form-group">
-                        <div class="checkbox" ng_show="_edit_obj.change_dhcp_mac &amp;&amp; bo_enabled['b']">
+                        <div class="checkbox" ng_show="_edit_obj.change_dhcp_mac && boot_options.is_enabled('b')">
                             <div class="controls col-lg-offset-0 col-sm-7">
                                 <label>
                                     <input class="checkboxinput checkbox" name="dhcp_write" ng-model="_edit_obj.dhcp_write" type="checkbox"/>
@@ -646,7 +601,7 @@
             <div class="row">
                 <div class="col-md-3"></div>
                 <div class="col-md-9">
-                    <div class="form-group" ng_show="_edit_obj.change_dhcp_mac &amp;&amp; bo_enabled['b']">
+                    <div class="form-group" ng_show="_edit_obj.change_dhcp_mac && boot_options.is_enabled('b')">
                         <label class="control-label col-sm-4">
                             Macaddr
                         </label>
@@ -659,7 +614,7 @@
             <div class="row">
                 <div class="col-md-3"></div>
                 <div class="col-md-9">
-                    <div class="form-group" ng_show="_edit_obj.change_dhcp_mac &amp;&amp; bo_enabled['b']">
+                    <div class="form-group" ng_show="_edit_obj.change_dhcp_mac && boot_options.is_enabled('b')">
                         <label class="control-label col-sm-4">
                             Driver
                         </label>
@@ -673,7 +628,6 @@
     </form>
 </script>
 
-
 <script type="text/ng-template" id="boot.form">
     <form class="form-horizontal" name="form_data">
         <h2>Connection {{ get_cd_info() }}</h2>
@@ -683,7 +637,6 @@
                 <label class="control-label col-sm-4">
                     Image
                 </label>
-
                 <div class="controls col-sm-7">
                     <select multiple="multiple" class="selectmultiple form-control" name="image">
                     </select>
@@ -691,4 +644,90 @@
             </div>
         </fieldset>
     </form>
+</script>
+
+<script type="text/ng-template" id="icsw.boot.mac.bootlog.info">
+    <uib-alert type="warning" ng-show="!struct.data_valid">Fetching initial data...</uib-alert>
+    <div class="row">
+        <div class="col-md-6">
+            <h4>
+                Showing {{ struct.boot_list.length }} Macbootlog entries
+                <span class="text-warning" ng-show="struct.updating">Updating...</span>
+            </h4>
+            <table
+                st-table="boot_displayed"
+                class="table table-condensed table-hover table-striped"
+                st-safe-src="struct.boot_list"
+                style="width:auto;"
+            >
+                <thead>
+                    <tr>
+                        <td colspan="99">
+                            <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                                 possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Device</th>
+                        <th>type</th>
+                        <th>IP</th>
+                        <th>MAC</th>
+                        <th>Ignored</th>
+                        <th>created</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr ng-repeat="mbl in boot_displayed" ng-class="{true: 'warning', false: ''}[mbl.ignore]">
+                        <td>{{ mbl.device_name }}</td>
+                        <td>{{ mbl.entry_type }}</td>
+                        <td>{{ mbl.ip_action }}</td>
+                        <td>{{ mbl.macaddr }}</td>
+                        <td>{{ mbl.ignore_str }}</td>
+                        <td>{{ mbl.created_str }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="col-md-6">
+            <h4>
+                Showing {{ struct.unique_list.length }} unique MACs
+            </h4>
+            <table
+                st-table="unique_displayed"
+                class="table table-condensed table-hover table-striped"
+                st-safe-src="struct.unique_list"
+                style="width:auto;"
+            >
+                <thead>
+                    <tr>
+                        <td colspan="99">
+                            <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                                 possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>MAC</th>
+                        <th>ignored</th>
+                        <th>usecount</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr ng-repeat="mbl in unique_displayed" ng-class="{true: 'warning', false: ''}[mbl.ignore]">
+                        <td>{{ mbl.macaddr }}</td>
+                        <td>{{ mbl.ignore_str }}</td>
+                        <td>{{ mbl.usecount }}</td>
+                        <td>
+                            <span ng-if="!mbl.ignore">
+                                <icsw-tools-button type="delete" size="xs" value="Ignore Macaddr" ng-click="modify_mbl($event, mbl, 'ignore')"></icsw-tools-button>
+                            </span>
+                            <span ng-if="mbl.ignore">
+                                <icsw-tools-button type="create" size="xs" value="Unignore Macaddr" ng-click="modify_mbl($event, mbl, 'unignore')"></icsw-tools-button>
+                            </span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
 </script>
