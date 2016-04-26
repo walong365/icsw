@@ -24,6 +24,8 @@ import uuid
 import json
 import pickle
 
+from collections import Counter
+
 class BaseAssetPackage:
     def __init__(self, name, version = None, size = None, install_date = None):
         self.name = name
@@ -41,6 +43,16 @@ class BaseAssetPackage:
             s += " InstallDate: %s" % self.install_date
 
         return s
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) \
+               and self.name == other.name \
+               and self.version == other.version \
+               and self.size == other.size \
+               and self.install_date == other.install_date
+
+    def __hash__(self):
+        return hash((self.name, self.version, self.size, self.install_date))
 
 class BaseAssetHardware:
     def __init__(self, type):
@@ -61,6 +73,14 @@ class BaseAssetLicense:
 
         return s
 
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) \
+               and self.name == other.name \
+               and self.license_key == other.license_key
+
+    def __hash__(self):
+        return hash((self.type, self.license_key))
+
 class BaseAssetUpdate:
     def __init__(self, name, install_date = None, status = None):
         self.name = name
@@ -75,6 +95,15 @@ class BaseAssetUpdate:
             s += " InstallStatus: %s" % self.status
 
         return s
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) \
+               and self.name == other.name \
+               and self.install_date == other.install_date \
+               and self.status == other.status
+
+    def __hash__(self):
+        return hash((self.name, self.install_date, self.status))
 
 class BaseAssetSoftwareVersion:
     pass
@@ -136,7 +165,6 @@ def get_base_assets_from_raw_result(blob, runtype):
 
             for _child in root.iterchildren():
                 generate_bahs(_child, assets)
-            print assets
         #todo check/interpret different scan types
 
     elif runtype == AssetType.LICENSE:
@@ -158,7 +186,6 @@ def get_base_assets_from_raw_result(blob, runtype):
         pass
 
     return assets
-
 
 class AssetRun(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -195,37 +222,10 @@ class AssetRun(models.Model):
         return True
 
     def get_asset_changeset(self, other_asset_run):
-        changeset = []
+        this_assets = [_asset.getAssetInstance() for _asset in self.asset_set.all()]
+        other_assets = [_asset.getAssetInstance() for _asset in other_asset_run.asset_set.all()]
 
-        for _asset in self.asset_set.all():
-            _asset_instance = _asset.getAssetInstance()
-            attributes = None
-            if _asset_instance.__class__.__name__ == BaseAssetPackage.__name__:
-                attributes = ("name", "version", "size", "install_date")
-            elif _asset_instance.__class__.__name__ == BaseAssetLicense.__name__:
-                attributes = ("name", "license_key")
-            elif _asset_instance.__class__.__name__ == BaseAssetUpdate.__name__:
-                attributes = ("name", "install_date", "status")
-
-            match_found = False
-            for _other_asset in other_asset_run.asset_set.all():
-                _other_asset_instance = _other_asset.getAssetInstance()
-
-                equal = True
-                for _attribute in attributes:
-                    this_attr = getattr(_asset_instance, _attribute)
-                    other_attr = getattr(_other_asset_instance, _attribute)
-                    if this_attr != other_attr:
-                        equal = False
-
-                if equal:
-                    match_found = True
-                    break
-
-            if not match_found:
-                changeset.append(_asset)
-
-        return changeset
+        return list(set(this_assets).symmetric_difference(set(other_assets)))
 
 class AssetBatch(models.Model):
     idx = models.AutoField(primary_key=True)
