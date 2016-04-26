@@ -150,6 +150,7 @@ angular.module(
             # does not resolve to network_states_list but one level deeper
             @network_states_lut = {}
             for entry in @status_list
+                console.log entry
                 if not entry.prod_link
                     _idx++
                     @special_states_list.push(
@@ -182,13 +183,12 @@ angular.module(
                                 }
                                 net_list.states.push(new_state)
                                 @network_states_lut[_idx] = new_state
-            @special_states_lut = _.keyBy(@special_states_list, "idx")
-
 
             @build_luts()
 
         build_luts: () =>
             @status_lut = _.keyBy(@status_list, "idx")
+            @special_states_lut = _.keyBy(@special_states_list, "idx")
 
 ]).service("icswBootStatusTreeService",
 [
@@ -593,25 +593,32 @@ angular.module(
                 _attr_name = "any_type_#{_t_idx}_selected"
                 @[_attr_name] = _.some(entry.type == _t_idx for entry in @list when entry.enabled)
 
+        get_bo_enabled: () =>
+            # helper function
+            _bo = {}
+            for _short, entry of @lut
+                _bo[_short] = entry.enabled
+            return _bo
+
 ]).controller("icswDeviceBootCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "ICSW_SIGNALS",
-    "$q", "icswAcessLevelService", "$timeout", "$rootScope",
+    "$q", "icswAcessLevelService", "$timeout", "$rootScope", "toaster",
     "icswTools", "ICSW_URLS", "icswSimpleAjaxCall", "icswDeviceTreeService",
     "icswActiveSelectionService", "icswConfigTreeService", "icswLogTreeService",
     "icswKernelTreeService", "icswImageTreeService", "icswUserGroupTreeService",
     "icswPartitionTableTreeService", "icswNetworkTreeService", "icswBootStatusTreeService",
     "icswGlobalBootHelper", "icswDeviceTreeHelperService", "icswBootDisplayOption",
-    "icswBootDisplayOptions", "blockUI",
+    "icswBootDisplayOptions", "blockUI", "icswComplexModalService",
 (
     $scope, $compile, $filter, $templateCache, Restangular, ICSW_SIGNALS,
-    $q, icswAcessLevelService, $timeout, $rootScope,
+    $q, icswAcessLevelService, $timeout, $rootScope, toaster,
     icswTools, ICSW_URLS, icswSimpleAjaxCall, icswDeviceTreeService,
     icswActiveSelectionService, icswConfigTreeService, icswLogTreeService,
     icswKernelTreeService, icswImageTreeService, icswUserGroupTreeService,
     icswPartitionTableTreeService, icswNetworkTreeService, icswBootStatusTreeService,
     icswGlobalBootHelper, icswDeviceTreeHelperService, icswBootDisplayOption,
-    icswBootDisplayOptions, blockUI,
+    icswBootDisplayOptions, blockUI, icswComplexModalService,
 ) ->
     icswAcessLevelService.install($scope)
 
@@ -625,12 +632,6 @@ angular.module(
         new icswBootDisplayOption("h", "hard control", 2)
         new icswBootDisplayOption("l", "devicelog", 3)
     )
-
-    $scope.stage1_flavours = [
-        {val: "cpio", name: "CPIO"}
-        {val: "cramfs", name: "CramFS"}
-        {val: "lo", name: "ext2 via Loopback"}
-    ]
 
     $scope.struct = {
         # tree is valid
@@ -961,7 +962,7 @@ angular.module(
             for dev in $scope.struct.devices
                 $scope.toggle_dev_sel(dev, sel_mode)
 
-    # toggle columns
+    # toggle columns and addons
 
     $scope.toggle_boot_option = (short) ->
         $scope.boot_options.toggle_enabled(short)
@@ -971,25 +972,11 @@ angular.module(
         if dev.$$boot_helper.toggle_show_log()
             $scope.struct.boot_helper.fetch()
 
-    # mixins
-    if false
-        $scope.device_edit = new angular_edit_mixin($scope, $templateCache, $compile, Restangular, $q)
-        $scope.device_edit.modify_rest_url = ICSW_URLS.BOOT_UPDATE_DEVICE.slice(1).slice(0, -2)
-        $scope.device_edit.use_promise = true
+    $scope.toggle_show_mbl = () ->
+        $scope.struct.show_mbl = !$scope.struct.show_mbl
 
-        $scope.device_edit.modify_data_before_put = (data) ->
-            # rewrite new_state / prod_link
-            if data.target_state
-                new_state = $scope.state_lut[data.target_state]
-                data.new_state = new_state.status
-                data.prod_link = new_state.network
-            else
-                data.new_state = null
-                data.prod_link = null
-            if $scope._edit_obj and $scope._edit_obj.bootnetdevice
-                $scope._edit_obj.bootnetdevice.driver = $scope._edit_obj.driver
-                $scope._edit_obj.bootnetdevice.macaddr = $scope._edit_obj.macaddr
-
+    # soft / hard control
+    
     $scope.soft_control = ($event, dev, command) ->
         if dev
             dev_pk_list = [dev.idx]
@@ -1032,20 +1019,144 @@ angular.module(
                 blockUI.stop()
         )
 
-    $scope.modify_device = (dev, event) ->
+    # modify functions
+
+    if false
+        $scope.device_edit.modify_data_before_put = (data) ->
+            # rewrite new_state / prod_link
+            if data.target_state
+                new_state = $scope.state_lut[data.target_state]
+                data.new_state = new_state.status
+                data.prod_link = new_state.network
+            else
+                data.new_state = null
+                data.prod_link = null
+            if $scope._edit_obj and $scope._edit_obj.bootnetdevice
+                $scope._edit_obj.bootnetdevice.driver = $scope._edit_obj.driver
+                $scope._edit_obj.bootnetdevice.macaddr = $scope._edit_obj.macaddr
+
+    create_subscope = () ->
+        sub_scope = $scope.$new(true)
+
+        sub_scope.stage1_flavours = [
+            {val: "cpio", name: "CPIO"}
+            {val: "cramfs", name: "CramFS"}
+            {val: "lo", name: "ext2 via Loopback"}
+        ]
+        sub_scope.boot_options = $scope.boot_options
+        sub_scope.struct = $scope.struct
+        return sub_scope
+
+    update_device = (sub_scope) ->
+        blockUI.start("Saving data...")
+        sub_scope.edit_obj.bo_enabled = $scope.struct.boot_options.get_bo_enabled()
+        defer = $q.defer()
+        Restangular.restangularizeElement(null, sub_scope.edit_obj, ICSW_URLS.BOOT_UPDATE_DEVICE.slice(1).slice(0, -2))
+        sub_scope.edit_obj.put().then(
+            (result) ->
+                console.log result
+                $scope.struct.boot_helper.fetch().then(
+                    (done) ->
+                        defer.resolve("done")
+                        blockUI.stop()
+                    (error) ->
+                        defer.reject("error")
+                        blockUI.stop()
+                )
+            (error) ->
+                defer.reject("error")
+                blockUI.stop()
+        )
+        return defer.promise
+
+    $scope.modify_device = ($event, dev) ->
+
+        sub_scope = create_subscope()
+        sub_scope.edit_obj = dev
+
+        icswComplexModalService(
+            {
+                message: $compile($templateCache.get("icsw.boot.single.form"))(sub_scope)
+                ok_label: "Modify"
+                title: "Boot settings of device #{dev.full_name}"
+                ok_callback: (modal) ->
+                    d = $q.defer()
+                    if sub_scope.form_data.$invalid
+                        toaster.pop("warning", "form validation problem", "", 0)
+                        d.reject("form not valid")
+                    else
+                        update_device(sub_scope).then(
+                            (result) ->
+                                d.resolve("done")
+                        )
+                    return d.promise
+                cancel_callback: (modal) ->
+                    d = $q.defer()
+                    d.resolve("cancel")
+                    return d.promise
+            }
+        ).then(
+            (fin) ->
+                console.log "boot.single closed"
+                sub_scope.$destroy()
+        )
+        return
+
         $scope.device_info_str = dev.full_name
-        $scope.device_edit.edit_template = "boot.single.form"
-        dev.bo_enabled = $scope.bo_enabled
+
         if dev.bootnetdevice
             dev.macaddr = dev.bootnetdevice.macaddr
             dev.driver = dev.bootnetdevice.driver
-        $scope.device_edit.edit(dev, event).then(
-            (mod_dev) ->
-                true
-            () ->
-                true
+
+    $scope.modify_many = ($event, dev) ->
+
+        sub_scope = create_subscope()
+
+        sel_devices = (dev for dev in $scope.struct.devices when dev.$$boot_selected)
+        sub_scope.edit_obj = {
+            idx: 0
+            macaddr: ""
+            target_state: (dev.target_state for dev in sel_devices)[0]
+            driver: (dev.bootnetdevice.driver for dev in sel_devices when dev.bootnetdevice).concat((""))[0]
+            partition_table: (dev.partition_table for dev in sel_devices)[0]
+            new_image: (dev.new_image for dev in sel_devices)[0]
+            new_kernel: (dev.new_kernel for dev in sel_devices)[0]
+            stage1_flavour: (dev.stage1_flavour for dev in sel_devices).concat(("cpio"))[0]
+            kernel_append: (dev.kernel_append for dev in sel_devices).concat((""))[0]
+            dhcp_mac: (dev.dhcp_mac for dev in sel_devices).concat((""))[0]
+            dhcp_write: (dev.dhcp_write for dev in sel_devices).concat((""))[0]
+            device_pks: (dev.idx for dev in sel_devices)
+        }
+
+        icswComplexModalService(
+            {
+                message: $compile($templateCache.get("icsw.boot.many.form"))(sub_scope)
+                ok_label: "Modify"
+                title: "Boot settings of #{sel_devices.length} devices"
+                ok_callback: (modal) ->
+                    d = $q.defer()
+                    if sub_scope.form_data.$invalid
+                        toaster.pop("warning", "form validation problem", "", 0)
+                        d.reject("form not valid")
+                    else
+                        update_device(sub_scope).then(
+                            (result) ->
+                                d.resolve("done")
+                        )
+                    return d.promise
+                cancel_callback: (modal) ->
+                    d = $q.defer()
+                    d.resolve("cancel")
+                    return d.promise
+            }
+        ).then(
+            (fin) ->
+                console.log "boot.many closed"
+                sub_scope.$destroy()
         )
-    $scope.modify_many = (event) ->
+        return
+    
+    $scope.ddddmodify_many = (event) ->
         $scope.device_info_str = "#{$scope.num_selected} devices"
         $scope.device_edit.edit_template = "boot.many.form"
         sel_devices = (dev for dev in $scope.devices when dev.selected)
@@ -1074,9 +1185,6 @@ angular.module(
             () ->
                 true
         )
-    $scope.toggle_show_mbl = () ->
-        $scope.struct.show_mbl = !$scope.struct.show_mbl
-
 ]).directive("icswDeviceBootRow",
 [
     "$templateCache",
