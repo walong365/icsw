@@ -30,6 +30,7 @@ from django.views.generic import View
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.response import Response
 from reversion import revisions as reversion
+from reversion.models import Version
 
 import initat
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
@@ -107,7 +108,8 @@ class get_historical_data(ListAPIView):
 
         # get data for deletion and version (they mostly have the same fields)
         deletion_queryset = icsw_deletion_record.objects.filter(**filter_dict)
-        version_queryset = reversion.Version.objects.filter(**filter_dict).select_related('revision')
+        # print dir(reversion.VersionAdapter)
+        version_queryset = Version.objects.filter(**filter_dict).select_related('revision')
 
         formatted = itertools.chain(
             (format_version(ver) for ver in version_queryset),
@@ -117,19 +119,23 @@ class get_historical_data(ListAPIView):
         if model == device:
             allowed_by_lic = (
                 elem for elem in formatted
-                if not LicenseLockListDeviceService.objects.is_device_locked(LicenseEnum.snapshot,
-                                                                             elem['meta']['object_id'])
+                if not LicenseLockListDeviceService.objects.is_device_locked(
+                    LicenseEnum.snapshot,
+                    elem['meta']['object_id']
+                )
             )
         else:
             allowed_by_lic = formatted
 
         sorted_data = sorted(allowed_by_lic, key=lambda elem: elem['meta']['date'])
 
-        foreign_keys = {foreign_key.name: foreign_key for foreign_key in model._meta.concrete_model._meta.local_fields
-                        if isinstance(foreign_key, ForeignKey)}
+        foreign_keys = {
+            foreign_key.name: foreign_key for foreign_key in model._meta.concrete_model._meta.local_fields if isinstance(foreign_key, ForeignKey)
+        }
 
-        m2ms = {m2m.name: m2m for m2m in model._meta.concrete_model._meta.local_many_to_many
-                if m2m.rel.through._meta.auto_created}
+        m2ms = {
+            m2m.name: m2m for m2m in model._meta.concrete_model._meta.local_many_to_many if m2m.rel.through._meta.auto_created
+        }
         # only serialized m2ms, which are by djangos logic the ones which are not autocreated
 
         deleted_objects_cache = DeletedObjectsCache()

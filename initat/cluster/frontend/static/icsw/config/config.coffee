@@ -803,6 +803,7 @@ config_module = angular.module(
                 (data) ->
                     config_tree = data[0]
                     mon_tree = data[1]
+                    scope.mon_tree = mon_tree
                     defer.resolve(scope.config.mon_check_command_set)
             )
             return defer.promise
@@ -859,12 +860,15 @@ config_module = angular.module(
             sub_scope = scope.$new(false)
             sub_scope.edit_obj = obj_or_parent
             sub_scope.mccs_list = mon_tree.mon_check_command_special_list
+            sub_scope.template_list = mon_tree.mon_service_templ_list
+
             sub_scope.get_mccs_info = (edit_obj) ->
                 cur_mccs = edit_obj.mon_check_command_special
                 if cur_mccs
                     return mon_tree.mon_check_command_special_lut[cur_mccs].description
                 else
                     return ""
+
             sub_scope.get_mccs_cmdline = (edit_obj) ->
                 cur_mccs = edit_obj.mon_check_command_special
                 if cur_mccs

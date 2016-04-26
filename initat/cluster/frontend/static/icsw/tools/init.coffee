@@ -903,19 +903,6 @@ dimple_module = angular.module(
 angular.module(
     "init.csw.filters", []
 ).filter(
-    "array_lookup", () ->
-        return (in_value, f_array, fk_key, null_msg) ->
-            if in_value == null or in_value == undefined
-                return if null_msg then null_msg else "N/A"
-            else
-                if fk_key
-                    if angular.isString(in_value)
-                        in_value = parseInt(in_value)
-                    res_list = (entry[fk_key] for key, entry of f_array when typeof(entry) == "object" and entry and entry["idx"] == in_value)
-                else
-                    res_list = (entry for key, entry of f_array when typeof(entry) == "object" and entry and entry["idx"] == in_value)
-                return if res_list.length then res_list[0] else "Key Error (#{in_value})"
-).filter(
     "ip_fixed_width", () ->
         return (in_str) ->
             if in_str
@@ -950,20 +937,6 @@ angular.module(
             return text[0..max_len]
         else
             return text
-).filter("show_user", () ->
-    return (user) ->
-        if user
-            if user.first_name and user.last_name
-                return "#{user.login} (#{user.first_name} #{user.last_name})"
-            else if user.first_name
-                return "#{user.login} (#{user.first_name})"
-            else if user.last_name
-                return "#{user.login} (#{user.last_name})"
-            else
-                return "#{user.login}"
-        else
-            # in case user is undefined
-            return "???"
 ).filter("datetime1", () ->
     return (cur_dt) ->
         return moment(cur_dt).format("ddd, D. MMM YYYY, HH:mm:ss") + ", " + moment(cur_dt).fromNow()

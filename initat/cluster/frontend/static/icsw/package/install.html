@@ -129,7 +129,7 @@
 
 <script type="text/ng-template" id="icsw.package.install.package.search.row">
     <td>{{ obj.search_string }}</td>
-    <td>{{ obj.user | array_lookup:config_service.user_rest | show_user }}</td>
+    <td>{{ struct.user_group_tree.user_lut[obj.user].$$long_name }}</td>
     <td>{{ obj.num_searches }}</td>
     <td>{{ obj.current_state }}</td>
     <td>{{ obj.results }}</td>
