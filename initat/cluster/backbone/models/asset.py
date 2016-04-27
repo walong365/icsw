@@ -23,8 +23,68 @@ from enum import IntEnum
 import uuid
 import json
 import pickle
+from lxml import etree
 
-from collections import Counter
+########################################################################################################################
+# Functions
+########################################################################################################################
+
+#flatten xml into bahlist
+def generate_bahs(root, bahlist):
+    bah = BaseAssetHardware(root.get("type"))
+    bahlist.append(bah)
+    for elem in root.iterchildren("info"):
+        bah.info_dict[elem.get("name")] = elem.get("value")
+    for elem in root.iterchildren("object"):
+        generate_bahs(elem, bahlist)
+
+def get_base_assets_from_raw_result(blob, runtype, scantype):
+    assets = []
+    if runtype == AssetType.PACKAGE:
+        if scantype == ScanType.NRPE:
+            l = json.loads(blob[3:])
+            for (name, version, size, date) in l:
+                assets.append(BaseAssetPackage(name, version=version, size=size, install_date=date))
+        #todo check/interpret different scan types
+
+    elif runtype == AssetType.HARDWARE:
+        if scantype == ScanType.NRPE:
+            root = etree.fromstring(blob[2:-4].encode("ascii"))
+            assert(root.tag == "topology")
+
+            for _child in root.iterchildren():
+                generate_bahs(_child, assets)
+        #todo check/interpret different scan types
+
+    elif runtype == AssetType.LICENSE:
+        if scantype == ScanType.NRPE:
+            l = json.loads(blob[3:])
+            for (name, licensekey) in l:
+                assets.append(BaseAssetLicense(name, license_key=licensekey))
+        #todo check/interpret different scan types
+
+    elif runtype == AssetType.UPDATE:
+        if scantype == ScanType.NRPE:
+            l = json.loads(blob[3:])
+            for (name, date, status) in l:
+                assets.append(BaseAssetUpdate(name, install_date = date, status=status))
+        #todo check/interpret different scan types
+
+    elif runtype == AssetType.SOFTWARE_VERSION:
+        #todo interpret value blob
+        pass
+
+    elif runtype == AssetType.PROCESS:
+        if scantype == ScanType.NRPE:
+            l = json.loads(blob[3:])
+            for (name, pid) in l:
+                assets.append(BaseAssetProcess(name, pid))
+
+    return assets
+
+########################################################################################################################
+# Base Asset Classes
+########################################################################################################################
 
 class BaseAssetProcess:
     def __init__(self, name, pid):
@@ -130,6 +190,9 @@ class BaseAssetUpdate:
 class BaseAssetSoftwareVersion:
     pass
 
+########################################################################################################################
+# Enums
+########################################################################################################################
 
 class AssetType(IntEnum):
     PACKAGE = 1
@@ -139,6 +202,14 @@ class AssetType(IntEnum):
     SOFTWARE_VERSION = 5
     PROCESS = 6
 
+class ScanType(IntEnum):
+    HM = 1
+    NRPE = 2
+
+class RunStatus(IntEnum):
+    PLANNED = 1
+    RUNNING = 2
+    ENDED = 3
 
 class Asset(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -154,67 +225,9 @@ class Asset(models.Model):
     def getAssetInstance(self):
         return pickle.loads(self.value)
 
-class RunStatus(IntEnum):
-    PLANNED = 1
-    RUNNING = 2
-    ENDED = 3
-
-W32_SCAN_TYPE_PREFIX = "w32"
-
-from lxml import etree
-
-#flatten xml into bahlist
-def generate_bahs(root, bahlist):
-    bah = BaseAssetHardware(root.get("type"))
-    bahlist.append(bah)
-    for elem in root.iterchildren("info"):
-        bah.info_dict[elem.get("name")] = elem.get("value")
-    for elem in root.iterchildren("object"):
-        generate_bahs(elem, bahlist)
-
-def get_base_assets_from_raw_result(blob, runtype):
-    assets = []
-    if runtype == AssetType.PACKAGE:
-        if str(blob[:3]) == W32_SCAN_TYPE_PREFIX:
-            l = json.loads(blob[3:])
-            for (name, version, size, date) in l:
-                assets.append(BaseAssetPackage(name, version=version, size=size, install_date=date))
-        #todo check/interpret different scan types
-
-    elif runtype == AssetType.HARDWARE:
-        if str(blob[:3]) == W32_SCAN_TYPE_PREFIX:
-            root = etree.fromstring(blob[5:-4].encode("ascii"))
-            assert(root.tag == "topology")
-
-            for _child in root.iterchildren():
-                generate_bahs(_child, assets)
-        #todo check/interpret different scan types
-
-    elif runtype == AssetType.LICENSE:
-        if str(blob[:3]) == W32_SCAN_TYPE_PREFIX:
-            l = json.loads(blob[3:])
-            for (name, licensekey) in l:
-                assets.append(BaseAssetLicense(name, license_key=licensekey))
-        #todo check/interpret different scan types
-
-    elif runtype == AssetType.UPDATE:
-        if str(blob[:3]) == W32_SCAN_TYPE_PREFIX:
-            l = json.loads(blob[3:])
-            for (name, date, status) in l:
-                assets.append(BaseAssetUpdate(name, install_date = date, status=status))
-        #todo check/interpret different scan types
-
-    elif runtype == AssetType.SOFTWARE_VERSION:
-        #todo interpret value blob
-        pass
-
-    elif runtype == AssetType.PROCESS:
-        if str(blob[:3]) == W32_SCAN_TYPE_PREFIX:
-            l = json.loads(blob[3:])
-            for (name, pid) in l:
-                assets.append(BaseAssetProcess(name, pid))
-
-    return assets
+########################################################################################################################
+# (Django Database) Classes
+########################################################################################################################
 
 class AssetRun(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -236,6 +249,8 @@ class AssetRun(models.Model):
     raw_result_str = models.TextField(null=True)
 
     raw_result_interpreted = models.BooleanField(default=False)
+
+    scan_type = models.IntegerField(choices=[(_type.value, _type.name) for _type in ScanType], null=True)
 
 
     def generate_assets(self):

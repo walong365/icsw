@@ -401,7 +401,7 @@ class NRPEScanMixin(_ExtComScanMixin):
 import pytz
 import datetime
 
-from initat.cluster.backbone.models.asset import AssetRun,RunStatus, AssetType, W32_SCAN_TYPE_PREFIX
+from initat.cluster.backbone.models.asset import AssetRun, RunStatus, AssetType, ScanType
 from initat.cluster.backbone.models.discovery import DispatchSetting, DiscoverySource
 from initat.discovery_server.dispatcher import DiscoveryDispatcher
 
@@ -466,7 +466,7 @@ class NRPEScanBatch(ScanBatch):
 
         self.finish()
 
-from initat.tools import logging_tools, process_tools, server_command, config_tools, threading_tools, net_tools
+from initat.tools import logging_tools, process_tools, server_command, net_tools
 from initat.icsw.service.instance import InstanceXML
 
 class Dispatcher(object):
@@ -535,7 +535,7 @@ class Dispatcher(object):
                     _output = ext_com.communicate()
                     asset_run.run_status = RunStatus.ENDED
                     asset_run.run_end_time = datetime.datetime.now()
-                    asset_run.raw_result_str = W32_SCAN_TYPE_PREFIX + _output[0]
+                    asset_run.raw_result_str = _output[0]
                     asset_run.save()
                     self.device_running_ext_coms[_device] = 0
                 elif status != None:
@@ -591,7 +591,8 @@ class Dispatcher(object):
                                  run_status=RunStatus.ENDED,
                                  run_start_time=datetime.datetime.now(),
                                  run_end_time=datetime.datetime.now(),
-                                 raw_result_str=str)
+                                 raw_result_str=str,
+                                 scan_type = ScanType.HM)
         new_asset_run.save()
 
     def __do_nrpe_scan(self, schedule_item):
@@ -630,7 +631,8 @@ class Dispatcher(object):
 
         new_asset_run = AssetRun(run_index=asset_run_len,
                                  run_type=runtype,
-                                 run_status=RunStatus.PLANNED)
+                                 run_status=RunStatus.PLANNED,
+                                 scan_type=ScanType.NRPE)
         new_asset_run.save()
         _device.assetrun_set.add(new_asset_run)
 
