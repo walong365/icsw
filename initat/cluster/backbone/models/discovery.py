@@ -34,12 +34,12 @@ class DiscoverySource(IntEnum):
     ASU = 2
     IPMI = 3
 
-    NRPE_PACKAGE = 4
-    NRPE_HARDWARE = 5
-    NRPE_LICENSE = 6
-    NRPE_UPDATE = 7
-    NRPE_SOFTWARE_VERSION = 8
-    NRPE_PROCESS = 9
+    PACKAGE = 4
+    HARDWARE = 5
+    LICENSE = 6
+    UPDATE = 7
+    SOFTWARE_VERSION = 8
+    PROCESS = 9
 
     def get_maximal_concurrent_runs(self):
         # TODO: move to database?

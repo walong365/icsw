@@ -412,7 +412,6 @@ LIST_PROCESSES_CMD = "list-processes-py3"
 LIST_UPDATES_CMD = "list-updates-alt-py3"
 LIST_PENDING_UPDATES_CMD = "list-pending-updates-py3"
 LIST_HARDWARE_CMD = "list-hardware-lstopo-py3"
-LIST_PROCESSES_CMD = "list-processes-py3"
 
 VALID_COMMANDS = [LIST_SOFTWARE_CMD,
                   LIST_KEYS_CMD,
@@ -575,15 +574,15 @@ class Dispatcher(object):
         asset_run_len = len(_device.assetrun_set.all())
 
         runtype = None
-        if schedule_item.source == DiscoverySource.NRPE_PACKAGE:
+        if schedule_item.source == DiscoverySource.PACKAGE:
             runtype = AssetType.PACKAGE
-        elif schedule_item.source == DiscoverySource.NRPE_HARDWARE:
+        elif schedule_item.source == DiscoverySource.HARDWARE:
             runtype = AssetType.HARDWARE
-        elif schedule_item.source == DiscoverySource.NRPE_LICENSE:
+        elif schedule_item.source == DiscoverySource.LICENSE:
             runtype = AssetType.LICENSE
-        elif schedule_item.source == DiscoverySource.NRPE_UPDATE:
+        elif schedule_item.source == DiscoverySource.UPDATE:
             runtype = AssetType.UPDATE
-        elif schedule_item.source == DiscoverySource.NRPE_PROCESS:
+        elif schedule_item.source == DiscoverySource.PROCESS:
             runtype = AssetType.PROCESS
 
         new_asset_run = AssetRun(run_index=asset_run_len,
@@ -597,17 +596,23 @@ class Dispatcher(object):
 
     def __do_nrpe_scan(self, schedule_item):
         _command = None
+        runtype = None
 
-        if schedule_item.source == DiscoverySource.NRPE_PACKAGE:
+        if schedule_item.source == DiscoverySource.PACKAGE:
             _command = LIST_SOFTWARE_CMD
-        elif schedule_item.source == DiscoverySource.NRPE_HARDWARE:
+            runtype = AssetType.PACKAGE
+        elif schedule_item.source == DiscoverySource.HARDWARE:
             _command = LIST_HARDWARE_CMD
-        elif schedule_item.source == DiscoverySource.NRPE_LICENSE:
+            runtype = AssetType.HARDWARE
+        elif schedule_item.source == DiscoverySource.LICENSE:
             _command = LIST_KEYS_CMD
-        elif schedule_item.source == DiscoverySource.NRPE_UPDATE:
+            runtype = AssetType.LICENSE
+        elif schedule_item.source == DiscoverySource.UPDATE:
             _command = LIST_UPDATES_CMD
-        elif schedule_item.source == DiscoverySource.NRPE_PROCESS:
+            runtype = AssetType.UPDATE
+        elif schedule_item.source == DiscoverySource.PROCESS:
             _command = LIST_PROCESSES_CMD
+            runtype = AssetType.PROCESS
 
         _com = "/opt/cluster/sbin/check_nrpe -H {} -n -c {} -t120".format(schedule_item.device.all_ips()[0],
                                                                           _command)
@@ -616,18 +621,6 @@ class Dispatcher(object):
         _device = schedule_item.device
 
         asset_run_len = len(_device.assetrun_set.all())
-
-        runtype = None
-        if schedule_item.source == DiscoverySource.NRPE_PACKAGE:
-            runtype = AssetType.PACKAGE
-        elif schedule_item.source == DiscoverySource.NRPE_HARDWARE:
-            runtype = AssetType.HARDWARE
-        elif schedule_item.source == DiscoverySource.NRPE_LICENSE:
-            runtype = AssetType.LICENSE
-        elif schedule_item.source == DiscoverySource.NRPE_UPDATE:
-            runtype = AssetType.UPDATE
-        elif schedule_item.source == DiscoverySource.NRPE_PROCESS:
-            runtype = AssetType.PROCESS
 
         new_asset_run = AssetRun(run_index=asset_run_len,
                                  run_type=runtype,
