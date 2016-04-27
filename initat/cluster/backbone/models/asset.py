@@ -18,12 +18,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from django.db import models
-from enum import IntEnum
 import uuid
 import json
 import pickle
+import base64
+import marshal
+
 from lxml import etree
+from django.db import models
+from enum import IntEnum
 
 ########################################################################################################################
 # Functions
@@ -42,11 +45,20 @@ def get_base_assets_from_raw_result(blob, runtype, scantype):
     assets = []
     if runtype == AssetType.PACKAGE:
         if scantype == ScanType.NRPE:
-            l = json.loads(blob[3:])
+            l = json.loads(blob)
             for (name, version, size, date) in l:
-                assets.append(BaseAssetPackage(name, version=version, size=size, install_date=date))
-        #todo check/interpret different scan types
-
+                assets.append(BaseAssetPackage(name,
+                                               version=version,
+                                               size=size,
+                                               install_date=date))
+        if scantype == ScanType.HM:
+            package_dict = marshal.loads(base64.b64decode(blob))
+            for package_name in package_dict:
+                for versions_dict in package_dict[package_name]:
+                    assets.append(BaseAssetPackage(package_name,
+                                                   version=versions_dict['version'],
+                                                   size=versions_dict['size'],
+                                                   release=versions_dict['release']))
     elif runtype == AssetType.HARDWARE:
         if scantype == ScanType.NRPE:
             root = etree.fromstring(blob[2:-4].encode("ascii"))
@@ -58,14 +70,14 @@ def get_base_assets_from_raw_result(blob, runtype, scantype):
 
     elif runtype == AssetType.LICENSE:
         if scantype == ScanType.NRPE:
-            l = json.loads(blob[3:])
+            l = json.loads(blob)
             for (name, licensekey) in l:
                 assets.append(BaseAssetLicense(name, license_key=licensekey))
         #todo check/interpret different scan types
 
     elif runtype == AssetType.UPDATE:
         if scantype == ScanType.NRPE:
-            l = json.loads(blob[3:])
+            l = json.loads(blob)
             for (name, date, status) in l:
                 assets.append(BaseAssetUpdate(name, install_date = date, status=status))
         #todo check/interpret different scan types
@@ -76,7 +88,7 @@ def get_base_assets_from_raw_result(blob, runtype, scantype):
 
     elif runtype == AssetType.PROCESS:
         if scantype == ScanType.NRPE:
-            l = json.loads(blob[3:])
+            l = json.loads(blob)
             for (name, pid) in l:
                 assets.append(BaseAssetProcess(name, pid))
 
@@ -258,7 +270,7 @@ class AssetRun(models.Model):
             return False
         self.raw_result_interpreted = True
 
-        for _base_asset in get_base_assets_from_raw_result(self.raw_result_str, self.run_type):
+        for _base_asset in get_base_assets_from_raw_result(self.raw_result_str, self.run_type, self.scan_type):
             _package_dump = pickle.dumps(_base_asset)
             self.asset_set.create(type=self.run_type, value=_package_dump)
 
