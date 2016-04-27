@@ -635,12 +635,12 @@ package_module = angular.module(
 ]).controller("icswPackageInstallSearchController",
 [
     "$scope", "$templateCache", "icswUserService", "ICSW_URLS", "icswSimpleAjaxCall", "Restangular",
-    "blockUI", "$rootScope", "ICSW_SIGNALS",
+    "blockUI", "$rootScope", "ICSW_SIGNALS", "icswUserGroupTreeService",
     "$timeout", "$q", "icswPackageInstallSearchTreeService",
     "icswToolsSimpleModalService", "icswComplexModalService", "$compile", "toaster",
 (
     $scope, $templateCache, icswUserService, ICSW_URLS, icswSimpleAjaxCall, Restangular,
-    blockUI, $rootScope, ICSW_SIGNALS,
+    blockUI, $rootScope, ICSW_SIGNALS, icswUserGroupTreeService,
     $timeout, $q, icswPackageInstallSearchTreeService,
     icswToolsSimpleModalService, icswComplexModalService, $compile, toaster,
 ) ->
@@ -660,6 +660,8 @@ package_module = angular.module(
         active_search: undefined
         # search results
         search_results: []
+        # user/group tree
+        user_group_tree: undefined
     }
 
     $scope.$watch("repo_tree", (new_val) ->
@@ -690,6 +692,7 @@ package_module = angular.module(
     load = (reload) ->
         _w_list = [
             icswUserService.load($scope.$id)
+            icswUserGroupTreeService.load($scope.$id)
         ]
         if reload
             _w_list.push(icswPackageInstallSearchTreeService.reload($scope.$id))
@@ -698,7 +701,8 @@ package_module = angular.module(
         $q.all(_w_list).then(
             (data) ->
                 $scope.struct.user = data[0]
-                $scope.struct.search_tree = data[1]
+                $scope.struct.user_group_tree = data[1]
+                $scope.struct.search_tree = data[2]
                 $scope.struct.tree_valid = true
                 check_for_reload()
         )

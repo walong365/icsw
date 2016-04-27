@@ -444,6 +444,17 @@ user_module = angular.module(
             # create usefull links
             for vdus in @vdus_list
                 @user_lut[vdus.user].vdus_list.push(vdus)
+            # create user long names
+            for user in @user_list
+                if user.first_name and user.last_name
+                    _fn = "#{user.login} (#{user.first_name} #{user.last_name})"
+                else if user.first_name
+                    _fn = "#{user.login} (#{user.first_name})"
+                else if user.last_name
+                    _fn = "#{user.login} (#{user.last_name})"
+                else
+                    _fn = "#{user.login}"
+                user.$$long_name = _fn
 
         # remove / delete calls
         delete_user: (user) =>

@@ -515,7 +515,7 @@
             <tbody>
                 <tr st-select-row ng-repeat="obj in monccs_displayed">
                     <td>{{ obj.name }}</td>
-                    <td>{{ obj.mon_service_templ | array_lookup:mon_service_templ:'name':'-' }}</td>
+                    <td>{{ mon_tree.mon_service_templ_lut[obj.mon_service_templ].name || '-' }}</td>
                     <td>{{ obj.description }}</td>
                     <td>{{ obj.mon_check_command_special && 'yes' || 'no' }}</td>
                     <td title="{{ config_service.get_mon_command_line(obj) }}" ng-if="obj.is_active">
@@ -537,7 +537,7 @@
                     <td>{{ obj.is_event_handler | yesno1 }}</td>
                     <td>{{ config_service.get_event_handler(obj.event_handler) }}</td>
                     <td>{{ obj.event_handler_enabled }}</td>
-                    <td>{{ get_num_cats(obj) }}</td>
+                    <td>{{ obj.categories.length || '-' }}</td>
                     <td><input type="button" ng-class="obj.$selected && 'btn btn-primary btn-xs' || 'btn btn-xs'" value="sel" ng-click="config_service.select(obj)"/>
                     <td><icsw-tools-button-static type="modify" value="modify" ng-click="edit($event, obj)" size="xs"></icsw-tools-button-static></td>
                     <td><input type="button" class="btn btn-warning btn-xs" ng-click="duplicate($event, obj, config)" value="duplicate"/></td>
@@ -689,14 +689,13 @@
                         <label class="control-label col-sm-2">
                             Mon service templ
                         </label>
-
                         <div class="controls col-sm-9">
                             <div class="input-group" style="max-width:400px; min-width:240px;">
                                 <ui-select ng-model="edit_obj.mon_service_templ" ng-disabled="false">
                                     <ui-select-match class="ui-select-match" placeholder="please select a service template">
                                         {{ $select.selected.name }}
                                     </ui-select-match>
-                                    <ui-select-choices class="ui-select-choices" repeat="value.idx as value in mon_service_templ | orderBy:'name'| props_filter:{name:$select.search}">
+                                    <ui-select-choices class="ui-select-choices" repeat="value.idx as value in template_list | orderBy:'name' | props_filter:{name:$select.search}">
                                         <div ng-bind-html="value.name | highlight: $select.search"></div>
                                     </ui-select-choices>
                                 </ui-select>
