@@ -405,21 +405,12 @@ from initat.cluster.backbone.models.asset import AssetRun, RunStatus, AssetType,
 from initat.cluster.backbone.models.discovery import DispatchSetting, DiscoverySource
 from initat.discovery_server.dispatcher import DiscoveryDispatcher
 
-LIST_SOFTWARE_CMD = "list-software-py3"
-LIST_KEYS_CMD = "list-keys-py3"
-LIST_METRICS_CMD = "list-metrics-py3"
-LIST_PROCESSES_CMD = "list-processes-py3"
-LIST_UPDATES_CMD = "list-updates-alt-py3"
-LIST_PENDING_UPDATES_CMD = "list-pending-updates-py3"
-LIST_HARDWARE_CMD = "list-hardware-lstopo-py3"
 
-VALID_COMMANDS = [LIST_SOFTWARE_CMD,
-                  LIST_KEYS_CMD,
-                  LIST_METRICS_CMD,
-                  LIST_PROCESSES_CMD,
-                  LIST_UPDATES_CMD,
-                  LIST_PENDING_UPDATES_CMD,
-                  LIST_PROCESSES_CMD]
+PACKAGE_CMD = "package"
+LICENSE_CMD = "license"
+HARDWARE_CMD = "hardware"
+UPDATES_CMD = "updates"
+PROCESS_CMD = "process"
 
 class NRPEScanBatch(ScanBatch):
     SCAN_TYPE = 'NRPE'
@@ -439,16 +430,16 @@ class NRPEScanBatch(ScanBatch):
     def _build_command(self):
         for _command in self._commands:
             source = None
-            if _command == LIST_SOFTWARE_CMD:
-                source = DiscoverySource.NRPE_PACKAGE
-            elif _command == LIST_KEYS_CMD:
-                source = DiscoverySource.NRPE_LICENSE
-            elif _command == LIST_HARDWARE_CMD:
-                source = DiscoverySource.NRPE_HARDWARE
-            elif _command == LIST_UPDATES_CMD:
-                source = DiscoverySource.NRPE_UPDATE
-            elif _command == LIST_PROCESSES_CMD:
-                source = DiscoverySource.NRPE_PROCESS
+            if _command == PACKAGE_CMD:
+                source = DiscoverySource.PACKAGE
+            elif _command == LICENSE_CMD:
+                source = DiscoverySource.LICENSE
+            elif _command == HARDWARE_CMD:
+                source = DiscoverySource.HARDWARE
+            elif _command == UPDATES_CMD:
+                source = DiscoverySource.UPDATE
+            elif _command == PROCESS_CMD:
+                source = DiscoverySource.PROCESS
 
             if not source:
                 continue
@@ -464,6 +455,14 @@ class NRPEScanBatch(ScanBatch):
             ds.save()
 
         self.finish()
+
+LIST_SOFTWARE_CMD = "list-software-py3"
+LIST_KEYS_CMD = "list-keys-py3"
+LIST_METRICS_CMD = "list-metrics-py3"
+LIST_PROCESSES_CMD = "list-processes-py3"
+LIST_UPDATES_CMD = "list-updates-alt-py3"
+LIST_PENDING_UPDATES_CMD = "list-pending-updates-py3"
+LIST_HARDWARE_CMD = "list-hardware-lstopo-py3"
 
 from initat.tools import logging_tools, process_tools, server_command, net_tools
 from initat.icsw.service.instance import InstanceXML
@@ -535,9 +534,10 @@ class Dispatcher(object):
                             context=self.discovery_process.zmq_context
                         )
 
-                        if _device.target_ip:
+                        ip = _device.all_ips()[0]
+                        if ip:
                             conn_str = "tcp://{}:{:d}".format(
-                                _device.target_ip,
+                                ip,
                                 hm_port,
                             )
                             self.log(u"connection_str for {} is {}".format(unicode(_device), conn_str))
@@ -546,6 +546,9 @@ class Dispatcher(object):
                                 server_command.srv_command(command=com),
                                 multi=True
                             )
+                        else:
+                            print "no ip for %s" % _device
+
                         # replace cmd_str in [AssetRun, com_type] list with zmq_con object
                         self.device_asset_run_ext_coms[_device][0][1] = zmq_con
 
@@ -559,7 +562,7 @@ class Dispatcher(object):
                         _output = com.communicate()
                         asset_run.run_status = RunStatus.ENDED
                         asset_run.run_end_time = datetime.datetime.now()
-
+                        asset_run.raw_result_str = _output[0]
                         asset_run.save()
                         self.device_running_ext_coms[_device] = 0
                     elif status != None:
@@ -596,9 +599,6 @@ class Dispatcher(object):
                         asset_run.save()
                         self.device_running_ext_coms[_device] = 0
 
-
-
-
     def __do_hm_scan(self, schedule_item):
         runtype = None
         _command = None
@@ -621,6 +621,7 @@ class Dispatcher(object):
                                  run_status=RunStatus.PLANNED,
                                  scan_type = ScanType.HM)
         new_asset_run.save()
+        _device.assetrun_set.add(new_asset_run)
 
         if _device not in self.device_running_ext_coms:
             self.device_running_ext_coms[_device] = 0
