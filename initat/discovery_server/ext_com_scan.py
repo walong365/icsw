@@ -519,63 +519,92 @@ class Dispatcher(object):
         for _device in self.device_asset_run_ext_coms:
             if self.device_running_ext_coms[_device] == 0:
                 if self.device_asset_run_ext_coms[_device]:
-                    asset_run, ext_com = self.device_asset_run_ext_coms[_device][0]
+                    asset_run, com = self.device_asset_run_ext_coms[_device][0]
                     asset_run.run_status = RunStatus.RUNNING
                     asset_run.run_start_time = datetime.datetime.now()
                     asset_run.save()
-                    print "Executing: %s" % ext_com.command
-                    ext_com.run()
+
+                    if isinstance(com, ExtCom):
+                        print "Executing: %s" % com.command
+                        com.run()
+                    else:
+                        hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
+                        self.discovery_process.get_route_to_devices([_device])
+                        zmq_con = net_tools.zmq_connection(
+                            "server:{}".format(process_tools.get_machine_name()),
+                            context=self.discovery_process.zmq_context
+                        )
+
+                        if _device.target_ip:
+                            conn_str = "tcp://{}:{:d}".format(
+                                _device.target_ip,
+                                hm_port,
+                            )
+                            self.log(u"connection_str for {} is {}".format(unicode(_device), conn_str))
+                            zmq_con.add_connection(
+                                conn_str,
+                                server_command.srv_command(command=com),
+                                multi=True
+                            )
+                        # replace cmd_str in [AssetRun, com_type] list with zmq_con object
+                        self.device_asset_run_ext_coms[_device][0][1] = zmq_con
+
                     self.device_running_ext_coms[_device] = 1
-            elif self.device_running_ext_coms[_device] == 1:
-                asset_run, ext_com = self.device_asset_run_ext_coms[_device][0]
-                status = ext_com.finished()
-                if status == 0:
-                    self.device_asset_run_ext_coms[_device].pop(0)
-                    _output = ext_com.communicate()
-                    asset_run.run_status = RunStatus.ENDED
-                    asset_run.run_end_time = datetime.datetime.now()
-                    asset_run.raw_result_str = _output[0]
-                    asset_run.save()
-                    self.device_running_ext_coms[_device] = 0
-                elif status != None:
-                    self.device_asset_run_ext_coms[_device].pop(0)
-                    _output = ext_com.communicate()
-                    asset_run.run_status = RunStatus.ENDED
-                    asset_run.run_end_time = datetime.datetime.now()
-                    asset_run.save()
-                    self.device_running_ext_coms[_device] = 0
+            if self.device_running_ext_coms[_device] == 1:
+                asset_run, com = self.device_asset_run_ext_coms[_device][0]
+                if isinstance(com, ExtCom):
+                    status = com.finished()
+                    if status == 0:
+                        self.device_asset_run_ext_coms[_device].pop(0)
+                        _output = com.communicate()
+                        asset_run.run_status = RunStatus.ENDED
+                        asset_run.run_end_time = datetime.datetime.now()
+
+                        asset_run.save()
+                        self.device_running_ext_coms[_device] = 0
+                    elif status != None:
+                        self.device_asset_run_ext_coms[_device].pop(0)
+                        _output = com.communicate()
+                        asset_run.run_status = RunStatus.ENDED
+                        asset_run.run_end_time = datetime.datetime.now()
+                        asset_run.save()
+                        self.device_running_ext_coms[_device] = 0
+                else:
+                    if com.poller.poll(1):
+                        res_list = com.loop()
+                        self.device_asset_run_ext_coms[_device].pop(0)
+                        asset_run.run_status = RunStatus.ENDED
+                        asset_run.run_end_time = datetime.datetime.now()
+
+                        s = None
+                        if asset_run.run_type == AssetType.PACKAGE:
+                            s = res_list[0]["pkg_list"].text
+                        elif schedule_item.source == DiscoverySource.HARDWARE:
+                            pass
+                            #todo implement me
+                        elif schedule_item.source == DiscoverySource.LICENSE:
+                            pass
+                            # todo implement me
+                        elif schedule_item.source == DiscoverySource.UPDATE:
+                            pass
+                            # todo implement me
+                        elif schedule_item.source == DiscoverySource.PROCESS:
+                            pass
+                            # todo implement me
+
+                        asset_run.raw_result_str = s
+                        asset_run.save()
+                        self.device_running_ext_coms[_device] = 0
+
+
+
 
     def __do_hm_scan(self, schedule_item):
-        _device = schedule_item.device
-
-        hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
-
-        self.discovery_process.get_route_to_devices([_device])
-        zmq_con = net_tools.zmq_connection(
-            "server:{}".format(process_tools.get_machine_name()),
-            context=self.discovery_process.zmq_context
-        )
-
-        if _device.target_ip:
-            conn_str = "tcp://{}:{:d}".format(
-                _device.target_ip,
-                hm_port,
-            )
-            self.log(u"connection_str for {} is {}".format(unicode(_device), conn_str))
-            zmq_con.add_connection(
-                conn_str,
-                server_command.srv_command(command="rpmlist"),
-                multi=True
-            )
-        res_list = zmq_con.loop()
-
-        str = res_list[0]['pkg_list'].text
-
-        asset_run_len = len(_device.assetrun_set.all())
-
         runtype = None
+        _command = None
         if schedule_item.source == DiscoverySource.PACKAGE:
             runtype = AssetType.PACKAGE
+            _command = "rpmlist"
         elif schedule_item.source == DiscoverySource.HARDWARE:
             runtype = AssetType.HARDWARE
         elif schedule_item.source == DiscoverySource.LICENSE:
@@ -585,14 +614,19 @@ class Dispatcher(object):
         elif schedule_item.source == DiscoverySource.PROCESS:
             runtype = AssetType.PROCESS
 
+        _device = schedule_item.device
+        asset_run_len = len(_device.assetrun_set.all())
         new_asset_run = AssetRun(run_index=asset_run_len,
                                  run_type=runtype,
-                                 run_status=RunStatus.ENDED,
-                                 run_start_time=datetime.datetime.now(),
-                                 run_end_time=datetime.datetime.now(),
-                                 raw_result_str=str,
+                                 run_status=RunStatus.PLANNED,
                                  scan_type = ScanType.HM)
         new_asset_run.save()
+
+        if _device not in self.device_running_ext_coms:
+            self.device_running_ext_coms[_device] = 0
+            self.device_asset_run_ext_coms[_device] = []
+
+        self.device_asset_run_ext_coms[_device].append([new_asset_run, _command])
 
     def __do_nrpe_scan(self, schedule_item):
         _command = None
@@ -633,7 +667,7 @@ class Dispatcher(object):
             self.device_running_ext_coms[_device] = 0
             self.device_asset_run_ext_coms[_device] = []
 
-        self.device_asset_run_ext_coms[_device].append((new_asset_run, ext_com))
+        self.device_asset_run_ext_coms[_device].append([new_asset_run, ext_com])
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         print what
