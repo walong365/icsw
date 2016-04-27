@@ -282,7 +282,7 @@ for sub_dir in os.listdir(dir_name):
                     try:
                         _tree = etree.fromstring(file(icsw_meta, "r").read())
                     except:
-                        pass
+                        raise
                     else:
                         ICSW_ADDON_APPS.append(sub_dir)
                         ADDITIONAL_ANGULAR_APPS.extend(

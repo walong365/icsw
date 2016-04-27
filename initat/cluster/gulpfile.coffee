@@ -457,6 +457,7 @@ gulp.task("addons", ["clean"], () ->
     return gulp.src(
         [
             "addons/liebherr/initat/cluster/work/icsw/*.js",
+            "addons/licadmin/initat/cluster/work/icsw/*.js",
         ]
     ).pipe(
         gulp.dest(DEPLOY_DIR)

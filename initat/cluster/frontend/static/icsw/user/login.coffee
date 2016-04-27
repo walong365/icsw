@@ -88,9 +88,9 @@ angular.module(
                     $scope.login_data.next_url = $(xml).find("value[name='next_url']").text()
         )
         $scope.login_data = {
-            "username": ""
-            "password": ""
-            "next_url": ""
+            username: ""
+            password: ""
+            next_url: ""
         }
 
     $scope.do_login = () ->
@@ -135,12 +135,22 @@ angular.module(
         return style_dict[$scope.LOGIN_SCREEN_TYPE]["login_class"]
 
     $scope.init_login()
-]).directive("icswLoginForm", ["$templateCache", ($templateCache) ->
+]).directive("icswLoginForm",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
     return {
         restrict: "EA"
         template: $templateCache.get("icsw.authentication.form")
     }
-]).directive("icswLoginPage", ["$templateCache", ($templateCache) ->
+]).directive("icswLoginPage",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
     return {
         restrict: "EA"
         template: $templateCache.get("icsw.user.login.page")

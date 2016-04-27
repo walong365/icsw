@@ -8,7 +8,7 @@
                 <li ng-click="activate_layout(lo)" ng-repeat="lo in layouts"><a>{{ lo }}</a></li>
             </ul>
         </div>
-        <icsw-device-livestatus-filter ls-filter="ls_filter"></icsw-device-livestatus-filter>
+        <icsw-livestatus-filter-display></icsw-livestatus-filter-display>
     </h3>
     <div ui-view></div>
 </script>

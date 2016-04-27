@@ -27,11 +27,11 @@ menu_module = angular.module(
 [
     "$scope", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswAcessLevelService",
     "initProduct", "icswLayoutSelectionDialogService", "icswActiveSelectionService",
-    "$q", "icswUserService", "blockUI", "$state", "$rootScope", "ICSW_SIGNALS",
+    "$q", "icswUserService", "blockUI", "$state",
 (
     $scope, $window, ICSW_URLS, icswSimpleAjaxCall, icswAcessLevelService,
     initProduct, icswLayoutSelectionDialogService, icswActiveSelectionService,
-    $q, icswUserService, blockUI, $state, $rootScope, ICSW_SIGNALS
+    $q, icswUserService, blockUI, $state,
 ) ->
     # init service types
     $scope.ICSW_URLS = ICSW_URLS
@@ -47,8 +47,8 @@ menu_module = angular.module(
         [
             icswSimpleAjaxCall(
                 {
-                    "url": ICSW_URLS.MAIN_GET_DOCU_INFO,
-                    "dataType": "json"
+                    url: ICSW_URLS.MAIN_GET_DOCU_INFO,
+                    dataType: "json"
                 }
             ),
             icswUserService.load(),
@@ -80,6 +80,7 @@ menu_module = angular.module(
     #        console.log "size=", new_val
     #        $rootScope.$emit(ICSW_SIGNALS("ICSW_RENDER_MENUBAR"))
     # )
+
     $scope.$on("$stateChangeStart", (event, to_state, to_params, from_state, from_params) ->
         to_main = if to_state.name.match(/^main/) then true else false
         from_main = if from_state.name.match(/^main/) then true else false
@@ -94,10 +95,13 @@ menu_module = angular.module(
             $scope.CURRENT_USER = undefined
             $scope.show_navbar = false
     )
+    route_counter = 0
+
     $scope.$on("$stateChangeSuccess", (event, to_state, to_params, from_state, from_params) ->
         to_main = if to_state.name.match(/^main/) then true else false
         from_main = if from_state.name.match(/^main/) then true else false
         console.log "success", to_state.name, to_main, from_state.name, from_main
+        route_counter++
         if to_state.name == "logout"
             blockUI.start("Logging out...")
             icswUserService.logout().then(
@@ -109,6 +113,13 @@ menu_module = angular.module(
             $scope.CURRENT_USER = icswUserService.get()
             $scope.show_navbar = true
             # console.log to_params, $scope
+        else
+            # we allow one gentle transfer
+            if route_counter >= 2 and false  # add one SinglePageApp License check
+                # reduce flicker
+                $(document.body).hide()
+                $window.location.reload()
+
     )
     $scope.$on("$stateChangeError", (event, to_state, to_params) ->
         console.log "error moving to #{to_state.name}"
@@ -231,7 +242,7 @@ menu_module = angular.module(
 ]).factory("icswReactMenuFactory",
     ["icswAcessLevelService", "ICSW_URLS", "icswSimpleAjaxCall", "blockUI", "icswMenuProgressService", "$state", (icswAcessLevelService, ICSW_URLS, icswSimpleAjaxCall, blockUI, icswMenuProgressService, $state) ->
         # console.log icswAcessLevelService
-        {input, ul, li, a, span} = React.DOM
+        {input, ul, li, a, span, h4} = React.DOM
         react_dom = ReactDOM
         rebuild_config = (cache_mode) ->
             blockUI.start()
@@ -321,15 +332,17 @@ menu_module = angular.module(
                         [
                             a(
                                 a_attrs
-                                span(
-                                    {className: "label #{@props.labelClass}", key: "spanl"}
-                                    [
-                                        span(
-                                            {className: "fa #{@props.icon} fa_icsw", key: "span"}
-                                        )
-                                        " #{@props.name}"
-                                    ]
-                                )
+                                [
+                                    span(
+                                        {className: "label #{@props.labelClass}", key: "spanl"}
+                                        [
+                                            span(
+                                                {className: "fa #{@props.icon} fa_icsw", key: "span"}
+                                            )
+                                        ]
+                                    )
+                                    " #{@props.name}"
+                                ]
                             )
                         ]
                     )
