@@ -466,9 +466,12 @@ class NRPEScanBatch(ScanBatch):
 
         self.finish()
 
+from initat.tools import logging_tools, process_tools, server_command, config_tools, threading_tools, net_tools
+from initat.icsw.service.instance import InstanceXML
 
-class Dispatcher:
-    def __init__(self):
+class Dispatcher(object):
+    def __init__(self, discovery_process):
+        self.discovery_process = discovery_process
         self.device_asset_run_ext_coms = {}
         self.device_running_ext_coms = {}
 
@@ -497,51 +500,18 @@ class Dispatcher:
             if schedule_item.planned_date < _now:
                 print "need to run: %s" % schedule_item
 
-                _command = None
+                hm_capable = False
+                nrpe_capable = False
+                for _com in schedule_item.device.com_capability_list.all():
+                    if _com.matchcode == "hm":
+                        hm_capable = True
+                    elif _com.matchcode == "nrpe":
+                        nrpe_capable = True
 
-                if schedule_item.source == DiscoverySource.NRPE_PACKAGE:
-                    _command = LIST_SOFTWARE_CMD
-                elif schedule_item.source == DiscoverySource.NRPE_HARDWARE:
-                    _command = LIST_HARDWARE_CMD
-                elif schedule_item.source == DiscoverySource.NRPE_LICENSE:
-                    _command = LIST_KEYS_CMD
-                elif schedule_item.source == DiscoverySource.NRPE_UPDATE:
-                    _command = LIST_UPDATES_CMD
-                elif schedule_item.source == DiscoverySource.NRPE_PROCESS:
-                    _command = LIST_PROCESSES_CMD
-
-                _com = "/opt/cluster/sbin/check_nrpe -H {} -n -c {} -t120".format(schedule_item.device.all_ips()[0],
-                                                                                  _command)
-                ext_com = ExtCom(self.log, _com)
-
-                _device = schedule_item.device
-
-                asset_run_len = len(_device.assetrun_set.all())
-
-                runtype = None
-                if schedule_item.source == DiscoverySource.NRPE_PACKAGE:
-                    runtype = AssetType.PACKAGE
-                elif schedule_item.source == DiscoverySource.NRPE_HARDWARE:
-                    runtype = AssetType.HARDWARE
-                elif schedule_item.source == DiscoverySource.NRPE_LICENSE:
-                    runtype = AssetType.LICENSE
-                elif schedule_item.source == DiscoverySource.NRPE_UPDATE:
-                    runtype = AssetType.UPDATE
-                elif schedule_item.source == DiscoverySource.NRPE_PROCESS:
-                    runtype = AssetType.PROCESS
-
-                new_asset_run = AssetRun(run_index=asset_run_len,
-                                         run_type=runtype,
-                                         run_status=RunStatus.PLANNED)
-                new_asset_run.save()
-                _device.assetrun_set.add(new_asset_run)
-
-                if _device not in self.device_running_ext_coms:
-                    self.device_running_ext_coms[_device] = 0
-                    self.device_asset_run_ext_coms[_device] = []
-
-                self.device_asset_run_ext_coms[_device].append((new_asset_run, ext_com))
-
+                if hm_capable:
+                    self.__do_hm_scan(schedule_item)
+                elif nrpe_capable:
+                    self.__do_nrpe_scan(schedule_item)
 
             else:
                 self.schedule_items.insert(0, schedule_item)
@@ -575,6 +545,100 @@ class Dispatcher:
                     asset_run.run_end_time = datetime.datetime.now()
                     asset_run.save()
                     self.device_running_ext_coms[_device] = 0
+
+    def __do_hm_scan(self, schedule_item):
+        _device = schedule_item.device
+
+        hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
+
+        self.discovery_process.get_route_to_devices([_device])
+        zmq_con = net_tools.zmq_connection(
+            "server:{}".format(process_tools.get_machine_name()),
+            context=self.discovery_process.zmq_context
+        )
+
+        if _device.target_ip:
+            conn_str = "tcp://{}:{:d}".format(
+                _device.target_ip,
+                hm_port,
+            )
+            self.log(u"connection_str for {} is {}".format(unicode(_device), conn_str))
+            zmq_con.add_connection(
+                conn_str,
+                server_command.srv_command(command="rpmlist"),
+                multi=True
+            )
+        res_list = zmq_con.loop()
+
+        str = res_list[0]['pkg_list'].text
+
+        asset_run_len = len(_device.assetrun_set.all())
+
+        runtype = None
+        if schedule_item.source == DiscoverySource.NRPE_PACKAGE:
+            runtype = AssetType.PACKAGE
+        elif schedule_item.source == DiscoverySource.NRPE_HARDWARE:
+            runtype = AssetType.HARDWARE
+        elif schedule_item.source == DiscoverySource.NRPE_LICENSE:
+            runtype = AssetType.LICENSE
+        elif schedule_item.source == DiscoverySource.NRPE_UPDATE:
+            runtype = AssetType.UPDATE
+        elif schedule_item.source == DiscoverySource.NRPE_PROCESS:
+            runtype = AssetType.PROCESS
+
+        new_asset_run = AssetRun(run_index=asset_run_len,
+                                 run_type=runtype,
+                                 run_status=RunStatus.ENDED,
+                                 run_start_time=datetime.datetime.now(),
+                                 run_end_time=datetime.datetime.now(),
+                                 raw_result_str=str)
+        new_asset_run.save()
+
+    def __do_nrpe_scan(self, schedule_item):
+        _command = None
+
+        if schedule_item.source == DiscoverySource.NRPE_PACKAGE:
+            _command = LIST_SOFTWARE_CMD
+        elif schedule_item.source == DiscoverySource.NRPE_HARDWARE:
+            _command = LIST_HARDWARE_CMD
+        elif schedule_item.source == DiscoverySource.NRPE_LICENSE:
+            _command = LIST_KEYS_CMD
+        elif schedule_item.source == DiscoverySource.NRPE_UPDATE:
+            _command = LIST_UPDATES_CMD
+        elif schedule_item.source == DiscoverySource.NRPE_PROCESS:
+            _command = LIST_PROCESSES_CMD
+
+        _com = "/opt/cluster/sbin/check_nrpe -H {} -n -c {} -t120".format(schedule_item.device.all_ips()[0],
+                                                                          _command)
+        ext_com = ExtCom(self.log, _com)
+
+        _device = schedule_item.device
+
+        asset_run_len = len(_device.assetrun_set.all())
+
+        runtype = None
+        if schedule_item.source == DiscoverySource.NRPE_PACKAGE:
+            runtype = AssetType.PACKAGE
+        elif schedule_item.source == DiscoverySource.NRPE_HARDWARE:
+            runtype = AssetType.HARDWARE
+        elif schedule_item.source == DiscoverySource.NRPE_LICENSE:
+            runtype = AssetType.LICENSE
+        elif schedule_item.source == DiscoverySource.NRPE_UPDATE:
+            runtype = AssetType.UPDATE
+        elif schedule_item.source == DiscoverySource.NRPE_PROCESS:
+            runtype = AssetType.PROCESS
+
+        new_asset_run = AssetRun(run_index=asset_run_len,
+                                 run_type=runtype,
+                                 run_status=RunStatus.PLANNED)
+        new_asset_run.save()
+        _device.assetrun_set.add(new_asset_run)
+
+        if _device not in self.device_running_ext_coms:
+            self.device_running_ext_coms[_device] = 0
+            self.device_asset_run_ext_coms[_device] = []
+
+        self.device_asset_run_ext_coms[_device].append((new_asset_run, ext_com))
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         print what
