@@ -490,8 +490,8 @@ class Dispatcher(object):
             self.last_recalculate = _now
             self.next_recalculate = _plus_five_min
 
-            for item in sorted(self.schedule_items, key=lambda si: si.expected_run_date):
-                print item
+            #for item in sorted(self.schedule_items, key=lambda si: si.expected_run_date):
+            #    print item
 
         while self.schedule_items:
             schedule_item = self.schedule_items.pop(0)
@@ -582,18 +582,17 @@ class Dispatcher(object):
                         s = None
                         if asset_run.run_type == AssetType.PACKAGE:
                             s = res_list[0]["pkg_list"].text
-                        elif schedule_item.source == DiscoverySource.HARDWARE:
+                        elif asset_run.run_type == AssetType.HARDWARE:
                             pass
                             #todo implement me
-                        elif schedule_item.source == DiscoverySource.LICENSE:
+                        elif asset_run.run_type == AssetType.LICENSE:
                             pass
                             # todo implement me
-                        elif schedule_item.source == DiscoverySource.UPDATE:
+                        elif asset_run.run_type == AssetType.UPDATE:
                             pass
                             # todo implement me
-                        elif schedule_item.source == DiscoverySource.PROCESS:
-                            pass
-                            # todo implement me
+                        elif asset_run.run_type == AssetType.PROCESS:
+                            s = res_list[0]['process_tree'].text
 
                         asset_run.raw_result_str = s
                         asset_run.save()
@@ -613,6 +612,7 @@ class Dispatcher(object):
             runtype = AssetType.UPDATE
         elif schedule_item.source == DiscoverySource.PROCESS:
             runtype = AssetType.PROCESS
+            _command = "proclist"
 
         _device = schedule_item.device
         asset_run_len = len(_device.assetrun_set.all())

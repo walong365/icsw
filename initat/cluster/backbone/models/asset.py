@@ -23,6 +23,7 @@ import json
 import pickle
 import base64
 import marshal
+import bz2
 
 from lxml import etree
 from django.db import models
@@ -51,7 +52,7 @@ def get_base_assets_from_raw_result(blob, runtype, scantype):
                                                version=version,
                                                size=size,
                                                install_date=date))
-        if scantype == ScanType.HM:
+        elif scantype == ScanType.HM:
             package_dict = marshal.loads(base64.b64decode(blob))
             for package_name in package_dict:
                 for versions_dict in package_dict[package_name]:
@@ -91,6 +92,10 @@ def get_base_assets_from_raw_result(blob, runtype, scantype):
             l = json.loads(blob)
             for (name, pid) in l:
                 assets.append(BaseAssetProcess(name, pid))
+        elif  scantype == ScanType.HM:
+            process_dict = eval(bz2.decompress(base64.b64decode(blob)))
+            for pid in process_dict:
+                assets.append(BaseAssetProcess(process_dict[pid]['name'], pid))
 
     return assets
 
