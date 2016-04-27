@@ -45,9 +45,10 @@ class BaseAssetProcess:
         return hash((self.name, self.pid))
 
 class BaseAssetPackage:
-    def __init__(self, name, version = None, size = None, install_date = None):
+    def __init__(self, name, version = None, release = None, size = None, install_date = None):
         self.name = name
         self.version = version
+        self.release = release
         self.size = size
         self.install_date = install_date
 
@@ -55,6 +56,8 @@ class BaseAssetPackage:
         s = "Name: %s" % self.name
         if self.version:
             s += " Version: %s" % self.version
+        if self.release:
+            s += " Release: %s" % self.release
         if self.size:
             s += " Size: %s" % self.size
         if self.install_date:
@@ -66,11 +69,12 @@ class BaseAssetPackage:
         return isinstance(other, self.__class__) \
                and self.name == other.name \
                and self.version == other.version \
+               and self.release == other.release \
                and self.size == other.size \
                and self.install_date == other.install_date
 
     def __hash__(self):
-        return hash((self.name, self.version, self.size, self.install_date))
+        return hash((self.name, self.version, self.release, self.size, self.install_date))
 
 class BaseAssetHardware:
     def __init__(self, type):
