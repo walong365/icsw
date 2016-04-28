@@ -28,7 +28,7 @@ angular.module(
         "main.deviceinfo", {
             url: "/deviceinfo"
             template: '<icsw-simple-device-info icsw-sel-man="0"></icsw-simple-device-info>'
-            data:
+            icswData:
                 pageTitle: "Device info"
                 rights: ["user.modify_tree"]
                 menuEntry:

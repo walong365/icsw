@@ -29,7 +29,7 @@ package_module = angular.module(
         "main.packageinstall", {
             url: "/packageinstall"
             template: "<icsw-package-install-overview ng-cloak/>"
-            data:
+            icswData:
                 pageTitle: "Package install"
                 rights: ["package.package_install"]
                 licenses: ["package_install"]

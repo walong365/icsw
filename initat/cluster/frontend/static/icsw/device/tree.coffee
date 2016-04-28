@@ -29,7 +29,7 @@ angular.module(
         "main.devtree", {
             url: "/devtree"
             templateUrl: "icsw/main/device/tree.html"
-            data:
+            icswData:
                 pageTitle: "Device tree"
                 rights: ["user.modify_tree"]
                 menuEntry:

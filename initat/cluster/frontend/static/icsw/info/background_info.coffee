@@ -29,7 +29,7 @@ background_job_info_module = angular.module(
           {
               url: "/backgroundinfo"
               templateUrl: "icsw/main/backgroundinfo.html"
-              data:
+              icswData:
                   pageTitle: "Background Job Information"
           }
     )

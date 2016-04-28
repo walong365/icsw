@@ -30,7 +30,7 @@ device_variable_module = angular.module(
         "main.devvars", {
             url: "/variables"
             template: '<icsw-device-variable-overview icsw-sel-man="0" icsw-sel-man-sel-mode="D"></icsw-device-variable-overview>'
-            data:
+            icswData:
                 pageTitle: "Device variables"
                 rights: ["device.change_variables"]
                 menuEntry:

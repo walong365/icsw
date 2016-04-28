@@ -87,7 +87,7 @@ lic_module = angular.module("icsw.license.overview",
         "main.licoverview", {
             url: "/licoverview"
             templateUrl: "icsw/main/rms/licoverview.html"
-            data:
+            icswData:
                 pageTitle: "License Liveview"
                 licenses: ["ext_license"]
                 service_types: ["rms-server"]

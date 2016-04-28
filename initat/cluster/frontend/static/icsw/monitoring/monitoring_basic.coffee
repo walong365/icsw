@@ -40,7 +40,7 @@ monitoring_basic_module = angular.module(
         "main.monitorbasics", {
             url: "/monitorbasics"
             template: "<icsw-monitoring-basic></icsw-monitoring-basic>"
-            data:
+            icswData:
                 pageTitle: "Monitoring Basic setup"
                 menuHeader:
                     key: "mon"
@@ -59,7 +59,7 @@ monitoring_basic_module = angular.module(
         "main.monitorredirect", {
             url: "/monitorredirect"
             template: "<h2>Redirecting...</h2>"
-            data:
+            icswData:
                 menuEntry:
                     menukey: "mon"
                     name: "Icinga"
@@ -84,7 +84,7 @@ monitoring_basic_module = angular.module(
     $stateProvider.state(
         "main.monitorb0", {
             url: "/monitorb0"
-            data:
+            icswData:
                 menuEntry:
                     menukey: "mon"
                     name: "rebuild config cached"
@@ -117,7 +117,7 @@ monitoring_basic_module = angular.module(
     $stateProvider.state(
         "main.monitorb1", {
             url: "/monitorb1"
-            data:
+            icswData:
                 menuEntry:
                     menukey: "mon"
                     name: "rebuild config dynamic"
@@ -148,7 +148,7 @@ monitoring_basic_module = angular.module(
     $stateProvider.state(
         "main.monitorb2", {
             url: "/monitorb2"
-            data:
+            icswData:
                 menuEntry:
                     menukey: "mon"
                     name: "rebuild config refresh"

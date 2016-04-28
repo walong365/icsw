@@ -34,7 +34,7 @@ rms_module = angular.module(
         "main.rmsoverview", {
             url: "/rmsoverview"
             templateUrl: "icsw/main/rms/overview.html"
-            data:
+            icswData:
                 pageTitle: "RMS Overview"
                 licenses: ["rms"]
                 service_types: ["rms-server"]

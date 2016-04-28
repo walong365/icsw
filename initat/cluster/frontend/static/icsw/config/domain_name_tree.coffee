@@ -29,7 +29,7 @@ angular.module(
         "main.domaintree", {
             url: "/domaintree"
             templateUrl: "icsw/main/device/domaintree.html"
-            data:
+            icswData:
                 pageTitle: "Domain name tree"
                 rights: ["user.modify_domain_name_tree"]
                 menuEntry:

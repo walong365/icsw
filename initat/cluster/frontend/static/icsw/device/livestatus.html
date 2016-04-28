@@ -2,10 +2,12 @@
     <h3>
         <div class="btn-group">
             <button type="button" class="btn btn-primary btn-sm dropdown-toggle" data-toggle="dropdown">
-                Layout ({{ cur_layout}})<span class="caret"></span>
+                Layout ({{ struct.current_layout.icswData.short_name }}) <span class="caret"></span>
             </button>
             <ul class="dropdown-menu">
-                <li ng-click="activate_layout(lo)" ng-repeat="lo in layouts"><a>{{ lo }}</a></li>
+                <li ng-click="activate_layout(lo)" ng-repeat="lo in struct.layouts">
+                    <a>{{ lo.data.short_name }}</a>
+                </li>
             </ul>
         </div>
         <icsw-livestatus-filter-display></icsw-livestatus-filter-display>

@@ -27,7 +27,7 @@ angular.module(
         "main.eventlog", {
             url: "/eventlog"
             template: '<icsw-discovery-event-log icsw-sel-man="0" icsw-sel-man-mode="d"></icsw-discovery-event-log>'
-            data:
+            icswData:
                 pageTitle: "Syslog, WMI- und IPMI-Event logs"
                 licenses: ["discovery_server"]
                 rights: ["device.discovery_server"]

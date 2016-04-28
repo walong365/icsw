@@ -31,7 +31,7 @@ menu_module = angular.module(
             {
                 url: "/login",
                 templateUrl: "icsw/login.html"
-                data:
+                icswData:
                     pageTitle: "ICSW Login"
             }
         ).state(
@@ -39,7 +39,7 @@ menu_module = angular.module(
             {
                 url: "/logout",
                 templateUrl: "icsw/login.html"
-                data:
+                icswData:
                     pageTitle: "ICSW Logout"
             }
         ).state(
@@ -48,7 +48,7 @@ menu_module = angular.module(
                 url: "/main"
                 abstract: true
                 templateUrl: "icsw/main.html"
-                data:
+                icswData:
                     pageTitle: "ICSW Main page"
                 resolve:
                     user: ["$q", "icswUserService", ($q, icswUserService) ->

@@ -32,7 +32,7 @@ dashboard_module = angular.module(
           {
               url: "/dashboard"
               templateUrl: "icsw/main/dashboard.html"
-              data:
+              icswData:
                   pageTitle: "Dashboard"
           }
     )

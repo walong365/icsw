@@ -30,7 +30,7 @@ angular.module(
         "main.graph", {
             url: "/graph"
             templateUrl: "icsw.rrd.graph"
-            data:
+            icswData:
                 pageTitle: "Graph"
                 licenses: ["graphing"]
                 rights: ["backbone.device.show_graphs"]

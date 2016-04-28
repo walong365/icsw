@@ -89,7 +89,7 @@ angular.module(
         "main.livestatus", {
             url: "/livestatus"
             template: '<icsw-device-livestatus icsw-sel-man="0" icsw-sel-man-mode="d"></icsw-device-livestatus>'
-            data:
+            icswData:
                 pageTitle: "Monitoring dashboard"
                 licenses: ["monitoring_dashboard"]
                 rights: ["mon_check_command.show_monitoring_dashboard"]
@@ -98,50 +98,54 @@ angular.module(
                     icon: "fa-dot-circle-o"
                     ordering: 20
         }
+    ).state(
+        "main.livestatus.test1"
+        {
+            url: "/livestatus/ad1"
+            template: '
+<div class="col-md-4 col-xs-12 col-lg-6">
+    <div icsw-device-livestatus-fullburst icsw-element-size="size" ls-devsel="ls_devsel" ls-filter="ls_filter"></div>
+</div>
+<div class="col-md-4 col-xs-12 col-lg-6">
+    <div icsw-device-livestatus-maplist ls-devsel="ls_devsel" ls-filter="ls_filter"></div>
+</div>
+<div class="col-md-4 col-xs-12 col-lg-8">
+    <icsw-config-category-location-show ls-devsel="ls_devsel" ls-filter="ls_filter"></icsw-config-category-location-show>
+</div>
+<div class="col-md-4 col-xs-12 col-lg-2">
+    <icsw-device-livestatus-cat-tree ls-filter="ls_filter"></icsw-device-livestatus-cat-tree>
+</div>
+<div class="col-md-4 col-xs-12 col-lg-8">
+    <icsw-device-livestatus-table-view ls-filter="ls_filter" filtered-entries="filtered_entries" ls-devsel="ls_devsel"></icsw-device-livestatus-table-view>
+</div>
+'
+            icswData: {
+                bla: 4
+            }
+        }
+    ).state(
+        "main.livestatus.testQX"
+        {
+            url: "/livestatus/aq1"
+            template: '
+<div class="col-md-4 col-xs-12 col-lg-6">
+    <div icsw-device-livestatus-fullburst icsw-element-size="size" ls-devsel="ls_devsel" ls-filter="ls_filter"></div>
+</div>
+<div class="col-md-4 col-xs-12 col-lg-6">
+    <div icsw-device-livestatus-maplist ls-devsel="ls_devsel" ls-filter="ls_filter"></div>
+</div>
+<div class="col-md-4 col-xs-12 col-lg-8">
+    <icsw-device-livestatus-table-view ls-filter="ls_filter" filtered-entries="filtered_entries" ls-devsel="ls_devsel"></icsw-device-livestatus-table-view>
+</div>
+<div class="col-md-4 col-xs-12 col-lg-2">
+    <icsw-device-livestatus-cat-tree ls-filter="ls_filter"></icsw-device-livestatus-cat-tree>
+</div>
+'
+            icswData: {
+                bli: 5
+            }
+        }
     )
-# old layouts, removed
-#        .state(
-#            "simple1"
-#            {
-#                url: "/simple1"
-#                template: '
-#<div class="col-md-4 col-xs-12 col-lg-6">
-#    <div icsw-device-livestatus-fullburst icsw-element-size="size" ls-devsel="ls_devsel" ls-filter="ls_filter"></div>
-#</div>
-#<div class="col-md-4 col-xs-12 col-lg-6">
-#    <div icsw-device-livestatus-maplist ls-devsel="ls_devsel" ls-filter="ls_filter"></div>
-#</div>
-#<div class="col-md-4 col-xs-12 col-lg-8">
-#    <icsw-config-category-location-show ls-devsel="ls_devsel" ls-filter="ls_filter"></icsw-config-category-location-show>
-#</div>
-#<div class="col-md-4 col-xs-12 col-lg-2">
-#    <icsw-device-livestatus-cat-tree ls-filter="ls_filter"></icsw-device-livestatus-cat-tree>
-#</div>
-#<div class="col-md-4 col-xs-12 col-lg-8">
-#    <icsw-device-livestatus-table-view ls-filter="ls_filter" filtered-entries="filtered_entries" ls-devsel="ls_devsel"></icsw-device-livestatus-table-view>
-#</div>
-#'
-#            }
-#        ).state(
-#            "simple2",
-#            {
-#                url: "/simple2"
-#                template: '
-#<div class="col-md-4 col-xs-12 col-lg-6">
-#    <div icsw-device-livestatus-fullburst icsw-element-size="size" ls-devsel="ls_devsel" ls-filter="ls_filter"></div>
-#</div>
-#<div class="col-md-4 col-xs-12 col-lg-6">
-#    <div icsw-device-livestatus-maplist ls-devsel="ls_devsel" ls-filter="ls_filter"></div>
-#</div>
-#<div class="col-md-4 col-xs-12 col-lg-8">
-#    <icsw-device-livestatus-table-view ls-filter="ls_filter" filtered-entries="filtered_entries" ls-devsel="ls_devsel"></icsw-device-livestatus-table-view>
-#</div>
-#<div class="col-md-4 col-xs-12 col-lg-2">
-#    <icsw-device-livestatus-cat-tree ls-filter="ls_filter"></icsw-device-livestatus-cat-tree>
-#</div>
-#'
-#            }
-#        )
 ]).factory("icswLivestatusDevSelFactory", [() ->
     return () ->
         _dev_sel = []
@@ -649,15 +653,36 @@ angular.module(
     $scope.host_entries = []
     $scope.service_entries = []
     $scope.filtered_entries = []
-    $scope.layouts = ["simple1", "simple2"]
+    LS_KEY = "main.livestatus"
+    $scope.struct = {
+        # list of layouts
+        layouts: []
+        # current layout
+        current_layout: undefined
+    }
+
+    # layout functions
+
+    $scope.activate_layout = (state) ->
+        $scope.struct.current_layout = state
+        $state.go(state)
+
+    check_layouts = () ->
+        $scope.struct.layouts.length = 0
+        for state in $state.get()
+            if state.name.match(LS_KEY) and state.name != LS_KEY
+                state.icswData.short_name = state.name.slice(LS_KEY.length + 1)
+                $scope.struct.layouts.push(state)
+        $scope.activate_layout($scope.struct.layouts[0])
+
+    check_layouts()
+    
     if not $scope.ls_filter?
         # init ls_filter if not set
         $scope.ls_filter = new icswLivestatusFilterFactory("lsc")
+
     $scope.ls_devsel = new icswLivestatusDevSelFactory()
-    $scope.activate_layout = (name) ->
-        $scope.cur_layout = name
-        # $state.go($scope.cur_layout)
-    $scope.activate_layout($scope.layouts[0])
+
     $scope.data_timeout = undefined
     $scope.$watch(
         $scope.ls_filter.changed

@@ -27,7 +27,7 @@ angular.module(
         "main.partition", {
             url: "/partition"
             templateUrl: "icsw/main/partition.html"
-            data:
+            icswData:
                 pageTitle: "Partition overview"
                 rights: ["partition_fs.modify_partitions"]
                 licenses: ["netboot"]
@@ -36,13 +36,11 @@ angular.module(
                     icon: "fa-database"
                     ordering: 35
         }
-    )
-    $stateProvider.state(
+    ).state(
         "main.monitordisk", {
             url: "/monitordisk"
-            template: '<icsw-device-partition-overview icsw-sel-man="0" icsw-sel-man-sel-mode="d"></icsw-device-partition-overview>
-'
-            data:
+            template: '<icsw-device-partition-overview icsw-sel-man="0" icsw-sel-man-sel-mode="d"></icsw-device-partition-overview>'
+            icswData:
                 pageTitle: "Disk"
                 rights: ["mon_check_command.setup_monitoring"]
                 menuEntry:

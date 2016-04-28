@@ -51,7 +51,7 @@ user_module = angular.module(
         "main.useraccount", {
             url: "/useraccount"
             templateUrl: "icsw/main/user/account.html"
-            data:
+            icswData:
                 pageTitle: "Account info"
         }
     )
@@ -59,7 +59,7 @@ user_module = angular.module(
         "main.usertree", {
             url: "/usertree"
             templateUrl: "icsw/main/user/tree.html"
-            data:
+            icswData:
                 pageTitle: "User and Group tree"
                 menuHeader:
                     key: "sys"
