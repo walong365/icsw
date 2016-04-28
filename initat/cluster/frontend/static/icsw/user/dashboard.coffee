@@ -192,7 +192,7 @@ dashboard_module = angular.module(
 ) ->
     return {
         restrict: "EA"
-        template: $templateCache.get("icsw.user.index")
+        template: $templateCache.get("icsw.dashboard.overview")
         controller: "icswDashboardViewCtrl"
     }
 ]).controller("icswDashboardViewCtrl",
@@ -253,6 +253,8 @@ dashboard_module = angular.module(
         draggable: {
            enabled: true
            handle: '.my-class'
+           stop: (event, element, options) ->
+               console.log "drag stop", event, element, options
         }
     }
     $scope.struct = {
@@ -272,6 +274,7 @@ dashboard_module = angular.module(
         ).then(
             (data) ->
                 $scope.struct.user = data[0]
+                console.log "user=", $scope.struct.user
                 $scope.struct.elements.length = 0
                 for entry in icswDashboardElements.get_elements($scope.struct.user)
                     $scope.struct.elements.push(entry)
@@ -285,6 +288,11 @@ dashboard_module = angular.module(
         "gridster-item-resized"
         (item) ->
             console.log "git-r", item
+    )
+    $scope.$on(
+        "gridster-resized"
+        (item) ->
+            console.log "git-R", item
     )
     $scope.$on(
         "gridster-resizable-changed"
@@ -319,15 +327,17 @@ dashboard_module = angular.module(
             @$$panel_class = "panel-#{@cls}"
             @user = undefined
 
+        close: ($event) ->
+            console.log "close"
+            
         link: (scope, element) =>
             sub_scope = scope.$new(true)
-            sub_scope.element = @
+            sub_scope.$$dashboard_element = @
+            _header = $templateCache.get("icsw.dashboard.element.title")
             _content = $templateCache.get(@template)
             _content = "
 <div class='panel #{@$$panel_class}' style='height: 100%;'>
-<div class='panel-heading'>
-{{ element.title }}
-</div>
+#{_header}
 #{_content}
 </div>
 "

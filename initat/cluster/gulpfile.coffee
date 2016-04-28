@@ -113,7 +113,7 @@ sources = {
             "frontend/static/js/toaster.js",
             "frontend/static/js/angular-gettext.min.js",
             "frontend/static/js/webfrontend_translation.js",
-            "frontend/static/js/angular-gridster.min.js",
+            "frontend/static/js/angular-gridster.js",
             "frontend/static/js/angular-promise-extras.js",
             "frontend/static/js/react-15.0.1.js",
             "frontend/static/js/react-dom-15.0.1.js",
