@@ -23,16 +23,7 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "noVNC", "ui.select", "icsw.tools", "icsw.device.variables"
     ]
-).controller("icswDeviceInfoOverviewCtrl",
-[
-    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$timeout",
-    "icswAcessLevelService", "ICSW_URLS",
-(
-    $scope, $compile, $filter, $templateCache, Restangular, $q, $timeout,
-    icswAcessLevelService, ICSW_URLS
-) ->
-    icswAcessLevelService.install($scope)
-]).config(["$stateProvider", ($stateProvider) ->
+).config(["$stateProvider", ($stateProvider) ->
     $stateProvider.state(
         "main.deviceinfo", {
             url: "/deviceinfo"
@@ -121,7 +112,12 @@ angular.module(
         set_mode: (mode) ->
             def_mode = mode
     }
-]).directive("icswDeviceOverview", ["$compile", "DeviceOverviewSettings", "$templateCache", ($compile, DeviceOverviewSettings, $templateCache) ->
+]).directive("icswDeviceOverview",
+[
+    "$compile", "DeviceOverviewSettings", "$templateCache",
+(
+    $compile, DeviceOverviewSettings, $templateCache
+) ->
     return {
         restrict: "EA"
         replace: true

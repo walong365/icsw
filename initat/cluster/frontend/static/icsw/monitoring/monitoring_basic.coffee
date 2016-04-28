@@ -89,10 +89,9 @@ monitoring_basic_module = angular.module(
                     menukey: "mon"
                     name: "rebuild config cached"
                     icon: "fa-share-alt"
-                    labelClass: "label-warning"
+                    labelClass: "label-success"
                     ordering: 101
                     preSpacer: true
-                    postSpacer: true
             resolve:
                 redirect: ["icswSimpleAjaxCall", "ICSW_URLS", "$q", "blockUI", (icswSimpleAjaxCall, ICSW_URLS, $q, blockUI) ->
                     # todo: add icswMenuProgressService
@@ -101,7 +100,7 @@ monitoring_basic_module = angular.module(
                     icswSimpleAjaxCall(
                         url: ICSW_URLS.MON_CREATE_CONFIG
                         data:
-                            "cache_mode": "ALWAYS"
+                            cache_mode: "ALWAYS"
                         title: "create config"
                     ).then(
                         (xml) ->
@@ -123,6 +122,7 @@ monitoring_basic_module = angular.module(
                     menukey: "mon"
                     name: "rebuild config dynamic"
                     icon: "fa-share-alt"
+                    labelClass: "label-warning"
                     ordering: 102
             resolve:
                 redirect: ["icswSimpleAjaxCall", "ICSW_URLS", "$q", "blockUI", (icswSimpleAjaxCall, ICSW_URLS, $q, blockUI) ->
@@ -131,7 +131,7 @@ monitoring_basic_module = angular.module(
                     icswSimpleAjaxCall(
                         url: ICSW_URLS.MON_CREATE_CONFIG
                         data:
-                            "cache_mode": "DYNAMIC"
+                            cache_mode: "DYNAMIC"
                         title: "create config"
                     ).then(
                         (xml) ->
@@ -153,7 +153,9 @@ monitoring_basic_module = angular.module(
                     menukey: "mon"
                     name: "rebuild config refresh"
                     icon: "fa-share-alt"
+                    labelClass: "label-danger"
                     ordering: 103
+                    postSpacer: true
             resolve:
                 redirect: ["icswSimpleAjaxCall", "ICSW_URLS", "$q", "blockUI", (icswSimpleAjaxCall, ICSW_URLS, $q, blockUI) ->
                     _defer = $q.defer()
@@ -161,7 +163,7 @@ monitoring_basic_module = angular.module(
                     icswSimpleAjaxCall(
                         url: ICSW_URLS.MON_CREATE_CONFIG
                         data:
-                            "cache_mode": "REFRESH"
+                            cache_mode: "REFRESH"
                         title: "create config"
                     ).then(
                         (xml) ->

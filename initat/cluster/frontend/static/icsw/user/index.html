@@ -1,17 +1,10 @@
 <script type="text/ng-template" id="icsw/main.html">
-    <div id="center_deviceinfo" ng-controller="icswDeviceInfoOverviewCtrl">
-        <index-view ng-controller="icswUserIndexCtrl"></index-view>
-    </div>
-</script>
-
-<script type="text/ng-template" id="icsw/main.html">
+    <!-- main entry point for routes -->
     <div ui-view></div>
 </script>
 
 <script type="text/ng-template" id="icsw/main/dashboard.html">
-    <div id="center_deviceinfo" ng-controller="icswDeviceInfoOverviewCtrl">
-        <index-view ng-controller="icswUserIndexCtrl"></index-view>
-    </div>
+    <icsw-dashboard-view></icsw-dashboard-view>
 </script>
 
 <script type="text/ng-template" id="icsw.dashboard.quicklinks">
@@ -105,17 +98,22 @@
     <icsw-user-job-info></icsw-user-job-info>
 </script>
 
-<script type="text/ng-template" id="icsw.user.index">
-    <div gridster="gridsterOpts">
+<script type="text/ng-template" id="icsw.dashboard.overview">
+    <uib-alert ng-if="!struct.data_loaded" class="warning">Loading initial data...</uib-alert>
+    <div gridster="gridsterOpts" ng-if="struct.data_loaded">
         <ul>
-            <li gridster-item="item" ng-repeat="item in elements">
-                <div class="panel" ng-class="get_panel_class(item)" style="height:100%;">
-                    <div class="panel-heading">
-                        {{  item.title }}
-                    </div>
-                    <icsw-dashboard-element element="{{ item.template }}"></icsw-dashboard-element>
-                </div>
+            <li gridster-item="item" ng-repeat="item in struct.elements track by item.element_id">
+                <icsw-dashboard-element-display icsw-dashboard-element="item"></icsw-dashboard-element-display>
             </li>
         </ul>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.dashboard.element.title">
+    <div class="panel-heading">
+        {{ $$dashboard_element.title }}
+        <span class="pull-right">
+            <icsw-tools-button size="xs" type="close" value="" ng-click="$$dashboard_element.close()"></icsw-tools-button>
+        </span>
     </div>
 </script>

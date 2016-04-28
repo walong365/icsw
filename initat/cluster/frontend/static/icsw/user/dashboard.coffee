@@ -184,12 +184,28 @@ dashboard_module = angular.module(
                 # use FileSaver.js
                 saveAs(blob, "#{ scope.get_device_by_index(vdus.device).name }.vnc");
     }
-]).controller("icswUserIndexCtrl",
+]).directive("icswDashboardView",
 [
-    "$scope", "$timeout", "$window", "ICSW_URLS", "icswAcessLevelService", "icswSimpleAjaxCall",
+    "$templateCache",
 (
-    $scope, $timeout, $window, ICSW_URLS, icswAcessLevelService, icswSimpleAjaxCall
+    $templateCache,
 ) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.dashboard.overview")
+        controller: "icswDashboardViewCtrl"
+    }
+]).controller("icswDashboardViewCtrl",
+[
+    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$timeout",
+    "icswAcessLevelService", "ICSW_URLS", "icswSimpleAjaxCall",  "icswUserLicenseDataService",
+    "icswDashboardElement", "icswDashboardElements", "icswUserService",
+(
+    $scope, $compile, $filter, $templateCache, Restangular, $q, $timeout,
+    icswAcessLevelService, ICSW_URLS, icswSimpleAjaxCall, icswUserLicenseDataService,
+    icswDashboardElement, icswDashboardElements, icswUserService,
+) ->
+    icswAcessLevelService.install($scope)
     $scope.ICSW_URLS = ICSW_URLS
     $scope.show_index = true
     $scope.quick_open = true
@@ -201,80 +217,183 @@ dashboard_module = angular.module(
     $scope.NUM_QUOTA_SERVERS = 0
     icswSimpleAjaxCall(
         {
-            "url": ICSW_URLS.USER_GET_NUM_QUOTA_SERVERS
-            "dataType": "json"
+            url: ICSW_URLS.USER_GET_NUM_QUOTA_SERVERS
+            dataType: "json"
         }
     ).then(
         (json) ->
             $scope.NUM_QUOTA_SERVERS = json.num_quota_servers
     )
-    $scope.has_menu_permission = icswAcessLevelService.has_menu_permission
-]).directive("indexView",
-[
-    "$templateCache", "icswAcessLevelService", "icswUserLicenseDataService",
-(
-    $templateCache, icswAcessLevelService, icswUserLicenseDataService
-) ->
-    return {
-        restrict : "EA"
-        template : $templateCache.get("icsw.user.index")
-        link : (scope, element, attrs) ->
-            scope.gridsterOpts = {
-                columns: 6
-                pushing: true
-                floating: true
-                swapping: false
-                width: 'auto'
-                colWidth: 'auto'
-                rowHeight: '200'
-                margins: [10, 10]
-                outerMargin: true
-                isMobile: true
-                mobileBreakPoint: 600
-                mobileModeEnabled: true
-                minColumns: 1
-                minRows: 2
-                maxRows: 100,
-                defaultSizeX: 2
-                defaultSizeY: 1
-                minSizeX: 1
-                maxSizeX: null
-                minSizeY: 1
-                maxSizeY: null
-                resizable: {
-                   enabled: true,
-                   handles: ['n', 'e', 's', 'w', 'ne', 'se', 'sw', 'nw']
-                },
-                draggable: {
-                   enabled: true
-                   handle: '.my-class'
-                }
-            }
-            scope.elements = [
-                { sizeX: 2, sizeY: 1, row: 0, col: 0, class: "warning", title: "Quick links", "template": "icsw.dashboard.quicklinks" },
-                { sizeX: 2, sizeY: 2, row: 0, col: 2, class: "success", title: "External links", template: "icsw.dashboard.externallinks" },
-                # Disk usage and Quota info from <ng-pluralize count="NUM_QUOTA_SERVERS" when="{'0' : 'no quota servers', 'one' : 'one quota server', 'other' : '{} quota servers'}"></ng-pluralize>
-                { sizeX: 1, sizeY: 1, row: 0, col: 4, class: "success", title: "Disk usage and Quota info ???", template: "icsw.dashboard.diskquota" },
-                { sizeX: 1, sizeY: 1, row: 0, col: 5, class: "primary", title: "Virtual desktops", template: "icsw.dashboard.virtualdesktops" },
-                { sizeX: 2, sizeY: 1, row: 1, col: 0, class: "success", title: "Job info", template: "icsw.dashboard.jobinfo" },
-            ]
-            scope.get_panel_class = (item) ->
-                return "panel-" + item.class
-            scope.$on(
-                "gridster-item-resized"
-                (item) ->
-                    # console.log "gite", item
-            )
-            scope.$watch(
-                "elements"
-                (els) ->
-                    # console.log "c", els
-                true
-            )
-            icswAcessLevelService.install(scope)
-            scope.lds = icswUserLicenseDataService
+    $scope.gridsterOpts = {
+        columns: 6
+        pushing: true
+        floating: true
+        swapping: false
+        width: 'auto'
+        colWidth: 'auto'
+        rowHeight: '200'
+        margins: [10, 10]
+        outerMargin: true
+        isMobile: true
+        mobileBreakPoint: 600
+        mobileModeEnabled: true
+        minColumns: 1
+        minRows: 2
+        maxRows: 100,
+        defaultSizeX: 2
+        defaultSizeY: 1
+        minSizeX: 1
+        maxSizeX: null
+        minSizeY: 1
+        maxSizeY: null
+        resizable: {
+           enabled: true,
+           handles: ['n', 'e', 's', 'w', 'ne', 'se', 'sw', 'nw']
+        }
+        draggable: {
+           enabled: true
+           handle: '.my-class'
+           stop: (event, element, options) ->
+               console.log "drag stop", event, element, options
+        }
     }
-]).directive("icswDashboardElement",
+    $scope.struct = {
+        # data loaded
+        data_loaded: false
+        # user
+        user: undefined
+        # elements
+        elements: []
+    }
+
+    load = () ->
+        $q.all(
+            [
+                icswUserService.load($scope.$id)
+            ]
+        ).then(
+            (data) ->
+                $scope.struct.user = data[0]
+                console.log "user=", $scope.struct.user
+                $scope.struct.elements.length = 0
+                for entry in icswDashboardElements.get_elements($scope.struct.user)
+                    $scope.struct.elements.push(entry)
+                $scope.struct.data_loaded = true
+                console.log $scope.struct.elements
+        )
+
+    load()
+
+    $scope.$on(
+        "gridster-item-resized"
+        (item) ->
+            console.log "git-r", item
+    )
+    $scope.$on(
+        "gridster-resized"
+        (item) ->
+            console.log "git-R", item
+    )
+    $scope.$on(
+        "gridster-resizable-changed"
+        (item) ->
+            console.log "git-c", item
+    )
+    $scope.$on(
+        "gridster-draggable-changed"
+        (item) ->
+            console.log "git-d", item
+    )
+    $scope.$on(
+        "gridster-item-transition-end"
+        (sizes, gridster) ->
+            console.log "tchanged", sizes, gridster
+    )
+    $scope.$watch(
+        "elements"
+        (els) ->
+            # console.log "c", els
+        true
+    )
+    $scope.lds = icswUserLicenseDataService
+    $scope.has_menu_permission = icswAcessLevelService.has_menu_permission
+]).service("icswDashboardElement", [
+    "$templateCache", "$q", "$compile",
+(
+    $templateCache, $q, $compile,
+) ->
+    class icswDashboardElement
+        constructor: (@sizeX, @sizeY, @cls, @title, @template) ->
+            @$$panel_class = "panel-#{@cls}"
+            @user = undefined
+
+        close: ($event) ->
+            console.log "close"
+            
+        link: (scope, element) =>
+            sub_scope = scope.$new(true)
+            sub_scope.$$dashboard_element = @
+            _header = $templateCache.get("icsw.dashboard.element.title")
+            _content = $templateCache.get(@template)
+            _content = "
+<div class='panel #{@$$panel_class}' style='height: 100%;'>
+#{_header}
+#{_content}
+</div>
+"
+            element.append($compile(_content)(sub_scope))
+            sub_scope.$on("$destroy", () ->
+                console.log "DESTROY"
+                console.log @size_x, @size_y
+            )
+
+]).service("icswDashboardStaticList", [
+    "icswDashboardElement",
+(
+    icswDashboardElement,
+) ->
+    return [
+        new icswDashboardElement(2, 1, "warning", "Quick links", "icsw.dashboard.quicklinks")
+        new icswDashboardElement(2, 2, "success", "External links", "icsw.dashboard.externallinks")
+        # Disk usage and Quota info from <ng-pluralize count="NUM_QUOTA_SERVERS" when="{'0' : 'no quota servers', 'one' : 'one quota server', 'other' : '{} quota servers'}"></ng-pluralize>
+        new icswDashboardElement(1, 1, "success", "Disk usage and Quota info ???", "icsw.dashboard.diskquota")
+        new icswDashboardElement(1, 1, "primary", "Virtual desktops", "icsw.dashboard.virtualdesktops")
+        new icswDashboardElement(2, 1, "success", "Job info", "icsw.dashboard.jobinfo")
+    ]
+]).service("icswDashboardElements", [
+    "$q", "icswDashboardStaticList",
+(
+    $q, icswDashboardStaticList,
+) ->
+    elements = []
+    element_id = 0
+
+    add_element = (element, user) ->
+        element_id++
+        element.element_id = element_id
+        element.user = user
+        elements.push(element)
+        return element
+
+    reset_elements = () ->
+        element_id = 0
+        elements.length = 0
+        
+    return {
+        reset: () ->
+            reset_elements()
+
+        get_elements: (user) ->
+            reset_elements()
+            for el in icswDashboardStaticList
+                add_element(el, user)
+            return elements
+
+        add_element: (panel) ->
+            return add_element(panel)
+
+    }
+]).directive("icswDashboardElementDisplay",
 [
     "$templateCache", "$compile",
 (
@@ -282,10 +401,11 @@ dashboard_module = angular.module(
 ) ->
     return {
         restrict: "E"
+        scope:
+            db_element: "=icswDashboardElement"
         link: (scope, element, attrs) ->
-            if attrs["element"]?
-                _el_name = attrs["element"]
-                element.append($compile($templateCache.get(_el_name))(scope))
+            console.log scope.db_element
+            scope.db_element.link(scope, element)
     }
 ])
 

@@ -99,6 +99,49 @@ angular.module(
                     ordering: 20
         }
     )
+# old layouts, removed
+#        .state(
+#            "simple1"
+#            {
+#                url: "/simple1"
+#                template: '
+#<div class="col-md-4 col-xs-12 col-lg-6">
+#    <div icsw-device-livestatus-fullburst icsw-element-size="size" ls-devsel="ls_devsel" ls-filter="ls_filter"></div>
+#</div>
+#<div class="col-md-4 col-xs-12 col-lg-6">
+#    <div icsw-device-livestatus-maplist ls-devsel="ls_devsel" ls-filter="ls_filter"></div>
+#</div>
+#<div class="col-md-4 col-xs-12 col-lg-8">
+#    <icsw-config-category-location-show ls-devsel="ls_devsel" ls-filter="ls_filter"></icsw-config-category-location-show>
+#</div>
+#<div class="col-md-4 col-xs-12 col-lg-2">
+#    <icsw-device-livestatus-cat-tree ls-filter="ls_filter"></icsw-device-livestatus-cat-tree>
+#</div>
+#<div class="col-md-4 col-xs-12 col-lg-8">
+#    <icsw-device-livestatus-table-view ls-filter="ls_filter" filtered-entries="filtered_entries" ls-devsel="ls_devsel"></icsw-device-livestatus-table-view>
+#</div>
+#'
+#            }
+#        ).state(
+#            "simple2",
+#            {
+#                url: "/simple2"
+#                template: '
+#<div class="col-md-4 col-xs-12 col-lg-6">
+#    <div icsw-device-livestatus-fullburst icsw-element-size="size" ls-devsel="ls_devsel" ls-filter="ls_filter"></div>
+#</div>
+#<div class="col-md-4 col-xs-12 col-lg-6">
+#    <div icsw-device-livestatus-maplist ls-devsel="ls_devsel" ls-filter="ls_filter"></div>
+#</div>
+#<div class="col-md-4 col-xs-12 col-lg-8">
+#    <icsw-device-livestatus-table-view ls-filter="ls_filter" filtered-entries="filtered_entries" ls-devsel="ls_devsel"></icsw-device-livestatus-table-view>
+#</div>
+#<div class="col-md-4 col-xs-12 col-lg-2">
+#    <icsw-device-livestatus-cat-tree ls-filter="ls_filter"></icsw-device-livestatus-cat-tree>
+#</div>
+#'
+#            }
+#        )
 ]).factory("icswLivestatusDevSelFactory", [() ->
     return () ->
         _dev_sel = []
@@ -227,6 +270,187 @@ angular.module(
             @f_hosts = data.filtered_hosts.length
             @f_services = data.filtered_services.length
             @change_notifier.notify()
+
+]).factory("icswLivestatusFilterReactDisplay",
+[
+    "$q",
+(
+    $q
+) ->
+    # display of livestatus filter
+    react_dom = ReactDOM
+    {div, h4, select, option, p, input, span} = React.DOM
+
+    return React.createClass(
+        propTypes: {
+            livestatus_filter: React.PropTypes.object
+            filter_changed_cb: React.PropTypes.func
+        }
+        getInitialState: () ->
+            return {
+                filter_state_str: @props.livestatus_filter.get_filter_state_str()
+                display_iter: 0
+            }
+
+        componentWillMount: () ->
+            @umount_defer = $q.defer()
+            @props.livestatus_filter.change_notifier.promise.then(
+                () ->
+                () ->
+                    # will get called when the component unmounts
+                (c) =>
+                    @setState({display_iter: @state.display_iter + 1})
+            )
+
+        componentWillUnmount: () ->
+            @props.livestatus_filter.stop_notifying()
+
+        shouldComponentUpdate: (next_props, next_state) ->
+            _redraw = false
+            if next_state.display_iter != @state.display_iter
+                _redraw = true
+            else if next_state.filter_state_str != @state.filter_state_str
+                _redraw = true
+            return _redraw
+
+        render: () ->
+
+            _filter_changed = () =>
+                if @props.filter_changed_cb?
+                    @props.filter_changed_cb()
+
+            # console.log "r", @props.livestatus_filter
+            _lf = @props.livestatus_filter
+            _list = []
+            _text_f = []
+            if _lf.f_hosts
+                _text_f.push("#{_lf.f_hosts} of #{_lf.n_hosts}")
+            else
+                _text_f.push(" #{_lf.n_hosts}")
+            if _lf.f_services
+                _text_f.push("#{_lf.f_services} of #{_lf.n_services}")
+            else
+                _text_f.push(" #{_lf.n_services}")
+            _list.push(
+                span(
+                    {key: "hco"}
+                    "# of hosts / services: " + _text_f.join(" / ")
+                )
+                ", filter options: "
+            )
+            _service_buttons = []
+            for entry in _lf.service_state_list
+                _service_buttons.push(
+                    input(
+                        {
+                            key: "srvc.#{entry[1]}"
+                            type: "button"
+                            className: "btn btn-xs " + if _lf.service_states[entry[0]] then entry[4] else "btn-default"
+                            value: entry[1]
+                            title: entry[3]
+                            onClick: (event) =>
+                                # _lf.toggle_md(event.target_value)
+                                _lf.toggle_service_state(event.target.value)
+                                # force redraw
+                                @setState({filter_state_str: _lf.get_filter_state_str()})
+                                _filter_changed()
+                        }
+                    )
+                )
+            _host_buttons = []
+            for entry in _lf.host_state_list
+                _host_buttons.push(
+                    input(
+                        {
+                            key: "host.#{entry[1]}"
+                            type: "button"
+                            className: "btn btn-xs " + if _lf.host_states[entry[0]] then entry[4] else "btn-default"
+                            value: entry[1]
+                            title: entry[3]
+                            onClick: (event) =>
+                                _lf.toggle_host_state(event.target.value)
+                                # force redraw
+                                @setState({filter_state_str: _lf.get_filter_state_str()})
+                                _filter_changed()
+                        }
+                    )
+                )
+            _type_buttons = []
+            for entry in _lf.service_type_list
+                _type_buttons.push(
+                    input(
+                        {
+                            key: "stype.#{entry[1]}"
+                            type: "button"
+                            className: "btn btn-xs " + if _lf.service_types[entry[0]] then entry[4] else "btn-default"
+                            value: entry[1]
+                            title: entry[3]
+                            onClick: (event) =>
+                                _lf.toggle_service_type(event.target.value)
+                                # force redraw
+                                @setState({filter_state_str: _lf.get_filter_state_str()})
+                                _filter_changed()
+                        }
+                    )
+                )
+            _list.push(
+                div(
+                    {
+                        key: "srvc.buttons"
+                        className: "btn-group"
+                    }
+                    _service_buttons
+                )
+            )
+            _list.push(" ")
+            _list.push(
+                div(
+                    {
+                        key: "host.buttons"
+                        className: "btn-group"
+                    }
+                    _host_buttons
+                )
+            )
+            _list.push(" ")
+            _list.push(
+                div(
+                    {
+                        key: "type.buttons"
+                        className: "btn-group"
+                    }
+                    _type_buttons
+                )
+            )
+            return span(
+                {key: "top"}
+                _list
+            )
+    )
+]).directive("icswLivestatusFilterDisplay",
+[
+    "$q", "icswLivestatusFilterReactDisplay", "icswLivestatusFilterService",
+(
+    $q, icswLivestatusFilterReactDisplay, icswLivestatusFilterService,
+) ->
+    return  {
+        restrict: "EA"
+        replace: true
+        link: (scope, element, attr) ->
+            f_changed = () ->
+                console.log "FC"
+                
+            ReactDOM.render(
+                React.createElement(
+                    icswLivestatusFilterReactDisplay
+                    {
+                        livestatus_filter: new icswLivestatusFilterService()
+                        filter_changed_cb: f_changed
+                    }
+                )
+                element[0]
+            )
+    }
 
 ]).factory("icswLivestatusFilterFactory", [() ->
     _filter_id = 0
@@ -517,49 +741,6 @@ angular.module(
                             svg_el.setAttribute("width", _w)
                             g_el.setAttribute("transform", "translate(#{_w / 2}, 160)")
             )
-    }
-]).directive('icswDeviceLivestatusFilter', ["$templateCache", ($templateCache) ->
-    return {
-        restrict: "EA"
-        template: $templateCache.get("icsw.device.livestatus.filter")
-        scope: {
-            ls_filter: "=lsFilter"
-        }
-        link: (scope, elem, attrs) ->
-            angular.extend(scope, scope.ls_filter)
-            scope.md_states = [
-                [0, "O", true, "show OK states"]
-                [1, "W", true, "show warning states"]
-                [2, "C", true, "show critical states"]
-                [3, "U", true, "show unknown states"]
-            ]
-            scope.sh_states = [
-                [0, "S", true, "show soft states"]
-                [1, "H", true, "show hard states"]
-            ]
-            _srvs = {}
-            for entry in scope.md_states
-                _srvs[entry[0]] = entry[2]
-            _shs = {}
-            for entry in scope.sh_states
-                _shs[entry[0]] = entry[2]
-            scope.toggle_srv = (key) ->
-                _srvs[key] = !_srvs[key]
-                scope.ls_filter.trigger()
-            scope.toggle_sh = (key) ->
-                _shs[key] = !_shs[key]
-                scope.ls_filter.trigger()
-            scope.get_mds_class = (int_state) ->
-                return if _srvs[int_state] then "btn btn-xs " + {0 : "btn-success", 1 : "btn-warning", 2 : "btn-danger", 3 : "btn-danger"}[int_state] else "btn btn-xs"
-            scope.get_shs_class = (int_state) ->
-                return if _shs[int_state] then "btn btn-xs btn-primary" else "btn btn-xs"
-            scope._filter = (entry) ->
-                if not _srvs[entry.state]
-                    return false
-                if not _shs[entry.state_type]
-                    return false
-                return true
-            scope.ls_filter.register_filter_func(scope._filter)
     }
 ]).service('icswDeviceLivestatusTableService', ["ICSW_URLS", (ICSW_URLS) ->
     return {
