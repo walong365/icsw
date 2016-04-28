@@ -34,8 +34,11 @@ from initat.client_version import VERSION_STRING
 from initat.tools import configfile
 from initat.icsw.service.instance import InstanceXML
 
+COLLCLIENT = False
 
 def run_code(prog_name, global_config):
+    if COLLCLIENT:
+        prog_name = "collclient"
     if prog_name in ["collserver"]:
         from initat.host_monitoring.server import server_code
         ret_state = server_code().loop()
@@ -53,6 +56,8 @@ def run_code(prog_name, global_config):
 
 def main():
     prog_name = global_config.name()
+    if COLLCLIENT:
+        prog_name = "collclient"
     global_config.add_config_entries(
         [
             ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
@@ -89,4 +94,7 @@ def main():
 
 
 if __name__ == "__main__":
+    print sys.argv[0]
+    if sys.argv[0] == "main.py":
+        COLLCLIENT = True
     sys.exit(main())

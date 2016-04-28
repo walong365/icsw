@@ -79,7 +79,7 @@ def get_base_assets_from_raw_result(blob, runtype, scantype):
             for (name, licensekey) in l:
                 assets.append(BaseAssetLicense(name, license_key=licensekey))
         elif scantype == ScanType.HM:
-            #todo implement me
+            #todo implement me (--> what do we want to gather/display here?)
             pass
 
     elif runtype == AssetType.UPDATE:
@@ -88,7 +88,7 @@ def get_base_assets_from_raw_result(blob, runtype, scantype):
             for (name, date, status) in l:
                 assets.append(BaseAssetUpdate(name, install_date = date, status=status))
         elif scantype == ScanType.HM:
-            #todo implement me
+            #todo implement me (--> what do we want to gather/display here?)
             pass
 
     elif runtype == AssetType.SOFTWARE_VERSION:
@@ -106,10 +106,14 @@ def get_base_assets_from_raw_result(blob, runtype, scantype):
                 assets.append(BaseAssetProcess(process_dict[pid]['name'], pid))
 
     elif runtype == AssetType.PENDING_UPDATE:
-        if scantype == scantype.NRPE:
-            pass
+        if scantype == ScanType.NRPE:
+            l = json.loads(blob)
+            for (name, optional) in l:
+                assets.append(BaseAssetPendingUpdate(name, optional=optional))
         elif scantype == ScanType.HM:
-            pass
+            l = pickle.loads(bz2.decompress(base64.b64decode(blob)))
+            for (name, version) in l:
+                assets.append(BaseAssetPendingUpdate(name, version=version))
 
     return assets
 
@@ -220,6 +224,30 @@ class BaseAssetUpdate:
 
 class BaseAssetSoftwareVersion:
     pass
+
+class BaseAssetPendingUpdate:
+    def __init__(self, name, version = None, optional = None):
+        self.name = name
+        self.version = version
+        self.optional = optional
+
+    def __repr__(self):
+        s = "Name: %s" % self.name
+        if self.version:
+            s += " Version: %s" % self.version
+        if self.optional:
+            s += " Optional: %s" % self.optional
+
+        return s
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) \
+               and self.name == other.name \
+               and self.version == other.version \
+               and self.optional == other.optional
+
+    def __hash__(self):
+        return hash((self.name, self.version, self.optional))
 
 ########################################################################################################################
 # Enums
