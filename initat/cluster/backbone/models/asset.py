@@ -53,7 +53,7 @@ def get_base_assets_from_raw_result(blob, runtype, scantype):
                                                size=size,
                                                install_date=date))
         elif scantype == ScanType.HM:
-            package_dict = marshal.loads(base64.b64decode(blob))
+            package_dict = pickle.loads(bz2.decompress(base64.b64decode(blob)))
             for package_name in package_dict:
                 for versions_dict in package_dict[package_name]:
                     assets.append(BaseAssetPackage(package_name,

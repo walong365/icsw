@@ -606,10 +606,13 @@ class Dispatcher(object):
             _command = "rpmlist"
         elif schedule_item.source == DiscoverySource.HARDWARE:
             runtype = AssetType.HARDWARE
+            #todo implement me
         elif schedule_item.source == DiscoverySource.LICENSE:
             runtype = AssetType.LICENSE
+            #todo implement me
         elif schedule_item.source == DiscoverySource.UPDATE:
             runtype = AssetType.UPDATE
+            #todo implement me
         elif schedule_item.source == DiscoverySource.PROCESS:
             runtype = AssetType.PROCESS
             _command = "proclist"
