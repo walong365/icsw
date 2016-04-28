@@ -28,7 +28,7 @@ angular.module(
         "main.devlocation", {
             url: "/devlocation"
             templateUrl: "icsw/main/device/location.html"
-            data:
+            icswData:
                 pageTitle: "Device location"
                 rights: ["user.modify_category_tree"]
                 menuEntry:

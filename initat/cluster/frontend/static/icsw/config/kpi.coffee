@@ -28,7 +28,7 @@ angular.module(
         "main.kpi", {
             url: "/kpi"
             template: "<icsw-config-kpi></icsw-config-kpi>"
-            data:
+            icswData:
                 pageTitle: "Key performance indicators"
                 licenses: ["kpi"]
                 rights: ["kpi.kpi"]

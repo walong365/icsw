@@ -29,7 +29,7 @@ angular.module(
             {
                 url: "/deviceconfig"
                 templateUrl: "icsw/main/device/config.html"
-                data:
+                icswData:
                     pageTitle: "Configure Device"
                     rights: ["device.change_config"]
                     menuEntry:

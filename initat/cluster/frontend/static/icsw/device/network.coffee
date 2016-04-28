@@ -31,7 +31,7 @@ angular.module(
         "main.devicenetwork", {
             url: "/network"
             template: '<icsw-device-network-total></icsw-device-network-total>'
-            data:
+            icswData:
                 pageTitle: "Network"
                 rights: ["device.change_network"]
                 menuEntry:

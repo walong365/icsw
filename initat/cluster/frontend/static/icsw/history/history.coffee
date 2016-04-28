@@ -25,7 +25,7 @@ angular.module(
         "main.history", {
             url: "/history"
             template: "<icsw-history-overview></icsw-history-overview>"
-            data:
+            icswData:
                 pageTitle: "Database history"
                 rights: ["user.snapshots"]
                 menuEntry:

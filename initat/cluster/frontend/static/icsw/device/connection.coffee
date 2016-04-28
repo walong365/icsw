@@ -28,7 +28,7 @@ angular.module(
             {
                 url: "/deviceconnection"
                 templateUrl: "icsw/main/device/connection.html"
-                data:
+                icswData:
                     pageTitle: "Device Connections"
                     rights: ["device.change_connection"]
                     menuEntry:

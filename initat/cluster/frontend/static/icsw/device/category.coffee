@@ -29,7 +29,7 @@ angular.module(
             {
                 url: "/categorytree"
                 templateUrl: "icsw/main/category/tree.html"
-                data:
+                icswData:
                     pageTitle: "Category tree"
                     rights: ["user.modify_category_tree"]
                     menuEntry:

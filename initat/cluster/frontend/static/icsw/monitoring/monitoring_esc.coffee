@@ -35,7 +35,7 @@ monitoring_cluster_module = angular.module(
         "main.monitoresc", {
             url: "/monitoresc"
             template: "<icsw-monitoring-escalation></icsw-monitoring-escalation>"
-            data:
+            icswData:
                 pageTitle: "Monitoring Escalation setup"
                 rights: ["mon_check_command.setup_monitoring"]
                 menuEntry:

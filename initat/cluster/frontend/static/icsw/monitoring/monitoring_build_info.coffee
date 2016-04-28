@@ -34,7 +34,7 @@ monitoring_build_info_module = angular.module(
         "main.monitobuildinfo", {
             url: "/monitorbuildinfo"
             template: "<icsw-monitoring-build-info></icsw-monitoring-build-info>"
-            data:
+            icswData:
                 pageTitle: "Monitoring build info"
                 rights: ["mon_check_command.setup_monitoring"]
                 menuEntry:

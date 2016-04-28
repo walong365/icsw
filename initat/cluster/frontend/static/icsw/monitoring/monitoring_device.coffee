@@ -31,7 +31,7 @@ monitoring_device_module = angular.module(
         "main.monitordevice", {
             url: "/monitordevice"
             template: "<icsw-monitoring-device icsw-sel-man='0'></icsw-monitoring-device>"
-            data:
+            icswData:
                 pageTitle: "Monitoring Device settings"
                 rights: ["mon_check_command.setup_monitoring", "device.change_monitoring"]
                 menuEntry:

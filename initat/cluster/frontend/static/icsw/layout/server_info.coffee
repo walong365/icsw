@@ -28,7 +28,7 @@ angular.module(
           {
               url: "/serverinfo",
               templateUrl: "icsw/main/serverinfo.html"
-              data:
+              icswData:
                   pageTitle: "Server info"
           }
     )

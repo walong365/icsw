@@ -39,7 +39,7 @@ monitoring_cluster_module = angular.module(
         "main.monitorcluster", {
             url: "/monitorcluster"
             template: "<icsw-monitoring-cluster></icsw-monitoring-cluster>"
-            data:
+            icswData:
                 pageTitle: "Monitoring Cluster / Dependency setup"
                 rights: ["mon_check_command.setup_monitoring"]
                 menuEntry:

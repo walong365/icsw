@@ -29,7 +29,7 @@ angular.module(
         "main.deployboot", {
             url: "/deployboot"
             templateUrl: "icsw/main/deploy/boot.html"
-            data:
+            icswData:
                 pageTitle: "Boot nodes"
                 rights: ["device.change_boot"]
                 licenses: ["netboot"]

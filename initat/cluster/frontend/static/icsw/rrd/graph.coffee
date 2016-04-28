@@ -29,8 +29,8 @@ angular.module(
     $stateProvider.state(
         "main.graph", {
             url: "/graph"
-            template: '<icsw-rrd-graph icsw-sel-man="0" icsw-sel-man-sel-mode="D"></icsw-rrd-graph>'
-            data:
+            templateUrl: "icsw.rrd.graph"
+            icswData:
                 pageTitle: "Graph"
                 licenses: ["graphing"]
                 rights: ["backbone.device.show_graphs"]

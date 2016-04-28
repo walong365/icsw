@@ -28,7 +28,7 @@ angular.module(
         "main.licenseoverview", {
             url: "/licenseoverview"
             templateUrl: "icsw/main/license/overview.html"
-            data:
+            icswData:
                 pageTitle: "License information"
                 rights: (user, acls) ->
                     if user.is_superuser

@@ -29,7 +29,7 @@ monitoring_overview_module = angular.module(
         "main.monitorov", {
             url: "/monitorov"
             template: "<icsw-monitoring-list-overview icsw-sel-man='0'></icsw-monitoring-list-overview>"
-            data:
+            icswData:
                 pageTitle: "Monitoring List"
                 rights: ["mon_check_command.setup_monitoring"]
                 menuEntry:

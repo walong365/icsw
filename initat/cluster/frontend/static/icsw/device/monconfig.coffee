@@ -28,7 +28,7 @@ angular.module(
         "main.monitorhint", {
             url: "/monitorhint"
             template: '<icsw-device-mon-config icsw-sel-man="0" icsw-sel-man-sel-mode="d"></icsw-device-mon-config>'
-            data:
+            icswData:
                 pageTitle: "Monitoring hints"
                 rights: ["mon_check_command.setup_monitoring"]
                 menuEntry:

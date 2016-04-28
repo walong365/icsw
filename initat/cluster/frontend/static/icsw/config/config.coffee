@@ -30,7 +30,7 @@ config_module = angular.module(
                 url: "/configoverview"
                 # templateUrl: "icsw/main/device/config.html"
                 templateUrl: "icsw/main/config/overview.html"
-                data:
+                icswData:
                     pageTitle: "Configuration Overview"
                     rights: ["device.change_config"]
                     menuEntry:

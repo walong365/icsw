@@ -28,7 +28,7 @@ angular.module(
         "main.imagekernel", {
             url: "/imagekernel"
             templateUrl: "icsw/main/imagekernel.html"
-            data:
+            icswData:
                 pageTitle: "Images and Kernels"
                 rights: ["image.modify_images", "kernel.modify_kernels"]
                 licenses: ["netboot"]

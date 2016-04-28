@@ -28,7 +28,7 @@ angular.module(
         "main.statushistory", {
             url: "/statushistory"
             templateUrl: "icsw/main/status_history.html"
-            data:
+            icswData:
                 pageTitle: "Status History"
                 licenses: ["reporting"]
                 rights: ["backbone.device.show_status_history"]

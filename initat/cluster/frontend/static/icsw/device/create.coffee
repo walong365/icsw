@@ -29,7 +29,7 @@ angular.module(
         {
             url: "/devicecreate"
             templateUrl: "icsw/main/device/create.html"
-            data:
+            icswData:
                 pageTitle: "Create new Device"
                 menuHeader:
                     key: "dev"

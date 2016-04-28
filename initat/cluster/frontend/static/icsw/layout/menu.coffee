@@ -240,263 +240,276 @@ menu_module = angular.module(
             reload()
     }
 ]).factory("icswReactMenuFactory",
-    ["icswAcessLevelService", "ICSW_URLS", "icswSimpleAjaxCall", "blockUI", "icswMenuProgressService", "$state", (icswAcessLevelService, ICSW_URLS, icswSimpleAjaxCall, blockUI, icswMenuProgressService, $state) ->
-        # console.log icswAcessLevelService
-        {input, ul, li, a, span, h4} = React.DOM
-        react_dom = ReactDOM
-        rebuild_config = (cache_mode) ->
-            blockUI.start()
-            icswSimpleAjaxCall(
-                {
-                    url: ICSW_URLS.MON_CREATE_CONFIG
-                    data: {
-                        "cache_mode": cache_mode
-                    }
-                    title: "create config"
+[
+    "icswAcessLevelService", "ICSW_URLS", "icswSimpleAjaxCall", "blockUI", "icswMenuProgressService", "$state",
+(
+    icswAcessLevelService, ICSW_URLS, icswSimpleAjaxCall, blockUI, icswMenuProgressService, $state
+) ->
+    # console.log icswAcessLevelService
+    {input, ul, li, a, span, h4} = React.DOM
+    react_dom = ReactDOM
+    rebuild_config = (cache_mode) ->
+        blockUI.start()
+        icswSimpleAjaxCall(
+            {
+                url: ICSW_URLS.MON_CREATE_CONFIG
+                data: {
+                    "cache_mode": cache_mode
                 }
-            ).then(
-                (xml) ->
-                    blockUI.stop()
-                    icswMenuProgressService.set_rebuilding(1)
-                    # make at least five iterations to catch slow startup of md-config-server
-                    # $scope.progress_iters = 5
-                    # $scope.update_progress_bar()
-                (xml) ->
-                    blockUI.stop()
-                    icswMenuProgressService.set_rebuilding(1)
-            )
-        menu_rebuild_mon_config = React.createClass(
-            render: () ->
-                _disabled = if icswMenuProgressService.get_rebuilding() then true else false
-                return li(
-                    {className: "text-left", key: "bmc"}
-                    ul(
-                        {className: "list-group", style: {marginBottom: "10px", marginTop: "5px"}}
-                        [
-                            li(
-                                {className: "list-group-item", key: "mr.alw"}
-                                input(
-                                    {
-                                        className: "btn btn-success btn-xs",
-                                        type: "button",
-                                        value: "\uf021 rebuild config (cached, RC)"
-                                        title: "fully cached (using also the routing cache)"
-                                        disabled: _disabled
-                                        onClick: () ->
-                                            rebuild_config("ALWAYS")
-                                    }
-                                )
+                title: "create config"
+            }
+        ).then(
+            (xml) ->
+                blockUI.stop()
+                icswMenuProgressService.set_rebuilding(1)
+                # make at least five iterations to catch slow startup of md-config-server
+                # $scope.progress_iters = 5
+                # $scope.update_progress_bar()
+            (xml) ->
+                blockUI.stop()
+                icswMenuProgressService.set_rebuilding(1)
+        )
+    menu_rebuild_mon_config = React.createClass(
+        render: () ->
+            _disabled = if icswMenuProgressService.get_rebuilding() then true else false
+            return li(
+                {className: "text-left", key: "bmc"}
+                ul(
+                    {className: "list-group", style: {marginBottom: "10px", marginTop: "5px"}}
+                    [
+                        li(
+                            {className: "list-group-item", key: "mr.alw"}
+                            input(
+                                {
+                                    className: "btn btn-success btn-xs",
+                                    type: "button",
+                                    value: "\uf021 rebuild config (cached, RC)"
+                                    title: "fully cached (using also the routing cache)"
+                                    disabled: _disabled
+                                    onClick: () ->
+                                        rebuild_config("ALWAYS")
+                                }
                             )
-                            li(
-                                {className: "list-group-item", key: "mr.dyn"}
-                                input(
-                                    {
-                                        className: "btn btn-warning btn-xs",
-                                        type: "button",
-                                        value: "\uf021 rebuild config (dynamic)"
-                                        title: "refresh depends on timeout settings"
-                                        disabled: _disabled
-                                        onClick: () ->
-                                            rebuild_config("DYNAMIC")
-                                    }
-                                )
+                        )
+                        li(
+                            {className: "list-group-item", key: "mr.dyn"}
+                            input(
+                                {
+                                    className: "btn btn-warning btn-xs",
+                                    type: "button",
+                                    value: "\uf021 rebuild config (dynamic)"
+                                    title: "refresh depends on timeout settings"
+                                    disabled: _disabled
+                                    onClick: () ->
+                                        rebuild_config("DYNAMIC")
+                                }
                             )
-                            li(
-                                {className: "list-group-item", key: "mr.ref"}
-                                input(
-                                    {
-                                        className: "btn btn-danger btn-xs",
-                                        type: "button",
-                                        value: "\uf021 rebuild config (refresh)"
-                                        title: "rebuild network and contact devices"
-                                        disabled: _disabled
-                                        onClick: () ->
-                                            rebuild_config("REFRESH")
-                                    }
-                                )
+                        )
+                        li(
+                            {className: "list-group-item", key: "mr.ref"}
+                            input(
+                                {
+                                    className: "btn btn-danger btn-xs",
+                                    type: "button",
+                                    value: "\uf021 rebuild config (refresh)"
+                                    title: "rebuild network and contact devices"
+                                    disabled: _disabled
+                                    onClick: () ->
+                                        rebuild_config("REFRESH")
+                                }
                             )
-                        ]
-                    )
+                        )
+                    ]
                 )
-        )
-        menu_line = React.createClass(
-            displayName: "menuline"
-            render: () ->
-                if @props.href?
-                    a_attrs = {href: @props.href, key: "a"}
-                else
-                    a_attrs = {href: @props.sref, key: "a"}
-                if @props.labelClass
-                    return li(
-                        {key: "li"}
-                        [
-                            a(
-                                a_attrs
-                                [
-                                    span(
-                                        {className: "label #{@props.labelClass}", key: "spanl"}
-                                        [
-                                            span(
-                                                {className: "fa #{@props.icon} fa_icsw", key: "span"}
-                                            )
-                                        ]
-                                    )
-                                    " #{@props.name}"
-                                ]
-                            )
-                        ]
-                    )
-                else
-                    return li(
-                        {key: "li"}
-                        [
-                            a(
-                                a_attrs
-                                [
-                                    span(
-                                        {className: "fa #{@props.icon} fa_icsw", key: "span"}
-                                    )
-                                    " #{@props.name}"
-                                ]
-                            )
-                        ]
-                    )
-        )
-        menu_header = React.createClass(
-            displayName: "menuheader"
-            getDefaultProps: () ->
-            render: () ->
-                _idx = 0
-                _items = []
-                # _idx = 0
-                # flag for last entry was a valid one
-                valid_entry = false
-                for entry in @props.entries
-                    _idx++
-                    _key = "item#{_idx}"
-                    if entry.name? and not entry.disable?
-                        _add = true
-                        if entry.rights?
-                            if angular.isFunction(entry.rights)
-                                _add = entry.rights(@props.user, @props.acls)
-                            else
-                                _add = icswAcessLevelService.has_all_menu_permissions(entry.rights)
-                        if entry.licenses? and _add
-                            _add = icswAcessLevelService.has_all_valid_licenses(entry.licenses)
-                            if not _add
-                                console.warn "license(s) #{entry.licenses} missing"
-                        if entry.service_types? and _add
-                            _add = icswAcessLevelService.has_all_service_types(entry.service_types)
-                            if not _add
-                                console.warn "service_type(s) #{entry.service_types} missing"
-                        if _add
-                            # console.log _key
-                            if entry.preSpacer and valid_entry
-                                _items.push(
-                                    li({className: "divider", key: _key + "_pre"})
-                                )
-
-                            if angular.isFunction(entry.name)
-                                _items.push(
-                                    React.createElement(entry.name, {key: _key})
-                                )
-                            else
-                                _items.push(
-                                    React.createElement(menu_line, entry, {key: _key})
-                                )
-                            valid_entry = true
-                            if entry.postSpacer and valid_entry
-                                _items.push(
-                                    li({className: "divider", key: _key + "_post"})
-                                )
-                                valid_entry = false
-                if _items.length
-
-                    _res = li(
-                        {key: "menu"}
+            )
+    )
+    menu_line = React.createClass(
+        displayName: "menuline"
+        render: () ->
+            if @props.href?
+                a_attrs = {href: @props.href, key: "a"}
+            else
+                a_attrs = {href: @props.sref, key: "a"}
+            if @props.labelClass
+                return li(
+                    {key: "li"}
+                    [
                         a(
-                            {className: "dropdown-toggle", "data-toggle": "dropdown", key: "menu.head"}
+                            a_attrs
                             [
-                                span({className: "fa #{@props.icon} fa-lg fa_top", key: "span"})
-                                span({key: "text#{_idx}"}, @props.name)
+                                span(
+                                    {className: "label #{@props.labelClass}", key: "spanl"}
+                                    [
+                                        span(
+                                            {className: "fa #{@props.icon} fa_icsw", key: "span"}
+                                        )
+                                    ]
+                                )
+                                " #{@props.name}"
                             ]
                         )
-                        ul(
-                            {className: "dropdown-menu", key: "ul"}
-                            _items
+                    ]
+                )
+            else
+                return li(
+                    {key: "li"}
+                    [
+                        a(
+                            a_attrs
+                            [
+                                span(
+                                    {className: "fa #{@props.icon} fa_icsw", key: "span"}
+                                )
+                                " #{@props.name}"
+                            ]
                         )
+                    ]
+                )
+    )
+    menu_header = React.createClass(
+        displayName: "menuheader"
+        getDefaultProps: () ->
+        render: () ->
+            _idx = 0
+            _items = []
+            # _idx = 0
+            # flag for last entry was a valid one
+            valid_entry = false
+            for entry in @props.entries
+                _idx++
+                _key = "item#{_idx}"
+                if entry.name? and not entry.disable?
+                    _add = true
+                    if entry.rights?
+                        if angular.isFunction(entry.rights)
+                            _add = entry.rights(@props.user, @props.acls)
+                        else
+                            _add = icswAcessLevelService.has_all_menu_permissions(entry.rights)
+                    if entry.licenses? and _add
+                        _add = icswAcessLevelService.has_all_valid_licenses(entry.licenses)
+                        if not _add
+                            console.warn "license(s) #{entry.licenses} missing"
+                    if entry.service_types? and _add
+                        _add = icswAcessLevelService.has_all_service_types(entry.service_types)
+                        if not _add
+                            console.warn "service_type(s) #{entry.service_types} missing"
+                    if _add
+                        # console.log _key
+                        if entry.preSpacer and valid_entry
+                            _items.push(
+                                li({className: "divider", key: _key + "_pre"})
+                            )
+    
+                        if angular.isFunction(entry.name)
+                            _items.push(
+                                React.createElement(entry.name, {key: _key})
+                            )
+                        else
+                            _items.push(
+                                React.createElement(menu_line, entry, {key: _key})
+                            )
+                        valid_entry = true
+                        if entry.postSpacer and valid_entry
+                            _items.push(
+                                li({className: "divider", key: _key + "_post"})
+                            )
+                            valid_entry = false
+            if _items.length
+    
+                _res = li(
+                    {key: "menu"}
+                    a(
+                        {className: "dropdown-toggle", "data-toggle": "dropdown", key: "menu.head"}
+                        [
+                            span({className: "fa #{@props.icon} fa-lg fa_top", key: "span"})
+                            span({key: "text#{_idx}"}, @props.name)
+                        ]
                     )
-                else
-                    _res = null
-                return _res
-        )
-
-        class MenuHeader
-            constructor: (@key, @name, @icon, @ordering) ->
-                @entries = []
-            add_entry: (entry) =>
-                @entries.push(entry)
-            get_react: (user, acls) =>
-                # order entries
-                return React.createElement(
-                    menu_header
-                    {
-                        key: @key
-                        name: @name
-                        icon: @icon
-                        entries: (_entry.get_react() for _entry in _.orderBy(@entries, "ordering"))
-                        user: user
-                        acls: acls
-                    }
+                    ul(
+                        {className: "dropdown-menu", key: "ul"}
+                        _items
+                    )
                 )
+            else
+                _res = null
+            return _res
+    )
+    
+    class MenuHeader
+        constructor: (@key, @name, @icon, @ordering) ->
+            @entries = []
 
-        class MenuEntry
-            constructor: (@name, @rights, @licenses, @service_types, @icon, @ordering, @sref, @preSpacer, @postSpacer, @labelClass) ->
-            get_react: () =>
-                return {
+        add_entry: (entry) =>
+            @entries.push(entry)
+
+        get_react: (user, acls) =>
+            # order entries
+            return React.createElement(
+                menu_header
+                {
+                    key: @key
                     name: @name
-                    rights: @rights
                     icon: @icon
-                    sref: @sref
-                    licenses: @licenses
-                    service_types: @service_types
-                    preSpacer: @preSpacer
-                    postSpacer: @postSpacer
-                    labelClass: @labelClass
+                    entries: (_entry.get_react() for _entry in _.orderBy(@entries, "ordering"))
+                    user: user
+                    acls: acls
                 }
+            )
+    
+    class MenuEntry
+        constructor: (@name, @rights, @licenses, @service_types, @icon, @ordering, @sref, @preSpacer, @postSpacer, @labelClass) ->
 
-        menu_comp = React.createClass(
-            displayName: "menubar"
-            propTypes:
-                React.PropTypes.object.isRequired
-            update_dimensions: () ->
-                @setState(
-                    {
-                        width: $(window).width()
-                        height: $(window).height()
-                    }
-                )
-            componentWillMount: () ->
-                # register eventhandler
-                $(window).on("resize", @update_dimensions)
+        get_react: () =>
+            return {
+                name: @name
+                rights: @rights
+                icon: @icon
+                sref: @sref
+                licenses: @licenses
+                service_types: @service_types
+                preSpacer: @preSpacer
+                postSpacer: @postSpacer
+                labelClass: @labelClass
+            }
+    
+    menu_comp = React.createClass(
+        displayName: "menubar"
+        propTypes:
+            React.PropTypes.object.isRequired
+        update_dimensions: () ->
+            @setState(
+                {
+                    width: $(window).width()
+                    height: $(window).height()
+                }
+            )
+        componentWillMount: () ->
+            # register eventhandler
+            $(window).on("resize", @update_dimensions)
+    
+        componentWillUnmount: () ->
+            # remove eventhandler
+            $(window).off("resize", @update_dimensions)
+    
+        componentDidMount: () ->
+            mb_height = $(react_dom.findDOMNode(@)).parents("nav").height()
+            # console.log "fMENUBAR_HEIGHT=", mb_height
+            $("body").css("padding-top", mb_height + 1)
 
-            componentWillUnmount: () ->
-                # remove eventhandler
-                $(window).off("resize", @update_dimensions)
+        componentDidUpdate: () ->
+            mb_height = $(react_dom.findDOMNode(@)).parents("nav").height()
+            # console.log "uMENUBAR_HEIGHT=", mb_height
+            $("body").css("padding-top", mb_height + 1)
 
-            componentDidMount: () ->
-                mb_height = $(react_dom.findDOMNode(@)).parents("nav").height()
-                # console.log "fMENUBAR_HEIGHT=", mb_height
-                $("body").css("padding-top", mb_height + 1)
-            componentDidUpdate: () ->
-                mb_height = $(react_dom.findDOMNode(@)).parents("nav").height()
-                # console.log "uMENUBAR_HEIGHT=", mb_height
-                $("body").css("padding-top", mb_height + 1)
-            render: () ->
-                menus = []
-                for state in $state.get()
-                    if state.data? and state.data.menuHeader?
-                        _hdr = state.data.menuHeader
+        render: () ->
+            menus = []
+            valid_state_names = []
+            for state in $state.get()
+                if state.icswData?
+                    if state.icswData.menuEntry?
+                        valid_state_names.push(state.name)
+                    if state.icswData.menuHeader?
+                        _hdr = state.icswData.menuHeader
                         menus.push(
                             new MenuHeader(
                                 _hdr.key
@@ -505,44 +518,43 @@ menu_module = angular.module(
                                 _hdr.ordering
                             )
                         )
-                for state in $state.get()
-                    if state.data? and state.data.menuEntry?
-                        # find menu
-                        _entry = state.data.menuEntry
-                        menu = (entry for entry in menus when entry.key == _entry.menukey)
-                        if menu.length
 
-                            menu[0].add_entry(
-                                new MenuEntry(
-                                    _entry.name or state.data.pageTitle
-                                    state.data.rights
-                                    state.data.licenses
-                                    state.data.service_types
-                                    _entry.icon
-                                    _entry.ordering
-                                    $state.href(state)
-                                    _entry.preSpacer?
-                                    _entry.postSpacer?
-                                    if _entry.labelClass? then _entry.labelClass else ""
-                                )
-                            )
-                        else
-                            console.error("No menu with name #{_entry.menukey} found")
-                # todo: check for service_type
-                user = @props.user
-                acls = @props.acls
-                extra_menus = (menu.get_react(user, acls) for menu in _.orderBy(menus, "ordering"))
-                # console.log icswAcessLevelService.has_menu_permission("user.modify_tree")
-                # console.log @props
-                _res = ul(
-                    {key: "topmenu", className: "nav navbar-nav"}
-                    extra_menus
-                )
-                return _res
-        )
-        return menu_comp
-    ]
-).directive("icswMenuDirective",
+            for state in ($state.get(_name) for _name in valid_state_names)
+                # find menu
+                _entry = state.icswData.menuEntry
+                menu = (entry for entry in menus when entry.key == _entry.menukey)
+                if menu.length
+
+                    menu[0].add_entry(
+                        new MenuEntry(
+                            _entry.name or state.icswData.pageTitle
+                            state.icswData.rights
+                            state.icswData.licenses
+                            state.icswData.service_types
+                            _entry.icon
+                            _entry.ordering
+                            $state.href(state)
+                            _entry.preSpacer?
+                            _entry.postSpacer?
+                            if _entry.labelClass? then _entry.labelClass else ""
+                        )
+                    )
+                else
+                    console.error("No menu with name #{_entry.menukey} found")
+            # todo: check for service_type
+            user = @props.user
+            acls = @props.acls
+            extra_menus = (menu.get_react(user, acls) for menu in _.orderBy(menus, "ordering"))
+            # console.log icswAcessLevelService.has_menu_permission("user.modify_tree")
+            # console.log @props
+            _res = ul(
+                {key: "topmenu", className: "nav navbar-nav"}
+                extra_menus
+            )
+            return _res
+    )
+    return menu_comp
+]).directive("icswMenuDirective",
 [
     "icswReactMenuFactory", "icswAcessLevelService", "icswMenuProgressService", "$rootScope", "ICSW_SIGNALS",
 (
