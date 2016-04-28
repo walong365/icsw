@@ -588,8 +588,7 @@ class Dispatcher(object):
                             pass
                             # todo implement me
                         elif asset_run.run_type == AssetType.UPDATE:
-                            pass
-                            # todo implement me
+                            s = res_list[0]["update_list"].text
                         elif asset_run.run_type == AssetType.PROCESS:
                             s = res_list[0]['process_tree'].text
 
@@ -611,7 +610,7 @@ class Dispatcher(object):
             #todo implement me
         elif schedule_item.source == DiscoverySource.UPDATE:
             runtype = AssetType.UPDATE
-            #todo implement me
+            _command = "updatelist"
         elif schedule_item.source == DiscoverySource.PROCESS:
             runtype = AssetType.PROCESS
             _command = "proclist"
