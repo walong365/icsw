@@ -248,7 +248,9 @@ dashboard_module = angular.module(
         maxSizeY: null
         resizable: {
            enabled: true,
-           handles: ['n', 'e', 's', 'w', 'ne', 'se', 'sw', 'nw']
+           handles: ["n", 'w', 'ne', 'se', 'sw', 'nw']
+           stop: (event, element, options) ->
+               console.log "size stop", event, element, options
         }
         draggable: {
            enabled: true
@@ -285,27 +287,27 @@ dashboard_module = angular.module(
     $scope.$on(
         "gridster-item-resized"
         (item) ->
-            console.log "git-r", item
+            # console.log "git-r", item
     )
     $scope.$on(
         "gridster-resized"
         (item) ->
-            console.log "git-R", item
+            # console.log "git-R", item
     )
     $scope.$on(
         "gridster-resizable-changed"
         (item) ->
-            console.log "git-c", item
+            # console.log "git-c", item
     )
     $scope.$on(
         "gridster-draggable-changed"
         (item) ->
-            console.log "git-d", item
+            # console.log "git-d", item
     )
     $scope.$on(
         "gridster-item-transition-end"
         (sizes, gridster) ->
-            console.log "tchanged", sizes, gridster
+            # console.log "tchanged", sizes, gridster
     )
     $scope.$watch(
         "elements"

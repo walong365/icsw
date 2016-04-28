@@ -42,6 +42,7 @@ config_module = angular.module(
             }
     )
 ]).service("icswCatSelectionTreeService", ["icswTreeConfig", (icswTreeConfig) ->
+
     class icswCatSelectionTree extends icswTreeConfig
         constructor: (@scope, args) ->
             super(args)
@@ -1020,38 +1021,131 @@ config_module = angular.module(
         restrict : "EA"
         template : "<tree treeconfig='cat_tree'></tree>"
         scope:
-            editObj: "="
+            edit_obj: "=editObj"
             mode: "="
+            filter: "=icswLivestatusFilter"
+            mon_data: "=icswMonitoringData"
         link : (scope, el, attrs) ->
             scope.cat_tree = new icswCatSelectionTreeService(scope)
-            icswCategoryTreeService.load(scope.$id).then(
-                (tree) ->
-                    scope.cat_tree.clear_root_nodes()
-                    if scope.editObj?
-                        sel_cat = scope.editObj.categories
+
+            if scope.filter?
+                console.log "FILTER", scope.filter
+
+            if scope.edit_obj?
+                scope.$$op_mode = "obj"
+            else if scope.filter
+                scope.$$op_mode = "filter"
+                scope.filter.install_category_filter()
+                scope.filter.change_notifier.promise.then(
+                    () ->
+                    () ->
+                    (notify) ->
+                        build_tree()
+                )
+            else
+                scope.$$op_mode = "obj"
+
+            send_selection_to_filter = (sel_cat) ->
+                if scope.$$previous_filter?
+                    if scope.$$previous_filter == sel_cat
+                        console.log "same filter"
+                        return
+                scope.$$previous_filter = sel_cat
+                scope.filter.set_category_filter(sel_cat)
+
+            build_tree = () ->
+
+                top_cat_re = new RegExp("/#{scope.mode}")
+
+                # list of useable categories
+
+                _useable_idxs = []
+                for entry in scope.tree.list
+                    if entry.full_name.match(top_cat_re)
+                        if entry.useable
+                            _useable_idxs.push(entry.idx)
+
+                if scope.$$op_mode == "obj"
+                    # obj mode, modify categories of given object
+                    if scope.edit_obj?
+                        # edit_obj is set, all categories selectable and some selected
+                        sel_cat = scope.edit_obj.categories
                     else
                         sel_cat = []
-                    top_cat_re = new RegExp("/#{scope.mode}")
-                    for entry in tree.list
-                        if entry.full_name.match(top_cat_re)
-                            t_entry = scope.cat_tree.new_node(
-                                folder: false
-                                obj: entry
-                                expand: entry.depth < 2
-                                selected: entry.idx in sel_cat
-                                _show_select: entry.useable
-                            )
-                            scope.cat_tree.lut[entry.idx] = t_entry
-                            if entry.parent and entry.parent of scope.cat_tree.lut
-                                scope.cat_tree.lut[entry.parent].add_child(t_entry)
-                            else
-                                # hide selection from root nodes
-                                t_entry._show_select = false
-                                scope.cat_tree.add_root_node(t_entry)
-                    scope.cat_tree.show_selected(true)
+                else
+                    # icswLivestatusFilter set, only some categories selectable und those are preselected
+                    if scope.$$previous_filter?
+                        sel_cat = scope.$$previous_filter
+                    else
+                        sel_cat = scope.mon_data.used_cats.concat([0])
+                        # push category selection list
+                        send_selection_to_filter(sel_cat)
+                    # useable are only the categories present in the current dataset
+                    _useable_idxs =  _.intersection(_useable_idxs, scope.mon_data.used_cats)
+
+
+                if scope.cat_tree.root_nodes.length
+                    _to_expand = []
+                    scope.cat_tree.iter(
+                        (node) ->
+                            if node.expand
+                                _to_expand.push(node.obj.idx)
+                    )
+                else
+                    _to_expand = (entry.idx for entry in scope.tree.list when entry.depth < 2)
+
+                scope.cat_tree.clear_root_nodes()
+                if scope.$$op_mode = "filter"
+                    # add uncategorized entry
+                    dummy_entry = scope.cat_tree.new_node(
+                        folder: false
+                        obj: {
+                            idx: 0
+                            depth: 1
+                            comment: "entries without category"
+                            name: "N/A"
+                        }
+                        selected: 0 in sel_cat
+                        _show_select: true
+                    )
+                    scope.cat_tree.lut[dummy_entry.obj.idx] = dummy_entry
+                else
+                    dummy_entry = undefined
+
+                for entry in scope.tree.list
+                    if entry.full_name.match(top_cat_re)
+                        t_entry = scope.cat_tree.new_node(
+                            folder: false
+                            obj: entry
+                            expand: entry.idx in _to_expand
+                            selected: entry.idx in sel_cat
+                            _show_select: entry.idx in _useable_idxs
+                        )
+                        scope.cat_tree.lut[entry.idx] = t_entry
+                        if entry.parent and entry.parent of scope.cat_tree.lut
+                            scope.cat_tree.lut[entry.parent].add_child(t_entry)
+                        else
+                            # hide selection from root nodes
+                            t_entry._show_select = false
+                            scope.cat_tree.add_root_node(t_entry)
+                            if dummy_entry?
+                                # add dummy entry
+                                scope.cat_tree.lut[entry.idx].add_child(dummy_entry)
+                scope.cat_tree.show_selected(true)
+
+            icswCategoryTreeService.load(scope.$id).then(
+                (tree) ->
+                    scope.tree = tree
+                    if scope.$$op_mode == "obj"
+                        # rebuild tree if op_mode == object
+                        build_tree()
             )
+
             scope.new_selection = (new_sel) ->
-                scope.editObj.categories = new_sel
+                if scope.$$op_mode == "obj"
+                    scope.edit_obj.categories = new_sel
+                else
+                    send_selection_to_filter(new_sel)
     }
 ]).directive("icswConfigDownload",
 [
