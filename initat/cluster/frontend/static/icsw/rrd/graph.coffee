@@ -29,7 +29,7 @@ angular.module(
     $stateProvider.state(
         "main.graph", {
             url: "/graph"
-            template: '<icsw-rrd-graph icsw-sel-man="0" icsw-sel-man-sel-mode="D"></icsw-rrd-graph>'
+            templateUrl: "icsw.rrd.graph"
             data:
                 pageTitle: "Graph"
                 licenses: ["graphing"]

@@ -100,12 +100,20 @@
 
 <script type="text/ng-template" id="icsw.dashboard.overview">
     <uib-alert ng-if="!struct.data_loaded" class="warning">Loading initial data...</uib-alert>
-    <div gridster="gridsterOpts" ng-if="struct.data_loaded">
-        <ul>
-            <li gridster-item="item" ng-repeat="item in struct.elements track by item.element_id">
-                <icsw-dashboard-element-display icsw-dashboard-element="item"></icsw-dashboard-element-display>
-            </li>
-        </ul>
+    <div class="panel panel-success" ng-if="struct.data_loaded">
+        <div class="panel-heading">
+            Main Dashboard ({{ struct.container.num_open }} of {{ struct.container.num_total }} shown)
+            <span ng-show="struct.container.num_close">
+                <icsw-tools-button type="create" size="sm" value="ReOpen" ng-click="struct.container.reopen_closed_elements()"></icsw-tools-button>
+            </span>
+        </div>
+        <div gridster="gridsterOpts" class="panel-body">
+            <ul>
+                <li gridster-item="item" ng-repeat="item in struct.container.open_elements track by item.element_id">
+                    <icsw-dashboard-element-display icsw-dashboard-element="item"></icsw-dashboard-element-display>
+                </li>
+            </ul>
+        </div>
     </div>
 </script>
 

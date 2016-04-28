@@ -199,11 +199,11 @@ dashboard_module = angular.module(
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$timeout",
     "icswAcessLevelService", "ICSW_URLS", "icswSimpleAjaxCall",  "icswUserLicenseDataService",
-    "icswDashboardElement", "icswDashboardElements", "icswUserService",
+    "icswDashboardElement", "icswDashboardContainerService", "icswUserService",
 (
     $scope, $compile, $filter, $templateCache, Restangular, $q, $timeout,
     icswAcessLevelService, ICSW_URLS, icswSimpleAjaxCall, icswUserLicenseDataService,
-    icswDashboardElement, icswDashboardElements, icswUserService,
+    icswDashboardElement, icswDashboardContainerService, icswUserService,
 ) ->
     icswAcessLevelService.install($scope)
     $scope.ICSW_URLS = ICSW_URLS
@@ -263,7 +263,7 @@ dashboard_module = angular.module(
         # user
         user: undefined
         # elements
-        elements: []
+        container: []
     }
 
     load = () ->
@@ -274,10 +274,8 @@ dashboard_module = angular.module(
         ).then(
             (data) ->
                 $scope.struct.user = data[0]
-                console.log "user=", $scope.struct.user
-                $scope.struct.elements.length = 0
-                for entry in icswDashboardElements.get_elements($scope.struct.user)
-                    $scope.struct.elements.push(entry)
+                $scope.struct.container = icswDashboardContainerService.get_container()
+                $scope.struct.container.populate($scope.struct.user)
                 $scope.struct.data_loaded = true
                 console.log $scope.struct.elements
         )
@@ -324,11 +322,12 @@ dashboard_module = angular.module(
 ) ->
     class icswDashboardElement
         constructor: (@sizeX, @sizeY, @cls, @title, @template) ->
+            # camelcase is important here
             @$$panel_class = "panel-#{@cls}"
             @user = undefined
 
         close: ($event) ->
-            console.log "close"
+            @container.close_element(@)
             
         link: (scope, element) =>
             sub_scope = scope.$new(true)
@@ -342,9 +341,9 @@ dashboard_module = angular.module(
 </div>
 "
             element.append($compile(_content)(sub_scope))
-            sub_scope.$on("$destroy", () ->
+            sub_scope.$on("$destroy", () =>
                 console.log "DESTROY"
-                console.log @size_x, @size_y
+                console.log @sizeX, @sizeY
             )
 
 ]).service("icswDashboardStaticList", [
@@ -359,38 +358,76 @@ dashboard_module = angular.module(
         new icswDashboardElement(1, 1, "success", "Disk usage and Quota info ???", "icsw.dashboard.diskquota")
         new icswDashboardElement(1, 1, "primary", "Virtual desktops", "icsw.dashboard.virtualdesktops")
         new icswDashboardElement(2, 1, "success", "Job info", "icsw.dashboard.jobinfo")
+        new icswDashboardElement(3, 3, "success", "Graphing", "icsw.rrd.graph")
     ]
-]).service("icswDashboardElements", [
+]).service("icswDashboardContainer", [
     "$q", "icswDashboardStaticList",
 (
     $q, icswDashboardStaticList,
 ) ->
-    elements = []
-    element_id = 0
-
-    add_element = (element, user) ->
-        element_id++
-        element.element_id = element_id
-        element.user = user
-        elements.push(element)
-        return element
-
-    reset_elements = () ->
-        element_id = 0
-        elements.length = 0
+    class icswDashboardContainer
+        constructor: () ->
+            @elements = []
+            @populated = false
+            @reset()
         
-    return {
-        reset: () ->
-            reset_elements()
-
-        get_elements: (user) ->
-            reset_elements()
+        populate: (user) =>
+            @reset()
             for el in icswDashboardStaticList
-                add_element(el, user)
-            return elements
+                @add_element(el, user)
+            @elements_lut = _.keyBy(@elements, "element_id")
+            @open_elements = (el for el in @elements when el.$$open)
+            @populated = true
+            
+        reset: () =>
+            @element_id = 0
+            @num_total = 0
+            @num_open = 0
+            @num_close = 0
+            @elements.length = 0
 
-        add_element: (panel) ->
-            return add_element(panel)
+        add_element: (element, user) =>
+            @element_id++
+            element.container = @
+            element.element_id = @element_id
+            element.user = user
+            # default settings
+            element.$$open = true
+            @elements.push(element)
+            @num_total++
+            if element.$$open
+                @num_open++
+            else
+                @num_close++
+            return element
+            
+        close_element: (element) =>
+            if element.$$open
+                @num_close++
+                @num_open--
+                element.$$open = false
+                _.remove(@open_elements, (el) -> return el.element_id == element.element_id)
+
+        open_element: (element) =>
+            if not element.$$open
+                @num_close--
+                @num_open++
+                element.$$open = true
+                @open_elements.push(element)
+
+        reopen_closed_elements: () =>
+            (@open_element(el) for el in @elements when not el.$$open)
+
+]).service("icswDashboardContainerService", [
+    "$q", "icswDashboardContainer",
+(
+    $q, icswDashboardContainer,
+) ->
+    _elements = new icswDashboardContainer()
+
+    return {
+        get_container: () ->
+            return _elements
 
     }
 ]).directive("icswDashboardElementDisplay",
@@ -404,7 +441,6 @@ dashboard_module = angular.module(
         scope:
             db_element: "=icswDashboardElement"
         link: (scope, element, attrs) ->
-            console.log scope.db_element
             scope.db_element.link(scope, element)
     }
 ])
