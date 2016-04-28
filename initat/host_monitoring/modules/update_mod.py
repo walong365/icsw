@@ -153,9 +153,6 @@ class _general(hm_classes.hm_module):
 class updatelist_command(hm_classes.hm_command):
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, positional_arguments=True)
-        print get_update_list()
-
-
 
     def __call__(self, srv_com, cur_ns):
         s_time = time.time()
@@ -186,7 +183,9 @@ def get_update_list():
 
     if use_zypper:
         status, output = commands.getstatusoutput("zypper refresh")
+        #todo error handling
         status, output = commands.getstatusoutput("zypper list-updates")
+        #todo error handling
         lines = output.split("\n")
 
         start_parse = False
@@ -203,9 +202,9 @@ def get_update_list():
                 pass
     elif use_yum:
         status, output = commands.getstatusoutput("yum check-update -q")
+        #todo error handling
         lines = output.split("\n")
 
-        start_parse = False
         for line in lines:
             line = line.strip()
             if line:
@@ -214,7 +213,9 @@ def get_update_list():
 
     elif use_apt:
         status, output = commands.getstatusoutput("apt-get update")
+        #todo error handling
         status, output = commands.getstatusoutput("apt-get --just-print upgrade")
+        #todo error handling
 
         lines = output.split("\n")
         for line in lines:

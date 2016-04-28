@@ -411,6 +411,7 @@ LICENSE_CMD = "license"
 HARDWARE_CMD = "hardware"
 UPDATES_CMD = "updates"
 PROCESS_CMD = "process"
+PENDING_UPDATES_CMD = "pending_updates"
 
 class NRPEScanBatch(ScanBatch):
     SCAN_TYPE = 'NRPE'
@@ -440,6 +441,8 @@ class NRPEScanBatch(ScanBatch):
                 source = DiscoverySource.UPDATE
             elif _command == PROCESS_CMD:
                 source = DiscoverySource.PROCESS
+            elif _command == PENDING_UPDATES_CMD:
+                source = DiscoverySource.PENDING_UPDATE
 
             if not source:
                 continue
@@ -448,7 +451,7 @@ class NRPEScanBatch(ScanBatch):
             ds = DispatchSetting(
                 device=self.device,
                 source=source,
-                duration_amount=1,
+                duration_amount=5,
                 duration_unit=DispatchSetting.DurationUnits.minutes,
                 run_now=True
             )
@@ -586,11 +589,14 @@ class Dispatcher(object):
                             s = res_list[0]["lstopo_dump"].text
                         elif asset_run.run_type == AssetType.LICENSE:
                             pass
-                            # todo implement me
+                            #todo implement me
                         elif asset_run.run_type == AssetType.UPDATE:
-                            s = res_list[0]["update_list"].text
+                            pass
+                            #todo implement me
                         elif asset_run.run_type == AssetType.PROCESS:
                             s = res_list[0]['process_tree'].text
+                        elif asset_run.run_type == AssetType.PENDING_UPDATE:
+                            s = res_list[0]["update_list"].text
 
                         asset_run.raw_result_str = s
                         asset_run.save()
@@ -610,10 +616,13 @@ class Dispatcher(object):
             #todo implement me
         elif schedule_item.source == DiscoverySource.UPDATE:
             runtype = AssetType.UPDATE
-            _command = "updatelist"
+            #todo implement me
         elif schedule_item.source == DiscoverySource.PROCESS:
             runtype = AssetType.PROCESS
             _command = "proclist"
+        elif schedule_item.source == DiscoverySource.PENDING_UPDATE:
+            runtype = AssetType.PENDING_UPDATE
+            _command = "updatelist"
 
         _device = schedule_item.device
         asset_run_len = len(_device.assetrun_set.all())
@@ -649,6 +658,9 @@ class Dispatcher(object):
         elif schedule_item.source == DiscoverySource.PROCESS:
             _command = LIST_PROCESSES_CMD
             runtype = AssetType.PROCESS
+        elif schedule_item.source == DiscoverySource.PENDING_UPDATE:
+            _command = LIST_PENDING_UPDATES_CMD
+            runtype = AssetType.PENDING_UPDATE
 
         _com = "/opt/cluster/sbin/check_nrpe -H {} -n -c {} -t120".format(schedule_item.device.all_ips()[0],
                                                                           _command)

@@ -72,22 +72,27 @@ def get_base_assets_from_raw_result(blob, runtype, scantype):
 
         for _child in root.iterchildren():
             generate_bahs(_child, assets)
+
     elif runtype == AssetType.LICENSE:
         if scantype == ScanType.NRPE:
             l = json.loads(blob)
             for (name, licensekey) in l:
                 assets.append(BaseAssetLicense(name, license_key=licensekey))
-        #todo check/interpret different scan types
+        elif scantype == ScanType.HM:
+            #todo implement me
+            pass
 
     elif runtype == AssetType.UPDATE:
         if scantype == ScanType.NRPE:
             l = json.loads(blob)
             for (name, date, status) in l:
                 assets.append(BaseAssetUpdate(name, install_date = date, status=status))
-        #todo check/interpret different scan types
+        elif scantype == ScanType.HM:
+            #todo implement me
+            pass
 
     elif runtype == AssetType.SOFTWARE_VERSION:
-        #todo interpret value blob
+        #todo implement me
         pass
 
     elif runtype == AssetType.PROCESS:
@@ -95,10 +100,16 @@ def get_base_assets_from_raw_result(blob, runtype, scantype):
             l = json.loads(blob)
             for (name, pid) in l:
                 assets.append(BaseAssetProcess(name, pid))
-        elif  scantype == ScanType.HM:
+        elif scantype == ScanType.HM:
             process_dict = eval(bz2.decompress(base64.b64decode(blob)))
             for pid in process_dict:
                 assets.append(BaseAssetProcess(process_dict[pid]['name'], pid))
+
+    elif runtype == AssetType.PENDING_UPDATE:
+        if scantype == scantype.NRPE:
+            pass
+        elif scantype == ScanType.HM:
+            pass
 
     return assets
 
@@ -221,6 +232,7 @@ class AssetType(IntEnum):
     UPDATE = 4
     SOFTWARE_VERSION = 5
     PROCESS = 6
+    PENDING_UPDATE = 7
 
 class ScanType(IntEnum):
     HM = 1
