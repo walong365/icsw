@@ -583,8 +583,7 @@ class Dispatcher(object):
                         if asset_run.run_type == AssetType.PACKAGE:
                             s = res_list[0]["pkg_list"].text
                         elif asset_run.run_type == AssetType.HARDWARE:
-                            pass
-                            #todo implement me
+                            s = res_list[0]["lstopo_dump"].text
                         elif asset_run.run_type == AssetType.LICENSE:
                             pass
                             # todo implement me
@@ -606,7 +605,7 @@ class Dispatcher(object):
             _command = "rpmlist"
         elif schedule_item.source == DiscoverySource.HARDWARE:
             runtype = AssetType.HARDWARE
-            #todo implement me
+            _command = "lstopo"
         elif schedule_item.source == DiscoverySource.LICENSE:
             runtype = AssetType.LICENSE
             #todo implement me

@@ -61,14 +61,17 @@ def get_base_assets_from_raw_result(blob, runtype, scantype):
                                                    size=versions_dict['size'],
                                                    release=versions_dict['release']))
     elif runtype == AssetType.HARDWARE:
+        s = blob
         if scantype == ScanType.NRPE:
-            root = etree.fromstring(blob[2:-4].encode("ascii"))
-            assert(root.tag == "topology")
+            s = blob[2:-4].encode('ascii')
+        elif scantype == ScanType.HM:
+            s = bz2.decompress(base64.b64decode(blob))
 
-            for _child in root.iterchildren():
-                generate_bahs(_child, assets)
-        #todo check/interpret different scan types
+        root = etree.fromstring(s)
+        assert (root.tag == "topology")
 
+        for _child in root.iterchildren():
+            generate_bahs(_child, assets)
     elif runtype == AssetType.LICENSE:
         if scantype == ScanType.NRPE:
             l = json.loads(blob)
@@ -272,15 +275,16 @@ class AssetRun(models.Model):
 
     def generate_assets(self):
         if self.raw_result_interpreted or not self.raw_result_str:
-            return False
+            return get_base_assets_from_raw_result(self.raw_result_str, self.run_type, self.scan_type)
         self.raw_result_interpreted = True
 
-        for _base_asset in get_base_assets_from_raw_result(self.raw_result_str, self.run_type, self.scan_type):
+        base_assets = get_base_assets_from_raw_result(self.raw_result_str, self.run_type, self.scan_type)
+        for _base_asset in base_assets:
             _package_dump = pickle.dumps(_base_asset)
             self.asset_set.create(type=self.run_type, value=_package_dump)
 
         self.save()
-        return True
+        return base_assets
 
     def get_asset_changeset(self, other_asset_run):
         self.generate_assets()
