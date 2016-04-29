@@ -20,15 +20,20 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.livestatus.layout1">
-    <!-- <div class="col-md-4 col-xs-12 col-lg-6">
-        <div icsw-device-livestatus-fullburst icsw-element-size="size" ls-devsel="ls_devsel" ls-filter="ls_filter"></div>
-    </div>
+    <!--
     <div class="col-md-4 col-xs-12 col-lg-6">
         <div icsw-device-livestatus-maplist ls-devsel="ls_devsel" ls-filter="ls_filter"></div>
     </div>
     <div class="col-md-4 col-xs-12 col-lg-8">
         <icsw-config-category-location-show ls-devsel="ls_devsel" ls-filter="ls_filter"></icsw-config-category-location-show>
     </div> -->
+    <div class="col-md-4 col-xs-12 col-lg-6">
+        <icsw-device-livestatus-fullburst
+            icsw-element-size="size"
+            icsw-livestatus-filter="struct.filter"
+            icsw-monitoring-data="struct.monitoring_data"
+        ></icsw-device-livestatus-fullburst>
+    </div>
     <div class="col-md-4 col-xs-12 col-lg-2">
         <icsw-category-tree-select
             icsw-livestatus-filter="struct.filter"
@@ -45,12 +50,17 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.livestatus.layout2">
-    <!-- <div class="col-md-4 col-xs-12 col-lg-6">
-        <div icsw-device-livestatus-fullburst icsw-element-size="size" ls-devsel="ls_devsel" ls-filter="ls_filter"></div>
-    </div>
+    <!--
     <div class="col-md-4 col-xs-12 col-lg-6">
         <div icsw-device-livestatus-maplist ls-devsel="ls_devsel" ls-filter="ls_filter"></div>
     </div> -->
+    <div class="col-md-4 col-xs-12 col-lg-6">
+        <icsw-device-livestatus-fullburst
+            icsw-element-size="size"
+            icsw-livestatus-filter="struct.filter"
+            icsw-monitoring-data="struct.monitoring_data"
+        ></icsw-device-livestatus-fullburst>
+    </div>
     <div class="col-md-4 col-xs-12 col-lg-8">
         <icsw-device-livestatus-table-view
             icsw-livestatus-filter="struct.filter"
@@ -63,6 +73,35 @@
             icsw-monitoring-data="struct.monitoring_data"
             mode="'mon'"
         ></icsw-category-tree-select>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.device.livestatus.fullburst">
+    <div class="row">
+        <div class="col-md-6 col-sm-6">
+            <h3>
+                Burst graph
+                <span ng-show="struct.omitted_segments">
+                    , {{ struct.omitted_segments }} omitted segments
+                </span>
+            </h3>
+            <svg height="320" font-family="'Open-Sans', sans-serif" font-size="10pt">
+                <g transform="translate(300,160)">
+                    <newburst
+                        icsw-livestatus-filter="struct.filter"
+                        icsw-monitoring-data="struct.monitoring_data"
+                        innerradius="60"
+                        service-focus="focusService"
+                        omitted-segments="struct.omitted_segments"
+                        propagate-filter="1"
+                        zoom="1"
+                    ></newburst>
+                </g>
+            </svg>
+        </div>
+        <div class="col-md-6 col-sm-6">
+            <icsw-device-livestatus-service-info service="focusService" ls-filter="ls_filter"></icsw-device-livestatus-service-info>
+        </div>
     </div>
 </script>
 
@@ -214,35 +253,6 @@
             noninteractive="true"
         ></newburst>
     </g>
-</script>
-
-<script type="text/ng-template" id="icsw.device.livestatus.fullburst">
-    <div class="row">
-        <div class="col-md-6 col-sm-6">
-            <h3>
-                Burst graph
-                <span ng-show="omittedSegments">
-                    , {{ omittedSegments }} omitted segments
-                </span>
-            </h3>
-            <svg height="320" font-family="'Open-Sans', sans-serif" font-size="10pt">
-                <g transform="translate(300,160)">
-                    <newburst
-                        ls-devsel="ls_devsel"
-                        ls-filter="ls_filter"
-                        innerradius="60"
-                        service-focus="focusService"
-                        omitted-segments="omittedSegments"
-                        propagate-filter="1"
-                        zoom="1"
-                    ></newburst>
-                </g>
-            </svg>
-        </div>
-        <div class="col-md-6 col-sm-6">
-            <icsw-device-livestatus-service-info service="focusService" ls-filter="ls_filter"></icsw-device-livestatus-service-info>
-        </div>
-    </div>
 </script>
 
 <script type="text/ng-template" id="icsw.device.livestatus.maplist">

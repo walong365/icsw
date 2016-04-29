@@ -1,0 +1,15 @@
+<script type="text/ng-template" id="icsw.device.asset.overview">
+    <uib-alert type="warning" ng-show="!struct.data_loaded">Fetching data from server ...</uib-alert>
+    <icsw-tools-ensure-device-selection dev-list="struct.devices" list-ready="struct.data_loaded">
+        <h2>
+            Device Assets ({{ struct.devices.length }} devices)
+        </h2>
+        <div class="row">
+            <div class="col-sm-5 form-inline">
+                <div class="form-group">
+                    NameFilter: <input class="form-control" ng-model="vars.name_filter" ng-change="new_filter_set()" placeholder="filter"/>
+                </div>
+            </div>
+        </div>
+    </icsw-tools-ensure-device-selection>
+</script>
