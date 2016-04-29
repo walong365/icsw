@@ -102,15 +102,34 @@
             </tr>
         </thead>
         <tbody>
-            <tr icsw-device-livestatus-check-service
-                show-column="show_column"
-                service="entry"
-                ls-filter="ls_filter"
-                ng-repeat="entry in entries_displayed"
+            <tr icsw-device-livestatus-table-row
+                ng-repeat="service in entries_displayed"
             >
             </tr>
         </tbody>
     </table>
+</script>
+
+<script type="text/ng-template" id="icsw.device.livestatus.table.row">
+    <td ng-class="service.host.$$icswStateClass" class="text-nowrap">
+        {{ service.host_name }}
+        <span ng-show="service.host.$$icswShowAttemptInfo" ng-class="service.host.$$icswAttempLabelClass" class="label pull-right">{{ service.host.$$icswAttemptInfo }}</span>
+        <span ng-show="service.host.$$icswPassiveCheck" title="host is passive checked" class="glyphicon glyphicon-download pull-right"></span>
+    </td>
+    <td class="text-nowrap" ng-show="show_column.state" class="label" ng-class="service.$$icswStateLabelClass">
+        {{ service.$$icswStateString }}
+        <span ng-show="show_column.state_type" class="pull-right badge">{{ service.$$icswStateTypeString }}</span>
+    </td>
+    <td class="text-nowrap" ng-show="show_column.flags">
+        <span class="label pull-right" ng-class="service.$$icswAttemptLabelClass" title="attempt info">{{ service.$$icswAttemptInfo }}</span>
+        <span class="pull-right fa fa-pencil" title="acknowledgment status" ng-show="service.acknowledged == '1'"></span>
+        <span ng-show="service.$$icswPassiveCheck" title="service is passive checked" class="glyphicon glyphicon-download pull-right"></span>
+    </td>
+    <td class="text-nowrap" ng-show="show_column.description">{{ service.description }}</td>
+    <td class="text-nowrap" ng-show="show_column.cats">{{ service.$$icswCategories }}</td>
+    <td class="text-nowrap">{{ service.$$icswLastCheckString }}</td>
+    <td class="text-nowrap">{{ service.$$icswLastStateChangeString }}</td>
+    <td ng-show="show_column.output">{{ service.plugin_output }}</td>
 </script>
 
 <script type="text/ng-template" id="icsw.device.livestatus.location.map">
@@ -322,28 +341,6 @@
     </svg>
 </script>
 
-<script type="text/ng-template" id="icsw.device.livestatus.check.service">
-    <td ng-class="get_host_class(service)" class="text-nowrap">
-        {{ service.host_name }}
-        <span ng-show="show_host_attempt_info(service)" ng-class="get_host_attempt_class(service, 'label-')" class="label pull-right">{{ get_host_attempt_info(service) }}</span>
-        <span ng-show="host_is_passive_checked(service)" title="host is passive checked" class="glyphicon glyphicon-download pull-right"></span>
-    </td>
-    <td class="text-nowrap" ng-show="show_column.state" class="label" ng-class="get_service_state_class(service)">
-        {{ get_service_state_string(service) }}
-        <span ng-show="show_column.state_type" class="pull-right badge">{{ get_state_type(service) }}</span>
-    </td>
-    <td class="text-nowrap" ng-show="show_column.flags">
-        <span class="label pull-right" ng-class="get_attempt_class(service, 'label-')" title="attempt info">{{ get_attempt_info(service) }}</span>
-        <span class="pull-right fa fa-pencil" title="acknowledgment status" ng-show="service.acknowledged == '1'"></span>
-        <span ng-show="is_passive_check(service)" title="service is passive checked" class="glyphicon glyphicon-download pull-right"></span>
-    </td>
-    <td class="text-nowrap" ng-show="show_column.description">{{ service.description }}</td>
-    <td class="text-nowrap" ng-show="show_column.cats">{{ get_categories(service) }}</td>
-    <td class="text-nowrap">{{ get_last_check(service) }}</td>
-    <td class="text-nowrap">{{ get_last_change(service) }}</td>
-    <td ng-show="show_column.output">{{ service.plugin_output }}</td>
-</script>
-
 <script type="text/ng-template" id="icsw.device.livestatus.cat.tree">
     <h3>Monitoring categories</h3>
     <tree treeconfig="cat_tree"></tree>
@@ -386,17 +383,17 @@
                 <li class="list-group-item">
                     State
                     <span class="pull-right">
-                        {{ get_state_type(service) }},
-                        {{ get_check_type(service) }},
-                        <span class="label" ng-class="get_host_state_class(service, 'label-')">{{ get_host_state_string(service) }}</span>
-                        <span class="label" ng-class="get_host_attempt_class(service, 'label-')">{{ get_host_attempt_info(service) }}</span>
+                        {{ service.$$icswStateTypeString }}
+                        {{ service.$$icswCheckTypeString }},
+                        <span class="label" ng-class="service.host.$$icswStateLabelClass">{{ service.host.$$icswStateString }}</span>
+                        <span class="label" ng-class="service.host.$$icswAttemptLabelClass">{{ service.host.$$icswAttemptInfo }}</span>
                     </span>
                 </li>
                 <li class="list-group-item">
                     last check / last change
                     <span class="pull-right">
-                        {{ get_host_last_check(service) }} /
-                        {{ get_host_last_change(service) }}
+                        {{ service.host.$$icswLastCheckString }} /
+                        {{ service.host.$$icswLastStateChangeString }}
                     </span>
                 </li>
                 <li class="list-group-item">
@@ -422,23 +419,23 @@
                 <li class="list-group-item">
                     State
                     <span class="pull-right">
-                        {{ get_state_type(service) }},
-                        {{ get_check_type(service) }},
+                        {{ service.$$icswStateTypeString }},
+                        {{ service.$$icswCheckTypeString }}
                         <span class="label" ng-class="get_service_state_class(service, 'label-')">{{ get_service_state_string(service) }}</span>
-                        <span class="label" ng-class="get_attempt_class(service, 'label-')">{{ get_host_attempt_info(service) }}</span>
+                        <span class="label" ng-class="service.$$icswAttemptLabelClass">{{ service.host.$$icswAttemptInfo }}</span>
                     </span>
                 </li>
                 <li class="list-group-item">
                     last check / last change
                     <span class="pull-right">
-                        {{ get_last_check(service) }} /
-                        {{ get_last_change(service) }}
+                        {{ service.$$icswLastCheckString }} /
+                        {{ service.$$icswLastStateChangeString }}
                     </span>
                 </li>
                 <li class="list-group-item">
                     categories
                     <span class="pull-right">
-                        {{ get_categories(service) }}
+                        {{ service.$$icswCategories }}
                     </span>
                 </li>
                 <li class="list-group-item">

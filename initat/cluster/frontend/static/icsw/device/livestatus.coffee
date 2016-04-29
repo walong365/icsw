@@ -496,27 +496,57 @@ angular.module(
                 check._show = show
                 return check._show
         }
-]).service("icswInterpretMonitoringCheckResult", [() ->
-    get_diff_time = (ts) ->
+]).service("icswSaltMonitoringResultService", [() ->
+
+    _parse_custom_variables = (cvs) ->
+        _cv = {}
+        if cvs
+            first = true
+            for _entry in cvs.split("|")
+                if first
+                    key = _entry.toLowerCase()
+                    first = false
+                else
+                    parts = _entry.split(",")
+                    _cv[key] = parts
+                    key = parts.pop().toLowerCase()
+            # append key of last '|'-split to latest parts
+            parts.push(key)
+            for single_key in ["check_command_pk", "device_pk"]
+                if single_key of _cv
+                    _cv[single_key] = parseInt(_cv[single_key][0])
+            for int_mkey in ["cat_pks"]
+                if int_mkey of _cv
+                    _list = (parseInt(_sv) for _sv in _cv[int_mkey] when _sv != "-")
+                    if _list.length
+                        _cv[int_mkey] = _list
+                    else
+                        delete _cv[int_mkey]
+        return _cv
+
+    _get_diff_time = (ts) ->
         if parseInt(ts)
             return moment.unix(ts).fromNow(true)
         else
             return "never"
-    _get_attempt_info = (entry, force=false) ->
+
+    _get_attempt_info = (entry) ->
         if entry.max_check_attempts == null
             return "N/A"
-        try
-            max = parseInt(entry.max_check_attempts)
-            cur = parseInt(entry.current_attempt)
-            if max == cur
-                return "#{cur}"
-            else
-                return "#{cur} / #{max}"
-        catch error
-            return "e"
-    _get_attempt_class = (entry, prefix="", force=false) ->
+        else
+            try
+                max = parseInt(entry.max_check_attempts)
+                cur = parseInt(entry.current_attempt)
+                if max == cur
+                    return "#{cur}"
+                else
+                    return "#{cur} / #{max}"
+            catch error
+                return "e"
+            
+    _get_attempt_class = (entry) ->
         if entry.max_check_attempts == null
-            _r_str ="default"
+            _r_str = "default"
         else
             try
                 max = parseInt(entry.max_check_attempts)
@@ -527,88 +557,101 @@ angular.module(
                     _r_str = "success"
             catch error
                 _r_str = "danger"
-        if prefix?
-            _r_str = "#{prefix}#{_r_str}"
-        return _r_str
-    _get_host_state_class = (entry, prefix) ->
-        _r_str = {
-            0: "success"
-            1: "danger"
-            2: "danger"
-        }[entry.state]
-        if prefix?
-            _r_str = "#{prefix}#{_r_str}"
-        return _r_str
-    return {
-        get_last_check: (entry) ->
-            return get_diff_time(entry.last_check)
-        get_last_change: (entry) ->
-            return get_diff_time(entry.last_state_change)
-        get_host_last_check: (entry) ->
-            return get_diff_time(entry.host.last_check)
-        get_host_last_change: (entry) ->
-            return get_diff_time(entry.host.last_state_change)
-        host_is_passive_checked: (entry) ->
-            return if entry.host.check_type then true else false
-        get_host_class: (entry) ->
-            return _get_host_state_class(entry.host)
-        get_host_attempt_info: (entry, force=false) ->
-            return _get_attempt_info(entry.host, force)
-        get_host_attempt_class: (entry, prefix="", force=false) ->
-            return _get_attempt_class(entry.host, prefix, force)
-        get_check_type: (entry) ->
-            return {
-                null: "???"
-                0: "active"
-                1: "passive"
-            }[entry.check_type]
-        is_passive_check: (entry) ->
-            return if entry.check_type then true else false
-        get_state_type: (entry) ->
-            return {
-                null: "???"
-                0: "soft"
-                1: "hard"
-            }[entry.state_type]
-        get_host_state_string: (entry) ->
-            return {
+        return "label-#{_r_str}"
+            
+    _sanitize_entry = (entry) ->
+        entry.state = parseInt(entry.state)
+        if entry.state_type in ["0", "1"]
+            entry.state_type = parseInt(entry.state_type)
+        else
+            entry.state_type = null
+        if entry.check_type in ["0", "1"]
+            entry.check_type = parseInt(entry.check_type)
+        else
+            entry.check_type = null
+        entry.$$icswStateTypeString = {
+            null: "???"
+            0: "soft"
+            1: "hard"
+        }[entry.state_type]
+        entry.$$icswCheckTypeString = {
+            null: "???"
+            0: "active"
+            1: "passive"
+        }[entry.check_type]
+        entry.$$icswPassiveCheck = if entry.check_type then true else false
+        entry.$$icswAttemptLabelClass = _get_attempt_class(entry)
+        entry.$$icswAttemptInfo = _get_attempt_info(entry)
+        try
+            if parseInt(entry.current_attempt) == 1
+                _si = true
+            else
+                _si = true
+        catch error
+           _si = true
+        entry.$$icswShowAttemptInfo = _si
+        entry.$$icswLastCheckString = _get_diff_time(entry.last_check)
+        entry.$$icswLastStateChangeString = _get_diff_time(entry.last_state_change)
+
+        # custom variables
+
+        entry.custom_variables = _parse_custom_variables(entry.custom_variables)
+
+    salt_host = (entry) ->
+        if not entry.$$icswSalted?
+            entry.$$icswSalted = true
+            # set default values
+            entry.$$ct = "host"
+            # sanitize entries
+            _sanitize_entry(entry)
+            # host state class
+            _r_str = {
+                0: "success"
+                1: "danger"
+                2: "danger"
+            }[entry.state]
+            entry.$$icswStateClass = _r_str
+            entry.$$icswStateLabelClass = "label-#{_r_str}"
+            entry.$$icswStateString = {
                 0: "OK"
                 1: "Critical"
                 2: "Unreachable"
             }[entry.state]
+        return entry
 
-        get_service_state_string: (entry) ->
-            return {
-                0: "OK"
-                1: "Warning"
-                2: "Critical"
-                3: "Unknown"
-            }[entry.state]
-        get_service_state_class: (entry, prefix) ->
+    salt_service = (entry, cat_tree) ->
+        if not entry.$$icswSalted?
+            entry.$$icswSalted = true
+            # set default values
+            entry.$$ct = "service"
+            _sanitize_entry(entry)
             _r_str = {
                 0: "success"
                 1: "warning"
                 2: "danger"
                 3: "danger"
             }[entry.state]
-            if prefix?
-                _r_str = "#{prefix}#{_r_str}"
-            return _r_str
-        get_host_state_class: (entry, prefix) ->
-            return _get_host_state_class(entry, prefix)
-        get_attempt_info: (entry, force=false) ->
-            return _get_attempt_info(entry, force)
-        get_attempt_class: (entry, prefix="", force=false) ->
-            return _get_attempt_class(entry, prefix, force)
-        show_attempt_info: (entry) ->
-            try
-                if parseInt(entry.current_attempt) == 1
-                    return true
-                else
-                    return true
-            catch error
-               return true
-        }
+            entry.$$icswStateLabelClass = "label-#{_r_str}"
+            entry.$$icswStateString = {
+                0: "OK"
+                1: "Warning"
+                2: "Critical"
+                3: "Unknown"
+            }[entry.state]
+            # resolve categories
+            if entry.custom_variables.cat_pks?
+                entry.$$icswCategories = (cat_tree.lut[_cat].name for _cat in entry.custom_variables.cat_pks).join(", ")
+            else
+                entry.$$icswCategories = "---"
+        return entry
+
+    return {
+        salt_host: (entry) ->
+            return salt_host(entry)
+
+        salt_service: (entry, cat_tree) ->
+            return salt_service(entry, cat_tree)
+    }
 ]).controller("icswDeviceLiveStatusCtrl",
 [
     "$scope", "$compile", "$templateCache", "Restangular",
@@ -773,6 +816,8 @@ angular.module(
             @notifier = $q.defer()
             @hosts = []
             @services = []
+            @filtered_hosts = []
+            @filtered_services = []
             @host_lut = {}
             @used_cats = []
 
@@ -780,30 +825,33 @@ angular.module(
             @generation++
             console.log "update", @generation
             @notifier.notify(@generation)
-            @hosts = hosts
-            @services = services
+            @hosts.length = 0
+            for entry in hosts
+                @hosts.push(entry)
+            @services.length = 0
+            for entry in services
+                @services.push(entry)
             @host_lut = host_lut
             @used_cats = used_cats
 
         filter: (filter) =>
             # apply livestatus filter
 
-            _hosts = []
+            @filtered_hosts.length = 0
             for entry in @hosts
                 if filter.service_types[entry.state_type] and filter.host_states[entry.state]
                     entry.$$show = true
-                    _hosts.push(entry)
+                    @filtered_hosts.push(entry)
                 else
                     entry.$$show = false
-            @filtered_hosts = _hosts
 
             # category filtering ?
             _cf = if filter.cat_filter_installed and filter.cat_filter_list? then true else false
             if _cf
                 # show uncategorized entries
                 _zero_cf = 0 in filter.cat_filter_list
-            console.log "***", _cf
-            _services = []
+
+            @filtered_services.length = 0
             for entry in @services
                 if filter.service_types[entry.state_type] and filter.service_states[entry.state]
                     entry.$$show = true
@@ -815,21 +863,20 @@ angular.module(
                         else if not _zero_cf
                             entry.$$show = false
                     if entry.$$show
-                        _services.push(entry)
+                        @filtered_services.push(entry)
                 else
                     entry.$$show = false
-            @filtered_services = _services
-            
+
             # bump generation counter
             @generation++
 
 ]).service("icswDeviceLivestatusDataService",
 [
     "ICSW_URLS", "$interval", "$timeout", "icswSimpleAjaxCall", "$q", "icswDeviceTreeService",
-    "icswMonitoringResult",
+    "icswMonitoringResult", "icswSaltMonitoringResultService", "icswCategoryTreeService",
 (
     ICSW_URLS, $interval, $timeout, icswSimpleAjaxCall, $q, icswDeviceTreeService,
-    icswMonitoringResult,
+    icswMonitoringResult, icswSaltMonitoringResultService, icswCategoryTreeService,
 ) ->
     # dict: device.idx -> watcher ids
     watch_list = {}
@@ -841,44 +888,9 @@ angular.module(
     cur_interval = undefined
     cur_xhr = undefined
     schedule_start_timeout = undefined
+    # for lookup
     device_tree = undefined
-
-    _sanitize_entries = (entry) ->
-        entry.state = parseInt(entry.state)
-        if entry.state_type in ["0", "1"]
-            entry.state_type = parseInt(entry.state_type)
-        else
-            entry.state_type = null
-        if entry.check_type in ["0", "1"]
-            entry.check_type = parseInt(entry.check_type)
-        else
-            entry.check_type = null
-
-    _parse_custom_variables = (cvs) ->
-        _cv = {}
-        if cvs
-            first = true
-            for _entry in cvs.split("|")
-                if first
-                    key = _entry.toLowerCase()
-                    first = false
-                else
-                    parts = _entry.split(",")
-                    _cv[key] = parts
-                    key = parts.pop().toLowerCase()
-            # append key of last '|'-split to latest parts
-            parts.push(key)
-            for single_key in ["check_command_pk", "device_pk"]
-                if single_key of _cv
-                    _cv[single_key] = parseInt(_cv[single_key][0])
-            for int_mkey in ["cat_pks"]
-                if int_mkey of _cv
-                    _list = (parseInt(_sv) for _sv in _cv[int_mkey] when _sv != "-")
-                    if _list.length
-                        _cv[int_mkey] = _list
-                    else
-                        delete _cv[int_mkey]
-        return _cv
+    category_tree = undefined
 
     watchers_present = () ->
         # whether any watchers are present
@@ -903,7 +915,6 @@ angular.module(
             $interval.cancel(cur_interval)
         if cur_xhr?
             cur_xhr.abort()
-
 
     remove_watchers_by_client = (client) ->
         client = client.toString()
@@ -938,6 +949,9 @@ angular.module(
                 _waiters.push(
                     icswDeviceTreeService.load("liveStatusDataService")
                 )
+                _waiters.push(
+                    icswCategoryTreeService.load("liveStatusDataService")
+                )
             else
                 _load_device_tree = false
             $q.all(
@@ -948,6 +962,7 @@ angular.module(
                     if _load_device_tree
                         # DeviceTreeService was requested
                         device_tree = result[1]
+                        category_tree = result[2]
                     dev_tree_lut = device_tree.enabled_lut
                     service_entries = []
                     $(xml).find("value[name='service_result']").each (idx, node) =>
@@ -961,14 +976,11 @@ angular.module(
                     host_id = 0
                     for entry in host_entries
                         host_id++
-                        # sanitize entries
-                        _sanitize_entries(entry)
+                        icswSaltMonitoringResultService.salt_host(entry)
                         # list of checks for host
                         entry.checks = []
-                        entry.$$ct = "host"
                         # dummy link
                         entry.host = entry
-                        entry.custom_variables = _parse_custom_variables(entry.custom_variables)
                         entry._srv_id = "host#{host_id}"
                         if entry.custom_variables.device_pk of dev_tree_lut
                             _dev = dev_tree_lut[entry.custom_variables.device_pk]
@@ -979,11 +991,8 @@ angular.module(
                     for entry in service_entries
                         entry.search_str = "#{entry.plugin_output} #{entry.display_name}"
                         srv_id++
-                        # sanitize entries
-                        _sanitize_entries(entry)
-                        entry.custom_variables = _parse_custom_variables(entry.custom_variables)
+                        icswSaltMonitoringResultService.salt_service(entry, category_tree)
                         entry.description = entry.display_name  # this is also what icinga displays
-                        entry.$$ct = "service"
                         entry._srv_id = "srvc#{srv_id}"
                         # populate list of checks
                         host_lut[entry.custom_variables.device_pk].checks.push(entry)
@@ -1098,7 +1107,7 @@ angular.module(
                 return cat.full_name
             else
                 return "TOP"
-]).directive("icswDeviceLivestatusServiceInfo", ["$templateCache", "icswInterpretMonitoringCheckResult", ($templateCache, icswInterpretMonitoringCheckResult) ->
+]).directive("icswDeviceLivestatusServiceInfo", ["$templateCache", ($templateCache) ->
     return {
         restrict : "E"
         template : $templateCache.get("icsw.device.livestatus.serviceinfo")
@@ -1107,37 +1116,6 @@ angular.module(
             service: "=service"
             ls_filter: "=lsFilter"
         }
-        link : (scope, element, attrs) ->
-            angular.extend(scope, icswInterpretMonitoringCheckResult)
-            scope.get_categories = (entry) ->
-                if entry.custom_variables
-                    if entry.custom_variables.cat_pks? and scope.ls_filter.cat_defined()
-                        return (scope.ls_filter.get_cat_name(_pk) for _pk in entry.custom_variables.cat_pks).join(", ")
-                    else
-                        return "---"
-                else
-                    return "N/A"
-    }
-]).directive("icswDeviceLivestatusCheckService", ["$templateCache", "icswInterpretMonitoringCheckResult", ($templateCache, icswInterpretMonitoringCheckResult) ->
-    return {
-        restrict: "EA"
-        template: $templateCache.get("icsw.device.livestatus.check.service")
-        scope : {
-            service: "=service"
-            ls_filter: "=lsFilter"
-            show_column: "=showColumn"
-        }
-        link: (scope, element) ->
-            angular.extend(scope, icswInterpretMonitoringCheckResult)
-            scope.get_categories = (entry) ->
-                return "N/A"
-                if entry.custom_variables
-                    if entry.custom_variables.cat_pks? and scope.ls_filter.cat_defined()
-                        return (scope.ls_filter.get_cat_name(_pk) for _pk in entry.custom_variables.cat_pks).join(", ")
-                    else
-                        return "---"
-                else
-                    return "N/A"
     }
 ]).controller("icswDeviceLivestatusBurstCtrl", ["$scope", "icswDeviceTreeService", "icswDeviceLivestatusDataService", "$q", "icswTools", ($scope, icswDeviceTreeService, icswDeviceLivestatusDataService, $q, icswTools) ->
     $scope.host_entries = []
@@ -1615,6 +1593,16 @@ angular.module(
                     scope.struct.monitoring_data = new_val
                 )
         }
+]).directive("icswDeviceLivestatusTableRow",
+[
+    "$templateCache",
+(
+    $templateCache,
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.device.livestatus.table.row")
+    }
 ]).controller("icswDeviceLivestatusTableCtrl",
 [
     "$scope",
