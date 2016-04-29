@@ -29,7 +29,7 @@ device_asset_module = angular.module(
     $stateProvider.state(
         "main.devasset", {
             url: "/asset"
-            template: '<icsw-device-asset-overview icsw-sel-man="0"></icsw-device-asset-overview>'
+            templateUrl: 'icsw/device/asset/overview'
             icswData:
                 pageTitle: "Device Assets"
                 menuEntry:
@@ -63,7 +63,7 @@ device_asset_module = angular.module(
     # struct to hand over to VarCtrl
     $scope.struct = {
         # list of devices
-        devices: undefined
+        devices: []
         # device tree
         device_tree: undefined
         # data loaded
@@ -96,6 +96,9 @@ device_asset_module = angular.module(
     c.notify("1.")
     c.notify("2.")
     a.resolve("go")
+    $scope.$on("$destroy", () ->
+        console.log "asset destroyed"
+    )
     $scope.new_devsel = (devs) ->
         $q.all(
             [
@@ -104,7 +107,9 @@ device_asset_module = angular.module(
         ).then(
             (data) ->
                 $scope.struct.device_tree = data[0]
-                $scope.struct.devices = devs
+                $scope.struct.devices.length = 0
+                for entry in devs
+                    $scope.struct.devices.push(entry)
                 $scope.struct.data_loaded = true
         )
 

@@ -361,6 +361,7 @@ dashboard_module = angular.module(
         new icswDashboardElement(1, 1, "primary", "Virtual desktops", "icsw.dashboard.virtualdesktops")
         new icswDashboardElement(2, 1, "success", "Job info", "icsw.dashboard.jobinfo")
         new icswDashboardElement(3, 3, "success", "Graphing", "icsw.rrd.graph")
+        new icswDashboardElement(2, 2, "danger", "Assets", "icsw/device/asset/overview")
     ]
 ]).service("icswDashboardContainer", [
     "$q", "icswDashboardStaticList",
