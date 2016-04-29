@@ -102,75 +102,30 @@ angular.module(
         "main.livestatus.test1"
         {
             url: "/livestatus/ad1"
-            template: '
-<div class="col-md-4 col-xs-12 col-lg-6">
-    <div icsw-device-livestatus-fullburst icsw-element-size="size" ls-devsel="ls_devsel" ls-filter="ls_filter"></div>
-</div>
-<div class="col-md-4 col-xs-12 col-lg-6">
-    <div icsw-device-livestatus-maplist ls-devsel="ls_devsel" ls-filter="ls_filter"></div>
-</div>
-<div class="col-md-4 col-xs-12 col-lg-8">
-    <icsw-config-category-location-show ls-devsel="ls_devsel" ls-filter="ls_filter"></icsw-config-category-location-show>
-</div>
-<div class="col-md-4 col-xs-12 col-lg-2">
-    <icsw-device-livestatus-cat-tree ls-filter="ls_filter"></icsw-device-livestatus-cat-tree>
-</div>
-<div class="col-md-4 col-xs-12 col-lg-8">
-    <icsw-device-livestatus-table-view ls-filter="ls_filter" filtered-entries="filtered_entries" ls-devsel="ls_devsel"></icsw-device-livestatus-table-view>
-</div>
-'
-            icswData: {
-                bla: 4
-            }
+            templateUrl: "icsw.device.livestatus.layout1"
+            icswData: {}
         }
     ).state(
         "main.livestatus.testQX"
         {
             url: "/livestatus/aq1"
-            template: '
-<div class="col-md-4 col-xs-12 col-lg-6">
-    <div icsw-device-livestatus-fullburst icsw-element-size="size" ls-devsel="ls_devsel" ls-filter="ls_filter"></div>
-</div>
-<div class="col-md-4 col-xs-12 col-lg-6">
-    <div icsw-device-livestatus-maplist ls-devsel="ls_devsel" ls-filter="ls_filter"></div>
-</div>
-<div class="col-md-4 col-xs-12 col-lg-8">
-    <icsw-device-livestatus-table-view ls-filter="ls_filter" filtered-entries="filtered_entries" ls-devsel="ls_devsel"></icsw-device-livestatus-table-view>
-</div>
-<div class="col-md-4 col-xs-12 col-lg-2">
-    <icsw-device-livestatus-cat-tree ls-filter="ls_filter"></icsw-device-livestatus-cat-tree>
-</div>
-'
-            icswData: {
-                bli: 5
-            }
+            templateUrl: "icsw.device.livestatus.layout2"
+            icswData: {}
         }
     )
-]).factory("icswLivestatusDevSelFactory", [() ->
-    return () ->
-        _dev_sel = []
-        _changed = 0
-        return {
-            "set": (sel) ->
-                _dev_sel = sel
-                _changed++
-            "get": () ->
-                return _dev_sel
-            "changed": () ->
-                return _changed
-        }
 ]).service("icswLivestatusFilterService",
 [
     "$q", "$rootScope",
 (
     $q, $rootScope,
 ) ->
+    # ToDo: separate data / filtered data from filter
     running_id = 0
     class icswLivestatusFilter
         constructor: () ->
             running_id++
             @id = running_id
-            console.log "new LivestatusFilter with id #{@id}"
+            # console.log "new LivestatusFilter with id #{@id}"
             @categories = []
             # number of entries
             @n_hosts = 0
@@ -224,6 +179,19 @@ angular.module(
                 @service_types[entry[0]] = entry[2]
 
             @change_notifier = $q.defer()
+            # category filter settings
+            @cat_filter_installed = false
+
+        install_category_filter: () =>
+            @cat_filter_installed = true
+            @cat_filter_list = undefined
+
+        set_category_filter: (in_list) =>
+            @cat_filter_list = in_list
+            # console.log "cur_cat_filter=", in_list
+            if @_latest_data?
+                # a little hack but working
+                @set_monitoring_data(@_latest_data)
 
         toggle_service_state: (code) =>
             _srvc_idx = @service_state_lut[code][0]
@@ -231,7 +199,6 @@ angular.module(
             # ensure that any service state is set, should be implemented as option
             # if not _.some(_.values(@service_states))
             #    @service_states[0] = true
-
 
         toggle_host_state: (code) =>
             _host_idx = @host_state_lut[code][0]
@@ -270,6 +237,8 @@ angular.module(
         set_monitoring_data: (data) ->
             @n_hosts = data.hosts.length
             @n_services = data.services.length
+            @categories = data.categories
+            @_latest_data = data
             data.filter(@)
             @f_hosts = data.filtered_hosts.length
             @f_services = data.filtered_services.length
@@ -327,11 +296,11 @@ angular.module(
             _lf = @props.livestatus_filter
             _list = []
             _text_f = []
-            if _lf.f_hosts
+            if _lf.f_hosts != _lf.n_hosts
                 _text_f.push("#{_lf.f_hosts} of #{_lf.n_hosts}")
             else
                 _text_f.push(" #{_lf.n_hosts}")
-            if _lf.f_services
+            if _lf.f_services != _lf.n_services
                 _text_f.push("#{_lf.f_services} of #{_lf.n_services}")
             else
                 _text_f.push(" #{_lf.n_services}")
@@ -440,16 +409,18 @@ angular.module(
     return  {
         restrict: "EA"
         replace: true
+        scope:
+            filter: "=icswLivestatusFilter"
+            changed_cb: "=icswChangedCallback"
         link: (scope, element, attr) ->
-            f_changed = () ->
-                console.log "FC"
-                
             ReactDOM.render(
                 React.createElement(
                     icswLivestatusFilterReactDisplay
                     {
-                        livestatus_filter: new icswLivestatusFilterService()
-                        filter_changed_cb: f_changed
+                        livestatus_filter: scope.filter
+                        filter_changed_cb: () ->
+                            if scope.changed_cb?
+                                scope.changed_cb()
                     }
                 )
                 element[0]
@@ -525,330 +496,7 @@ angular.module(
                 check._show = show
                 return check._show
         }
-]).service("icswInterpretMonitoringCheckResult", [() ->
-    get_diff_time = (ts) ->
-        if parseInt(ts)
-            return moment.unix(ts).fromNow(true)
-        else
-            return "never"
-    _get_attempt_info = (entry, force=false) ->
-        if entry.max_check_attempts == null
-            return "N/A"
-        try
-            max = parseInt(entry.max_check_attempts)
-            cur = parseInt(entry.current_attempt)
-            if max == cur
-                return "#{cur}"
-            else
-                return "#{cur} / #{max}"
-        catch error
-            return "e"
-    _get_attempt_class = (entry, prefix="", force=false) ->
-        if entry.max_check_attempts == null
-            _r_str ="default"
-        else
-            try
-                max = parseInt(entry.max_check_attempts)
-                cur = parseInt(entry.current_attempt)
-                if max == cur
-                    _r_str = "info"
-                else
-                    _r_str = "success"
-            catch error
-                _r_str = "danger"
-        if prefix?
-            _r_str = "#{prefix}#{_r_str}"
-        return _r_str
-    _get_host_state_class = (entry, prefix) ->
-        _r_str = {
-            0: "success"
-            1: "danger"
-            2: "danger"
-        }[entry.state]
-        if prefix?
-            _r_str = "#{prefix}#{_r_str}"
-        return _r_str
-    return {
-        get_last_check: (entry) ->
-            return get_diff_time(entry.last_check)
-        get_last_change: (entry) ->
-            return get_diff_time(entry.last_state_change)
-        get_host_last_check: (entry) ->
-            return get_diff_time(entry.host.last_check)
-        get_host_last_change: (entry) ->
-            return get_diff_time(entry.host.last_state_change)
-        host_is_passive_checked: (entry) ->
-            return if entry.host.check_type then true else false
-        get_host_class: (entry) ->
-            return _get_host_state_class(entry.host)
-        get_host_attempt_info: (entry, force=false) ->
-            return _get_attempt_info(entry.host, force)
-        get_host_attempt_class: (entry, prefix="", force=false) ->
-            return _get_attempt_class(entry.host, prefix, force)
-        get_check_type: (entry) ->
-            return {
-                null: "???"
-                0: "active"
-                1: "passive"
-            }[entry.check_type]
-        is_passive_check: (entry) ->
-            return if entry.check_type then true else false
-        get_state_type: (entry) ->
-            return {
-                null: "???"
-                0: "soft"
-                1: "hard"
-            }[entry.state_type]
-        get_host_state_string: (entry) ->
-            return {
-                0: "OK"
-                1: "Critical"
-                2: "Unreachable"
-            }[entry.state]
-
-        get_service_state_string: (entry) ->
-            return {
-                0: "OK"
-                1: "Warning"
-                2: "Critical"
-                3: "Unknown"
-            }[entry.state]
-        get_service_state_class: (entry, prefix) ->
-            _r_str = {
-                0: "success"
-                1: "warning"
-                2: "danger"
-                3: "danger"
-            }[entry.state]
-            if prefix?
-                _r_str = "#{prefix}#{_r_str}"
-            return _r_str
-        get_host_state_class: (entry, prefix) ->
-            return _get_host_state_class(entry, prefix)
-        get_attempt_info: (entry, force=false) ->
-            return _get_attempt_info(entry, force)
-        get_attempt_class: (entry, prefix="", force=false) ->
-            return _get_attempt_class(entry, prefix, force)
-        show_attempt_info: (entry) ->
-            try
-                if parseInt(entry.current_attempt) == 1
-                    return true
-                else
-                    return true
-            catch error
-               return true
-        }
-]).controller("icswDeviceLiveStatusCtrl",
-[
-    "$scope", "$compile", "$filter", "$templateCache", "Restangular",
-    "$q", "$uibModal", "$timeout", "icswTools", "ICSW_URLS", "icswSimpleAjaxCall",
-    "icswDeviceLivestatusDataService", "icswCachingCall", "icswLivestatusFilterFactory",
-    "icswDeviceTreeService", "icswLivestatusDevSelFactory", "$state",
-(
-    $scope, $compile, $filter, $templateCache, Restangular,
-    $q, $uibModal, $timeout, icswTools, ICSW_URLS, icswSimpleAjaxCall,
-    icswDeviceLivestatusDataService, icswCachingCall, icswLivestatusFilterFactory,
-    icswDeviceTreeService, icswLivestatusDevSelFactory, $state
-) ->
-    $scope.host_entries = []
-    $scope.service_entries = []
-    $scope.filtered_entries = []
-    LS_KEY = "main.livestatus"
-    $scope.struct = {
-        # list of layouts
-        layouts: []
-        # current layout
-        current_layout: undefined
-    }
-
-    # layout functions
-
-    $scope.activate_layout = (state) ->
-        $scope.struct.current_layout = state
-        $state.go(state)
-
-    check_layouts = () ->
-        $scope.struct.layouts.length = 0
-        for state in $state.get()
-            if state.name.match(LS_KEY) and state.name != LS_KEY
-                state.icswData.short_name = state.name.slice(LS_KEY.length + 1)
-                $scope.struct.layouts.push(state)
-        $scope.activate_layout($scope.struct.layouts[0])
-
-    check_layouts()
-    
-    if not $scope.ls_filter?
-        # init ls_filter if not set
-        $scope.ls_filter = new icswLivestatusFilterFactory("lsc")
-
-    $scope.ls_devsel = new icswLivestatusDevSelFactory()
-
-    $scope.data_timeout = undefined
-    $scope.$watch(
-        $scope.ls_filter.changed
-        (new_filter) ->
-            $scope.apply_filter()
-    )
-
-    # selected categories
-    $scope.new_devsel = (_dev_sel, _devg_sel) ->
-        $scope.dev_sel = _dev_sel
-        # console.log "nds=", $scope.dev_sel
-        # cancel data_timeout if set
-        if $scope.data_timeout
-            $timeout.cancel($scope.data_timeout)
-            $scope.data_timeout = undefined
-
-        #pre_sel = (dev.idx for dev in $scope.devices when dev.expanded)
-        wait_list = [
-            icswDeviceTreeService.load($scope.$id)
-            icswDeviceLivestatusDataService.retain($scope.$id, _dev_sel)
-        ]
-        $q.all(wait_list).then(
-            (data) ->
-                # console.log "data=", data
-                $scope.ls_devsel.set(_dev_sel)
-                $scope.dev_tree_lut = data[0].enabled_lut
-                $scope.new_data(data[1])
-                #console.log "gen", data[1][4]
-                # console.log "watch for", data[1]
-                $scope.$watch(
-                    () ->
-                        return data[1].generation
-                    () ->
-                        # console.log "Changed", data[1].generation
-                        $scope.new_data(data[1])
-                )
-        )
-    $scope.new_data = (mres) ->
-        host_entries = mres.hosts
-        service_entries = mres.services
-        used_cats = mres.used_cats
-        $scope.host_entries = host_entries
-        $scope.service_entries = service_entries
-        $scope.ls_filter.set_total_num(host_entries.length, service_entries.length)
-        $scope.ls_filter.set_used_cats(used_cats)
-        $scope.apply_filter()
-
-    $scope.apply_filter = () ->
-        # filter entries for table
-        $scope.filtered_entries = _.filter($scope.service_entries, (_v) -> return $scope.ls_filter.apply_filter(_v, true))
-        $scope.ls_filter.set_filtered_num($scope.host_entries.length, $scope.filtered_entries.length)
-
-    $scope.$on("$destroy", () ->
-        icswDeviceLivestatusDataService.destroy($scope.$id)
-    )
-]).directive('icswDeviceLivestatusFullburst', ["$templateCache", ($templateCache) ->
-    return {
-        restrict: "EA"
-        template: $templateCache.get("icsw.device.livestatus.fullburst")
-        scope: {
-            data: "=data"
-            redrawBurst: "=redraw"
-            serviceFocus: "=serviceFocus"
-            ls_filter: "=lsFilter"
-            ls_devsel: "=lsDevsel"
-            size: "=icswElementSize"
-        }
-        link: (scope, element, attrs) ->
-            # omitted segments
-            scope.width = parseInt(attrs["initialWidth"] ? "600")
-            scope.omittedSegments = 0
-            scope.$watch(
-                "size",
-                (new_val) ->
-                    if new_val
-                        _w = new_val.width / 2
-                        if _w != scope.width
-                            svg_el = element.find("svg")[0]
-                            g_el = element.find("svg > g")[0]
-                            scope.width = _w
-                            svg_el.setAttribute("width", _w)
-                            g_el.setAttribute("transform", "translate(#{_w / 2}, 160)")
-            )
-    }
-]).service('icswDeviceLivestatusTableService', ["ICSW_URLS", (ICSW_URLS) ->
-    return {
-        edit_template: "network.type.form"
-    }
-]).service("icswMonitoringResult",
-[
-    "$q",
-(
-    $q,
-) ->
-    class icswMonitoringResult
-        constructor: () ->
-            @generation = 0
-            @notifier = $q.defer()
-            @hosts = []
-            @services = []
-            @host_lut = {}
-            @used_cats = []
-
-        update: (hosts, services, host_lut, used_cats) =>
-            @generation++
-            console.log "update", @generation
-            @notifier.notify(@generation)
-            @hosts = hosts
-            @services = services
-            @host_lut = host_lut
-            @used_cats = used_cats
-
-        filter: (filter) =>
-            # apply livestatus filter
-
-            _hosts = []
-            for entry in @hosts
-                if filter.service_types[entry.state_type] and filter.host_states[entry.state]
-                    entry.$$show = true
-                    _hosts.push(entry)
-                else
-                    entry.$$show = false
-            @filtered_hosts = _hosts
-
-            _services = []
-            for entry in @services
-                if filter.service_types[entry.state_type] and filter.service_states[entry.state]
-                    entry.$$show = true
-                    _services.push(entry)
-                else
-                    entry.$$show = false
-            @filtered_services = _services
-            
-            # bump generation counter
-            @generation++
-
-]).service("icswDeviceLivestatusDataService",
-[
-    "ICSW_URLS", "$interval", "$timeout", "icswSimpleAjaxCall", "$q", "icswDeviceTreeService",
-    "icswMonitoringResult",
-(
-    ICSW_URLS, $interval, $timeout, icswSimpleAjaxCall, $q, icswDeviceTreeService,
-    icswMonitoringResult,
-) ->
-    # dict: device.idx -> watcher ids
-    watch_list = {}
-    # defer_list = {}
-    # dict: watcher ids -> Monitoring result
-    result_list = {}
-    _host_lut = {}
-    destroyed_list = []
-    cur_interval = undefined
-    cur_xhr = undefined
-    schedule_start_timeout = undefined
-    device_tree = undefined
-
-    _sanitize_entries = (entry) ->
-        entry.state = parseInt(entry.state)
-        if entry.state_type in ["0", "1"]
-            entry.state_type = parseInt(entry.state_type)
-        else
-            entry.state_type = null
-        if entry.check_type in ["0", "1"]
-            entry.check_type = parseInt(entry.check_type)
-        else
-            entry.check_type = null
+]).service("icswSaltMonitoringResultService", [() ->
 
     _parse_custom_variables = (cvs) ->
         _cv = {}
@@ -876,6 +524,345 @@ angular.module(
                         delete _cv[int_mkey]
         return _cv
 
+    _get_diff_time = (ts) ->
+        if parseInt(ts)
+            return moment.unix(ts).fromNow(true)
+        else
+            return "never"
+
+    _get_attempt_info = (entry) ->
+        if entry.max_check_attempts == null
+            return "N/A"
+        else
+            try
+                max = parseInt(entry.max_check_attempts)
+                cur = parseInt(entry.current_attempt)
+                if max == cur
+                    return "#{cur}"
+                else
+                    return "#{cur} / #{max}"
+            catch error
+                return "e"
+            
+    _get_attempt_class = (entry) ->
+        if entry.max_check_attempts == null
+            _r_str = "default"
+        else
+            try
+                max = parseInt(entry.max_check_attempts)
+                cur = parseInt(entry.current_attempt)
+                if max == cur
+                    _r_str = "info"
+                else
+                    _r_str = "success"
+            catch error
+                _r_str = "danger"
+        return "label-#{_r_str}"
+            
+    _sanitize_entry = (entry) ->
+        entry.state = parseInt(entry.state)
+        if entry.state_type in ["0", "1"]
+            entry.state_type = parseInt(entry.state_type)
+        else
+            entry.state_type = null
+        if entry.check_type in ["0", "1"]
+            entry.check_type = parseInt(entry.check_type)
+        else
+            entry.check_type = null
+        entry.$$icswStateTypeString = {
+            null: "???"
+            0: "soft"
+            1: "hard"
+        }[entry.state_type]
+        entry.$$icswCheckTypeString = {
+            null: "???"
+            0: "active"
+            1: "passive"
+        }[entry.check_type]
+        entry.$$icswPassiveCheck = if entry.check_type then true else false
+        entry.$$icswAttemptLabelClass = _get_attempt_class(entry)
+        entry.$$icswAttemptInfo = _get_attempt_info(entry)
+        try
+            if parseInt(entry.current_attempt) == 1
+                _si = true
+            else
+                _si = true
+        catch error
+           _si = true
+        entry.$$icswShowAttemptInfo = _si
+        entry.$$icswLastCheckString = _get_diff_time(entry.last_check)
+        entry.$$icswLastStateChangeString = _get_diff_time(entry.last_state_change)
+
+        # custom variables
+
+        entry.custom_variables = _parse_custom_variables(entry.custom_variables)
+
+    salt_host = (entry, device_tree) ->
+        if not entry.$$icswSalted?
+            entry.$$icswSalted = true
+            # set default values
+            entry.$$ct = "host"
+            # sanitize entries
+            _sanitize_entry(entry)
+            # host state class
+            _r_str = {
+                0: "success"
+                1: "danger"
+                2: "danger"
+            }[entry.state]
+            entry.$$icswStateClass = _r_str
+            entry.$$icswStateLabelClass = "label-#{_r_str}"
+            entry.$$icswStateString = {
+                0: "OK"
+                1: "Critical"
+                2: "Unreachable"
+            }[entry.state]
+            entry.$$icswDevice = device_tree.all_lut[entry.custom_variables.device_pk]
+            entry.$$icswDeviceGroup = device_tree.group_lut[entry.$$icswDevice.device_group]
+        return entry
+
+    salt_service = (entry, cat_tree) ->
+        if not entry.$$icswSalted?
+            entry.$$icswSalted = true
+            # set default values
+            entry.$$ct = "service"
+            _sanitize_entry(entry)
+            _r_str = {
+                0: "success"
+                1: "warning"
+                2: "danger"
+                3: "danger"
+            }[entry.state]
+            entry.$$icswStateLabelClass = "label-#{_r_str}"
+            entry.$$icswStateString = {
+                0: "OK"
+                1: "Warning"
+                2: "Critical"
+                3: "Unknown"
+            }[entry.state]
+            # resolve categories
+            if entry.custom_variables.cat_pks?
+                entry.$$icswCategories = (cat_tree.lut[_cat].name for _cat in entry.custom_variables.cat_pks).join(", ")
+            else
+                entry.$$icswCategories = "---"
+        return entry
+
+    return {
+        salt_host: (entry, device_tree) ->
+            return salt_host(entry, device_tree)
+
+        salt_service: (entry, cat_tree) ->
+            return salt_service(entry, cat_tree)
+    }
+]).controller("icswDeviceLiveStatusCtrl",
+[
+    "$scope", "$compile", "$templateCache", "Restangular",
+    "$q", "$timeout", "icswTools", "ICSW_URLS", "icswSimpleAjaxCall",
+    "icswDeviceLivestatusDataService", "icswCachingCall", "icswLivestatusFilterService",
+    "icswDeviceTreeService", "$state",
+(
+    $scope, $compile, $templateCache, Restangular,
+    $q, $timeout, icswTools, ICSW_URLS, icswSimpleAjaxCall,
+    icswDeviceLivestatusDataService, icswCachingCall, icswLivestatusFilterService,
+    icswDeviceTreeService, $state
+) ->
+    # top level controller of monitoring dashboard
+
+    LS_KEY = "main.livestatus"
+
+    $scope.struct = {
+        # list of layouts
+        layouts: []
+        # current layout
+        current_layout: undefined
+        # filter
+        filter: new icswLivestatusFilterService()
+        # selected devices
+        devices: []
+        # data fetch timeout
+        fetch_timeout: undefined
+        # updating flag
+        updating: false
+        # device tree, really needed here ?
+        device_tree: undefined
+        # monitoring data
+        monitoring_data: undefined
+    }
+
+    # layout functions
+
+    $scope.activate_layout = (state) ->
+        $scope.struct.current_layout = state
+        $state.go(state)
+
+    check_layouts = () ->
+        $scope.struct.layouts.length = 0
+        for state in $state.get()
+            if state.name.match(LS_KEY) and state.name != LS_KEY
+                state.icswData.short_name = state.name.slice(LS_KEY.length + 1)
+                $scope.struct.layouts.push(state)
+        $scope.activate_layout($scope.struct.layouts[0])
+
+    check_layouts()
+
+    # $scope.ls_devsel = new icswLivestatusDevSelFactory()
+
+    #$scope.$watch(
+    #    $scope.ls_filter.changed
+    #    (new_filter) ->
+    #        $scope.apply_filter()
+    #)
+
+    # selected categories
+
+    $scope.filter_changed = () ->
+        if $scope.struct.filter?
+            $scope.struct.filter.set_monitoring_data($scope.struct.monitoring_data)
+
+    $scope.new_devsel = (_dev_sel, _devg_sel) ->
+        # console.log "DS", _dev_sel
+
+        $scope.struct.updating = true
+
+        if $scope.struct.fetch_timeout
+            $timeout.cancel($scope.struct.fetch_timeout)
+            $scope.struct.fetch_timeout = undefined
+
+        $scope.struct.devices.length = 0
+        for entry in _dev_sel
+            if not entry.is_meta_device
+                $scope.struct.devices.push(entry)
+
+        #pre_sel = (dev.idx for dev in $scope.devices when dev.expanded)
+        wait_list = [
+            icswDeviceTreeService.load($scope.$id)
+            icswDeviceLivestatusDataService.retain($scope.$id, $scope.struct.devices)
+        ]
+        $q.all(wait_list).then(
+            (data) ->
+                $scope.struct.device_tree = data[0]
+                # $scope.new_data(data[1])
+                #console.log "gen", data[1][4]
+                # console.log "watch for", data[1]
+                $scope.struct.updating = false
+                $scope.struct.monitoring_data = data[1]
+                $scope.struct.monitoring_data.notifier.promise.then(
+                    (ok) ->
+                        console.log "dr ok"
+                    (not_ok) ->
+                        console.log "dr error"
+                    (generation) ->
+                        console.log "data here"
+                        $scope.filter_changed()
+                )
+        )
+
+    #$scope.new_data = (mres) ->
+    #    host_entries = mres.hosts
+    #    service_entries = mres.services
+    #    used_cats = mres.used_cats
+    #    $scope.host_entries = host_entries
+    #    $scope.service_entries = service_entries
+        # $scope.ls_filter.set_total_num(host_entries.length, service_entries.length)
+        # $scope.ls_filter.set_used_cats(used_cats)
+        # $scope.apply_filter()
+
+    #$scope.apply_filter = () ->
+        # filter entries for table
+        # $scope.filtered_entries = _.filter($scope.service_entries, (_v) -> return $scope.ls_filter.apply_filter(_v, true))
+        # $scope.ls_filter.set_filtered_num($scope.host_entries.length, $scope.filtered_entries.length)
+
+    $scope.$on("$destroy", () ->
+        icswDeviceLivestatusDataService.destroy($scope.$id)
+    )
+
+]).service("icswMonitoringResult",
+[
+    "$q",
+(
+    $q,
+) ->
+    class icswMonitoringResult
+        constructor: () ->
+            @generation = 0
+            @notifier = $q.defer()
+            @hosts = []
+            @services = []
+            @filtered_hosts = []
+            @filtered_services = []
+            @host_lut = {}
+            @used_cats = []
+
+        update: (hosts, services, host_lut, used_cats) =>
+            @generation++
+            console.log "update", @generation
+            @notifier.notify(@generation)
+            @hosts.length = 0
+            for entry in hosts
+                @hosts.push(entry)
+            @services.length = 0
+            for entry in services
+                @services.push(entry)
+            @host_lut = host_lut
+            @used_cats = used_cats
+
+        filter: (filter) =>
+            # apply livestatus filter
+
+            @filtered_hosts.length = 0
+            for entry in @hosts
+                if filter.service_types[entry.state_type] and filter.host_states[entry.state]
+                    entry.$$show = true
+                    @filtered_hosts.push(entry)
+                else
+                    entry.$$show = false
+
+            # category filtering ?
+            _cf = if filter.cat_filter_installed and filter.cat_filter_list? then true else false
+            if _cf
+                # show uncategorized entries
+                _zero_cf = 0 in filter.cat_filter_list
+
+            @filtered_services.length = 0
+            for entry in @services
+                if filter.service_types[entry.state_type] and filter.service_states[entry.state]
+                    entry.$$show = true
+                    if _cf
+                        if entry.custom_variables? and entry.custom_variables.cat_pks?
+                            if not _.intersection(filter.cat_filter_list, entry.custom_variables.cat_pks).length
+                                entry.$$show = false
+                        else if not _zero_cf
+                            entry.$$show = false
+                    if entry.$$show
+                        @filtered_services.push(entry)
+                else
+                    entry.$$show = false
+
+            # bump generation counter
+            @generation++
+
+]).service("icswDeviceLivestatusDataService",
+[
+    "ICSW_URLS", "$interval", "$timeout", "icswSimpleAjaxCall", "$q", "icswDeviceTreeService",
+    "icswMonitoringResult", "icswSaltMonitoringResultService", "icswCategoryTreeService",
+(
+    ICSW_URLS, $interval, $timeout, icswSimpleAjaxCall, $q, icswDeviceTreeService,
+    icswMonitoringResult, icswSaltMonitoringResultService, icswCategoryTreeService,
+) ->
+    # dict: device.idx -> watcher ids
+    watch_list = {}
+    # defer_list = {}
+    # dict: watcher ids -> Monitoring result
+    result_list = {}
+    _host_lut = {}
+    destroyed_list = []
+    cur_interval = undefined
+    cur_xhr = undefined
+    schedule_start_timeout = undefined
+    # for lookup
+    device_tree = undefined
+    category_tree = undefined
+
     watchers_present = () ->
         # whether any watchers are present
         return _.keys(result_list).length > 0
@@ -899,7 +886,6 @@ angular.module(
             $interval.cancel(cur_interval)
         if cur_xhr?
             cur_xhr.abort()
-
 
     remove_watchers_by_client = (client) ->
         client = client.toString()
@@ -928,12 +914,14 @@ angular.module(
                         pk_list: angular.toJson(watched_devs)
                     }
                 )
-                icswDeviceTreeService.load("liveStatusDataService")
             ]
             if not device_tree?
                 _load_device_tree = true
                 _waiters.push(
                     icswDeviceTreeService.load("liveStatusDataService")
+                )
+                _waiters.push(
+                    icswCategoryTreeService.load("liveStatusDataService")
                 )
             else
                 _load_device_tree = false
@@ -945,6 +933,7 @@ angular.module(
                     if _load_device_tree
                         # DeviceTreeService was requested
                         device_tree = result[1]
+                        category_tree = result[2]
                     dev_tree_lut = device_tree.enabled_lut
                     service_entries = []
                     $(xml).find("value[name='service_result']").each (idx, node) =>
@@ -955,18 +944,15 @@ angular.module(
                     # console.log "*", service_entries, host_entries
                     host_lut = {}
                     used_cats = []
-                    host_id = 0
+                    # host_id = 0
                     for entry in host_entries
-                        host_id++
-                        # sanitize entries
-                        _sanitize_entries(entry)
+                        # host_id++
+                        icswSaltMonitoringResultService.salt_host(entry, device_tree)
                         # list of checks for host
                         entry.checks = []
-                        entry.$$ct = "host"
                         # dummy link
                         entry.host = entry
-                        entry.custom_variables = _parse_custom_variables(entry.custom_variables)
-                        entry._srv_id = "host#{host_id}"
+                        # entry._srv_id = "host#{host_id}"
                         if entry.custom_variables.device_pk of dev_tree_lut
                             _dev = dev_tree_lut[entry.custom_variables.device_pk]
                             entry.group_name = _dev.device_group_name
@@ -976,20 +962,18 @@ angular.module(
                     for entry in service_entries
                         entry.search_str = "#{entry.plugin_output} #{entry.display_name}"
                         srv_id++
-                        # sanitize entries
-                        _sanitize_entries(entry)
-                        entry.custom_variables = _parse_custom_variables(entry.custom_variables)
+                        entry.$$idx = srv_id
+                        icswSaltMonitoringResultService.salt_service(entry, category_tree)
                         entry.description = entry.display_name  # this is also what icinga displays
-                        entry.$$ct = "service"
-                        entry._srv_id = "srvc#{srv_id}"
+                        # entry._srv_id = "srvc#{srv_id}"
                         # populate list of checks
                         host_lut[entry.custom_variables.device_pk].checks.push(entry)
                         entry.host = host_lut[entry.custom_variables.device_pk]
                         entry.group_name = host_lut[entry.host_name].group_name
                         if entry.custom_variables and entry.custom_variables.cat_pks?
                             used_cats = _.union(used_cats, entry.custom_variables.cat_pks)
-                        else
-                            used_cats = _.union(used_cats, [0])
+                        # else
+                        #    used_cats = _.union(used_cats, [0])
                     _host_lut = host_lut
 
                     for client, _result of result_list
@@ -1095,7 +1079,7 @@ angular.module(
                 return cat.full_name
             else
                 return "TOP"
-]).directive("icswDeviceLivestatusServiceInfo", ["$templateCache", "icswInterpretMonitoringCheckResult", ($templateCache, icswInterpretMonitoringCheckResult) ->
+]).directive("icswDeviceLivestatusServiceInfo", ["$templateCache", ($templateCache) ->
     return {
         restrict : "E"
         template : $templateCache.get("icsw.device.livestatus.serviceinfo")
@@ -1104,180 +1088,7 @@ angular.module(
             service: "=service"
             ls_filter: "=lsFilter"
         }
-        link : (scope, element, attrs) ->
-            angular.extend(scope, icswInterpretMonitoringCheckResult)
-            scope.get_categories = (entry) ->
-                if entry.custom_variables
-                    if entry.custom_variables.cat_pks? and scope.ls_filter.cat_defined()
-                        return (scope.ls_filter.get_cat_name(_pk) for _pk in entry.custom_variables.cat_pks).join(", ")
-                    else
-                        return "---"
-                else
-                    return "N/A"
     }
-]).directive("icswDeviceLivestatusCheckService", ["$templateCache", "icswInterpretMonitoringCheckResult", ($templateCache, icswInterpretMonitoringCheckResult) ->
-    return {
-        restrict: "EA"
-        template: $templateCache.get("icsw.device.livestatus.check.service")
-        scope : {
-            service: "=service"
-            ls_filter: "=lsFilter"
-            show_column: "=showColumn"
-        }
-        link: (scope, element) ->
-            angular.extend(scope, icswInterpretMonitoringCheckResult)
-            scope.get_categories = (entry) ->
-                if entry.custom_variables
-                    if entry.custom_variables.cat_pks? and scope.ls_filter.cat_defined()
-                        return (scope.ls_filter.get_cat_name(_pk) for _pk in entry.custom_variables.cat_pks).join(", ")
-                    else
-                        return "---"
-                else
-                    return "N/A"
-    }
-]).controller("icswDeviceLivestatusBurstCtrl", ["$scope", "icswDeviceTreeService", "icswDeviceLivestatusDataService", "$q", "icswTools", ($scope, icswDeviceTreeService, icswDeviceLivestatusDataService, $q, icswTools) ->
-    $scope.host_entries = []
-    $scope.service_entries = []
-    $scope._burst_data = null
-    filter_propagated = false
-    filter_list = []
-    ignore_filter = false
-    $scope.burst_sel = (_dev_list, single_selection) ->
-        $scope.single_selection = single_selection
-        $scope._burst_sel = _dev_list
-        wait_list = [
-            icswDeviceTreeService.load($scope.$id)
-            icswDeviceLivestatusDataService.retain($scope.$id, _dev_list)
-        ]
-        $q.all(wait_list).then(
-            (data) ->
-                $scope.dev_tree_lut = data[0].enabled_lut
-                $scope.new_data(data[1])
-                $scope.$watch(
-                    () ->
-                        return data[1].generation
-                    () ->
-                        $scope.new_data(data[1])
-                )
-        )
-        $scope.new_data = (mres) ->
-            $scope.host_entries = mres.hosts
-            $scope.service_entries = mres.services
-            $scope.host_lut = mres.host_lut
-            $scope.burst_data = $scope.build_sunburst(
-                $scope.host_entries
-                $scope.service_entries
-            )
-            $scope.md_filter_changed()
-
-        $scope.$watch("ls_filter", (new_val) ->
-            if new_val
-                # wait until ls_filter is set
-                $scope.$watch(
-                    new_val.changed
-                    (new_filter) ->
-                        $scope.md_filter_changed()
-
-                )
-        )
-        $scope.apply_click_filter = (check) ->
-            if filter_list.length and check._srv_id not in filter_list
-                return false
-            else
-                return true
-
-        $scope.handle_section_click = () ->
-            # handle click on a defined section
-            if $scope.burst_data? and $scope.dev_tree_lut?
-                if $scope.burst_data.any_clicked()
-                    $scope.burst_data.handle_clicked()
-                if $scope.propagate_filter and not filter_propagated
-                    filter_propagated = true
-                    # register filter function
-                    $scope.ls_filter.register_filter_func($scope.apply_click_filter)
-                # create a list of all unique ids which are actually displayed
-                filter_list = (entry.check._srv_id for entry in $scope.burst_data.get_childs((node) -> return node.show))
-                # trigger filter change
-                $scope.ls_filter.trigger()
-
-        $scope.md_filter_changed = () ->
-            # filter entries for table
-            if $scope.ls_filter?
-                # filter burstData
-                if $scope.burst_data? and $scope.dev_tree_lut?
-                    (_check_filter(_v) for _v in $scope.burst_data.get_childs(
-                        (node) -> return node.filter)
-                    )
-                    if $scope.single_selection
-                        $scope.set_data($scope.burst_data, $scope._burst_sel[0].full_name)
-                    else
-                        $scope.set_data($scope.burst_data, "")
-
-        $scope.build_sunburst = (host_entries, service_entries) ->
-            # build burst data
-            _bdat = new hs_node(
-                "System"
-                # state 4: not set
-                {"state": 4, "idx" : 0, "ct": "system"}
-            )
-            _devg_lut = {}
-            # lut: dev idx to hs_nodes
-            dev_hs_lut = {}
-            for entry in host_entries
-                if entry.custom_variables.device_pk of $scope.dev_tree_lut
-                    _dev = $scope.dev_tree_lut[entry.custom_variables.device_pk]
-                    if _dev.device_group_name not of _devg_lut
-                        # we use the same index for devicegroups and services ...
-                        _devg = new hs_node(
-                            _dev.device_group_name
-                            {
-                                "ct"    : "group"
-                                "state" : 0
-                                "group_name" : _dev.device_group_name
-                            }
-                        )
-                        _bdat.check.state = 0
-                        _devg_lut[_devg.name] = _devg
-                        _bdat.add_child(_devg)
-                    else
-                        _devg = _devg_lut[_dev.device_group_name]
-                    # sunburst struct for device
-                    entry.group_name = _dev.device_group_name
-                    _dev_sbs = new hs_node(_dev.full_name, entry)
-                    _devg.add_child(_dev_sbs)
-                    # set devicegroup state
-                    _devg.check.state = Math.max(_devg.check.state, _dev_sbs.check.state)
-                    # set system state
-                    _bdat.check.state = Math.max(_bdat.check.state, _devg.check.state)
-                    dev_hs_lut[_dev.idx] = _dev_sbs
-            for entry in service_entries
-                # sanitize entries
-                if entry.custom_variables.device_pk of $scope.dev_tree_lut
-                    dev_hs_lut[entry.custom_variables.device_pk].add_child(new hs_node(entry.description, entry, true))
-            for idx, dev of dev_hs_lut
-                if not dev.children.length
-                    # add placeholder for non-existing services
-                    dev.add_child(new hs_node("", {}, true, true))
-            if $scope.zoom_level == "d"
-                if _bdat.valid_device()
-                    # valid device substructure, add dummy
-                    return _bdat.reduce().reduce()
-                else
-                    _dev = new hs_node("", {}, false, true, true)
-                    return _dev
-            else if $scope.zoom_level == "g"
-                return _bdat.reduce()
-            else
-                return _bdat
-
-        _check_filter = (entry) ->
-            show = $scope.ls_filter.apply_filter(entry.check, entry.show)
-            entry.value = if show then 1 else 0
-            return show
-        $scope.$on("$destroy", () ->
-            icswDeviceLivestatusDataService.destroy($scope.$id)
-        )
-
 ]).directive("newburst",
 [
     "$compile", "$templateCache",
@@ -1291,13 +1102,24 @@ angular.module(
         template: $templateCache.get("icsw.device.livestatus.network_graph")
         controller: "icswDeviceLivestatusBurstCtrl"
         scope:
-            device: "=icswDevice"
-            serviceFocus: "=serviceFocus"
-            omittedSegments: "=omittedSegments"
+            filter: "=icswLivestatusFilter"
+            data: "=icswMonitoringData"
+            # device: "=icswDevice"
+            # serviceFocus: "=serviceFocus"
+            omitted_segments: "=omittedSegments"
             ls_filter: "=lsFilter"
             ls_devsel: "=lsDevsel"
             is_drawn: "=isDrawn"
         link: (scope, element, attrs) ->
+            scope.$watch("data", (new_val) ->
+                scope.struct.monitoring_data = new_val
+            )
+            scope.$watch("filter", (new_val) ->
+                scope.struct.filter = new_val
+                if new_val
+                    scope.start_loop()
+            )
+
             scope.nodes = []
             scope.inner = parseInt(attrs["innerradius"] or 20)
             scope.outer = parseInt(attrs["outerradius"] or 120)
@@ -1322,7 +1144,7 @@ angular.module(
             #            data = [new_val]
             #        scope.burst_sel(data, true)
             #)
-            scope.burst_sel([scope.device], true)
+            # scope.burst_sel([scope.device], true)
             if attrs["drawAll"]?
                 scope.draw_all = true
             else
@@ -1363,6 +1185,7 @@ angular.module(
                 for idx of struct
                     if struct[idx].length
                         omitted_segments += scope.add_circle(parseInt(idx), struct[idx])
+                console.log "nodes", scope.nodes
                 if attrs["omittedSegments"]?
                     scope.omittedSegments = omitted_segments
                 if attrs["isDrawn"]?
@@ -1543,6 +1366,173 @@ angular.module(
                     else
                         break
     }
+]).controller("icswDeviceLivestatusBurstCtrl",
+[
+    "$scope", "icswDeviceTreeService", "icswDeviceLivestatusDataService", "$q",
+    "icswDeviceLivestatusFunctions",
+(
+    $scope, icswDeviceTreeService, icswDeviceLivestatusDataService, $q,
+    icswDeviceLivestatusFunctions,
+) ->
+    # $scope.host_entries = []
+    # $scope.service_entries = []
+    $scope.struct = {
+        # monitoring data
+        monitoring_data: undefined
+        # filter
+        filter: $scope.filter
+    }
+
+    $scope.start_loop = () ->
+        console.log "start loop"
+        $scope.struct.filter.change_notifier.promise.then(
+            (ok) ->
+            (error) ->
+            (gen) ->
+                b_data = icswDeviceLivestatusFunctions.build_structured_burst($scope.struct.monitoring_data)
+                console.log b_data
+                $scope.set_data(b_data, "bla")
+        )
+    $scope._burst_data = null
+    filter_propagated = false
+    filter_list = []
+    ignore_filter = false
+    $scope.burst_sel = (_dev_list, single_selection) ->
+        $scope.single_selection = single_selection
+        $scope._burst_sel = _dev_list
+        wait_list = [
+            icswDeviceTreeService.load($scope.$id)
+            icswDeviceLivestatusDataService.retain($scope.$id, _dev_list)
+        ]
+        $q.all(wait_list).then(
+            (data) ->
+                $scope.dev_tree_lut = data[0].enabled_lut
+                $scope.new_data(data[1])
+                $scope.$watch(
+                    () ->
+                        return data[1].generation
+                    () ->
+                        $scope.new_data(data[1])
+                )
+        )
+        $scope.new_data = (mres) ->
+            $scope.host_entries = mres.hosts
+            $scope.service_entries = mres.services
+            $scope.host_lut = mres.host_lut
+            $scope.burst_data = $scope.build_sunburst(
+                $scope.host_entries
+                $scope.service_entries
+            )
+            $scope.md_filter_changed()
+
+        $scope.$watch("ls_filter", (new_val) ->
+            if new_val
+                # wait until ls_filter is set
+                $scope.$watch(
+                    new_val.changed
+                    (new_filter) ->
+                        $scope.md_filter_changed()
+
+                )
+        )
+        $scope.apply_click_filter = (check) ->
+            if filter_list.length and check._srv_id not in filter_list
+                return false
+            else
+                return true
+
+        $scope.handle_section_click = () ->
+            # handle click on a defined section
+            if $scope.burst_data? and $scope.dev_tree_lut?
+                if $scope.burst_data.any_clicked()
+                    $scope.burst_data.handle_clicked()
+                if $scope.propagate_filter and not filter_propagated
+                    filter_propagated = true
+                    # register filter function
+                    $scope.ls_filter.register_filter_func($scope.apply_click_filter)
+                # create a list of all unique ids which are actually displayed
+                filter_list = (entry.check._srv_id for entry in $scope.burst_data.get_childs((node) -> return node.show))
+                # trigger filter change
+                $scope.ls_filter.trigger()
+
+        $scope.md_filter_changed = () ->
+            # filter entries for table
+            if $scope.ls_filter?
+                # filter burstData
+                if $scope.burst_data? and $scope.dev_tree_lut?
+                    (_check_filter(_v) for _v in $scope.burst_data.get_childs(
+                        (node) -> return node.filter)
+                    )
+                    if $scope.single_selection
+                        $scope.set_data($scope.burst_data, $scope._burst_sel[0].full_name)
+                    else
+                        $scope.set_data($scope.burst_data, "")
+
+        $scope.build_sunburst = (host_entries, service_entries) ->
+            # build burst data
+            _bdat = new hs_node(
+                "System"
+                # state 4: not set
+                {"state": 4, "idx" : 0, "ct": "system"}
+            )
+            _devg_lut = {}
+            # lut: dev idx to hs_nodes
+            dev_hs_lut = {}
+            for entry in host_entries
+                if entry.custom_variables.device_pk of $scope.dev_tree_lut
+                    _dev = $scope.dev_tree_lut[entry.custom_variables.device_pk]
+                    if _dev.device_group_name not of _devg_lut
+                        # we use the same index for devicegroups and services ...
+                        _devg = new hs_node(
+                            _dev.device_group_name
+                            {
+                                "ct"    : "group"
+                                "state" : 0
+                                "group_name" : _dev.device_group_name
+                            }
+                        )
+                        _bdat.check.state = 0
+                        _devg_lut[_devg.name] = _devg
+                        _bdat.add_child(_devg)
+                    else
+                        _devg = _devg_lut[_dev.device_group_name]
+                    # sunburst struct for device
+                    entry.group_name = _dev.device_group_name
+                    _dev_sbs = new hs_node(_dev.full_name, entry)
+                    _devg.add_child(_dev_sbs)
+                    # set devicegroup state
+                    _devg.check.state = Math.max(_devg.check.state, _dev_sbs.check.state)
+                    # set system state
+                    _bdat.check.state = Math.max(_bdat.check.state, _devg.check.state)
+                    dev_hs_lut[_dev.idx] = _dev_sbs
+            for entry in service_entries
+                # sanitize entries
+                if entry.custom_variables.device_pk of $scope.dev_tree_lut
+                    dev_hs_lut[entry.custom_variables.device_pk].add_child(new hs_node(entry.description, entry, true))
+            for idx, dev of dev_hs_lut
+                if not dev.children.length
+                    # add placeholder for non-existing services
+                    dev.add_child(new hs_node("", {}, true, true))
+            if $scope.zoom_level == "d"
+                if _bdat.valid_device()
+                    # valid device substructure, add dummy
+                    return _bdat.reduce().reduce()
+                else
+                    _dev = new hs_node("", {}, false, true, true)
+                    return _dev
+            else if $scope.zoom_level == "g"
+                return _bdat.reduce()
+            else
+                return _bdat
+
+        _check_filter = (entry) ->
+            show = $scope.ls_filter.apply_filter(entry.check, entry.show)
+            entry.value = if show then 1 else 0
+            return show
+        $scope.$on("$destroy", () ->
+            icswDeviceLivestatusDataService.destroy($scope.$id)
+        )
+
 ]).directive("icswDeviceLivestatus",
 [
     "$templateCache",
@@ -1571,7 +1561,7 @@ angular.module(
             scope.ls_filter = new icswLivestatusFilterFactory()
             scope.new_devsel([scope.device])
     }
-]).directive("icswDeviceLivestatusMap", ["icswLivestatusFilterFactory", "$templateCache", (icswLivestatusFilterFactory, $templateCache) ->
+]).directive("icswDeviceLivestatusMap", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.device.livestatus.map")
@@ -1591,96 +1581,105 @@ angular.module(
             )
     }
 ]).directive("icswDeviceLivestatusTableView",
-    ["$templateCache", "icswDeviceLivestatusCategoryTreeService", "icswCachingCall", "$q", "ICSW_URLS",
-    ($templateCache, icswDeviceLivestatusCategoryTreeService, icswCachingCall, $q, ICSW_URLS) ->
+[
+    "$templateCache", "icswDeviceLivestatusCategoryTreeService", "icswCachingCall", "$q", "ICSW_URLS",
+(
+    $templateCache, icswDeviceLivestatusCategoryTreeService, icswCachingCall, $q, ICSW_URLS
+) ->
         return {
             restrict: "EA"
             template: $templateCache.get("icsw.device.livestatus.table.view")
+            controller: "icswDeviceLivestatusTableCtrl"
             scope: {
-                ls_filter: "=lsFilter"
-                ls_devsel: "=lsDevsel"
-                filtered_entries: "=filteredEntries"
+                filter: "=icswLivestatusFilter"
+                data: "=icswMonitoringData"
             }
-            link: (scope, elem, attrs) ->
-        }
-]).directive("icswDeviceLivestatusCatTree",
-    ["$templateCache", "icswDeviceLivestatusCategoryTreeService", "icswCachingCall", "$q", "ICSW_URLS",
-    ($templateCache, icswDeviceLivestatusCategoryTreeService, icswCachingCall, $q, ICSW_URLS) ->
-        return {
-            restrict: "EA"
-            template: $templateCache.get("icsw.device.livestatus.cat.tree")
-            scope: {
-                ls_filter: "=lsFilter"
-            }
-            link: (scope, elem, attrs) ->
-                # category tree
-                scope.cat_tree = new icswDeviceLivestatusCategoryTreeService(scope, {})
-                # add categories to filter
-                $q.all([icswCachingCall.fetch(scope.$id, ICSW_URLS.REST_CATEGORY_LIST, {}, [])]).then((data) ->
-                    cat_tree_lut = {}
-                    scope.cat_tree.clear_root_nodes()
-                    # list of all pks
-                    selected_mcs = []
-                    # name lut
-                    name_lut = {}
-                    # add dummy entry
-                    for entry in data[0]
-                        if entry.full_name.match(/^\/mon/)
-                            entry.short_name = entry.full_name.substring(5)
-                            entry.count = 0
-                            t_entry = scope.cat_tree.new_node({folder:false, obj:entry, expand:entry.depth < 1, selected: true})
-                            t_entry._show_select = false
-                            cat_tree_lut[entry.idx] = t_entry
-                            name_lut[entry.idx] = entry.short_name
-                            if entry.parent and entry.parent of cat_tree_lut
-                                cat_tree_lut[entry.parent].add_child(t_entry)
-                            else
-                                # hide selection from root nodes
-                                _mc_pk = entry.idx
-                                scope.cat_tree.add_root_node(t_entry)
-                                # dummy entry for unspecified
-                                entry = {idx:0, short_name:"unspecified", full_name:"/unspecified", depth:1}
-                                entry.count = 0
-                                d_entry = scope.cat_tree.new_node({folder:false, obj:entry, expand:false, selected:true})
-                                d_entry._show_select = false
-                                cat_tree_lut[0] = d_entry
-                                cat_tree_lut[_mc_pk].add_child(d_entry)
-                            selected_mcs.push(entry.idx)
-                    selected_mcs.push(entry.idx)
-                    scope.cat_tree_lut = cat_tree_lut
-                    scope.cat_tree.show_selected(false)
-                    scope.categories = selected_mcs
-                    scope.ls_filter.set_categories(selected_mcs, name_lut)
-                    scope.ls_filter.register_filter_func(scope.filter)
-                    # check for active categories
-                    scope.$watch(
-                        scope.ls_filter.get_used_cats
-                        (uc) ->
-                            if uc.length
-                                for pk of scope.cat_tree_lut
-                                    entry = scope.cat_tree_lut[pk]
-                                    if parseInt(pk) in uc
-                                        entry._show_select = true
-                                    else
-                                        entry.selected = false
-                                        entry._show_select = false
-                    )
+            link: (scope, element, attrs) ->
+                scope.$watch("data", (new_val) ->
+                    scope.struct.monitoring_data = new_val
                 )
-                scope.filter = (entry) ->
-                    if not scope.categories.length
-                        return false
-                    if entry.custom_variables and entry.custom_variables.cat_pks?
-                        # only show if there is an intersection
-                        return if _.intersection(scope.categories, entry.custom_variables.cat_pks).length then true else false
-                    else
-                        # show entries with unset / empty category
-                        return 0 in scope.categories
-                    return true
-                scope.new_cat_selection = (new_sel) ->
-                    scope.categories = new_sel
-                    scope.ls_filter.set_categories(new_sel)
-                    scope.ls_filter.trigger()
         }
+]).directive("icswDeviceLivestatusTableRow",
+[
+    "$templateCache",
+(
+    $templateCache,
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.device.livestatus.table.row")
+    }
+]).controller("icswDeviceLivestatusTableCtrl",
+[
+    "$scope",
+(
+    $scope,
+) ->
+    $scope.struct = {
+        # filter
+        filter: undefined
+        # monitoring data
+        monitoring_data: undefined
+    }
+    $scope.struct.filter = $scope.filter
+    console.log "struct=", $scope.struct
+
+]).directive('icswDeviceLivestatusFullburst',
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.device.livestatus.fullburst")
+        scope: {
+            filter: "=icswLivestatusFilter"
+            data: "=icswMonitoringData"
+            #data: "=data"
+            #redrawBurst: "=redraw"
+            #serviceFocus: "=serviceFocus"
+            #ls_filter: "=lsFilter"
+            #ls_devsel: "=lsDevsel"
+            size: "=icswElementSize"
+        }
+        controller: "icswDeviceLivestatusFullburstCtrl"
+        link: (scope, element, attrs) ->
+            scope.$watch("data", (new_val) ->
+                # console.log "FB data set", new_val
+                scope.struct.monitoring_data = new_val
+            )
+            scope.$watch("filter", (new_val) ->
+                scope.struct.filter = new_val
+            )
+            # omitted segments
+            scope.width = parseInt(attrs["initialWidth"] ? "600")
+            scope.$watch(
+                "size",
+                (new_val) ->
+                    if new_val
+                        _w = new_val.width / 2
+                        if _w != scope.width
+                            svg_el = element.find("svg")[0]
+                            g_el = element.find("svg > g")[0]
+                            scope.width = _w
+                            svg_el.setAttribute("width", _w)
+                            g_el.setAttribute("transform", "translate(#{_w / 2}, 160)")
+            )
+    }
+]).controller("icswDeviceLivestatusFullburstCtrl", [
+    "$scope",
+(
+    $scope,
+) ->
+    $scope.struct = {
+        # monitoring data
+        monitoring_data: undefined
+        # filter
+        filter: undefined
+        # omitted segments
+        omitted_segments: 0 
+    }
 ]).directive("icswDeviceLivestatusLocationMap", ["$templateCache", "$compile", "$uibModal", "Restangular", ($templateCache, $compile, $uibModal, Restangular) ->
     return {
         restrict : "EA"

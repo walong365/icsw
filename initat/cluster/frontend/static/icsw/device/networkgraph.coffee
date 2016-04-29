@@ -189,11 +189,87 @@ angular.module(
     # update_draw_selections()
 
     # $scope.ls_filter = new icswLivestatusFilterFactory()
-]).service("icswDeviceLivestatusFunctions",
-[
+]).service("icswStructuredBurstNode", [
     "$q",
 (
     $q,
+) ->
+    class icswStructuredBurstNode
+        constructor: (@name, @idx, @check, @filter=false, @placeholder=false, @dummy=false) ->
+            # name
+            # check (may also be a dummy dict)
+            @value = 1
+            @root = @
+            # childre lookup table
+            @lut = {}
+            @children = []
+            @depth = 0
+            @show = true
+            @clicked = false
+
+        valid_device: () ->
+            _r = false
+            if @children.length == 1
+                if @children[0].children.length == 1
+                    _r = true
+            return _r
+
+        reduce: () ->
+            if @children.length
+                return @children[0]
+            else
+                return @
+
+        add_child: (entry) ->
+            entry.root = @
+            entry.depth = @depth + 1
+            entry.parent = @
+            @children.push(entry)
+            @lut[entry.idx] = entry
+
+        iter_childs: (cb_f) ->
+            cb_f(@)
+            (_entry.iter_childs(cb_f) for _entry in @children)
+
+        get_childs: (filter_f) ->
+            _field = []
+            if filter_f(@)
+                _field.push(@)
+            for _entry in @children
+                _field = _field.concat(_entry.get_childs(filter_f))
+            return _field
+
+        clear_clicked: () ->
+            # clear all clicked flags
+            @clicked = false
+            @show = true
+            (_entry.clear_clicked() for _entry in @children)
+
+        any_clicked: () ->
+            res = @clicked
+            if not res
+                for _entry in @children
+                    res = res || _entry.any_clicked()
+            return res
+
+        handle_clicked: () ->
+            # find clicked entry
+            _clicked = @get_childs((obj) -> return obj.clicked)[0]
+            @iter_childs(
+                (obj) ->
+                    obj.show = false
+            )
+            parent = _clicked
+            while parent?
+                parent.show = true
+                parent = parent.parent
+            _clicked.iter_childs((obj) -> obj.show = true)
+
+]).service("icswDeviceLivestatusFunctions",
+[
+    "$q", "icswStructuredBurstNode",
+(
+    $q, icswStructuredBurstNode,
 ) ->
     get_fill_color = (res) ->
         if res.$$ct == "service"
@@ -281,9 +357,57 @@ angular.module(
         return _result
 
 
+    build_structured_burst = (mon_data) ->
+        _root_node = new icswStructuredBurstNode(
+            "System"
+            0
+            {
+                state: 4
+                ct: "system"
+            }
+        )
+        for host in mon_data.filtered_hosts
+            dev = host.$$icswDevice
+            devg = host.$$icswDeviceGroup
+            if devg.idx not of _root_node.lut
+                # add device group ring
+                _devg = new icswStructuredBurstNode(
+                    devg.name
+                    devg.idx
+                    {
+                        state: 0
+                        ct: "group"
+                        group_name: devg.name
+                    }
+                )
+                _root_node.add_child(_devg)
+            else
+                _devg = _root_node.lut[devg.idx]
+            # _devg holds now the structured node for the device group
+            _dev = new icswStructuredBurstNode(
+                dev.name
+                dev.idx
+                host
+            )
+            _devg.add_child(_dev)
+        for entry in mon_data.filtered_services
+            host = entry.host
+            if host.$$icswDeviceGroup.idx of _root_node.lut
+                _devg = _root_node.lut[host.$$icswDeviceGroup.idx]
+                if host.$$icswDevice.idx of _devg.lut
+                    _dev = _devg.lut[host.$$icswDevice.idx]
+                    _dev.add_child(new icswStructuredBurstNode(entry.description, entry.$$idx,  entry, true))
+                
+        #console.log "bsb", mon_data
+        return _root_node
+        
     return {
         build_single_device_burst: (host_data, srvc_data) ->
             return build_single_device_burst(host_data, srvc_data)
+            
+        build_structured_burst: (mon_data) ->
+            # mon_data is a filtered instance of icswMonitoringResult
+            return build_structured_burst(mon_data)
     }
 
 ]).factory("icswDeviceLivestatusReactBurst",

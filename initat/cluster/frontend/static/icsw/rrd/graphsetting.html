@@ -26,43 +26,43 @@
                 Graph Flags
             </legend>
             <div class="form-group row">
-                <label class="col-md-3 control-label">
+                <label class="col-xs-3 control-label">
                     <span class="fa fa-eye-slash"/>
                     Hide Empty:
                 </label>
-                <div class="col-md-3 controls">
+                <div class="col-xs-3 controls">
                     <icsw-tools-yes-no flag="vars.current.hide_empty"></icsw-tools-yes-no>
                 </div>
-                <label class="col-md-3 control-label">
+                <label class="col-xs-3 control-label">
                     <span class="fa fa-area-chart"/>
                     Include y=0:
                 </label>
-                <div class="col-md-3 controls">
+                <div class="col-xs-3 controls">
                     <icsw-tools-yes-no flag="vars.current.include_zero"></icsw-tools-yes-no>
                 </div>
             </div>
             <div class="form-group row">
-                <label class="col-md-3 control-label">
+                <label class="col-xs-3 control-label">
                     <span class="fa fa-hdd-o"/>
                     Merge devices:
                 </label>
-                <div class="col-md-3 controls">
+                <div class="col-xs-3 controls">
                     <icsw-tools-yes-no flag="vars.current.merge_devices"></icsw-tools-yes-no>
                 </div>
-                <label class="col-md-3 control-label">
+                <label class="col-xs-3 control-label">
                     <span class="fa fa-line-chart"/>
                     Merge graphs:
                 </label>
-                <div class="col-md-3 controls">
+                <div class="col-xs-3 controls">
                     <icsw-tools-yes-no flag="vars.current.merge_graphs"></icsw-tools-yes-no>
                 </div>
             </div>
             <div class="form-group row">
-                <label class="col-md-3 control-label">
+                <label class="col-xs-3 control-label">
                     <span class="fa fa-arrows-v"/>
                     CF:
                 </label>
-                <div class="col-md-9 controls">
+                <div class="col-xs-9 controls">
                     <ui-select ng-model="vars.current.cf">
                         <ui-select-match class="ui-select-match" placeholder="Consolidation function...">{{ $select.selected.long }}</ui-select-match>
                         <ui-select-choices class="ui-select-choices" repeat="cf.short as cf in base_setting.cf_list">
@@ -77,11 +77,11 @@
                 Legend / Scale / Size
             </legend>
             <div class="form-group row">
-                <label class="col-md-3 control-label">
+                <label class="col-xs-3 control-label">
                     <span class="fa fa-lightbulb-o"/>
                     Legend mode:
                 </label>
-                <div class="col-md-3 controls">
+                <div class="col-xs-3 controls">
                     <ui-select ng-model="vars.current.legend_mode">
                         <ui-select-match class="ui-select-match" placeholder="Legend mode...">{{ $select.selected.long }}</ui-select-match>
                         <ui-select-choices class="ui-select-choices" repeat="lm.short as lm in base_setting.legend_mode_list">
@@ -89,11 +89,11 @@
                         </ui-select-choices>
                     </ui-select>
                 </div>
-                <label class="col-md-3 control-label">
+                <label class="col-xs-3 control-label">
                     <span class="fa fa-arrows-v"/>
                     Scale mode:
                 </label>
-                <div class="col-md-3 controls">
+                <div class="col-xs-3 controls">
                     <ui-select ng-model="vars.current.scale_mode">
                         <ui-select-match class="ui-select-match" placeholder="Scale mode...">{{ $select.selected.long }}</ui-select-match>
                         <ui-select-choices class="ui-select-choices" repeat="sm.short as sm in base_setting.scale_mode_list">
@@ -103,11 +103,11 @@
                 </div>
             </div>
             <div class="form-group row">
-                <label class="col-md-3 control-label">
+                <label class="col-xs-3 control-label">
                     <span class="fa fa-expand"/>
                     Size:
                 </label>
-                <div class="col-md-9 controls">
+                <div class="col-xs-9 controls">
                     <ui-select ng-model="vars.current.graph_setting_size">
                         <ui-select-match class="ui-select-match" placeholder="Size">{{ $select.selected.info }}</ui-select-match>
                         <ui-select-choices class="ui-select-choices" repeat="sz.idx as sz in base_setting.size_list">
@@ -122,11 +122,11 @@
                 Timeshift / Forecast
             </legend>
             <div class="form-group row">
-                <label class="col-md-3 control-label">
+                <label class="col-xs-3 control-label">
                     <span class="fa fa-exchange"/>
                     Timeshift:
                 </label>
-                <div class="col-md-9 controls">
+                <div class="col-xs-9 controls">
                     <div class="input-group">
                         <ui-select ng-model="vars.current.graph_setting_timeshift">
                             <ui-select-match class="ui-select-match" placeholder="Shift">{{ $select.selected.name }}</ui-select-match>
@@ -139,11 +139,11 @@
                 </div>
             </div>
             <div class="form-group row">
-                <label class="col-md-3 control-label">
+                <label class="col-xs-3 control-label">
                     <span class="fa fa-eye"/>
                     Forecast:
                 </label>
-                <div class="col-md-9 controls">
+                <div class="col-xs-9 controls">
                     <div class="input-group">
                         <ui-select ng-model="vars.current.graph_setting_forecast">
                             <ui-select-match class="ui-select-match" placeholder="Forecast">{{ $select.selected.name }}</ui-select-match>
@@ -161,11 +161,11 @@
                 Selection / Action
             </legend>
             <div class="form-group row">
-                <label class="col-md-3 control-label">
+                <label class="col-xs-3 control-label">
                     <span class="fa fa-anchor"/>
                     Select:
                 </label>
-                <div class="col-md-9 controls">
+                <div class="col-xs-9 controls">
                     <div class="input-group">
                         <ui-select ng-model="vars.current" on-select="select_setting($item, $model)">
                             <ui-select-match>
@@ -180,8 +180,8 @@
                 </div>
             </div>
             <div class="form-group row">
-                <label class="col-md-3 control-label">Name:</label>
-                <div class="col-md-9 controls">
+                <label class="col-xs-3 control-label">Name:</label>
+                <div class="col-xs-9 controls">
                     <div class="input-group">
                         <input class="form-control" type="text" size="100" max_length="100" ng-model="vars.current.name"/>
                         <icsw-tools-button type="create" size="sm" ng-click="create_setting()"></icsw-tools-button>

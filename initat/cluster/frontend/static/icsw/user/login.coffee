@@ -44,15 +44,15 @@ angular.module(
     $scope.login_hints = []
     $scope.disabled = true
     style_dict = {
-        "medium" : {
-            "gfx_class" : "col-xs-4"
-            "gfx_style" : {}
-            "login_class" : "col-xs-6"
+        medium: {
+            gfx_class: "col-xs-4"
+            gfx_style: {}
+            login_class: "col-xs-6"
         }
-        "big" : {
-            "gfx_class" : "col-md-offset-4 col-md-4"
-            "gfx_style" : {"margin-top": "60px"}
-            "login_class" : "col-md-offset-4 col-md-4"
+        big: {
+            gfx_class: "col-md-offset-4 col-md-4"
+            gfx_style: {"margin-top": "60px"}
+            login_class: "col-md-offset-4 col-md-4"
         }
     }
     first_call = true
@@ -63,13 +63,13 @@ angular.module(
                     {
                         url: ICSW_URLS.SESSION_LOGIN_ADDONS
                     }
-                ),
+                )
                 icswSimpleAjaxCall(
                     {
                         url: ICSW_URLS.MAIN_GET_CLUSTER_INFO,
                         dataType: "json"
                     }
-                ),
+                )
             ]
         ).then(
             (data) ->

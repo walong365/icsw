@@ -70,7 +70,13 @@ angular.module(
                     )
             )
     }
-]).service("icswTreeNode", () ->
+]).service("icswTreeNode",
+[
+    "$q",
+(
+    $q,
+) ->
+
     class TreeNode
         constructor: (args) ->
             # tree node element (li)
@@ -213,7 +219,14 @@ angular.module(
                     if !child.all_selectable_descendant_and_self_selected()
                         return false
                 return true
-).service("icswTreeConfig", ["icswTreeNode", (icswTreeNode) ->
+
+]).service("icswTreeConfig",
+[
+    "icswTreeNode",
+(
+    icswTreeNode,
+) ->
+
     class TreeConfig
         constructor: (args) ->
             # not really needed, enter more flags here
@@ -683,4 +696,5 @@ angular.module(
         add_extra_span: (entry) ->
             # override
             return null
+
 ])

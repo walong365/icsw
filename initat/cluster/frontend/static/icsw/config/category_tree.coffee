@@ -42,8 +42,13 @@ angular.module(
         "fetch": (id, pk_list) ->
             return _fetch(id, pk_list)
     }
-]).service("icswConfigCategoryTreeService", ["icswTreeConfig", (icswTreeConfig) ->
-    class category_tree_edit extends icswTreeConfig
+]).service("icswConfigCategoryTreeService",
+[
+    "icswTreeConfig",
+(
+    icswTreeConfig
+) ->
+    class icswConfigCategoryTreeService extends icswTreeConfig
         constructor: (@scope, args) ->
             super(args)
             @show_selection_buttons = false
