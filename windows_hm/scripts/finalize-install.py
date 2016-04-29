@@ -57,65 +57,24 @@ command_timeout=6000
 [/settings/external scripts/scripts]
 timeout=6000
 command_timeout=6000
-:moo = scripts\moo.bat
-:check_updates=C:\Windows\System32\cscript.exe //T:6000 //NoLogo scripts\\lib\\wrapper.vbs scripts\\check_updates.vbs
-:check_printer=C:\Windows\System32\cscript.exe //T:30 //NoLogo scripts\\lib\\wrapper.vbs scripts\\check_printer.vbs
-:check_battery=C:\Windows\System32\cscript.exe //T:30 //NoLogo scripts\\lib\\wrapper.vbs scripts\\check_battery.vbs
-:check_time=C:\\Windows\System32\cscript.exe //T:30 //NoLogo scripts\\lib\\wrapper.vbs scripts\\op5\\check_time.vbs
-:check_files=C:\Windows\System32\cscript.exe //T:30 //NoLogo scripts\\lib\\wrapper.vbs scripts\\check_files.vbs
-moo=movpy-2.0.0-py2.5.1\movpy\movpy.exe scripts\python\list_registry.py
-;
-list-keys=movpy-2.0.0-py2.5.1\movpy\movpy.exe scripts\python\list-keys.py
 list-keys-py3=python\python.exe scripts\python\list-keys-py3.py
 ;
-list-updates=movpy-2.0.0-py2.5.1\movpy\movpy.exe scripts\python\list-updates.py
 list-updates-py3=python\python.exe scripts\python\list-updates-py3.py
 ;
-list-updates-alt=movpy-2.0.0-py2.5.1\movpy\movpy.exe scripts\python\list-updates-alt.py
 list-updates-alt-py3=python\python.exe scripts\python\list-updates-alt-py3.py
 ;
-list-metrics=movpy-2.0.0-py2.5.1\movpy\movpy.exe scripts\python\list-metrics.py
 list-metrics-py3=python\python.exe scripts\python\list-metrics-py3.py
 ;
-list-processes=movpy-2.0.0-py2.5.1\movpy\movpy.exe scripts\python\list-processes.py
 list-processes-py3=python\python.exe scripts\python\list-processes-py3.py
 ;
-list-pending-updates=movpy-2.0.0-py2.5.1\movpy\movpy.exe scripts\python\list-pending-updates.py
 list-pending-updates-py3=python\python.exe scripts\python\list-pending-updates-py3.py
 ;
-list-software=movpy-2.0.0-py2.5.1\movpy\movpy.exe scripts\python\list-software.py
 list-software-py3=python\python.exe scripts\python\list-software-py3.py
+;
+list-hardware-py3=python\python.exe scripts\python\list-hardware-py3.py
+;
+list-hardware-lstopo-py3=python\python.exe scripts\python\list-hardware-lstopo-py3.py
 
-
-;custom python scripts
-;test-python = python scripts\python\list_registry.py $ARG1$ $ARG2$
-;list-software=python scripts\python\list-software.py
-;list-basic-info=python scripts\python\list-basic-info.py
-;list-netshares=python scripts\python\list-netshares.py
-;list-os-properties=python scripts\python\list-os-properties.py
-:list-user-data=python scripts\python\list-user-data.py
-:list-registry=python scripts\python\list-registry.py
-:list-domain-info=python scripts\python\list-domain-info.py
-:check_wmi=python scripts\python\sample\list_all_wmi_objects.py
-:list-keys=python scripts\python\list-keys.py
-:list-updates=python scripts\python\list-updates.py
-:list-updates-alt=python scripts\python\list-updates-alt.py
-:list-uptime=python scripts\python\list-uptime.py
-:list-metrics=python scripts\python\list-metrics.py
-:list-processes=python scripts\python\list-processes.py
-:list-pending-updates=python scripts\python\list-pending-updates.py
-
-;[settings/external scripts/wrappings]
-;vbs=C:\Windows\System32\cscript.exe //T:30 //NoLogo scripts\lib\wrapper.vbs %SCRIPT% %ARGS%
-
-
-;[settings/external scripts/wrapped scripts]
-;check_updates = script\check_updates.vbs
-;check_printer = script\check_printer.vbs
- 
-;[/settings/external scripts/alias]
-;alias_updates=check_updates -warning 0 -critical 0 ShowAll=long
-;alias_printer=check_printer -warning 0 -critical 0
 [NRPE]
 timeout=6000
 command_timeout=6000
