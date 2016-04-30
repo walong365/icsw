@@ -332,27 +332,10 @@ angular.module(
 
 ]).service("icswDeviceLivestatusFunctions",
 [
-    "$q", "icswStructuredBurstNode",
+    "$q", "icswStructuredBurstNode", "icswSaltMonitoringResultService",
 (
-    $q, icswStructuredBurstNode,
+    $q, icswStructuredBurstNode, icswSaltMonitoringResultService,
 ) ->
-    get_fill_color = (res) ->
-        if res.$$ct == "service"
-            color = {
-                0: "#66dd66"
-                1: "#dddd88"
-                2: "#ff7777"
-                3: "#ff0000"
-            }[res.state]
-        else if res.$$ct == "host"
-            color = {
-                0: "#66dd66"
-                1: "#ff7777"
-                2: "#ff0000"
-            }[res.state]
-        else
-            color = "000000"
-        return color
 
     ring_path = (inner, outer) ->
         # return the SVG path for a ring with radi inner and outer
@@ -405,19 +388,20 @@ angular.module(
                     {
                         key: "path.#{key_prefix}.#{_idx}"
                         d: _path
-                        fill: get_fill_color(srvc)
+                        fill: srvc.$$burst_fill_color
                         stroke: "black"
                         # hm, stroke-width seems to be ignored
                         strokeWidth: "0.5"
                     }
                 )
         else
+            _dummy = icswSaltMonitoringResultService.get_dummy_entry()
             # draw an empty (== grey) ring
             _result.push(
                 {
                     key: "path.#{key_prefix}.empty"
                     d: ring_path(inner, outer)
-                    fill: "#dddddd"
+                    fill: _dummy.$$burst_fill_color
                     stroke: "black"
                     strokeWidth: "0.3"
                 }
@@ -428,10 +412,7 @@ angular.module(
         _root_node = new icswStructuredBurstNode(
             "System"
             0
-            {
-                state: 4
-                ct: "system"
-            }
+            icswSaltMonitoringResultService.get_system_entry()
         )
         #if node.id of @props.monitoring_data.host_lut
         #    host_data = @props.monitoring_data.host_lut[node.id]
@@ -448,11 +429,7 @@ angular.module(
                     _devg = new icswStructuredBurstNode(
                         devg.name
                         devg.idx
-                        {
-                            state: 0
-                            ct: "group"
-                            group_name: devg.name
-                        }
+                        icswSaltMonitoringResultService.get_device_group_entry()
                     )
                     _root_node.add_child(_devg)
                 else
@@ -472,11 +449,28 @@ angular.module(
             for _dev in _devg.children
                 if not _dev.children.length
                     # add dummy service for devices without services
-                    _dev.add_child(new icswStructuredBurstNode("", 0, {}, false, true, true))
+                    _dev.add_child(
+                        new icswStructuredBurstNode(
+                            ""
+                            0
+                            icswSaltMonitoringResultService.get_dummy_service_entry()
+                            false
+                            true
+                            true
+                        )
+                    )
 
         # balance nodes, set width of each segment, create ring lut
 
         _root_node.balance()
+
+        # set states in ring 1 and 0
+        for _ring_idx in [1, 0]
+            if _ring_idx of _root_node.ring_lut
+                for _entry in _root_node.ring_lut[_ring_idx]
+                    if _entry.children.length
+                        _entry.check.state = _.max([_child.check.state for _child in _entry.children])
+                        _entry.check.$$burst_fill_color = icswSaltMonitoringResultService.get_device_color(_entry.check.state)
 
         # draw
         _ring_keys= (

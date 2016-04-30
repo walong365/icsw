@@ -296,20 +296,18 @@ angular.module(
             _lf = @props.livestatus_filter
             _list = []
             _text_f = []
+            _text_f.push(" hosts:")
             if _lf.f_hosts != _lf.n_hosts
                 _text_f.push("#{_lf.f_hosts} of #{_lf.n_hosts}")
             else
                 _text_f.push(" #{_lf.n_hosts}")
+            _text_f.push("services:")
             if _lf.f_services != _lf.n_services
                 _text_f.push("#{_lf.f_services} of #{_lf.n_services}")
             else
                 _text_f.push(" #{_lf.n_services}")
             _list.push(
-                span(
-                    {key: "hco"}
-                    "# of hosts / services: " + _text_f.join(" / ")
-                )
-                ", filter options: "
+                "filter options: "
             )
             _service_buttons = []
             for entry in _lf.service_state_list
@@ -394,6 +392,9 @@ angular.module(
                     }
                     _type_buttons
                 )
+            )
+            _list.push(
+                _text_f.join(" ")
             )
             return span(
                 {key: "top"}
@@ -597,12 +598,39 @@ angular.module(
 
         entry.custom_variables = _parse_custom_variables(entry.custom_variables)
 
+    _get_dummy_entry = () ->
+        entry = {
+            $$burst_fill_color: "#dddddd"
+        }
+        return entry
+
+    get_dummy_service_entry = () ->
+        entry = _get_dummy_entry()
+        entry.$$ct = "service"
+
+    get_device_group_entry = () ->
+        entry = _get_dummy_entry()
+        entry.$$ct = "devicegroup"
+        return entry
+
+    get_system_entry = () ->
+        entry = _get_dummy_entry()
+        entry.$$ct = "system"
+        return entry
+    
+    get_device_color = (state) ->
+        return {
+            0: "#66dd66"
+            1: "#ff7777"
+            2: "#ff0000"
+        }[state]
+        
     salt_host = (entry, device_tree) ->
         if not entry.$$icswSalted?
             entry.$$service_list = []
             entry.$$icswSalted = true
             # set default values
-            entry.$$ct = "host"
+            entry.$$ct = "device"
             # sanitize entries
             _sanitize_entry(entry)
             # host state class
@@ -611,6 +639,7 @@ angular.module(
                 1: "danger"
                 2: "danger"
             }[entry.state]
+            entry.$$burst_fill_color = get_device_color(entry.state)
             entry.$$icswStateClass = _r_str
             entry.$$icswStateLabelClass = "label-#{_r_str}"
             entry.$$icswStateString = {
@@ -636,6 +665,12 @@ angular.module(
                 2: "danger"
                 3: "danger"
             }[entry.state]
+            entry.$$burst_fill_color = {
+                0: "#66dd66"
+                1: "#dddd88"
+                2: "#ff7777"
+                3: "#ff0000"
+            }[entry.state]
             entry.$$icswStateLabelClass = "label-#{_r_str}"
             entry.$$icswStateString = {
                 0: "OK"
@@ -651,6 +686,18 @@ angular.module(
         return entry
 
     return {
+        get_dummy_service_entry: () ->
+            return get_dummy_service_entry()
+            
+        get_device_group_entry: () ->
+            return get_device_group_entry()
+            
+        get_system_entry: () ->
+            return get_system_entry()
+            
+        get_device_color: (state) ->
+            return get_device_color(state)
+            
         salt_host: (entry, device_tree) ->
             return salt_host(entry, device_tree)
 
@@ -1089,7 +1136,6 @@ angular.module(
             return {
                 # to trigger redraw
                 draw_counter: 0
-                draw_parameters: new icswBurstDrawParameters(10, 20)
             }
 
         new_monitoring_data: () ->
@@ -1102,12 +1148,14 @@ angular.module(
             #<svg height="320" font-family="'Open-Sans', sans-serif" font-size="10pt">
             #    <g transform="translate(300,160)">
             root_node = icswDeviceLivestatusFunctions.build_structured_burst(@props.monitoring_data, @props.draw_parameters)
-            console.log root_node, @props.draw_parameters
+            _width = 2 * @props.draw_parameters.outer_radius
+            _height = 2 * @props.draw_parameters.outer_radius
+            # console.log root_node, @props.draw_parameters
             return svg(
                 {
                     key: "top"
-                    height: "320px"
-                    width: "640px"
+                    width: "#{_width}px"
+                    height: "#{_height}px"
                     "font-family": "'Open-Sans', sans-serif"
                     "font-size": "10pt"
                 }
@@ -1115,7 +1163,7 @@ angular.module(
                     g(
                         {
                             key: "main"
-                            transform: "translate(300, 160)"
+                            transform: "translate(#{_width / 2}, #{_height / 2})"
                         }
                         (
                             path(_path) for _path in root_node.path_list
@@ -1138,6 +1186,7 @@ angular.module(
         scope:
             filter: "=icswLivestatusFilter"
             data: "=icswMonitoringData"
+            draw_params: "=icswDrawParameters"
         link: (scope, element, attrs) ->
             _mounted = false
 
@@ -1179,8 +1228,8 @@ angular.module(
         filter: undefined
         # loop started
         loop_started: false
-        # draw parameters
-        draw_parameters: new icswBurstDrawParameters(60, 120)
+        # draw parameters, copy from scope
+        draw_parameters: $scope.draw_params
         # react element
         react_element: undefined
     }
@@ -1687,18 +1736,26 @@ angular.module(
     "$scope", "$compile", "$templateCache", "Restangular",
     "$q", "$timeout", "icswTools", "ICSW_URLS", "icswSimpleAjaxCall",
     "icswDeviceLivestatusDataService", "icswCachingCall", "icswLivestatusFilterService",
-    "icswDeviceTreeService", "$state",
+    "icswBurstDrawParameters",
 (
     $scope, $compile, $templateCache, Restangular,
     $q, $timeout, icswTools, ICSW_URLS, icswSimpleAjaxCall,
     icswDeviceLivestatusDataService, icswCachingCall, icswLivestatusFilterService,
-    icswDeviceTreeService, $state
+    icswBurstDrawParameters,
 ) ->
     $scope.struct = {
         # filter
         filter: new icswLivestatusFilterService()
         # monitoring data
         monitoring_data: undefined
+        # draw parameters
+        draw_parameters: new icswBurstDrawParameters(
+            {
+                inner_radius: 0
+                outer_radius: 20
+                start_ring: 2
+            }
+        )
     }
 
     # layout functions
@@ -1835,9 +1892,9 @@ angular.module(
                 )
     }
 ]).controller("icswDeviceLivestatusFullburstCtrl", [
-    "$scope",
+    "$scope", "icswBurstDrawParameters",
 (
-    $scope,
+    $scope, icswBurstDrawParameters,
 ) ->
     $scope.struct = {
         # monitoring data
@@ -1845,7 +1902,15 @@ angular.module(
         # filter
         filter: undefined
         # omitted segments
-        omitted_segments: 0 
+        omitted_segments: 0
+        # draw parameters
+        draw_parameters: new icswBurstDrawParameters(
+            {
+                inner_radius: 40
+                outer_radius: 160
+                start_ring: 0
+            }
+        )
     }
 ]).directive("icswDeviceLivestatusLocationMap", ["$templateCache", "$compile", "$uibModal", "Restangular", ($templateCache, $compile, $uibModal, Restangular) ->
     return {
