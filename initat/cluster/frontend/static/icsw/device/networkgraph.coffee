@@ -189,6 +189,31 @@ angular.module(
     # update_draw_selections()
 
     # $scope.ls_filter = new icswLivestatusFilterFactory()
+]).service("icswBurstDrawParameters", [
+    "$q"
+(
+    $q,
+) ->
+    class icswBurstDrawParameters
+        constructor: (@inner_radius, @outer_radius) ->
+            # collapse rings with only one segment
+            @collapse_one_element_rings = true
+            # start ring, 0 ... system, 1 ... group, 2 ... device, 3 .... service
+            @start_ring = 2
+
+        create_ring_draw_list: (ring_keys) =>
+            _idx = 0
+            _results = []
+            _num_rings = ring_keys.length
+            if _num_rings
+                _width = @outer_radius - @inner_radius
+                for _key in ring_keys
+                    _inner_rad = @inner_radius + _idx * _width / _num_rings
+                    _outer_rad = @inner_radius + (_idx + 1 ) * _width / _num_rings
+                    _idx++
+                    _results.push([_key, _inner_rad, _outer_rad])
+            return _results
+
 ]).service("icswStructuredBurstNode", [
     "$q",
 (
@@ -206,6 +231,34 @@ angular.module(
             @depth = 0
             @show = true
             @clicked = false
+            if @depth == 0
+                # only for root-nodes
+                # flag, not in use right now
+                @balanced = false
+
+        balance: () ->
+            # balance down to all visible childnodes
+            _local_width = @_get_width()
+
+        balance: () ->
+            if @children.length
+                _width = _.sum(_child.balance() for _child in @children)
+            else
+                # constant one or better use value ?
+                _width = 1
+            # the sum of all widths on any given level is (of course) the same
+            @width = _width
+            if @depth == 0
+                # create ring lookup table
+                @ring_lut = {}
+                @iter_childs(
+                    (node) ->
+                        if node.depth not of node.root.ring_lut
+                            node.root.ring_lut[node.depth] = []
+                        node.root.ring_lut[node.depth].push(node)
+                )
+                @path_list = []
+            return _width
 
         valid_device: () ->
             _r = false
@@ -221,7 +274,7 @@ angular.module(
                 return @
 
         add_child: (entry) ->
-            entry.root = @
+            entry.root = @root
             entry.depth = @depth + 1
             entry.parent = @
             @children.push(entry)
@@ -289,31 +342,53 @@ angular.module(
             color = "000000"
         return color
 
-    build_burst_ring = (inner, outer, key_prefix, r_data) ->
+    ring_path = (inner, outer) ->
+        # return the SVG path for a ring with radi inner and outer
+        _path = "M#{outer},0 " + \
+        "A#{outer},#{outer} 0 1,1 #{-outer},0 " + \
+        "A#{outer},#{outer} 0 1,1 #{outer},0 " + \
+        "L#{outer},0 " + \
+        "M#{inner},0 " + \
+        "A#{inner},#{inner} 0 1,0 #{-inner},0 " + \
+        "A#{inner},#{inner} 0 1,0 #{inner},0 " + \
+        "L#{inner},0 " + \
+        "Z"
+        return _path
+
+    ring_segment_path = (inner, outer, start_arc, end_arc) ->
+        # returns the SVG path for a ring segment
+        start_sin = Math.sin(start_arc)
+        start_cos = Math.cos(start_arc)
+        end_sin = Math.sin(end_arc)
+        end_cos = Math.cos(end_arc)
+        if end_arc > start_arc + Math.PI
+            _large_arc_flag = 1
+        else
+            _large_arc_flag = 0
+        _path = "M#{start_cos * inner},#{start_sin * inner} L#{start_cos * outer},#{start_sin * outer} " + \
+            "A#{outer},#{outer} 0 #{_large_arc_flag} 1 #{end_cos * outer},#{end_sin * outer} " + \
+            "L#{end_cos * inner},#{end_sin * inner} " + \
+            "A#{inner},#{inner} 0 #{_large_arc_flag} 0 #{start_cos * inner},#{start_sin * inner} " + \
+            "Z"
+        return _path
+
+    build_burst_ring = (inner, outer, key_prefix, r_data, draw_params) ->
         end_arc = 0
         end_num = 0
         _len = r_data.length
         _result = []
         if _len
             _idx = 0
-            for srvc in r_data
+            for node in r_data
+                srvc = node.check
                 _idx++
                 start_arc = end_arc
                 end_num += 1
                 end_arc = 2 * Math.PI * end_num / _len
-                start_sin = Math.sin(start_arc)
-                start_cos = Math.cos(start_arc)
-                end_sin = Math.sin(end_arc)
-                end_cos = Math.cos(end_arc)
-                if end_arc > start_arc + Math.PI
-                    _large_arc_flag = 1
+                if _len == 1 and draw_params.collapse_one_element_rings
+                    _path = ring_path(inner, outer)
                 else
-                    _large_arc_flag = 0
-                _path = "M#{start_cos * inner},#{start_sin * inner} L#{start_cos * outer},#{start_sin * outer} " + \
-                    "A#{outer},#{outer} 0 #{_large_arc_flag} 1 #{end_cos * outer},#{end_sin * outer} " + \
-                    "L#{end_cos * inner},#{end_sin * inner} " + \
-                    "A#{inner},#{inner} 0 #{_large_arc_flag} 0 #{start_cos * inner},#{start_sin * inner} " + \
-                    "Z"
+                    _path = ring_segment_path(inner, outer, start_arc, end_arc)
                 _result.push(
                     {
                         key: "path.#{key_prefix}.#{_idx}"
@@ -325,21 +400,11 @@ angular.module(
                     }
                 )
         else
-            _path = "M#{outer},0 " + \
-            "A#{outer},#{outer} 0 1,1 #{-outer},0 " + \
-            "A#{outer},#{outer} 0 1,1 #{outer},0 " + \
-            "L#{outer},0 " + \
-            "M#{inner},0 " + \
-            "A#{inner},#{inner} 0 1,0 #{-inner},0 " + \
-            "A#{inner},#{inner} 0 1,0 #{inner},0 " + \
-            "L#{inner},0 " + \
-            "Z"
-
             # draw an empty (== grey) ring
             _result.push(
                 {
                     key: "path.#{key_prefix}.empty"
-                    d: _path
+                    d: ring_path(inner, outer)
                     fill: "#dddddd"
                     stroke: "black"
                     strokeWidth: "0.3"
@@ -347,17 +412,17 @@ angular.module(
             )
         return _result
 
-    build_single_device_burst = (h_data, s_data) ->
-        _result = []
-        if h_data?
-            _result = _.concat(_result, build_burst_ring(10, 20, "host", [h_data]))
-        else
-            _result = _.concat(_result, build_burst_ring(10, 20, "host", []))
-        _result = _.concat(_result, build_burst_ring(20, 30, "srvc", s_data))
-        return _result
+    #build_single_device_burst = (h_data, s_data) ->
+    #    _result = []
+    #    if h_data?
+    #        _result = _.concat(_result, build_burst_ring(10, 20, "host", [h_data]))
+    #    else
+    #        _result = _.concat(_result, build_burst_ring(10, 20, "host", []))
+    #    _result = _.concat(_result, build_burst_ring(20, 30, "srvc", s_data))
+    #    return _result
 
 
-    build_structured_burst = (mon_data) ->
+    build_structured_burst = (mon_data, draw_params) ->
         _root_node = new icswStructuredBurstNode(
             "System"
             0
@@ -396,25 +461,40 @@ angular.module(
                 _devg = _root_node.lut[host.$$icswDeviceGroup.idx]
                 if host.$$icswDevice.idx of _devg.lut
                     _dev = _devg.lut[host.$$icswDevice.idx]
-                    _dev.add_child(new icswStructuredBurstNode(entry.description, entry.$$idx,  entry, true))
-                
-        #console.log "bsb", mon_data
+                    _dev.add_child(new icswStructuredBurstNode(entry.description, entry.$$idx, entry, true))
+        for _devg in _root_node.children
+            for _dev in _devg.children
+                if not _dev.children.length
+                    # add dummy service for devices without services
+                    _dev.add_child(new icswStructuredBurstNode("", 0, {}, false, true, true))
+
+        # balance nodes, set width of each segment, create ring lut
+
+        _root_node.balance()
+
+        # draw
+        _ring_keys= (
+            _entry for _entry in _.map(
+                _.keys(_root_node.ring_lut)
+                (_key) ->
+                    return parseInt(_key)
+            ).sort() when _entry >= draw_params.start_ring
+        )
+        for [_ring, _inner_rad, _outer_rad] in draw_params.create_ring_draw_list(_ring_keys)
+            _root_node.path_list = _.concat(_root_node.path_list, build_burst_ring(_inner_rad, _outer_rad, "ring#{_ring}", _root_node.ring_lut[_ring], draw_params))
         return _root_node
         
     return {
-        build_single_device_burst: (host_data, srvc_data) ->
-            return build_single_device_burst(host_data, srvc_data)
-            
-        build_structured_burst: (mon_data) ->
+        build_structured_burst: (mon_data, draw_params) ->
             # mon_data is a filtered instance of icswMonitoringResult
-            return build_structured_burst(mon_data)
+            return build_structured_burst(mon_data, draw_params)
     }
 
 ]).factory("icswDeviceLivestatusReactBurst",
 [
-    "$q", "icswDeviceLivestatusFunctions",
+    "$q", "icswDeviceLivestatusFunctions", "icswBurstDrawParameters",
 (
-    $q, icswDeviceLivestatusFunctions,
+    $q, icswDeviceLivestatusFunctions, icswBurstDrawParameters,
 ) ->
 
     react_dom = ReactDOM
@@ -425,6 +505,7 @@ angular.module(
             # required types
             node: React.PropTypes.object
             monitoring_data: React.PropTypes.object
+            draw_parameters: React.PropTypes.object
         }
         componentDidMount: () ->
             el = react_dom.findDOMNode(@)
@@ -440,11 +521,16 @@ angular.module(
             else
                 host_data = undefined
             # should be optmized
-            srvc_data = (entry for entry in @props.monitoring_data.filtered_services when entry.host.host_name  == node.$$device.full_name)
+            root_node = icswDeviceLivestatusFunctions.build_structured_burst(
+                @props.monitoring_data,
+                @props.draw_parameters,
+            )
+            console.log "R=", root_node, @props.draw_parameter
+            # srvc_data = (entry for entry in @props.monitoring_data.filtered_services when entry.host.host_name  == node.$$device.full_name)
 
             # console.log host_data, srvc_data
             # if host_data and srvc_data.length
-            _pathes = icswDeviceLivestatusFunctions.build_single_device_burst(host_data, srvc_data)
+            # _pathes = icswDeviceLivestatusFunctions.build_single_device_burst(host_data, srvc_data)
             # else
             #    _pathes = []
 
@@ -456,7 +542,7 @@ angular.module(
                     transform: "translate(#{node.x}, #{node.y})"
                 }
                 (
-                    path(_path) for _path in _pathes
+                    path(_path) for _path in root.path_list
                 )
             )
     )
@@ -1215,7 +1301,7 @@ angular.module(
     return {
         restrict: "EA"
         replace: true
-        link: (scope, element, attr) ->
+        link: (scope, element, attrs) ->
             scope.size = undefined
             scope.$watch("size", (new_val) ->
                 # hm, not working
@@ -1235,7 +1321,7 @@ angular.module(
                     )
                     element[0]
                 )
-                scope.$on("$destroy", (d) ->
+                scope.$on("$destroy", () ->
                     ReactDOM.unmountComponentAtNode(element[0])
                 )
 

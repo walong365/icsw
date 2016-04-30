@@ -752,7 +752,7 @@ angular.module(
                     (not_ok) ->
                         console.log "dr error"
                     (generation) ->
-                        console.log "data here"
+                        # console.log "data here"
                         $scope.filter_changed()
                 )
         )
@@ -1050,35 +1050,6 @@ angular.module(
             if not watchers_present()
                 stop_interval()
     }
-]).service("icswDeviceLivestatusCategoryTreeService", ["icswTreeConfig", (icswTreeConfig) ->
-    class category_tree extends icswTreeConfig
-        constructor: (@scope, args) ->
-            super(args)
-            #@show_selection_buttons = false
-            @show_icons = false
-            @show_select = true
-            @show_descendants = false
-            @show_childs = false
-        selection_changed: () =>
-            sel_list = @get_selected((node) ->
-                if node.selected
-                    return [node.obj.idx]
-                else
-                    return []
-            )
-            @scope.new_cat_selection(sel_list)
-            @scope.$digest()
-        get_name : (t_entry) ->
-            cat = t_entry.obj
-            if cat.depth > 1
-                r_info = "#{cat.full_name} (#{cat.name})"
-                #if cat.num_refs
-                #    r_info = "#{r_info} (refs=#{cat.num_refs})"
-                return r_info # + "#{cat.idx}"
-            else if cat.depth
-                return cat.full_name
-            else
-                return "TOP"
 ]).directive("icswDeviceLivestatusServiceInfo", ["$templateCache", ($templateCache) ->
     return {
         restrict : "E"
@@ -1089,6 +1060,154 @@ angular.module(
             ls_filter: "=lsFilter"
         }
     }
+]).factory("icswDeviceLivestatusBurstReactContainer",
+[
+    "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswNetworkTopologyReactSVGContainer",
+    "icswDeviceLivestatusFunctions", "icswBurstDrawParameters",
+(
+    $q, ICSW_URLS, icswSimpleAjaxCall, icswNetworkTopologyReactSVGContainer,
+    icswDeviceLivestatusFunctions, icswBurstDrawParameters,
+) ->
+    # Network topology container, including selection and redraw button
+    react_dom = ReactDOM
+    {div, g, text, circle, path, svg} = React.DOM
+    return React.createClass(
+        propTypes: {
+            # required types
+            monitoring_data: React.PropTypes.object
+            draw_parameters: React.PropTypes.object
+        }
+
+        componentDidMount: () ->
+
+        getInitialState: () ->
+            return {
+                # to trigger redraw
+                draw_counter: 0
+                draw_parameters: new icswBurstDrawParameters(10, 20)
+            }
+
+        new_monitoring_data: () ->
+            @trigger_redraw()
+
+        trigger_redraw: () ->
+            @setState({draw_counter: @state.draw_counter + 1})
+
+        render: () ->
+            #<svg height="320" font-family="'Open-Sans', sans-serif" font-size="10pt">
+            #    <g transform="translate(300,160)">
+            root_node = icswDeviceLivestatusFunctions.build_structured_burst(@props.monitoring_data, @props.draw_parameters)
+            console.log root_node, @props.draw_parameters
+            return svg(
+                {
+                    key: "top"
+                    height: "320px"
+                    width: "640px"
+                    "font-family": "'Open-Sans', sans-serif"
+                    "font-size": "10pt"
+                }
+                [
+                    g(
+                        {
+                            key: "main"
+                            transform: "translate(300, 160)"
+                        }
+                        (
+                            path(_path) for _path in root_node.path_list
+                        )
+                    )
+                ]
+            )
+    )
+
+]).directive("reactBurst",
+[
+    "ICSW_URLS",
+(
+    ICSW_URLS,
+) ->
+    return {
+        restrict: "EA"
+        replace: true
+        controller: "icswDeviceLivestatusBurstReactContainerCtrl"
+        scope:
+            filter: "=icswLivestatusFilter"
+            data: "=icswMonitoringData"
+        link: (scope, element, attrs) ->
+            _mounted = false
+
+            scope.$watch("data", (new_val) ->
+                scope.struct.monitoring_data = new_val
+                if scope.start_loop(element[0])
+                    _mounted = true
+            )
+
+            scope.$watch("filter", (new_val) ->
+                scope.struct.filter = new_val
+                if scope.start_loop(element[0])
+                    _mounted = true
+            )
+
+            scope.$on("$destroy", () ->
+                if _mounted
+                    ReactDOM.unmountComponentAtNode(element[0])
+                    scope.struct.react_element = undefined
+            )
+
+    }
+]).controller("icswDeviceLivestatusBurstReactContainerCtrl",
+[
+    "$scope", "icswDeviceTreeService", "icswDeviceLivestatusDataService", "$q",
+    "icswDeviceLivestatusFunctions", "icswDeviceLivestatusBurstReactContainer",
+    "icswBurstDrawParameters",
+(
+    $scope, icswDeviceTreeService, icswDeviceLivestatusDataService, $q,
+    icswDeviceLivestatusFunctions, icswDeviceLivestatusBurstReactContainer,
+    icswBurstDrawParameters,
+) ->
+    # $scope.host_entries = []
+    # $scope.service_entries = []
+    $scope.struct = {
+        # monitoring data
+        monitoring_data: undefined
+        # filter
+        filter: undefined
+        # loop started
+        loop_started: false
+        # draw parameters
+        draw_parameters: new icswBurstDrawParameters(60, 120)
+        # react element
+        react_element: undefined
+    }
+
+    _mount_burst = (element) ->
+        $scope.struct.react_element = ReactDOM.render(
+            React.createElement(
+                icswDeviceLivestatusBurstReactContainer
+                {
+                    monitoring_data: $scope.struct.monitoring_data
+                    draw_parameters: $scope.struct.draw_parameters
+                }
+            )
+            element
+        )
+
+
+    $scope.start_loop = (element) ->
+        if $scope.struct.monitoring_data and $scope.struct.filter and not $scope.struct.loop_started
+            $scope.struct.loop_started = true
+            $scope.struct.filter.change_notifier.promise.then(
+                (ok) ->
+                (error) ->
+                (gen) ->
+                    if $scope.struct.react_element?
+                        $scope.struct.react_element.new_monitoring_data()
+            )
+            _mount_burst(element)
+            return true
+        else
+            return false
+
 ]).directive("newburst",
 [
     "$compile", "$templateCache",
@@ -1380,7 +1499,7 @@ angular.module(
         # monitoring data
         monitoring_data: undefined
         # filter
-        filter: $scope.filter
+        filter: undefined
     }
 
     $scope.start_loop = () ->
@@ -1546,21 +1665,64 @@ angular.module(
     }
 ]).directive("icswDeviceLivestatusBrief",
 [
-    "icswLivestatusFilterFactory", "$templateCache",
+    "$templateCache",
 (
-    icswLivestatusFilterFactory, $templateCache
+    $templateCache
 ) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.device.livestatus.brief")
-        controller: "icswDeviceLiveStatusCtrl"
+        controller: "icswDeviceLiveStatusBriefCtrl"
         scope:
              device: "=icswDevice"
-        replace: true
         link : (scope, element, attrs) ->
-            scope.ls_filter = new icswLivestatusFilterFactory()
             scope.new_devsel([scope.device])
     }
+]).controller("icswDeviceLiveStatusBriefCtrl",
+[
+    "$scope", "$compile", "$templateCache", "Restangular",
+    "$q", "$timeout", "icswTools", "ICSW_URLS", "icswSimpleAjaxCall",
+    "icswDeviceLivestatusDataService", "icswCachingCall", "icswLivestatusFilterService",
+    "icswDeviceTreeService", "$state",
+(
+    $scope, $compile, $templateCache, Restangular,
+    $q, $timeout, icswTools, ICSW_URLS, icswSimpleAjaxCall,
+    icswDeviceLivestatusDataService, icswCachingCall, icswLivestatusFilterService,
+    icswDeviceTreeService, $state
+) ->
+    $scope.struct = {
+        # filter
+        filter: new icswLivestatusFilterService()
+        # monitoring data
+        monitoring_data: undefined
+    }
+
+    # layout functions
+
+    $scope.filter_changed = () ->
+        if $scope.struct.filter?
+            $scope.struct.filter.set_monitoring_data($scope.struct.monitoring_data)
+
+    $scope.new_devsel = (_dev_sel) ->
+        # console.log "DS", _dev_sel
+
+        #pre_sel = (dev.idx for dev in $scope.devices when dev.expanded)
+        wait_list = [
+            icswDeviceLivestatusDataService.retain($scope.$id, _dev_sel)
+        ]
+        $q.all(wait_list).then(
+            (data) ->
+                $scope.struct.monitoring_data = data[0]
+                $scope.struct.monitoring_data.notifier.promise.then(
+                    (ok) ->
+                        console.log "dr ok"
+                    (not_ok) ->
+                        console.log "dr error"
+                    (generation) ->
+                        # console.log "data here", $scope.struct.monitoring_data
+                        $scope.filter_changed()
+                )
+        )
 ]).directive("icswDeviceLivestatusMap", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
@@ -1582,9 +1744,9 @@ angular.module(
     }
 ]).directive("icswDeviceLivestatusTableView",
 [
-    "$templateCache", "icswDeviceLivestatusCategoryTreeService", "icswCachingCall", "$q", "ICSW_URLS",
+    "$templateCache",
 (
-    $templateCache, icswDeviceLivestatusCategoryTreeService, icswCachingCall, $q, ICSW_URLS
+    $templateCache,
 ) ->
         return {
             restrict: "EA"
@@ -1653,11 +1815,12 @@ angular.module(
                 scope.struct.filter = new_val
             )
             # omitted segments
-            scope.width = parseInt(attrs["initialWidth"] ? "600")
-            scope.$watch(
-                "size",
-                (new_val) ->
+            scope.width = parseInt(attrs["initialWidth"] or "600")
+            # not working ...
+            if false
+                scope.$watch("size", (new_val) ->
                     if new_val
+                        console.log "new_width=", new_val
                         _w = new_val.width / 2
                         if _w != scope.width
                             svg_el = element.find("svg")[0]
@@ -1665,7 +1828,7 @@ angular.module(
                             scope.width = _w
                             svg_el.setAttribute("width", _w)
                             g_el.setAttribute("transform", "translate(#{_w / 2}, 160)")
-            )
+                )
     }
 ]).controller("icswDeviceLivestatusFullburstCtrl", [
     "$scope",
@@ -1743,7 +1906,7 @@ angular.module(
             link: (scope, element, attrs) ->
                 # location gfx list
                 scope.gfx_sizes = ["1024x768", "1280x1024", "1920x1200", "800x600", "640x400"]
-                scope.gfx = {"size" : scope.gfx_sizes[0]}
+                scope.gfx = {"size": scope.gfx_sizes[0]}
                 scope.autorotate = false
                 scope.location_gfx_list = []
                 scope.devsel_list = []
