@@ -599,6 +599,7 @@ angular.module(
 
     salt_host = (entry, device_tree) ->
         if not entry.$$icswSalted?
+            entry.$$service_list = []
             entry.$$icswSalted = true
             # set default values
             entry.$$ct = "host"
@@ -618,6 +619,8 @@ angular.module(
                 2: "Unreachable"
             }[entry.state]
             entry.$$icswDevice = device_tree.all_lut[entry.custom_variables.device_pk]
+            # link back, highly usefull
+            entry.$$icswDevice.$$host_mon_result = entry
             entry.$$icswDeviceGroup = device_tree.group_lut[entry.$$icswDevice.device_group]
         return entry
 
@@ -790,10 +793,9 @@ angular.module(
             @services = []
             @filtered_hosts = []
             @filtered_services = []
-            @host_lut = {}
             @used_cats = []
 
-        update: (hosts, services, host_lut, used_cats) =>
+        update: (hosts, services, used_cats) =>
             @generation++
             console.log "update", @generation
             @notifier.notify(@generation)
@@ -803,7 +805,6 @@ angular.module(
             @services.length = 0
             for entry in services
                 @services.push(entry)
-            @host_lut = host_lut
             @used_cats = used_cats
 
         filter: (filter) =>
@@ -854,7 +855,6 @@ angular.module(
     # defer_list = {}
     # dict: watcher ids -> Monitoring result
     result_list = {}
-    _host_lut = {}
     destroyed_list = []
     cur_interval = undefined
     cur_xhr = undefined
@@ -942,53 +942,58 @@ angular.module(
                     $(xml).find("value[name='host_result']").each (idx, node) =>
                         host_entries = host_entries.concat(angular.fromJson($(node).text()))
                     # console.log "*", service_entries, host_entries
-                    host_lut = {}
+                    # host_lut = {}
                     used_cats = []
                     # host_id = 0
                     for entry in host_entries
                         # host_id++
                         icswSaltMonitoringResultService.salt_host(entry, device_tree)
                         # list of checks for host
-                        entry.checks = []
+                        # entry.checks = []
                         # dummy link
-                        entry.host = entry
+                        # entry.host = entry
                         # entry._srv_id = "host#{host_id}"
-                        if entry.custom_variables.device_pk of dev_tree_lut
-                            _dev = dev_tree_lut[entry.custom_variables.device_pk]
-                            entry.group_name = _dev.device_group_name
-                        host_lut[entry.host_name] = entry
-                        host_lut[entry.custom_variables.device_pk] = entry
+                        # if entry.custom_variables.device_pk of dev_tree_lut
+                        #    _dev = dev_tree_lut[entry.custom_variables.device_pk]
+                        #    # entry.group_name = _dev.device_group_name
+                        # host_lut[entry.host_name] = entry
+                        # host_lut[entry.custom_variables.device_pk] = entry
                     srv_id = 0
                     for entry in service_entries
-                        entry.search_str = "#{entry.plugin_output} #{entry.display_name}"
+                        # entry.search_str = "#{entry.plugin_output} #{entry.display_name}"
                         srv_id++
                         entry.$$idx = srv_id
                         icswSaltMonitoringResultService.salt_service(entry, category_tree)
-                        entry.description = entry.display_name  # this is also what icinga displays
+                        # entry.description = entry.display_name  # this is also what icinga displays
                         # entry._srv_id = "srvc#{srv_id}"
-                        # populate list of checks
-                        host_lut[entry.custom_variables.device_pk].checks.push(entry)
-                        entry.host = host_lut[entry.custom_variables.device_pk]
-                        entry.group_name = host_lut[entry.host_name].group_name
+                        # host mon result
+                        h_m_result = device_tree.all_lut[entry.custom_variables.device_pk].$$host_mon_result
+                        # link
+                        h_m_result.$$service_list.push(entry)
+                        entry.$$host_mon_result = h_m_result  
+                        # entry.host = host_lut[entry.custom_variables.device_pk]
+                        # entry.group_name = host_lut[entry.host_name].group_name
                         if entry.custom_variables and entry.custom_variables.cat_pks?
                             used_cats = _.union(used_cats, entry.custom_variables.cat_pks)
                         # else
                         #    used_cats = _.union(used_cats, [0])
-                    _host_lut = host_lut
+                    # _host_lut = host_lut
 
                     for client, _result of result_list
                         hosts_client = []
                         services_client = []
-                        host_lut_client = {}
-                        for dev, watchers of watch_list
-                            if client in watchers and dev of host_lut  # sometimes we don't get data for a device
-                                entry = host_lut[dev]
-                                hosts_client.push(entry)
-                                for check in entry.checks
-                                    services_client.push(check)
-                                host_lut_client[dev] = entry
-                                host_lut_client[entry.host_name] = entry
-                        _result.update(hosts_client, services_client, host_lut_client, used_cats)
+                        # host_lut_client = {}
+                        for dev_idx, watchers of watch_list
+                            if client in watchers and dev_idx of device_tree.all_lut  # host_lut  # sometimes we don't get data for a device
+                                dev = device_tree.all_lut[dev_idx]
+                                if dev.$$host_mon_result?
+                                    entry = dev.$$host_mon_result
+                                    hosts_client.push(entry)
+                                    for check in entry.$$service_list
+                                        services_client.push(check)
+                                    # host_lut_client[dev_idx] = entry
+                                    # host_lut_client[entry.host_name] = entry
+                        _result.update(hosts_client, services_client, used_cats)
                         # _defer.resolve(_result) #[hosts_client, services_client, host_lut_client, used_cats, _data_generation])
             )
 
@@ -1537,7 +1542,6 @@ angular.module(
         $scope.new_data = (mres) ->
             $scope.host_entries = mres.hosts
             $scope.service_entries = mres.services
-            $scope.host_lut = mres.host_lut
             $scope.burst_data = $scope.build_sunburst(
                 $scope.host_entries
                 $scope.service_entries

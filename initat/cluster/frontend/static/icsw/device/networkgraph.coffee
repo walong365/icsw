@@ -195,11 +195,23 @@ angular.module(
     $q,
 ) ->
     class icswBurstDrawParameters
-        constructor: (@inner_radius, @outer_radius) ->
+        constructor: (args) ->
+            # inner radius
+            @inner_radius = 20
+            # outer radius
+            @outer_radius = 60
             # collapse rings with only one segment
             @collapse_one_element_rings = true
             # start ring, 0 ... system, 1 ... group, 2 ... device, 3 .... service
             @start_ring = 2
+            # special parameter to filter mon_results
+            @device_idx_filter = undefined
+            for _key, _value of args
+                console.log "param", _key, _value
+                if not @[_key]?
+                    console.error "Unknown icswBurstDrawParameter", _key, _value
+                else
+                    @[_key] = _value
 
         create_ring_draw_list: (ring_keys) =>
             _idx = 0
@@ -412,16 +424,6 @@ angular.module(
             )
         return _result
 
-    #build_single_device_burst = (h_data, s_data) ->
-    #    _result = []
-    #    if h_data?
-    #        _result = _.concat(_result, build_burst_ring(10, 20, "host", [h_data]))
-    #    else
-    #        _result = _.concat(_result, build_burst_ring(10, 20, "host", []))
-    #    _result = _.concat(_result, build_burst_ring(20, 30, "srvc", s_data))
-    #    return _result
-
-
     build_structured_burst = (mon_data, draw_params) ->
         _root_node = new icswStructuredBurstNode(
             "System"
@@ -431,37 +433,41 @@ angular.module(
                 ct: "system"
             }
         )
+        #if node.id of @props.monitoring_data.host_lut
+        #    host_data = @props.monitoring_data.host_lut[node.id]
+        #    if not host_data.$$show
+        #        host_data = undefined
+        #else
+        #    host_data = undefined
         for host in mon_data.filtered_hosts
             dev = host.$$icswDevice
-            devg = host.$$icswDeviceGroup
-            if devg.idx not of _root_node.lut
-                # add device group ring
-                _devg = new icswStructuredBurstNode(
-                    devg.name
-                    devg.idx
-                    {
-                        state: 0
-                        ct: "group"
-                        group_name: devg.name
-                    }
+            if not draw_params.device_idx_filter? or dev.idx == draw_params.device_idx_filter
+                devg = host.$$icswDeviceGroup
+                if devg.idx not of _root_node.lut
+                    # add device group ring
+                    _devg = new icswStructuredBurstNode(
+                        devg.name
+                        devg.idx
+                        {
+                            state: 0
+                            ct: "group"
+                            group_name: devg.name
+                        }
+                    )
+                    _root_node.add_child(_devg)
+                else
+                    _devg = _root_node.lut[devg.idx]
+                # _devg holds now the structured node for the device group
+                _dev = new icswStructuredBurstNode(
+                    dev.name
+                    dev.idx
+                    host
                 )
-                _root_node.add_child(_devg)
-            else
-                _devg = _root_node.lut[devg.idx]
-            # _devg holds now the structured node for the device group
-            _dev = new icswStructuredBurstNode(
-                dev.name
-                dev.idx
-                host
-            )
-            _devg.add_child(_dev)
-        for entry in mon_data.filtered_services
-            host = entry.host
-            if host.$$icswDeviceGroup.idx of _root_node.lut
-                _devg = _root_node.lut[host.$$icswDeviceGroup.idx]
-                if host.$$icswDevice.idx of _devg.lut
-                    _dev = _devg.lut[host.$$icswDevice.idx]
-                    _dev.add_child(new icswStructuredBurstNode(entry.description, entry.$$idx, entry, true))
+                _devg.add_child(_dev)
+                for service in host.$$service_list
+                    # check for filter
+                    if service.$$show
+                        _dev.add_child(new icswStructuredBurstNode(service.description, service.$$idx, service, true))
         for _devg in _root_node.children
             for _dev in _devg.children
                 if not _dev.children.length
@@ -514,18 +520,15 @@ angular.module(
 
         render: () ->
             node = @props.node
-            if node.id of @props.monitoring_data.host_lut
-                host_data = @props.monitoring_data.host_lut[node.id]
-                if not host_data.$$show
-                    host_data = undefined
-            else
-                host_data = undefined
+            # hack, set special attribute
+            @props.draw_parameters.device_idx_filter = node.id
             # should be optmized
             root_node = icswDeviceLivestatusFunctions.build_structured_burst(
                 @props.monitoring_data,
                 @props.draw_parameters,
             )
-            console.log "R=", root_node, @props.draw_parameter
+            # reset
+            @props.draw_parameters.device_idx_filter = undefined
             # srvc_data = (entry for entry in @props.monitoring_data.filtered_services when entry.host.host_name  == node.$$device.full_name)
 
             # console.log host_data, srvc_data
@@ -542,15 +545,15 @@ angular.module(
                     transform: "translate(#{node.x}, #{node.y})"
                 }
                 (
-                    path(_path) for _path in root.path_list
+                    path(_path) for _path in root_node.path_list
                 )
             )
     )
 ]).service("icswD3DeviceLivestatiReactBurst",
 [
-    "svg_tools", "icswDeviceLivestatusReactBurst",
+    "svg_tools", "icswDeviceLivestatusReactBurst", "icswBurstDrawParameters",
 (
-    svg_tools, icswDeviceLivestatusReactBurst,
+    svg_tools, icswDeviceLivestatusReactBurst, icswBurstDrawParameters,
 ) ->
     # container for all device bursts
     react_dom = ReactDOM
@@ -568,6 +571,7 @@ angular.module(
         #    return _redraw
 
         render: () ->
+            _draw_params = new icswBurstDrawParameters({inner_radius: 20, outer_radius: 30})
             _bursts = []
             if @props.show_livestatus
                 for node in @props.nodes
@@ -577,6 +581,7 @@ angular.module(
                             {
                                 node: node
                                 monitoring_data: @props.monitoring_data
+                                draw_parameters: _draw_params
                             }
                         )
                     )

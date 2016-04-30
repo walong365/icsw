@@ -166,7 +166,7 @@
         <span class="pull-right fa fa-pencil" title="acknowledgment status" ng-show="service.acknowledged == '1'"></span>
         <span ng-show="service.$$icswPassiveCheck" title="service is passive checked" class="glyphicon glyphicon-download pull-right"></span>
     </td>
-    <td class="text-nowrap" ng-show="show_column.description">{{ service.description }}</td>
+    <td class="text-nowrap" ng-show="show_column.description">{{ service.display_name }}</td>
     <td class="text-nowrap" ng-show="show_column.cats">{{ service.$$icswCategories }}</td>
     <td class="text-nowrap">{{ service.$$icswLastCheckString }}</td>
     <td class="text-nowrap">{{ service.$$icswLastStateChangeString }}</td>
@@ -411,7 +411,7 @@
                         <span class="glyphicon glyphicon-arrow-right"></span>
                         {{ service.host_name }}
                         <span class="glyphicon glyphicon-arrow-right"></span>
-                        {{ service.description }}
+                        {{ service.display_name }}
                     </span>
                 </li>
                 <li class="list-group-item">
