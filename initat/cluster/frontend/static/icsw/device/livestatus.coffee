@@ -1112,13 +1112,57 @@ angular.module(
             ls_filter: "=lsFilter"
         }
     }
+]).factory("icswBurstReactSegment",
+[
+    "$q",
+(
+    $q,
+) ->
+    react_dom = ReactDOM
+    {div, g, text, circle, path, svg} = React.DOM
+    return React.createClass(
+        propTypes: {
+            path: React.PropTypes.object
+        }
+
+        getInitialState: () ->
+            return {
+                focus: false
+            }
+
+        render: () ->
+            _path = @props.path
+            _color = _path.fill
+            if @state.focus
+                _color = "#445566"
+            _el = {
+                key: _path.key
+                d: _path.d
+                fill: _color
+                stroke: _path.stroke
+                strokeWidth: _path.strokeWidth
+                onMouseEnter: @on_mouse_enter
+                onMouseLeave: @on_mouse_leave
+            }
+            return path(
+                _el
+            )
+
+        on_mouse_enter: (event) ->
+            # console.log "me"
+            @setState({focus: true})
+
+        on_mouse_leave: (event) ->
+            # console.log "ml"
+            @setState({focus: false})
+    )
 ]).factory("icswDeviceLivestatusBurstReactContainer",
 [
     "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswNetworkTopologyReactSVGContainer",
-    "icswDeviceLivestatusFunctions", "icswBurstDrawParameters",
+    "icswDeviceLivestatusFunctions", "icswBurstDrawParameters", "icswBurstReactSegment",
 (
     $q, ICSW_URLS, icswSimpleAjaxCall, icswNetworkTopologyReactSVGContainer,
-    icswDeviceLivestatusFunctions, icswBurstDrawParameters,
+    icswDeviceLivestatusFunctions, icswBurstDrawParameters, icswBurstReactSegment,
 ) ->
     # Network topology container, including selection and redraw button
     react_dom = ReactDOM
@@ -1139,17 +1183,34 @@ angular.module(
             }
 
         new_monitoring_data: () ->
+            # force recalc of burst
+            @root_node = undefined
             @trigger_redraw()
 
         trigger_redraw: () ->
-            @setState({draw_counter: @state.draw_counter + 1})
+            @setState(
+                {
+                    draw_counter: @state.draw_counter + 1
+                }
+            )
 
         render: () ->
-            #<svg height="320" font-family="'Open-Sans', sans-serif" font-size="10pt">
-            #    <g transform="translate(300,160)">
-            root_node = icswDeviceLivestatusFunctions.build_structured_burst(@props.monitoring_data, @props.draw_parameters)
+            # check if burst is interactive
+            _ia = @props.draw_parameters.is_interactive
+            if not @root_node?
+                console.log "rnd"
+                @root_node = icswDeviceLivestatusFunctions.build_structured_burst(@props.monitoring_data, @props.draw_parameters)
+            root_node = @root_node
             _width = 2 * @props.draw_parameters.outer_radius
             _height = 2 * @props.draw_parameters.outer_radius
+            if _ia
+                # interactive, pathes have mouseover and click handler
+                _g_list = (
+                    React.createElement(icswBurstReactSegment, {path: _path}) for _path in root_node.path_list
+                )
+            else
+                # not interactive, simple list of graphs
+                _g_list = (path(_path) for _path in root_node.path_list)
             # console.log root_node, @props.draw_parameters
             return svg(
                 {
@@ -1165,9 +1226,7 @@ angular.module(
                             key: "main"
                             transform: "translate(#{_width / 2}, #{_height / 2})"
                         }
-                        (
-                            path(_path) for _path in root_node.path_list
-                        )
+                        _g_list
                     )
                 ]
             )
@@ -1909,6 +1968,7 @@ angular.module(
                 inner_radius: 40
                 outer_radius: 160
                 start_ring: 0
+                is_interactive: true
             }
         )
     }

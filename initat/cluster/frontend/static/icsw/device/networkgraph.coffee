@@ -206,6 +206,8 @@ angular.module(
             @start_ring = 2
             # special parameter to filter mon_results
             @device_idx_filter = undefined
+            # is interactive
+            @is_interactive = false
             for _key, _value of args
                 console.log "param", _key, _value
                 if not @[_key]?
