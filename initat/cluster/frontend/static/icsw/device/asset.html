@@ -15,14 +15,16 @@
                     class="table table-condensed table-hover table-bordered"
                     style="width:auto;"
                     ng-show="dev.assetrun_set.length > 0"
+                    st-table="dev.assetrun_set"
+                    st-safe-src="dev.assetrun_set"
                 >
                         <tbody>
                             <tr>
                                 <th style="width: 30px;"></th>
-                                <th>Run Index</th>
-                                <th>Run Type</th>
-                                <th>Run Start</th>
-                                <th>Run End</th>
+                                <th st-sort="run_index">>Run Index</th>
+                                <th st-sort="run_type">Run Type</th>
+                                <th st-sort="run_start_time">Run Start</th>
+                                <th st-sort="run_end_time">Run End</th>
                                 <th>Length</th>
                                 <th>Assets</th>
                             </tr>
