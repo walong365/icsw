@@ -598,33 +598,46 @@ angular.module(
 
         entry.custom_variables = _parse_custom_variables(entry.custom_variables)
 
-    _get_dummy_entry = () ->
+    _get_dummy_entry = (display_name, ct) ->
         entry = {
             $$burst_fill_color: "#dddddd"
+            display_name: display_name
+            $$ct: ct
         }
         return entry
 
-    get_dummy_service_entry = () ->
-        entry = _get_dummy_entry()
-        entry.$$ct = "service"
-
-    get_device_group_entry = () ->
-        entry = _get_dummy_entry()
-        entry.$$ct = "devicegroup"
+    get_dummy_service_entry = (display_name) ->
+        entry = _get_dummy_entry(display_name, "service")
         return entry
 
-    get_system_entry = () ->
-        entry = _get_dummy_entry()
-        entry.$$ct = "system"
+    get_device_group_entry = (display_name) ->
+        entry = _get_dummy_entry(display_name, "devicegroup")
+        return entry
+
+    get_system_entry = (display_name) ->
+        entry = _get_dummy_entry(display_name, "system")
         return entry
     
-    get_device_color = (state) ->
-        return {
+    salt_device_state = (entry) ->
+        entry.$$burst_fill_color = {
             0: "#66dd66"
             1: "#ff7777"
             2: "#ff0000"
-        }[state]
-        
+        }[entry.state]
+        _r_str = {
+            0: "success"
+            1: "danger"
+            2: "danger"
+        }[entry.state]
+        entry.$$icswStateClass = _r_str
+        entry.$$icswStateLabelClass = "label-#{_r_str}"
+        entry.$$icswStateTextClass = "text-#{_r_str}"
+        entry.$$icswStateString = {
+            0: "OK"
+            1: "Critical"
+            2: "Unreachable"
+        }[entry.state]
+
     salt_host = (entry, device_tree) ->
         if not entry.$$icswSalted?
             entry.$$service_list = []
@@ -634,20 +647,10 @@ angular.module(
             # sanitize entries
             _sanitize_entry(entry)
             # host state class
-            _r_str = {
-                0: "success"
-                1: "danger"
-                2: "danger"
-            }[entry.state]
-            entry.$$burst_fill_color = get_device_color(entry.state)
-            entry.$$icswStateClass = _r_str
-            entry.$$icswStateLabelClass = "label-#{_r_str}"
-            entry.$$icswStateString = {
-                0: "OK"
-                1: "Critical"
-                2: "Unreachable"
-            }[entry.state]
+            salt_device_state(entry)
             entry.$$icswDevice = device_tree.all_lut[entry.custom_variables.device_pk]
+            # for display
+            entry.display_name = entry.$$icswDevice.full_name
             # link back, highly usefull
             entry.$$icswDevice.$$host_mon_result = entry
             entry.$$icswDeviceGroup = device_tree.group_lut[entry.$$icswDevice.device_group]
@@ -686,23 +689,17 @@ angular.module(
         return entry
 
     return {
-        get_dummy_service_entry: () ->
-            return get_dummy_service_entry()
-            
-        get_device_group_entry: () ->
-            return get_device_group_entry()
-            
-        get_system_entry: () ->
-            return get_system_entry()
-            
-        get_device_color: (state) ->
-            return get_device_color(state)
-            
-        salt_host: (entry, device_tree) ->
-            return salt_host(entry, device_tree)
+        get_dummy_service_entry: get_dummy_service_entry
 
-        salt_service: (entry, cat_tree) ->
-            return salt_service(entry, cat_tree)
+        get_device_group_entry: get_device_group_entry
+
+        get_system_entry: get_system_entry
+
+        salt_device_state: salt_device_state
+
+        salt_host: salt_host
+
+        salt_service: salt_service
     }
 ]).controller("icswDeviceLiveStatusCtrl",
 [
@@ -844,7 +841,7 @@ angular.module(
 
         update: (hosts, services, used_cats) =>
             @generation++
-            console.log "update", @generation
+            # console.log "update", @generation
             @notifier.notify(@generation)
             @hosts.length = 0
             for entry in hosts
@@ -1102,27 +1099,156 @@ angular.module(
             if not watchers_present()
                 stop_interval()
     }
-]).directive("icswDeviceLivestatusServiceInfo", ["$templateCache", ($templateCache) ->
-    return {
-        restrict : "E"
-        template : $templateCache.get("icsw.device.livestatus.serviceinfo")
-        scope : {
-            type: "=type"
-            service: "=service"
-            ls_filter: "=lsFilter"
+]).factory("icswBurstServiceDetail",
+[
+    "$q",
+(
+    $q,
+) ->
+    {div, ul, li, h3, span} = React.DOM
+    return React.createClass(
+        propTypes: {
+            service: React.PropTypes.object
         }
-    }
+        render: () ->
+            _srvc = @props.service
+            if _srvc
+                _ul_list = [
+                    li(
+                        {key: "li.name", className: "list-group-item"}
+                        _srvc.display_name
+                    )
+                ]
+                if _srvc.$$ct in ["system", "devicegroup"]
+                    _ul_list.push(
+                        li(
+                            {key: "li.state", className: "list-group-item"}
+                            [
+                                "State"
+                                span(
+                                    {key: "state.span", className: "pull-right #{_srvc.$$icswStateTextClass}"}
+                                    _srvc.$$icswStateString
+                                )
+                            ]
+                        )
+                    )
+                if _srvc.$$ct in ["device", "service"]
+                    if _srvc.$$ct == "service"
+                        _host = _srvc.$$host_mon_result
+                    else
+                        _host = _srvc
+                    _path_span = [
+                        _host.$$icswDeviceGroup.name
+                        " "
+                        span(
+                            {key: "path.span2", className: "fa fa-arrow-right"}
+                        )
+                        " "
+                        _host.$$icswDevice.full_name
+                    ]
+                    if _srvc.$$ct == "service"
+                        _path_span = _path_span.concat(
+                            [
+                                " "
+                                span(
+                                    {key: "path.span3", className: "fa fa-arrow-right"}
+                                )
+                                " "
+                                _srvc.display_name
+                            ]
+                        )
+                    _ul_list.push(
+                        li(
+                            {key: "li.path", className: "list-group-item"}
+                            [
+                                "Path"
+                                span(
+                                    {key: "path.span", className: "pull-right"}
+                                    _path_span
+                                )
+                            ]
+                        )
+                    )
+                    # state li
+                    _ul_list.push(
+                        li(
+                            {key: "li.state2", className: "list-group-item"}
+                            [
+                                "State"
+                                span(
+                                    {key: "state.span", className: "pull-right"}
+                                    "#{_srvc.$$icswStateTypeString} #{_srvc.$$icswCheckTypeString}"
+                                    span(
+                                        {key: "state.span2", className: _srvc.$$icswStateTextClass}
+                                        _srvc.$$icswStateString
+                                    )
+                                    " "
+                                    span(
+                                        {key: "state.span3", className: "label #{_srvc.$$icswAttemptLabelClass}"}
+                                        _srvc.$$icswAttemptInfo
+                                    )
+                                )
+                            ]
+                        )
+                    )
+                    # last check / last change
+                    _ul_list.push(
+                        li(
+                            {key: "li.lclc", className: "list-group-item"}
+                            [
+                                "last check / last change"
+                                span(
+                                    {key: "lclc.span", className: "pull-right"}
+                                    "#{_srvc.$$icswLastCheckString } / #{_srvc.$$icswLastStateChangeString}"
+                                )
+                            ]
+                        )
+                    )
+                    # output
+                    _ul_list.push(
+                        li(
+                            {key: "li.output", className: "list-group-item"}
+                            [
+                                "Output"
+                                span(
+                                    {key: "output.span", className: "pull-right"}
+                                    _srvc.plugin_output or "N/A"
+                                )
+                            ]
+                        )
+                    )
+                _div_list = [
+                    h3(
+                        {key: "header"}
+                        "Object: " + _.capitalize(_srvc.$$ct)
+                    )
+                    ul(
+                        {key: "ul", className: "list-group"}
+                        _ul_list
+                    )
+                ]
+            else
+                _div_list = h3(
+                    {key: "header"}
+                    "Nothing selected"
+                )
+            return div(
+                {key: "top"}
+                _div_list
+            )
+    )
 ]).factory("icswBurstReactSegment",
 [
     "$q",
 (
     $q,
 ) ->
-    react_dom = ReactDOM
     {div, g, text, circle, path, svg} = React.DOM
     return React.createClass(
         propTypes: {
-            path: React.PropTypes.object
+            element: React.PropTypes.object
+            set_focus: React.PropTypes.func
+            clear_focus: React.PropTypes.func
         }
 
         getInitialState: () ->
@@ -1131,16 +1257,16 @@ angular.module(
             }
 
         render: () ->
-            _path = @props.path
-            _color = _path.fill
+            _el = @props.element
+            _color = _el.fill
             if @state.focus
                 _color = "#445566"
             _el = {
-                key: _path.key
-                d: _path.d
+                key: _el.key
+                d: _el.d
                 fill: _color
-                stroke: _path.stroke
-                strokeWidth: _path.strokeWidth
+                stroke: _el.stroke
+                strokeWidth: _el.strokeWidth
                 onMouseEnter: @on_mouse_enter
                 onMouseLeave: @on_mouse_leave
             }
@@ -1150,23 +1276,28 @@ angular.module(
 
         on_mouse_enter: (event) ->
             # console.log "me"
-            @setState({focus: true})
+            if @props.element.$$service?
+                @props.set_focus(@props.element.$$service)
+            # @setState({focus: true})
 
         on_mouse_leave: (event) ->
+            # @props.clear_focus()
             # console.log "ml"
-            @setState({focus: false})
+            # @setState({focus: false})
     )
 ]).factory("icswDeviceLivestatusBurstReactContainer",
 [
     "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswNetworkTopologyReactSVGContainer",
     "icswDeviceLivestatusFunctions", "icswBurstDrawParameters", "icswBurstReactSegment",
+    "icswBurstServiceDetail",
 (
     $q, ICSW_URLS, icswSimpleAjaxCall, icswNetworkTopologyReactSVGContainer,
     icswDeviceLivestatusFunctions, icswBurstDrawParameters, icswBurstReactSegment,
+    icswBurstServiceDetail,
 ) ->
     # Network topology container, including selection and redraw button
     react_dom = ReactDOM
-    {div, g, text, circle, path, svg} = React.DOM
+    {div, g, text, line, polyline, path, svg} = React.DOM
     return React.createClass(
         propTypes: {
             # required types
@@ -1180,11 +1311,14 @@ angular.module(
             return {
                 # to trigger redraw
                 draw_counter: 0
+                focus_service: undefined
             }
 
         new_monitoring_data: () ->
-            # force recalc of burst
+            # force recalc of burst, todo: incremental root_node update
             @root_node = undefined
+            # not very elegant
+            @clear_focus()
             @trigger_redraw()
 
         trigger_redraw: () ->
@@ -1194,6 +1328,14 @@ angular.module(
                 }
             )
 
+        set_focus: (srvc) ->
+            # console.log "focus", srvc
+            @clear_focus()
+            @setState({focus_service: srvc})
+
+        clear_focus: () ->
+            @setState({focus_service: undefined})
+
         render: () ->
             # check if burst is interactive
             _ia = @props.draw_parameters.is_interactive
@@ -1201,20 +1343,69 @@ angular.module(
                 console.log "rnd"
                 @root_node = icswDeviceLivestatusFunctions.build_structured_burst(@props.monitoring_data, @props.draw_parameters)
             root_node = @root_node
-            _width = 2 * @props.draw_parameters.outer_radius
-            _height = 2 * @props.draw_parameters.outer_radius
+            _outer = @props.draw_parameters.outer_radius
+            _width = 2 * _outer
+            _height = 2 * _outer
+            if _ia
+                _text_radius = 1.1 * _outer
+                _text_width = 1.15 * _outer
+                _width = 1.2 * _width + 200
+                _height = 1.2 * _height
             if _ia
                 # interactive, pathes have mouseover and click handler
                 _g_list = (
-                    React.createElement(icswBurstReactSegment, {path: _path}) for _path in root_node.path_list
+                    React.createElement(
+                        icswBurstReactSegment,
+                        {
+                            element: _element
+                            set_focus: @set_focus
+                            clear_focus: @clear_focus
+                        }
+                    ) for _element in root_node.element_list
                 )
             else
                 # not interactive, simple list of graphs
-                _g_list = (path(_path) for _path in root_node.path_list)
-            # console.log root_node, @props.draw_parameters
-            return svg(
+                _g_list = (path(_element) for _element in root_node.element_list)
+
+            # focus element
+            if @state.focus_service?
+                _fe = @state.focus_service
+                _sx = _fe.$$mean_radius * Math.cos(_fe.$$mean_arc)
+                _sy = _fe.$$mean_radius * Math.sin(_fe.$$mean_arc)
+                _ex = _text_radius * Math.cos(_fe.$$mean_arc)
+                _ey = _text_radius * Math.sin(_fe.$$mean_arc)
+                if _ex > 0
+                    _ex2 = _text_width
+                    _text_anchor = "start"
+                else
+                    _ex2 = -_text_width
+                    _text_anchor = "end"
+                _g_list.push(
+                    polyline(
+                        {
+                            key: "burst.legend.line"
+                            points: "#{_sx},#{_sy} #{_ex},#{_ey} #{_ex2},#{_ey}"
+                            stroke: "black"
+                            strokeWidth: "1"
+                            fill: "none"
+                        }
+                    )
+                )
+                _g_list.push(
+                    text(
+                        {
+                            key: "burst.legend.text"
+                            x: _ex2
+                            y: _ey
+                            textAnchor: _text_anchor
+                            alignmentBaseline: "middle"
+                        }
+                        _fe.display_name
+                    )
+                )
+            _svg = svg(
                 {
-                    key: "top"
+                    key: "svg.top"
                     width: "#{_width}px"
                     height: "#{_height}px"
                     "font-family": "'Open-Sans', sans-serif"
@@ -1230,6 +1421,39 @@ angular.module(
                     )
                 ]
             )
+            if _ia
+                # console.log _fe
+                if @state.focus_service?
+                    _fe = @state.focus_service
+                else
+                    _fe = undefined
+                # graph has a focus component
+                _graph = div(
+                    {
+                        key: "top.div"
+                        className: "row"
+                    }
+                    [
+                        div(
+                            {
+                                key: "svg.div"
+                                className: "col-xs-6"
+                            }
+                            _svg
+                        )
+                        div(
+                            {
+                                key: "detail.div"
+                                className: "col-xs-6"
+                            }
+                            React.createElement(icswBurstServiceDetail, {service: _fe})
+                        )
+                    ]
+                )
+            else
+                # graph consists only of svg
+                _graph = _svg
+            return _graph 
     )
 
 ]).directive("reactBurst",
@@ -1622,7 +1846,7 @@ angular.module(
             (error) ->
             (gen) ->
                 b_data = icswDeviceLivestatusFunctions.build_structured_burst($scope.struct.monitoring_data)
-                console.log b_data
+                # console.log b_data
                 $scope.set_data(b_data, "bla")
         )
     $scope._burst_data = null

@@ -206,8 +206,10 @@ angular.module(
             @start_ring = 2
             # special parameter to filter mon_results
             @device_idx_filter = undefined
-            # is interactive
+            # is interactive (show descriptions on mouseover)
             @is_interactive = false
+            # show details on mouseover
+            @show_details = false
             for _key, _value of args
                 console.log "param", _key, _value
                 if not @[_key]?
@@ -271,7 +273,7 @@ angular.module(
                             node.root.ring_lut[node.depth] = []
                         node.root.ring_lut[node.depth].push(node)
                 )
-                @path_list = []
+                @element_list = []
             return _width
 
         valid_device: () ->
@@ -370,8 +372,11 @@ angular.module(
         return _path
 
     build_burst_ring = (inner, outer, key_prefix, r_data, draw_params) ->
-        end_arc = 0
+        # offset
+        arc_offset = 0.2
+        end_arc = arc_offset
         end_num = 0
+        _ia = draw_params.is_interactive
         _len = r_data.length
         _result = []
         if _len
@@ -381,21 +386,25 @@ angular.module(
                 _idx++
                 start_arc = end_arc
                 end_num += 1
-                end_arc = 2 * Math.PI * end_num / _len
+                end_arc = 2 * Math.PI * end_num / _len + arc_offset
                 if _len == 1 and draw_params.collapse_one_element_rings
                     _path = ring_path(inner, outer)
                 else
                     _path = ring_segment_path(inner, outer, start_arc, end_arc)
-                _result.push(
-                    {
-                        key: "path.#{key_prefix}.#{_idx}"
-                        d: _path
-                        fill: srvc.$$burst_fill_color
-                        stroke: "black"
-                        # hm, stroke-width seems to be ignored
-                        strokeWidth: "0.5"
-                    }
-                )
+                _el = {
+                    key: "path.#{key_prefix}.#{_idx}"
+                    d: _path
+                    fill: srvc.$$burst_fill_color
+                    stroke: "black"
+                    # hm, stroke-width seems to be ignored
+                    strokeWidth: "0.5"
+                    $$service: srvc
+                }
+                if _ia
+                    # add values for interactive display
+                    srvc.$$mean_arc = (start_arc + end_arc) / 2.0
+                    srvc.$$mean_radius = (outer + inner) / 2.0
+                _result.push(_el)
         else
             _dummy = icswSaltMonitoringResultService.get_dummy_entry()
             # draw an empty (== grey) ring
@@ -403,6 +412,7 @@ angular.module(
                 {
                     key: "path.#{key_prefix}.empty"
                     d: ring_path(inner, outer)
+                    $$service: _dummy
                     fill: _dummy.$$burst_fill_color
                     stroke: "black"
                     strokeWidth: "0.3"
@@ -414,7 +424,7 @@ angular.module(
         _root_node = new icswStructuredBurstNode(
             "System"
             0
-            icswSaltMonitoringResultService.get_system_entry()
+            icswSaltMonitoringResultService.get_system_entry("System")
         )
         #if node.id of @props.monitoring_data.host_lut
         #    host_data = @props.monitoring_data.host_lut[node.id]
@@ -431,7 +441,7 @@ angular.module(
                     _devg = new icswStructuredBurstNode(
                         devg.name
                         devg.idx
-                        icswSaltMonitoringResultService.get_device_group_entry()
+                        icswSaltMonitoringResultService.get_device_group_entry(devg.name)
                     )
                     _root_node.add_child(_devg)
                 else
@@ -447,15 +457,13 @@ angular.module(
                     # check for filter
                     if service.$$show
                         _dev.add_child(new icswStructuredBurstNode(service.description, service.$$idx, service, true))
-        for _devg in _root_node.children
-            for _dev in _devg.children
                 if not _dev.children.length
                     # add dummy service for devices without services
                     _dev.add_child(
                         new icswStructuredBurstNode(
                             ""
                             0
-                            icswSaltMonitoringResultService.get_dummy_service_entry()
+                            icswSaltMonitoringResultService.get_dummy_service_entry("---")
                             false
                             true
                             true
@@ -472,7 +480,7 @@ angular.module(
                 for _entry in _root_node.ring_lut[_ring_idx]
                     if _entry.children.length
                         _entry.check.state = _.max([_child.check.state for _child in _entry.children])
-                        _entry.check.$$burst_fill_color = icswSaltMonitoringResultService.get_device_color(_entry.check.state)
+                        icswSaltMonitoringResultService.salt_device_state(_entry.check)
 
         # draw
         _ring_keys= (
@@ -483,7 +491,7 @@ angular.module(
             ).sort() when _entry >= draw_params.start_ring
         )
         for [_ring, _inner_rad, _outer_rad] in draw_params.create_ring_draw_list(_ring_keys)
-            _root_node.path_list = _.concat(_root_node.path_list, build_burst_ring(_inner_rad, _outer_rad, "ring#{_ring}", _root_node.ring_lut[_ring], draw_params))
+            _root_node.element_list = _.concat(_root_node.element_list, build_burst_ring(_inner_rad, _outer_rad, "ring#{_ring}", _root_node.ring_lut[_ring], draw_params))
         return _root_node
         
     return {
@@ -541,7 +549,7 @@ angular.module(
                     transform: "translate(#{node.x}, #{node.y})"
                 }
                 (
-                    path(_path) for _path in root_node.path_list
+                    path(_path) for _path in root_node.element_list
                 )
             )
     )

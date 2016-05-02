@@ -77,36 +77,18 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.livestatus.fullburst">
-    <div class="row">
-        <div class="col-md-6 col-sm-6">
-            <h3>
-                Burst graph
-                <span ng-show="struct.omitted_segments">
-                    , {{ struct.omitted_segments }} omitted segments
-                </span>
-            </h3>
-            <react-burst
-                icsw-livestatus-filter="struct.filter"
-                icsw-monitoring-data="struct.monitoring_data"
-                icsw-draw-parameters="struct.draw_parameters"
-            ></react-burst>
-            <!-- <svg height="320" font-family="'Open-Sans', sans-serif" font-size="10pt">
-                <g transform="translate(300,160)">
-                    <newburst
-                        icsw-livestatus-filter="struct.filter"
-                        icsw-monitoring-data="struct.monitoring_data"
-                        innerradius="60"
-                        service-focus="focusService"
-                        omitted-segments="struct.omitted_segments"
-                        propagate-filter="1"
-                        zoom="1"
-                    ></newburst>
-                </g>
-            </svg> -->
-        </div>
-        <div class="col-md-6 col-sm-6">
-            <icsw-device-livestatus-service-info service="focusService" ls-filter="ls_filter"></icsw-device-livestatus-service-info>
-        </div>
+    <div>
+        <h3>
+            Burst graph
+            <span ng-show="struct.omitted_segments">
+                , {{ struct.omitted_segments }} omitted segments
+            </span>
+        </h3>
+        <react-burst
+            icsw-livestatus-filter="struct.filter"
+            icsw-monitoring-data="struct.monitoring_data"
+            icsw-draw-parameters="struct.draw_parameters"
+        ></react-burst>
     </div>
 </script>
 
@@ -344,109 +326,6 @@
             ></newburst>
         </g>
     </svg>
-</script>
-
-<script type="text/ng-template" id="icsw.device.livestatus.serviceinfo">
-    <h3 ng-show="service.ct">Level: {{ service.ct }}</h3>
-    <div ng-switch="service.ct">
-        <div ng-switch-when="system">
-           <ul class="list-group">
-               <li class="list-group-item">System</li>
-           </ul>
-        </div>
-        <div ng-switch-when="group">
-           <ul class="list-group">
-               <li class="list-group-item">
-                   Devicegroup
-                   <span class="pull-right">
-                       {{ service.group_name }}
-                   </span>
-               </li>
-               <li class="list-group-item">
-                   State
-                   <span class="pull-right label" ng-class="get_service_state_class(service, 'label-')">
-                       {{ get_service_state_string(service) }}
-                   </span>
-               </li>
-           </ul>
-        </div>
-        <div ng-switch-when="host">
-            <ul class="list-group">
-                <li class="list-group-item">
-                    Path
-                    <span class="pull-right">
-                        {{ service.group_name }}
-                        <span class="glyphicon glyphicon-arrow-right"></span>
-                        {{ service.host_name }}
-                    </span>
-                </li>
-                <li class="list-group-item">
-                    State
-                    <span class="pull-right">
-                        {{ service.$$icswStateTypeString }}
-                        {{ service.$$icswCheckTypeString }},
-                        <span class="label" ng-class="service.host.$$icswStateLabelClass">{{ service.host.$$icswStateString }}</span>
-                        <span class="label" ng-class="service.host.$$icswAttemptLabelClass">{{ service.host.$$icswAttemptInfo }}</span>
-                    </span>
-                </li>
-                <li class="list-group-item">
-                    last check / last change
-                    <span class="pull-right">
-                        {{ service.host.$$icswLastCheckString }} /
-                        {{ service.host.$$icswLastStateChangeString }}
-                    </span>
-                </li>
-                <li class="list-group-item">
-                    <p class="list-group-item-heading">Output</p>
-                    <div class=" list-group-item-text">
-                        {{ service.plugin_output || 'N/A' }}
-                    </div>
-                </li>
-            </ul>
-        </div>
-        <div ng-switch-when="service">
-            <ul class="list-group">
-                <li class="list-group-item">
-                    Path
-                    <span class="pull-right">
-                        {{ service.group_name }}
-                        <span class="glyphicon glyphicon-arrow-right"></span>
-                        {{ service.host_name }}
-                        <span class="glyphicon glyphicon-arrow-right"></span>
-                        {{ service.display_name }}
-                    </span>
-                </li>
-                <li class="list-group-item">
-                    State
-                    <span class="pull-right">
-                        {{ service.$$icswStateTypeString }},
-                        {{ service.$$icswCheckTypeString }}
-                        <span class="label" ng-class="get_service_state_class(service, 'label-')">{{ get_service_state_string(service) }}</span>
-                        <span class="label" ng-class="service.$$icswAttemptLabelClass">{{ service.host.$$icswAttemptInfo }}</span>
-                    </span>
-                </li>
-                <li class="list-group-item">
-                    last check / last change
-                    <span class="pull-right">
-                        {{ service.$$icswLastCheckString }} /
-                        {{ service.$$icswLastStateChangeString }}
-                    </span>
-                </li>
-                <li class="list-group-item">
-                    categories
-                    <span class="pull-right">
-                        {{ service.$$icswCategories }}
-                    </span>
-                </li>
-                <li class="list-group-item">
-                    <p class="list-group-item-heading">Output</p>
-                    <div class=" list-group-item-text">
-                        {{ service.plugin_output || 'N/A' }}
-                    </div>
-                </li>
-            </ul>
-        </div>
-    </div>
 </script>
 
 <script type="text/ng-template" id="icsw.device.livestatus.device.row">
