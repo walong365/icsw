@@ -5,23 +5,49 @@
 <script type="text/ng-template" id="icsw.device.asset.overview">
     <uib-alert type="warning" ng-show="!struct.data_loaded">Fetching data from server ...</uib-alert>
     <icsw-tools-ensure-device-selection dev-list="struct.devices" list-ready="struct.data_loaded">
-        <h2>
-            Device Assets ({{ struct.devices.length }} devices)
-        </h2>
-        <div class="row">
-            <div class="col-sm-5 form-inline">
-                <div class="form-group">
-                    NameFilter: <input class="form-control" ng-model="vars.name_filter" ng-change="new_filter_set()" placeholder="filter"/>
-                </div>
-            </div>
-        </div>
+        <uib-tabset>
+            <uib-tab ng-repeat="dev in struct.devices">
+                <uib-tab-heading>
+                    {{ dev.full_name }}
+                </uib-tab-heading>
 
-        <ul>
-            <li ng-repeat="obj in struct.devices">Device Name: {{ obj.name }}
-                <ul>
-                    <li ng-repeat="obj2 in obj.assetrun_set">AssetRun Num: {{ obj2.run_index }} {{ obj2.assets }}</li>
-                </ul>
-            </li>
-        </ul>
+                <table
+                    class="table table-condensed table-hover table-bordered"
+                    style="width:auto;"
+                    ng-show="dev.assetrun_set"
+                >
+                        <tbody>
+                            <tr>
+                                <th>Run Index</th>
+                                <th>Run Type</th>
+                                <th>Length</th>
+                                <th>Assets</th>
+                            </tr>
+                            <tr ng-repeat="assetrun in dev.assetrun_set">
+                                <td>{{ assetrun.run_index }}</td>
+                                <td>{{ assetrun.run_type }}</td>
+                                <td>{{ assetrun.assets.length }}</td>
+                                <td>
+                                    <table
+                                        class="table table-condensed table-hover table-bordered"
+                                        style="width:auto;"
+                                        ng-show="assetrun.assets"
+                                    >
+                                        <tr>
+                                            <th>Name</th>
+                                        </tr>
+                                        <tr ng-repeat="asset in assetrun.assets">
+                                            <td>{{ asset }}</td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                    </tbody>
+                </table>
+            </uib-tab>
+        </uib-tabset>
+
+
+
     </icsw-tools-ensure-device-selection>
 </script>

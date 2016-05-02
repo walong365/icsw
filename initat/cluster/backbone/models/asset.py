@@ -161,6 +161,9 @@ class BaseAssetPackage:
 
         return s
 
+    def __lt__(self, other):
+        return self.name < other.name
+
     def __eq__(self, other):
         return isinstance(other, self.__class__) \
                and self.name == other.name \
@@ -328,7 +331,9 @@ class AssetRun(models.Model):
         return base_assets
 
     def generate_assets_no_save(self):
-        return get_base_assets_from_raw_result(self.raw_result_str, self.run_type, self.scan_type)
+        l = list(set(get_base_assets_from_raw_result(self.raw_result_str, self.run_type, self.scan_type)))
+        l.sort()
+        return l
 
     def get_asset_changeset(self, other_asset_run):
         self.generate_assets()
