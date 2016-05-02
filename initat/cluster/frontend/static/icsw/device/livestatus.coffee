@@ -1117,13 +1117,12 @@ angular.module(
         render: () ->
             _srvc = @props.service
             if _srvc
-                _ul_list = [
-                    li(
-                        {key: "li.name", className: "list-group-item"}
-                        _srvc.display_name
-                    )
-                ]
+                _ul_list = []
                 if _srvc.$$ct in ["system", "devicegroup"]
+                    if _srvc.$$ct == "system"
+                        _obj_name = ""
+                    else
+                        _obj_name = _srvc.display_name
                     _ul_list.push(
                         li(
                             {key: "li.state", className: "list-group-item"}
@@ -1139,8 +1138,10 @@ angular.module(
                 if _srvc.$$ct in ["device", "service"]
                     if _srvc.$$ct == "service"
                         _host = _srvc.$$host_mon_result
+                        _obj_name = _srvc.display_name
                     else
                         _host = _srvc
+                        _obj_name = _host.$$icswDevice.full_name
                     _path_span = [
                         _host.$$icswDeviceGroup.name
                         " "
@@ -1224,7 +1225,7 @@ angular.module(
                 _div_list = [
                     h3(
                         {key: "header"}
-                        "Object: " + _.capitalize(_srvc.$$ct)
+                        "Object: " + _.capitalize(_srvc.$$ct) + " " + _obj_name
                     )
                     ul(
                         {key: "ul", className: "list-group"}
