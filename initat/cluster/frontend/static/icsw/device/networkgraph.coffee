@@ -210,6 +210,10 @@ angular.module(
             @is_interactive = false
             # show details on mouseover
             @show_details = false
+            # check for too small segments
+            @omit_small_segments = false
+            # segment treshold, arc * outer_radius must be greater than this valu
+            @small_segment_threshold = 3
             for _key, _value of args
                 console.log "param", _key, _value
                 if not @[_key]?
@@ -230,13 +234,19 @@ angular.module(
                     _results.push([_key, _inner_rad, _outer_rad])
             return _results
 
+        start_feed: () =>
+            @omitted_segments = 0
+
+        omit_segment: (val) =>
+            return if @omit_small_segments and val < @small_segment_threshold then true else false
+
 ]).service("icswStructuredBurstNode", [
     "$q",
 (
     $q,
 ) ->
     class icswStructuredBurstNode
-        constructor: (@name, @idx, @check, @filter=false, @placeholder=false, @dummy=false) ->
+        constructor: (@name, @idx, @check, @filter=false, @placeholder=false) ->
             # name
             # check (may also be a dummy dict)
             @value = 1
@@ -379,6 +389,8 @@ angular.module(
         _ia = draw_params.is_interactive
         _len = r_data.length
         _result = []
+        # flag if all segments are omitted
+        all_omitted = true
         if _len
             _idx = 0
             for node in r_data
@@ -387,26 +399,43 @@ angular.module(
                 start_arc = end_arc
                 end_num += 1
                 end_arc = 2 * Math.PI * end_num / _len + arc_offset
-                if _len == 1 and draw_params.collapse_one_element_rings
-                    _path = ring_path(inner, outer)
+                if draw_params.omit_segment((end_arc - start_arc) * outer)
+                    draw_params.omitted_segments++
                 else
-                    _path = ring_segment_path(inner, outer, start_arc, end_arc)
-                _el = {
-                    key: "path.#{key_prefix}.#{_idx}"
-                    d: _path
-                    fill: srvc.$$burst_fill_color
-                    stroke: "black"
-                    # hm, stroke-width seems to be ignored
-                    strokeWidth: "0.5"
-                    $$service: srvc
-                }
-                if _ia
-                    # add values for interactive display
-                    srvc.$$mean_arc = (start_arc + end_arc) / 2.0
-                    srvc.$$mean_radius = (outer + inner) / 2.0
-                _result.push(_el)
+                    all_omitted = false
+                    if _len == 1 and draw_params.collapse_one_element_rings
+                        _path = ring_path(inner, outer)
+                    else
+                        _path = ring_segment_path(inner, outer, start_arc, end_arc)
+                    _el = {
+                        key: "path.#{key_prefix}.#{_idx}"
+                        d: _path
+                        fill: srvc.$$burst_fill_color
+                        stroke: "black"
+                        # hm, stroke-width seems to be ignored
+                        strokeWidth: "0.5"
+                        $$service: srvc
+                    }
+                    if _ia
+                        # add values for interactive display
+                        srvc.$$mean_arc = (start_arc + end_arc) / 2.0
+                        srvc.$$mean_radius = (outer + inner) / 2.0
+                    _result.push(_el)
+                if all_omitted
+                    # all segments omitted, draw dummy graph
+                    _dummy = icswSaltMonitoringResultService.get_dummy_service_entry()
+                    _result.push(
+                        {
+                            key: "path.#{key_prefix}.omit"
+                            d: ring_path(inner, outer)
+                            $$service: _dummy
+                            fill: _dummy.$$burst_fill_color
+                            stroke: "black"
+                            strokeWidth: "0.3"
+                        }
+                    )
         else
-            _dummy = icswSaltMonitoringResultService.get_dummy_entry()
+            _dummy = icswSaltMonitoringResultService.get_dummy_service_entry()
             # draw an empty (== grey) ring
             _result.push(
                 {
@@ -466,7 +495,6 @@ angular.module(
                             icswSaltMonitoringResultService.get_dummy_service_entry("---")
                             false
                             true
-                            true
                         )
                     )
 
@@ -490,6 +518,10 @@ angular.module(
                     return parseInt(_key)
             ).sort() when _entry >= draw_params.start_ring
         )
+
+        # reset some draw parameters (omitted segments)
+        draw_params.start_feed()
+
         for [_ring, _inner_rad, _outer_rad] in draw_params.create_ring_draw_list(_ring_keys)
             _root_node.element_list = _.concat(_root_node.element_list, build_burst_ring(_inner_rad, _outer_rad, "ring#{_ring}", _root_node.ring_lut[_ring], draw_params))
         return _root_node

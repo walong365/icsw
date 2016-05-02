@@ -77,19 +77,11 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.livestatus.fullburst">
-    <div>
-        <h3>
-            Burst graph
-            <span ng-show="struct.omitted_segments">
-                , {{ struct.omitted_segments }} omitted segments
-            </span>
-        </h3>
-        <react-burst
-            icsw-livestatus-filter="struct.filter"
-            icsw-monitoring-data="struct.monitoring_data"
-            icsw-draw-parameters="struct.draw_parameters"
-        ></react-burst>
-    </div>
+    <react-burst
+        icsw-livestatus-filter="struct.filter"
+        icsw-monitoring-data="struct.monitoring_data"
+        icsw-draw-parameters="struct.draw_parameters"
+    ></react-burst>
 </script>
 
 <script type="text/ng-template" id="icsw.device.livestatus.table.view">

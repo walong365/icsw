@@ -561,6 +561,7 @@ angular.module(
         return "label-#{_r_str}"
             
     _sanitize_entry = (entry) ->
+        entry.$$dummy = false
         entry.state = parseInt(entry.state)
         if entry.state_type in ["0", "1"]
             entry.state_type = parseInt(entry.state_type)
@@ -603,11 +604,14 @@ angular.module(
             $$burst_fill_color: "#dddddd"
             display_name: display_name
             $$ct: ct
+            $$dummy: false
         }
         return entry
 
     get_dummy_service_entry = (display_name) ->
         entry = _get_dummy_entry(display_name, "service")
+        # is a dummy entry
+        entry.$$dummy = true
         return entry
 
     get_device_group_entry = (display_name) ->
@@ -1297,7 +1301,7 @@ angular.module(
 ) ->
     # Network topology container, including selection and redraw button
     react_dom = ReactDOM
-    {div, g, text, line, polyline, path, svg} = React.DOM
+    {div, g, text, line, polyline, path, svg, h3} = React.DOM
     return React.createClass(
         propTypes: {
             # required types
@@ -1321,6 +1325,10 @@ angular.module(
             @clear_focus()
             @trigger_redraw()
 
+        componentDidMount: () ->
+            @burst_element = $(react_dom.findDOMNode(@)).parents("react-burst")
+            console.log @burst_element, @burst_element[0]
+
         trigger_redraw: () ->
             @setState(
                 {
@@ -1330,20 +1338,30 @@ angular.module(
 
         set_focus: (srvc) ->
             # console.log "focus", srvc
-            @clear_focus()
-            @setState({focus_service: srvc})
+            # only focus non-dummy services
+            if not srvc.$$dummy
+                @clear_focus()
+                @setState({focus_service: srvc})
 
         clear_focus: () ->
             @setState({focus_service: undefined})
 
         render: () ->
+            [_outer_width, _outer_height] = [0, 0]
+            if @burst_element? and @burst_element.width()
+                [_outer_width, _outer_height] = [@burst_element.width(), @burst_element.height()]
             # check if burst is interactive
             _ia = @props.draw_parameters.is_interactive
             if not @root_node?
                 console.log "rnd"
                 @root_node = icswDeviceLivestatusFunctions.build_structured_burst(@props.monitoring_data, @props.draw_parameters)
+            # console.log _outer_width, _outer_height
             root_node = @root_node
+            # if _outer_width
+            #    _outer = _.min([_outer_width, _outer_height])
+            # else
             _outer = @props.draw_parameters.outer_radius
+            # console.log _outer
             _width = 2 * _outer
             _height = 2 * _outer
             if _ia
@@ -1427,6 +1445,9 @@ angular.module(
                     _fe = @state.focus_service
                 else
                     _fe = undefined
+                _header_text = "Burst graph"
+                if @props.draw_parameters.omitted_segments
+                    _header_text = "#{_header_text} (#{@props.draw_parameters.omitted_segments} omitted segments)"
                 # graph has a focus component
                 _graph = div(
                     {
@@ -1439,7 +1460,13 @@ angular.module(
                                 key: "svg.div"
                                 className: "col-xs-6"
                             }
-                            _svg
+                            [
+                                h3(
+                                    {key: "graph.header"}
+                                    _header_text
+                                )
+                                _svg
+                            ]
                         )
                         div(
                             {
@@ -2142,11 +2169,6 @@ angular.module(
         scope: {
             filter: "=icswLivestatusFilter"
             data: "=icswMonitoringData"
-            #data: "=data"
-            #redrawBurst: "=redraw"
-            #serviceFocus: "=serviceFocus"
-            #ls_filter: "=lsFilter"
-            #ls_devsel: "=lsDevsel"
             size: "=icswElementSize"
         }
         controller: "icswDeviceLivestatusFullburstCtrl"
@@ -2184,8 +2206,6 @@ angular.module(
         monitoring_data: undefined
         # filter
         filter: undefined
-        # omitted segments
-        omitted_segments: 0
         # draw parameters
         draw_parameters: new icswBurstDrawParameters(
             {
@@ -2193,6 +2213,7 @@ angular.module(
                 outer_radius: 160
                 start_ring: 0
                 is_interactive: true
+                omit_small_segments: true
             }
         )
     }
