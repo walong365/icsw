@@ -28,6 +28,7 @@ import bz2
 from lxml import etree
 from django.db import models
 from enum import IntEnum
+from rest_framework import serializers
 
 ########################################################################################################################
 # Functions
@@ -326,6 +327,9 @@ class AssetRun(models.Model):
         self.save()
         return base_assets
 
+    def generate_assets_no_save(self):
+        return get_base_assets_from_raw_result(self.raw_result_str, self.run_type, self.scan_type)
+
     def get_asset_changeset(self, other_asset_run):
         self.generate_assets()
         other_asset_run.generate_assets()
@@ -348,3 +352,34 @@ class AssetBatch(models.Model):
             if not assetrun.run_status == RunStatus.ENDED:
                 return False
         return True
+
+########################################################################################################################
+# Serializers
+########################################################################################################################
+
+class AssetSerializer(serializers.ModelSerializer):
+    assetstr = serializers.SerializerMethodField()
+
+    def get_assetstr(self, obj):
+        return str(obj.getAssetInstance())
+
+    class Meta:
+        model = Asset
+
+class AssetRunSerializer(serializers.ModelSerializer):
+    device = serializers.SerializerMethodField()
+    #asset_set = AssetSerializer(many=True)
+    assets = serializers.SerializerMethodField()
+
+    def get_assets(self, obj):
+        return [str(pkg) for pkg in obj.generate_assets_no_save()]
+
+    def get_device(self, obj):
+        if self.context and "device" in self.context:
+            return self.context["device"]
+        else:
+            return 0
+
+    class Meta:
+        model = AssetRun
+        fields = ( "idx", "device", "run_index", "run_type", "assets")

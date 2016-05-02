@@ -110,7 +110,13 @@ device_asset_module = angular.module(
                 $scope.struct.devices.length = 0
                 for entry in devs
                     $scope.struct.devices.push(entry)
-                $scope.struct.data_loaded = true
+
+                hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, $scope.struct.devices)
+                $scope.struct.device_tree.enrich_devices(hs, ["asset_info"]).then(
+                    (data) ->
+                        console.log "*", data[0]
+                        $scope.struct.data_loaded = true
+                )
         )
 
 ])

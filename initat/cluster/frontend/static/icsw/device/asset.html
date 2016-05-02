@@ -15,5 +15,13 @@
                 </div>
             </div>
         </div>
+
+        <ul>
+            <li ng-repeat="obj in struct.devices">Device Name: {{ obj.name }}
+                <ul>
+                    <li ng-repeat="obj2 in obj.assetrun_set">AssetRun Num: {{ obj2.run_index }} {{ obj2.assets }}</li>
+                </ul>
+            </li>
+        </ul>
     </icsw-tools-ensure-device-selection>
 </script>
