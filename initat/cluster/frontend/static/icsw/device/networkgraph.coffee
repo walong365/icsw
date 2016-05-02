@@ -189,6 +189,45 @@ angular.module(
     # update_draw_selections()
 
     # $scope.ls_filter = new icswLivestatusFilterFactory()
+]).service("icswBurstDrawParameters", [
+    "$q"
+(
+    $q,
+) ->
+    class icswBurstDrawParameters
+        constructor: (args) ->
+            # inner radius
+            @inner_radius = 20
+            # outer radius
+            @outer_radius = 60
+            # collapse rings with only one segment
+            @collapse_one_element_rings = true
+            # start ring, 0 ... system, 1 ... group, 2 ... device, 3 .... service
+            @start_ring = 2
+            # special parameter to filter mon_results
+            @device_idx_filter = undefined
+            # is interactive
+            @is_interactive = false
+            for _key, _value of args
+                console.log "param", _key, _value
+                if not @[_key]?
+                    console.error "Unknown icswBurstDrawParameter", _key, _value
+                else
+                    @[_key] = _value
+
+        create_ring_draw_list: (ring_keys) =>
+            _idx = 0
+            _results = []
+            _num_rings = ring_keys.length
+            if _num_rings
+                _width = @outer_radius - @inner_radius
+                for _key in ring_keys
+                    _inner_rad = @inner_radius + _idx * _width / _num_rings
+                    _outer_rad = @inner_radius + (_idx + 1 ) * _width / _num_rings
+                    _idx++
+                    _results.push([_key, _inner_rad, _outer_rad])
+            return _results
+
 ]).service("icswStructuredBurstNode", [
     "$q",
 (
@@ -206,6 +245,34 @@ angular.module(
             @depth = 0
             @show = true
             @clicked = false
+            if @depth == 0
+                # only for root-nodes
+                # flag, not in use right now
+                @balanced = false
+
+        balance: () ->
+            # balance down to all visible childnodes
+            _local_width = @_get_width()
+
+        balance: () ->
+            if @children.length
+                _width = _.sum(_child.balance() for _child in @children)
+            else
+                # constant one or better use value ?
+                _width = 1
+            # the sum of all widths on any given level is (of course) the same
+            @width = _width
+            if @depth == 0
+                # create ring lookup table
+                @ring_lut = {}
+                @iter_childs(
+                    (node) ->
+                        if node.depth not of node.root.ring_lut
+                            node.root.ring_lut[node.depth] = []
+                        node.root.ring_lut[node.depth].push(node)
+                )
+                @path_list = []
+            return _width
 
         valid_device: () ->
             _r = false
@@ -221,7 +288,7 @@ angular.module(
                 return @
 
         add_child: (entry) ->
-            entry.root = @
+            entry.root = @root
             entry.depth = @depth + 1
             entry.parent = @
             @children.push(entry)
@@ -267,154 +334,169 @@ angular.module(
 
 ]).service("icswDeviceLivestatusFunctions",
 [
-    "$q", "icswStructuredBurstNode",
+    "$q", "icswStructuredBurstNode", "icswSaltMonitoringResultService",
 (
-    $q, icswStructuredBurstNode,
+    $q, icswStructuredBurstNode, icswSaltMonitoringResultService,
 ) ->
-    get_fill_color = (res) ->
-        if res.$$ct == "service"
-            color = {
-                0: "#66dd66"
-                1: "#dddd88"
-                2: "#ff7777"
-                3: "#ff0000"
-            }[res.state]
-        else if res.$$ct == "host"
-            color = {
-                0: "#66dd66"
-                1: "#ff7777"
-                2: "#ff0000"
-            }[res.state]
-        else
-            color = "000000"
-        return color
 
-    build_burst_ring = (inner, outer, key_prefix, r_data) ->
+    ring_path = (inner, outer) ->
+        # return the SVG path for a ring with radi inner and outer
+        _path = "M#{outer},0 " + \
+        "A#{outer},#{outer} 0 1,1 #{-outer},0 " + \
+        "A#{outer},#{outer} 0 1,1 #{outer},0 " + \
+        "L#{outer},0 " + \
+        "M#{inner},0 " + \
+        "A#{inner},#{inner} 0 1,0 #{-inner},0 " + \
+        "A#{inner},#{inner} 0 1,0 #{inner},0 " + \
+        "L#{inner},0 " + \
+        "Z"
+        return _path
+
+    ring_segment_path = (inner, outer, start_arc, end_arc) ->
+        # returns the SVG path for a ring segment
+        start_sin = Math.sin(start_arc)
+        start_cos = Math.cos(start_arc)
+        end_sin = Math.sin(end_arc)
+        end_cos = Math.cos(end_arc)
+        if end_arc > start_arc + Math.PI
+            _large_arc_flag = 1
+        else
+            _large_arc_flag = 0
+        _path = "M#{start_cos * inner},#{start_sin * inner} L#{start_cos * outer},#{start_sin * outer} " + \
+            "A#{outer},#{outer} 0 #{_large_arc_flag} 1 #{end_cos * outer},#{end_sin * outer} " + \
+            "L#{end_cos * inner},#{end_sin * inner} " + \
+            "A#{inner},#{inner} 0 #{_large_arc_flag} 0 #{start_cos * inner},#{start_sin * inner} " + \
+            "Z"
+        return _path
+
+    build_burst_ring = (inner, outer, key_prefix, r_data, draw_params) ->
         end_arc = 0
         end_num = 0
         _len = r_data.length
         _result = []
         if _len
             _idx = 0
-            for srvc in r_data
+            for node in r_data
+                srvc = node.check
                 _idx++
                 start_arc = end_arc
                 end_num += 1
                 end_arc = 2 * Math.PI * end_num / _len
-                start_sin = Math.sin(start_arc)
-                start_cos = Math.cos(start_arc)
-                end_sin = Math.sin(end_arc)
-                end_cos = Math.cos(end_arc)
-                if end_arc > start_arc + Math.PI
-                    _large_arc_flag = 1
+                if _len == 1 and draw_params.collapse_one_element_rings
+                    _path = ring_path(inner, outer)
                 else
-                    _large_arc_flag = 0
-                _path = "M#{start_cos * inner},#{start_sin * inner} L#{start_cos * outer},#{start_sin * outer} " + \
-                    "A#{outer},#{outer} 0 #{_large_arc_flag} 1 #{end_cos * outer},#{end_sin * outer} " + \
-                    "L#{end_cos * inner},#{end_sin * inner} " + \
-                    "A#{inner},#{inner} 0 #{_large_arc_flag} 0 #{start_cos * inner},#{start_sin * inner} " + \
-                    "Z"
+                    _path = ring_segment_path(inner, outer, start_arc, end_arc)
                 _result.push(
                     {
                         key: "path.#{key_prefix}.#{_idx}"
                         d: _path
-                        fill: get_fill_color(srvc)
+                        fill: srvc.$$burst_fill_color
                         stroke: "black"
                         # hm, stroke-width seems to be ignored
                         strokeWidth: "0.5"
                     }
                 )
         else
-            _path = "M#{outer},0 " + \
-            "A#{outer},#{outer} 0 1,1 #{-outer},0 " + \
-            "A#{outer},#{outer} 0 1,1 #{outer},0 " + \
-            "L#{outer},0 " + \
-            "M#{inner},0 " + \
-            "A#{inner},#{inner} 0 1,0 #{-inner},0 " + \
-            "A#{inner},#{inner} 0 1,0 #{inner},0 " + \
-            "L#{inner},0 " + \
-            "Z"
-
+            _dummy = icswSaltMonitoringResultService.get_dummy_entry()
             # draw an empty (== grey) ring
             _result.push(
                 {
                     key: "path.#{key_prefix}.empty"
-                    d: _path
-                    fill: "#dddddd"
+                    d: ring_path(inner, outer)
+                    fill: _dummy.$$burst_fill_color
                     stroke: "black"
                     strokeWidth: "0.3"
                 }
             )
         return _result
 
-    build_single_device_burst = (h_data, s_data) ->
-        _result = []
-        if h_data?
-            _result = _.concat(_result, build_burst_ring(10, 20, "host", [h_data]))
-        else
-            _result = _.concat(_result, build_burst_ring(10, 20, "host", []))
-        _result = _.concat(_result, build_burst_ring(20, 30, "srvc", s_data))
-        return _result
-
-
-    build_structured_burst = (mon_data) ->
+    build_structured_burst = (mon_data, draw_params) ->
         _root_node = new icswStructuredBurstNode(
             "System"
             0
-            {
-                state: 4
-                ct: "system"
-            }
+            icswSaltMonitoringResultService.get_system_entry()
         )
+        #if node.id of @props.monitoring_data.host_lut
+        #    host_data = @props.monitoring_data.host_lut[node.id]
+        #    if not host_data.$$show
+        #        host_data = undefined
+        #else
+        #    host_data = undefined
         for host in mon_data.filtered_hosts
             dev = host.$$icswDevice
-            devg = host.$$icswDeviceGroup
-            if devg.idx not of _root_node.lut
-                # add device group ring
-                _devg = new icswStructuredBurstNode(
-                    devg.name
-                    devg.idx
-                    {
-                        state: 0
-                        ct: "group"
-                        group_name: devg.name
-                    }
+            if not draw_params.device_idx_filter? or dev.idx == draw_params.device_idx_filter
+                devg = host.$$icswDeviceGroup
+                if devg.idx not of _root_node.lut
+                    # add device group ring
+                    _devg = new icswStructuredBurstNode(
+                        devg.name
+                        devg.idx
+                        icswSaltMonitoringResultService.get_device_group_entry()
+                    )
+                    _root_node.add_child(_devg)
+                else
+                    _devg = _root_node.lut[devg.idx]
+                # _devg holds now the structured node for the device group
+                _dev = new icswStructuredBurstNode(
+                    dev.name
+                    dev.idx
+                    host
                 )
-                _root_node.add_child(_devg)
-            else
-                _devg = _root_node.lut[devg.idx]
-            # _devg holds now the structured node for the device group
-            _dev = new icswStructuredBurstNode(
-                dev.name
-                dev.idx
-                host
-            )
-            _devg.add_child(_dev)
-        for entry in mon_data.filtered_services
-            host = entry.host
-            if host.$$icswDeviceGroup.idx of _root_node.lut
-                _devg = _root_node.lut[host.$$icswDeviceGroup.idx]
-                if host.$$icswDevice.idx of _devg.lut
-                    _dev = _devg.lut[host.$$icswDevice.idx]
-                    _dev.add_child(new icswStructuredBurstNode(entry.description, entry.$$idx,  entry, true))
-                
-        #console.log "bsb", mon_data
+                _devg.add_child(_dev)
+                for service in host.$$service_list
+                    # check for filter
+                    if service.$$show
+                        _dev.add_child(new icswStructuredBurstNode(service.description, service.$$idx, service, true))
+        for _devg in _root_node.children
+            for _dev in _devg.children
+                if not _dev.children.length
+                    # add dummy service for devices without services
+                    _dev.add_child(
+                        new icswStructuredBurstNode(
+                            ""
+                            0
+                            icswSaltMonitoringResultService.get_dummy_service_entry()
+                            false
+                            true
+                            true
+                        )
+                    )
+
+        # balance nodes, set width of each segment, create ring lut
+
+        _root_node.balance()
+
+        # set states in ring 1 and 0
+        for _ring_idx in [1, 0]
+            if _ring_idx of _root_node.ring_lut
+                for _entry in _root_node.ring_lut[_ring_idx]
+                    if _entry.children.length
+                        _entry.check.state = _.max([_child.check.state for _child in _entry.children])
+                        _entry.check.$$burst_fill_color = icswSaltMonitoringResultService.get_device_color(_entry.check.state)
+
+        # draw
+        _ring_keys= (
+            _entry for _entry in _.map(
+                _.keys(_root_node.ring_lut)
+                (_key) ->
+                    return parseInt(_key)
+            ).sort() when _entry >= draw_params.start_ring
+        )
+        for [_ring, _inner_rad, _outer_rad] in draw_params.create_ring_draw_list(_ring_keys)
+            _root_node.path_list = _.concat(_root_node.path_list, build_burst_ring(_inner_rad, _outer_rad, "ring#{_ring}", _root_node.ring_lut[_ring], draw_params))
         return _root_node
         
     return {
-        build_single_device_burst: (host_data, srvc_data) ->
-            return build_single_device_burst(host_data, srvc_data)
-            
-        build_structured_burst: (mon_data) ->
+        build_structured_burst: (mon_data, draw_params) ->
             # mon_data is a filtered instance of icswMonitoringResult
-            return build_structured_burst(mon_data)
+            return build_structured_burst(mon_data, draw_params)
     }
 
 ]).factory("icswDeviceLivestatusReactBurst",
 [
-    "$q", "icswDeviceLivestatusFunctions",
+    "$q", "icswDeviceLivestatusFunctions", "icswBurstDrawParameters",
 (
-    $q, icswDeviceLivestatusFunctions,
+    $q, icswDeviceLivestatusFunctions, icswBurstDrawParameters,
 ) ->
 
     react_dom = ReactDOM
@@ -425,6 +507,7 @@ angular.module(
             # required types
             node: React.PropTypes.object
             monitoring_data: React.PropTypes.object
+            draw_parameters: React.PropTypes.object
         }
         componentDidMount: () ->
             el = react_dom.findDOMNode(@)
@@ -433,18 +516,20 @@ angular.module(
 
         render: () ->
             node = @props.node
-            if node.id of @props.monitoring_data.host_lut
-                host_data = @props.monitoring_data.host_lut[node.id]
-                if not host_data.$$show
-                    host_data = undefined
-            else
-                host_data = undefined
+            # hack, set special attribute
+            @props.draw_parameters.device_idx_filter = node.id
             # should be optmized
-            srvc_data = (entry for entry in @props.monitoring_data.filtered_services when entry.host.host_name  == node.$$device.full_name)
+            root_node = icswDeviceLivestatusFunctions.build_structured_burst(
+                @props.monitoring_data,
+                @props.draw_parameters,
+            )
+            # reset
+            @props.draw_parameters.device_idx_filter = undefined
+            # srvc_data = (entry for entry in @props.monitoring_data.filtered_services when entry.host.host_name  == node.$$device.full_name)
 
             # console.log host_data, srvc_data
             # if host_data and srvc_data.length
-            _pathes = icswDeviceLivestatusFunctions.build_single_device_burst(host_data, srvc_data)
+            # _pathes = icswDeviceLivestatusFunctions.build_single_device_burst(host_data, srvc_data)
             # else
             #    _pathes = []
 
@@ -456,15 +541,15 @@ angular.module(
                     transform: "translate(#{node.x}, #{node.y})"
                 }
                 (
-                    path(_path) for _path in _pathes
+                    path(_path) for _path in root_node.path_list
                 )
             )
     )
 ]).service("icswD3DeviceLivestatiReactBurst",
 [
-    "svg_tools", "icswDeviceLivestatusReactBurst",
+    "svg_tools", "icswDeviceLivestatusReactBurst", "icswBurstDrawParameters",
 (
-    svg_tools, icswDeviceLivestatusReactBurst,
+    svg_tools, icswDeviceLivestatusReactBurst, icswBurstDrawParameters,
 ) ->
     # container for all device bursts
     react_dom = ReactDOM
@@ -482,6 +567,7 @@ angular.module(
         #    return _redraw
 
         render: () ->
+            _draw_params = new icswBurstDrawParameters({inner_radius: 20, outer_radius: 30})
             _bursts = []
             if @props.show_livestatus
                 for node in @props.nodes
@@ -491,6 +577,7 @@ angular.module(
                             {
                                 node: node
                                 monitoring_data: @props.monitoring_data
+                                draw_parameters: _draw_params
                             }
                         )
                     )
@@ -1215,7 +1302,7 @@ angular.module(
     return {
         restrict: "EA"
         replace: true
-        link: (scope, element, attr) ->
+        link: (scope, element, attrs) ->
             scope.size = undefined
             scope.$watch("size", (new_val) ->
                 # hm, not working
@@ -1235,7 +1322,7 @@ angular.module(
                     )
                     element[0]
                 )
-                scope.$on("$destroy", (d) ->
+                scope.$on("$destroy", () ->
                     ReactDOM.unmountComponentAtNode(element[0])
                 )
 

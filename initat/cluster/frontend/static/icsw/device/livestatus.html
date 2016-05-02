@@ -85,7 +85,12 @@
                     , {{ struct.omitted_segments }} omitted segments
                 </span>
             </h3>
-            <svg height="320" font-family="'Open-Sans', sans-serif" font-size="10pt">
+            <react-burst
+                icsw-livestatus-filter="struct.filter"
+                icsw-monitoring-data="struct.monitoring_data"
+                icsw-draw-parameters="struct.draw_parameters"
+            ></react-burst>
+            <!-- <svg height="320" font-family="'Open-Sans', sans-serif" font-size="10pt">
                 <g transform="translate(300,160)">
                     <newburst
                         icsw-livestatus-filter="struct.filter"
@@ -97,7 +102,7 @@
                         zoom="1"
                     ></newburst>
                 </g>
-            </svg>
+            </svg> -->
         </div>
         <div class="col-md-6 col-sm-6">
             <icsw-device-livestatus-service-info service="focusService" ls-filter="ls_filter"></icsw-device-livestatus-service-info>
@@ -117,11 +122,9 @@
         <thead>
             <tr>
                 <td colspan="99">
-                    <div class="form-inline">
-                        <div icsw-tools-pagination st-items-by-page="20" possible-items-by-page="20,50,100,200,500,1000"></div>
-                        <input placeholder="filter..." st-search="search_str" class="form-control input-sm" type="search">
-                        </input>
-                    </div>
+                    <span icsw-tools-pagination st-items-by-page="20" possible-items-by-page="20,50,100,200,500,1000"></span>
+                    <input placeholder="filter..." st-search="search_str" class="form-control input-sm" type="search">
+                    </input>
                 </td>
             </tr>
             <tr>
@@ -164,7 +167,7 @@
         <span class="pull-right fa fa-pencil" title="acknowledgment status" ng-show="service.acknowledged == '1'"></span>
         <span ng-show="service.$$icswPassiveCheck" title="service is passive checked" class="glyphicon glyphicon-download pull-right"></span>
     </td>
-    <td class="text-nowrap" ng-show="show_column.description">{{ service.description }}</td>
+    <td class="text-nowrap" ng-show="show_column.description">{{ service.display_name }}</td>
     <td class="text-nowrap" ng-show="show_column.cats">{{ service.$$icswCategories }}</td>
     <td class="text-nowrap">{{ service.$$icswLastCheckString }}</td>
     <td class="text-nowrap">{{ service.$$icswLastStateChangeString }}</td>
@@ -319,19 +322,11 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.livestatus.brief">
-    <svg width="40" height="40" font-family="'Open-Sans', sans-serif" font-size="10pt">
-        <g transform="translate(20,20)">
-            <newburst
-                ls-filter="ls_filter"
-                icsw-device="device"
-                innerradius="0"
-                outerradius="19"
-                noninteractive="true"
-                draw-all="true"
-                zoom-level="d"
-            ></newburst>
-        </g>
-    </svg>
+    <react-burst
+        icsw-livestatus-filter="struct.filter"
+        icsw-monitoring-data="struct.monitoring_data"
+        icsw-draw-parameters="struct.draw_parameters"
+    ></react-burst>
 </script>
 
 <script type="text/ng-template" id="icsw.device.livestatus.map">
@@ -349,11 +344,6 @@
             ></newburst>
         </g>
     </svg>
-</script>
-
-<script type="text/ng-template" id="icsw.device.livestatus.cat.tree">
-    <h3>Monitoring categories</h3>
-    <tree treeconfig="cat_tree"></tree>
 </script>
 
 <script type="text/ng-template" id="icsw.device.livestatus.serviceinfo">
@@ -423,7 +413,7 @@
                         <span class="glyphicon glyphicon-arrow-right"></span>
                         {{ service.host_name }}
                         <span class="glyphicon glyphicon-arrow-right"></span>
-                        {{ service.description }}
+                        {{ service.display_name }}
                     </span>
                 </li>
                 <li class="list-group-item">

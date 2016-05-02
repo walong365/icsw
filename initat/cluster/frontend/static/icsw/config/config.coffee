@@ -1077,12 +1077,16 @@ config_module = angular.module(
                     if scope.$$previous_filter?
                         sel_cat = scope.$$previous_filter
                     else
-                        sel_cat = scope.mon_data.used_cats.concat([0])
-                        # push category selection list
-                        send_selection_to_filter(sel_cat)
+                        if scope.mon_data?
+                            sel_cat = scope.mon_data.used_cats.concat([0])
+                            # push category selection list
+                            send_selection_to_filter(sel_cat)
+                        else
+                            # mon_data no loaded
+                            sel_cat = []
                     # useable are only the categories present in the current dataset
-                    _useable_idxs =  _.intersection(_useable_idxs, scope.mon_data.used_cats)
-
+                    if scope.mon_data?
+                        _useable_idxs =  _.intersection(_useable_idxs, scope.mon_data.used_cats)
 
                 if scope.cat_tree.root_nodes.length
                     _to_expand = []
@@ -1136,9 +1140,7 @@ config_module = angular.module(
             icswCategoryTreeService.load(scope.$id).then(
                 (tree) ->
                     scope.tree = tree
-                    if scope.$$op_mode == "obj"
-                        # rebuild tree if op_mode == object
-                        build_tree()
+                    build_tree()
             )
 
             scope.new_selection = (new_sel) ->
