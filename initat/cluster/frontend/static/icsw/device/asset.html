@@ -14,20 +14,30 @@
                 <table
                     class="table table-condensed table-hover table-bordered"
                     style="width:auto;"
-                    ng-show="dev.assetrun_set"
+                    ng-show="dev.assetrun_set.length > 0"
                 >
                         <tbody>
                             <tr>
+                                <th style="width: 30px;"></th>
                                 <th>Run Index</th>
                                 <th>Run Type</th>
+                                <th>Run Start</th>
+                                <th>Run End</th>
                                 <th>Length</th>
                                 <th>Assets</th>
                             </tr>
                             <tr ng-repeat="assetrun in dev.assetrun_set">
+                                <td>
+                                    <button ng-if="assetrun.expanded" ng-click="assetrun.expanded = false">-</button>
+                                    <button ng-if="!assetrun.expanded" ng-click="assetrun.expanded = true">+</button>
+                                </td>
                                 <td>{{ assetrun.run_index }}</td>
                                 <td>{{ assetrun.run_type }}</td>
+                                <td>{{ assetrun.run_start_time }}</td>
+                                <td>{{ assetrun.run_end_time }}</td>
                                 <td>{{ assetrun.assets.length }}</td>
-                                <td>
+
+                                <td ng-if="assetrun.expanded">
                                     <table
                                         class="table table-condensed table-hover table-bordered"
                                         style="width:auto;"
@@ -36,7 +46,7 @@
                                         <tr>
                                             <th>Name</th>
                                         </tr>
-                                        <tr ng-repeat="asset in assetrun.assets">
+                                        <tr ng-repeat="asset in assetrun.assets track by $index">
                                             <td>{{ asset }}</td>
                                         </tr>
                                     </table>

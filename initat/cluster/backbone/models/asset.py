@@ -331,7 +331,7 @@ class AssetRun(models.Model):
         return base_assets
 
     def generate_assets_no_save(self):
-        l = list(set(get_base_assets_from_raw_result(self.raw_result_str, self.run_type, self.scan_type)))
+        l = get_base_assets_from_raw_result(self.raw_result_str, self.run_type, self.scan_type)
         l.sort()
         return l
 
@@ -387,4 +387,4 @@ class AssetRunSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AssetRun
-        fields = ( "idx", "device", "run_index", "run_type", "assets")
+        fields = ( "idx", "device", "run_index", "run_type", "assets", "run_start_time", "run_end_time")
