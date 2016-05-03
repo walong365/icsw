@@ -44,7 +44,12 @@
     <h3 ng-show="struct.locations.length">Map view, {{ struct.locations.length }} useable locations</h3>
     <div class="row" ng-if="struct.locations.length > 0">
         <div class="col-md-6">
-            <icsw-config-category-tree-google-map locations="struct.locations" icsw-google-maps-fn="struct.google_maps_fn" active-tab="active_tab" icsw-map-mode="edit"></icsw-config-category-tree-google-map>
+            <icsw-config-category-tree-google-map
+                locations="struct.locations"
+                icsw-google-maps-fn="struct.google_maps_fn"
+                active-tab="active_tab"
+                icsw-map-mode="edit"
+            ></icsw-config-category-tree-google-map>
         </div>
         <div class="col-md-6">
             <icsw-config-category-location-list-edit></icsw-config-category-location-list-edit>
@@ -176,7 +181,7 @@
                     </span>
                     <span class="pull-right">
                         <div class="btn-group" ng-show="loc_gfx.dev_pks.length == 0">
-                            <input type="button" class="btn btn-xs btn-danger" value="delete" ng-click="delete_location_gfx($event, loc_gfx)"/>
+                            <input type="button"eg class="btn btn-xs btn-danger" value="delete" ng-click="delete_location_gfx($event, loc_gfx)"/>
                         </div>
                     </span>
                 </li>
@@ -186,17 +191,18 @@
 </script>
 
 <script type="text/ng-template" id="icsw.config.category.location.list.show">
-    <!-- not needed right now -->
-    <h3 ng-show="!locations.length">No locations</h3>
+    <h3 ng-show="!struct.locations.length">No locations</h3>
     <ul class="list-group">
-        <li class="list-group-item" ng-repeat-start="loc in locations">
-            <icsw-tools-button type="display" value="locate" size="sm" ng-click="locate(loc, $event)" title="({{ loc.latitude }}, {{ loc.longitude }})"></icsw-tools-button>
+        <li class="list-group-item" ng-repeat="loc in struct.locations">
+            <icsw-tools-button type="display" value="locate" size="sm" ng-click="locate($event, loc)" title="({{ loc.latitude }}, {{ loc.longitude }})"></icsw-tools-button>
             <span class="glyphicon glyphicon-globe" ng-show="loc.physical" title="physical"></span>
             <span class="glyphicon glyphicon-th-list" ng-show="!loc.physical" title="structural"></span>&nbsp;
-            {{ loc.full_name }}<span ng-show="loc.comment"> ({{ loc.comment }})</span> ({{ loc.dev_pks.length }})
-        </li>
-        <li ng-repeat-end class="list-group-item" ng-repeat="loc_gfx in loc.location_gfxs">
-            - {{ loc_gfx.name }} ({{ loc_gfx.dev_pks.length }})
+            {{ loc.full_name }}<span ng-show="loc.comment"> ({{ loc.comment }})</span> ({{ loc.$dml_list.length }})
+            <ul ng-if="loc.$gfx_list.length" class="list-group">
+                <li class="list-group-item" ng-repeat="loc_gfx in loc.$gfx_list">
+                    - {{ loc_gfx.name }} ({{ loc_gfx.$dml_list.length }})
+                </li>
+            </ul>
         </li>
     </ul>
 </script>
@@ -204,7 +210,11 @@
 <script type="text/ng-template" id="icsw.config.category.location.show">
     <div class="row">
         <div class="col-md-6">
-            <icsw-config-category-tree-google-map locations="locations"></icsw-config-category-tree-google-map>
+            <icsw-config-category-tree-google-map
+                locations="struct.locations"
+                icsw-google-maps-fn="struct.google_maps_fn"
+                icsw-map-mode="show"
+            ></icsw-config-category-tree-google-map>
         </div>
         <div class="col-md-6">
             <icsw-config-category-location-list-show></icsw-config-category-location-list-show>
@@ -295,17 +305,25 @@
 </script>
 
 <script type="text/ng-template" id="icsw.config.category.tree.google.map">
-    <div id="map_canvas" ng-if="maps_ready">
-        <ui-gmap-google-map center="map.center" zoom="map.zoom" pan="true" refresh="true" style="display:block;" draggable="true" bounds="map.bounds" control="map.control" options="map.options">
+    <div id="map_canvas" ng-if="struct.maps_ready">
+        <ui-gmap-google-map
+            center="struct.map_options.center"
+            zoom="struct.map_options.zoom"
+            pan="true"
+            refresh="true"
+            style="display:block;"
+            draggable="true"
+            bounds="struct.map_options.bounds"
+            control="struct.map_options.control"
+            options="struct.map_options.options">
             <ui-gmap-marker
-                    ng-repeat="marker in marker_list"
-                    idKey="marker.key"
-                    coords="marker"
-                    options="marker.options"
-                    events="event_dict"
-                    icon="marker.icon"
-                    >
-            </ui-gmap-marker>
+                ng-repeat="marker in marker_list"
+                idKey="marker.key"
+                coords="marker"
+                options="marker.options"
+                events="event_dict"
+                icon="marker.icon"
+            ></ui-gmap-marker>
         </ui-gmap-google-map>
     </div>
 </script>

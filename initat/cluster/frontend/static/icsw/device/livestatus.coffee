@@ -403,9 +403,9 @@ angular.module(
     )
 ]).directive("icswLivestatusFilterDisplay",
 [
-    "$q", "icswLivestatusFilterReactDisplay", "icswLivestatusFilterService",
+    "$q", "icswLivestatusFilterReactDisplay",
 (
-    $q, icswLivestatusFilterReactDisplay, icswLivestatusFilterService,
+    $q, icswLivestatusFilterReactDisplay,
 ) ->
     return  {
         restrict: "EA"
@@ -428,75 +428,6 @@ angular.module(
             )
     }
 
-]).factory("icswLivestatusFilterFactory", [() ->
-    _filter_id = 0
-    return () ->
-        _filter_id++
-        _local_id = _filter_id
-        # categories
-        _categories = []
-        # all categories used
-        _used_cats = []
-        _cat_name_lut = {}
-        _cat_defined = false
-        _num_defined = false
-        _num_maps = 0
-        _iter = 0
-        _num_hosts = 0
-        _num_services = 0
-        _num_filtered_hosts = 0
-        _num_filtered_services = 0
-        _filter_funcs = []
-        return {
-            register_filter_func: (nf) ->
-                if nf not in _filter_funcs
-                    _filter_funcs.push(nf)
-                    _iter++
-            filter_id: () -> return _local_id
-            trigger: () ->
-                _iter++
-            changed: () -> return _iter
-            cat_defined: () -> return _cat_defined
-            get_categories: () -> return _categories
-            set_categories: (vals, lut) ->
-                _cat_defined = true
-                _categories = vals
-                if lut?
-                    # ignore if not set
-                    _cat_name_lut = lut
-                _iter++
-            get_cat_name: (key) ->
-                return _cat_name_lut[key]
-            set_used_cats: (vals) ->
-                _used_cats = vals
-            get_used_cats: () ->
-                return _used_cats
-            set_num_maps: (val) ->
-                _num_maps = val
-            get_num_maps: () ->
-                return _num_maps
-            num_defined: () ->
-                return _num_defined
-            set_total_num: (h, s) ->
-                _num_defined = true
-                _num_hosts = h
-                _num_services = s
-            get_total_num: () ->
-                return [_num_hosts, _num_services]
-            set_filtered_num: (h, s) ->
-                _num_filtered_hosts = h
-                _num_filtered_services = s
-            get_filtered_num: () ->
-                return [_num_filtered_hosts, _num_filtered_services]
-            apply_filter: (check, show) ->
-                for _ff in _filter_funcs
-                    if show
-                        show = _ff(check)
-                    else
-                        break
-                check._show = show
-                return check._show
-        }
 ]).service("icswSaltMonitoringResultService", [() ->
 
     _parse_custom_variables = (cvs) ->
@@ -642,6 +573,28 @@ angular.module(
             2: "Unreachable"
         }[entry.state]
 
+    salt_service_state = (entry) ->
+            _r_str = {
+                0: "success"
+                1: "warning"
+                2: "danger"
+                3: "danger"
+            }[entry.state]
+            entry.$$burst_fill_color = {
+                0: "#66dd66"
+                1: "#dddd88"
+                2: "#ff7777"
+                3: "#ff0000"
+            }[entry.state]
+            entry.$$icswStateLabelClass = "label-#{_r_str}"
+            entry.$$icswStateTextClass = "text-#{_r_str}"
+            entry.$$icswStateString = {
+                0: "OK"
+                1: "Warning"
+                2: "Critical"
+                3: "Unknown"
+            }[entry.state]
+
     salt_host = (entry, device_tree) ->
         if not entry.$$icswSalted?
             entry.$$service_list = []
@@ -665,26 +618,10 @@ angular.module(
             entry.$$icswSalted = true
             # set default values
             entry.$$ct = "service"
+            # sanitize entries
             _sanitize_entry(entry)
-            _r_str = {
-                0: "success"
-                1: "warning"
-                2: "danger"
-                3: "danger"
-            }[entry.state]
-            entry.$$burst_fill_color = {
-                0: "#66dd66"
-                1: "#dddd88"
-                2: "#ff7777"
-                3: "#ff0000"
-            }[entry.state]
-            entry.$$icswStateLabelClass = "label-#{_r_str}"
-            entry.$$icswStateString = {
-                0: "OK"
-                1: "Warning"
-                2: "Critical"
-                3: "Unknown"
-            }[entry.state]
+            # service state class
+            salt_service_state(entry)
             # resolve categories
             if entry.custom_variables.cat_pks?
                 entry.$$icswCategories = (cat_tree.lut[_cat].name for _cat in entry.custom_variables.cat_pks).join(", ")
@@ -1120,9 +1057,9 @@ angular.module(
                 _ul_list = []
                 if _srvc.$$ct in ["system", "devicegroup"]
                     if _srvc.$$ct == "system"
-                        _obj_name = ""
+                        _obj_name = "System"
                     else
-                        _obj_name = _srvc.display_name
+                        _obj_name = _.capitalize(_srvc.$$ct) + " " + _srvc.display_name
                     _ul_list.push(
                         li(
                             {key: "li.state", className: "list-group-item"}
@@ -1138,10 +1075,10 @@ angular.module(
                 if _srvc.$$ct in ["device", "service"]
                     if _srvc.$$ct == "service"
                         _host = _srvc.$$host_mon_result
-                        _obj_name = _srvc.display_name
+                        _obj_name = _.capitalize(_srvc.$$ct) + " " + _srvc.display_name
                     else
                         _host = _srvc
-                        _obj_name = _host.$$icswDevice.full_name
+                        _obj_name = _.capitalize(_srvc.$$ct) + " " + _host.$$icswDevice.full_name
                     _path_span = [
                         _host.$$icswDeviceGroup.name
                         " "
@@ -1182,12 +1119,12 @@ angular.module(
                                 "State"
                                 span(
                                     {key: "state.span", className: "pull-right"}
-                                    "#{_srvc.$$icswStateTypeString} #{_srvc.$$icswCheckTypeString}"
+                                    "#{_srvc.$$icswStateTypeString} #{_srvc.$$icswCheckTypeString}, "
                                     span(
                                         {key: "state.span2", className: _srvc.$$icswStateTextClass}
                                         _srvc.$$icswStateString
                                     )
-                                    " "
+                                    ", "
                                     span(
                                         {key: "state.span3", className: "label #{_srvc.$$icswAttemptLabelClass}"}
                                         _srvc.$$icswAttemptInfo
@@ -1209,6 +1146,20 @@ angular.module(
                             ]
                         )
                     )
+                    if _srvc.$$ct == "service"
+                        # categories
+                        _ul_list.push(
+                            li(
+                                {key: "li.cats", className: "list-group-item"}
+                                [
+                                    "Categories"
+                                    span(
+                                        {key: "cats.span", className: "pull-right"}
+                                        "#{_srvc.$$icswCategories}"
+                                    )
+                                ]
+                            )
+                        )
                     # output
                     _ul_list.push(
                         li(
@@ -1225,7 +1176,7 @@ angular.module(
                 _div_list = [
                     h3(
                         {key: "header"}
-                        "Object: " + _.capitalize(_srvc.$$ct) + " " + _obj_name
+                        _obj_name
                     )
                     ul(
                         {key: "ul", className: "list-group"}
@@ -1248,41 +1199,38 @@ angular.module(
 (
     $q,
 ) ->
-    {div, g, text, circle, path, svg} = React.DOM
+    {div, g, text, circle, path, svg, polyline} = React.DOM
     return React.createClass(
         propTypes: {
             element: React.PropTypes.object
+            draw_parameters: React.PropTypes.object
             set_focus: React.PropTypes.func
             clear_focus: React.PropTypes.func
         }
 
-        getInitialState: () ->
-            return {
-                focus: false
-            }
-
         render: () ->
-            _el = @props.element
-            _color = _el.fill
-            if @state.focus
-                _color = "#445566"
-            _el = {
-                key: _el.key
-                d: _el.d
+            _path_el = @props.element
+            _color = _path_el.fill
+            # if @state.focus
+            #    _color = "#445566"
+
+            # focus element
+            _g_list = []
+            _segment = {
+                key: _path_el.key
+                d: _path_el.d
                 fill: _color
-                stroke: _el.stroke
-                strokeWidth: _el.strokeWidth
+                stroke: _path_el.stroke
+                strokeWidth: _path_el.strokeWidth
                 onMouseEnter: @on_mouse_enter
                 onMouseLeave: @on_mouse_leave
             }
-            return path(
-                _el
-            )
+            return path(_segment)
 
         on_mouse_enter: (event) ->
             # console.log "me"
-            if @props.element.$$service?
-                @props.set_focus(@props.element.$$service)
+            if @props.element.$$segment?
+                @props.set_focus(@props.element.$$segment)
             # @setState({focus: true})
 
         on_mouse_leave: (event) ->
@@ -1290,114 +1238,35 @@ angular.module(
             # console.log "ml"
             # @setState({focus: false})
     )
-]).factory("icswDeviceLivestatusBurstReactContainer",
+]).factory("icswBurstReactSegmentText",
 [
-    "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswNetworkTopologyReactSVGContainer",
-    "icswDeviceLivestatusFunctions", "icswBurstDrawParameters", "icswBurstReactSegment",
-    "icswBurstServiceDetail",
+    "$q",
 (
-    $q, ICSW_URLS, icswSimpleAjaxCall, icswNetworkTopologyReactSVGContainer,
-    icswDeviceLivestatusFunctions, icswBurstDrawParameters, icswBurstReactSegment,
-    icswBurstServiceDetail,
+    $q,
 ) ->
-    # Network topology container, including selection and redraw button
-    react_dom = ReactDOM
-    {div, g, text, line, polyline, path, svg, h3} = React.DOM
+    {div, g, text, circle, path, svg, polyline} = React.DOM
     return React.createClass(
         propTypes: {
-            # required types
-            monitoring_data: React.PropTypes.object
+            element: React.PropTypes.object
             draw_parameters: React.PropTypes.object
         }
 
-        componentDidMount: () ->
-
-        getInitialState: () ->
-            return {
-                # to trigger redraw
-                draw_counter: 0
-                focus_service: undefined
-            }
-
-        new_monitoring_data: () ->
-            # force recalc of burst, todo: incremental root_node update
-            @root_node = undefined
-            # not very elegant
-            @clear_focus()
-            @trigger_redraw()
-
-        componentDidMount: () ->
-            @burst_element = $(react_dom.findDOMNode(@)).parents("react-burst")
-            console.log @burst_element, @burst_element[0]
-
-        trigger_redraw: () ->
-            @setState(
-                {
-                    draw_counter: @state.draw_counter + 1
-                }
-            )
-
-        set_focus: (srvc) ->
-            # console.log "focus", srvc
-            # only focus non-dummy services
-            if not srvc.$$dummy
-                @clear_focus()
-                @setState({focus_service: srvc})
-
-        clear_focus: () ->
-            @setState({focus_service: undefined})
-
         render: () ->
-            [_outer_width, _outer_height] = [0, 0]
-            if @burst_element? and @burst_element.width()
-                [_outer_width, _outer_height] = [@burst_element.width(), @burst_element.height()]
-            # check if burst is interactive
-            _ia = @props.draw_parameters.is_interactive
-            if not @root_node?
-                console.log "rnd"
-                @root_node = icswDeviceLivestatusFunctions.build_structured_burst(@props.monitoring_data, @props.draw_parameters)
-            # console.log _outer_width, _outer_height
-            root_node = @root_node
-            # if _outer_width
-            #    _outer = _.min([_outer_width, _outer_height])
-            # else
-            _outer = @props.draw_parameters.outer_radius
-            # console.log _outer
-            _width = 2 * _outer
-            _height = 2 * _outer
-            if _ia
-                _text_radius = 1.1 * _outer
-                _text_width = 1.15 * _outer
-                _width = 1.2 * _width + 200
-                _height = 1.2 * _height
-            if _ia
-                # interactive, pathes have mouseover and click handler
-                _g_list = (
-                    React.createElement(
-                        icswBurstReactSegment,
-                        {
-                            element: _element
-                            set_focus: @set_focus
-                            clear_focus: @clear_focus
-                        }
-                    ) for _element in root_node.element_list
-                )
-            else
-                # not interactive, simple list of graphs
-                _g_list = (path(_element) for _element in root_node.element_list)
+            _path_el = @props.element
 
-            # focus element
-            if @state.focus_service?
-                _fe = @state.focus_service
-                _sx = _fe.$$mean_radius * Math.cos(_fe.$$mean_arc)
-                _sy = _fe.$$mean_radius * Math.sin(_fe.$$mean_arc)
-                _ex = _text_radius * Math.cos(_fe.$$mean_arc)
-                _ey = _text_radius * Math.sin(_fe.$$mean_arc)
+            # add info
+            if _path_el.$$segment?
+                _g_list = []
+                {text_radius, text_width} = @props.draw_parameters
+                _sx = _path_el.$$mean_radius * Math.cos(_path_el.$$mean_arc)
+                _sy = _path_el.$$mean_radius * Math.sin(_path_el.$$mean_arc)
+                _ex = text_radius * Math.cos(_path_el.$$mean_arc)
+                _ey = text_radius * Math.sin(_path_el.$$mean_arc)
                 if _ex > 0
-                    _ex2 = _text_width
+                    _ex2 = text_width
                     _text_anchor = "start"
                 else
-                    _ex2 = -_text_width
+                    _ex2 = -text_width
                     _text_anchor = "end"
                 _g_list.push(
                     polyline(
@@ -1419,14 +1288,126 @@ angular.module(
                             textAnchor: _text_anchor
                             alignmentBaseline: "middle"
                         }
-                        _fe.display_name
+                        _path_el.$$service.display_name
                     )
                 )
+
+                return g(
+                    {key: "segment"}
+                    _g_list
+                )
+            else
+                return null
+    )
+]).factory("icswDeviceLivestatusBurstReactContainer",
+[
+    "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswNetworkTopologyReactSVGContainer",
+    "icswDeviceLivestatusFunctions", "icswBurstDrawParameters", "icswBurstReactSegment",
+    "icswBurstServiceDetail", "icswBurstReactSegmentText",
+(
+    $q, ICSW_URLS, icswSimpleAjaxCall, icswNetworkTopologyReactSVGContainer,
+    icswDeviceLivestatusFunctions, icswBurstDrawParameters, icswBurstReactSegment,
+    icswBurstServiceDetail, icswBurstReactSegmentText,
+) ->
+    # Network topology container, including selection and redraw button
+    react_dom = ReactDOM
+    {div, g, text, line, polyline, path, svg, h3} = React.DOM
+    return React.createClass(
+        propTypes: {
+            # required types
+            monitoring_data: React.PropTypes.object
+            draw_parameters: React.PropTypes.object
+        }
+
+        componentDidMount: () ->
+
+        getInitialState: () ->
+            return {
+                # to trigger redraw
+                draw_counter: 0
+                focus_element: undefined
+            }
+
+        new_monitoring_data: () ->
+            # force recalc of burst, todo: incremental root_node update
+            @root_node = undefined
+            # not very elegant
+            @clear_focus()
+            @trigger_redraw()
+
+        componentDidMount: () ->
+            @burst_element = $(react_dom.findDOMNode(@)).parents("react-burst")
+            console.log @burst_element, @burst_element[0]
+
+        trigger_redraw: () ->
+            @setState(
+                {
+                    draw_counter: @state.draw_counter + 1
+                }
+            )
+
+        set_focus: (ring_el) ->
+            @clear_focus()
+            ring_el.set_focus()
+            @setState({focus_element: ring_el})
+
+        clear_focus: () ->
+            if @root_node?
+                @root_node.clear_foci()
+            @setState({focus_element: undefined})
+
+        render: () ->
+            [_outer_width, _outer_height] = [0, 0]
+            if @burst_element? and @burst_element.width()
+                [_outer_width, _outer_height] = [@burst_element.width(), @burst_element.height()]
+            # check if burst is interactive
+            _ia = @props.draw_parameters.is_interactive
+            if not @root_node?
+                # console.log "rnd"
+                @root_node = icswDeviceLivestatusFunctions.build_structured_burst(@props.monitoring_data, @props.draw_parameters)
+            # console.log _outer_width, _outer_height
+            root_node = @root_node
+            # if _outer_width
+            #    _outer = _.min([_outer_width, _outer_height])
+            # else
+            @props.draw_parameters.do_layout()
+            _outer = @props.draw_parameters.outer_radius
+            # console.log _outer
+            if _ia
+                # interactive, pathes have mouseover and click handler
+                _g_list = (
+                    React.createElement(
+                        icswBurstReactSegment,
+                        {
+                            element: _element
+                            set_focus: @set_focus
+                            clear_focus: @clear_focus
+                            draw_parameters: @props.draw_parameters
+                        }
+                    ) for _element in root_node.element_list
+                )
+                for _element in root_node.element_list
+                    if _element.$$segment?
+                        _seg = _element.$$segment
+                        if _seg.show_legend
+                            _g_list.push(
+                                React.createElement(
+                                    icswBurstReactSegmentText,
+                                    {
+                                        element: _element
+                                        draw_parameters: @props.draw_parameters
+                                    }
+                                )
+                            )
+            else
+                # not interactive, simple list of graphs
+                _g_list = (path(_element) for _element in root_node.element_list)
+
             _svg = svg(
                 {
                     key: "svg.top"
-                    width: "#{_width}px"
-                    height: "#{_height}px"
+                    width: "#{@props.draw_parameters.total_width}px"
+                    height: "#{@props.draw_parameters.total_height}px"
                     "font-family": "'Open-Sans', sans-serif"
                     "font-size": "10pt"
                 }
@@ -1434,7 +1415,7 @@ angular.module(
                     g(
                         {
                             key: "main"
-                            transform: "translate(#{_width / 2}, #{_height / 2})"
+                            transform: "translate(#{@props.draw_parameters.total_width / 2}, #{@props.draw_parameters.total_height / 2})"
                         }
                         _g_list
                     )
@@ -1442,13 +1423,10 @@ angular.module(
             )
             if _ia
                 # console.log _fe
-                if @state.focus_service?
-                    _fe = @state.focus_service
+                if @state.focus_element?
+                    _fe = @state.focus_element.check
                 else
                     _fe = undefined
-                _header_text = "Burst graph"
-                if @props.draw_parameters.omitted_segments
-                    _header_text = "#{_header_text} (#{@props.draw_parameters.omitted_segments} omitted segments)"
                 # graph has a focus component
                 _graph = div(
                     {
@@ -1464,7 +1442,7 @@ angular.module(
                             [
                                 h3(
                                     {key: "graph.header"}
-                                    _header_text
+                                    "Burst graph (" + @props.draw_parameters.get_segment_info() + ")"
                                 )
                                 _svg
                             ]

@@ -100,6 +100,7 @@ angular.module(
     return {
         restrict: "EA"
         template: $templateCache.get("icsw.config.category.location.list.show")
+        controller: "icswConfigCategoryLocationCtrl"
     }
 ]).directive("icswConfigLocationTabHelper", [() ->
     return {
@@ -128,7 +129,8 @@ angular.module(
                     10
                 )
     }
-]).controller("icswConfigCategoryLocationCtrl", [
+]).controller("icswConfigCategoryLocationCtrl",
+[
     "$scope", "$compile", "$templateCache", "Restangular", "$timeout",
     "icswCSRFService", "$rootScope", "ICSW_SIGNALS", "icswDeviceTreeService",
     "$q", "icswAcessLevelService", "icswCategoryTreeService",
@@ -384,9 +386,9 @@ angular.module(
     $scope.reload()
 ]).directive("icswConfigCategoryTreeGoogleMap",
 [
-    "$templateCache", "uiGmapGoogleMapApi", "$timeout", "$rootScope", "ICSW_SIGNALS",
+    "$templateCache",
 (
-    $templateCache, uiGmapGoogleMapApi, $timeout, $rootScope, ICSW_SIGNALS,
+    $templateCache,
 ) ->
     return {
         restrict: "EA"
@@ -397,169 +399,274 @@ angular.module(
             maps_control: "=icswGoogleMapsFn"
             maps_cb_fn: "=icswGoogleMapsCbFn"
         }
+        controller: "icswConfigCategoryTreeGoogleMapCtrl"
         link: (scope, element, attrs) ->
-            # map mode, can be one of
-            # edit ... edit locations
-            # show ... only show the active locations
-            scope.map_mode = attrs["icswMapMode"]
-            if scope.map_mode in ["show"]
-                scope.map_active = true
-            else
-                # wait for activation
-                scope.map_active = false
+            # link
+            scope.set_map_mode(attrs["icswMapMode"])
+        #    scope.$watch(
+        #        "active_tab"
+        #        (new_val) ->
+        #            if new_val?
+        #                if new_val == "conf"
+        #                    scope.map_active = true
+        #                    _update()
+        #                else
+        #                    scope.map_active = false
+        #    )
+        #    scope.$watch(
+        #        "locations",
+        #        (new_val) ->
+        #            _update()
+        #        true
+        #    )
+    }
+# ]).service()
+]).service("reactT",
+[
+    "$q",
+(
+    $q,
+) ->
+    {svg, rect} = React.DOM
+    return React.createClass(
+        propTypes: {
+            # required types
+        }
 
-            scope.maps_ready = false
-            # google maps object
-            scope.google_maps = undefined
-
-            scope.marker_lut = {}
-            # scope.location_list = []
-            scope.marker_list = []
-            scope.map = {
-                center: {}
-                zoom: 6
-                control: {}
-                options: {
-                    streetViewControl: false
-                    minZoom: 1
-                    maxZoom: 20
+        render: () ->
+            _svg = svg(
+                {
+                    key: "svg.top"
+                    width: "100%"
+                    height: "100%"
                 }
-                bounds: {
+                rect(
+                    {
+                        key: "rect"
+                        width: "20"
+                        height: "20"
+                        fill: "#ff0000"
+                        stroke: "#000000"
+                        strokeWidth: "2px"
+                    }
+                )
+            )
+            return _svg
+    )
+]).service("icswGoogleMapsLivestatusOverlay",
+[
+    "$q", "reactT",
+(
+    $q, reactT,
+) ->
+    class icswGoogleMapsLivestatusOverlay
+        constructor: (@overlay, @google_maps) ->
+            @center = new @google_maps.LatLng(48.1, 16.3)
+
+        onAdd: () =>
+            panes = @overlay.getPanes()
+            @mydiv = angular.element('div')[0]
+            panes.markerLayer.appendChild(@mydiv)
+
+            @element = ReactDOM.render(
+                React.createElement(
+                    reactT
+                )
+                @mydiv
+            )
+
+        draw: () =>
+            _proj = @overlay.getProjection()
+            center = _proj.fromLatLngToDivPixel(@center)
+            @mydiv.style.left = "#{center.x - 10}px"
+            @mydiv.style.top = "#{center.y - 10}px"
+
+]).controller("icswConfigCategoryTreeGoogleMapCtrl",
+[
+    "$scope", "$templateCache", "uiGmapGoogleMapApi", "$timeout", "$rootScope", "ICSW_SIGNALS",
+    "icswGoogleMapsLivestatusOverlay",
+(
+    $scope, $templateCache, uiGmapGoogleMapApi, $timeout, $rootScope, ICSW_SIGNALS,
+    icswGoogleMapsLivestatusOverlay,
+) ->
+
+    $scope.struct = {
+        # map mode
+        map_mode: undefined
+        # map active
+        map_active: false
+        # google maps ready
+        maps_ready: false
+        # google maps object
+        google_maps: undefined
+        # map options
+        map_options: {
+            center: {}
+            zoom: 6
+            control: {}
+            options: {
+                streetViewControl: false
+                minZoom: 1
+                maxZoom: 20
+            }
+            bounds: {
+                northeast: {
+                    latitude: 4
+                    longitude: 4
+                }
+                southwest: {
+                    latitude: 20
+                    longitude: 30
+                }
+            }
+        }
+    }
+    $scope.set_map_mode = (mode) ->
+        console.log "map_mode=", mode
+        $scope.struct.map_mode = mode
+        if $scope.struct.map_mode in ["show"]
+            $scope.struct.map_active = true
+        else
+            # wait for activation
+            $scope.struct.map_active = false
+
+    $scope.marker_lut = {}
+    $scope.marker_list = []
+
+    $scope.event_dict = {
+        dragend: (marker, event_name, args) ->
+            _pos = marker.getPosition()
+            _cat = $scope.marker_lut[marker.key]
+            _cat.latitude = _pos.lat()
+            _cat.longitude = _pos.lng()
+            _cat.put()
+
+        click: (marker, event_name, args) ->
+            _loc = $scope.marker_lut[marker.key]
+            for entry in scope.locations
+                entry.$$selected = false
+            _loc.$$selected = !_loc.$$selected
+            if $scope.maps_cb_fn?
+                $scope.maps_cb_fn("marker_clicked", _loc)
+    }
+
+    $scope.zoom_to_locations = () ->
+        # center map around the locations
+        _bounds = null
+        for entry in $scope.locations
+            if not _bounds
+                _bounds = {
                     northeast: {
-                        latitude: 4
-                        longitude: 4
+                        latitude: entry.latitude
+                        longitude: entry.longitude
                     }
                     southwest: {
-                        latitude: 20
-                        longitude: 30
+                        latitude: entry.latitude
+                        longitude: entry.longitude
                     }
                 }
-            }
-            scope.event_dict = {
-                dragend: (marker, event_name, args) ->
-                    _pos = marker.getPosition()
-                    _cat = scope.marker_lut[marker.key]
-                    _cat.latitude = _pos.lat()
-                    _cat.longitude = _pos.lng()
-                    _cat.put()
-                click: (marker, event_name, args) ->
-                    _loc = scope.marker_lut[marker.key]
-                    for entry in scope.locations
-                        entry.$$selected = false
-                    _loc.$$selected = !_loc.$$selected
-                    if scope.maps_cb_fn?
-                        scope.maps_cb_fn("marker_clicked", _loc)
-            }
-            scope.zoom_to_locations = () ->
-                # center map around the locations
-                _bounds = null
-                for entry in scope.locations
-                    if not _bounds
-                        _bounds = {
-                            northeast: {
-                                latitude: entry.latitude
-                                longitude: entry.longitude
-                            }
-                            southwest: {
-                                latitude: entry.latitude
-                                longitude: entry.longitude
-                            }
-                        }
-                    else
-                        _bounds.northeast.latitude = Math.max(_bounds.northeast.latitude, entry.latitude)
-                        _bounds.northeast.longitude = Math.max(_bounds.northeast.longitude, entry.longitude)
-                        _bounds.southwest.latitude = Math.min(_bounds.southwest.latitude, entry.latitude)
-                        _bounds.southwest.longitude = Math.min(_bounds.southwest.longitude, entry.longitude)
-                scope.map.bounds = _bounds
-                scope.map.center.latitude = (_bounds.northeast.latitude + _bounds.southwest.latitude) / 2.0
-                scope.map.center.longitude = (_bounds.northeast.longitude + _bounds.southwest.longitude) / 2.0
+            else
+                _bounds.northeast.latitude = Math.max(_bounds.northeast.latitude, entry.latitude)
+                _bounds.northeast.longitude = Math.max(_bounds.northeast.longitude, entry.longitude)
+                _bounds.southwest.latitude = Math.min(_bounds.southwest.latitude, entry.latitude)
+                _bounds.southwest.longitude = Math.min(_bounds.southwest.longitude, entry.longitude)
+        $scope.struct.map_options.bounds = _bounds
+        $scope.struct.map_options.center.latitude = (_bounds.northeast.latitude + _bounds.southwest.latitude) / 2.0
+        $scope.struct.map_options.center.longitude = (_bounds.northeast.longitude + _bounds.southwest.longitude) / 2.0
 
-            scope.build_markers = () ->
-                scope.marker_list.length = 0
-                marker_lut = {}
-                for _entry in scope.locations
-                    comment = _entry.name
-                    if _entry.comment
-                        comment = "#{comment} (#{_entry.comment})"
-                    if _entry.$gfx_list.length
-                        comment = "#{comment}, #{_entry.$gfx_list.length} gfxs"
-                    # draggable flag
-                    if scope.map_mode in ["edit"]
-                        _draggable = not _entry.locked
-                    else
-                        _draggable = false
-                    scope.marker_list.push(
-                        {
-                            latitude: _entry.latitude
-                            longitude: _entry.longitude
-                            key: _entry.idx
-                            comment: comment
-                            options: {
-                                draggable: _draggable
-                                title: comment
-                                opacity: if _entry.locked then 1.0 else 0.7
-                            }
-                            icon: if _entry.svg_url then _entry.svg_url else null
-                        }
-                    )
-                    marker_lut[_entry.idx] = _entry
-                    scope.marker_lut = marker_lut
+    $scope.build_markers = () ->
+        $scope.marker_list.length = 0
+        marker_lut = {}
+        for _entry in $scope.locations
+            comment = _entry.name
+            if _entry.comment
+                comment = "#{comment} (#{_entry.comment})"
+            if _entry.$gfx_list.length
+                comment = "#{comment}, #{_entry.$gfx_list.length} gfxs"
+            # draggable flag
+            if $scope.struct.map_mode in ["edit"]
+                _draggable = not _entry.locked
+            else
+                _draggable = false
+            $scope.marker_list.push(
+                {
+                    latitude: _entry.latitude
+                    longitude: _entry.longitude
+                    key: _entry.idx
+                    comment: comment
+                    options: {
+                        draggable: _draggable
+                        title: comment
+                        opacity: if _entry.locked then 1.0 else 0.7
+                    }
+                    icon: if _entry.svg_url then _entry.svg_url else null
+                }
+            )
+            marker_lut[_entry.idx] = _entry
+            $scope.marker_lut = marker_lut
 
-            scope.maps_control = (fn_name, args) ->
-                if scope.map? and scope.map.control?
-                    if fn_name == "refresh"
-                        [lat, long] = args
-                        scope.map.control.refresh(
+    $scope.maps_control = (fn_name, args) ->
+        if $scope.struct.google_maps? and $scope.struct.map_options.control?
+            if fn_name == "refresh"
+                [lat, long] = args
+                $scope.struct.map_options.control.refresh(
+                    {
+                        latitude: lat
+                        longitude: long
+                    }
+                )
+            else if fn_name == "zoom"
+                $scope.struct.map_options.control.getGMap().setZoom(args)
+
+    _update = () ->
+        if $scope.struct.map_active and $scope.locations? and $scope.locations.length and not $scope.struct.maps_ready
+            console.log "Zoom"
+            $scope.zoom_to_locations()
+            $scope.build_markers()
+            uiGmapGoogleMapApi.then(
+                (maps) ->
+                    $scope.struct.maps_ready = true
+                    $scope.struct.google_maps = maps
+            )
+            $timeout(
+                () ->
+                    _map = $scope.struct.map_options
+                    # init overlay
+                    overlay = new $scope.struct.google_maps.OverlayView()
+                    angular.extend(overlay, new icswGoogleMapsLivestatusOverlay(overlay, $scope.struct.google_maps))
+                    overlay.setMap(_map.control.getGMap())
+
+                    console.log overlay
+                    if _map.control? and _map.control.refresh?
+                        _map.control.refresh(
                             {
-                                latitude: lat
-                                longitude: long
+                                latitude: _map.center.latitude
+                                longitude: _map.center.longitude
                             }
                         )
-                    else if fn_name == "zoom"
-                        scope.map.control.getGMap().setZoom(args)
+                100
+            )
+    $rootScope.$on(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), (event) ->
+        _update()
+    )
 
-            _update = () ->
-                if scope.map_active and scope.locations? and scope.locations.length and not scope.maps_ready
-                    console.log "Zoom"
-                    scope.zoom_to_locations()
-                    scope.build_markers()
-                    uiGmapGoogleMapApi.then(
-                        (maps) ->
-                            scope.maps_ready = true
-                            scope.google_maps = maps
-                    )
-                    $timeout(
-                        () ->
-                            _map = scope.map
-                            if _map.control? and _map.control.refresh?
-                                _map.control.refresh(
-                                    {
-                                        latitude: _map.center.latitude
-                                        longitude: _map.center.longitude
-                                    }
-                                )
-                        100
-                    )
-            $rootScope.$on(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), (event) ->
-                _update()
-            )
-            scope.$watch(
-                "active_tab"
-                (new_val) ->
-                    if new_val?
-                        if new_val == "conf"
-                            scope.map_active = true
-                            _update()
-                        else
-                            scope.map_active = false
-            )
-            scope.$watch(
-                "locations",
-                (new_val) ->
+    $scope.$watch(
+        "active_tab"
+        (new_val) ->
+            if new_val?
+                if new_val == "conf"
+                    $scope.struct.map_active = true
                     _update()
-                true
-            )
-    }
+                else
+                    $scope.struct.map_active = false
+    )
+    $scope.$watch(
+        "locations",
+        (new_val) ->
+            _update()
+        true
+    )
+
 ]).directive("icswConfigCategoryTreeMapEnhance",
 [
     "$templateCache", "ICSW_URLS", "icswSimpleAjaxCall", "blockUI",

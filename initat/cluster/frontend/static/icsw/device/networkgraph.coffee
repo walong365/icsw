@@ -132,64 +132,7 @@ angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "icsw.d3", "ui.select",
         "angular-ladda", "icsw.dragging", "monospaced.mousewheel", "icsw.svg_tools", "icsw.tools", "icsw.tools.table",
     ]
-).directive("icswDeviceNetworkTopology", ["$templateCache", ($templateCache) ->
-    return {
-        restrict: "E"
-        template: $templateCache.get("icsw.device.network.topology")
-        controller: "icswDeviceNetworkGraphCtrl"
-    }
-]).controller("icswDeviceNetworkGraphCtrl",
-[
-    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "icswAcessLevelService", "icswLivestatusFilterFactory",
-    "ICSW_SIGNALS", "$rootScope",
-(
-    $scope, $compile, $filter, $templateCache, Restangular, $q, icswAcessLevelService, icswLivestatusFilterFactory,
-    ICSW_SIGNALS, $rootScope
-) ->
-    icswAcessLevelService.install($scope)
-    $scope.settings = {
-    #    "draw_mode": "sel"
-    #    "show_livestatus": false
-        "devices": []
-    #    "size": {
-    #        width: 1200
-    #        height: 800
-    #    }
-    #    "zoom": {
-    #        factor: 1.0
-    #    }
-    #    "offset": {
-    #        x: 0
-    #        y: 0
-    #    }
-    }
-    $scope.raw_draw_selections = [
-        {"value": "none", "info": "None", "dr": false}
-        {"value": "all_with_peers", "info": "all peered", "dr": false}
-        {"value": "all", "info": "All devices", "dr": false}
-        {"value": "sel", "info": "selected", "dr": true}
-        {"value": "selp1", "info": "selected + 1 (next ring)", "dr": true}
-        {"value": "selp2", "info": "selected + 2", "dr": true}
-        {"value": "selp3", "info": "selected + 3", "dr": true}
-        {"value": "core", info: "Core network", "dr": false}
-    ]
-    #update_draw_selections = () ->
-    #    sles = []
-    #    for entry in $scope.raw_draw_selections
-    #        _add = true
-    #        if entry.dr and not $scope.settings.devices.length
-    #            _add = false
-    #        if _add
-    #            sles.push(entry)
-    #    $scope.draw_selections = sles
-
-    $scope.new_devsel = (_dev_sel) ->
-        $scope.settings.devices = _dev_sel
-
-    # update_draw_selections()
-
-    # $scope.ls_filter = new icswLivestatusFilterFactory()
-]).service("icswBurstDrawParameters", [
+).service("icswBurstDrawParameters", [
     "$q"
 (
     $q,
@@ -215,7 +158,7 @@ angular.module(
             # segment treshold, arc * outer_radius must be greater than this valu
             @small_segment_threshold = 3
             for _key, _value of args
-                console.log "param", _key, _value
+                # console.info "BurstDrawParam", _key, _value
                 if not @[_key]?
                     console.error "Unknown icswBurstDrawParameter", _key, _value
                 else
@@ -225,20 +168,48 @@ angular.module(
             _idx = 0
             _results = []
             _num_rings = ring_keys.length
+            _arc_offset = 0.05
             if _num_rings
                 _width = @outer_radius - @inner_radius
                 for _key in ring_keys
                     _inner_rad = @inner_radius + _idx * _width / _num_rings
                     _outer_rad = @inner_radius + (_idx + 1 ) * _width / _num_rings
                     _idx++
-                    _results.push([_key, _inner_rad, _outer_rad])
+                    _results.push([_key, _inner_rad, _outer_rad, _arc_offset])
+                    _arc_offset += 0.1
             return _results
 
         start_feed: () =>
-            @omitted_segments = 0
+            @segments_omitted = 0
+            @segments_drawn = 0
 
-        omit_segment: (val) =>
-            return if @omit_small_segments and val < @small_segment_threshold then true else false
+        draw_segment: (val) =>
+            _draw = if @omit_small_segments and val < @small_segment_threshold then false else true
+            if _draw
+                @segments_drawn++
+            else
+                @segments_omitted++
+            return _draw
+
+        get_segment_info: () =>
+            _r_str = "#{@segments_drawn} segments"
+            if @segments_omitted
+                _r_str = "#{_r_str}, #{@segments_omitted} omitted"
+                
+            return _r_str
+            
+        do_layout: () =>
+            # calc some settings for layout
+            _outer = @outer_radius
+            if @is_interactive
+                @text_radius = 1.1 * _outer
+                @text_width = 1.15 * _outer
+                @total_width = 2 * _outer * 1.2 + 200
+                @total_height = 2 * _outer * 1.2
+            else
+                @total_width = 2 * _outer
+                @total_height = 2 * _outer
+            
 
 ]).service("icswStructuredBurstNode", [
     "$q",
@@ -255,12 +226,24 @@ angular.module(
             @lut = {}
             @children = []
             @depth = 0
+            # show legend
+            @show_legend = false
             @show = true
             @clicked = false
             if @depth == 0
                 # only for root-nodes
                 # flag, not in use right now
                 @balanced = false
+
+        clear_foci: () ->
+            # clear all show_legend flags downwards
+            @show_legend = false
+            (_el.clear_foci() for _el in @children)
+
+        set_focus: () ->
+            @show_legend = true
+            for _el in @children
+                _el.show_legend = true
 
         balance: () ->
             # balance down to all visible childnodes
@@ -381,9 +364,9 @@ angular.module(
             "Z"
         return _path
 
-    build_burst_ring = (inner, outer, key_prefix, r_data, draw_params) ->
+    build_burst_ring = (inner, outer, arc_offset, key_prefix, r_data, draw_params) ->
         # offset
-        arc_offset = 0.2
+        # arc_offset = 0.2
         end_arc = arc_offset
         end_num = 0
         _ia = draw_params.is_interactive
@@ -399,14 +382,16 @@ angular.module(
                 start_arc = end_arc
                 end_num += 1
                 end_arc = 2 * Math.PI * end_num / _len + arc_offset
-                if draw_params.omit_segment((end_arc - start_arc) * outer)
-                    draw_params.omitted_segments++
-                else
+                if draw_params.draw_segment((end_arc - start_arc) * outer)
                     all_omitted = false
                     if _len == 1 and draw_params.collapse_one_element_rings
                         _path = ring_path(inner, outer)
                     else
                         _path = ring_segment_path(inner, outer, start_arc, end_arc)
+                    # _el is a path element, (nearly) ready to be rendered via SVG
+                    # $$segment is the pointer to the StructuredBurstNode and holds important flags and
+                    #    structural information
+                    # $$service is the pointer to the linked service check (may be a dummy check)
                     _el = {
                         key: "path.#{key_prefix}.#{_idx}"
                         d: _path
@@ -414,12 +399,15 @@ angular.module(
                         stroke: "black"
                         # hm, stroke-width seems to be ignored
                         strokeWidth: "0.5"
+                        # link to segment
+                        $$segment: node
+                        # link to check (node or device or devicegroup or system)
                         $$service: srvc
                     }
                     if _ia
                         # add values for interactive display
-                        srvc.$$mean_arc = (start_arc + end_arc) / 2.0
-                        srvc.$$mean_radius = (outer + inner) / 2.0
+                        _el.$$mean_arc = (start_arc + end_arc) / 2.0
+                        _el.$$mean_radius = (outer + inner) / 2.0
                     _result.push(_el)
                 if all_omitted
                     # all segments omitted, draw dummy graph
@@ -522,8 +510,8 @@ angular.module(
         # reset some draw parameters (omitted segments)
         draw_params.start_feed()
 
-        for [_ring, _inner_rad, _outer_rad] in draw_params.create_ring_draw_list(_ring_keys)
-            _root_node.element_list = _.concat(_root_node.element_list, build_burst_ring(_inner_rad, _outer_rad, "ring#{_ring}", _root_node.ring_lut[_ring], draw_params))
+        for [_ring, _inner_rad, _outer_rad, _arc_offset] in draw_params.create_ring_draw_list(_ring_keys)
+            _root_node.element_list = _.concat(_root_node.element_list, build_burst_ring(_inner_rad, _outer_rad, _arc_offset, "ring#{_ring}", _root_node.ring_lut[_ring], draw_params))
         return _root_node
         
     return {
@@ -1331,9 +1319,8 @@ angular.module(
                         }
                     )
             )
-)
-
-]).directive("icswTestG",
+    )
+]).directive("icswDeviceNetworkTopology",
 [
     "ICSW_URLS", "icswDeviceTreeService", "icswNetworkTopologyReactContainer",
 (
