@@ -81,8 +81,9 @@ class _ScanHistoryManager(models.Manager):
     def __get_run_duration_cache(self):
         cache = defaultdict(lambda: {})
         for entry in self.values("source", "device_id").annotate(avg_duration=Avg("duration")):
-            cache[entry['source']][entry['device_id']] =\
-                dateutil.relativedelta.relativedelta(seconds=entry['avg_duration'])
+            cache[entry['source']][entry['device_id']] = dateutil.relativedelta.relativedelta(
+                seconds=entry['avg_duration']
+            )
         return cache
 
 

@@ -102,6 +102,7 @@ icsw_app = angular.module(
         "icsw.monitoring.cluster",
         "icsw.monitoring.escalation",
         "icsw.monitoring.build_info",
+        "icsw.schedule.device",
         "icsw.package.install",
         "icsw.device.boot",
         "icsw.device.create",

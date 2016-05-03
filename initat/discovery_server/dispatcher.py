@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2015 Bernhard Mallinger, init.at
+# Copyright (C) 2015-2016 Bernhard Mallinger, init.at
 #
 # this file is part of icsw-server
 #
@@ -190,10 +190,16 @@ class _ScheduleInfo(object):
     def add_item(self, item):
         # TODO: insertion sort?
         self.items_by_device[item.device].append(item)
-        self.items_by_device[item.device].sort(key=operator.attrgetter("expected_finish_date"))
+        self.items_by_device[item.device].sort(
+            key=operator.attrgetter("expected_finish_date")
+        )
 
         self.items_by_source[item.source].append(item)
-        self.items_by_source[item.source].sort(key=operator.attrgetter("expected_finish_date"))
+        self.items_by_source[item.source].sort(
+            key=operator.attrgetter("expected_finish_date")
+        )
 
         self.items_by_dispatch_setting[item.dispatch_setting].append(item)
-        self.items_by_dispatch_setting[item.dispatch_setting].sort(key=operator.attrgetter("expected_finish_date"))
+        self.items_by_dispatch_setting[item.dispatch_setting].sort(
+            key=operator.attrgetter("expected_finish_date")
+        )
