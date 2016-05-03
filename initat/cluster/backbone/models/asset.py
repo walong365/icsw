@@ -275,6 +275,10 @@ class RunStatus(IntEnum):
     RUNNING = 2
     ENDED = 3
 
+########################################################################################################################
+# (Django Database) Classes
+########################################################################################################################
+
 class Asset(models.Model):
     idx = models.AutoField(primary_key=True)
 
@@ -289,9 +293,26 @@ class Asset(models.Model):
     def getAssetInstance(self):
         return pickle.loads(self.value)
 
-########################################################################################################################
-# (Django Database) Classes
-########################################################################################################################
+class AssetPackage(models.Model):
+    idx = models.AutoField(primary_key=True)
+
+    name = models.TextField()
+
+    version = models.TextField(null=True, blank=True)
+
+    release = models.TextField(null=True, blank=True)
+
+    def __lt__(self, other):
+        return self.name < other.name
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) \
+               and self.name == other.name \
+               and self.version == other.version \
+               and self.release == other.release
+
+    def __hash__(self):
+        return hash((self.name, self.version, self.release))
 
 class AssetRun(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -316,6 +337,7 @@ class AssetRun(models.Model):
 
     scan_type = models.IntegerField(choices=[(_type.value, _type.name) for _type in ScanType], null=True)
 
+    packages = models.ManyToManyField(AssetPackage)
 
     def generate_assets(self):
         if self.raw_result_interpreted or not self.raw_result_str:
@@ -334,6 +356,53 @@ class AssetRun(models.Model):
         l = get_base_assets_from_raw_result(self.raw_result_str, self.run_type, self.scan_type)
         l.sort()
         return l
+
+    def generate_assets_new(self):
+        base_assets = get_base_assets_from_raw_result(self.raw_result_str, self.run_type, self.scan_type)
+
+
+
+        for ba in base_assets:
+            kwfilterdict = {}
+            if self.run_type == AssetType.PACKAGE:
+                kwfilterdict['name'] = ba.name
+                kwfilterdict['version'] = ba.version
+                kwfilterdict['release'] = ba.release
+            elif self.run_type == AssetType.HARDWARE:
+                # todo implement me
+                break
+            elif self.run_type == AssetType.LICENSE:
+                # todo implement me
+                break
+            elif self.run_type == AssetType.UPDATE:
+                # todo implement me
+                break
+            elif self.run_type == AssetType.SOFTWARE_VERSION:
+                # todo implement me
+                break
+            elif self.run_type == AssetType.PROCESS:
+                # todo implement me
+                break
+            elif self.run_type == AssetType.PENDING_UPDATE:
+                # todo implement me
+                break
+            else:
+                break
+
+            assets = AssetPackage.objects.filter(**kwfilterdict)
+            assert(len(assets) < 2)
+
+            if assets:
+                asset = assets[0]
+                if self.packages.filter(**kwfilterdict):
+                    continue
+            else:
+                asset = AssetPackage(**kwfilterdict)
+                asset.save()
+
+            self.packages.add(asset)
+
+        self.save()
 
     def get_asset_changeset(self, other_asset_run):
         self.generate_assets()
@@ -371,10 +440,17 @@ class AssetSerializer(serializers.ModelSerializer):
     class Meta:
         model = Asset
 
+class AssetPackageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AssetPackage
+        fields = ( "idx", "name", "version", "release")
+
+
 class AssetRunSerializer(serializers.ModelSerializer):
     device = serializers.SerializerMethodField()
     #asset_set = AssetSerializer(many=True)
     assets = serializers.SerializerMethodField()
+    packages = AssetPackageSerializer(many=True)
 
     def get_assets(self, obj):
         return [str(pkg) for pkg in obj.generate_assets_no_save()]
@@ -387,4 +463,5 @@ class AssetRunSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AssetRun
-        fields = ( "idx", "device", "run_index", "run_type", "assets", "run_start_time", "run_end_time")
+        fields = ( "idx", "device", "run_index", "run_type", "assets",
+                   "run_start_time", "run_end_time", "packages")

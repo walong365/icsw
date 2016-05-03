@@ -5,18 +5,50 @@
 <script type="text/ng-template" id="icsw.device.asset.overview">
     <uib-alert type="warning" ng-show="!struct.data_loaded">Fetching data from server ...</uib-alert>
     <icsw-tools-ensure-device-selection dev-list="struct.devices" list-ready="struct.data_loaded">
+
+        <h2>
+            <span>Assets (length): {{ $root.assets.length }}</span>
+        </h2>
+
+        <table
+            class="table table-condensed table-hover table-bordered"
+            style="width:auto;"
+            ng-show="$root.assets.length > 1"
+            st-table="$root.assets"
+            st-safe-src="$root.assets_sf"
+        >
+            <tbody>
+                <tr>
+                    <th st-sort="package.idx">>Index</th>
+                    <th st-sort="package.name">Name</th>
+                    <th st-sort="package.version">Version</th>
+                    <th st-sort="package.release">Release</th>
+                </tr>
+                <tr ng-repeat="package in $root.assets" ng-if="package.idx">
+                    <td>{{ package.idx }}</td>
+                    <td>{{ package.name }}</td>
+                    <td>{{ package.version }}</td>
+                    <td>{{ package.release }}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>
+            <span>AssetRuns</span>
+        </h2>
+
+
         <uib-tabset>
             <uib-tab ng-repeat="dev in struct.devices">
                 <uib-tab-heading>
                     {{ dev.full_name }}
                 </uib-tab-heading>
 
-
-                <button type="button" ng-click="addRandomItem(row)" class="btn btn-sm btn-success">
-			    <i class="glyphicon glyphicon-plus">
-			    </i> Do Something...
-		        </button>
-
+                <h2>
+                    <span ng-show="dev.assetrun_set_sf_src.length > 0">
+                        AssetRun Overview
+                    </span>
+                </h2>
                 <table
                     class="table table-condensed table-hover table-bordered"
                     style="width:auto;"

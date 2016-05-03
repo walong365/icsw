@@ -54,11 +54,11 @@ device_asset_module = angular.module(
 [
     "$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "blockUI",
     "icswTools",
-    "icswDeviceTreeService", "icswDeviceTreeHelperService",
+    "icswDeviceTreeService", "icswDeviceTreeHelperService", "$rootScope"
 (
     $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI,
     icswTools,
-    icswDeviceTreeService, icswDeviceTreeHelperService,
+    icswDeviceTreeService, icswDeviceTreeHelperService, $rootScope
 ) ->
     # struct to hand over to VarCtrl
     $scope.struct = {
@@ -106,6 +106,10 @@ device_asset_module = angular.module(
     $scope.$on("$destroy", () ->
         console.log "asset destroyed"
     )
+
+    $rootScope.assets = []
+    $rootScope.assets_sf = []
+
     $scope.new_devsel = (devs) ->
         $q.all(
             [
@@ -118,16 +122,33 @@ device_asset_module = angular.module(
                 for entry in devs
                     $scope.struct.devices.push(entry)
 
+                $rootScope.assets = []
+                $rootScope.assets_sf = []
+                console.log "reseting assets"
+
                 hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, $scope.struct.devices)
                 $scope.struct.device_tree.enrich_devices(hs, ["asset_info"]).then(
                     (data) ->
-                        console.log "* Enriched: ", data[0]
-                        $scope.struct.data_loaded = true
+                        console.log "len: ", $rootScope.assets.length
+
+                        hm = {}
+
 
                         for dev in $scope.struct.devices
                             dev.assetrun_set_sf_src = []
                             for ar in dev.assetrun_set
                                 dev.assetrun_set_sf_src.push(ar)
+                                for pack in ar.packages
+                                    hm[pack.idx] = pack
+
+                        console.log "hm: ", hm
+                        for k, v of hm
+                            $rootScope.assets.push(v)
+                            $rootScope.assets_sf.push(v)
+
+                        console.log "lenAfter: ", $rootScope.assets.length
+                        console.log "assets loaded"
+                        $scope.struct.data_loaded = true
                 )
         )
 ]).filter('strictFilter'
