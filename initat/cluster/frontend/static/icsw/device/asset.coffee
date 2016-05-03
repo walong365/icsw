@@ -69,6 +69,13 @@ device_asset_module = angular.module(
         # data loaded
         data_loaded: false
     }
+
+    $scope.predicates = ['firstName', 'lastName', 'birthDate', 'balance', 'email'];
+    $scope.selectedPredicate = $scope.predicates[0];
+
+    $scope.addRandomItem = (id) ->
+        console.log "ttttt", id
+
     a = $q.defer()
     b = $q.defer()
     c = $q.defer()
@@ -114,9 +121,56 @@ device_asset_module = angular.module(
                 hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, $scope.struct.devices)
                 $scope.struct.device_tree.enrich_devices(hs, ["asset_info"]).then(
                     (data) ->
-                        console.log "*", data[0]
+                        console.log "* Enriched: ", data[0]
                         $scope.struct.data_loaded = true
+
+                        for dev in $scope.struct.devices
+                            dev.assetrun_set_sf_src = []
+                            for ar in dev.assetrun_set
+                                dev.assetrun_set_sf_src.push(ar)
                 )
         )
+]).filter('strictFilter'
+[
+    "$filter",
+(
+    $filter
+) ->
+    return (input, predicate) ->
+        console.log "input:", input
+        console.log "predicate:" , predicate
 
+        strict = true
+        if (predicate.hasOwnProperty("run_index"))
+            predicate.run_index = parseInt(predicate.run_index)
+        if (predicate.hasOwnProperty("run_type"))
+            predicate.run_type = parseInt(predicate.run_type)
+        if (predicate.hasOwnProperty("$"))
+            strict = false
+
+        return $filter('filter')(input, predicate, strict);
+
+]).filter('unique'
+[
+    "$filter",
+(
+    $filter
+) ->
+    return (arr, field) ->
+        console.log "* arr:", arr
+        console.log "* field:", field
+        o = {}
+        l = arr.length
+        r = []
+
+        for i in [0...l]
+            o[arr[i][field]] = arr[i]
+
+
+        for i in o
+            r.push(o[i])
+
+        console.log "*r: ", r
+
+        return r
 ])
