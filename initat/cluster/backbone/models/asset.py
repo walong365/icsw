@@ -34,7 +34,10 @@ from rest_framework import serializers
 # Functions
 ########################################################################################################################
 
-#flatten xml into bahlist
+
+# flatten xml into bahlist
+
+
 def generate_bahs(root, bahlist):
     bah = BaseAssetHardware(root.get("type"))
     bahlist.append(bah)
@@ -42,6 +45,7 @@ def generate_bahs(root, bahlist):
         bah.info_dict[elem.get("name")] = elem.get("value")
     for elem in root.iterchildren("object"):
         generate_bahs(elem, bahlist)
+
 
 def get_base_assets_from_raw_result(blob, runtype, scantype):
     assets = []
@@ -80,20 +84,20 @@ def get_base_assets_from_raw_result(blob, runtype, scantype):
             for (name, licensekey) in l:
                 assets.append(BaseAssetLicense(name, license_key=licensekey))
         elif scantype == ScanType.HM:
-            #todo implement me (--> what do we want to gather/display here?)
+            # todo implement me (--> what do we want to gather/display here?)
             pass
 
     elif runtype == AssetType.UPDATE:
         if scantype == ScanType.NRPE:
             l = json.loads(blob)
             for (name, date, status) in l:
-                assets.append(BaseAssetUpdate(name, install_date = date, status=status))
+                assets.append(BaseAssetUpdate(name, install_date=date, status=status))
         elif scantype == ScanType.HM:
-            #todo implement me (--> what do we want to gather/display here?)
+            # todo implement me (--> what do we want to gather/display here?)
             pass
 
     elif runtype == AssetType.SOFTWARE_VERSION:
-        #todo implement me
+        # todo implement me
         pass
 
     elif runtype == AssetType.PROCESS:
@@ -122,7 +126,8 @@ def get_base_assets_from_raw_result(blob, runtype, scantype):
 # Base Asset Classes
 ########################################################################################################################
 
-class BaseAssetProcess:
+
+class BaseAssetProcess(object):
     def __init__(self, name, pid):
         self.name = name
         self.pid = pid
@@ -133,15 +138,15 @@ class BaseAssetProcess:
 
     def __eq__(self, other):
         return isinstance(other, self.__class__) \
-               and self.name == other.name \
-               and self.pid == other.pid
-
+            and self.name == other.name \
+            and self.pid == other.pid
 
     def __hash__(self):
         return hash((self.name, self.pid))
 
-class BaseAssetPackage:
-    def __init__(self, name, version = None, release = None, size = None, install_date = None):
+
+class BaseAssetPackage(object):
+    def __init__(self, name, version=None, release=None, size=None, install_date=None):
         self.name = name
         self.version = version
         self.release = release
@@ -166,16 +171,17 @@ class BaseAssetPackage:
 
     def __eq__(self, other):
         return isinstance(other, self.__class__) \
-               and self.name == other.name \
-               and self.version == other.version \
-               and self.release == other.release \
-               and self.size == other.size \
-               and self.install_date == other.install_date
+            and self.name == other.name \
+            and self.version == other.version \
+            and self.release == other.release \
+            and self.size == other.size \
+            and self.install_date == other.install_date
 
     def __hash__(self):
         return hash((self.name, self.version, self.release, self.size, self.install_date))
 
-class BaseAssetHardware:
+
+class BaseAssetHardware(object):
     def __init__(self, type):
         self.type = type
         self.info_dict = {}
@@ -184,7 +190,8 @@ class BaseAssetHardware:
         s = "Type: %s" % self.type
         return s
 
-class BaseAssetLicense:
+
+class BaseAssetLicense(object):
     def __init__(self, name, license_key):
         self.name = name
         self.license_key = license_key
@@ -196,14 +203,15 @@ class BaseAssetLicense:
 
     def __eq__(self, other):
         return isinstance(other, self.__class__) \
-               and self.name == other.name \
-               and self.license_key == other.license_key
+            and self.name == other.name \
+            and self.license_key == other.license_key
 
     def __hash__(self):
         return hash((self.type, self.license_key))
 
-class BaseAssetUpdate:
-    def __init__(self, name, install_date = None, status = None):
+
+class BaseAssetUpdate(object):
+    def __init__(self, name, install_date=None, status=None):
         self.name = name
         self.install_date = install_date
         self.status = status
@@ -219,18 +227,20 @@ class BaseAssetUpdate:
 
     def __eq__(self, other):
         return isinstance(other, self.__class__) \
-               and self.name == other.name \
-               and self.install_date == other.install_date \
-               and self.status == other.status
+            and self.name == other.name \
+            and self.install_date == other.install_date \
+            and self.status == other.status
 
     def __hash__(self):
         return hash((self.name, self.install_date, self.status))
 
-class BaseAssetSoftwareVersion:
+
+class BaseAssetSoftwareVersion(object):
     pass
 
-class BaseAssetPendingUpdate:
-    def __init__(self, name, version = None, optional = None):
+
+class BaseAssetPendingUpdate(object):
+    def __init__(self, name, version=None, optional=None):
         self.name = name
         self.version = version
         self.optional = optional
@@ -246,9 +256,9 @@ class BaseAssetPendingUpdate:
 
     def __eq__(self, other):
         return isinstance(other, self.__class__) \
-               and self.name == other.name \
-               and self.version == other.version \
-               and self.optional == other.optional
+            and self.name == other.name \
+            and self.version == other.version \
+            and self.optional == other.optional
 
     def __hash__(self):
         return hash((self.name, self.version, self.optional))
@@ -256,6 +266,7 @@ class BaseAssetPendingUpdate:
 ########################################################################################################################
 # Enums
 ########################################################################################################################
+
 
 class AssetType(IntEnum):
     PACKAGE = 1
@@ -266,9 +277,11 @@ class AssetType(IntEnum):
     PROCESS = 6
     PENDING_UPDATE = 7
 
+
 class ScanType(IntEnum):
     HM = 1
     NRPE = 2
+
 
 class RunStatus(IntEnum):
     PLANNED = 1
@@ -278,6 +291,7 @@ class RunStatus(IntEnum):
 ########################################################################################################################
 # (Django Database) Classes
 ########################################################################################################################
+
 
 class Asset(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -293,6 +307,7 @@ class Asset(models.Model):
     def getAssetInstance(self):
         return pickle.loads(self.value)
 
+
 class AssetPackage(models.Model):
     idx = models.AutoField(primary_key=True)
 
@@ -307,12 +322,13 @@ class AssetPackage(models.Model):
 
     def __eq__(self, other):
         return isinstance(other, self.__class__) \
-               and self.name == other.name \
-               and self.version == other.version \
-               and self.release == other.release
+            and self.name == other.name \
+            and self.version == other.version \
+            and self.release == other.release
 
     def __hash__(self):
         return hash((self.name, self.version, self.release))
+
 
 class AssetRun(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -359,9 +375,6 @@ class AssetRun(models.Model):
 
     def generate_assets_new(self):
         base_assets = get_base_assets_from_raw_result(self.raw_result_str, self.run_type, self.scan_type)
-
-
-
         for ba in base_assets:
             kwfilterdict = {}
             if self.run_type == AssetType.PACKAGE:
@@ -416,7 +429,8 @@ class AssetRun(models.Model):
         if self.run_index == 0:
             return []
 
-        return self.get_asset_changeset(self.device.assetrun_set.get(run_index=self.run_index-1))
+        return self.get_asset_changeset(self.device.assetrun_set.get(run_index=self.run_index - 1))
+
 
 class AssetBatch(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -431,6 +445,7 @@ class AssetBatch(models.Model):
 # Serializers
 ########################################################################################################################
 
+
 class AssetSerializer(serializers.ModelSerializer):
     assetstr = serializers.SerializerMethodField()
 
@@ -440,15 +455,16 @@ class AssetSerializer(serializers.ModelSerializer):
     class Meta:
         model = Asset
 
+
 class AssetPackageSerializer(serializers.ModelSerializer):
     class Meta:
         model = AssetPackage
-        fields = ( "idx", "name", "version", "release")
+        fields = ("idx", "name", "version", "release")
 
 
 class AssetRunSerializer(serializers.ModelSerializer):
     device = serializers.SerializerMethodField()
-    #asset_set = AssetSerializer(many=True)
+    # asset_set = AssetSerializer(many=True)
     assets = serializers.SerializerMethodField()
     packages = AssetPackageSerializer(many=True)
 
@@ -463,8 +479,8 @@ class AssetRunSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AssetRun
-        fields = ( "idx", "device", "run_index", "run_type", "assets",
-                   "run_start_time", "run_end_time", "packages")
+        fields = ("idx", "device", "run_index", "run_type", "assets",
+                  "run_start_time", "run_end_time", "packages")
 
 
 class DeviceInventory(models.Model):
@@ -483,4 +499,3 @@ class DeviceInventory(models.Model):
     # serialized XML
     value = models.TextField()
     date = models.DateTimeField(auto_now_add=True)
-
