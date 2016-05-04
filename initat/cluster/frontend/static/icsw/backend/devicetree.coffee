@@ -101,6 +101,7 @@ angular.module(
                     dev.$vars_expanded = false
             @filter_device_variables()
 
+            
         set_var_filter: (new_filter) =>
             @var_name_filter = new_filter
             @filter_device_variables()
@@ -247,7 +248,7 @@ angular.module(
             if req of _lut
                 return _lut[req]
             else
-                throw new Error("Unknown EnrichmentKey #{req}")
+                throw new Error("Unknown EnrichmentKey in get_setter_name(): #{req}")
 
         set_scan_info: (dev, scan_object) =>
             dev.active_scan = scan_object.active_scan
@@ -266,11 +267,12 @@ angular.module(
                 sensor_threshold_info: "sensor_threshold_set"
                 package_info: "package_set"
                 asset_info: "assetrun_set"
+                dispatcher_info: "dispatcher_set"
             }
             if req of _lut
                 return _lut[req]
             else
-                throw new Error("Unknown EnrichmentKey #{req}")
+                throw new Error("Unknown EnrichmentKey in get_attr_name(): #{req}")
 
         clear_infos: (en_req) =>
             # clear already present infos
@@ -964,6 +966,63 @@ angular.module(
         # network graph functions
         seed_network_graph: (nodes, links) =>
             return new icswDeviceTreeGraph(nodes, links, @)
+
+        # dispatcher functions
+        salt_dispatcher_infos: (device_list, disp_tree) =>
+            for dev in device_list
+                if dev.dispatcher_set.length
+                    dev.$$dispatcher_list = (disp_tree.lut[entry.dispatcher_setting] for entry in dev.dispatcher_set)
+                else
+                    dev.$$dispatcher_list = []
+            
+        sync_dispatcher_links: (device, dispatcher_tree, disp_idxs, user) =>
+            # global deferer
+            defer = $q.defer()
+            # syncs the dispatcher-device links of device with the dispatchers specified in disp_idxs
+            _cur_idx = (disp.dispatcher_setting for disp in device.dispatcher_set)
+            _to_add = (idx for idx in disp_idxs when idx not in _cur_idx)
+            _to_del = (idx for idx in _cur_idx when idx not in disp_idxs)
+            # create and delete defer
+            [_c_defer, _d_defer] = [$q.defer(), $q.defer()]
+            if _to_add.length
+                _w_list = (
+                    Restangular.all(ICSW_URLS.REST_DEVICE_DISPATCHER_LINK_LIST.slice(1)).post(
+                        {
+                            device: device.idx
+                            dispatcher_setting: _add_idx
+                            user: user.idx
+                        }
+                    ) for _add_idx in _to_add
+                )
+                $q.all(_w_list).then(
+                    (results) ->
+                        for entry in results
+                            device.dispatcher_set.push(entry)
+                        console.log results
+                        _c_defer.resolve("created")
+                )
+            else
+                _c_defer.resolve("nothing to do")
+            if _to_del.length
+                _d_list = []
+                for _del_disp in (entry for entry in device.dispatcher_set when entry.dispatcher_setting in _to_del)
+                    Restangular.restangularizeElement(null, _del_disp, ICSW_URLS.REST_DEVICE_DISPATCHER_LINK_DETAIL.slice(1).slice(0, -2))
+                    _d_list.push(_del_disp.remove())
+                $q.all(_d_list).then(
+                    (result) ->
+                        _.remove(device.dispatcher_set, (entry) -> return entry.dispatcher_setting in _to_del)
+                        _d_defer.resolve("removed")
+                )
+            else
+                _d_defer.resolve("nothing to do")
+            $q.all([_c_defer.promise, _d_defer.promise]).then(
+                () ->
+                    defer.resolve("done")
+                () ->
+                    defer.reject("not done")
+            )
+            return defer.promise
+
 ]).service("icswDeviceTreeService",
 [
     "$q", "Restangular", "ICSW_URLS", "icswCachingCall",

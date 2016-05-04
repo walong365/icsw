@@ -471,12 +471,14 @@ monitoring_device_module = angular.module(
 ]).controller("icswScheduleDeviceCtrl",
 [
     "$scope", "icswDeviceTreeService", "$q", "icswMonitoringBasicTreeService", "icswComplexModalService",
-    "$templateCache", "$compile", "icswDeviceMonitoringBackup", "toaster", "blockUI", "Restangular",
-    "ICSW_URLS", "icswConfigTreeService", "icswDispatcherSettingTreeService",
+    "$templateCache", "$compile", "toaster", "blockUI", "Restangular",
+    "ICSW_URLS", "icswConfigTreeService", "icswDispatcherSettingTreeService", "icswDeviceTreeHelperService",
+    "icswUserService",
 (
     $scope, icswDeviceTreeService, $q, icswMonitoringBasicTreeService, icswComplexModalService,
-    $templateCache, $compile, icswDeviceMonitoringBackup, toaster, blockUI, Restangular,
-    ICSW_URLS, icswConfigTreeService, icswDispatcherSettingTreeService,
+    $templateCache, $compile, toaster, blockUI, Restangular,
+    ICSW_URLS, icswConfigTreeService, icswDispatcherSettingTreeService, icswDeviceTreeHelperService,
+    icswUserService,
 ) ->
     $scope.struct = {
         # loading
@@ -486,11 +488,13 @@ monitoring_device_module = angular.module(
         # base monitoring tree
         base_tree: undefined
         # dispatch tree
-        dispatch_tree: undefined
+        dispatcher_tree: undefined
         # devices
         devices: []
         # monitor servers
         monitor_servers: []
+        # user
+        user: undefined
     }
     $scope.new_devsel = (devs) ->
         $scope.struct.loading = true
@@ -500,37 +504,56 @@ monitoring_device_module = angular.module(
                 icswMonitoringBasicTreeService.load($scope.$id)
                 icswConfigTreeService.load($scope.$id)
                 icswDispatcherSettingTreeService.load($scope.$id)
+                icswUserService.load($scope.$id)
             ]
         ).then(
             (data) ->
                 $scope.struct.device_tree = data[0]
                 $scope.struct.base_tree = data[1]
-                $scope.struct.dispatch_tree = data[3]
+                $scope.struct.dispatcher_tree = data[3]
                 config_tree = data[2]
+                $scope.struct.user = data[4]
                 # get monitoring masters and slaves
-                $scope.struct.loading = false
                 $scope.struct.devices.length = 0
                 for entry in devs
                     if not entry.is_meta_device
+                        if not entry.isSelected?
+                            entry.isSelected = false
                         $scope.struct.devices.push(entry)
+                hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, $scope.struct.devices)
+                $scope.struct.device_tree.enrich_devices(hs, ["dispatcher_info"]).then(
+                    (done) ->
+                        $scope.struct.device_tree.salt_dispatcher_infos($scope.struct.devices, $scope.struct.dispatcher_tree)
+                        $scope.struct.loading = false
+                )
         )
+        
     $scope.edit = ($event, obj) ->
-        dbu = new icswDeviceMonitoringBackup()
-        dbu.create_backup(obj)
 
-        sub_scope = $scope.$new(false)
-        sub_scope.edit_obj = obj
-        # copy references
-        sub_scope.md_cache_modes = $scope.md_cache_modes
-        sub_scope.base_tree = $scope.struct.base_tree
-        sub_scope.monitor_servers = $scope.struct.monitor_servers
-        sub_scope.nagvis_list = (
-            entry for entry in $scope.struct.device_tree.enabled_list when not entry.is_meta_device and entry.idx !=obj.idx and entry.automap_nagvis_root
-        )
+        if not obj?
+            # selected
+            _dev_list = (entry for entry in $scope.struct.devices when entry.isSelected)
+            if not _dev_list.length
+                return
+            _title = "#{_dev_list.length} devices"
+        else
+            _dev_list = [obj]
+            _title = obj.full_name
+        sub_scope = $scope.$new(true)
+        sub_scope.edit_obj = {
+            $$dispatchers: _.uniq(
+                _.flatten(
+                    _.union(
+                        (disp.dispatcher_setting for disp in obj.dispatcher_set) for obj in _dev_list
+                    )
+                )
+            )
+        }
+        sub_scope.dispatcher_tree = $scope.struct.dispatcher_tree
         icswComplexModalService(
             {
-                message: $compile($templateCache.get("icsw.device.monitoring.form"))(sub_scope)
-                title: "Monitoring settings for #{sub_scope.edit_obj.full_name}"
+                message: $compile($templateCache.get("icsw.schedule.device.form"))(sub_scope)
+                title: "Dispatcher settings for #{_title}"
                 ok_label: "Modify"
                 ok_callback: (modal) ->
                     d = $q.defer()
@@ -538,11 +561,17 @@ monitoring_device_module = angular.module(
                         toaster.pop("warning", "form validation problem", "", 0)
                         d.reject("form not valid")
                     else
-                        blockUI.start("saving device...")
-                        # hm, maybe not working ...
-                        Restangular.restangularizeElement(null, sub_scope.edit_obj, ICSW_URLS.REST_DEVICE_DETAIL.slice(1).slice(0, -2))
-                        sub_scope.edit_obj.put().then(
-                            (ok) ->
+                        blockUI.start("changing dispatchers ....")
+                        _w_list = (
+                            $scope.struct.device_tree.sync_dispatcher_links(
+                                obj
+                                $scope.struct.dispatcher_tree
+                                sub_scope.edit_obj.$$dispatchers
+                                $scope.struct.user
+                            ) for obj in _dev_list
+                        )
+                        $q.all(_w_list).then(
+                            (done) ->
                                 blockUI.stop()
                                 d.resolve("saved")
                             (not_ok) ->
@@ -551,13 +580,13 @@ monitoring_device_module = angular.module(
                         )
                     return d.promise
                 cancel_callback: (modal) ->
-                    dbu.restore_backup(obj)
                     d = $q.defer()
                     d.resolve("cancel")
                     return d.promise
             }
         ).then(
             (fin) ->
+                $scope.struct.device_tree.salt_dispatcher_infos($scope.struct.devices, $scope.struct.dispatcher_tree)
                 sub_scope.$destroy()
         )
 ])

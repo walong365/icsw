@@ -3,7 +3,7 @@
     <uib-alert type="warning" ng-show="struct.loading">Fetching data from server...</uib-alert>
     <h3>
         Dispatch settings ({{ struct.dispatch_tree.list.length }} entries)
-        <icsw-tools-button type="create" size="xs" value="create new" ng-click="create_or_edit($event, null, true)"></icsw-tools-button>
+        <icsw-tools-button type="create" size="xs" ng-click="create_or_edit($event, null, true)"></icsw-tools-button>
     </h3>
     <table
         st-table="entries_displayed"
@@ -180,7 +180,10 @@
 <script type="text/ng-template" id="icsw.schedule.device">
 
     <uib-alert type="warning" ng-show="struct.loading">Fetching data from server...</uib-alert>
-    <h2>Device schedules ({{ struct.devices.length }} entries)</h2>
+    <h3>
+        Device schedules ({{ struct.devices.length }} entries)
+        <icsw-tools-button type="modify" size="xs" ng-click="edit($event, null)" value="modify selected"></icsw-tools-button>
+    </h3>
     <table
         st-table="entries_displayed"
         st-safe-src="struct.devices"
@@ -198,23 +201,23 @@
             </tr>
             <tr>
                 <th st-sort="full_name" st-sort-default="true">Name</th>
-                <th st-sort="monitor_checks">Checks</th>
-                <th>qweqwea</th>
-                <th>qweqwea</th>
-                <th>qweqwea</th>
-                <th>qweqwea</th>
-                <th>qweqwea</th>
-                <th>qweqwea</th>
-                <th>qweqwea</th>
-                <th>qweqwea</th>
-                <th>qweqwea</th>
+                <th>Selected</th>
+                <th>Dispatchers</th>
                 <th colspan="1" class="text-center">Action</th>
             </tr>
         </thead>
         <tbody>
-            <tr ng-repeat="obj in entries_displayed">
+            <tr st-select-row="obj" st-select-mode="multiple" ng-repeat="obj in entries_displayed">
                 <td>{{ obj.full_name }}</td>
-                <td>{{ obj.monitor_checks | yesno1 }}</td>
+                <td>
+                    <span ng-class="{'label label-success': obj.isSelected, 'label label-default':!obj.isSelected}">sel</span>
+                </td>
+                <td>
+                    <span ng-show="!obj.$$dispatcher_list.length">---</span>
+                    <span ng-show="obj.$$dispatcher_list.length">
+                        <span ng-repeat="disp in obj.$$dispatcher_list" class="label label-primary">{{ disp.name }}</span>
+                    </span>
+                </td>
                 <td>
                     <icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)" value="modify"/>
                 </td>
@@ -226,160 +229,20 @@
 <script type="text/ng-template" id="icsw.schedule.device.form">
     <form class="form-horizontal" name="form_data">
         <fieldset>
-            <legend>Basic settings</legend>
+            <legend>Dispatcher</legend>
             <div class="form-group">
-                <label class="control-label col-sm-3 requiredField">
-                    Md cache mode<span class="asteriskField">*</span>
+                <label class="control-label col-sm-3">
+                    Dispatcher
                 </label>
                 <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.md_cache_mode" style="max-width:400px; min-width:240px;">
-                        <ui-select-match class="ui-select-match" placeholder="please select a cache mode">
-                            {{ $select.selected.name }}</ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in md_cache_modes| props_filter:{name:$select.search}">
+                    <ui-select multiple="multiple" ng-model="edit_obj.$$dispatchers" style="max-width:400px; min-width:240px;">
+                        <ui-select-match class="ui-select-match" placeholder="Select Dispatchers">
+                            {{ $item.name }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in dispatcher_tree.list | props_filter:{name:$select.search}">
                             <div ng-bind-html="value.name | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="control-label col-sm-3">
-                    Mon device templ
-                </label>
-                <div class="controls col-sm-7">
-                    <div class="input-group" style="max-width:400px; min-width:240px;">
-                        <ui-select ng-model="edit_obj.mon_device_templ">
-                            <ui-select-match class="ui-select-match" placeholder="please select a device template">
-                                {{ $select.selected.name }}
-                            </ui-select-match>
-                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in base_tree.mon_device_templ_list | props_filter:{name:$select.search}">
-                                <div ng-bind-html="value.name | highlight: $select.search"></div>
-                            </ui-select-choices>
-                        </ui-select>
-                        <span class="input-group-btn">
-                            <button type="button" ng-click="edit_obj.mon_device_templ = undefined" class="btn btn-default">
-                                <span class="glyphicon glyphicon-trash"></span>
-                            </button>
-                        </span>
-                    </div>
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="control-label col-sm-3">
-                    Mon ext host
-                </label>
-                <div class="controls col-sm-7">
-                    <div class="input-group" style="max-width:400px; min-width:240px;">
-                        <ui-select ng-model="edit_obj.mon_ext_host">
-                            <ui-select-match class="ui-select-match" placeholder="please select an icon">
-                                {{ $select.selected.name }}
-                            </ui-select-match>
-                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in base_tree.mon_ext_host_list | props_filter:{name:$select.search}">
-                                <img ng-src="{{ value.data_image }}"></img>
-                                <span ng-bind-html="value.name | highlight:$select.search"></span>
-                            </ui-select-choices>
-                        </ui-select>
-                        <span class="input-group-btn">
-                            <button type="button" ng-click="edit_obj.mon_ext_host = undefined" class="btn btn-default">
-                                <span class="glyphicon glyphicon-trash"></span>
-                            </button>
-                        </span>
-                    </div>
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="control-label col-sm-3">
-                    Monitor server
-                </label>
-                <div class="controls col-sm-7">
-                    <div class="input-group" style="max-width:400px; min-width:240px;">
-                        <ui-select ng-model="edit_obj.monitor_server">
-                            <ui-select-match class="ui-select-match" placeholder="please select a monitoring server">
-                                {{ $select.selected.name }}
-                            </ui-select-match>
-                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in monitor_servers | props_filter:{name:$select.search}">
-                                <div ng-bind-html="value.name | highlight: $select.search"></div>
-                            </ui-select-choices>
-                        </ui-select>
-                        <span class="input-group-btn">
-                            <button type="button" ng-click="edit_obj.monitor_server = undefined" class="btn btn-default">
-                                <span class="glyphicon glyphicon-trash"></span>
-                            </button>
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </fieldset>
-        <fieldset>
-            <legend>Flags</legend>
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label class="control-label col-sm-8">
-                            Enable perfdata, check IPMI and SNMP
-                        </label>
-                        <div class="controls col-sm-4">
-                            <icsw-tools-yes-no flag="edit_obj.enable_perfdata"></icsw-tools-yes-no>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="control-label col-sm-8">
-                            Flap detection enabled
-                        </label>
-                        <div class="controls col-sm-4">
-                            <icsw-tools-yes-no flag="edit_obj.flap_detection_enabled"></icsw-tools-yes-no>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label class="control-label col-sm-8">
-                            Checks enabled
-                        </label>
-                        <div class="controls col-sm-4">
-                            <icsw-tools-yes-no flag="edit_obj.monitor_checks"></icsw-tools-yes-no>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="control-label col-sm-8">
-                            Resolve to IP for monitoring
-                        </label>
-                        <div class="controls col-sm-4">
-                            <icsw-tools-yes-no flag="edit_obj.mon_resolve_name"></icsw-tools-yes-no>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </fieldset>
-        <fieldset>
-            <legend>NagVis settings</legend>
-            <div class="form-group">
-                <div class="checkbox">
-                    <label class="control-label col-sm-3">
-                        Automap root nagvis
-                    </label>
-                    <div class="controls col-sm-9">
-                        <icsw-tools-yes-no flag="edit_obj.automap_root_nagvis"></icsw-tools-yes-no>
-                    </div>
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="control-label col-sm-3">
-                    Nagvis parent
-                </label>
-                <div class="controls col-sm-7">
-                    <div class="input-group" style="max-width:400px; min-width:240px;">
-                        <ui-select ng-model="edit_obj.nagvis_parent" ng-disabled="false">
-                            <ui-select-match class="ui-select-match" placeholder="select a nagvis parent">{{ $select.selected.name }}</ui-select-match>
-                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in nagvis_list | orderBy:'name'| props_filter:{name:$select.search}">
-                                <div ng-bind-html="value.name | highlight: $select.search"></div>
-                            </ui-select-choices>
-                        </ui-select>
-                        <span class="input-group-btn">
-                            <button type="button" ng-click="edit_obj.nagvis_parent = undefined" class="btn btn-default">
-                                <span class="glyphicon glyphicon-trash"></span>
-                            </button>
-                        </span>
-                    </div>
                 </div>
             </div>
         </fieldset>

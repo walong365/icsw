@@ -21,12 +21,14 @@
 
 from rest_framework import serializers
 
-from initat.cluster.backbone.models import DispatchSetting, DispatcherSetting, DispatcherSettingSchedule
+from initat.cluster.backbone.models import DispatchSetting, DispatcherSetting, DispatcherSettingSchedule, \
+    DeviceDispatcherLink
 
 __all__ = [
     "DispatchSettingSerializer",
     "DispatcherSettingSerializer",
     "DispatcherSettingScheduleSerializer",
+    "DeviceDispatcherLinkSerializer",
 ]
 
 
@@ -46,3 +48,9 @@ class DispatcherSettingScheduleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DispatcherSettingSchedule
+
+
+class DeviceDispatcherLinkSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = DeviceDispatcherLink

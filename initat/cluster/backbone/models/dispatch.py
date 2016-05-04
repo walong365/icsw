@@ -38,6 +38,7 @@ __all__ = [
     "DispatcherSettingSchedule",
     "DispatcherSettingScheduleEnum",
     "DispatcherSetting",
+    "DeviceDispatcherLink",
     "DispatchSetting",
     "DiscoverySource",
     "ScanHistory",
@@ -152,6 +153,17 @@ def DispatcherSettingPreSave(sender, **kwargs):
                 _check = True
             # if _val is not None:
         print _cur_inst.sched_start_second
+
+
+class DeviceDispatcherLink(models.Model):
+    idx = models.AutoField(primary_key=True)
+    # link to device
+    device = models.ForeignKey("backbone.device")
+    dispatcher_setting = models.ForeignKey("backbone.DispatcherSetting")
+    # create by user
+    user = models.ForeignKey("backbone.user")
+    # creation date
+    date = models.DateTimeField(auto_now_add=True)
 
 
 class DispatchSetting(models.Model):
