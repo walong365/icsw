@@ -265,6 +265,7 @@ angular.module(
                 device_connection_info: "device_connection_set"
                 sensor_threshold_info: "sensor_threshold_set"
                 package_info: "package_set"
+                asset_info: "assetrun_set"
             }
             if req of _lut
                 return _lut[req]
@@ -753,7 +754,9 @@ angular.module(
                 # console.log "enrichment:", en_list, "for", dth, "not needed"
                 _fetch.resolve({})
             else
-                # console.log "*** enrichment:", en_list, "for", dth, "resulted in non-empty", en_req
+                #console.log "*** enrichment:", en_list, "for", dth, "resulted in non-empty", en_req
+                console.log "*** enrichment: ", en_req
+
                 # non-empty request, fetch from server
                 icswSimpleAjaxCall(
                     url: ICSW_URLS.DEVICE_ENRICH_DEVICES

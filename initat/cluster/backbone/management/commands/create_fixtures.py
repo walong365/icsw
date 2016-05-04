@@ -526,7 +526,7 @@ class Command(BaseCommand):
         factories.ComCapability(
             matchcode=ComCapability_Model.MatchCode.nrpe.name,
             name="NRPE",
-            info="Nagios remote plugin execution",
+            info="Nagios Remote Plugin Executor",
             port_spec="5666/tcp",
         )
         # hints

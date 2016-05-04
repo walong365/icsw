@@ -54,11 +54,11 @@ device_asset_module = angular.module(
 [
     "$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "blockUI",
     "icswTools",
-    "icswDeviceTreeService", "icswDeviceTreeHelperService",
+    "icswDeviceTreeService", "icswDeviceTreeHelperService", "$rootScope"
 (
     $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI,
-    icswTools, 
-    icswDeviceTreeService, icswDeviceTreeHelperService,
+    icswTools,
+    icswDeviceTreeService, icswDeviceTreeHelperService, $rootScope,
 ) ->
     # struct to hand over to VarCtrl
     $scope.struct = {
@@ -69,6 +69,13 @@ device_asset_module = angular.module(
         # data loaded
         data_loaded: false
     }
+
+    $scope.predicates = ['firstName', 'lastName', 'birthDate', 'balance', 'email'];
+    $scope.selectedPredicate = $scope.predicates[0];
+
+    $scope.addRandomItem = (id) ->
+        console.log "ttttt", id
+
     a = $q.defer()
     b = $q.defer()
     c = $q.defer()
@@ -99,6 +106,10 @@ device_asset_module = angular.module(
     $scope.$on("$destroy", () ->
         console.log "asset destroyed"
     )
+
+    $rootScope.assets = []
+    $rootScope.assets_sf = []
+
     $scope.new_devsel = (devs) ->
         $q.all(
             [
@@ -110,7 +121,77 @@ device_asset_module = angular.module(
                 $scope.struct.devices.length = 0
                 for entry in devs
                     $scope.struct.devices.push(entry)
-                $scope.struct.data_loaded = true
-        )
 
+                $rootScope.assets = []
+                $rootScope.assets_sf = []
+                console.log "reseting assets"
+
+                hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, $scope.struct.devices)
+                $scope.struct.device_tree.enrich_devices(hs, ["asset_info"]).then(
+                    (data) ->
+                        console.log "len: ", $rootScope.assets.length
+
+                        hm = {}
+
+
+                        for dev in $scope.struct.devices
+                            dev.assetrun_set_sf_src = []
+                            for ar in dev.assetrun_set
+                                dev.assetrun_set_sf_src.push(ar)
+                                for pack in ar.packages
+                                    hm[pack.idx] = pack
+
+                        console.log "hm: ", hm
+                        for k, v of hm
+                            $rootScope.assets.push(v)
+                            $rootScope.assets_sf.push(v)
+
+                        console.log "lenAfter: ", $rootScope.assets.length
+                        console.log "assets loaded"
+                        $scope.struct.data_loaded = true
+                )
+        )
+]).filter('strictFilter'
+[
+    "$filter",
+(
+    $filter
+) ->
+    return (input, predicate) ->
+        console.log "input:", input
+        console.log "predicate:" , predicate
+
+        strict = true
+        if (predicate.hasOwnProperty("run_index"))
+            predicate.run_index = parseInt(predicate.run_index)
+        if (predicate.hasOwnProperty("run_type"))
+            predicate.run_type = parseInt(predicate.run_type)
+        if (predicate.hasOwnProperty("$"))
+            strict = false
+
+        return $filter('filter')(input, predicate, strict);
+
+]).filter('unique'
+[
+    "$filter",
+(
+    $filter
+) ->
+    return (arr, field) ->
+        console.log "* arr:", arr
+        console.log "* field:", field
+        o = {}
+        l = arr.length
+        r = []
+
+        for i in [0...l]
+            o[arr[i][field]] = arr[i]
+
+
+        for i in o
+            r.push(o[i])
+
+        console.log "*r: ", r
+
+        return r
 ])

@@ -47,6 +47,7 @@ from initat.cluster.backbone.serializers import netdevice_serializer, ComCapabil
     SensorThresholdSerializer, package_device_connection_serializer
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from initat.tools import logging_tools, server_command, process_tools
+from initat.cluster.backbone.models.asset import AssetRun, AssetRunSerializer
 
 logger = logging.getLogger("cluster.device")
 
@@ -421,6 +422,26 @@ class DiskEnrichment(object):
         ]
         return _data
 
+class AssetEnrichment(object):
+    def fetch(self, pk_list):
+        # get reference list
+        _ref_list = AssetRun.objects.filter(
+            Q(device__in=pk_list)
+        ).values("pk", "device__pk")
+        _result = {
+            _el.pk: _el for _el in AssetRun.objects.filter(
+                Q(device__in=pk_list)
+            )
+        }
+        # manually unroll n2m relations
+        _data = [
+            AssetRunSerializer(
+                _result[_ref["pk"]],
+                context={"device": _ref["device__pk"]}
+            ).data for _ref in _ref_list
+        ]
+        return _data
+
 
 class DeviceConnectionEnrichment(object):
     def fetch(self, pk_list):
@@ -481,6 +502,7 @@ class EnrichmentHelper(object):
         self._all["device_connection_info"] = DeviceConnectionEnrichment()
         self._all["sensor_threshold_info"] = SensorThresholdEnrichment()
         self._all["package_info"] = EnrichmentObject(package_device_connection, package_device_connection_serializer)
+        self._all["asset_info"] = AssetEnrichment()
 
     def create(self, key, pk_list):
         if key not in self._all:

@@ -108,5 +108,9 @@ class ComCapability(models.Model):
         ipmi = 2
         snmp = 3
         wmi = 4
+<<<<<<< HEAD
         asu = 5
         nrpe = 6
+=======
+        nrpe = 5
+>>>>>>> master-gulp-windows-monitoring

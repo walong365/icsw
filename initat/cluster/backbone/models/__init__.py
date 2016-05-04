@@ -70,6 +70,7 @@ from initat.cluster.backbone.models.status_history import *  # @UnusedWildImport
 from initat.cluster.backbone.models.dispatch import *  # @UnusedWildImport
 from initat.cluster.backbone.signals import UserChanged, GroupChanged, \
     BootsettingsChanged, VirtualDesktopUserSettingChanged, SensorThresholdChanged
+from initat.cluster.backbone.models.asset import *
 import initat.cluster.backbone.models.model_history
 
 
