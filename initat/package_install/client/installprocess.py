@@ -385,14 +385,18 @@ class InstallProcess(threading_tools.process_obj):
     def get_always_latest(self, pack_xml):
         return int(pack_xml.attrib.get("always_latest", "0"))
 
-    def package_name(self, pack_xml):
+    def package_name(self, pack_xml, is_debian=False, short=False):
         if self.get_always_latest(pack_xml):
             return pack_xml.attrib["name"]
         else:
-            return "{}-{}".format(
-                pack_xml.attrib["name"],
-                pack_xml.attrib["version"],
-            )
+            if short:
+                return pack_xml.attrib["name"]
+            else:
+                return "{}{}{}".format(
+                    pack_xml.attrib["name"],
+                    "=" if is_debian else "-",
+                    pack_xml.attrib["version"],
+                )
 
     def _clear_cache(self):
         self.package_commands.append(E.special_command(send_return="0", command="refresh", init="0"))
@@ -415,7 +419,7 @@ class DebianInstallProcess(InstallProcess):
             pack_xml = cur_pdc[0]
             _pp_command = "/usr/bin/dpkg-query -W -f \"{}\" {}".format(
                 DEB_QUERY_FORMAT,
-                self.package_name(pack_xml),
+                self.package_name(pack_xml, is_debian=True, short=True),
             )
             if cur_pdc.attrib["target_state"] == "keep":
                 # check install state
@@ -500,7 +504,7 @@ class DebianInstallProcess(InstallProcess):
             "upgrade": _opts,
             "erase": _opts,
         }.get(cur_pdc.attrib["target_state"])
-        package_name = self.package_name(pack_xml)
+        package_name = self.package_name(pack_xml, is_debian=True)
         always_latest = self.get_always_latest(pack_xml)
         if (is_installed and deb_com in ["install"]) or (not is_installed and deb_com in ["remove"]):
             self.log("doing nothing, running post_command")
