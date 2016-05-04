@@ -49,6 +49,14 @@ class DiscoverySource(IntEnum):
     ASU = 2
     IPMI = 3
 
+    PACKAGE = 4
+    HARDWARE = 5
+    LICENSE = 6
+    UPDATE = 7
+    SOFTWARE_VERSION = 8
+    PROCESS = 9
+    PENDING_UPDATE = 10
+
     def get_maximal_concurrent_runs(self):
         # TODO: move to database?
         if self == DiscoverySource.ASU:

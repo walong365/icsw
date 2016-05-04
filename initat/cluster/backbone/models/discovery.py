@@ -50,7 +50,7 @@ class DiscoverySource(IntEnum):
             return 1
 
 
-class DispatchSetting(models.Model):
+class DiscoDispatchSetting(models.Model):
     class DurationUnits(IntEnum):
         # as understood by dateutil.relativedelta
         months = 1
@@ -94,7 +94,7 @@ class _ScanHistoryManager(models.Manager):
         return cache
 
 
-class ScanHistory(models.Model):
+class DiscoScanHistory(models.Model):
     objects = _ScanHistoryManager()
     idx = models.AutoField(primary_key=True)
     date = models.DateTimeField(default=django.utils.timezone.now)  # auto_add_now breaks factory boy

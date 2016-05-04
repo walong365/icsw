@@ -21,7 +21,7 @@
 import operator
 from collections import defaultdict
 
-from initat.cluster.backbone.models.discovery import DispatchSetting, ScanHistory
+from initat.cluster.backbone.models.dispatch import DispatchSetting, ScanHistory
 
 
 class DiscoveryDispatcher(object):

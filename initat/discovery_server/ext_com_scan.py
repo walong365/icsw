@@ -402,7 +402,7 @@ import pytz
 import datetime
 
 from initat.cluster.backbone.models.asset import AssetRun, RunStatus, AssetType, ScanType
-from initat.cluster.backbone.models.discovery import DispatchSetting, DiscoverySource
+from initat.cluster.backbone.models.dispatch import DispatchSetting, DiscoverySource
 from initat.discovery_server.dispatcher import DiscoveryDispatcher
 
 
