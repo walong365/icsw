@@ -21,13 +21,17 @@
 from collections import defaultdict
 
 import dateutil.relativedelta
+import dateutil.rrule
 import django.utils.timezone
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Avg
+from django.db.models import signals
+from django.dispatch import receiver
 from enum import IntEnum
-import dateutil.rrule
 
 from initat.cluster.backbone.models.functions import memoize_with_expiry
+from .functions import check_integer
 
 
 __all__ = [
@@ -72,6 +76,9 @@ class DispatcherSettingSchedule(models.Model):
     # creation date
     date = models.DateTimeField(auto_now_add=True)
 
+    def __unicode__(self):
+        return "Schedule {}".format(self.name)
+
 
 class DispatcherSetting(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -84,7 +91,7 @@ class DispatcherSetting(models.Model):
     # create user or null
     user = models.ForeignKey("backbone.user", null=True)
     # which ComCaps to use
-    com_capabilities = models.ManyToManyField("backbone.ComCapability")
+    com_capabilities = models.ManyToManyField("backbone.ComCapability", blank=True)
     # schedule settings
     run_schedule = models.ForeignKey("backbone.DispatcherSettingSchedule")
     # multiplicator for run_schedule, must be greater than 0
@@ -104,6 +111,39 @@ class DispatcherSetting(models.Model):
     sched_start_month = models.IntegerField(default=None, null=True)
     # creation date
     date = models.DateTimeField(auto_now_add=True)
+
+
+@receiver(signals.pre_save, sender=DispatcherSetting)
+def DispatcherSettingPreSave(sender, **kwargs):
+    if "instance" in kwargs:
+        _cur_inst = kwargs["instance"]
+        check_integer(_cur_inst, "mult", min_val=1, max_val=365)
+        if not _cur_inst.is_system:
+            if not _cur_inst.user:
+                raise ValidationError("Need user for non-system schedule")
+        _sched = _cur_inst.run_schedule.name
+        _check = _sched == "year"
+        for _name, _min, _max in [
+            # ordering is important
+            ("month", 1, 12),
+            ("week", 1, 53),
+            ("day", 0, 6),
+            ("hour", 0, 23),
+            ("minute", 0, 59),
+            ("second", 0, 59),
+        ]:
+            _attr_name = "sched_start_{}".format(_name)
+            _val = getattr(_cur_inst, _attr_name)
+            if _check:
+                if _val is None:
+                    _val = _min
+                    setattr(_cur_inst, _attr_name, _val)
+                check_integer(_cur_inst, _attr_name, min_val=_min, max_val=_max)
+            # print _check, _name, _val, _sched
+            if _name == _sched:
+                _check = True
+            # if _val is not None:
+        print _cur_inst.sched_start_second
 
 
 class DispatchSetting(models.Model):

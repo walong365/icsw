@@ -667,4 +667,18 @@ angular.module(
                 "esc_period", "nrecovery", "ndown", "nunreachable",
                 "nflapping", "nplanned_downtime",
             ]
+]).service("icswDispatcherSettingBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswDispatcherSettingBackupDefinition extends icswBackupDefinition
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "name", "description", "is_system", "user", "run_schedule",
+                "mult", "sched_start_second", "sched_start_minute",
+                "sched_start_hour", "sched_start_day", "sched_start_week",
+                "sched_start_month",
+            ]
+            @list_attributes = [
+                "com_capabilities",
+            ]
 ])

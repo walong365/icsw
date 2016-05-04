@@ -266,7 +266,7 @@ monitoring_basic_module = angular.module(
             Restangular.restangularizeElement(null, del_not, ICSW_URLS.REST_MON_NOTIFICATION_DETAIL.slice(1).slice(0, -2))
             del_not.remove().then(
                 (removed) =>
-                    _.remove(@mon_notification_list, (entry) -> return entry.idx == del_per.idx)
+                    _.remove(@mon_notification_list, (entry) -> return entry.idx == del_not.idx)
                     d.resolve("deleted")
                 (not_removed) ->
                     d.resolve("not deleted")

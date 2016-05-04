@@ -45,12 +45,25 @@ monitoring_device_module = angular.module(
                     icon: "fa-laptop"
                     ordering: 10
         }
+    ).state(
+        "main.schedoverview", {
+            url: "/sched/overview"
+            template: "<icsw-schedule-overview></icsw-schedule-overview>"
+            icswData:
+                pageTitle: "Schedule settings"
+                # rights: ["mon_check_command.setup_monitoring", "device.change_monitoring"]
+                menuEntry:
+                    menukey: "sched"
+                    name: "Settings"
+                    icon: "fa-laptop"
+                    ordering: 10
+        }
     )
 ]).service("icswDispatcherSettingTree",
 [
-    "$q",
+    "$q", "Restangular", "ICSW_URLS",
 (
-    $q,
+    $q, Restangular, ICSW_URLS,
 ) ->
     class icswDispatcherSettingTree
         constructor: (list, schedule_list) ->
@@ -65,14 +78,67 @@ monitoring_device_module = angular.module(
             @schedule_list.length = 0
             for entry in schedule_list
                 @schedule_list.push(entry)
+
+            @build_luts()
+
+        build_luts: () =>
             @lut = _.keyBy(@list, "idx")
             @schedule_lut = _.keyBy(@schedule_list, "idx")
-            @link
+            @link()
 
         link: () =>
+            _cf = ["year", "month", "week", "day", "hour", "minute", "second"]
+            # create fields for schedule_setting form handling
+            for entry in @schedule_list
+                _take = false
+                for _se in _cf
+                    if _take
+                        entry["$$filter_#{_se}"] = true
+                    else
+                        entry["$$filter_#{_se}"] = false
+                    if entry.name == _se
+                        _take = true
             # create some simple links
             for entry in @list
                 entry.$$run_schedule = @schedule_lut[entry.run_schedule]
+            
+        create_dispatcher_setting: (new_obj) =>
+            d = $q.defer()
+            Restangular.all(ICSW_URLS.REST_DISPATCHER_SETTING_LIST.slice(1)).post(new_obj).then(
+                (created) =>
+                    @list.push(created)
+                    @build_luts()
+                    d.resolve(created)
+                (not_cr) =>
+                    d.reject("not created")
+            )
+            return d.promise
+
+        save_dispatcher_setting: (save_obj) =>
+            d = $q.defer()
+            save_obj.put().then(
+                (saved) =>
+                    _.remove(@list, (entry) -> return entry.idx == save_obj.idx)
+                    @list.push(save_obj)
+                    @build_luts()
+                    d.resolve(saved)
+                (not_cr) =>
+                    d.reject("not saved")
+            )
+            return d.promise
+
+        delete_dispatcher_setting: (del_obj) =>
+            d = $q.defer()
+            Restangular.restangularizeElement(null, del_obj, ICSW_URLS.REST_DISPATCHER_SETTING_DETAIL.slice(1).slice(0, -2))
+            del_obj.remove().then(
+                (removed) =>
+                    _.remove(@list, (entry) -> return entry.idx == del_obj.idx)
+                    @build_luts()
+                    d.resolve("deleted")
+                (not_removed) ->
+                    d.resolve("not deleted")
+            )
+            return d.promise
 
 ]).service("icswDispatcherSettingTreeService",
 [
@@ -140,6 +206,142 @@ monitoring_device_module = angular.module(
         "reload": (client) ->
             return load_data(client).promise
     }
+]).directive('icswScheduleOverview',
+[
+    "ICSW_URLS", "Restangular",
+(
+    ICSW_URLS, Restangular
+) ->
+    return {
+        restrict: "EA"
+        templateUrl: "icsw.schedule.overview"
+        controller: "icswScheduleOverviewCtrl"
+    }
+]).controller("icswScheduleOverviewCtrl",
+[
+    "$scope", "icswDeviceTreeService", "$q", "icswMonitoringBasicTreeService", "icswComplexModalService",
+    "$templateCache", "$compile", "icswDispatcherSettingBackup", "toaster", "blockUI", "Restangular",
+    "ICSW_URLS", "icswConfigTreeService", "icswDispatcherSettingTreeService",
+    "icswToolsSimpleModalService", "icswUserService", "icswUserGroupTreeService",
+(
+    $scope, icswDeviceTreeService, $q, icswMonitoringBasicTreeService, icswComplexModalService,
+    $templateCache, $compile, icswDispatcherSettingBackup, toaster, blockUI, Restangular,
+    ICSW_URLS, icswConfigTreeService, icswDispatcherSettingTreeService,
+    icswToolsSimpleModalService, icswUserService, icswUserGroupTreeService,
+) ->
+    $scope.struct = {
+        # loading
+        loading: false
+        # dispatch tree
+        dispatch_tree: undefined
+        # user
+        user: undefined
+        # user and group tree
+        user_group_tree: undefined
+    }
+    _load = () ->
+        $scope.struct.loading = true
+        $q.all(
+            [
+                icswDispatcherSettingTreeService.load($scope.$id)
+                icswUserService.load($scope.id)
+                icswUserGroupTreeService.load($scope.$id)
+            ]
+        ).then(
+            (data) ->
+                $scope.struct.dispatch_tree = data[0]
+                $scope.struct.user = data[1]
+                $scope.struct.user_group_tree = data[2]
+                # get monitoring masters and slaves
+                $scope.struct.loading = false
+        )
+    _load()
+
+    $scope.delete = ($event, obj) ->
+        icswToolsSimpleModalService("Really delete Schedule '#{obj.name}' ?").then(
+            () =>
+                blockUI.start("deleting...")
+                $scope.struct.dispatch_tree.delete_dispatcher_setting(obj).then(
+                    (ok) ->
+                        console.log "schedule deleted"
+                        blockUI.stop()
+                    (notok) ->
+                        blockUI.stop()
+                )
+        )
+        
+    $scope.create_or_edit = ($event, obj, create) ->
+        if create
+            obj = {
+                name: "new schedule"
+                description: "New schedule"
+                mult: 1
+                user: $scope.struct.user.idx
+                is_system: false
+                run_schedule: (entry.idx for entry in $scope.struct.dispatch_tree.schedule_list when entry.name == "week")[0]
+                sched_start_second: 0
+                sched_start_minute: 0
+                sched_start_hour: 0
+                sched_start_day: 0
+                sched_start_week: 1
+                sched_start_month: 1
+            }
+            _ok_label = "Create"
+        else
+            dbu = new icswDispatcherSettingBackup()
+            dbu.create_backup(obj)
+            _ok_label = "Modify"
+
+        sub_scope = $scope.$new(false)
+        sub_scope.edit_obj = obj
+        # copy references
+        sub_scope.dispatch_tree = $scope.struct.dispatch_tree
+
+        icswComplexModalService(
+            {
+                message: $compile($templateCache.get("icsw.schedule.dispatch.setting.form"))(sub_scope)
+                title: "Dispatcher settings for #{sub_scope.edit_obj.name}"
+                ok_label: _ok_label
+                ok_callback: (modal) ->
+                    d = $q.defer()
+                    if sub_scope.form_data.invalid
+                        toaster.pop("warning", "form validation problem", "", 0)
+                        d.reject("form not valid")
+                    else
+                        if create
+                            blockUI.start("creating schedule ...")
+                            $scope.struct.dispatch_tree.create_dispatcher_setting(sub_scope.edit_obj).then(
+                                (new_obj) ->
+                                    blockUI.stop()
+                                    d.resolve("created")
+                                (notok) ->
+                                    blockUI.stop()
+                                    d.reject("not created")
+                            )
+                        else
+                            blockUI.start("saving schedule ...")
+                            # hm, maybe not working ...
+                            $scope.struct.dispatch_tree.save_dispatcher_setting(sub_scope.edit_obj).then(
+                                (ok) ->
+                                    blockUI.stop()
+                                    d.resolve("saved")
+                                (not_ok) ->
+                                    blockUI.stop()
+                                    d.reject("not saved")
+                            )
+                    return d.promise
+                cancel_callback: (modal) ->
+                    if not create
+                        dbu.restore_backup(obj)
+                    d = $q.defer()
+                    d.resolve("cancel")
+                    return d.promise
+            }
+        ).then(
+            (fin) ->
+                $scope.struct.dispatch_tree.link()
+                sub_scope.$destroy()
+        )
 ]).directive('icswScheduleDevice',
 [
     "ICSW_URLS", "Restangular",
@@ -200,7 +402,7 @@ monitoring_device_module = angular.module(
     $scope.edit = ($event, obj) ->
         dbu = new icswDeviceMonitoringBackup()
         dbu.create_backup(obj)
-        
+
         sub_scope = $scope.$new(false)
         sub_scope.edit_obj = obj
         # copy references
