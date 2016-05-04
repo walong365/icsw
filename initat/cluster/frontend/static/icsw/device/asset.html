@@ -37,7 +37,7 @@
                     </th>
                 </tr>
                 <tr ng-if="$root.expanded" ng-repeat="package in $root.assets">
-                    <td></td>
+                    <td><button ng-click="$scope.lel">Show Devices</button></td>
                     <td>{{ package.name }}</td>
                     <td>{{ package.version }}</td>
                     <td>{{ package.release }}</td>

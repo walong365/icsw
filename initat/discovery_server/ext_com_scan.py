@@ -469,6 +469,7 @@ LIST_HARDWARE_CMD = "list-hardware-lstopo-py3"
 
 from initat.tools import logging_tools, process_tools, server_command, net_tools
 from initat.icsw.service.instance import InstanceXML
+from initat.cluster.backbone.models.dispatch import DeviceDispatcherLink, DispatcherSettingScheduleEnum
 
 class Dispatcher(object):
     def __init__(self, discovery_process):
@@ -483,18 +484,51 @@ class Dispatcher(object):
     def dispatch_call(self):
         _now = datetime.datetime.now(tz=pytz.utc)
         _plus_one_hour = _now + datetime.timedelta(hours=1)
-        _plus_five_min = _now + datetime.timedelta(minutes=5)
-
-        #recalculate every hour
+        #recalculate every minute
         if not self.last_recalculate or _now > self.next_recalculate:
-            print "recalculating"
-            dd = DiscoveryDispatcher()
-            self.schedule_items = dd.calculate(_now, _plus_one_hour)
+            print "*" * 10
+            print "**** recalculating"
+            print "*" * 10
             self.last_recalculate = _now
-            self.next_recalculate = _plus_five_min
+            self.next_recalculate = _plus_one_hour
 
-            #for item in sorted(self.schedule_items, key=lambda si: si.expected_run_date):
-            #    print item
+            links = DeviceDispatcherLink.objects.all()
+
+            schedules = []
+
+            for link in links:
+                device = link.device
+                ds = link.dispatcher_setting
+                com_capabilities = ds.com_capabilities.all()
+                print "%s %s %s" % (device, ds.run_schedule, com_capabilities)
+
+                __now = _now
+                for i in range(60 * 60 * 60):
+                    if __now > _plus_one_hour:
+                        break
+                    #todo source set to package for now (-> in future all runs should be performed on each machine)
+                    schedules.append(_ScheduleItem(device, DiscoverySource.PACKAGE, __now))
+                    if ds.run_schedule.baseline == DispatcherSettingScheduleEnum.second:
+                        __now += datetime.timedelta(seconds=(1 * ds.mult))
+                    elif ds.run_schedule.baseline == DispatcherSettingScheduleEnum.minute:
+                        __now += datetime.timedelta(minutes=(1 * ds.mult))
+                    elif ds.run_schedule.baseline == DispatcherSettingScheduleEnum.hour:
+                        __now += datetime.timedelta(hours=(1 * ds.mult))
+                    else:
+                        #todo implement me properly
+                        raise NotImplementedError("Not done yet...")
+
+            self.schedule_items = []
+            for sched in sorted(schedules, key=lambda s: s.planned_date):
+                self.schedule_items.append(sched)
+
+#            dd = DiscoveryDispatcher()
+#            self.schedule_items = dd.calculate(_now, _plus_one_hour)
+#            self.last_recalculate = _now
+#            self.next_recalculate = _plus_five_min
+
+#            for item in sorted(self.schedule_items, key=lambda si: si.expected_run_date):
+#               print item
 
         while self.schedule_items:
             schedule_item = self.schedule_items.pop(0)
@@ -599,6 +633,7 @@ class Dispatcher(object):
                             s = res_list[0]["update_list"].text
 
                         asset_run.raw_result_str = s
+                        asset_run.generate_assets_new()
                         asset_run.save()
                         self.device_running_ext_coms[_device] = 0
 
@@ -685,3 +720,18 @@ class Dispatcher(object):
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         print what
+
+class _ScheduleItem(object):
+    def __init__(self, device, source, planned_date):
+        """
+        :type dispatch_setting: DispatchSetting
+        """
+        # date always means datetime
+        self.device = device
+        self.source = source
+        self.planned_date = planned_date  # naive date according to interval
+
+    def __repr__(self):
+        return "ScheduleItem(dev={}, src={}, planned={})".format(
+            self.device, self.source, self.planned_date
+        )
