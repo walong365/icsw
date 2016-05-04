@@ -66,7 +66,7 @@ monitoring_device_module = angular.module(
     $q, Restangular, ICSW_URLS,
 ) ->
     class icswDispatcherSettingTree
-        constructor: (list, schedule_list) ->
+        constructor: (list, schedule_list, @com_cap_tree) ->
             @list = []
             @schedule_list = []
             @update(list, schedule_list)
@@ -117,7 +117,15 @@ monitoring_device_module = angular.module(
                 if _rs.$$filter_month
                     offset = "#{entry.sched_start_month} #{offset}"
                 entry.$$start_offset = offset
-            
+                # create comcap list
+                if entry.com_capabilities.length
+                    entry.$$com_caps = (@com_cap_tree.lut[_cc].name for _cc in entry.com_capabilities).join(", ")
+                else
+                    if entry.is_system
+                        entry.$$com_caps = "all"
+                    else
+                        entry.$$com_caps = "---"
+
         create_dispatcher_setting: (new_obj) =>
             d = $q.defer()
             Restangular.all(ICSW_URLS.REST_DISPATCHER_SETTING_LIST.slice(1)).post(new_obj).then(
@@ -159,10 +167,10 @@ monitoring_device_module = angular.module(
 ]).service("icswDispatcherSettingTreeService",
 [
     "$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall", "icswTools",
-    "icswDispatcherSettingTree", "$rootScope", "ICSW_SIGNALS",
+    "icswDispatcherSettingTree", "$rootScope", "ICSW_SIGNALS", "icswComCapabilityTreeService",
 (
     $q, Restangular, ICSW_URLS, $window, icswCachingCall, icswTools,
-    icswDispatcherSettingTree, $rootScope, ICSW_SIGNALS
+    icswDispatcherSettingTree, $rootScope, ICSW_SIGNALS, icswComCapabilityTreeService,
 ) ->
     rest_map = [
         [
@@ -184,6 +192,7 @@ monitoring_device_module = angular.module(
     load_data = (client) ->
         load_called = true
         _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in rest_map)
+        _wait_list.push(icswComCapabilityTreeService.load(client))
         _defer = $q.defer()
         $q.all(_wait_list).then(
             (data) ->
@@ -191,7 +200,91 @@ monitoring_device_module = angular.module(
                 if _result?
                     _result.update(data[0], data[1])
                 else
-                    _result = new icswDispatcherSettingTree(data[0], data[1])
+                    _result = new icswDispatcherSettingTree(data[0], data[1], data[2])
+                _defer.resolve(_result)
+                for client of _fetch_dict
+                    # resolve clients
+                    _fetch_dict[client].resolve(_result)
+                # reset fetch_dict
+                _fetch_dict = {}
+        )
+        return _defer
+
+    fetch_data = (client) ->
+        if client not of _fetch_dict
+            # register client
+            _defer = $q.defer()
+            _fetch_dict[client] = _defer
+        if _result
+            # resolve immediately
+            _fetch_dict[client].resolve(_result)
+        return _fetch_dict[client]
+
+    return {
+        "load": (client) ->
+            # loads from server
+            if load_called
+                # fetch when data is present (after sidebar)
+                return fetch_data(client).promise
+            else
+                return load_data(client).promise
+        "reload": (client) ->
+            return load_data(client).promise
+    }
+]).service("icswComCapabilityTree",
+[
+    "$q",
+(
+    $q,
+) ->
+    class icswComCapabilityTree
+        constructor: (list) ->
+            @list = []
+            @update(list)
+
+        update: (list) =>
+            @list.length = 0
+            for entry in list
+                @list.push(entry)
+            @build_luts()
+
+        build_luts: () =>
+            @lut = _.keyBy(@list, "idx")
+            @link()
+
+        link: () =>
+
+]).service("icswComCapabilityTreeService",
+[
+    "$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall", "icswTools",
+    "icswComCapabilityTree", "$rootScope", "ICSW_SIGNALS",
+(
+    $q, Restangular, ICSW_URLS, $window, icswCachingCall, icswTools,
+    icswComCapabilityTree, $rootScope, ICSW_SIGNALS
+) ->
+    rest_map = [
+        [
+            # setting list
+            ICSW_URLS.REST_COM_CAPABILITY_LIST
+            {}
+        ]
+    ]
+    _fetch_dict = {}
+    _result = undefined
+    # load called
+    load_called = false
+
+    load_data = (client) ->
+        load_called = true
+        _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in rest_map)
+        _defer = $q.defer()
+        $q.all(_wait_list).then(
+            (data) ->
+                console.log "*** ComCapability tree loaded ***"
+                if _result?
+                    _result.update(data[0])
+                else
+                    _result = new icswComCapabilityTree(data[0])
                 _defer.resolve(_result)
                 for client of _fetch_dict
                     # resolve clients
@@ -237,12 +330,12 @@ monitoring_device_module = angular.module(
 [
     "$scope", "icswDeviceTreeService", "$q", "icswMonitoringBasicTreeService", "icswComplexModalService",
     "$templateCache", "$compile", "icswDispatcherSettingBackup", "toaster", "blockUI", "Restangular",
-    "ICSW_URLS", "icswConfigTreeService", "icswDispatcherSettingTreeService",
+    "ICSW_URLS", "icswConfigTreeService", "icswDispatcherSettingTreeService", "icswComCapabilityTreeService",
     "icswToolsSimpleModalService", "icswUserService", "icswUserGroupTreeService",
 (
     $scope, icswDeviceTreeService, $q, icswMonitoringBasicTreeService, icswComplexModalService,
     $templateCache, $compile, icswDispatcherSettingBackup, toaster, blockUI, Restangular,
-    ICSW_URLS, icswConfigTreeService, icswDispatcherSettingTreeService,
+    ICSW_URLS, icswConfigTreeService, icswDispatcherSettingTreeService, icswComCapabilityTreeService,
     icswToolsSimpleModalService, icswUserService, icswUserGroupTreeService,
 ) ->
     $scope.struct = {
@@ -250,6 +343,8 @@ monitoring_device_module = angular.module(
         loading: false
         # dispatch tree
         dispatch_tree: undefined
+        # comcap tree
+        com_cap_tree: undefined
         # user
         user: undefined
         # user and group tree
@@ -262,12 +357,14 @@ monitoring_device_module = angular.module(
                 icswDispatcherSettingTreeService.load($scope.$id)
                 icswUserService.load($scope.id)
                 icswUserGroupTreeService.load($scope.$id)
+                icswComCapabilityTreeService.load($scope.$id)
             ]
         ).then(
             (data) ->
                 $scope.struct.dispatch_tree = data[0]
                 $scope.struct.user = data[1]
                 $scope.struct.user_group_tree = data[2]
+                $scope.struct.com_cap_tree = data[3]
                 # get monitoring masters and slaves
                 $scope.struct.loading = false
         )
@@ -301,6 +398,7 @@ monitoring_device_module = angular.module(
                 sched_start_day: 0
                 sched_start_week: 1
                 sched_start_month: 1
+                com_capabilities: []
             }
             _ok_label = "Create"
         else
@@ -312,6 +410,7 @@ monitoring_device_module = angular.module(
         sub_scope.edit_obj = obj
         # copy references
         sub_scope.dispatch_tree = $scope.struct.dispatch_tree
+        sub_scope.com_cap_tree = $scope.struct.com_cap_tree
 
         icswComplexModalService(
             {

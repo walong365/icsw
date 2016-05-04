@@ -90,7 +90,7 @@ class DispatcherSetting(models.Model):
     is_system = models.BooleanField(default=False)
     # create user or null
     user = models.ForeignKey("backbone.user", null=True)
-    # which ComCaps to use
+    # which ComCaps to use, use all when not set and is_system
     com_capabilities = models.ManyToManyField("backbone.ComCapability", blank=True)
     # schedule settings
     run_schedule = models.ForeignKey("backbone.DispatcherSettingSchedule")
