@@ -46,6 +46,100 @@ monitoring_device_module = angular.module(
                     ordering: 10
         }
     )
+]).service("icswDispatcherSettingTree",
+[
+    "$q",
+(
+    $q,
+) ->
+    class icswDispatcherSettingTree
+        constructor: (list, schedule_list) ->
+            @list = []
+            @schedule_list = []
+            @update(list, schedule_list)
+
+        update: (list, schedule_list) =>
+            @list.length = 0
+            for entry in list
+                @list.push(entry)
+            @schedule_list.length = 0
+            for entry in schedule_list
+                @schedule_list.push(entry)
+            @lut = _.keyBy(@list, "idx")
+            @schedule_lut = _.keyBy(@schedule_list, "idx")
+            @link
+
+        link: () =>
+            # create some simple links
+            for entry in @list
+                entry.$$run_schedule = @schedule_lut[entry.run_schedule]
+
+]).service("icswDispatcherSettingTreeService",
+[
+    "$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall", "icswTools",
+    "icswDispatcherSettingTree", "$rootScope", "ICSW_SIGNALS",
+(
+    $q, Restangular, ICSW_URLS, $window, icswCachingCall, icswTools,
+    icswDispatcherSettingTree, $rootScope, ICSW_SIGNALS
+) ->
+    rest_map = [
+        [
+            # setting list
+            ICSW_URLS.REST_DISPATCHER_SETTING_LIST
+            {}
+        ]
+        [
+            # setting schedule list
+            ICSW_URLS.REST_DISPATCHER_SETTING_SCHEDULE_LIST
+            {}
+        ]
+    ]
+    _fetch_dict = {}
+    _result = undefined
+    # load called
+    load_called = false
+
+    load_data = (client) ->
+        load_called = true
+        _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in rest_map)
+        _defer = $q.defer()
+        $q.all(_wait_list).then(
+            (data) ->
+                console.log "*** dispatcher setting tree loaded ***"
+                if _result?
+                    _result.update(data[0], data[1])
+                else
+                    _result = new icswDispatcherSettingTree(data[0], data[1])
+                _defer.resolve(_result)
+                for client of _fetch_dict
+                    # resolve clients
+                    _fetch_dict[client].resolve(_result)
+                # reset fetch_dict
+                _fetch_dict = {}
+        )
+        return _defer
+
+    fetch_data = (client) ->
+        if client not of _fetch_dict
+            # register client
+            _defer = $q.defer()
+            _fetch_dict[client] = _defer
+        if _result
+            # resolve immediately
+            _fetch_dict[client].resolve(_result)
+        return _fetch_dict[client]
+
+    return {
+        "load": (client) ->
+            # loads from server
+            if load_called
+                # fetch when data is present (after sidebar)
+                return fetch_data(client).promise
+            else
+                return load_data(client).promise
+        "reload": (client) ->
+            return load_data(client).promise
+    }
 ]).directive('icswScheduleDevice',
 [
     "ICSW_URLS", "Restangular",
@@ -61,11 +155,11 @@ monitoring_device_module = angular.module(
 [
     "$scope", "icswDeviceTreeService", "$q", "icswMonitoringBasicTreeService", "icswComplexModalService",
     "$templateCache", "$compile", "icswDeviceMonitoringBackup", "toaster", "blockUI", "Restangular",
-    "ICSW_URLS", "icswConfigTreeService",
+    "ICSW_URLS", "icswConfigTreeService", "icswDispatcherSettingTreeService",
 (
     $scope, icswDeviceTreeService, $q, icswMonitoringBasicTreeService, icswComplexModalService,
     $templateCache, $compile, icswDeviceMonitoringBackup, toaster, blockUI, Restangular,
-    ICSW_URLS, icswConfigTreeService,
+    ICSW_URLS, icswConfigTreeService, icswDispatcherSettingTreeService,
 ) ->
     $scope.struct = {
         # loading
@@ -74,6 +168,8 @@ monitoring_device_module = angular.module(
         device_tree: undefined
         # base monitoring tree
         base_tree: undefined
+        # dispatch tree
+        dispatch_tree: undefined
         # devices
         devices: []
         # monitor servers
@@ -86,11 +182,13 @@ monitoring_device_module = angular.module(
                 icswDeviceTreeService.load($scope.$id)
                 icswMonitoringBasicTreeService.load($scope.$id)
                 icswConfigTreeService.load($scope.$id)
+                icswDispatcherSettingTreeService.load($scope.$id)
             ]
         ).then(
             (data) ->
                 $scope.struct.device_tree = data[0]
                 $scope.struct.base_tree = data[1]
+                $scope.struct.dispatch_tree = data[3]
                 config_tree = data[2]
                 # get monitoring masters and slaves
                 $scope.struct.loading = false

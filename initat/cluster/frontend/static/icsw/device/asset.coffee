@@ -57,7 +57,7 @@ device_asset_module = angular.module(
     "icswDeviceTreeService", "icswDeviceTreeHelperService",
 (
     $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI,
-    icswTools,
+    icswTools, 
     icswDeviceTreeService, icswDeviceTreeHelperService,
 ) ->
     # struct to hand over to VarCtrl

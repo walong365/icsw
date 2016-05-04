@@ -36,7 +36,6 @@ angular.module(
             @gfx_list = []
             @dml_list = []
             @update(cat_list, ref_list, gfx_list, dml_list)
-            @build_luts()
 
         update: (new_list, ref_list, gfx_list, dml_list) ->
             # update with new data from server
