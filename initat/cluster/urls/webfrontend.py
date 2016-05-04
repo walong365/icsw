@@ -176,6 +176,7 @@ monitoring_patterns = [
         name="get_hist_device_line_graph_data"),
     url("^svg_to_png$", monitoring_views.svg_to_png.as_view(), name="svg_to_png"),
     url("^fetch_png/(?P<cache_key>\S+)$", monitoring_views.fetch_png_from_cache.as_view(), name="fetch_png_from_cache"),
+    url("^get_asset_list$", monitoring_views.get_asset_list.as_view(), name="get_asset_list"),
 ]
 
 user_patterns = [

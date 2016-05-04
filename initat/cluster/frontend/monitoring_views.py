@@ -620,3 +620,14 @@ class fetch_png_from_cache(View):
             return HttpResponse(_val, content_type="image/png")
         else:
             return HttpResponse("", content_type="image/png")
+
+
+from initat.cluster.backbone.models.asset import AssetPackage
+
+class get_asset_list(RetrieveAPIView):
+        def get(self, request, *args, **kwargs):
+            return Response(
+                {
+                    'assets': [(a.name, a.version, a.release) for a in AssetPackage.objects.all()],
+                }
+            )

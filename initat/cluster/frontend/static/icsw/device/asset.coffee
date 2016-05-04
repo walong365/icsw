@@ -54,11 +54,11 @@ device_asset_module = angular.module(
 [
     "$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "blockUI",
     "icswTools",
-    "icswDeviceTreeService", "icswDeviceTreeHelperService", "$rootScope"
+    "icswDeviceTreeService", "icswDeviceTreeHelperService", "$rootScope", "$http"
 (
     $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI,
     icswTools,
-    icswDeviceTreeService, icswDeviceTreeHelperService, $rootScope,
+    icswDeviceTreeService, icswDeviceTreeHelperService, $rootScope, $http
 ) ->
     # struct to hand over to VarCtrl
     $scope.struct = {
@@ -76,39 +76,59 @@ device_asset_module = angular.module(
     $scope.addRandomItem = (id) ->
         console.log "ttttt", id
 
-    a = $q.defer()
-    b = $q.defer()
-    c = $q.defer()
-    a.promise.then(
-        (bzwwez) ->
-            console.log "ok", bzwwez
-            b.resolve("ok")
-    )
-    c.promise.then(
-        (ok) ->
-        (error) ->
-            console.log "notoK"
-        (notify) ->
-            console.log "cnot", notify
-    )
-    b.promise.then(
-        (ok) ->
-            console.log "q"
-            c.reject("notok")
-    )
-    b.promise.then(
-        (ok) ->
-            console.log "second"
-    )
-    c.notify("1.")
-    c.notify("2.")
-    a.resolve("go")
-    $scope.$on("$destroy", () ->
-        console.log "asset destroyed"
-    )
+#    a = $q.defer()
+#    b = $q.defer()
+#    c = $q.defer()
+#    a.promise.then(
+#        (bzwwez) ->
+#            console.log "ok", bzwwez
+#            b.resolve("ok")
+#    )
+#    c.promise.then(
+#        (ok) ->
+#        (error) ->
+#            console.log "notoK"
+#        (notify) ->
+#            console.log "cnot", notify
+#    )
+#    b.promise.then(
+#        (ok) ->
+#            console.log "q"
+#            c.reject("notok")
+#    )
+#    b.promise.then(
+#        (ok) ->
+#            console.log "second"
+#    )
+#    c.notify("1.")
+#    c.notify("2.")
+#    a.resolve("go")
+#    $scope.$on("$destroy", () ->
+#        console.log "asset destroyed"
+#    )
 
     $rootScope.assets = []
     $rootScope.assets_sf = []
+
+    $http.get('/icsw/api/v2/mon/get_asset_list').then(
+        (result) ->
+            console.log "apidata: ", result.data
+            $rootScope.assets = []
+            $rootScope.assets_sf = []
+
+            angular.forEach result.data.assets, (item) ->
+                _pack = {
+                    name: undefined
+                    version: undefined
+                    release: undefined
+                }
+                _pack.name = item[0]
+                _pack.version = item[1]
+                _pack.release = item[2]
+                console.log "package: ", _pack
+                $rootScope.assets.push _pack
+                $rootScope.assets_sf.push _pack
+    )
 
     $scope.new_devsel = (devs) ->
         $q.all(
@@ -122,32 +142,31 @@ device_asset_module = angular.module(
                 for entry in devs
                     $scope.struct.devices.push(entry)
 
-                $rootScope.assets = []
-                $rootScope.assets_sf = []
-                console.log "reseting assets"
+#                $rootScope.assets = []
+#                $rootScope.assets_sf = []
+#                console.log "reseting assets"
 
                 hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, $scope.struct.devices)
                 $scope.struct.device_tree.enrich_devices(hs, ["asset_info"]).then(
                     (data) ->
-                        console.log "len: ", $rootScope.assets.length
-
-                        hm = {}
-
+#                       console.log "len: ", $rootScope.assets.length
+#
+#                       hm = {}
 
                         for dev in $scope.struct.devices
                             dev.assetrun_set_sf_src = []
                             for ar in dev.assetrun_set
                                 dev.assetrun_set_sf_src.push(ar)
-                                for pack in ar.packages
-                                    hm[pack.idx] = pack
+#                                for pack in ar.packages
+#                                    hm[pack.idx] = pack
 
-                        console.log "hm: ", hm
-                        for k, v of hm
-                            $rootScope.assets.push(v)
-                            $rootScope.assets_sf.push(v)
+#                        console.log "hm: ", hm
+#                        for k, v of hm
+#                            $rootScope.assets.push(v)
+#                            $rootScope.assets_sf.push(v)
 
-                        console.log "lenAfter: ", $rootScope.assets.length
-                        console.log "assets loaded"
+#                        console.log "lenAfter: ", $rootScope.assets.length
+#                        console.log "assets loaded"
                         $scope.struct.data_loaded = true
                 )
         )
