@@ -1,9 +1,9 @@
 #
-# Copyright (C) 2015-2016 Bernhard Mallinger, init.at
+# Copyright (C) 2015-2016 Bernhard Mallinger, Andreas Lang-Nevyjel, init.at
 #
 # this file is part of icsw-server
 #
-# Send feedback to: <mallinger@init.at>
+# Send feedback to: <mallinger@init.at>, <lang-nevyjel@init.at>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -25,8 +25,19 @@ import django.utils.timezone
 from django.db import models
 from django.db.models import Avg
 from enum import IntEnum
+import dateutil.rrule
 
 from initat.cluster.backbone.models.functions import memoize_with_expiry
+
+
+__all__ = [
+    "DispatcherSettingSchedule",
+    "DispatcherSettingScheduleEnum",
+    "DispatcherSetting",
+    "DispatchSetting",
+    "DiscoverySource",
+    "ScanHistory",
+]
 
 
 class DiscoverySource(IntEnum):
@@ -42,7 +53,61 @@ class DiscoverySource(IntEnum):
             return 5
 
 
+class DispatcherSettingScheduleEnum(IntEnum):
+    year = dateutil.rrule.YEARLY
+    month = dateutil.rrule.MONTHLY
+    week = dateutil.rrule.WEEKLY
+    day = dateutil.rrule.DAILY
+    hour = dateutil.rrule.HOURLY
+    minute = dateutil.rrule.MINUTELY
+    second = dateutil.rrule.SECONDLY
+
+
+class DispatcherSettingSchedule(models.Model):
+    idx = models.AutoField(primary_key=True)
+    # name
+    name = models.CharField(unique=True, default="", max_length=64)
+    # baseline
+    baseline = models.IntegerField(choices=[(rr.value, rr.name) for rr in DispatcherSettingScheduleEnum])
+    # creation date
+    date = models.DateTimeField(auto_now_add=True)
+
+
+class DispatcherSetting(models.Model):
+    idx = models.AutoField(primary_key=True)
+    # name
+    name = models.CharField(unique=True, default="", max_length=64)
+    # description
+    description = models.CharField(default="", blank=True, max_length=256)
+    # is system (== undeleteable) setting
+    is_system = models.BooleanField(default=False)
+    # create user or null
+    user = models.ForeignKey("backbone.user", null=True)
+    # which ComCaps to use
+    com_capabilities = models.ManyToManyField("backbone.ComCapability")
+    # schedule settings
+    run_schedule = models.ForeignKey("backbone.DispatcherSettingSchedule")
+    # multiplicator for run_schedule, must be greater than 0
+    mult = models.IntegerField(default=1)
+    # with second to run minutely, hourly, daily, weekly and so on schedules
+    sched_start_second = models.IntegerField(default=None, null=True)
+    # with minute to run hourly, daily, weekly and so on schedules
+    sched_start_minute = models.IntegerField(default=None, null=True)
+    sched_start_hour = models.IntegerField(default=None, null=True)
+    # 0 is sunday, 1 is monday, 6 is saturday
+    sched_start_day = models.IntegerField(default=None, null=True)
+    # which week to run yearly and monthly schedules
+    # 1 is the first week of the year
+    sched_start_week = models.IntegerField(default=None, null=True)
+    # which month to run yearly schedules
+    # 1 is january
+    sched_start_month = models.IntegerField(default=None, null=True)
+    # creation date
+    date = models.DateTimeField(auto_now_add=True)
+
+
 class DispatchSetting(models.Model):
+    # device relative setting, will be replaced
     class DurationUnits(IntEnum):
         # as understood by dateutil.relativedelta
         months = 1

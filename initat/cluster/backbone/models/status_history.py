@@ -1,4 +1,4 @@
-# Copyright (C) 2015 Bernhard Mallinger, init.at
+# Copyright (C) 2015-2016 Bernhard Mallinger, init.at
 #
 # this file is part of cluster-backbone-sql
 #

@@ -31,7 +31,7 @@ from initat.cluster.backbone.models import device, device_selection, device_conf
 from initat.cluster.backbone.serializers.background import *  # @UnusedWildImport
 from initat.cluster.backbone.serializers.capability import *  # @UnusedWildImport
 from initat.cluster.backbone.serializers.config import *  # @UnusedWildImport
-from initat.cluster.backbone.serializers.discovery import *  # @UnusedWildImport
+from initat.cluster.backbone.serializers.dispatch import *  # @UnusedWildImport
 from initat.cluster.backbone.serializers.domain import *  # @UnusedWildImport
 from initat.cluster.backbone.serializers.graph import *  # @UnusedWildImport
 from initat.cluster.backbone.serializers.hints import *  # @UnusedWildImport

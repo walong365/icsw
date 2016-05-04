@@ -55,7 +55,7 @@ from initat.cluster.backbone.models.config import *  # @UnusedWildImport
 from initat.cluster.backbone.models.monitoring import *  # @UnusedWildImport
 from initat.cluster.backbone.models.network import *  # @UnusedWildImport
 from initat.cluster.backbone.models.package import *  # @UnusedWildImport
-from initat.cluster.backbone.models.inventory import *  # @UnusedWildImport
+from initat.cluster.backbone.models.asset import *  # @UnusedWildImport
 from initat.cluster.backbone.models.user import *  # @UnusedWildImport
 from initat.cluster.backbone.models.background import *  # @UnusedWildImport
 from initat.cluster.backbone.models.hints import *  # @UnusedWildImport
@@ -67,9 +67,9 @@ from initat.cluster.backbone.models.selection import *  # @UnusedWildImport
 from initat.cluster.backbone.models.kpi import *  # @UnusedWildImport
 from initat.cluster.backbone.models.license import *  # @UnusedWildImport
 from initat.cluster.backbone.models.status_history import *  # @UnusedWildImport
+from initat.cluster.backbone.models.dispatch import *  # @UnusedWildImport
 from initat.cluster.backbone.signals import UserChanged, GroupChanged, \
     BootsettingsChanged, VirtualDesktopUserSettingChanged, SensorThresholdChanged
-from initat.cluster.backbone.models.discovery import *  # @UnusedWildImport
 import initat.cluster.backbone.models.model_history
 
 
