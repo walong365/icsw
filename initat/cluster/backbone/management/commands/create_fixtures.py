@@ -523,6 +523,12 @@ class Command(BaseCommand):
             info="Windows Management Instrumentation",
             port_spec="135/tcp",
         )
+        factories.ComCapability(
+            matchcode=ComCapability_Model.MatchCode.nrpe.name,
+            name="NRPE",
+            info="Nagios remote plugin execution",
+            port_spec="5666/tcp",
+        )
         # hints
         _server_cfg = factories.ConfigHint(
             config_name="server",

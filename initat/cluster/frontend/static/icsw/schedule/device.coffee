@@ -101,6 +101,22 @@ monitoring_device_module = angular.module(
             # create some simple links
             for entry in @list
                 entry.$$run_schedule = @schedule_lut[entry.run_schedule]
+                offset = ""
+                _rs = entry.$$run_schedule
+                # to be beautified
+                if _rs.$$filter_second
+                    offset = "#{entry.sched_start_second}"
+                if _rs.$$filter_minute
+                    offset = "#{entry.sched_start_minute}:#{offset}"
+                if _rs.$$filter_hour
+                    offset = "#{entry.sched_start_hour}:#{offset}"
+                if _rs.$$filter_day
+                    offset = "#{entry.sched_start_day} #{offset}"
+                if _rs.$$filter_week
+                    offset = "#{entry.sched_start_week} #{offset}"
+                if _rs.$$filter_month
+                    offset = "#{entry.sched_start_month} #{offset}"
+                entry.$$start_offset = offset
             
         create_dispatcher_setting: (new_obj) =>
             d = $q.defer()

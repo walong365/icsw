@@ -25,6 +25,7 @@
                 <th st-sort="description">Description</th>
                 <th>Created</th>
                 <th>Schedule</th>
+                <th>Startoffset</th>
                 <th colspan="1" class="text-center">Action</th>
             </tr>
         </thead>
@@ -38,6 +39,9 @@
                 </td>
                 <td>
                     {{ obj.mult }} {{ struct.dispatch_tree.schedule_lut[obj.run_schedule].name }}
+                </td>
+                <td class="text-right">
+                    {{ obj.$$start_offset }}
                 </td>
                 <td>
                     <icsw-tools-button ng-if="!obj.is_system" type="modify" size="xs" ng-click="create_or_edit($event, obj, false)"></icsw-tools-button>
