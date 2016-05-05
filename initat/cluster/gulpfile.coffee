@@ -46,7 +46,6 @@ clean_dest = require("gulp-clean-dest")
 del = require("del")
 wait = require("gulp-wait")
 strip_debug = require("gulp-strip-debug")
-run_sequence = require("run-sequence")
 fs = require("fs")
 
 class SourceMap
@@ -193,6 +192,8 @@ known_options = {
 
 options = minimist(process.argv.slice(2), known_options)
 
+# start with gulp <target> --production to enable production mode
+
 if not options.production
     options.production = false
 
@@ -279,17 +280,27 @@ create_task = (key) ->
     )
     return key
 
-gulp.task("staticbuild", (cb) ->
-    static_list = (create_task(key) for key of sources when sources[key].static)
-    return run_sequence("clean", static_list, cb)
+gulp.task("staticbuild", gulp.series("clean", gulp.parallel((create_task(key) for key of sources when sources[key].static))))
+
+gulp.task("dynamicbuild", gulp.series("clean", gulp.parallel((create_task(key) for key of sources when not sources[key].static))))
+
+gulp.task("allurls", () ->
+    return gulp.src(
+        "all_urls.html",
+        {read: false}
+    ).pipe(
+        exec(
+            [
+                "./manage.py show_icsw_urls",
+            ]
+            {pipeStdout: true}
+        )
+    ).pipe(
+        gulp.dest("frontend/templates")
+    )
 )
 
-gulp.task("dynamicbuild", (cb) ->
-    dynamic_list = (create_task(key) for key of sources when not sources[key].static)
-    return run_sequence("clean", dynamic_list, cb)
-)
-
-gulp.task("app", ["dynamicbuild", "staticbuild", "allurls"], () ->
+gulp.task("app", gulp.parallel("dynamicbuild", "staticbuild", "allurls"), () ->
     # add urls to app_gulp.js
     return gulp.src(
        "frontend/templates/js/app.js",
@@ -310,7 +321,7 @@ gulp.task("app", ["dynamicbuild", "staticbuild", "allurls"], () ->
 
 )
 
-gulp.task("appinject", ["app"], () ->
+gulp.task("appinject", gulp.series("app"), () ->
     # modify app.js with additional modules
     return gulp.src(
         "#{DEPLOY_DIR}/app.js",
@@ -325,38 +336,7 @@ gulp.task("appinject", ["app"], () ->
     )
 )
 
-gulp.task("maininject", ["main"], () ->
-    # modify app.js with additional modules
-    return gulp.src(
-        "#{COMPILE_DIR}/main.html",
-        {read: false}
-    ).pipe(
-        exec(
-            [
-                "./manage.py inject_addons --srcfile=#{COMPILE_DIR}/main.html --modify --dstfile=#{DEPLOY_DIR}/main.html",
-            ]
-            {pipeStdout: true}
-        )
-    )
-)
-
-gulp.task("allurls", () ->
-    return gulp.src(
-        "all_urls.html",
-        {read: false}
-    ).pipe(
-        exec(
-            [
-                "./manage.py show_icsw_urls",
-            ]
-            {pipeStdout: true}
-        )
-    ).pipe(
-        gulp.dest("frontend/templates")
-    )
-)
-
-gulp.task("deploy_css", ["clean", "staticbuild"], () ->
+gulp.task("deploy_css", gulp.series("clean", "staticbuild"), () ->
     _is_prod = options.production
     return gulp.src(
         ["#{COMPILE_DIR}/*.css"],
@@ -373,7 +353,7 @@ gulp.task("deploy_css", ["clean", "staticbuild"], () ->
     )
 )
 
-gulp.task("deploy_js", ["appinject", "deploy_css", "staticbuild", "dynamicbuild"], () ->
+gulp.task("deploy_js", gulp.parallel("appinject", "deploy_css", "staticbuild", "dynamicbuild"), () ->
     _is_prod = options.production
     return gulp.src(
         ["#{COMPILE_DIR}/*.js"],
@@ -390,7 +370,7 @@ gulp.task("deploy_js", ["appinject", "deploy_css", "staticbuild", "dynamicbuild"
     )
 )
 
-gulp.task("deploy_html", ["appinject", "deploy_js", "staticbuild", "dynamicbuild"], () ->
+gulp.task("deploy_html", gulp.series("appinject", "deploy_js", "staticbuild", "dynamicbuild"), () ->
     _is_prod = options.production
     return gulp.src(
         ["#{COMPILE_DIR}/*.html"],
@@ -407,9 +387,7 @@ gulp.task("deploy_html", ["appinject", "deploy_js", "staticbuild", "dynamicbuild
     )
 )
 
-gulp.task("media", ["fonts", "images", "gifs", "d3"])
-
-gulp.task("fonts", ["clean"], () ->
+gulp.task("fonts", gulp.series("clean"), () ->
     return gulp.src(
         "frontend/static/fonts/*"
     ).pipe(
@@ -417,7 +395,7 @@ gulp.task("fonts", ["clean"], () ->
     )
 )
 
-gulp.task("d3", ["clean"], () ->
+gulp.task("d3", gulp.series("clean"), () ->
     return gulp.src(
         [
             "frontend/static/js/d3js/d3.min.js"
@@ -429,7 +407,7 @@ gulp.task("d3", ["clean"], () ->
     )
 )
 
-gulp.task("images", ["clean"], () ->
+gulp.task("images", gulp.series("clean"), () ->
     return gulp.src(
         "frontend/static/images/product/*.png"
     ).pipe(
@@ -437,7 +415,7 @@ gulp.task("images", ["clean"], () ->
     )
 )
 
-gulp.task("gifs", ["clean"], () ->
+gulp.task("gifs", gulp.series("clean"), () ->
     return gulp.src(
         "frontend/static/css/*.gif"
     ).pipe(
@@ -445,7 +423,9 @@ gulp.task("gifs", ["clean"], () ->
     )
 )
 
-gulp.task("dummyindex", ["clean"], ()->
+gulp.task("media", gulp.parallel("fonts", "images", "gifs", "d3"))
+
+gulp.task("dummyindex", gulp.series("clean"), ()->
     return gulp.src("frontend/templates/main_reload.html").pipe(
         rename({basename: "main"})
     ).pipe(
@@ -453,7 +433,7 @@ gulp.task("dummyindex", ["clean"], ()->
     )
 )
 
-gulp.task("addons", ["clean"], () ->
+gulp.task("addons", gulp.series("clean"), () ->
     return gulp.src(
         [
             "addons/liebherr/initat/cluster/work/icsw/*.js",
@@ -464,9 +444,9 @@ gulp.task("addons", ["clean"], () ->
     )
 )
 
-index_deps = ["dummyindex", "deploy_html", "appinject", "media"]
-if not options.production
-    index_deps.push("addons")
+index_deps = gulp.series("dummyindex", "deploy_html", "appinject", "media")
+#if not options.production
+    # index_deps.push("addons")
 
 gulp.task("main", index_deps, () ->
     target = gulp.src("frontend/templates/main.html")
@@ -526,7 +506,24 @@ gulp.task("main", index_deps, () ->
 
 )
 
-gulp.task("watch", ["maininject"], () ->
+gulp.task("maininject", gulp.series("main"), () ->
+    # modify app.js with additional modules
+    return gulp.src(
+        "#{COMPILE_DIR}/main.html",
+        {read: false}
+    ).pipe(
+        exec(
+            [
+                "./manage.py inject_addons --srcfile=#{COMPILE_DIR}/main.html --modify --dstfile=#{DEPLOY_DIR}/main.html",
+            ]
+            {pipeStdout: true}
+        )
+    )
+)
+
+# watcher tasks
+
+gulp.task("watch", gulp.series("maininject"), (cb) ->
     options.onlydev = true
     gulp.watch(
         [
@@ -535,29 +532,37 @@ gulp.task("watch", ["maininject"], () ->
         ]
         ["maininject"]
     )
+    cb()
 )
 
-bgtask = bg("./runserver.sh")
+gulp.task("dummy", (cb) ->
+    cb()
+)
 
 if options.django
-    gulp.task("django", bgtask)
+    gulp.task("django", (cb) ->
+        console.log "run django"
+        bg("./runserver.sh")
+        cb()
+    )
 else
-    gulp.task("django", () ->)
+    gulp.task("django", gulp.series("dummy"))
 
 gulp.task("stop", () ->
     bgtask.stop()
 )
 
-gulp.task("graphserve", [], () ->
+gulp.task("graphserve", (cb) ->
     connect.server(
         {
             root: "/tmp/.icsw/static/graphs"
             port: 8082
         }
     )
+    cb()
 )
 
-gulp.task("serve", ["initclean", "watch", "django", "staticbuild", "graphserve"], () ->
+gulp.task("mainserve", (cb) ->
     connect.server(
         {
             root: "work"
@@ -583,6 +588,11 @@ gulp.task("serve", ["initclean", "watch", "django", "staticbuild", "graphserve"]
             debug: true
         }
     )
+    cb()
 )
 
-gulp.task("default", ["serve"])
+gulp.task("serve", gulp.series("initclean", "graphserve", "django", "watch", "staticbuild", "mainserve"), (cb) ->
+    cb()
+)
+
+gulp.task("default", gulp.series("serve"))
