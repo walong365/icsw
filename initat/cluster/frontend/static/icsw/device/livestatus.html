@@ -20,13 +20,17 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.livestatus.layout1">
-    <!--
     <div class="col-md-4 col-xs-12 col-lg-6">
-        <div icsw-device-livestatus-maplist ls-devsel="ls_devsel" ls-filter="ls_filter"></div>
+        <icsw-device-livestatus-maplist
+            icsw-devices="struct.devices"
+            icsw-monitoring-data="struct.monitoring_data"
+        ></icsw-device-livestatus-maplist>
     </div>
-    -->
     <div class="col-md-4 col-xs-12 col-lg-8">
-        <icsw-config-category-location-show ls-devsel="ls_devsel" ls-filter="ls_filter"></icsw-config-category-location-show>
+        <icsw-config-category-location-show
+            icsw-livestatus-filter="struct.filter"
+            icsw-monitoring-data="struct.monitoring_data"
+        ></icsw-config-category-location-show>
     </div>
     <div class="col-md-4 col-xs-12 col-lg-6">
         <icsw-device-livestatus-fullburst
@@ -234,37 +238,40 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.livestatus.maplist">
-    <h3 ng-show="show_maps">{{ location_gfx_list.length }} Maps</h3>
-    <uib-tabset ng-if="show_maps">
-        <uib-tab ng-repeat="loc_gfx in location_gfx_list" active="loc_gfx.active">
-            <uib-tab-heading>
-                {{ loc_gfx.name }} (<ng-pluralize count="loc_gfx.dml_list.length" when="{'1': '1 device', 'other' : '{} devices'}"></ng-pluralize>)
-            </uib-tab-heading>
-            <icsw-device-livestatus-location-map ls-filter="ls_filter" gfx="loc_gfx" gfx-size="gfx.size"}}></icsw-device-livestatus-location-map>
-        </uib-tab>
-        <uib-tab select="select_settings()">
-            <uib-tab-heading>
-                Settings
-            </uib-tab-heading>
-            <h4>Graph settings</h4>
-            <div class="list-group" style="width:400px;">
-                <div class="list-group-item">
-                    Graph size:
-                    <ui-select ng-model="gfx.size" style="width:200px;">
-                        <ui-select-match class="ui-select-match" placeholder="choose size ...">{{ $select.selected }}</ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value in gfx_sizes">
-                            <div ng-bind-html="value"></div>
-                        </ui-select-choices>
-                    </ui-select>
+    <uib-alert type="warning" ng-show="!struct.data_valid">Loading data...</uib-alert>
+    <div ng-if="struct.data_valid">
+        <h3 ng-show="!struct.maps_present">No maps to show</h3>
+        <h3 ng-show="struct.maps_present">{{ location_gfx_list.length }} Maps</h3>
+        <uib-tabset ng-if="struct.maps_present">
+            <uib-tab ng-repeat="loc_gfx in location_gfx_list" active="loc_gfx.active">
+                <uib-tab-heading>
+                    {{ loc_gfx.name }} (<ng-pluralize count="loc_gfx.dml_list.length" when="{'1': '1 device', 'other' : '{} devices'}"></ng-pluralize>)
+                </uib-tab-heading>
+                <icsw-device-livestatus-location-map ls-filter="ls_filter" gfx="loc_gfx" gfx-size="gfx.size"}}></icsw-device-livestatus-location-map>
+            </uib-tab>
+            <uib-tab select="select_settings()">
+                <uib-tab-heading>
+                    Settings
+                </uib-tab-heading>
+                <h4>Graph settings</h4>
+                <div class="list-group" style="width:400px;">
+                    <div class="list-group-item">
+                        Graph size:
+                        <ui-select ng-model="gfx.size" style="width:200px;">
+                            <ui-select-match class="ui-select-match" placeholder="choose size ...">{{ $select.selected }}</ui-select-match>
+                            <ui-select-choices class="ui-select-choices" repeat="value in gfx_sizes">
+                                <div ng-bind-html="value"></div>
+                            </ui-select-choices>
+                        </ui-select>
+                    </div>
+                    <div class="list-group-item">
+                        Autorotate:
+                        <icsw-tools-button type="enable" is-enable="autorotate" ng-click="toggle_autorotate()"></icsw-tools-button>
+                    </div>
                 </div>
-                <div class="list-group-item">
-                    Autorotate:
-                    <icsw-tools-button type="enable" is-enable="autorotate" ng-click="toggle_autorotate()"></icsw-tools-button>
-                </div>
-            </div>
-        </uib-tab>
-    </uib-tabset>
-    <h3 ng-show="!show_maps">No maps to show</h3>
+            </uib-tab>
+        </uib-tabset>
+    </div>
 </script>
 
 <script type="text/ng-template" id="icsw.device.livestatus.filter">

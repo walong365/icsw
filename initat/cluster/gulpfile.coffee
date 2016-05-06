@@ -48,6 +48,7 @@ del = require("del")
 wait = require("gulp-wait")
 strip_debug = require("gulp-strip-debug")
 fs = require("fs")
+plumber = require("gulp-plumber")
 
 class SourceMap
     constructor: (@name, @dest, @sources, @type, @static) ->

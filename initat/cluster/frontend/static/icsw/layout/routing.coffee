@@ -75,7 +75,7 @@ menu_module = angular.module(
                 ]
             }
         )
-]).directive('updateTitle',
+]).directive('icswUpdateTitle',
 [
     '$rootScope', '$timeout',
 (
@@ -85,8 +85,8 @@ menu_module = angular.module(
         link: (scope, el) ->
             listener = (event, to_state) ->
                 title = "ICSW page"
-                if to_state.data && to_state.data.pageTitle
-                    title = to_state.data.pageTitle
+                if to_state.icswData && to_state.icswData.pageTitle
+                    title = to_state.icswData.pageTitle
 
                 $timeout(
                     ()->

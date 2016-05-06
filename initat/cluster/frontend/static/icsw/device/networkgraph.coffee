@@ -168,7 +168,7 @@ angular.module(
             _idx = 0
             _results = []
             _num_rings = ring_keys.length
-            _arc_offset = 0.05
+            _arc_offset = 0.0
             if _num_rings
                 _width = @outer_radius - @inner_radius
                 for _key in ring_keys
@@ -176,7 +176,8 @@ angular.module(
                     _outer_rad = @inner_radius + (_idx + 1 ) * _width / _num_rings
                     _idx++
                     _results.push([_key, _inner_rad, _outer_rad, _arc_offset])
-                    _arc_offset += 0.1
+                    # always keep arc_offset at zero
+                    _arc_offset += 0.0
             return _results
 
         start_feed: () =>
@@ -370,7 +371,7 @@ angular.module(
         end_arc = arc_offset
         end_num = 0
         _ia = draw_params.is_interactive
-        _len = r_data.length
+        _len = _.sum((entry.width for entry in r_data))
         _result = []
         # flag if all segments are omitted
         all_omitted = true
@@ -380,7 +381,7 @@ angular.module(
                 srvc = node.check
                 _idx++
                 start_arc = end_arc
-                end_num += 1
+                end_num += node.width
                 end_arc = 2 * Math.PI * end_num / _len + arc_offset
                 if draw_params.draw_segment((end_arc - start_arc) * outer)
                     all_omitted = false
@@ -495,8 +496,10 @@ angular.module(
             if _ring_idx of _root_node.ring_lut
                 for _entry in _root_node.ring_lut[_ring_idx]
                     if _entry.children.length
-                        _entry.check.state = _.max([_child.check.state for _child in _entry.children])
-                        icswSaltMonitoringResultService.salt_device_state(_entry.check)
+                        _entry.check.state = _.max((_child.check.state for _child in _entry.children))
+                    else
+                        _entry.check.state = 3
+                    icswSaltMonitoringResultService.salt_device_state(_entry.check)
 
         # draw
         _ring_keys= (
@@ -1030,7 +1033,7 @@ angular.module(
         start_livestatus: () =>
             icswDeviceLivestatusDataService.retain(@id, @state.graph.device_list).then(
                 (result) =>
-                    result.notifier.promise.then(
+                    result.result_notifier.promise.then(
                         () ->
                         () ->
                         (generation) =>

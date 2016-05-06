@@ -25,24 +25,7 @@ angular.module(
         "ui.select", "restangular", "uiGmapgoogle-maps", "angularFileUpload",
         "icsw.backend.category_tree",
     ]
-).service("icswConfigCategoryTreeFetchService", ["icswCachingCall", "$q", "ICSW_URLS", (icswCachingCall, $q, ICSW_URLS) ->
-    _fetch = (id, pk_list) ->
-        defer =$q.defer()
-        _wait = [
-            icswCachingCall.fetch(id, ICSW_URLS.REST_CATEGORY_LIST, {}, []),
-            icswCachingCall.fetch(id, ICSW_URLS.REST_LOCATION_GFX_LIST, {"device_mon_location__device__in": "<PKS>", "_distinct": true}, pk_list),
-            icswCachingCall.fetch(id, ICSW_URLS.REST_DEVICE_MON_LOCATION_LIST, {"device__in": "<PKS>"}, pk_list)
-            icswCachingCall.fetch(id, ICSW_URLS.DEVICE_GET_DEVICE_LOCATION, {"devices": "<PKS>"}, pk_list)
-        ]
-        $q.all(_wait).then((data) ->
-            defer.resolve(data)
-        )
-        return defer.promise
-    return {
-        "fetch": (id, pk_list) ->
-            return _fetch(id, pk_list)
-    }
-]).service("icswConfigCategoryTreeService",
+).service("icswConfigCategoryTreeService",
 [
     "icswTreeConfig",
 (
