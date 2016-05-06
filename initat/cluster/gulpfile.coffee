@@ -25,6 +25,7 @@ del = require("del")
 concat = require("gulp-concat")
 uglify = require('gulp-uglify')
 gulpif = require('gulp-if')
+cache = require("gulp-memory-cache")
 rev = require("gulp-rev")
 coffee = require("gulp-coffee")
 cssnano = require("gulp-cssnano")
@@ -222,6 +223,9 @@ create_task = (key) ->
         _is_prod = options.production
         _el = gulp.src(
             _sources
+            {
+                since: cache.lastMtime(key)
+            }
         ).pipe(
             changed(COMPILE_DIR)
         ).pipe(
@@ -245,8 +249,6 @@ create_task = (key) ->
                 (_is_coffee or _is_js) and options.production, strip_debug()
             )
         ).pipe(
-            concat(_dest)
-        ).pipe(
             gulpif(
                 _is_prod and (_is_coffee or _is_js), uglify(
                     mangle: true
@@ -264,6 +266,10 @@ create_task = (key) ->
                 )
             )
         ).pipe(
+            cache(key)
+        ).pipe(
+            concat(_dest)
+        ).pipe(
             gulpif(
                 _is_coffee and ! options.production, sourcemaps.write()
             )
@@ -277,6 +283,8 @@ create_task = (key) ->
 gulp.task("staticbuild", gulp.parallel((create_task(key) for key of sources when sources[key].static)))
 
 gulp.task("dynamicbuild", gulp.parallel((create_task(key) for key of sources when not sources[key].static)))
+
+# app.js modification, needs to be done only on startup (unless the URLs change)
 
 gulp.task("create-all-urls", () ->
     gulp.src(
@@ -329,10 +337,9 @@ gulp.task("inject-addons-to-app", (cb) ->
     )
 )
 
-gulp.task("app", gulp.series("create-all-urls", "inject-urls-to-app")) # , "inject-addons-to-app"))
+gulp.task("modify-app-js", gulp.series("create-all-urls", "inject-urls-to-app", "inject-addons-to-app"))
 
-gulp.task("appinject", gulp.series("app"))
-
+# deploy task (from compile to deploy dir), needs to be done only at startup
 gulp.task("deploy-css", () ->
     _is_prod = options.production
     return gulp.src(
@@ -384,9 +391,22 @@ gulp.task("deploy-html", () ->
     )
 )
 
-gulp.task("deploy-all", gulp.parallel("deploy-css", "deploy-js", "deploy-html"))
+gulp.task("deploy-addons", () ->
+    return gulp.src(
+        [
+            "addons/liebherr/initat/cluster/work/icsw/*.js",
+            "addons/licadmin/initat/cluster/work/icsw/*.js",
+        ]
+    ).pipe(
+        gulp.dest(DEPLOY_DIR)
+    )
+)
 
-gulp.task("fonts", () ->
+gulp.task("deploy-all", gulp.parallel("deploy-css", "deploy-js", "deploy-html", "deploy-addons"))
+
+# static deployment of fonts, d3, images and gifs
+
+gulp.task("deploy-fonts", () ->
     return gulp.src(
         "frontend/static/fonts/*"
     ).pipe(
@@ -394,7 +414,7 @@ gulp.task("fonts", () ->
     )
 )
 
-gulp.task("d3", () ->
+gulp.task("deploy-d3", () ->
     return gulp.src(
         [
             "frontend/static/js/d3js/d3.min.js"
@@ -406,45 +426,20 @@ gulp.task("d3", () ->
     )
 )
 
-gulp.task("images", () ->
-    return gulp.src(
-        "frontend/static/images/product/*.png"
-    ).pipe(
-        gulp.dest(DEPLOY_DIR + "/static/")
-    )
-)
-
-gulp.task("gifs", () ->
-    return gulp.src(
-        "frontend/static/css/*.gif"
-    ).pipe(
-        gulp.dest(DEPLOY_DIR + "/static/")
-    )
-)
-
-gulp.task("prepare-media", gulp.parallel("fonts", "images", "gifs", "d3"))
-
-gulp.task("dummyindex", ()->
-    return gulp.src("frontend/templates/main_reload.html").pipe(
-        rename({basename: "main"})
-    ).pipe(
-        gulp.dest(DEPLOY_DIR)
-    )
-)
-
-gulp.task("addons", () ->
+gulp.task("deploy-images", () ->
     return gulp.src(
         [
-            "addons/liebherr/initat/cluster/work/icsw/*.js",
-            "addons/licadmin/initat/cluster/work/icsw/*.js",
+            "frontend/static/images/product/*.png"
+            "frontend/static/css/*.gif"
         ]
     ).pipe(
-        gulp.dest(DEPLOY_DIR)
+        gulp.dest(DEPLOY_DIR + "/static/")
     )
 )
 
+gulp.task("deploy-media", gulp.parallel("deploy-fonts", "deploy-images", "deploy-d3"))
+
 gulp.task("transform-main", (cb) ->
-    console.log "transform run"
     return gulp.src(
         "frontend/templates/main.html"
     ).pipe(
@@ -506,17 +501,8 @@ gulp.task("transform-main", (cb) ->
     )
 )
 
-
-if options.production
-    index_deps = gulp.series("dummyindex", "deploy-all", "appinject", "addons", "transform-main")
-else
-    index_deps = gulp.series("dummyindex", "deploy-all", "appinject", "transform-main")
-
-gulp.task("main", index_deps)
-
-gulp.task("main2", (cb) ->
-    # modify app.js with additional modules
-    console.log "maininject"
+gulp.task("inject-addons-to-main", (cb) ->
+    # add addon-javascript to main.htmlk
     gulp.src(
         "#{COMPILE_DIR}/main.html",
         {read: false}
@@ -528,18 +514,32 @@ gulp.task("main2", (cb) ->
     )
 )
 
-gulp.task("maininject", gulp.series("main", "main2"))
+# if options.production
+#     index_deps = gulp.series("dummyindex", "deploy-all", "appinject", "addons", "transform-main")
+#else
+
+# reload task
+gulp.task("reload-main", (cb) ->
+    gulp.src(
+        "#{DEPLOY_DIR}/main.html"
+    ).pipe(
+        connect.reload()
+    )
+    cb()
+)
+
+gulp.task("deploy-and-transform-all", gulp.series("deploy-all", "modify-app-js", "transform-main", "inject-addons-to-main"))
 
 # watcher tasks
 
-gulp.task("watch", gulp.series("maininject"), (cb) ->
+gulp.task("watch", (cb) ->
     options.onlydev = true
     gulp.watch(
         [
             "frontend/static/icsw/*/*.coffee",
             "frontend/static/icsw/*/*.html",
         ]
-        ["maininject"]
+        gulp.series(gulp.parallel("icsw_cs", "icsw_html"), "deploy-all", "transform-main", "inject-addons-to-main", "reload-main")
     )
     cb()
 )
@@ -599,14 +599,13 @@ gulp.task(
         "clean",
         gulp.parallel(
             # static media
-            "prepare-media",
+            "deploy-media",
             # static js
             "staticbuild",
         ),
         "dynamicbuild",
-        # "watch",
-        "maininject",
-        gulp.parallel("serve-graphics", "serve-django", "serve-main")
+        "deploy-and-transform-all",
+        gulp.parallel("serve-graphics", "serve-django", "serve-main", "watch")
     ), (cb) ->
         cb()
 )
