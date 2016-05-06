@@ -587,6 +587,9 @@ class Dispatcher(object):
             last_scheds = 0
             last_sched = None
             for sched in ScheduleItem.objects.all():
+                # ignore run_now scheds
+                if sched.run_now:
+                    continue
                 #print sched
                 if sched.device == device:
                     last_scheds += 1
@@ -633,6 +636,8 @@ class Dispatcher(object):
                     self.__do_hm_scan(schedule_item)
                 elif nrpe_capable:
                     self.__do_nrpe_scan(schedule_item)
+                else:
+                    print "Skipping non capable device"
                 schedule_item.delete()
 
         for _device in self.device_asset_run_ext_coms:

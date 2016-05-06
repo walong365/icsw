@@ -473,12 +473,12 @@ monitoring_device_module = angular.module(
     "$scope", "icswDeviceTreeService", "$q", "icswMonitoringBasicTreeService", "icswComplexModalService",
     "$templateCache", "$compile", "toaster", "blockUI", "Restangular",
     "ICSW_URLS", "icswConfigTreeService", "icswDispatcherSettingTreeService", "icswDeviceTreeHelperService",
-    "icswUserService",
+    "icswUserService", "$http"
 (
     $scope, icswDeviceTreeService, $q, icswMonitoringBasicTreeService, icswComplexModalService,
     $templateCache, $compile, toaster, blockUI, Restangular,
     ICSW_URLS, icswConfigTreeService, icswDispatcherSettingTreeService, icswDeviceTreeHelperService,
-    icswUserService,
+    icswUserService, $http
 ) ->
     $scope.struct = {
         # loading
@@ -527,7 +527,15 @@ monitoring_device_module = angular.module(
                         $scope.struct.loading = false
                 )
         )
-        
+
+    $scope.run_now = ($event, obj) ->
+        $http({
+            method: 'POST',
+            url: '/icsw/api/v2/mon/run_assets_now'
+            data: "pk=" + obj.idx,
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+        })
+
     $scope.edit = ($event, obj) ->
 
         if not obj?
@@ -589,4 +597,6 @@ monitoring_device_module = angular.module(
                 $scope.struct.device_tree.salt_dispatcher_infos($scope.struct.devices, $scope.struct.dispatcher_tree)
                 sub_scope.$destroy()
         )
+
+
 ])

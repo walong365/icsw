@@ -625,9 +625,23 @@ class fetch_png_from_cache(View):
 from initat.cluster.backbone.models.asset import AssetPackage
 
 class get_asset_list(RetrieveAPIView):
-        def get(self, request, *args, **kwargs):
-            return Response(
-                {
-                    'assets': [(a.name, a.version, a.release) for a in AssetPackage.objects.all()],
-                }
-            )
+    def get(self, request, *args, **kwargs):
+        return Response(
+            {
+                'assets': [(a.name, a.version, a.release) for a in AssetPackage.objects.all()],
+            }
+        )
+
+from initat.cluster.backbone.models import device
+from initat.cluster.backbone.models.dispatch import ScheduleItem
+import pytz
+
+class run_assets_now(View):
+    def post(self, request):
+        _dev = device.objects.get(pk=int(request.POST['pk']))
+
+
+        ScheduleItem.objects.create(device=_dev,
+                                    source=10,
+                                    planned_date=datetime.datetime.now(tz=pytz.utc),
+                                    run_now=True)

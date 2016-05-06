@@ -177,6 +177,7 @@ monitoring_patterns = [
     url("^svg_to_png$", monitoring_views.svg_to_png.as_view(), name="svg_to_png"),
     url("^fetch_png/(?P<cache_key>\S+)$", monitoring_views.fetch_png_from_cache.as_view(), name="fetch_png_from_cache"),
     url("^get_asset_list$", monitoring_views.get_asset_list.as_view(), name="get_asset_list"),
+    url("^run_assets_now", monitoring_views.run_assets_now.as_view(), name="run_assets_now"),
 ]
 
 user_patterns = [

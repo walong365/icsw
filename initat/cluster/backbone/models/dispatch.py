@@ -230,8 +230,9 @@ class ScheduleItem(models.Model):
     device = models.ForeignKey("backbone.device")
     source = models.IntegerField(choices=[(src.value, src.name) for src in DiscoverySource])
     planned_date = models.DateTimeField(default=None, null=True)
+    run_now = models.BooleanField(default=False)
 
     def __repr__(self):
-        return "ScheduleItem(dev={}, src={}, planned={})".format(
-            self.device, self.source, self.planned_date
+        return "ScheduleItem(dev={}, src={}, planned={}, run_now={})".format(
+            self.device, self.source, self.planned_date, self.run_now
         )
