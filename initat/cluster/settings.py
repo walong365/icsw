@@ -278,7 +278,7 @@ for sub_dir in os.listdir(dir_name):
             if add_app not in INSTALLED_APPS:
                 # search for icsw meta
                 icsw_meta = os.path.join(full_path, "ICSW.meta.xml")
-                if os.path.exists(icsw_meta):
+                if os.path.exists(icsw_meta) and False:
                     try:
                         _tree = etree.fromstring(file(icsw_meta, "r").read())
                     except:
