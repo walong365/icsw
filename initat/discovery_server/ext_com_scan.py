@@ -469,7 +469,7 @@ LIST_HARDWARE_CMD = "list-hardware-lstopo-py3"
 
 from initat.tools import logging_tools, process_tools, server_command, net_tools
 from initat.icsw.service.instance import InstanceXML
-from initat.cluster.backbone.models.dispatch import DeviceDispatcherLink, DispatcherSettingScheduleEnum
+from initat.cluster.backbone.models.dispatch import DeviceDispatcherLink, DispatcherSettingScheduleEnum, ScheduleItem
 
 def align_second(now, sched_start_second):
     while 1:
@@ -575,19 +575,8 @@ class Dispatcher(object):
         self.device_asset_run_ext_coms = {}
         self.device_running_ext_coms = {}
 
-        self.schedule_items = []
-        self.last_recalculate = None
-        self.next_recalculate = None
-
     def dispatch_call(self):
         _now = datetime.datetime.now(tz=pytz.utc).replace(microsecond=0)
-
-        if _now.second == 0:
-            print "*" * 10
-            print "Schedule Items: "
-            for sched in self.schedule_items:
-                print sched
-            print "*" * 10
 
         links = DeviceDispatcherLink.objects.all()
 
@@ -597,53 +586,40 @@ class Dispatcher(object):
 
             last_scheds = 0
             last_sched = None
-            for sched in self.schedule_items:
+            for sched in ScheduleItem.objects.all():
                 #print sched
                 if sched.device == device:
                     last_scheds += 1
-                    last_sched = sched
-            #print "*" * 10
+                    if last_sched and sched.planned_date > last_sched.planned_date:
+                        last_sched = sched
+                    elif not last_sched:
+                        last_sched = sched
+
             if last_sched == None:
-                last_run_times = sorted([x.run_start_time for x in device.assetrun_set.all()])
-
-                if last_run_times:
-                    last_run_time = last_run_times[-1]
-                    next_run_time = last_run_time + get_time_inc_from_ds(ds)
-
-
-                    # skip all jobs we could not run and just run first job now (in available timeslot)
-                    if next_run_time <= _now:
-                        last_sched = _ScheduleItem(device, DiscoverySource.PACKAGE, align_time_to_baseline(_now))
-                        print "Next scheduled run: %s" % last_sched
-                        self.schedule_items.append(last_sched)
-                        self.schedule_items.sort(key=lambda s: s.planned_date)
-                    # use last_run_time as baseline
-                    else:
-                        last_sched = _ScheduleItem(device, DiscoverySource.PACKAGE, next_run_time)
-                        print "Next scheduled run: %s" % last_sched
-                        self.schedule_items.append(last_sched)
-                        self.schedule_items.sort(key=lambda s: s.planned_date)
-
-
-                # No previous assetruns -> just run first job now
-                else:
-                    last_sched = _ScheduleItem(device, DiscoverySource.PACKAGE, align_time_to_baseline(_now, ds))
-                    print "Next scheduled run: %s" % last_sched
-                    self.schedule_items.append(last_sched)
-                    self.schedule_items.sort(key=lambda s: s.planned_date)
+                last_sched = _ScheduleItem(device, DiscoverySource.PACKAGE, align_time_to_baseline(_now, ds))
+                print "Next scheduled run: %s" % last_sched
+                # self.schedule_items.append(last_sched)
+                # self.schedule_items.sort(key=lambda s: s.planned_date)
+                ScheduleItem.objects.create(device=last_sched.device,
+                                            source=last_sched.source,
+                                            planned_date=last_sched.planned_date)
 
             if last_scheds < 2:
                 next_run = _ScheduleItem(device,
                                          DiscoverySource.PACKAGE,
                                          last_sched.planned_date + get_time_inc_from_ds(ds))
                 print "Next scheduled run: %s" % next_run
-                self.schedule_items.append(next_run)
-                self.schedule_items.sort(key=lambda s: s.planned_date)
+                #self.schedule_items.append(next_run)
+                #self.schedule_items.sort(key=lambda s: s.planned_date)
+                ScheduleItem.objects.create(device=next_run.device,
+                                            source=next_run.source,
+                                            planned_date=next_run.planned_date)
 
-        while self.schedule_items:
-            schedule_item = self.schedule_items.pop(0)
+        schedule_items = sorted(ScheduleItem.objects.all(), key=lambda x: x.planned_date)
+        while schedule_items:
+            schedule_item = schedule_items.pop(0)
             if schedule_item.planned_date < _now:
-                print "need to run: %s" % schedule_item
+                print "need to run: %s" % schedule_item.__repr__()
 
                 hm_capable = False
                 nrpe_capable = False
@@ -657,10 +633,7 @@ class Dispatcher(object):
                     self.__do_hm_scan(schedule_item)
                 elif nrpe_capable:
                     self.__do_nrpe_scan(schedule_item)
-
-            else:
-                self.schedule_items.insert(0, schedule_item)
-                break
+                schedule_item.delete()
 
         for _device in self.device_asset_run_ext_coms:
             if self.device_running_ext_coms[_device] == 0:
@@ -749,85 +722,95 @@ class Dispatcher(object):
                         self.device_running_ext_coms[_device] = 0
 
     def __do_hm_scan(self, schedule_item):
-        runtype = None
-        _command = None
-        if schedule_item.source == DiscoverySource.PACKAGE:
-            runtype = AssetType.PACKAGE
-            _command = "rpmlist"
-        elif schedule_item.source == DiscoverySource.HARDWARE:
-            runtype = AssetType.HARDWARE
-            _command = "lstopo"
-        elif schedule_item.source == DiscoverySource.LICENSE:
-            runtype = AssetType.LICENSE
-            #todo implement me
-        elif schedule_item.source == DiscoverySource.UPDATE:
-            runtype = AssetType.UPDATE
-            #todo implement me
-        elif schedule_item.source == DiscoverySource.PROCESS:
-            runtype = AssetType.PROCESS
-            _command = "proclist"
-        elif schedule_item.source == DiscoverySource.PENDING_UPDATE:
-            runtype = AssetType.PENDING_UPDATE
-            _command = "updatelist"
+        cmd_tuples = [(AssetType.PACKAGE, "rpmlist"),
+                      (AssetType.HARDWARE, "lstopo"),
+                      (AssetType.PROCESS, "proclist"),
+                      (AssetType.PENDING_UPDATE, "updatelist")]
+        for runtype, _command in cmd_tuples:
+            # runtype = None
+            # _command = None
+            # if schedule_item.source == DiscoverySource.PACKAGE:
+            #     runtype = AssetType.PACKAGE
+            #     _command = "rpmlist"
+            # elif schedule_item.source == DiscoverySource.HARDWARE:
+            #     runtype = AssetType.HARDWARE
+            #     _command = "lstopo"
+            # elif schedule_item.source == DiscoverySource.LICENSE:
+            #     runtype = AssetType.LICENSE
+            #     #todo implement me
+            # elif schedule_item.source == DiscoverySource.UPDATE:
+            #     runtype = AssetType.UPDATE
+            #     #todo implement me
+            # elif schedule_item.source == DiscoverySource.PROCESS:
+            #     runtype = AssetType.PROCESS
+            #     _command = "proclist"
+            # elif schedule_item.source == DiscoverySource.PENDING_UPDATE:
+            #     runtype = AssetType.PENDING_UPDATE
+            #     _command = "updatelist"
 
-        _device = schedule_item.device
-        asset_run_len = len(_device.assetrun_set.all())
-        new_asset_run = AssetRun(run_index=asset_run_len,
-                                 run_type=runtype,
-                                 run_status=RunStatus.PLANNED,
-                                 scan_type = ScanType.HM)
-        new_asset_run.save()
-        _device.assetrun_set.add(new_asset_run)
+            _device = schedule_item.device
+            asset_run_len = len(_device.assetrun_set.all())
+            new_asset_run = AssetRun(run_index=asset_run_len,
+                                     run_type=runtype,
+                                     run_status=RunStatus.PLANNED,
+                                     scan_type = ScanType.HM)
+            new_asset_run.save()
+            _device.assetrun_set.add(new_asset_run)
 
-        if _device not in self.device_running_ext_coms:
-            self.device_running_ext_coms[_device] = 0
-            self.device_asset_run_ext_coms[_device] = []
+            if _device not in self.device_running_ext_coms:
+                self.device_running_ext_coms[_device] = 0
+                self.device_asset_run_ext_coms[_device] = []
 
-        self.device_asset_run_ext_coms[_device].append([new_asset_run, _command])
+            self.device_asset_run_ext_coms[_device].append([new_asset_run, _command])
 
     def __do_nrpe_scan(self, schedule_item):
-        _command = None
-        runtype = None
+        cmd_tuples = [(AssetType.PACKAGE, LIST_SOFTWARE_CMD),
+                      (AssetType.HARDWARE, LIST_HARDWARE_CMD),
+                      (AssetType.PROCESS, LIST_PROCESSES_CMD),
+                      (AssetType.PENDING_UPDATE, LIST_PENDING_UPDATES_CMD),
+                      (AssetType.UPDATE, LIST_UPDATES_CMD),
+                      (AssetType.LICENSE, LIST_KEYS_CMD)]
 
-        if schedule_item.source == DiscoverySource.PACKAGE:
-            _command = LIST_SOFTWARE_CMD
-            runtype = AssetType.PACKAGE
-        elif schedule_item.source == DiscoverySource.HARDWARE:
-            _command = LIST_HARDWARE_CMD
-            runtype = AssetType.HARDWARE
-        elif schedule_item.source == DiscoverySource.LICENSE:
-            _command = LIST_KEYS_CMD
-            runtype = AssetType.LICENSE
-        elif schedule_item.source == DiscoverySource.UPDATE:
-            _command = LIST_UPDATES_CMD
-            runtype = AssetType.UPDATE
-        elif schedule_item.source == DiscoverySource.PROCESS:
-            _command = LIST_PROCESSES_CMD
-            runtype = AssetType.PROCESS
-        elif schedule_item.source == DiscoverySource.PENDING_UPDATE:
-            _command = LIST_PENDING_UPDATES_CMD
-            runtype = AssetType.PENDING_UPDATE
+        for runtype, _command in cmd_tuples:
+            # if schedule_item.source == DiscoverySource.PACKAGE:
+            #     _command = LIST_SOFTWARE_CMD
+            #     runtype = AssetType.PACKAGE
+            # elif schedule_item.source == DiscoverySource.HARDWARE:
+            #     _command = LIST_HARDWARE_CMD
+            #     runtype = AssetType.HARDWARE
+            # elif schedule_item.source == DiscoverySource.LICENSE:
+            #     _command = LIST_KEYS_CMD
+            #     runtype = AssetType.LICENSE
+            # elif schedule_item.source == DiscoverySource.UPDATE:
+            #     _command = LIST_UPDATES_CMD
+            #     runtype = AssetType.UPDATE
+            # elif schedule_item.source == DiscoverySource.PROCESS:
+            #     _command = LIST_PROCESSES_CMD
+            #     runtype = AssetType.PROCESS
+            # elif schedule_item.source == DiscoverySource.PENDING_UPDATE:
+            #     _command = LIST_PENDING_UPDATES_CMD
+            #     runtype = AssetType.PENDING_UPDATE
 
-        _com = "/opt/cluster/sbin/check_nrpe -H {} -n -c {} -t120".format(schedule_item.device.all_ips()[0],
-                                                                          _command)
-        ext_com = ExtCom(self.log, _com)
+            _com = "/opt/cluster/sbin/check_nrpe -H {} -n -c {} -t120".format(schedule_item.device.all_ips()[0],
+                                                                              _command)
+            ext_com = ExtCom(self.log, _com)
 
-        _device = schedule_item.device
+            _device = schedule_item.device
 
-        asset_run_len = len(_device.assetrun_set.all())
+            asset_run_len = len(_device.assetrun_set.all())
 
-        new_asset_run = AssetRun(run_index=asset_run_len,
-                                 run_type=runtype,
-                                 run_status=RunStatus.PLANNED,
-                                 scan_type=ScanType.NRPE)
-        new_asset_run.save()
-        _device.assetrun_set.add(new_asset_run)
+            new_asset_run = AssetRun(run_index=asset_run_len,
+                                     run_type=runtype,
+                                     run_status=RunStatus.PLANNED,
+                                     scan_type=ScanType.NRPE)
+            new_asset_run.save()
+            _device.assetrun_set.add(new_asset_run)
 
-        if _device not in self.device_running_ext_coms:
-            self.device_running_ext_coms[_device] = 0
-            self.device_asset_run_ext_coms[_device] = []
+            if _device not in self.device_running_ext_coms:
+                self.device_running_ext_coms[_device] = 0
+                self.device_asset_run_ext_coms[_device] = []
 
-        self.device_asset_run_ext_coms[_device].append([new_asset_run, ext_com])
+            self.device_asset_run_ext_coms[_device].append([new_asset_run, ext_com])
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         print what
