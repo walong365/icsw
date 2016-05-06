@@ -411,7 +411,7 @@ menu_module = angular.module(
                         valid_entry = true
                         if entry.postSpacer and valid_entry
                             _items.push(
-                                li({className: "divider", key: _key + "_post"})
+                                li({className: "divider", key: _key +  "_post"})
                             )
                             valid_entry = false
             if _items.length
@@ -419,7 +419,7 @@ menu_module = angular.module(
                 _res = li(
                     {key: "menu"}
                     a(
-                        {className: "dropdown-toggle", "data-toggle": "dropdown", key: "menu.head"}
+                        {className: "dropdown-toggle", "data-toggle": "dropdown",key: "menu.head"}
                         [
                             span({className: "fa #{@props.icon} fa-lg fa_top", key: "span"})
                             span({key: "text#{_idx}"}, @props.name)
