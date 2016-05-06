@@ -484,49 +484,156 @@ class Dispatcher(object):
     def dispatch_call(self):
         _now = datetime.datetime.now(tz=pytz.utc)
         _plus_one_hour = _now + datetime.timedelta(hours=1)
-        #recalculate every minute
-        if not self.last_recalculate or _now > self.next_recalculate:
-            print "*" * 10
-            print "**** recalculating"
-            print "*" * 10
-            self.last_recalculate = _now
-            self.next_recalculate = _plus_one_hour
+        _plus_one_minute = _now + datetime.timedelta(minutes=1)
 
-            links = DeviceDispatcherLink.objects.all()
+        links = DeviceDispatcherLink.objects.all()
 
-            schedules = []
+        for link in links:
+            device = link.device
+            ds = link.dispatcher_setting
 
-            for link in links:
-                device = link.device
-                ds = link.dispatcher_setting
-                com_capabilities = ds.com_capabilities.all()
-                print "%s %s %s" % (device, ds.run_schedule, com_capabilities)
+            last_scheds = 0
+            last_sched = None
+            for sched in self.schedule_items:
+                #print sched
+                if sched.device == device:
+                    last_scheds += 1
+                    last_sched = sched
+            #print "*" * 10
+            if last_sched == None:
+                last_run_times = sorted([x.run_start_time for x in device.assetrun_set.all()])
 
-                __now = _now
-                for i in range(60 * 60 * 60):
-                    if __now > _plus_one_hour:
-                        break
-                    #todo source set to package for now (-> in future all runs should be performed on each machine)
-                    schedules.append(_ScheduleItem(device, DiscoverySource.PACKAGE, __now))
+                if last_run_times:
                     if ds.run_schedule.baseline == DispatcherSettingScheduleEnum.second:
-                        __now += datetime.timedelta(seconds=(1 * ds.mult))
+                        time_inc = datetime.timedelta(seconds=(1 * ds.mult))
                     elif ds.run_schedule.baseline == DispatcherSettingScheduleEnum.minute:
-                        __now += datetime.timedelta(minutes=(1 * ds.mult))
+                        time_inc = datetime.timedelta(minutes=(1 * ds.mult))
                     elif ds.run_schedule.baseline == DispatcherSettingScheduleEnum.hour:
-                        __now += datetime.timedelta(hours=(1 * ds.mult))
-                    else:
-                        #todo implement me properly
-                        raise NotImplementedError("Not done yet...")
+                        time_inc = datetime.timedelta(hours=(1 * ds.mult))
+                    elif ds.run_schedule.baseline == DispatcherSettingScheduleEnum.day:
+                        time_inc = datetime.timedelta(days=(1 * ds.mult))
+                    elif ds.run_schedule.baseline == DispatcherSettingScheduleEnum.week:
+                        time_inc = datetime.timedelta(weeks=(1 * ds.mult))
+                    elif ds.run_schedule.baseline == DispatcherSettingScheduleEnum.month:
+                        time_inc = datetime.timedelta(weeks=(4 * 1 * ds.mult))
+                    elif ds.run_schedule.baseline == DispatcherSettingScheduleEnum.year:
+                        time_inc = datetime.timedelta(weeks=(52 * 1 * ds.mult))
 
-            self.schedule_items = []
-            for sched in sorted(schedules, key=lambda s: s.planned_date):
-                self.schedule_items.append(sched)
+                    last_run_time = last_run_times[-1]
+                    next_run_time = last_run_time + time_inc
+
+
+                    # skip all jobs we could not run and just run first job now
+                    if next_run_time <= _now:
+                        last_sched = _ScheduleItem(device, DiscoverySource.PACKAGE, _now)
+                        print "Next scheduled run: %s" % last_sched
+                        self.schedule_items.append(last_sched)
+                        self.schedule_items.sort(key=lambda s: s.planned_date)
+                    # use last_run_time as baseline
+                    else:
+                        last_sched = _ScheduleItem(device, DiscoverySource.PACKAGE, next_run_time)
+                        print "Next scheduled run: %s" % last_sched
+                        self.schedule_items.append(last_sched)
+                        self.schedule_items.sort(key=lambda s: s.planned_date)
+
+
+                # No previous assertruns -> just run first job now
+                else:
+                    last_sched = _ScheduleItem(device, DiscoverySource.PACKAGE, _now)
+                    print "Next scheduled run: %s" % last_sched
+                    self.schedule_items.append(last_sched)
+                    self.schedule_items.sort(key=lambda s: s.planned_date)
+
+            if last_scheds < 2:
+                if ds.run_schedule.baseline == DispatcherSettingScheduleEnum.second:
+                    time_inc = datetime.timedelta(seconds=(1 * ds.mult))
+                elif ds.run_schedule.baseline == DispatcherSettingScheduleEnum.minute:
+                    time_inc = datetime.timedelta(minutes=(1 * ds.mult))
+                elif ds.run_schedule.baseline == DispatcherSettingScheduleEnum.hour:
+                    time_inc = datetime.timedelta(hours=(1 * ds.mult))
+                elif ds.run_schedule.baseline == DispatcherSettingScheduleEnum.day:
+                    time_inc = datetime.timedelta(days=(1 * ds.mult))
+                elif ds.run_schedule.baseline == DispatcherSettingScheduleEnum.week:
+                    time_inc = datetime.timedelta(weeks=(1 * ds.mult))
+                elif ds.run_schedule.baseline == DispatcherSettingScheduleEnum.month:
+                    time_inc = datetime.timedelta(weeks=(4 * 1 * ds.mult))
+                elif ds.run_schedule.baseline == DispatcherSettingScheduleEnum.year:
+                    time_inc = datetime.timedelta(weeks=(52 * 1 * ds.mult))
+
+                next_run = _ScheduleItem(device, DiscoverySource.PACKAGE, last_sched.planned_date + time_inc)
+                print "Next scheduled run: %s" % next_run
+                self.schedule_items.append(next_run)
+                self.schedule_items.sort(key=lambda s: s.planned_date)
+
+        # #recalculate every hour
+        # if not self.last_recalculate or _now > self.next_recalculate:
+        #     print "*" * 10
+        #     print "**** recalculating"
+        #     print "*" * 10
+        #     self.last_recalculate = _now
+        #     self.next_recalculate = _plus_one_minute
+        #
+        #
+        #     if self.schedule_items:
+        #         links = DeviceDispatcherLink.objects.all()
+        #
+        #         schedules = []
+        #
+        #         for link in links:
+        #             device = link.device
+        #
+        #             last_run =
+        #
+        #             for sched in self.schedule_items:
+        #                 if sched.device == device:
+        #
+        #
+        #
+        #
+        #     # calculate inital runs
+        #     else:
+        #         links = DeviceDispatcherLink.objects.all()
+        #
+        #         schedules = []
+        #
+        #         for link in links:
+        #             device = link.device
+        #             ds = link.dispatcher_setting
+        #             com_capabilities = ds.com_capabilities.all()
+        #             print "%s %s %s" % (device, ds.run_schedule, com_capabilities)
+        #
+        #             if ds.run_schedule.baseline == DispatcherSettingScheduleEnum.second:
+        #                 time_inc = datetime.timedelta(seconds=(1 * ds.mult))
+        #             elif ds.run_schedule.baseline == DispatcherSettingScheduleEnum.minute:
+        #                 time_inc = datetime.timedelta(minutes=(1 * ds.mult))
+        #             elif ds.run_schedule.baseline == DispatcherSettingScheduleEnum.hour:
+        #                 time_inc = datetime.timedelta(hours=(1 * ds.mult))
+        #             elif ds.run_schedule.baseline == DispatcherSettingScheduleEnum.day:
+        #                 time_inc = datetime.timedelta(days=(1 * ds.mult))
+        #             elif ds.run_schedule.baseline == DispatcherSettingScheduleEnum.week:
+        #                 time_inc = datetime.timedelta(weeks=(1 * ds.mult))
+        #             else:
+        #                 # todo implement me properly
+        #                 raise NotImplementedError("Not done yet...")
+        #
+        #             __now = _now
+        #             while True:
+        #                 if __now > _plus_one_hour:
+        #                     break
+        #                 # todo source set to package for now (-> in future all runs should be performed on each machine)
+        #                 schedules.append(_ScheduleItem(device, DiscoverySource.PACKAGE, __now))
+        #                 __now += time_inc
+        #
+        #         self.schedule_items = []
+        #         for sched in sorted(schedules, key=lambda s: s.planned_date):
+        #             print sched
+        #             # self.schedule_items.append(sched)
+        #
 
 #            dd = DiscoveryDispatcher()
 #            self.schedule_items = dd.calculate(_now, _plus_one_hour)
 #            self.last_recalculate = _now
 #            self.next_recalculate = _plus_five_min
-
 #            for item in sorted(self.schedule_items, key=lambda si: si.expected_run_date):
 #               print item
 
@@ -600,6 +707,7 @@ class Dispatcher(object):
                         asset_run.run_status = RunStatus.ENDED
                         asset_run.run_end_time = datetime.datetime.now()
                         asset_run.raw_result_str = _output[0]
+                        asset_run.generate_assets_new()
                         asset_run.save()
                         self.device_running_ext_coms[_device] = 0
                     elif status != None:
