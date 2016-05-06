@@ -540,6 +540,7 @@ angular.module(
             monitoring_data: React.PropTypes.object
             draw_parameters: React.PropTypes.object
         }
+        
         componentDidMount: () ->
             el = react_dom.findDOMNode(@)
             # d3js hack
@@ -551,9 +552,14 @@ angular.module(
             @props.draw_parameters.device_idx_filter = node.id
             # should be optmized
             root_node = icswDeviceLivestatusFunctions.build_structured_burst(
-                @props.monitoring_data,
-                @props.draw_parameters,
+                @props.monitoring_data
+                @props.draw_parameters
             )
+            if root_node.element_list.length
+                console.log "EL=", node.id, root_node.element_list.length
+            else
+                console.log "empty", node.id
+            # console.log "rn=", root_node, @props.monitoring_data
             # reset
             @props.draw_parameters.device_idx_filter = undefined
             # srvc_data = (entry for entry in @props.monitoring_data.filtered_services when entry.host.host_name  == node.$$device.full_name)

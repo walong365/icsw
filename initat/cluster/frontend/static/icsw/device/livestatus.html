@@ -26,7 +26,7 @@
             icsw-monitoring-data="struct.monitoring_data"
         ></icsw-device-livestatus-maplist>
     </div>
-    <div class="col-md-4 col-xs-12 col-lg-8">
+    <div class="col-md-4 col-xs-12 col-lg-6">
         <icsw-config-category-location-show
             icsw-livestatus-filter="struct.filter"
             icsw-monitoring-data="struct.monitoring_data"
@@ -241,37 +241,58 @@
     <uib-alert type="warning" ng-show="!struct.data_valid">Loading data...</uib-alert>
     <div ng-if="struct.data_valid">
         <h3 ng-show="!struct.maps_present">No maps to show</h3>
-        <h3 ng-show="struct.maps_present">{{ location_gfx_list.length }} Maps</h3>
-        <uib-tabset ng-if="struct.maps_present">
-            <uib-tab ng-repeat="loc_gfx in location_gfx_list" active="loc_gfx.active">
+        <h3 ng-show="struct.maps_present">
+            {{ struct.loc_gfx_list.length }} Maps,
+            <span ng-show="struct.cur_page_idx">
+                showing map {{ struct.cur_page_idx }},
+            </span>
+            <span ng-show="struct.autorotate" class="label label-primary">autorotate</span>,
+            <icsw-tools-button type="modify" size="xs" ng-click="show_settings()"></icsw-tools-button>
+        </h3>
+        <uib-tabset ng-if="struct.maps_present" active="struct.page_idx">
+            <uib-tab ng-repeat="loc_gfx in struct.loc_gfx_list" select="set_page_idx(loc_gfx)">
                 <uib-tab-heading>
-                    {{ loc_gfx.name }} (<ng-pluralize count="loc_gfx.dml_list.length" when="{'1': '1 device', 'other' : '{} devices'}"></ng-pluralize>)
+                    {{ loc_gfx.name }} (<ng-pluralize count="loc_gfx.$$filtered_dml_list.length" when="{'1': '1 device', 'other' : '{} devices'}"></ng-pluralize>)
                 </uib-tab-heading>
-                <icsw-device-livestatus-location-map ls-filter="ls_filter" gfx="loc_gfx" gfx-size="gfx.size"}}></icsw-device-livestatus-location-map>
-            </uib-tab>
-            <uib-tab select="select_settings()">
-                <uib-tab-heading>
-                    Settings
-                </uib-tab-heading>
-                <h4>Graph settings</h4>
-                <div class="list-group" style="width:400px;">
-                    <div class="list-group-item">
-                        Graph size:
-                        <ui-select ng-model="gfx.size" style="width:200px;">
-                            <ui-select-match class="ui-select-match" placeholder="choose size ...">{{ $select.selected }}</ui-select-match>
-                            <ui-select-choices class="ui-select-choices" repeat="value in gfx_sizes">
-                                <div ng-bind-html="value"></div>
-                            </ui-select-choices>
-                        </ui-select>
-                    </div>
-                    <div class="list-group-item">
-                        Autorotate:
-                        <icsw-tools-button type="enable" is-enable="autorotate" ng-click="toggle_autorotate()"></icsw-tools-button>
-                    </div>
-                </div>
+                <icsw-device-livestatus-location-map
+                    ls-filter="ls_filter"
+                    icsw-location-gfx="loc_gfx"
+                    icsw-gfx-size="struct.cur_gfx_size"
+                    icsw-monitoring-data="struct.monitoring_data"
+                ></icsw-device-livestatus-location-map>
             </uib-tab>
         </uib-tabset>
     </div>
+</script>
+
+<script type="text/ng-template" id="icsw.device.livestatus.maplist.settings">
+    <ng-form class="form-horizontal" name="form_data">
+        <h3>Settings</h3>
+        <fieldset>
+            <legend>Graph settings</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                   Graph size
+                </label>
+                <div class="controls col-sm-7">
+                    <ui-select ng-model="struct.cur_gfx_size" style="width:200px;">
+                        <ui-select-match class="ui-select-match" placeholder="choose size ...">{{ $select.selected }}</ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value in struct.gfx_sizes">
+                            <div ng-bind-html="value"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                   Autorotate
+                </label>
+                <div class="controls col-sm-7">
+                    <icsw-tools-button type="enable" is-enable="struct.autorotate" ng-click="toggle_autorotate()"></icsw-tools-button>
+                </div>
+            </div>
+        </fieldset>
+    </ng-form>
 </script>
 
 <script type="text/ng-template" id="icsw.device.livestatus.filter">

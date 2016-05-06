@@ -1652,7 +1652,7 @@ angular.module(
                 for idx of struct
                     if struct[idx].length
                         omitted_segments += scope.add_circle(parseInt(idx), struct[idx])
-                console.log "nodes", scope.nodes
+                # console.log "nodes", scope.nodes
                 if attrs["omittedSegments"]?
                     scope.omittedSegments = omitted_segments
                 if attrs["isDrawn"]?
@@ -2202,40 +2202,6 @@ angular.module(
             }
         )
     }
-]).directive("icswDeviceLivestatusLocationMap", ["$templateCache", "$compile", "$uibModal", "Restangular", ($templateCache, $compile, $uibModal, Restangular) ->
-    return {
-        restrict : "EA"
-        template: $templateCache.get("icsw.device.livestatus.location.map")
-        scope:
-            loc_gfx : "=gfx"
-            ls_filter: "=lsFilter"
-            gfx_size: "=gfxSize"
-        link : (scope, element, attrs) ->
-            scope.$watch("gfx_size", (new_val) ->
-                scope.width = parseInt(new_val.split("x")[0])
-                scope.height = parseInt(new_val.split("x")[1])
-            )
-    }
-]).directive("icswSvgSetViewbox", [() ->
-    return {
-        restrict: "A"
-        link: (scope, element, attrs) ->
-            scope.$watch(attrs["icswSvgSetViewbox"], (new_val) ->
-                if new_val
-                    element[0].setAttribute("viewBox", "0 0 #{new_val.width} #{new_val.height}")
-            )
-    }
-]).directive("icswSvgBorderpoints", [() ->
-    return {
-        restrict: "A"
-        link: (scope, element, attrs) ->
-            scope.$watch(attrs["icswSvgBorderpoints"], (new_val) ->
-                if new_val
-                    _w = new_val.width
-                    _h = new_val.height
-                    element[0].setAttribute("points", "0,0 #{_w},0 #{_w},#{_h} 0,#{_h} 0 0")
-            )
-    }
 ]).directive("icswDeviceLivestatusDeviceNode", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
@@ -2277,18 +2243,12 @@ angular.module(
     }
 ]).controller("icswDeviceLivestatusMaplistCtrl",
 [
-    "$scope", "icswCategoryTreeService", "$q",
+    "$scope", "icswCategoryTreeService", "$q", "$timeout", "$compile", "$templateCache",
+    "icswComplexModalService", "toaster",
 (
-    $scope, icswCategoryTreeService, $q,
+    $scope, icswCategoryTreeService, $q, $timeout, $compile, $templateCache,
+    icswComplexModalService, toaster,
 ) ->
-    # location gfx list
-    # $scope.gfx = {"size": $scope.gfx_sizes[0]}
-    $scope.autorotate = false
-    $scope.location_gfx_list = []
-    $scope.devsel_list = []
-    $scope.cur_page = -1
-    # flag for enclosing div
-    $scope.show_maps = false
 
     $scope.struct = {
         # data valid
@@ -2298,15 +2258,23 @@ angular.module(
         # gfx sizes
         gfx_sizes: ["1024x768", "1280x1024", "1920x1200", "800x600", "640x400"]
         # cur gfx
-        cur_gfx: undefined
+        cur_gfx_size: undefined
         # any maps present
         maps_present: false
         # monitoring data
         monitoring_data: undefined
         # devices
         devices: []
+        # location list
+        loc_gfx_list: []
+        # autorotate
+        autorotate: false
+        # page idx for autorotate
+        page_idx: 0
+        # page idx set by uib-tab
+        cur_page_idx: 0 
     }
-    $scope.struct.cur_gfx = $scope.struct.gfx_sizes[0]
+    $scope.struct.cur_gfx_size = $scope.struct.gfx_sizes[0]
     
     load = () ->
         $scope.struct.data_valid = false
@@ -2319,63 +2287,247 @@ angular.module(
             (data) ->
                 $scope.struct.cat_tree = data[0]
                 $scope.struct.data_valid = true
+                if $scope.struct.devices.length
+                    check_for_maps()
         )
 
+    check_for_maps = () ->
+        # check for valid maps for current device selection
+        $scope.struct.loc_gfx_list.length = 0
+        $scope.struct.page_idx = 0
+        _deactivate_rotation()
+        loc_idx_used = []
+        dev_idx = (dev.idx for dev in $scope.struct.devices)
+        for gfx in $scope.struct.cat_tree.gfx_list
+            gfx.$$filtered_dml_list = []
+            for dml in gfx.$dml_list
+                if dml.device in dev_idx and dml.location_gfx not in loc_idx_used
+                    loc_idx_used.push(gfx.idx)
+                    $scope.struct.loc_gfx_list.push(gfx)
+                    gfx.$$filtered_dml_list.push(dml)
+                    gfx.$$page_idx = $scope.struct.loc_gfx_list.length
+        $scope.struct.maps_present = $scope.struct.loc_gfx_list.length > 0
+                    
     $scope.new_devsel = (devs) ->
         $scope.struct.devices.length = 0
         for dev in devs
             $scope.struct.devices.push(dev)
+        if $scope.struct.data_valid
+            check_for_maps()
 
     load()
 
-    if false
-        $scope.$watch(
-            $scope.ls_devsel.changed
-            (changed) ->
-                _dev_sel = $scope.ls_devsel.get()
-                $scope.devsel_list = _dev_sel
-                icswConfigCategoryTreeFetchService.fetch($scope.$id, $scope.devsel_list).then((data) ->
-                    $scope.location_gfx_list = data[1]
-                    if $scope.location_gfx_list.length
-                        $scope.show_maps = true
-                    else
-                        $scope.show_maps = false
-                    $scope.ls_filter.set_num_maps($scope.location_gfx_list.length)
-                    gfx_lut = {}
-                    for entry in $scope.location_gfx_list
-                        entry.active = false
-                        gfx_lut[entry.idx] = entry
-                        entry.dml_list = []
-                    # lut: device_idx -> list of dml_entries
-                    dev_gfx_lut = {}
-                    for entry in data[2]
-                        if entry.device not of dev_gfx_lut
-                            dev_gfx_lut[entry.device] = []
-                        dev_gfx_lut[entry.device].push(entry)
-                        entry.redraw = 0
-                        gfx_lut[entry.location_gfx].dml_list.push(entry)
-                    $scope.dev_gfx_lut = dev_gfx_lut
-                )
-        )
-    rte = null
+    # rotation functions
+
     _activate_rotation = () ->
-        if $scope.cur_page >= 0
-            $scope.location_gfx_list[$scope.cur_page].active = false
-        $scope.cur_page++
-        if $scope.cur_page >= $scope.location_gfx_list.length
-            $scope.cur_page = 0
-        $scope.location_gfx_list[$scope.cur_page].active = true
-        rte = $timeout(_activate_rotation, 8000)
+        _pi = $scope.struct.page_idx
+        _pi++
+        if _pi < 1
+            _pi = 1
+        if _pi > $scope.struct.loc_gfx_list.length
+            _pi = 1
+        $scope.struct.page_idx = _pi
+        $scope.struct.autorotate_timeout = $timeout(_activate_rotation, 8000)
+
     _deactivate_rotation = () ->
-        if rte
-            $timeout.cancel(rte)
+        $scope.struct.autorotate = false
+        if $scope.struct.autorotate_timeout
+            $timeout.cancel($scope.struct.autorotate_timeout)
+            $scope.struct.autorotate_timeout = undefined
+
     $scope.toggle_autorotate = () ->
-        $scope.autorotate = !$scope.autorotate
-        if $scope.autorotate
+        $scope.struct.autorotate = !$scope.struct.autorotate
+        if $scope.struct.autorotate
             _activate_rotation()
         else
             _deactivate_rotation()
-    $scope.select_settings = () ->
-        $scope.autorotate = false
-        _deactivate_rotation()
+
+    $scope.set_page_idx = (loc_gfx) ->
+        $scope.struct.cur_page_idx = loc_gfx.$$page_idx
+
+    $scope.show_settings = () ->
+        sub_scope = $scope.$new(false)
+        icswComplexModalService(
+            {
+                message: $compile($templateCache.get("icsw.device.livestatus.maplist.settings"))(sub_scope)
+                title: "Map settings"
+                # css_class: "modal-wide"
+                ok_label: "close"
+                closable: true
+                ok_callback: (modal) ->
+                    d = $q.defer()
+                    if sub_scope.form_data.$invalid
+                        toaster.pop("warning", "form validation problem", "", 0)
+                        d.reject("form not valid")
+                    else
+                        d.resolve("updated")
+                    return d.promise
+            }
+        ).then(
+            (fin) ->
+                sub_scope.$destroy()
+        )
+
+]).factory("icswDeviceLivestatusLocationMapReact",
+[
+    "$q", "icswDeviceLivestatusReactBurst",
+(
+    $q, icswDeviceLivestatusReactBurst,
+) ->
+    {div, h4, g, image, svg, polyline} = React.DOM
+
+    return React.createClass(
+        propTypes: {
+            location_gfx: React.PropTypes.object
+            monitoring_data: React.PropTypes.object
+            draw_parameters: React.PropTypes.object
+            device_tree: React.PropTypes.object
+        }
+
+        getInitialState: () ->
+            return {
+                width: 640
+                height: 400
+                counter: 0
+            }
+
+        set_size: (size_str) ->
+            [_width, _height] = size_str.split("x")
+            @setState(
+                {
+                    width: parseInt(_width)
+                    height: parseInt(_height)
+                }
+            )
+
+        force_redraw: () ->
+            @setState(
+                {counter: @state.counter + 1}
+            )
+
+        render: () ->
+            _gfx = @props.location_gfx
+            {width, height} = @state
+            _header = _gfx.name
+            if _gfx.comment
+                _header = "#{_header} (#{_gfx.comment})"
+
+            _dml_list = [
+                image(
+                    {
+                        key: "bgimage"
+                        width: width
+                        height: height
+                        href: _gfx.image_url
+                    }
+                )
+                polyline(
+                    {
+                        key: "imageborder"
+                        style: {fill:"none", stroke:"black", strokeWidth:"3"}
+                        points: "0,0 #{width},0 #{width},#{height} 0,#{height} 0 0"
+                    }
+                )
+            ]
+            # console.log @props
+            for dml in _gfx.$$filtered_dml_list
+                # build node
+                node = {
+                    id: dml.device
+                    x: dml.pos_x
+                    y: dml.pos_y
+                }
+                _dml_list.push(
+                    React.createElement(
+                        icswDeviceLivestatusReactBurst
+                        {
+                            node: node
+                            monitoring_data: @props.monitoring_data
+                            draw_parameters: @props.draw_parameters
+                        }
+                    )
+                )
+            return div(
+                {key: "top"}
+                [
+                    h4(
+                        {key: "header"}
+                        _header
+                    )
+                    svg(
+                        {
+                            key: "svgouter"
+                            width: width
+                            height: height
+                            preserveAspectRatio: "xMidYMid meet"
+                            viewBox: "0 0 #{width} #{height}"
+                        }
+                        [
+                            g(
+                                {
+                                    key: "gouter"
+                                }
+                                _dml_list
+                            )
+                        ]
+                    )
+
+                ]
+            )
+    )
+]).directive("icswDeviceLivestatusLocationMap",
+[
+    "$templateCache", "$compile", "Restangular", "icswDeviceLivestatusLocationMapReact",
+    "icswBurstDrawParameters", "icswDeviceTreeService", "$q",
+(
+    $templateCache, $compile, Restangular, icswDeviceLivestatusLocationMapReact,
+    icswBurstDrawParameters, icswDeviceTreeService, $q,
+) ->
+    return {
+        restrict: "EA"
+        # template: $templateCache.get("icsw.device.livestatus.location.map")
+        scope:
+            loc_gfx: "=icswLocationGfx"
+            monitoring_data: "=icswMonitoringData"
+            ls_filter: "=lsFilter"
+            gfx_size: "=icswGfxSize"
+        link : (scope, element, attrs) ->
+            draw_params = new icswBurstDrawParameters(
+                {
+                    inner_radius: 0
+                    outer_radius: 90
+                }
+            )
+            $q.all(
+                [
+                    icswDeviceTreeService.load(scope.$id)
+                ]
+            ).then(
+                (data) ->
+                    device_tree = data[0]
+                    react_el = ReactDOM.render(
+                        React.createElement(
+                            icswDeviceLivestatusLocationMapReact
+                            {
+                                location_gfx: scope.loc_gfx
+                                monitoring_data: scope.monitoring_data
+                                draw_parameters: draw_params
+                                device_tree: device_tree
+                            }
+                        )
+                        element[0]
+                    )
+                    scope.monitoring_data.result_notifier.promise.then(
+                        () ->
+                        () ->
+                        (generation) =>
+                            # console.log "gen", @props.livestatus_filter, @monitoring_data
+                            console.log "new_gen", generation
+                            react_el.force_redraw()
+                    )
+                    scope.$watch("gfx_size", (new_val) ->
+                        react_el.set_size(new_val)
+                    )
+            )
+    }
 ])
