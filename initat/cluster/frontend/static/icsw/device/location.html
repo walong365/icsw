@@ -4,6 +4,10 @@
         <ng-pluralize count="struct.devices.length" when="{'one':'1 device', 'other':'{} devices'}"></ng-pluralize>
     </h3>
 
+    <div>
+        ReactTree:
+        <icsw-react-tree></icsw-react-tree>
+    </div>
     <uib-alert type="warning" style="max-width: 500px" ng-if="!is_any_location_defined()">Please create locations in the tab 'Available locations'.</uib-alert>
 
     <div class="row">

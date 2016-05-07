@@ -266,7 +266,7 @@ angular.module(
             }
 
         componentWillMount: () ->
-            @umount_defer = $q.defer()
+            # @umount_defer = $q.defer()
             @props.livestatus_filter.change_notifier.promise.then(
                 () ->
                 () ->
@@ -1574,9 +1574,9 @@ angular.module(
             # device: "=icswDevice"
             # serviceFocus: "=serviceFocus"
             omitted_segments: "=omittedSegments"
-            ls_filter: "=lsFilter"
-            ls_devsel: "=lsDevsel"
-            is_drawn: "=isDrawn"
+            #ls_filter: "=lsFilter"
+            #ls_devsel: "=lsDevsel"
+            #is_drawn: "=isDrawn"
         link: (scope, element, attrs) ->
             scope.$watch("data", (new_val) ->
                 scope.struct.monitoring_data = new_val
@@ -2228,6 +2228,7 @@ angular.module(
         scope: {
             devices: "=icswDevices"
             data: "=icswMonitoringData"
+            filter: "=icswLivestatusFilter"
         }
         link: (scope, element, attrs) ->
             scope.$watch("data", (new_val) ->
@@ -2272,10 +2273,14 @@ angular.module(
         # page idx for autorotate
         page_idx: 0
         # page idx set by uib-tab
-        cur_page_idx: 0 
+        cur_page_idx: 0
+        # filter
+        filter: undefined
     }
     $scope.struct.cur_gfx_size = $scope.struct.gfx_sizes[0]
-    
+    console.log "F", $scope.filter
+    $scope.struct.filter = $scope.filter
+
     load = () ->
         $scope.struct.data_valid = false
         $scope.struct.maps_present = false
@@ -2382,6 +2387,7 @@ angular.module(
             monitoring_data: React.PropTypes.object
             draw_parameters: React.PropTypes.object
             device_tree: React.PropTypes.object
+            livestatus_filter: React.PropTypes.object
         }
 
         getInitialState: () ->
@@ -2399,6 +2405,19 @@ angular.module(
                     height: parseInt(_height)
                 }
             )
+
+        componentWillMount: () ->
+            # @umount_defer = $q.defer()
+            @props.livestatus_filter.change_notifier.promise.then(
+                () ->
+                () ->
+                    # will get called when the component unmounts
+                (c) =>
+                    @force_redraw()
+            )
+
+        componentWillUnmount: () ->
+            @umount_defer.reject("stop")
 
         force_redraw: () ->
             @setState(
@@ -2489,7 +2508,7 @@ angular.module(
         scope:
             loc_gfx: "=icswLocationGfx"
             monitoring_data: "=icswMonitoringData"
-            ls_filter: "=lsFilter"
+            filter: "=icswLivestatusFilter"
             gfx_size: "=icswGfxSize"
         link : (scope, element, attrs) ->
             draw_params = new icswBurstDrawParameters(
@@ -2505,10 +2524,12 @@ angular.module(
             ).then(
                 (data) ->
                     device_tree = data[0]
+                    console.log scope.monitoring_data, scope.filter
                     react_el = ReactDOM.render(
                         React.createElement(
                             icswDeviceLivestatusLocationMapReact
                             {
+                                livestatus_filter: scope.filter
                                 location_gfx: scope.loc_gfx
                                 monitoring_data: scope.monitoring_data
                                 draw_parameters: draw_params

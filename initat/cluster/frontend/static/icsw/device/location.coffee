@@ -29,7 +29,7 @@ angular.module(
 (
     icswTreeConfig
 ) ->
-    class location_tree extends icswTreeConfig
+    class icswDeviceLoactionTree extends icswTreeConfig
         constructor: (@scope, args) ->
             super(args)
             @show_selection_buttons = false
@@ -95,6 +95,7 @@ angular.module(
                 num_sel = t_entry.$match_pks.length
                 if num_sel and @$num_sel > 1
                     r_info = "#{r_info}, #{num_sel} of #{@$num_devs}"
+                # console.log "cat=", cat.num_refs, cat
                 if cat.num_refs
                     r_info = "#{r_info} (refs=#{cat.num_refs})"
                 num_locs = cat.$gfx_list.length

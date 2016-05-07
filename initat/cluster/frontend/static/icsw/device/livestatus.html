@@ -22,6 +22,7 @@
 <script type="text/ng-template" id="icsw.device.livestatus.layout1">
     <div class="col-md-4 col-xs-12 col-lg-6">
         <icsw-device-livestatus-maplist
+            icsw-livestatus-filter="struct.filter"
             icsw-devices="struct.devices"
             icsw-monitoring-data="struct.monitoring_data"
         ></icsw-device-livestatus-maplist>
@@ -255,7 +256,7 @@
                     {{ loc_gfx.name }} (<ng-pluralize count="loc_gfx.$$filtered_dml_list.length" when="{'1': '1 device', 'other' : '{} devices'}"></ng-pluralize>)
                 </uib-tab-heading>
                 <icsw-device-livestatus-location-map
-                    ls-filter="ls_filter"
+                    icsw-livestatus-filter="struct.filter"
                     icsw-location-gfx="loc_gfx"
                     icsw-gfx-size="struct.cur_gfx_size"
                     icsw-monitoring-data="struct.monitoring_data"

@@ -34,7 +34,7 @@ angular.module(
         restrict: "E"
         scope: {
             treeconfig: "="
-            maxHeight  : "&"
+            maxHeight: "&"
             icswConfigObject: "="
         }
         replace: true
@@ -530,23 +530,6 @@ angular.module(
                     show = entry.expand or entry.active
                 else
                     show = entry.active
-            entry.expand = show
-            return entry.expand
-
-        show_selected: (keep=true) =>
-            # make all selected nodes visible
-            (@_show_selected(entry, keep) for entry in @root_nodes)
-            @redraw_tree()
-
-        _show_selected: (entry, keep) =>
-            if (true for sub_entry in entry.children when @_show_selected(sub_entry, keep)).length
-                show = true
-            else
-                # keep: keep expand state if already expanded
-                if keep
-                    show = entry.expand or entry.selected
-                else
-                    show = entry.selected
             entry.expand = show
             return entry.expand
 
