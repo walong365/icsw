@@ -90,7 +90,6 @@ angular.module(
             @props.parent_cb()
 
         render: () ->
-            console.log "r"
             _tc = @props.tree_config
             _tn = @props.tree_node
             _tn._dirty = false
@@ -147,7 +146,7 @@ angular.module(
                         )
                     )
                 )
-                if _tn._depth == 0
+                if _tn._depth == 0 and _tn.children.length and _tc.show_tree_expand_buttons
                     # add full selectin buttons
                     _top_spans = [
                         input(
@@ -321,7 +320,9 @@ angular.module(
     $q,
 ) ->
     class icswReactTreeNode
-        constructor: (args) ->
+        constructor: (args, config) ->
+            @_config = config
+            # default values
             # node is selected
             @selected = false
             # node is active
@@ -336,19 +337,23 @@ angular.module(
             @disable_select = false
             # is always folder
             @always_folder = false
+            # object
+            @obj = null
             @children = []
-            # default values
             for key, value of args
-                if not @[key]?
-                    console.error "unknown icswReactTreeNode #{key}=#{value}"
-                else
+                if key of @
                     @[key] = value
+                else if key.substring(0, 1) == "_"
+                    @[key] = value
+                else if key in @_config.extra_args
+                    @[key] = value
+                else
+                    console.error "unknown icswReactTreeNode arg #{key}=#{value}"
             # internal flags
             @_is_root_node = false
             @_parent = null
             @_depth = 0
             # will be automatically set
-            @_config = null
             @_node_idx = null
             # number of all nodes below this one
             @_num_descendants = 0
@@ -442,6 +447,12 @@ angular.module(
             @debug_mode = false
             # show select button (global flag)
             @show_select = true
+            # show tree expand buttons
+            @show_tree_expand_buttons = true
+            # show descendants (with selection)
+            @show_descendants = false
+            # extra args for nodes
+            @extra_args = []
             @root_nodes = []
             for key, value of args
                 if not @[key]?
@@ -463,10 +474,13 @@ angular.module(
             console.log "stop"
             @update_notifier.reject("stop")
 
+        clear_root_nodes: () =>
+            @root_nodes.length = 0
+            @new_generation()
+            
         create_node: (args) =>
             @_node_idx++
-            new_node = new icswReactTreeNode(args)
-            new_node._config = @
+            new_node = new icswReactTreeNode(args, @)
             new_node._node_idx = @_node_idx
             return new_node
 
@@ -476,7 +490,35 @@ angular.module(
             node._depth = 0
             @root_nodes.push(node)
             @new_generation()
-            
+
+        # recalc all root_nodes
+        recalc: () =>
+            (@_recalc_sel_descendants(entry) for entry in @root_nodes)
+            (@_recalc_num_descendants(entry) for entry in @root_nodes)
+            (@_recalc_sel_childs(entry) for entry in @root_nodes)
+            @new_generation()
+
+        _recalc_num_descendants: (entry) =>
+            # @_num_childs = (_entry for _entry in entry.children when !_entry.pruned).length
+            @_num_childs = (_entry for _entry in entry.children).length
+            @_num_descendants = @_num_childs
+            @_num_nd_descendants = @_num_childs
+            for child in entry.children
+                _desc = @_recalc_num_descendants(child)
+                entry._num_descendants += _desc[0]
+                entry._num_nd_descendants += _desc[1]
+            return [entry._num_descendants, entry._num_nd_descendants]
+
+        _recalc_sel_descendants: (entry) =>
+            entry._sel_descendants = (true for _entry in entry.children when _entry.selected).length
+            for child in entry.children
+                entry._sel_descendants += @_recalc_sel_descendants(child)
+            return entry._sel_descendants
+
+        _recalc_sel_childs: (entry) =>
+            entry._sel_childs = (true for _entry in entry.children when _entry.selected).length
+            (@_recalc_sel_childs(child) for child in entry.children)
+
         toggle_select_subtree: (node) =>
              # if all selected, deselect
              # otherwise select all
@@ -580,33 +622,38 @@ angular.module(
     return {
         restrict: "E"
         scope: {
-            treeconfig: "="
+            tree_config: "=icswTreeConfig"
         }
         replace: true
-        link: (scope, element, attr) ->
-            dummy_config = new icswReactTreeConfig(
-                {
-                    show_num_childs: 4
-                    name: "test"
-                    debug_mode: true
-                }
-            )
-            nn = dummy_config.create_node({})
-            dummy_config.add_root_node(nn)
-            bench_outer = 10
-            bench_inner = 1000
-            for idx in [0..bench_outer]
-                sn = dummy_config.create_node({expand: false})
-                nn.add_child(sn)
-                for sidx in [0..bench_inner]
-                    sn2 = dummy_config.create_node({expand: true})
-                    sn.add_child(sn2)
-                # nn = sn
+        link: (scope, element, attrs) ->
+            console.log attrs
+            if not attrs.icswTreeConfig?
+                dummy_config = new icswReactTreeConfig(
+                    {
+                        show_num_childs: 4
+                        name: "test"
+                        debug_mode: true
+                    }
+                )
+                nn = dummy_config.create_node({})
+                dummy_config.add_root_node(nn)
+                bench_outer = 10
+                bench_inner = 1000
+                for idx in [0..bench_outer]
+                    sn = dummy_config.create_node({expand: false})
+                    nn.add_child(sn)
+                    for sidx in [0..bench_inner]
+                        sn2 = dummy_config.create_node({expand: true})
+                        sn.add_child(sn2)
+                    # nn = sn
+                tree_config = dummy_config
+            else
+                tree_config = scope.tree_config
             ReactDOM.render(
                 React.createElement(
                     icswReactTreeDrawContainer
                     {
-                        tree_config: dummy_config
+                        tree_config: tree_config
                     }
                 )
                 element[0]

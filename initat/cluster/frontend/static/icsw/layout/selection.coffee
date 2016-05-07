@@ -30,19 +30,21 @@ angular.module(
     id = Math.random()
     return (dev_pk) ->
         defer = $q.defer()
-        icswDeviceTreeService.load(id).then((new_data) ->
-            if dev_pk of new_data.all_lut
-                defer.resolve(new_data.all_lut[dev_pk])
-            else
-                defer.resolve(undefined)
+        icswDeviceTreeService.load(id).then(
+            (new_data) ->
+                if dev_pk of new_data.all_lut
+                    defer.resolve(new_data.all_lut[dev_pk])
+                else
+                    defer.resolve(undefined)
         )
         return defer.promise
 ]).service("icswSelectionDeviceExists", ["icswDeviceTreeService", "$q", (icswDeviceTreeService, $q) ->
     id = Math.random()
     return (dev_pk) ->
         defer = $q.defer()
-        icswDeviceTreeService.load(id).then((new_data) ->
-            defer.resolve(dev_pk of new_data.all_lut)
+        icswDeviceTreeService.load(id).then(
+            (new_data) ->
+                defer.resolve(dev_pk of new_data.all_lut)
         )
         return defer.promise
 ]).service("icswActiveSelectionService",
@@ -426,11 +428,11 @@ angular.module(
     }
     # console.log "new ctrl", $scope.$id
     # treeconfig for devices
-    $scope.tc_devices = new icswLayoutSelectionTreeService($scope, {show_tree_expand_buttons : false, show_descendants : true})
+    $scope.tc_devices = new icswLayoutSelectionTreeService($scope, {show_tree_expand_buttons: false, show_descendants: true})
     # treeconfig for groups
-    $scope.tc_groups = new icswLayoutSelectionTreeService($scope, {show_tree_expand_buttons : false, show_descendants : true})
+    $scope.tc_groups = new icswLayoutSelectionTreeService($scope, {show_tree_expand_buttons: false, show_descendants: true})
     # treeconfig for categories
-    $scope.tc_categories = new icswLayoutSelectionTreeService($scope, {show_selection_buttons : true, show_descendants : true})
+    $scope.tc_categories = new icswLayoutSelectionTreeService($scope, {show_selection_buttons: true, show_descendants: true})
     $scope.selection_dict = {
         "d": 0
         "g": 0
@@ -491,11 +493,11 @@ angular.module(
         $scope.tree = tree
         console.log tree
         for entry in tree.cat_tree.list
-            t_entry = $scope.tc_categories.new_node(
+            t_entry = $scope.tc_categories.create_node(
                 {
                     folder: true
                     obj: entry.idx
-                    _show_select: entry.depth > 1
+                    show_select: entry.depth > 1
                     _node_type: "c"
                     expand: entry.depth == 0
                     selected: $scope.selection.category_selected(entry.idx)
@@ -510,7 +512,7 @@ angular.module(
         dg_lut = {}
         for entry in tree.enabled_list
             if entry.is_meta_device
-                g_entry = $scope.tc_groups.new_node(
+                g_entry = $scope.tc_groups.create_node(
                     {
                         obj: entry.device_group
                         folder: true
@@ -519,12 +521,12 @@ angular.module(
                     }
                 )
                 $scope.tc_groups.add_root_node(g_entry)
-                d_entry = $scope.tc_devices.new_node(
+                d_entry = $scope.tc_devices.create_node(
                     {
                         obj: entry.idx
                         folder: true
-                        _node_type: "d"
                         selected: $scope.selection.device_selected(entry.idx)
+                        _node_type: "d"
                     }
                 )
                 $scope.tc_devices.add_root_node(d_entry)
@@ -533,19 +535,15 @@ angular.module(
         for entry in tree.enabled_list
             if ! entry.is_meta_device
                 # copy selection state to device selection (the selection state of the meta devices is keeped in sync with the selection states of the devicegroups )
-                d_entry = $scope.tc_devices.new_node(
+                d_entry = $scope.tc_devices.create_node(
                     {
                         obj: entry.idx
                         folder: false
-                        _node_type: "d"
                         selected: $scope.selection.device_selected(entry.idx)
+                        _node_type: "d"
                     }
                 )
                 dg_lut[entry.device_group].add_child(d_entry)
-        $scope.tc_devices.prune(
-            (entry) ->
-                return entry._node_type == "d"
-        )
         for cur_tc in [$scope.tc_devices, $scope.tc_groups, $scope.tc_categories]
             cur_tc.recalc()
             cur_tc.show_selected()
@@ -900,19 +898,21 @@ angular.module(
     }
 ]).service("icswLayoutSelectionTreeService",
 [
-    "DeviceOverviewService", "icswTreeConfig", "icswDeviceTreeService",
+    "DeviceOverviewService", "icswReactTreeConfig", "icswDeviceTreeService",
     "DeviceOverviewSelection",
 (
-    DeviceOverviewService, icswTreeConfig, icswDeviceTreeService,
+    DeviceOverviewService, icswReactTreeConfig, icswDeviceTreeService,
     DeviceOverviewSelection
 ) ->
-    class selection_tree extends icswTreeConfig
+    class icswLayoutSelectionTree extends icswReactTreeConfig
         constructor: (@scope, args) ->
             super(args)
             @current = undefined
+
         ensure_current: () =>
             if not @current
                 @current = icswDeviceTreeService.current()
+
         handle_click: (entry, event) =>
             @ensure_current()
             if entry._node_type == "d"
@@ -924,6 +924,7 @@ angular.module(
                 entry.set_selected(not entry.selected)
                 @scope.$digest()
             # need $apply() here, $digest is not enough
+
         get_name: (t_entry) =>
             @ensure_current()
             entry = @get_dev_entry(t_entry)
@@ -968,6 +969,7 @@ angular.module(
                     return ""
             else
                 return "dynatree-icon"
+
         get_dev_entry: (t_entry) =>
             if t_entry._node_type == "g"
                 return @scope.tree.group_lut[t_entry.obj]

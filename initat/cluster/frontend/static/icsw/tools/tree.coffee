@@ -298,6 +298,23 @@ angular.module(
             (@_show_active(entry, keep) for entry in @root_nodes)
             @redraw_tree()
 
+        show_selected: (keep=true) =>
+            # make all selected nodes visible
+            (@_show_selected(entry, keep) for entry in @root_nodes)
+            @redraw_tree()
+
+        _show_selected: (entry, keep) =>
+            if (true for sub_entry in entry.children when @_show_selected(sub_entry, keep)).length
+                show = true
+            else
+                # keep: keep expand state if already expanded
+                if keep
+                    show = entry.expand or entry.selected
+                else
+                    show = entry.selected
+            entry.expand = show
+            return entry.expand
+
         redraw_tree: () =>
             for node in @root_nodes
                 @update_nodes_to_bottom(node)

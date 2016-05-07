@@ -76,7 +76,7 @@
                         </uib-tab-heading>
                         <!-- use tree for production or ntree for testing -->
                         <!-- add attribute max-heigth to limit used height -->
-                        <tree treeconfig="tc_devices" single="true"></tree>
+                        <icsw-react-tree icsw-tree-config="tc_devices" single="true"></icsw-react-tree>
                     </uib-tab>
                     <uib-tab select="activate_tab('g')" active="tabs['g']">
                         <uib-tab-heading>
@@ -88,7 +88,7 @@
                                 </button>
                             </span>
                         </uib-tab-heading>
-                        <tree treeconfig="tc_groups"></tree>
+                        <icsw-react-tree icsw-tree-config="tc_groups"></icsw-react-tree>
                     </uib-tab>
                     <uib-tab select="activate_tab('c')" active="tabs['c']">
                         <uib-tab-heading>
@@ -100,7 +100,7 @@
                                 </button>
                             </span>
                         </uib-tab-heading>
-                        <tree treeconfig="tc_categories"></tree>
+                        <icsw-react-tree icsw-tree-config="tc_categories"></icsw-react-tree>
                     </uib-tab>
                 </uib-tabset>
             </uib-tab>
