@@ -26,28 +26,7 @@ angular.module(
         "icsw.device.info", "icsw.tools.tree", "icsw.user",
         "icsw.backend.devicetree",
     ]
-).service("icswSelectionGetDeviceService", ["icswDeviceTreeService", "$q", (icswDeviceTreeService, $q) ->
-    id = Math.random()
-    return (dev_pk) ->
-        defer = $q.defer()
-        icswDeviceTreeService.load(id).then(
-            (new_data) ->
-                if dev_pk of new_data.all_lut
-                    defer.resolve(new_data.all_lut[dev_pk])
-                else
-                    defer.resolve(undefined)
-        )
-        return defer.promise
-]).service("icswSelectionDeviceExists", ["icswDeviceTreeService", "$q", (icswDeviceTreeService, $q) ->
-    id = Math.random()
-    return (dev_pk) ->
-        defer = $q.defer()
-        icswDeviceTreeService.load(id).then(
-            (new_data) ->
-                defer.resolve(dev_pk of new_data.all_lut)
-        )
-        return defer.promise
-]).service("icswActiveSelectionService",
+).service("icswActiveSelectionService",
 [
     "$q", "Restangular", "$rootScope", "ICSW_URLS", "icswSelection",  "ICSW_SIGNALS",
 (
@@ -360,7 +339,11 @@ angular.module(
         defer = $q.defer()
         icswUserService.load().then(
             (user) ->
-                Restangular.all(ICSW_URLS.REST_DEVICE_SELECTION_LIST.slice(1)).getList({"user": user.idx}).then(
+                Restangular.all(ICSW_URLS.REST_DEVICE_SELECTION_LIST.slice(1)).getList(
+                    {
+                        user: user.idx
+                    }
+                ).then(
                     (data) ->
                         (enrich_selection(entry) for entry in data)
                         _list = data
@@ -423,8 +406,8 @@ angular.module(
     $scope.synced = false
     # for saved selections
     $scope.vars = {
-        "search_str": ""
-        "selection_for_dropdown": undefined
+        search_str: ""
+        selection_for_dropdown: undefined
     }
     # console.log "new ctrl", $scope.$id
     # treeconfig for devices
@@ -434,9 +417,9 @@ angular.module(
     # treeconfig for categories
     $scope.tc_categories = new icswLayoutSelectionTreeService($scope, {show_selection_buttons: true, show_descendants: true})
     $scope.selection_dict = {
-        "d": 0
-        "g": 0
-        "c": 0
+        d: 0
+        g: 0
+        c: 0
     }
     $scope.tree = undefined
     # console.log "start"
@@ -906,6 +889,7 @@ angular.module(
 ) ->
     class icswLayoutSelectionTree extends icswReactTreeConfig
         constructor: (@scope, args) ->
+            # args.debug_mode = true
             super(args)
             @current = undefined
 

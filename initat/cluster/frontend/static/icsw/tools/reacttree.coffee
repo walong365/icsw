@@ -30,7 +30,7 @@ angular.module(
 (
     $q,
 ) ->
-    {div, h4, select, option, p, input, span, ul, li} = React.DOM
+    {div, input, span, ul, li} = React.DOM
     icswReactTreeDrawNode = React.createClass(
         propTypes: {
             parent_cb: React.PropTypes.func
@@ -114,12 +114,11 @@ angular.module(
                             className: "fancytree-checkbox"
                             type: "checkbox"
                             checked: if _tn.selected then "checked" else null
-                            disabled: if _tn.disable_select then "disabled" else null
+                            disabled: if _tn.disable_select or _tc.disable_select then "disabled" else null
                             style: {marginLeft: "2px"}
                             onChange: (event) =>
-                                _tn.set_selected(!_tn.selected)
+                                _tc.toggle_checkbox_node(_tn)
                                 @setState({selected: _tn.selected})
-                                console.log "par"
                                 @props.parent_cb()
                         }
                     )
@@ -192,16 +191,34 @@ angular.module(
                             _top_spans
                         )
                     )
-
+            # add name
             _main_spans.push(
                 span(
                     {
                         key: "main"
-                        className: "text-danger"
+                        className: _tc.get_name_class(_tn)
+                        title: _tc.get_title(_tn)
                     }
-                    "test"
+                    _tc.get_name(_tn)
                 )
             )
+            if _tc.show_descendants and _tn._num_descendants
+                if _tc.show_total_descendants
+                    _desc = _tn._num_descendants
+                else
+                    _desc = _tn._num_nd_descendants
+                if _tn._num_sel_descendants
+                    _desc = "#{_desc} / #{_tn._num_sel_descendants}"
+                # add descendants display
+                _main_spans.push(
+                    span(
+                        {
+                            key: "desc"
+                            className: if _tn._num_sel_descendants then "label label-primary" else "label label-default"
+                        }
+                        _desc
+                    )
+                )
             if _tc.debug_mode
                 _main_spans.push(
                     span(
@@ -369,6 +386,7 @@ angular.module(
         add_child: (node) =>
             node._depth = @_depth + 1
             node._parent = @
+            @children.push(node)
             # iterate upwards
             p =  @
             while p
@@ -381,7 +399,6 @@ angular.module(
                 if not node.folder
                     p._num_nd_descendants++
                 p = p._parent
-            @children.push(node)
             @_config.new_generation()
 
         all_selectable_descendant_and_self_selected: () =>
@@ -435,22 +452,34 @@ angular.module(
     icswReactTreeNode, $q,
 ) ->
 
+    tree_idx = 0
     class icswReactTreeConfig
         constructor: (args) ->
+            # count trees
+            tree_idx++
+            @tree_idx = tree_idx
             # default values
-            @name = "dummy_name"
+            @name = "dummy_name_#{@tree_idx}"
             # show subselecton button
             @show_selection_buttons = true
             @show_num_childs = true
             # expand nodes on selection
             @expand_on_selection = false
             @debug_mode = false
+            # select button is disabled (global flag)
+            @disable_select = false
+            # allow change of selection
+            @change_select = true
             # show select button (global flag)
             @show_select = true
             # show tree expand buttons
             @show_tree_expand_buttons = true
             # show descendants (with selection)
             @show_descendants = false
+            # show total descendants and not non-folder-only entries
+            @show_total_descendants = true
+            # only one element can be selected
+            @single_select = false
             # extra args for nodes
             @extra_args = []
             @root_nodes = []
@@ -500,9 +529,9 @@ angular.module(
 
         _recalc_num_descendants: (entry) =>
             # @_num_childs = (_entry for _entry in entry.children when !_entry.pruned).length
-            @_num_childs = (_entry for _entry in entry.children).length
-            @_num_descendants = @_num_childs
-            @_num_nd_descendants = @_num_childs
+            _num_childs = (_entry for _entry in entry.children).length
+            entry._num_descendants = _num_childs
+            entry._num_nd_descendants = _num_childs
             for child in entry.children
                 _desc = @_recalc_num_descendants(child)
                 entry._num_descendants += _desc[0]
@@ -519,6 +548,22 @@ angular.module(
             entry._sel_childs = (true for _entry in entry.children when _entry.selected).length
             (@_recalc_sel_childs(child) for child in entry.children)
 
+        # toggle selection of single node
+        toggle_checkbox_node: (node) =>
+            if @change_select
+                if @pre_change_cb?
+                    @pre_change_cb(node)
+                node.set_selected(!node.selected)
+                if node.selected and @single_select
+                    # remove all other selections
+                    @iter(
+                        (_entry) ->
+                            if _entry.selected and _entry._node_idx != node._node_idx
+                                _entry.set_selected(false)
+                    )
+                @selection_changed(node)
+
+        # change selection of subtrees
         toggle_select_subtree: (node) =>
              # if all selected, deselect
              # otherwise select all
@@ -533,7 +578,7 @@ angular.module(
                  change_sel_rec(node, false)
              else
                  change_sel_rec(node, true)
-             # @selection_changed(entry)
+             @selection_changed(node)
 
         # general iterate function
         iter: (cb_func, cb_data) =>
@@ -613,6 +658,19 @@ angular.module(
             )
             return active
 
+        # accessor classes, to be overridden
+        get_name: () =>
+            return "node"
+
+        get_name_class: () =>
+            return ""
+
+        get_title: () =>
+            return ""
+
+        selection_changed: (entry) =>
+            console.warn "selection_changed not implemented for #{@name}"
+
 ]).directive("icswReactTree",
 [
     "icswReactTreeDrawContainer", "icswReactTreeConfig",
@@ -630,7 +688,6 @@ angular.module(
             if not attrs.icswTreeConfig?
                 dummy_config = new icswReactTreeConfig(
                     {
-                        show_num_childs: 4
                         name: "test"
                         debug_mode: true
                     }
