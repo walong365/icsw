@@ -393,7 +393,7 @@ angular.module(
     $scope, icswLayoutSelectionTreeService, $timeout, icswDeviceTreeService, ICSW_SIGNALS,
     icswSelection, icswActiveSelectionService, $q, icswSavedSelectionService, icswToolsSimpleModalService,
     DeviceOverviewService, ICSW_URLS, icswSimpleAjaxCall, blockUI, $rootScope, icswUserService,
-    DeviceOverviewSelection
+    DeviceOverviewSelection,
 ) ->
     # search settings
     $scope.search_ok = true
@@ -410,12 +410,20 @@ angular.module(
         selection_for_dropdown: undefined
     }
     # console.log "new ctrl", $scope.$id
+    # notifier queue
+    notifier_queue = $q.defer()
+    notifier_queue.promise.then(
+        (ok) ->
+        (error) ->
+        (info) ->
+            console.log "info"
+    )
     # treeconfig for devices
-    $scope.tc_devices = new icswLayoutSelectionTreeService($scope, {show_tree_expand_buttons: false, show_descendants: true})
+    $scope.tc_devices = new icswLayoutSelectionTreeService($scope, notifier_queue, {show_tree_expand_buttons: false, show_descendants: true})
     # treeconfig for groups
-    $scope.tc_groups = new icswLayoutSelectionTreeService($scope, {show_tree_expand_buttons: false, show_descendants: true})
+    $scope.tc_groups = new icswLayoutSelectionTreeService($scope, notifier_queue, {show_tree_expand_buttons: false, show_descendants: true})
     # treeconfig for categories
-    $scope.tc_categories = new icswLayoutSelectionTreeService($scope, {show_selection_buttons: true, show_descendants: true})
+    $scope.tc_categories = new icswLayoutSelectionTreeService($scope, notifier_queue, {show_selection_buttons: true, show_descendants: true})
     $scope.selection_dict = {
         d: 0
         g: 0
@@ -457,6 +465,7 @@ angular.module(
     stop_listen.push(
         $scope.$on("$destroy", (event) ->
             console.log "Destroy", stop_listen
+            notifier_queue.reject("exit")
             (stop_func() for stop_func in stop_listen)
         )
     )
@@ -755,6 +764,7 @@ angular.module(
                 $scope.vars.selection_for_dropdown = $scope.selection.db_obj
                 $scope.synced = true
         )
+
     $scope.unselect = () ->
         console.log "unselect"
         $scope.synced = false
@@ -888,7 +898,7 @@ angular.module(
     DeviceOverviewSelection
 ) ->
     class icswLayoutSelectionTree extends icswReactTreeConfig
-        constructor: (@scope, args) ->
+        constructor: (@scope, @notifier, args) ->
             # args.debug_mode = true
             super(args)
             @current = undefined
@@ -897,16 +907,16 @@ angular.module(
             if not @current
                 @current = icswDeviceTreeService.current()
 
-        handle_click: (entry, event) =>
+        handle_click: (event, entry) =>
             @ensure_current()
             if entry._node_type == "d"
                 dev = @current.all_lut[entry.obj]
                 DeviceOverviewSelection.set_selection([dev])
                 DeviceOverviewService(event)
-                @scope.$apply()
+                @notifier.info("go")
             else
                 entry.set_selected(not entry.selected)
-                @scope.$digest()
+                @notifier.info("go")
             # need $apply() here, $digest is not enough
 
         get_name: (t_entry) =>
@@ -963,6 +973,5 @@ angular.module(
                 return @scope.tree.all_lut[t_entry.obj]
         selection_changed: () =>
             @scope.selection_changed()
-            console.log "$digest LayoutSel"
-            @scope.$digest()
+            @notifier.notify("go")
 ])

@@ -191,8 +191,7 @@ angular.module(
                             _top_spans
                         )
                     )
-            # add name
-            _main_spans.push(
+            _name_span_list = [
                 span(
                     {
                         key: "main"
@@ -201,7 +200,7 @@ angular.module(
                     }
                     _tc.get_name(_tn)
                 )
-            )
+            ]
             if _tc.show_descendants and _tn._num_descendants
                 if _tc.show_total_descendants
                     _desc = _tn._num_descendants
@@ -210,7 +209,7 @@ angular.module(
                 if _tn._num_sel_descendants
                     _desc = "#{_desc} / #{_tn._num_sel_descendants}"
                 # add descendants display
-                _main_spans.push(
+                _name_span_list.push(
                     span(
                         {
                             key: "desc"
@@ -220,7 +219,7 @@ angular.module(
                     )
                 )
             if _tc.debug_mode
-                _main_spans.push(
+                _main_span_list.push(
                     span(
                         {
                             key: "debug"
@@ -229,6 +228,20 @@ angular.module(
                         "#{_tn._num_descendants} / #{_tn._num_nd_descendants} / #{_tn._num_sel_descendants} / #{_tn._num_sel_childs}"
                     )
                 )
+            # add name
+            _main_spans.push(
+                span(
+                    {
+                        key: "name"
+                        className: "fancytree-title"
+                        onClick: (event) =>
+                            _tc.handle_click(event, _tn)
+                        onDblClick: (event) =>
+                            _tc.handle_dbl_click(event, _tn)
+                    }
+                    _name_span_list
+                )
+            )
             _sub_el = [
                 span(
                     {
