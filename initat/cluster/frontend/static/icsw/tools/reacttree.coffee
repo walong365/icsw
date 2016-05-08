@@ -228,6 +228,7 @@ angular.module(
                         "#{_tn._num_descendants} / #{_tn._num_nd_descendants} / #{_tn._num_sel_descendants} / #{_tn._num_sel_childs}"
                     )
                 )
+            _name_span_list.push(_tc.get_extra_view_element(_tn))
             # add name
             _main_spans.push(
                 span(
@@ -396,10 +397,14 @@ angular.module(
             # draw flag
             @_dirty = true
 
-        add_child: (node) =>
+        add_child: (node, sort_func) =>
             node._depth = @_depth + 1
             node._parent = @
-            @children.push(node)
+            if sort_func?
+                idx = sort_func(@children, node)
+                @children.splice(idx, 0, node)
+            else
+                @children.push(node)
             # iterate upwards
             p =  @
             while p
@@ -580,10 +585,10 @@ angular.module(
         toggle_select_subtree: (node) =>
              # if all selected, deselect
              # otherwise select all
-             change_sel_rec = (node, flag) ->
+             change_sel_rec = (node, flag) =>
                  node.set_selected(flag)
                  if flag and @expand_on_selection
-                     node.expand = true
+                     node.set_expand(true)
                  for sub_node in node.children
                      change_sel_rec(sub_node, flag)
 
@@ -681,6 +686,11 @@ angular.module(
         get_title: () =>
             return ""
 
+        # extra view elements
+        get_extra_view_element: (entry) =>
+            return null
+
+        # selection changed callback
         selection_changed: (entry) =>
             console.warn "selection_changed not implemented for #{@name}"
 

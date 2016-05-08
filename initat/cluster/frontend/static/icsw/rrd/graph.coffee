@@ -23,7 +23,8 @@ DT_FORM = "YYYY-MM-DD HH:mm ZZ"
 angular.module(
     "icsw.rrd.graph",
     [
-        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "icsw.rrd.graphsetting",
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters",
+        "restangular", "icsw.rrd.graphsetting",
     ]
 ).config(["$stateProvider", ($stateProvider) ->
     $stateProvider.state(
@@ -206,7 +207,19 @@ angular.module(
             # helper server
             dt_helper: undefined
             # draw tree
-            g_tree: new icswRRDGraphTree($scope)
+            g_tree: new icswRRDGraphTree(
+                $scope
+                {
+                    show_selection_buttons: true
+                    show_icons: false
+                    expand_on_selection: true
+                    show_select: true
+                    show_descendants: true
+                    show_total_descendants: false
+                    show_childs: false
+                    extra_args: ["build_info"]
+                }
+            )
             # user / group tree
             user_group_tree: undefined
             # user settings (RRDGraphUserSetting)
@@ -325,6 +338,14 @@ angular.module(
                 else
                     $scope.struct.error_string = "No vector found"
 
+        _child_sort = (list, new_node) ->
+            _idx = 0
+            for _entry in list
+                if _entry._display_name > new_node._display_name
+                    break
+                _idx++
+            return _idx
+            
         $scope._add_structural_entry = (entry, lut, parent) =>
             parts = entry.key.split(".")
             _pn = ""
@@ -343,7 +364,7 @@ angular.module(
                 else
                     # override name if display_name is set and this is the structural entry at the bottom
                     # structural
-                    cur_node = $scope.struct.g_tree.new_node(
+                    cur_node = $scope.struct.g_tree.create_node(
                         {
                             folder : true,
                             expand : false
@@ -359,18 +380,10 @@ angular.module(
                     )
                     $scope.struct.vectordata.num_struct++
                     lut[pn] = cur_node
-                    parent.add_child(cur_node, $scope._child_sort)
+                    parent.add_child(cur_node, _child_sort)
                 parent = cur_node
             return parent
         
-        $scope._child_sort = (list, new_node) ->
-            _idx = 0
-            for _entry in list
-                if _entry._display_name > new_node._display_name
-                    break
-                _idx++
-            return _idx
-            
         $scope._expand_info = (info, g_key) =>
             _num = 0
             for _var in g_key.split(".")
@@ -403,7 +416,7 @@ angular.module(
                     _vd.num_struct--
                     _vd.num_mve++
             else
-                cur_node = $scope.struct.g_tree.new_node(
+                cur_node = $scope.struct.g_tree.create_node(
                     {
                         expand : false
                         selected: _sel
@@ -414,7 +427,7 @@ angular.module(
                 cur_node.build_info = []
                 _vd.num_mve++
                 lut[g_key] = cur_node
-                parent.add_child(cur_node, $scope._child_sort)
+                parent.add_child(cur_node, _child_sort)
             cur_node._key_pair = [top.key, entry.key]
             cur_node._display_name = $scope._expand_info(entry.info, g_key)
             if $scope.mv_dev_pk not in cur_node._dev_pks
@@ -431,7 +444,7 @@ angular.module(
         $scope.init_machine_vector = () =>
             $scope.lut = {}
             $scope.struct.g_tree.clear_root_nodes()
-            root_node = $scope.struct.g_tree.new_node(
+            root_node = $scope.struct.g_tree.create_node(
                 {
                     folder: true
                     expand: true
@@ -602,19 +615,15 @@ angular.module(
     }
 ]).service("icswRRDGraphTree",
 [
-    "icswTreeConfig",
+    "icswReactTreeConfig",
 (
-    icswTreeConfig
+    icswReactTreeConfig
 ) ->
-    class icswRRDGraphTree extends icswTreeConfig
+    {span} = React.DOM
+    class icswRRDGraphTree extends icswReactTreeConfig
         constructor: (@scope, args) ->
             super(args)
-            @show_selection_buttons = true
-            @show_icons = false
-            @show_select = true
-            @show_descendants = true
-            @show_total_descendants = false
-            @show_childs = false
+
         get_name : (t_entry) ->
             if t_entry._node_type == "h"
                 return "vector"
@@ -624,27 +633,35 @@ angular.module(
                     return "#{node_name} (#{t_entry._dev_pks.length})"
                 else
                     return node_name
+
         get_title: (t_entry) ->
             if t_entry._node_type == "e"
                 return t_entry._g_key
             else
                 return ""
+
         handle_click: (entry, event) =>
             if entry._node_type == "s"
                 entry.expand = ! entry.expand
             else if entry._node_type == "e"
                 @_jq_toggle_checkbox_node(entry)
             @scope.$digest()
+
         selection_changed: () =>
             @scope.selection_changed()
             @scope.$digest()
-        add_extra_span: (entry) ->
-            if entry._node_type == "e"
-                return angular.element("<span></span>")
+
+        get_extra_view_element: (entry) ->
+            if entry._node_type == "e" and entry.num_sensors
+                console.log "ARROW", entry
+                return span(
+                    {
+                        key: "arrow"
+                        className: "fa fa-arrows-v"
+                    }
+                )
             else
                 return null
-        update_extra_span: (entry, span) ->
-            span.removeClass()
             if entry.num_sensors
                 span.addClass("fa fa-arrows-v")
 
