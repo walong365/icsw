@@ -653,7 +653,6 @@ angular.module(
 
         get_extra_view_element: (entry) ->
             if entry._node_type == "e" and entry.num_sensors
-                console.log "ARROW", entry
                 return span(
                     {
                         key: "arrow"
@@ -863,9 +862,9 @@ angular.module(
                         {
                             url: ICSW_URLS.RRD_TRIGGER_SENSOR_THRESHOLD
                             data:
-                                "pk": th.idx
+                                pk: th.idx
                                 # lower or upper
-                                "type": lu_switch
+                                type: lu_switch
                         }
                     ).then(
                         (ok) ->

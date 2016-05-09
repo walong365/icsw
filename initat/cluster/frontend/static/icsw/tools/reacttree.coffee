@@ -192,6 +192,7 @@ angular.module(
                         )
                     )
             _name_span_list = [
+                _tc.get_extra_view_element(_tn)
                 span(
                     {
                         key: "main"
@@ -228,7 +229,6 @@ angular.module(
                         "#{_tn._num_descendants} / #{_tn._num_nd_descendants} / #{_tn._num_sel_descendants} / #{_tn._num_sel_childs}"
                     )
                 )
-            _name_span_list.push(_tc.get_extra_view_element(_tn))
             # add name
             _main_spans.push(
                 span(
@@ -597,6 +597,28 @@ angular.module(
              else
                  change_sel_rec(node, true)
              @selection_changed(node)
+
+
+        toggle_tree_state: (entry, flag, signal=true) =>
+            # entry: root node or undefined for iteration over all root nodes
+            # flag: integer,
+            #     1: expand and select entry
+            #     0: toggle selected flag of entry
+            #    -1: deselect entry
+            if entry == undefined
+                (@toggle_tree_state(_entry, flag, signal) for _entry in @root_nodes)
+            else
+                if flag == 1
+                    entry.set_selected(true)
+                    entry.set_expand(true)
+                else if flag == 0
+                    entry.set_selected(!entry.selected)
+                else
+                    entry.set_selected(false)
+                for sub_entry in entry.children
+                    @toggle_tree_state(sub_entry, flag, false)
+                if signal
+                    @selection_changed(entry)
 
         # general iterate function
         iter: (cb_func, cb_data) =>
