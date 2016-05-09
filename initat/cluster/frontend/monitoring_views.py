@@ -647,10 +647,25 @@ class run_assets_now(View):
                                     run_now=True)
         return HttpResponse()
 
-from initat.cluster.backbone.models.asset import AssetPackage
+from initat.cluster.backbone.models.asset import AssetPackage, AssetRun
 
 class get_devices_for_asset(View):
     def post(self, request, *args, **kwargs):
         ap = AssetPackage.objects.get(pk=int(request.POST['pk']))
 
         return HttpResponse(json.dumps({'devices': list(set([ar.device.pk for ar in ap.assetrun_set.all()]))}), content_type="application/json")
+
+class get_assetrun_diffs(View):
+    def post(self, request):
+        ar_pk1 = request.POST['pk1']
+        ar_pk2 = request.POST['pk2']
+
+        print ar_pk1
+        print ar_pk2
+
+        ar1 = AssetRun.objects.get(pk=int(ar_pk1))
+        ar2 = AssetRun.objects.get(pk=int(ar_pk1))
+
+        print ar1.get_asset_changeset(ar2)
+
+        return HttpResponse(json.dumps({'diff': ["a","b","c"]}), content_type="application/json")

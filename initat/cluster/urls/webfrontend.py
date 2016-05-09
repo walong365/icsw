@@ -179,6 +179,7 @@ monitoring_patterns = [
     url("^get_asset_list$", monitoring_views.get_asset_list.as_view(), name="get_asset_list"),
     url("^run_assets_now", monitoring_views.run_assets_now.as_view(), name="run_assets_now"),
     url("^get_devices_for_asset", monitoring_views.get_devices_for_asset.as_view(), name="run_assets_now"),
+    url("^get_assetrun_diffs", monitoring_views.get_assetrun_diffs.as_view(), name="get_assetrun_diffs"),
 ]
 
 user_patterns = [

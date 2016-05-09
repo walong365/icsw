@@ -84,6 +84,17 @@ device_asset_module = angular.module(
         ), 10000
 
 
+    $scope.assetchangeset = ->
+        $http({
+            method: 'POST',
+            url: '/icsw/api/v2/mon/get_assetrun_diffs'
+            data: "pk1=4"
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+        }).then(
+          (result) ->
+              console.log "assetchangeset ", result
+        )
+
     $scope.refresh = ->
         hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, $scope.struct.devices)
         $scope.struct.device_tree.enrich_devices(hs, ["asset_info"]).then(
