@@ -28,13 +28,13 @@
                 <p>
                     Actions:
                     <icsw-tools-button type="create" size="sm" value="create new" ng-click="create($event, null)"/>
-                    <icsw-tools-button type="delete" ng-show="icswConfigObject.num_active" size="sm" value="delete selected" ng-click="special_fn($event, 'delete_many', null)"/>
-                    <icsw-tools-button type="close" ng-show="icswConfigObject.num_active" size="sm" value="clear selection" ng-click="special_fn($event, 'clear_selection', null)"/>
+                    <icsw-tools-button type="delete" ng-show="icsw_config_object.num_active" size="sm" value="delete selected" ng-click="special_fn($event, 'delete_many', null)"/>
+                    <icsw-tools-button type="close" ng-show="icsw_config_object.num_active" size="sm" value="clear selection" ng-click="special_fn($event, 'clear_selection', null)"/>
                 </p>
                 <div class="row">
                     <div class="col-sm-4">
                         <h3>Tree view</h3>
-                        <tree treeconfig="dn_tree" config-service="icswConfigDTNListService" icsw-config-object="icswConfigObject"></tree>
+                        <tree treeconfig="dn_tree" config-service="icswConfigDTNListService" icsw-config-object="icsw_config_object"></tree>
                     </div>
                     <div class="col-sm-8">
                         <h3>Table view</h3>

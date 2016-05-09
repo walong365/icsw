@@ -25,23 +25,20 @@ angular.module(
     ]
 ).service("icswDeviceLocationTreeService",
 [
-    "icswTreeConfig",
+    "icswReactTreeConfig",
 (
-    icswTreeConfig
+    icswReactTreeConfig
 ) ->
-    class icswDeviceLoactionTree extends icswTreeConfig
+    {span} = React.DOM
+    class icswDeviceLoactionTree extends icswReactTreeConfig
         constructor: (@scope, args) ->
             super(args)
-            @show_selection_buttons = false
-            @show_icons = false
-            @show_select = false
-            @show_descendants = false
-            @show_childs = false
             @mode_entries = []
             @clear_tree()
 
         clear_tree: () =>
             @lut = {}
+            @clear_root_nodes()
 
         create_mode_entries: (mode, loc_tree) =>
             @mode_entries.length = []
@@ -70,50 +67,79 @@ angular.module(
                         # ignore structural entries
                         return null
             )
+
         selection_changed: (entry) =>
             @scope.new_selection(entry, @get_selected_loc_pks())
 
         pre_change_cb: (entry) =>
-            # save selection before we toggle the checkbox
-            @$pre_click_sel = @get_selected_loc_pks()
-        
-        reset_selection: () =>
-            # set everything to $pre_click_sel
-            @set_selected(
-                (node) =>
-                    return node.obj.idx in @$pre_click_sel
-            )
-            
-        get_name : (t_entry) ->
+            return @scope.check_for_dml_leackage(entry)
+
+        get_name: (t_entry) ->
             cat = t_entry.obj
             if cat.depth > 1
-                if @scope.DEBUG
-                    r_info = "[#{cat.idx}] "
-                else
-                    r_info = ""
-                r_info = "#{cat.name}"
-                num_sel = t_entry.$match_pks.length
-                if num_sel and @$num_sel > 1
-                    r_info = "#{r_info}, #{num_sel} of #{@$num_devs}"
-                # console.log "cat=", cat.num_refs, cat
-                if cat.num_refs
-                    r_info = "#{r_info} (refs=#{cat.num_refs})"
-                num_locs = cat.$gfx_list.length
-                if num_locs
-                    r_info = "#{r_info}, #{num_locs} location gfx"
-                if cat.physical
-                    r_info = "#{r_info}, physical"
-                else
-                    r_info = "#{r_info}, structural"
-                if cat.locked
-                    r_info = "#{r_info}, locked"
+                # add spaces for display
+                r_info = " #{cat.name} "
+                # num_sel = t_entry.$match_pks.length
+                # if num_sel and num_sel > 1
+                #    r_info = "#{r_info}, #{num_sel} of #{@$num_devs}"
+                # # console.log "cat=", cat.num_refs, cat
+                # if cat.num_refs
+                #    r_info = "#{r_info} (refs=#{cat.num_refs})"
                 return r_info
             else if cat.depth
                 return cat.full_name
             else
                 return "TOP"
 
-        handle_click: (t_entry, center_map=true) ->
+        get_pre_view_element: (entry) ->
+            cat = entry.obj
+            num_current_sel = entry.$match_pks.length
+            num_total_sel = cat.num_refs
+            if num_current_sel
+                return span(
+                    {
+                        key: "_sd"
+                        className: "label label-primary"
+                    }
+                    "#{num_current_sel} / #{num_total_sel}"
+                )
+            else if num_total_sel
+                return span(
+                    {
+                        key: "_sd"
+                        className: "label label-default"
+                    }
+                    "#{num_total_sel}"
+                )
+            else
+                return null
+
+        get_post_view_element: (entry) ->
+            cat = entry.obj
+            if cat.depth > 1
+                return span(
+                    {
+                        key: "_info"
+                    }
+                    [
+                        " "
+                        if cat.$gfx_list.length then span({key: "gfx", className: "label label-success", title: "Attached Gfxs"}, cat.$gfx_list.length)
+                        " "
+                        span(
+                            {
+                                key: "_type"
+                                className: if cat.physical then "glyphicon glyphicon-globe" else "glyphicon glyphicon-th-list"
+                                title: if cat.pyhiscal then "Physical entry" else "Structural entry"
+                            }
+                        )
+                        " "
+                        if cat.locked then span({key: "lock", className: "fa fa-lock", title: "is locked"}) else null
+                    ]
+                )
+            else
+                return null
+
+        handle_click: (event, t_entry, center_map=true) ->
             cat = t_entry.obj
             @clear_active()
             if cat.depth > 1
@@ -121,9 +147,7 @@ angular.module(
                     @scope.struct.active_gfx = null
                 # if cat.$gfx_list.length
                 @scope.set_active_location(cat, center_map)
-                # else
-                #     @scope.struct.active_loc = null
-                t_entry.active = true
+                t_entry.set_active(true)
             else
                 @scope.struct.active_loc = null
                 @scope.struct.active_gfx = null
@@ -147,7 +171,17 @@ angular.module(
     $scope.struct = {
         device_list_ready: false
         multi_device_mode: false
-        loc_tree: new icswDeviceLocationTreeService($scope, {})
+        loc_tree: new icswDeviceLocationTreeService(
+            $scope
+            {
+                name: "DeviceLocationTree"
+                show_selection_buttons: false
+                show_icons: false
+                show_select: false
+                show_descendants: false
+                show_childs: false
+            }
+        )
         # useable locations
         locations: []
         # selected devices
@@ -159,7 +193,6 @@ angular.module(
         # google maps callback
         google_maps_fn: null
     }
-    $scope.DEBUG = false
 
     $scope.$on("$destroy", () ->
         $scope.struct.device_list_ready = false
@@ -171,7 +204,7 @@ angular.module(
             _lc = $scope.struct.loc_tree
             # active node
             _node = _lc.lut[_loc.idx]
-            _lc.handle_click(_node, center_map=false)
+            _lc.handle_click(undefined, _node, center_map=false)
 
     $scope.new_devsel = (devs) ->
         $q.all(
@@ -194,12 +227,15 @@ angular.module(
     $scope.$watch("struct.active_gfx", (new_val) ->
         # console.log "gfx", new_val
     )
+
     $rootScope.$on(ICSW_SIGNALS("ICSW_LOCATION_SETTINGS_CHANGED"), (event) ->
         $scope.rebuild_dnt()
     )
+
     $rootScope.$on(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), (event) ->
         $scope.rebuild_dnt()
     )
+
     $scope.rebuild_dnt = () ->
         _ct = $scope.struct.loc_tree
         # build location list for google-maps
@@ -208,18 +244,38 @@ angular.module(
         for dev in $scope.struct.devices
             # check all devices and disable change button when not all devices are in allowed list
             if not $scope.acl_all(dev, "backbone.device.change_location", 7)
-                console.log "ND"
-                _ct.change_select = false
+                _ct.update_flag("change_select", false)
                 break
-        if _ct.$pre_sel?
-            _cur_sel = _ct.$pre_sel
-        else
-            _cur_sel = []
-        # console.log "pre=", _cur_sel
+
+        _ct.stop_notify()
+        _first_run = if _ct.root_nodes.length == 0 then true else false
+        if not _first_run
+            # update run
+            _cur_exp = _ct.get_selected(
+                (entry) ->
+                    if entry.expand
+                        return [entry.obj.idx]
+                    else
+                        return []
+            )
+            _cur_act = _ct.get_selected(
+                (entry) ->
+                    if entry.active
+                        return [entry.obj.idx]
+                    else
+                        return []
+            )
+
         _ct.clear_tree()
-        _ct.clear_root_nodes()
         _ct.create_mode_entries("location", $scope.struct.tree)
 
+        if _first_run
+            # first run
+            _cur_exp = (entry.idx for entry in _ct.mode_entries when (entry.depth < 2))
+            _cur_act = []
+
+        # $scope.struct.active_loc = null
+        # $scope.struct.active_gfx = null
         _ct.$num_devs = $scope.struct.devices.length
         _num_devs = $scope.struct.devices.length
         _dev_pks = (dev.idx for dev in $scope.struct.devices)
@@ -234,13 +290,14 @@ angular.module(
             _match_pks.sort()
             # console.log entry.idx, _match_pks, entry.idx in _cur_sel
             # console.log _match_pks, _dev_pks
-            t_entry = _ct.new_node(
+            t_entry = _ct.create_node(
                 {
                     folder: false
                     obj: entry
-                    expand: (entry.depth < 2) or (entry.idx in _cur_sel) or _match_pks.length
+                    expand: entry.idx in _cur_exp
+                    active: entry.idx in _cur_act
                     selected: _match_pks.length == _num_devs
-                    _show_select: entry.useable
+                    show_select: entry.useable
                 }
             )
             # check if selected devices have location-gfx link to this category
@@ -256,18 +313,18 @@ angular.module(
                     # propagate expand level upwards
                     _t_entry = t_entry
                     while _t_entry.parent
-                        _t_entry.expand = true
+                        _t_entry.set_expand(true)
                         _t_entry = _t_entry.parent
                 if entry.depth < 2
                     # hide top-level entry (==/location/)
-                    t_entry._show_select = false
+                    t_entry.update_flag("show_select", false)
             else
                 # hide selection from root nodes
-                t_entry._show_select = false
+                t_entry.update_flag("show_select", false)
                 _ct.add_root_node(t_entry)
-        _ct.show_select = true
+        _ct.update_flag("show_select", true)
         # _ct.disable_select = _disable_select_dml
-        _ct.$pre_sel = _ct.get_selected_loc_pks()
+        _ct.start_notify()
         # _ct.show_selected(false)
 
     $scope.set_active_location = (loc, center_map=true) ->
@@ -282,25 +339,48 @@ angular.module(
         else
             return Object.keys($scope.loc_tree_lut).length > 1
 
-    $scope.new_selection = (t_entry, sel_list) =>
+    $scope.check_for_dml_leackage = (t_entry) =>
+        # check if the selection / deselection of the current location would result in DML leackage
         loc = t_entry.obj
         dev_pks = (dev.idx for dev in $scope.struct.devices)
         # check if we would loose some dmls (then ask the user)
         if t_entry.selected
-            # select location, check all others
-            check_locs = (o_loc for o_loc in $scope.struct.loc_tree.mode_entries when o_loc != loc)
-        else
+            _remove = true
+            # check current location (loc will be deselected)
             check_locs = [loc]
-        dml_lost = 0
+        else
+            _remove = false
+            # select location, check all others for leackage (only if the new location is not structural)
+            if loc.physical
+                check_locs = (o_loc for o_loc in $scope.struct.loc_tree.mode_entries when o_loc.idx != loc.idx)
+            else
+                check_locs = []
+        _dml_lost_physical = 0
+        _dml_lost_structural = 0
+        _gfx_lost = 0
         # iterate over check locations
         for c_loc in check_locs
-            for gfx in c_loc.$gfx_list
-                _to_delete = (dml for dml in gfx.$dml_list when dml.device in dev_pks)
-                dml_lost += _to_delete.length
+            if c_loc.physical or _remove
+                # only check for changes in physical locations (or removal of structural locations)
+                for gfx in c_loc.$gfx_list
+                    _to_delete = (dml for dml in gfx.$dml_list when dml.device in dev_pks)
+                    if _to_delete.length
+                        _gfx_lost++
+                        if c_loc.physical
+                            _dml_lost_physical += _to_delete.length
+                        else
+                            _dml_lost_structural += _to_delete.length
         defer = $q.defer()
-        if dml_lost
+        if _dml_lost_physical + _dml_lost_structural > 0
+            _header =
+            _lost_f = []
+            if _dml_lost_physical
+                _lost_f.push("#{_dml_lost_physical} physical")
+            if _dml_lost_structural
+                _lost_f.push("#{_dml_lost_structural} structural")
+            _header =  "Modify will result in the lost of #{_lost_f.join(' and ')} placements on #{_gfx_lost} maps, continue ?"
             icswToolsSimpleModalService(
-                "Really change location (#{dml_lost} Location settings would be lost) ?"
+                _header
             ).then(
                 (ok) ->
                     defer.resolve("go")
@@ -309,65 +389,64 @@ angular.module(
             )
         else
             defer.resolve("go ahead")
-        defer.promise.then(
-            (ok) ->
-                blockUI.start()
-                icswSimpleAjaxCall(
-                    url     : ICSW_URLS.BASE_CHANGE_CATEGORY
-                    data    :
-                        "dev_pks": angular.toJson(dev_pks)
-                        "cat_pks": angular.toJson([loc.idx])
-                        "set": if t_entry.selected then "1" else "0"
-                ).then(
-                    (xml) ->
-                        # see code in category.coffee
-                        change_dict = angular.fromJson($(xml).find("value[name='changes']").text())
-                        [sync_pks, sync_locs, sync_gfxs] = [[], [], []]
-                        for add_b in change_dict.added
-                            $scope.struct.device_tree.add_category_to_device_by_pk(add_b[0], add_b[1])
-                            sync_pks.push(add_b[0])
-                            sync_locs.push(add_b[1])
-                        for sub_b in change_dict.removed
-                            $scope.struct.device_tree.remove_category_from_device_by_pk(sub_b[0], sub_b[1])
-                            sync_pks.push(sub_b[0])
-                            sync_locs.push(sub_b[1])
-                        for sub_dml in change_dict.dml_removed
-                            $scope.struct.tree.remove_dml_by_pk(sub_dml[3])
-                            sync_pks.push(sub_dml[0])
-                            sync_locs.push(sub_dml[1])
-                        sync_pks = _.uniq(sync_pks)
-                        sync_locs = _.uniq(sync_locs)
-                        # add gfxs to sync
-                        for sync_loc in sync_locs
-                            for gfx in $scope.struct.tree.lut[sync_loc].$gfx_list
-                                sync_gfxs.push(gfx.idx)
-                        sync_gfxs = _.uniq(sync_gfxs)
-                        if sync_pks.length
-                            # sync devices
-                            $scope.struct.tree.sync_devices(($scope.struct.device_tree.all_lut[_pk] for _pk in sync_pks))
-                        if sync_gfxs.length
-                            # sync locations
-                            for gfx_loc_id in sync_gfxs
-                                $scope.struct.tree.populate_gfx_location(
-                                    $scope.struct.tree.gfx_lut[gfx_loc_id]
-                                    $scope.struct.device_tree
-                                    $scope.struct.devices
-                                )
-                        # set active gfx
-                        if t_entry.selected
-                            if t_entry.obj != $scope.struct.active_loc
-                                $scope.struct.active_loc = t_entry.obj
-                                $scope.struct.active_gfx = null
-                        # deselect non-selected physical structure entries
-                        $scope.struct.loc_tree.do_loc_selection(t_entry)
-                        $scope.rebuild_dnt()
-                        blockUI.stop()
-                    (error) ->
-                        blockUI.stop()
-                )
-            (notok) ->
-                # reset settings
-                $scope.struct.loc_tree.reset_selection()
+        return defer.promise
+
+    $scope.new_selection = (t_entry, sel_list) =>
+        loc = t_entry.obj
+        dev_pks = (dev.idx for dev in $scope.struct.devices)
+        blockUI.start()
+        icswSimpleAjaxCall(
+            url: ICSW_URLS.BASE_CHANGE_CATEGORY
+            data:
+                dev_pks: angular.toJson(dev_pks)
+                cat_pks: angular.toJson([loc.idx])
+                set: if t_entry.selected then "1" else "0"
+        ).then(
+            (xml) ->
+                # see code in category.coffee
+                change_dict = angular.fromJson($(xml).find("value[name='changes']").text())
+                [sync_pks, sync_locs, sync_gfxs] = [[], [], []]
+                for add_b in change_dict.added
+                    $scope.struct.device_tree.add_category_to_device_by_pk(add_b[0], add_b[1])
+                    sync_pks.push(add_b[0])
+                    sync_locs.push(add_b[1])
+                for sub_b in change_dict.removed
+                    $scope.struct.device_tree.remove_category_from_device_by_pk(sub_b[0], sub_b[1])
+                    sync_pks.push(sub_b[0])
+                    sync_locs.push(sub_b[1])
+                for sub_dml in change_dict.dml_removed
+                    $scope.struct.tree.remove_dml_by_pk(sub_dml[3])
+                    sync_pks.push(sub_dml[0])
+                    sync_locs.push(sub_dml[1])
+                sync_pks = _.uniq(sync_pks)
+                sync_locs = _.uniq(sync_locs)
+                # add gfxs to sync
+                for sync_loc in sync_locs
+                    for gfx in $scope.struct.tree.lut[sync_loc].$gfx_list
+                        sync_gfxs.push(gfx.idx)
+                sync_gfxs = _.uniq(sync_gfxs)
+                if sync_pks.length
+                    # sync devices
+                    $scope.struct.tree.sync_devices(($scope.struct.device_tree.all_lut[_pk] for _pk in sync_pks))
+                if sync_gfxs.length
+                    # sync locations
+                    for gfx_loc_id in sync_gfxs
+                        $scope.struct.tree.populate_gfx_location(
+                            $scope.struct.tree.gfx_lut[gfx_loc_id]
+                            $scope.struct.device_tree
+                            $scope.struct.devices
+                        )
+                # set active gfx
+                if t_entry.selected
+                    if t_entry.obj != $scope.struct.active_loc
+                        $scope.struct.active_loc = t_entry.obj
+                        $scope.struct.active_gfx = null
+                # deselect non-selected physical structure entries
+                $scope.struct.loc_tree.do_loc_selection(t_entry)
+                $scope.rebuild_dnt()
+                blockUI.stop()
+            (error) ->
+                blockUI.stop()
         )
 
 ]).directive("icswDeviceLocationOverview", ["$templateCache", ($templateCache) ->
@@ -397,7 +476,7 @@ angular.module(
             # selected devics
             devices: "=icswDevices"
 
-        link : (scope, el, attrs) ->
+        link: (scope, el, attrs) ->
             _tree_loaded = false
             scope.cat_tree = null
             scope.device_tree = null
@@ -471,88 +550,113 @@ angular.module(
             active_gfx: "=icswActiveGfx"
             # selected devices
             devices: "=icswDevices"
-        link : (scope, el, attrs) ->
-            scope.cat_tree = null
-            scope.device_tree = null
-            _update = () ->
-                if scope.devices and scope.active_gfx
-                    defer = $q.defer()
-                    if not scope.cat_tree
-                        $q.all(
-                            [
-                                icswCategoryTreeService.load(scope.$id)
-                                icswDeviceTreeService.load(scope.$id)
-                            ]
-                        ).then(
-                            (data) ->
-                                scope.cat_tree = data[0]
-                                scope.device_tree = data[1]
-                                defer.resolve("loaded")
-                        )
-                    else
-                        defer.resolve("already there")
-                    defer.promise.then(
-                        (load_msg) ->
-                            # console.log "new gfx", scope.devices, scope.active_gfx.$dml_list
-                    )
-                else
-                    # cleanup
-                    true
+        controller: "icswDeviceMonitoringLocationListCtrl"
+        link: (scope, element, attrs) ->
             scope.$watch("active_gfx", (new_val) ->
-                _update()
+                scope.struct.active_gfx = new_val
+                scope.update()
             )
             scope.$watch("devices", (new_val) ->
-                _update()
+                scope.struct.devices = new_val
+                scope.update()
             )
             $rootScope.$on(ICSW_SIGNALS("ICSW_LOCATION_SETTINGS_CHANGED"), (event) ->
-                _update()
+                scope.update()
             )
-            scope.use_device = (dev) ->
-                # add device to map
-                blockUI.start()
-                new_md = {
-                    device: dev.idx
-                    location_gfx: scope.active_gfx.idx
-                    location: scope.active_gfx.location
-                    pos_x: Math.min(scope.active_gfx.width / 2, 50)
-                    pos_y: Math.min(scope.active_gfx.height / 2, 50)
-                    changed: false
-                }
-                scope.cat_tree.create_device_mon_location_entry(new_md).then(
-                    (is_ok) ->
-                        scope.cat_tree.populate_gfx_location(
-                            scope.active_gfx
-                            scope.device_tree
-                            scope.devices
-                        )
-                        $rootScope.$emit(ICSW_SIGNALS("ICSW_LOCATION_SETTINGS_CHANGED"))
-                        blockUI.stop()
-                    (not_ok) ->
-                        blockUI.stop()
-                )
-
-            scope.remove_dml = (dml) ->
-                # remove device (== dml entry) from map
-                # icswToolsSimpleModalService("really delete location?").then(
-                blockUI.start()
-                scope.cat_tree.delete_device_mon_location_entry(dml).then(
-                    (deleted) ->
-                        scope.cat_tree.populate_gfx_location(
-                            scope.active_gfx
-                            scope.device_tree
-                            scope.devices
-                        )
-                        $rootScope.$emit(ICSW_SIGNALS("ICSW_LOCATION_SETTINGS_CHANGED"))
-                        blockUI.stop()
-                    (not_del) ->
-                        blockUI.stop()
-                )
-
-            scope.toggle_locked = (dml) ->
-                # toggle dml locked state
-                dml.locked = !dml.locked
-                dml.put()
     }
+]).controller("icswDeviceMonitoringLocationListCtrl",
+[
+    "$q", "$scope", "icswCategoryTreeService", "icswDeviceTreeService", "blockUI",
+    "ICSW_SIGNALS", "$rootScope",
+(
+    $q, $scope, icswCategoryTreeService, icswDeviceTreeService, blockUI,
+    ICSW_SIGNALS, $rootScope,
+) ->
+    $scope.struct = {
+        # data valid
+        data_valid: false
+        # category tree
+        cat_tree: null
+        # device tree
+        device_tree: null
+        # device list
+        devices: []
+        # active gfx
+        active_gfx: null
+    }
+    $scope.update = () ->
+        if $scope.struct.devices and $scope.struct.active_gfx
+            $scope.struct.data_valid = false
+            defer = $q.defer()
+            if not $scope.struct.cat_tree
+                $q.all(
+                    [
+                        icswCategoryTreeService.load($scope.$id)
+                        icswDeviceTreeService.load($scope.$id)
+                    ]
+                ).then(
+                    (data) ->
+                        $scope.struct.cat_tree = data[0]
+                        $scope.struct.device_tree = data[1]
+                        defer.resolve("loaded")
+                )
+            else
+                defer.resolve("already there")
+            defer.promise.then(
+                (load_msg) ->
+                    $scope.struct.data_valid = true
+            )
+
+    # try load
+    $scope.update()
+
+    $scope.use_device = (dev) ->
+        # add device to map
+        blockUI.start()
+        _gfx = $scope.struct.active_gfx
+        new_md = {
+            device: dev.idx
+            location_gfx: _gfx.idx
+            location: _gfx.location
+            pos_x: Math.min(_gfx.width / 2, 50)
+            pos_y: Math.min(_gfx.height / 2, 50)
+            changed: false
+        }
+        $scope.struct.cat_tree.create_device_mon_location_entry(new_md).then(
+            (is_ok) ->
+                $scope.struct.cat_tree.populate_gfx_location(
+                    $scope.struct.active_gfx
+                    $scope.struct.device_tree
+                    $scope.struct.devices
+                )
+                $rootScope.$emit(ICSW_SIGNALS("ICSW_LOCATION_SETTINGS_CHANGED"))
+                blockUI.stop()
+            (not_ok) ->
+                blockUI.stop()
+        )
+
+    $scope.remove_dml = (dml) ->
+        # remove device (== dml entry) from map
+        # icswToolsSimpleModalService("really delete location?").then(
+        blockUI.start()
+        $scope.struct.cat_tree.delete_device_mon_location_entry(dml).then(
+            (deleted) ->
+                $scope.struct.cat_tree.populate_gfx_location(
+                    $scope.struct.active_gfx
+                    $scope.struct.device_tree
+                    $scope.struct.devices
+                )
+                $rootScope.$emit(ICSW_SIGNALS("ICSW_LOCATION_SETTINGS_CHANGED"))
+                blockUI.stop()
+            (not_del) ->
+                blockUI.stop()
+        )
+
+    $scope.toggle_locked = (dml) ->
+        # toggle dml locked state
+        dml.locked = !dml.locked
+        dml.put()
+
 ]).directive("icswDeviceLocationMap",
 [
     "d3_service", "$rootScope", "ICSW_SIGNALS",

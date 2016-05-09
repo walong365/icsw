@@ -134,21 +134,25 @@ angular.module(
     "$scope", "$compile", "$templateCache", "Restangular", "$timeout",
     "icswCSRFService", "$rootScope", "ICSW_SIGNALS", "icswDeviceTreeService",
     "$q", "icswAcessLevelService", "icswCategoryTreeService",
-    "FileUploader", "blockUI", "icswTools", "ICSW_URLS",
+    "FileUploader", "blockUI", "icswTools", "ICSW_URLS", "icswCategoryBackup",
     "icswSimpleAjaxCall", "icswParseXMLResponseService", "toaster",
     "icswComplexModalService", "icswLocationGfxBackup", "icswToolsSimpleModalService",
 (
     $scope, $compile, $templateCache, Restangular, $timeout,
     icswCSRFService, $rootScope, ICSW_SIGNALS, icswDeviceTreeService,
     $q, icswAcessLevelService, icswCategoryTreeService,
-    FileUploader, blockUI, icswTools, ICSW_URLS,
+    FileUploader, blockUI, icswTools, ICSW_URLS, icswCategoryBackup,
     icswSimpleAjaxCall, icswParseXMLResponseService, toaster,
     icswComplexModalService, icswLocationGfxBackup, icswToolsSimpleModalService,
 ) ->
     $scope.struct = {
+        # device tree
         device_tree: null
+        # category tree
         category_tree: null
+        # locations
         locations: []
+        # google maps entry
         google_maps: null
     }
     $scope.reload = () ->
@@ -196,6 +200,51 @@ angular.module(
 
     # modifiers
     
+    # for locations
+    $scope.edit_location = ($event, obj) ->
+        dbu = new icswCategoryBackup()
+        dbu.create_backup(obj)
+        sub_scope = $scope.$new(true)
+        sub_scope.edit_obj = obj
+
+        icswComplexModalService(
+            {
+                message: $compile($templateCache.get("icsw.category.location.form"))(sub_scope)
+                title: "Location entry '#{obj.name}"
+                # css_class: "modal-wide"
+                ok_label: "Modify"
+                closable: true
+                ok_callback: (modal) ->
+                    d = $q.defer()
+                    if sub_scope.form_data.$invalid
+                        toaster.pop("warning", "form validation problem", "", 0)
+                        d.reject("form not valid")
+                    else
+                        Restangular.restangularizeElement(null, sub_scope.edit_obj, ICSW_URLS.REST_CATEGORY_DETAIL.slice(1).slice(0, -2))
+                        sub_scope.edit_obj.put().then(
+                            (ok) ->
+                                $scope.struct.category_tree.reorder()
+                                d.resolve("updated")
+                            (not_ok) ->
+                                d.reject("not updated")
+                        )
+                    return d.promise
+
+                cancel_callback: (modal) ->
+                    dbu.restore_backup(obj)
+                    d = $q.defer()
+                    d.resolve("cancel")
+                    return d.promise
+            }
+        ).then(
+            (fin) ->
+                console.log "finish"
+                $rootScope.$emit(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), $scope.struct.category_tree)
+                sub_scope.$destroy()
+        )
+
+    # for gfx
+    
     $scope.create_or_edit = ($event, create_mode, parent, obj) ->
         if create_mode
             edit_obj = {
@@ -216,11 +265,11 @@ angular.module(
 
         # init uploaded
         sub_scope.uploader = new FileUploader(
-            scope : $scope
-            url : ICSW_URLS.BASE_UPLOAD_LOCATION_GFX
-            queueLimit : 1
-            alias : "gfx"
-            removeAfterUpload : true
+            scope: $scope
+            url: ICSW_URLS.BASE_UPLOAD_LOCATION_GFX
+            queueLimit: 1
+            alias: "gfx"
+            removeAfterUpload: true
         )
         icswCSRFService.get_token().then(
             (token) ->
@@ -366,12 +415,12 @@ angular.module(
         )
         return defer.promise
 
-    $scope.toggle_lock = ($event, loc) ->
-        loc.locked = !loc.locked
-        loc.put()
-        if $event
-            $event.stopPropagation()
-            $event.preventDefault()
+    #$scope.toggle_lock = ($event, loc) ->
+    #    loc.locked = !loc.locked
+    #    loc.put()
+    #    if $event
+    #        $event.stopPropagation()
+    #        $event.preventDefault()
 
     $scope.show_gfx_preview = (gfx) ->
         console.log $scope.enhance_list.length
@@ -401,24 +450,7 @@ angular.module(
         }
         controller: "icswConfigCategoryTreeGoogleMapCtrl"
         link: (scope, element, attrs) ->
-            # link
             scope.set_map_mode(attrs["icswMapMode"])
-        #    scope.$watch(
-        #        "active_tab"
-        #        (new_val) ->
-        #            if new_val?
-        #                if new_val == "conf"
-        #                    scope.map_active = true
-        #                    _update()
-        #                else
-        #                    scope.map_active = false
-        #    )
-        #    scope.$watch(
-        #        "locations",
-        #        (new_val) ->
-        #            _update()
-        #        true
-        #    )
     }
 # ]).service()
 ]).service("reactT",
@@ -543,11 +575,14 @@ angular.module(
 
         click: (marker, event_name, args) ->
             _loc = $scope.marker_lut[marker.key]
-            for entry in scope.locations
+            for entry in $scope.locations
                 entry.$$selected = false
             _loc.$$selected = !_loc.$$selected
             if $scope.maps_cb_fn?
                 $scope.maps_cb_fn("marker_clicked", _loc)
+        dblclick: (marker, event_name, args) ->
+            console.log "DBL"
+
     }
 
     $scope.zoom_to_locations = () ->
@@ -574,9 +609,12 @@ angular.module(
         $scope.struct.map_options.center.latitude = (_bounds.northeast.latitude + _bounds.southwest.latitude) / 2.0
         $scope.struct.map_options.center.longitude = (_bounds.northeast.longitude + _bounds.southwest.longitude) / 2.0
 
-    $scope.build_markers = () ->
+    # helper functions
+
+    build_markers = () ->
         $scope.marker_list.length = 0
         marker_lut = {}
+        console.log "init markers", $scope.locations.length
         for _entry in $scope.locations
             comment = _entry.name
             if _entry.comment
@@ -620,9 +658,9 @@ angular.module(
 
     _update = () ->
         if $scope.struct.map_active and $scope.locations? and $scope.locations.length and not $scope.struct.maps_ready
-            console.log "Zoom"
+            # console.log "Zoom"
             $scope.zoom_to_locations()
-            $scope.build_markers()
+            build_markers()
             uiGmapGoogleMapApi.then(
                 (maps) ->
                     $scope.struct.maps_ready = true
@@ -664,6 +702,7 @@ angular.module(
         "locations",
         (new_val) ->
             _update()
+            build_markers()
         true
     )
 

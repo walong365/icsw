@@ -285,11 +285,11 @@ device_variable_module = angular.module(
 
     return {
         fetch: (scope) ->
-            # copy device list and references from icswConfigObject
+            # copy device list and references from icsw_config_object
 
-            scope.helper = scope.icswConfigObject.helper
-            scope.devices = scope.icswConfigObject.devices
-            scope.device_tree = scope.icswConfigObject.device_tree
+            scope.helper = scope.icsw_config_object.helper
+            scope.devices = scope.icsw_config_object.devices
+            scope.device_tree = scope.icsw_config_object.device_tree
 
             _list_defer = $q.defer()
             _list_defer.resolve(scope.devices)

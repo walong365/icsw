@@ -651,7 +651,7 @@ angular.module(
             @scope.selection_changed()
             @scope.$digest()
 
-        get_extra_view_element: (entry) ->
+        get_pre_view_element: (entry) ->
             if entry._node_type == "e" and entry.num_sensors
                 return span(
                     {

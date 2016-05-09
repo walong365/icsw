@@ -82,6 +82,7 @@ angular.module(
             # copy flags from tree_node
             @setState(
                 {
+                    expand: @props.tree_node.expand
                     selected: @props.tree_node.selected
                     num_sel_descendants: @props.tree_node._num_sel_descendants
                     num_sel_childs: @props.tree_node._num_sel_childs
@@ -102,6 +103,7 @@ angular.module(
                             if _tn.children.length
                                 _tn.set_expand(!_tn.expand)
                                 @setState({expand: _tn.expand})
+                                @props.parent_cb()
                     }
                 )
             ]
@@ -116,10 +118,13 @@ angular.module(
                             checked: if _tn.selected then "checked" else null
                             disabled: if _tn.disable_select or _tc.disable_select then "disabled" else null
                             style: {marginLeft: "2px"}
-                            onChange: (event) =>
-                                _tc.toggle_checkbox_node(_tn)
-                                @setState({selected: _tn.selected})
-                                @props.parent_cb()
+                            onClick: (event) =>
+                                _tc.toggle_checkbox_node(_tn).then(
+                                    (ok) =>
+                                        @setState({selected: _tn.selected})
+                                        @props.parent_cb()
+                                )
+                                event.preventDefault()
                         }
                     )
                 )
@@ -192,7 +197,7 @@ angular.module(
                         )
                     )
             _name_span_list = [
-                _tc.get_extra_view_element(_tn)
+                _tc.get_pre_view_element(_tn)
                 span(
                     {
                         key: "main"
@@ -201,6 +206,7 @@ angular.module(
                     }
                     _tc.get_name(_tn)
                 )
+                _tc.get_post_view_element(_tn)
             ]
             if _tc.show_descendants and _tn._num_descendants
                 if _tc.show_total_descendants
@@ -220,7 +226,7 @@ angular.module(
                     )
                 )
             if _tc.debug_mode
-                _main_span_list.push(
+                _name_span_list.push(
                     span(
                         {
                             key: "debug"
@@ -237,6 +243,7 @@ angular.module(
                         className: "fancytree-title"
                         onClick: (event) =>
                             _tc.handle_click(event, _tn)
+                            @force_redraw()
                         onDblClick: (event) =>
                             _tc.handle_dbl_click(event, _tn)
                     }
@@ -296,18 +303,21 @@ angular.module(
         getInitialState: () ->
             return {
                 draw_counter: 0
+                root_generation: 0
             }
 
-        force_redraw: () ->
-            @setState({draw_counter: @state.draw_counter + 1})
+        force_redraw: (root_gen) ->
+            @setState({draw_counter: @state.draw_counter + 1, root_generation: root_gen})
 
         componentWillMount: () ->
             @props.tree_config.update_notifier.promise.then(
                 () ->
                 () ->
-                (gen) =>
+                (gen_list) =>
+                    [_tree_gen, _root_gen] = gen_list
+                    # console.log gen_list
                     # new generation, update
-                    @force_redraw()
+                    @force_redraw(_root_gen)
             )
             
         componentWillUnmount: () ->
@@ -329,7 +339,7 @@ angular.module(
             else
                 return ul(
                     {
-                        key: "top"
+                        key: "top#{@state.root_generation}"
                         className: "fancytree-container"
                     }
                     [
@@ -397,6 +407,13 @@ angular.module(
             # draw flag
             @_dirty = true
 
+        update_flag: (key, value) =>
+            if key of @
+                @[key] = value
+                @_dirty = true
+            else
+                console.error "unknown icswReactTreeNode arg #{key}=#{value}"
+            
         add_child: (node, sort_func) =>
             node._depth = @_depth + 1
             node._parent = @
@@ -434,11 +451,22 @@ angular.module(
                 return true
 
         set_expand: (flag) ->
-            # toggle expand flag if changed and return current value
-            if @expand != flag
-                @expand = flag
+            return @_set_flag("expand", flag)
+
+        set_active: (flag) ->
+            return @_set_flag("active", flag)
+
+        _set_flag: (name, value) ->
+            # toggle expand / active flag if changed and return current value
+            if @[name] != value
+                @[name] = value
                 @_dirty = true
-            return @expand
+                # propaget dirty flag upwards
+                p = @_parent
+                while p
+                    p._dirty = true
+                    p = p._parent
+            return @[name]
 
         set_selected: (flag, propagate=true) ->
             # if _show_select is false ignore selection request
@@ -446,8 +474,7 @@ angular.module(
                 return
             change = flag != @selected
             if change
-                @_dirty = true
-                @selected = flag
+                @_set_flag("selected", flag)
                 # only update parent selection list if we have changed something in the local node
                 p = @_parent
                 diff = if @selected then 1 else -1
@@ -506,23 +533,45 @@ angular.module(
                     console.error "unknown icswReactTreeConfig #{key}=#{value}"
                 else
                     @[key] = value
+            # notify react component
+            @_do_notify = true
             # internal flags
             @_tree_generation = 0
+            # root node generation, forces rerender
+            @_root_node_generation = 0
             # running node idx
             @_node_idx = 0
             # notifiers
             @update_notifier = $q.defer()
 
+        update_flag: (key, value) =>
+            if not @[key]?
+                console.error "unknown icswReactTreeConfig #{key}=#{value}"
+            else
+                @[key] = value
+                @new_generation()
+
+        stop_notify: () =>
+            @_do_notify = false
+            
+        start_notify: () =>
+            @_do_notify = true
+            @new_generation()
+            
         new_generation: () =>
             @_tree_generation++
-            @update_notifier.notify(@_tree_generation)
+            if @_do_notify
+                @update_notifier.notify([@_tree_generation, @_root_node_generation])
             
         component_will_unmount: () =>
-            console.log "stop"
             @update_notifier.reject("stop")
 
         clear_root_nodes: () =>
             @root_nodes.length = 0
+            # reset tree generation
+            @_tree_generation = 0
+            # bump root node generation
+            @_root_node_generation++
             @new_generation()
             
         create_node: (args) =>
@@ -568,18 +617,37 @@ angular.module(
 
         # toggle selection of single node
         toggle_checkbox_node: (node) =>
+            _defer = $q.defer()
             if @change_select
+                _doit = $q.defer()
                 if @pre_change_cb?
-                    @pre_change_cb(node)
-                node.set_selected(!node.selected)
-                if node.selected and @single_select
-                    # remove all other selections
-                    @iter(
-                        (_entry) ->
-                            if _entry.selected and _entry._node_idx != node._node_idx
-                                _entry.set_selected(false)
+                    @pre_change_cb(node).then(
+                        (ok) ->
+                            _doit.resolve("ok")
+                        (notok) ->
+                            _doit.reject("not ok")
                     )
-                @selection_changed(node)
+                else
+                    _doit.resolve("ok")
+                _doit.promise.then(
+                    (ok) =>
+                        console.log "change"
+                        node.set_selected(!node.selected)
+                        if node.selected and @single_select
+                            # remove all other selections
+                            @iter(
+                                (_entry) ->
+                                    if _entry.selected and _entry._node_idx != node._node_idx
+                                        _entry.set_selected(false)
+                            )
+                        @selection_changed(node)
+                        _defer.resolve("changed")
+                    (not_ok) =>
+                        _defer.reject("not ok")
+                )
+            else
+                _defer.reject("not enabedl")
+            return _defer.promise
 
         # change selection of subtrees
         toggle_select_subtree: (node) =>
@@ -631,7 +699,7 @@ angular.module(
         # set selected flag according to sel_func
         set_selected: (sel_func, sel_list) =>
             (@_set_selected(entry, sel_func, sel_list) for entry in @root_nodes)
-            @redraw_tree()
+            @new_generation()
 
         _set_selected: (entry, sel_func, sel_list) =>
             do_sel = sel_func(entry, sel_list)
@@ -678,13 +746,27 @@ angular.module(
                     show = entry.selected
             return entry.set_expand(show)
 
+        show_active: (keep=true) =>
+            # make all selected nodes visible
+            (@_show_active(entry, keep) for entry in @root_nodes)
+            @new_generation()
+
+        _show_active: (entry, keep) =>
+            if (true for sub_entry in entry.children when @_show_active(sub_entry, keep)).length
+                show = true
+            else
+                # keep: keep expand state if already expanded
+                if keep
+                    show = entry.expand or entry.active
+                else
+                    show = entry.active
+            return entry.set_expand(show)
+
         # clear all active nodes
         clear_active: () =>
             @iter(
                 (entry) ->
-                    if entry.active
-                        entry.active = false
-                        entry._dirty = true
+                    entry.set_active(false)
             )
             @new_generation()
 
@@ -709,7 +791,10 @@ angular.module(
             return ""
 
         # extra view elements
-        get_extra_view_element: (entry) =>
+        get_pre_view_element: (entry) =>
+            return null
+
+        get_post_view_element: (entry) =>
             return null
 
         # selection changed callback
@@ -729,7 +814,6 @@ angular.module(
         }
         replace: true
         link: (scope, element, attrs) ->
-            console.log attrs
             if not attrs.icswTreeConfig?
                 dummy_config = new icswReactTreeConfig(
                     {
