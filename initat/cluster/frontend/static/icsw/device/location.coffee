@@ -217,7 +217,10 @@ angular.module(
                 device_tree = data[0]
                 $scope.struct.device_list_ready = true
                 $scope.struct.tree = data[1]
-                $scope.struct.devices = (dev for dev in devs when not dev.is_meta_device)
+                $scope.struct.devices.length = 0
+                for dev in devs
+                    if not dev.is_meta_device
+                        $scope.struct.devices.push(dev)
                 $scope.struct.multi_device_mode = if $scope.struct.devices.length > 1 then true else false
                 $scope.struct.device_tree = device_tree
                 # $scope.rebuild_dnt()
@@ -288,20 +291,27 @@ angular.module(
             # get pks of devices in current selection which have the category entry set
             _match_pks = (_val for _val in entry.reference_dict.device when _val in _dev_pks)
             _match_pks.sort()
+            if _match_pks.length
+                _exp = true
+            else
+                if _first_run
+                    _exp = entry.depth < 2
+                else
+                    _exp = entry.idx in _cur_exp
             # console.log entry.idx, _match_pks, entry.idx in _cur_sel
             # console.log _match_pks, _dev_pks
             t_entry = _ct.create_node(
                 {
                     folder: false
                     obj: entry
-                    expand: entry.idx in _cur_exp
+                    expand: _exp
                     active: entry.idx in _cur_act
                     selected: _match_pks.length == _num_devs
                     show_select: entry.useable
                 }
             )
             # check if selected devices have location-gfx link to this category
-            _dml_dev_pks = (_dml.device for _dml in entry.$dml_list)
+            # _dml_dev_pks = (_dml.device for _dml in entry.$dml_list)
             # if _.intersection(_dml_dev_pks, _dev_pks).length and entry.physical
             #    _disable_select_dml = true
             # copy matching pks to tree entry (NOT entry because entry is global)
@@ -311,10 +321,8 @@ angular.module(
                 _ct.lut[entry.parent].add_child(t_entry)
                 if t_entry.expand
                     # propagate expand level upwards
-                    _t_entry = t_entry
-                    while _t_entry.parent
+                    for _t_entry in _ct.get_parents(t_entry)
                         _t_entry.set_expand(true)
-                        _t_entry = _t_entry.parent
                 if entry.depth < 2
                     # hide top-level entry (==/location/)
                     t_entry.update_flag("show_select", false)
@@ -519,7 +527,7 @@ angular.module(
             $rootScope.$on(ICSW_SIGNALS("ICSW_LOCATION_SETTINGS_CHANGED"), (event) ->
                 update()
             )
-            scope.activate_loc_gfx = (loc_gfx) ->
+            scope.activate_loc_gfx = ($event, loc_gfx) ->
                 scope.active_gfx = loc_gfx
 
             scope.get_button_class = (loc_gfx) ->
@@ -610,7 +618,7 @@ angular.module(
     # try load
     $scope.update()
 
-    $scope.use_device = (dev) ->
+    $scope.use_device = ($event, dev) ->
         # add device to map
         blockUI.start()
         _gfx = $scope.struct.active_gfx

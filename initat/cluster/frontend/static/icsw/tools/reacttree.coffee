@@ -780,6 +780,15 @@ angular.module(
             )
             return active
 
+        # helper functions
+        get_parents: (node) =>
+            _r_list = []
+            _p = node._parent
+            while _p
+                _r_list.push(_p)
+                _p = _p._parent
+            return _r_list
+            
         # accessor classes, to be overridden
         get_name: () =>
             return "node"
