@@ -54,11 +54,11 @@ device_asset_module = angular.module(
 [
     "$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "blockUI",
     "icswTools",
-    "icswDeviceTreeService", "icswDeviceTreeHelperService", "$rootScope", "$http"
+    "icswDeviceTreeService", "icswDeviceTreeHelperService", "$rootScope", "$http", "$timeout"
 (
     $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI,
     icswTools,
-    icswDeviceTreeService, icswDeviceTreeHelperService, $rootScope, $http
+    icswDeviceTreeService, icswDeviceTreeHelperService, $rootScope, $http, $timeout
 ) ->
     # struct to hand over to VarCtrl
     $scope.struct = {
@@ -70,8 +70,34 @@ device_asset_module = angular.module(
         data_loaded: false
     }
 
-    $scope.predicates = ['firstName', 'lastName', 'birthDate', 'balance', 'email'];
-    $scope.selectedPredicate = $scope.predicates[0];
+    $scope.run_now = ($event, obj) ->
+        obj.ar_button_loading = true
+        $http({
+            method: 'POST',
+            url: '/icsw/api/v2/mon/run_assets_now'
+            data: "pk=" + obj.idx,
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+        })
+        $timeout (->
+          obj.ar_button_loading = false
+          return
+        ), 10000
+
+
+    $scope.refresh = ->
+        hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, $scope.struct.devices)
+        $scope.struct.device_tree.enrich_devices(hs, ["asset_info"]).then(
+            (data) ->
+                for dev in $scope.struct.devices
+                    dev.assetrun_set_sf_src = []
+                    for ar in dev.assetrun_set
+                        dev.assetrun_set_sf_src.push(ar)
+                $scope.struct.data_loaded = true
+        )
+
+
+
+        console.log "refresh"
 
     $scope.select_devices = (obj) ->
         $http({

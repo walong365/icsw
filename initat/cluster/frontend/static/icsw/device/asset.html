@@ -11,6 +11,10 @@
     <h2>
         <span>Known Packages ({{ $root.assets.length }}):</span>
     </h2>
+    <h3 ng-if="$root.assets.length < 1">
+        <span>No know Packages! Start an AssetRun to populate this list...</span>
+    </h3>
+
 
     <table
         class="table table-condensed table-hover table-bordered"
@@ -60,11 +64,25 @@
                     {{ dev.full_name }}
                 </uib-tab-heading>
 
-                <h2>
-                    <span ng-show="dev.assetrun_set_sf_src.length > 0">
+
+                <h3 ng-show="dev.assetrun_set_sf_src.length < 1">
+                    <span >
+                        No AssetRuns for this device.
+                    </span>
+                </h3>
+
+                <h3 ng-show="dev.assetrun_set_sf_src.length > 0">
+                    <span >
                         AssetRun Overview
                     </span>
-                </h2>
+                </h3>
+
+
+                <icsw-tools-button data-style="slide-left" ladda="dev.ar_button_loading" type="reload" size="xs" ng-click="run_now($event, dev)" value="Run_AssetRun_now"/>
+                <icsw-tools-button type="reload" size="xs" ng-click="refresh()" value="refresh"/>
+
+
+
                 <table
                     class="table table-condensed table-hover table-bordered"
                     style="width:auto;"

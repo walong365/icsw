@@ -712,7 +712,7 @@ class Dispatcher(object):
                         asset_run.run_status = RunStatus.ENDED
                         asset_run.run_end_time = datetime.datetime.now()
                         asset_run.raw_result_str = _output[0]
-                        #asset_run.generate_assets_new()
+                        asset_run.generate_assets_new()
                         #self.todo_asset_runs.append(asset_run)
                         asset_run.save()
                         self.device_running_ext_coms[_device] = 0
