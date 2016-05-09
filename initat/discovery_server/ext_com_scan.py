@@ -569,11 +569,27 @@ def get_time_inc_from_ds(ds):
 
     return time_inc
 
+# from Queue import Queue
+# import threading
+
 class Dispatcher(object):
     def __init__(self, discovery_process):
         self.discovery_process = discovery_process
         self.device_asset_run_ext_coms = {}
         self.device_running_ext_coms = {}
+    #    self.todo_asset_runs = Queue
+    #
+    #     thread = threading.Thread(target=self.generate_assets_call, args=())
+    #     thread.start()
+    #
+    # def generate_assets_call(self):
+    #     while True:
+    #         ar = self.todo_asset_runs.get()
+    #         print "starting argen"
+    #         ar.generate_assets_new()
+    #         ar.save()
+    #         print "argen stopped"
+    #         print ar
 
     def dispatch_call(self):
         _now = datetime.datetime.now(tz=pytz.utc).replace(microsecond=0)
@@ -643,7 +659,7 @@ class Dispatcher(object):
         for _device in self.device_asset_run_ext_coms:
             if self.device_running_ext_coms[_device] == 0:
                 if self.device_asset_run_ext_coms[_device]:
-                    asset_run, com = self.device_asset_run_ext_coms[_device][0]
+                    asset_run, com, timeout = self.device_asset_run_ext_coms[_device][0]
                     asset_run.run_status = RunStatus.RUNNING
                     asset_run.run_start_time = datetime.datetime.now()
                     asset_run.save()
@@ -674,13 +690,21 @@ class Dispatcher(object):
                         else:
                             print "no ip for %s" % _device
 
-                        # replace cmd_str in [AssetRun, com_type] list with zmq_con object
+                        # replace cmd_str in [AssetRun, com_type, timeout] list with zmq_con object
                         self.device_asset_run_ext_coms[_device][0][1] = zmq_con
 
                     self.device_running_ext_coms[_device] = 1
             if self.device_running_ext_coms[_device] == 1:
-                asset_run, com = self.device_asset_run_ext_coms[_device][0]
-                if isinstance(com, ExtCom):
+                asset_run, com, timeout = self.device_asset_run_ext_coms[_device][0]
+                self.device_asset_run_ext_coms[_device][0][2] = timeout - 1
+                print timeout
+                if timeout < 1:
+                    self.device_asset_run_ext_coms[_device].pop(0)
+                    asset_run.run_status = RunStatus.ENDED
+                    asset_run.run_end_time = datetime.datetime.now()
+                    asset_run.save()
+                    self.device_running_ext_coms[_device] = 0
+                elif isinstance(com, ExtCom):
                     status = com.finished()
                     if status == 0:
                         self.device_asset_run_ext_coms[_device].pop(0)
@@ -688,7 +712,8 @@ class Dispatcher(object):
                         asset_run.run_status = RunStatus.ENDED
                         asset_run.run_end_time = datetime.datetime.now()
                         asset_run.raw_result_str = _output[0]
-                        asset_run.generate_assets_new()
+                        #asset_run.generate_assets_new()
+                        self.todo_asset_runs.append(asset_run)
                         asset_run.save()
                         self.device_running_ext_coms[_device] = 0
                     elif status != None:
@@ -723,6 +748,7 @@ class Dispatcher(object):
 
                         asset_run.raw_result_str = s
                         asset_run.generate_assets_new()
+                        self.todo_asset_runs.append(asset_run)
                         asset_run.save()
                         self.device_running_ext_coms[_device] = 0
 
@@ -766,7 +792,7 @@ class Dispatcher(object):
                 self.device_running_ext_coms[_device] = 0
                 self.device_asset_run_ext_coms[_device] = []
 
-            self.device_asset_run_ext_coms[_device].append([new_asset_run, _command])
+            self.device_asset_run_ext_coms[_device].append([new_asset_run, _command, 120])
 
     def __do_nrpe_scan(self, schedule_item):
         cmd_tuples = [(AssetType.PACKAGE, LIST_SOFTWARE_CMD),
@@ -815,7 +841,7 @@ class Dispatcher(object):
                 self.device_running_ext_coms[_device] = 0
                 self.device_asset_run_ext_coms[_device] = []
 
-            self.device_asset_run_ext_coms[_device].append([new_asset_run, ext_com])
+            self.device_asset_run_ext_coms[_device].append([new_asset_run, ext_com, 120])
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         print what
