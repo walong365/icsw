@@ -147,9 +147,9 @@ angular.module(
         link: (scope, element, attrs) ->
             scope.config_service = $injector.get(attrs.configService)
             if attrs.icswConfigObject?
-                scope.icswConfigObject = scope.$eval(attrs.icswConfigObject)
+                scope.icsw_config_object = scope.$eval(attrs.icswConfigObject)
             else
-                scope.icswConfigObject = undefined
+                scope.icsw_config_object = undefined
 
             # scope.config_service.use_modal ?= true
 

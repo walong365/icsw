@@ -124,10 +124,10 @@ angular.module(
         fetch: (scope) ->
             defer = $q.defer()
             # set scope for dn_tree
-            scope.icswConfigObject.scope = scope
-            scope.tree = scope.icswConfigObject.tree
-            scope.dn_tree = scope.icswConfigObject.dn_tree
-            scope.mode = scope.icswConfigObject.mode
+            scope.icsw_config_object.scope = scope
+            scope.tree = scope.icsw_config_object.tree
+            scope.dn_tree = scope.icsw_config_object.dn_tree
+            scope.mode = scope.icsw_config_object.mode
             scope.mode_is_location = scope.mode == "location"
             defer.resolve(scope.dn_tree.mode_entries)
             return defer.promise
@@ -272,7 +272,7 @@ angular.module(
                         )
                 )
             else if fn_name == "clear_selection"
-                scope.icswConfigObject.ctrl_scope.clear_active()
+                scope.icsw_config_object.ctrl_scope.clear_active()
 
     }
 ]).directive("icswConfigCategoryTreeRow", ["$templateCache", ($templateCache) ->

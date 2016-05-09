@@ -4,17 +4,17 @@
         <ng-pluralize count="struct.devices.length" when="{'one':'1 device', 'other':'{} devices'}"></ng-pluralize>
     </h3>
 
-    <div>
+    <!-- <div>
         ReactTree:
-        <!-- <icsw-react-tree></icsw-react-tree>-->
-    </div>
+        <icsw-react-tree></icsw-react-tree>
+    </div> -->
     <uib-alert type="warning" style="max-width: 500px" ng-if="!is_any_location_defined()">Please create locations in the tab 'Available locations'.</uib-alert>
 
     <div class="row">
         <div class="col-md-6">
             <h3>Location Tree</h3>
             <icsw-tools-ensure-device-selection dev-list="struct.devices" list-ready="struct.device_list_ready">
-                <tree treeconfig="struct.loc_tree"></tree>
+                <icsw-react-tree icsw-tree-config="struct.loc_tree"></icsw-react-tree>
             </icsw-tools-ensure-device-selection>
         </div>
         <div class="col-md-6">
@@ -56,27 +56,29 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.monitoring.location.list">
-    <div ng-show="active_gfx.$dml_list.length">
-        <h4>{{ active_gfx.$dml_list.length }} set devices:</h4>
-        <ul class="list-group">
-            <li class="list-group-item" ng-repeat="dml in active_gfx.$dml_list">
-                {{ dml.$device.full_name }}, {{ dml.pos_x }} / {{ dml.pos_y }}
-                <span class="pull-right" ng-if="dml.$$selected">
-                    <div class="btn-group">
-                        <icsw-tools-button type="delete" size="xs" ng-show="!dml.locked" ng-click="remove_dml(dml)"/>
-                        <icsw-tools-button type="lock" size="xs" is-lock="dml.locked" ng-click="toggle_locked(dml)"/>
-                    </div>
-                </span>
-            </li>
-        </ul>
-    </div>
-    <div ng-show="active_gfx.$unset_devices.length">
-        <h4>{{ active_gfx.$unset_devices.length }} unset devices:</h4>
-        <ul class="list-group">
-            <li class="list-group-item" ng-repeat="dev in active_gfx.$unset_devices">
-                {{ dev.full_name }}
-                <icsw-tools-button type="create" size="xs" value="set" ng-click="use_device(dev)"/>
-            </li>
-        </ul>
+    <div ng-if="struct.data_valid">
+        <div ng-show="struct.active_gfx.$dml_list.length">
+            <h4>{{ struct.active_gfx.$dml_list.length }} set devices:</h4>
+            <ul class="list-group">
+                <li class="list-group-item" ng-repeat="dml in struct.active_gfx.$dml_list">
+                    {{ dml.$device.full_name }}, {{ dml.pos_x }} / {{ dml.pos_y }}
+                    <span class="pull-right" ng-if="dml.$$selected">
+                        <div class="btn-group">
+                            <icsw-tools-button type="delete" size="xs" ng-show="!dml.locked" ng-click="remove_dml(dml)"/>
+                            <icsw-tools-button type="lock" size="xs" is-lock="dml.locked" ng-click="toggle_locked(dml)"/>
+                        </div>
+                    </span>
+                </li>
+            </ul>
+        </div>
+        <div ng-show="struct.active_gfx.$unset_devices.length">
+            <h4>{{ struct.active_gfx.$unset_devices.length }} unset devices:</h4>
+            <ul class="list-group">
+                <li class="list-group-item" ng-repeat="dev in struct.active_gfx.$unset_devices">
+                    {{ dev.full_name }}
+                    <icsw-tools-button type="create" size="xs" value="set" ng-click="use_device(dev)"/>
+                </li>
+            </ul>
+        </div>
     </div>
 </script>

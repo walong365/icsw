@@ -163,9 +163,9 @@ angular.module(
         fetch: (scope) ->
             defer = $q.defer()
             # set scope for dn_tree
-            scope.icswConfigObject.list_scope = scope
-            scope.tree = scope.icswConfigObject.tree
-            scope.dn_tree = scope.icswConfigObject.dn_tree
+            scope.icsw_config_object.list_scope = scope
+            scope.tree = scope.icsw_config_object.tree
+            scope.dn_tree = scope.icsw_config_object.dn_tree
             defer.resolve(scope.tree.list)
             return defer.promise
 
@@ -295,7 +295,7 @@ angular.module(
                         )
                 )
             else if fn_name == "clear_selection"
-                scope.icswConfigObject.ctrl_scope.clear_active()
+                scope.icsw_config_object.ctrl_scope.clear_active()
 
     }
 ]).controller("icswConfigDomainNameTreeRowCtrl",

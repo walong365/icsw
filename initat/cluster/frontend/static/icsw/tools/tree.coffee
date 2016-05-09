@@ -35,7 +35,7 @@ angular.module(
         scope: {
             treeconfig: "="
             maxHeight: "&"
-            icswConfigObject: "="
+            icsw_config_object: "=icswConfigObject"
         }
         replace: true
         link: (scope, element, attr) ->
@@ -45,7 +45,7 @@ angular.module(
                     if "configService" of attr
                         cservice = $injector.get(attr.configService)
                         new_val.config_service = cservice
-                        new_val.config_object = scope.icswConfigObject
+                        new_val.config_object = scope.icsw_config_object
                     element.children().remove()
                     _root_el = angular.element($templateCache.get("icsw.tree.root.node"))
                     if scope.maxHeight?

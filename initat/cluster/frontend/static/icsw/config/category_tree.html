@@ -11,7 +11,10 @@
 </script>
 
 <script type="text/ng-template" id="icsw.config.category.tree.row">
-    <td style="font-family:monospace;"><span ng-bind-html="get_space(obj.depth )"></span>{{ obj.name || '[TLN]' }}</td>
+    <td style="font-family:monospace;">
+        <span ng-bind-html="get_space(obj.depth )"></span>
+        {{ obj.name || '[TLN]' }}
+    </td>
     <td>
         <span ng-show="obj.depth">{{ obj.full_name }}</span>
     </td>
@@ -49,13 +52,13 @@
                     Actions:
                     <icsw-tools-button type="create" value="create new" size="sm" ng-click="create($event, null)"></icsw-tools-button>
                     <icsw-tools-button type="modify" value="prune tree" size="sm" ng-click="prune_tree()"/>
-                    <icsw-tools-button type="delete" ng-show="icswConfigObject.num_active" size="sm" value="delete selected" ng-click="special_fn($event, 'delete_many', null)"/>
-                    <icsw-tools-button type="close" ng-show="icswConfigObject.num_active" size="sm" value="clear selection" ng-click="special_fn($event, 'clear_selection', null)"/>
+                    <icsw-tools-button type="delete" ng-show="icsw_config_object.num_active" size="sm" value="delete selected" ng-click="special_fn($event, 'delete_many', null)"/>
+                    <icsw-tools-button type="close" ng-show="icsw_config_object.num_active" size="sm" value="clear selection" ng-click="special_fn($event, 'clear_selection', null)"/>
                 </p>
                 <div class="row">
                     <div class="col-sm-4">
                         <h3>Tree view</h3>
-                        <tree treeconfig="dn_tree" config-service="icswConfigCategoryListService" icsw-config-object="icswConfigObject"></tree>
+                        <tree treeconfig="dn_tree" config-service="icswConfigCategoryListService" icsw-config-object="icsw_config_object"></tree>
                     </div>
                     <div class="col-sm-8">
                         <h3>Table view</h3>
@@ -215,7 +218,62 @@
                     <icsw-tools-yes-no flag="edit_obj.locked"></icsw-tools-yes-no>
                 </div>
             </div>
+            <div class="form-group row" ng-if="!edit_obj.$gfx_list.length">
+                <div class="control-label col-sm-3">
+                    Physical
+                </div>
+                <div class="controls col-sm-7">
+                    <icsw-tools-yes-no flag="edit_obj.physical"></icsw-tools-yes-no>
+                </div>
+            </div>
+        </fieldset>
+    </form>
+</script>
+
+<script type="text/ng-template" id="icsw.category.location.form">
+    <form class="form-horizontal" name="form_data">
+        <h2>Category details for '{{ edit_obj.name }}'</h2>
+        <fieldset>
+            <legend>Basic settings</legend>
+            <div id="div_id_name" class="form-group  ng-class:form_error('name')">
+                <label class="control-label col-sm-3 requiredField">
+                    Name<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="64" name="name" ng-model="edit_obj.name" required="True" type="text" ng-disabled="edit_obj.depth < 2"/>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Additional fields</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-3">
+                    Comment
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="256" name="comment" ng-model="edit_obj.comment" type="text"/>
+                </div>
+            </div>
+            <!-- <div class="form-group row" ng-show="edit_obj.was_unuseable">
+                <div class="control-label col-sm-3">
+                    Useable
+                </div>
+                <div class="controls col-sm-7">
+                    <icsw-tools-yes-no flag="edit_obj.useable"></icsw-tools-yes-no>
+                </div>
+            </div> -->
+        </fieldset>
+        <fieldset>
+            <legend>Positional data</legend>
             <div class="form-group row">
+                <div class="control-label col-sm-3">
+                    Locked
+                </div>
+                <div class="controls col-sm-7">
+                    <icsw-tools-yes-no flag="edit_obj.locked"></icsw-tools-yes-no>
+                </div>
+            </div>
+            <div class="form-group row" ng-if="!edit_obj.$gfx_list.length">
                 <div class="control-label col-sm-3">
                     Physical
                 </div>
