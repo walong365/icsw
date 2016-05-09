@@ -540,7 +540,7 @@ monitoring_device_module = angular.module(
           obj.loading = false
           # stop loading
           return
-        ), 2000
+        ), 10000
 
     $scope.edit = ($event, obj) ->
 
