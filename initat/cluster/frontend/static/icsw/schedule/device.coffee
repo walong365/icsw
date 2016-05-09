@@ -21,7 +21,7 @@
 monitoring_device_module = angular.module(
     "icsw.schedule.device",
     [
-        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "icsw.tools.table", "icsw.tools.button"
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "icsw.tools.table", "icsw.tools.button", "angular-ladda"
     ]
 ).config(["$stateProvider",
 (
@@ -473,12 +473,12 @@ monitoring_device_module = angular.module(
     "$scope", "icswDeviceTreeService", "$q", "icswMonitoringBasicTreeService", "icswComplexModalService",
     "$templateCache", "$compile", "toaster", "blockUI", "Restangular",
     "ICSW_URLS", "icswConfigTreeService", "icswDispatcherSettingTreeService", "icswDeviceTreeHelperService",
-    "icswUserService", "$http"
+    "icswUserService", "$http", "$timeout"
 (
     $scope, icswDeviceTreeService, $q, icswMonitoringBasicTreeService, icswComplexModalService,
     $templateCache, $compile, toaster, blockUI, Restangular,
     ICSW_URLS, icswConfigTreeService, icswDispatcherSettingTreeService, icswDeviceTreeHelperService,
-    icswUserService, $http
+    icswUserService, $http, $timeout
 ) ->
     $scope.struct = {
         # loading
@@ -529,12 +529,18 @@ monitoring_device_module = angular.module(
         )
 
     $scope.run_now = ($event, obj) ->
+        obj.loading = true
         $http({
             method: 'POST',
             url: '/icsw/api/v2/mon/run_assets_now'
             data: "pk=" + obj.idx,
             headers: {'Content-Type': 'application/x-www-form-urlencoded'}
         })
+        $timeout (->
+          obj.loading = false
+          # stop loading
+          return
+        ), 2000
 
     $scope.edit = ($event, obj) ->
 

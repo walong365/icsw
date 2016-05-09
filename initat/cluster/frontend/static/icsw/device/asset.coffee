@@ -73,46 +73,29 @@ device_asset_module = angular.module(
     $scope.predicates = ['firstName', 'lastName', 'birthDate', 'balance', 'email'];
     $scope.selectedPredicate = $scope.predicates[0];
 
-    $scope.addRandomItem = (id) ->
-        console.log "ttttt", id
+    $scope.select_devices = (obj) ->
+        $http({
+            method: 'POST',
+            url: '/icsw/api/v2/mon/get_devices_for_asset'
+            data: "pk=" + obj.pk,
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+        }).then(
+          (result) ->
+              new_devs = []
 
-#    a = $q.defer()
-#    b = $q.defer()
-#    c = $q.defer()
-#    a.promise.then(
-#        (bzwwez) ->
-#            console.log "ok", bzwwez
-#            b.resolve("ok")
-#    )
-#    c.promise.then(
-#        (ok) ->
-#        (error) ->
-#            console.log "notoK"
-#        (notify) ->
-#            console.log "cnot", notify
-#    )
-#    b.promise.then(
-#        (ok) ->
-#            console.log "q"
-#            c.reject("notok")
-#    )
-#    b.promise.then(
-#        (ok) ->
-#            console.log "second"
-#    )
-#    c.notify("1.")
-#    c.notify("2.")
-#    a.resolve("go")
-#    $scope.$on("$destroy", () ->
-#        console.log "asset destroyed"
-#    )
+              for dev in $scope.struct.devices
+                  for pk in result.data.devices
+                      if dev.idx == pk
+                          new_devs.push dev
+
+              $scope.struct.devices = new_devs
+        )
 
     $rootScope.assets = []
     $rootScope.assets_sf = []
 
     $http.get('/icsw/api/v2/mon/get_asset_list').then(
         (result) ->
-            console.log "apidata: ", result.data
             $rootScope.assets = []
             $rootScope.assets_sf = []
 
@@ -122,10 +105,10 @@ device_asset_module = angular.module(
                     version: undefined
                     release: undefined
                 }
-                _pack.name = item[0]
-                _pack.version = item[1]
-                _pack.release = item[2]
-                console.log "package: ", _pack
+                _pack.pk = item[0]
+                _pack.name = item[1]
+                _pack.version = item[2]
+                _pack.release = item[3]
                 $rootScope.assets.push _pack
                 $rootScope.assets_sf.push _pack
     )
@@ -142,31 +125,13 @@ device_asset_module = angular.module(
                 for entry in devs
                     $scope.struct.devices.push(entry)
 
-#                $rootScope.assets = []
-#                $rootScope.assets_sf = []
-#                console.log "reseting assets"
-
                 hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, $scope.struct.devices)
                 $scope.struct.device_tree.enrich_devices(hs, ["asset_info"]).then(
                     (data) ->
-#                       console.log "len: ", $rootScope.assets.length
-#
-#                       hm = {}
-
                         for dev in $scope.struct.devices
                             dev.assetrun_set_sf_src = []
                             for ar in dev.assetrun_set
                                 dev.assetrun_set_sf_src.push(ar)
-#                                for pack in ar.packages
-#                                    hm[pack.idx] = pack
-
-#                        console.log "hm: ", hm
-#                        for k, v of hm
-#                            $rootScope.assets.push(v)
-#                            $rootScope.assets_sf.push(v)
-
-#                        console.log "lenAfter: ", $rootScope.assets.length
-#                        console.log "assets loaded"
                         $scope.struct.data_loaded = true
                 )
         )

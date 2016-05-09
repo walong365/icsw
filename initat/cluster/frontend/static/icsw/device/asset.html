@@ -2,48 +2,52 @@
     <icsw-device-asset-overview icsw-sel-man="0"></icsw-device-asset-overview>
 </script>
 
+
+
+
 <script type="text/ng-template" id="icsw.device.asset.overview">
     <uib-alert type="warning" ng-show="!struct.data_loaded">Fetching data from server ...</uib-alert>
+
+    <h2>
+        <span>Assets (length): {{ $root.assets.length }}</span>
+    </h2>
+
+    <table
+        class="table table-condensed table-hover table-bordered"
+        style="width:auto;"
+        ng-show="$root.assets_sf.length > 0"
+        st-table="$root.assets"
+        st-safe-src="$root.assets_sf"
+    >
+        <tbody>
+            <tr>
+                <th>
+                    <button ng-if="$root.expanded" ng-click="$root.expanded = false">-</button>
+                    <button ng-if="!$root.expanded" ng-click="$root.expanded = true">+</button>
+                </th>
+                <th st-sort="name">Name</th>
+                <th st-sort="version">Version</th>
+                <th st-sort="release">Release</th>
+            </tr>
+            <tr ng-if="$root.expanded">
+                <th></th>
+                <th colspan="3">
+                    <input st-search="" class="form-control" placeholder="global search ..." type="text"/>
+                </th>
+            </tr>
+            <tr ng-if="$root.expanded" ng-repeat="package in $root.assets">
+                <td><button ng-click="select_devices(package)">Select Devices</button></td>
+                <td>{{ package.name }}</td>
+                <td>{{ package.version }}</td>
+                <td>{{ package.release }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+
     <icsw-tools-ensure-device-selection dev-list="struct.devices" list-ready="struct.data_loaded">
 
-        <h2>
-            <span>Assets (length): {{ $root.assets.length }}</span>
-        </h2>
 
-
-
-
-        <table
-            class="table table-condensed table-hover table-bordered"
-            style="width:auto;"
-            ng-show="$root.assets_sf.length > 0"
-            st-table="$root.assets"
-            st-safe-src="$root.assets_sf"
-        >
-            <tbody>
-                <tr>
-                    <th>
-                        <button ng-if="$root.expanded" ng-click="$root.expanded = false">-</button>
-                        <button ng-if="!$root.expanded" ng-click="$root.expanded = true">+</button>
-                    </th>
-                    <th st-sort="name">Name</th>
-                    <th st-sort="version">Version</th>
-                    <th st-sort="release">Release</th>
-                </tr>
-                <tr ng-if="$root.expanded">
-                    <th></th>
-                    <th colspan="3">
-                        <input st-search="" class="form-control" placeholder="global search ..." type="text"/>
-                    </th>
-                </tr>
-                <tr ng-if="$root.expanded" ng-repeat="package in $root.assets">
-                    <td><button ng-click="$scope.lel">Show Devices</button></td>
-                    <td>{{ package.name }}</td>
-                    <td>{{ package.version }}</td>
-                    <td>{{ package.release }}</td>
-                </tr>
-            </tbody>
-        </table>
 
         <h2>
             <span>AssetRuns</span>

@@ -36,8 +36,6 @@ from rest_framework import serializers
 
 
 # flatten xml into bahlist
-
-
 def generate_bahs(root, bahlist):
     bah = BaseAssetHardware(root.get("type"))
     bahlist.append(bah)
@@ -49,6 +47,10 @@ def generate_bahs(root, bahlist):
 
 def get_base_assets_from_raw_result(blob, runtype, scantype):
     assets = []
+
+    if not blob:
+        return assets
+
     if runtype == AssetType.PACKAGE:
         if scantype == ScanType.NRPE:
             l = json.loads(blob)

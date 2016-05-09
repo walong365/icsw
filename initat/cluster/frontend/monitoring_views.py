@@ -628,7 +628,7 @@ class get_asset_list(RetrieveAPIView):
     def get(self, request, *args, **kwargs):
         return Response(
             {
-                'assets': [(a.name, a.version, a.release) for a in AssetPackage.objects.all()],
+                'assets': [(a.pk, a.name, a.version, a.release) for a in AssetPackage.objects.all()],
             }
         )
 
@@ -645,3 +645,12 @@ class run_assets_now(View):
                                     source=10,
                                     planned_date=datetime.datetime.now(tz=pytz.utc),
                                     run_now=True)
+        return HttpResponse()
+
+from initat.cluster.backbone.models.asset import AssetPackage
+
+class get_devices_for_asset(View):
+    def post(self, request, *args, **kwargs):
+        ap = AssetPackage.objects.get(pk=int(request.POST['pk']))
+
+        return HttpResponse(json.dumps({'devices': list(set([ar.device.pk for ar in ap.assetrun_set.all()]))}), content_type="application/json")
