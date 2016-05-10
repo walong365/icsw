@@ -473,7 +473,7 @@ from initat.cluster.backbone.models.dispatch import DeviceDispatcherLink, Dispat
 
 
 def align_second(now, sched_start_second):
-    while 1:
+    while True:
         now += datetime.timedelta(seconds=1)
         if now.second == sched_start_second:
             break
@@ -482,7 +482,7 @@ def align_second(now, sched_start_second):
 
 
 def align_minute(now, sched_start_minute):
-    while 1:
+    while True:
         now += datetime.timedelta(minutes=1)
         if now.minute == sched_start_minute:
             break
@@ -491,7 +491,7 @@ def align_minute(now, sched_start_minute):
 
 
 def align_hour(now, sched_start_hour):
-    while 1:
+    while True:
         now += datetime.timedelta(hours=1)
         if now.hour == sched_start_hour:
             break
@@ -508,7 +508,7 @@ def align_day(now, sched_start_day):
 
 
 def align_week(now, sched_start_week):
-    while 1:
+    while True:
         now += datetime.timedelta(days=1)
         if (now.isocalendar()[1] % 4) == sched_start_week:
             break
@@ -516,7 +516,7 @@ def align_week(now, sched_start_week):
 
 
 def align_month(now, sched_start_month):
-    while 1:
+    while True:
         now += datetime.timedelta(days=1)
         if now.month == sched_start_month:
             break
@@ -609,41 +609,64 @@ class Dispatcher(object):
             device = link.device
             ds = link.dispatcher_setting
 
-            last_scheds = 0
-            last_sched = None
+            last_scheds = {}
+            last_sched = {}
             for sched in ScheduleItem.objects.all():
-                # ignore run_now scheds
-                if sched.run_now:
-                    last_sched = sched
-                    continue
+                if sched.device == device and sched.dispatch_setting == ds:
+                    if ds not in last_scheds:
+                        last_scheds[ds] = 0
+                    last_scheds[ds] += 1
 
-                # print sched
-                if sched.device == device:
-                    last_scheds += 1
-                    if last_sched and sched.planned_date > last_sched.planned_date:
-                        last_sched = sched
-                    elif not last_sched:
-                        last_sched = sched
+                    if ds not in last_sched:
+                        last_sched[ds] = sched
+                    elif sched.planned_date > last_sched[ds].planned_date:
+                        last_sched[ds] = sched
 
-            if last_sched is None:
-                last_sched = _ScheduleItem(device, DiscoverySource.PACKAGE, align_time_to_baseline(_now, ds))
-                print "Next scheduled run: %s" % last_sched
+
+
+            if ds not in last_sched:
+                next_run = _ScheduleItem(device, DiscoverySource.PACKAGE, align_time_to_baseline(_now, ds))
+                print "Next scheduled run: %s" % next_run
                 # self.schedule_items.append(last_sched)
                 # self.schedule_items.sort(key=lambda s: s.planned_date)
-                ScheduleItem.objects.create(device=last_sched.device,
-                                            source=last_sched.source,
-                                            planned_date=last_sched.planned_date)
+                ScheduleItem.objects.create(device=next_run.device,
+                                            source=next_run.source,
+                                            planned_date=next_run.planned_date,
+                                            dispatch_setting=ds)
+                last_scheds[ds] = 1
+                last_sched[ds] = next_run
 
-            if last_scheds < 2:
+
+
+            if last_scheds[ds] < 2:
                 next_run = _ScheduleItem(device,
                                          DiscoverySource.PACKAGE,
-                                         last_sched.planned_date + get_time_inc_from_ds(ds))
+                                         last_sched[ds].planned_date + get_time_inc_from_ds(ds))
                 print "Next scheduled run: %s" % next_run
                 # self.schedule_items.append(next_run)
                 # self.schedule_items.sort(key=lambda s: s.planned_date)
                 ScheduleItem.objects.create(device=next_run.device,
                                             source=next_run.source,
-                                            planned_date=next_run.planned_date)
+                                            planned_date=next_run.planned_date,
+                                            dispatch_setting = ds)
+
+
+        # remove schedule items that are no longer linked to a device/dispatch_setting
+        schedule_items = ScheduleItem.objects.all()
+        for sched in schedule_items:
+            links = DeviceDispatcherLink.objects.all()
+
+            found = False
+            for link in links:
+                device = link.device
+                ds = link.dispatcher_setting
+
+                if sched.device == device and sched.dispatch_setting == ds:
+                    found = True
+
+            if not found:
+                print "removing %s %s" % (sched.device, sched.planned_date)
+                sched.delete()
 
         schedule_items = sorted(ScheduleItem.objects.all(), key=lambda x: x.planned_date)
         while schedule_items:

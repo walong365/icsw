@@ -230,6 +230,7 @@ class ScheduleItem(models.Model):
     idx = models.AutoField(primary_key=True)
     # link to device
     device = models.ForeignKey("backbone.device")
+    dispatch_setting = models.ForeignKey("backbone.DispatcherSetting", null=True)
     source = models.IntegerField(choices=[(src.value, src.name) for src in DiscoverySource])
     planned_date = models.DateTimeField(default=None, null=True)
     run_now = models.BooleanField(default=False)

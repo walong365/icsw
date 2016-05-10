@@ -330,7 +330,6 @@ class AssetPackage(models.Model):
 class AssetPackageVersion(models.Model):
     idx = models.AutoField(primary_key=True)
     asset_package = models.ForeignKey("backbone.AssetPackage")
-    name = models.TextField()
     size = models.IntegerField(default=0)
     version = models.TextField(default="", blank=True)
     release = models.TextField(default="", blank=True)
@@ -370,7 +369,7 @@ class AssetRun(models.Model):
 
     scan_type = models.IntegerField(choices=[(_type.value, _type.name) for _type in ScanType], null=True)
 
-    packages = models.ManyToManyField(AssetPackage)
+    packages = models.ManyToManyField(AssetPackageVersion)
 
     def generate_assets(self):
         if self.raw_result_interpreted or not self.raw_result_str:
@@ -395,42 +394,71 @@ class AssetRun(models.Model):
         for ba in base_assets:
             kwfilterdict = {}
             if self.run_type == AssetType.PACKAGE:
-                kwfilterdict['name'] = ba.name
-                kwfilterdict['version'] = ba.version
-                kwfilterdict['release'] = ba.release
-            elif self.run_type == AssetType.HARDWARE:
-                # todo implement me
-                break
-            elif self.run_type == AssetType.LICENSE:
-                # todo implement me
-                break
-            elif self.run_type == AssetType.UPDATE:
-                # todo implement me
-                break
-            elif self.run_type == AssetType.SOFTWARE_VERSION:
-                # todo implement me
-                break
-            elif self.run_type == AssetType.PROCESS:
-                # todo implement me
-                break
-            elif self.run_type == AssetType.PENDING_UPDATE:
-                # todo implement me
-                break
-            else:
-                break
+                name = ba.name
+                version = ba.version if ba.version else ""
+                release = ba.release if ba.release else ""
+                size = ba.size if ba.size else 0
 
-            assets = AssetPackage.objects.filter(**kwfilterdict)
-            assert(len(assets) < 2)
+                #kwfilterdict['name'] = ba.name
+                #kwfilterdict['version'] = ba.version
+                #kwfilterdict['release'] = ba.release
+                aps = AssetPackage.objects.filter(name=name)
+                assert (len(aps) < 2)
 
-            if assets:
-                asset = assets[0]
-                if self.packages.filter(**kwfilterdict):
-                    continue
-            else:
-                asset = AssetPackage(**kwfilterdict)
-                asset.save()
+                if aps:
+                    ap = aps[0]
 
-            self.packages.add(asset)
+                    versions = ap.assetpackageversion_set.filter(version=version, release=release, size=size)
+                    assert (len(versions) < 2)
+
+                    if versions:
+                        apv = versions[0]
+                    else:
+                        apv = AssetPackageVersion(asset_package=ap, version=version, release=release, size=size)
+                        apv.save()
+
+                    self.packages.add(apv)
+                else:
+                    ap = AssetPackage(name=name)
+                    ap.save()
+                    apv = AssetPackageVersion(asset_package=ap, version=version, release=release, size=size)
+                    apv.save()
+                    self.packages.add(apv)
+
+
+            # elif self.run_type == AssetType.HARDWARE:
+            #     # todo implement me
+            #     break
+            # elif self.run_type == AssetType.LICENSE:
+            #     # todo implement me
+            #     break
+            # elif self.run_type == AssetType.UPDATE:
+            #     # todo implement me
+            #     break
+            # elif self.run_type == AssetType.SOFTWARE_VERSION:
+            #     # todo implement me
+            #     break
+            # elif self.run_type == AssetType.PROCESS:
+            #     # todo implement me
+            #     break
+            # elif self.run_type == AssetType.PENDING_UPDATE:
+            #     # todo implement me
+            #     break
+            # else:
+            #     break
+            #
+            # assets = AssetPackage.objects.filter(**kwfilterdict)
+            # assert(len(assets) < 2)
+            #
+            # if assets:
+            #     asset = assets[0]
+            #     if self.packages.filter(**kwfilterdict):
+            #         continue
+            # else:
+            #     asset = AssetPackage(**kwfilterdict)
+            #     asset.save()
+            #
+            # self.packages.add(asset)
 
         self.save()
 
@@ -474,18 +502,24 @@ class AssetSerializer(serializers.ModelSerializer):
     class Meta:
         model = Asset
 
+class AssetPackageVersionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AssetPackageVersion
+        fields = ("idx", "size", "version", "release")
+
 
 class AssetPackageSerializer(serializers.ModelSerializer):
+    versions = AssetPackageVersionSerializer(many=True)
     class Meta:
         model = AssetPackage
-        fields = ("idx", "name", "version", "release")
+        fields = ("idx", "name")
 
 
 class AssetRunSerializer(serializers.ModelSerializer):
     device = serializers.SerializerMethodField()
     # asset_set = AssetSerializer(many=True)
     assets = serializers.SerializerMethodField()
-    packages = AssetPackageSerializer(many=True)
+    packages = AssetPackageVersionSerializer(many=True)
 
     def get_assets(self, obj):
         return [str(pkg) for pkg in obj.generate_assets_no_save()]

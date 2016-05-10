@@ -629,7 +629,7 @@ class get_asset_list(RetrieveAPIView):
     def get(self, request, *args, **kwargs):
         return Response(
             {
-                'assets': [(a.pk, a.name, a.version, a.release) for a in AssetPackage.objects.all()],
+                'assets': [(a.pk, a.name, [(v.version, v.release, v.size) for v in a.assetpackageversion_set.all()]) for a in AssetPackage.objects.all()],
             }
         )
 
@@ -641,7 +641,8 @@ class run_assets_now(View):
             device=_dev,
             source=10,
             planned_date=datetime.datetime.now(tz=pytz.utc),
-            run_now=True
+            run_now=True,
+            dispatch_setting=None
         )
         return HttpResponse()
 
