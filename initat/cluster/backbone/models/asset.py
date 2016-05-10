@@ -420,12 +420,14 @@ class AssetRun(models.Model):
         self.save()
 
     def get_asset_changeset(self, other_asset_run):
-        self.generate_assets()
-        other_asset_run.generate_assets()
-        this_assets = [_asset.getAssetInstance() for _asset in self.asset_set.all()]
-        other_assets = [_asset.getAssetInstance() for _asset in other_asset_run.asset_set.all()]
+        #self.generate_assets()
+        #other_asset_run.generate_assets()
+        #this_assets = [_asset.getAssetInstance() for _asset in self.asset_set.all()]
+        #other_assets = [_asset.getAssetInstance() for _asset in other_asset_run.asset_set.all()]
+        this_assets = self.generate_assets_no_save()
+        other_assets = other_asset_run.generate_assets_no_save()
 
-        return list(set(this_assets).symmetric_difference(set(other_assets)))
+        return set(this_assets).difference(other_assets)
 
     def diff_to_prev_run(self):
         if self.run_index == 0:

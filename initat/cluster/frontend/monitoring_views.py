@@ -664,8 +664,9 @@ class get_assetrun_diffs(View):
         print ar_pk2
 
         ar1 = AssetRun.objects.get(pk=int(ar_pk1))
-        ar2 = AssetRun.objects.get(pk=int(ar_pk1))
+        ar2 = AssetRun.objects.get(pk=int(ar_pk2))
 
         print ar1.get_asset_changeset(ar2)
+        print ar2.get_asset_changeset(ar1)
 
         return HttpResponse(json.dumps({'diff': ["a","b","c"]}), content_type="application/json")

@@ -84,16 +84,29 @@ device_asset_module = angular.module(
         ), 10000
 
 
-    $scope.assetchangeset = ->
-        $http({
-            method: 'POST',
-            url: '/icsw/api/v2/mon/get_assetrun_diffs'
-            data: "pk1=4"
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'}
-        }).then(
-          (result) ->
-              console.log "assetchangeset ", result
-        )
+    $scope.assetchangeset = (device) ->
+        ar1 = undefined
+        ar2 = undefined
+
+        for ar in device.assetrun_set
+            if ar.isSelected && ar1 == undefined
+                ar1 = ar
+            else if ar.isSelected && ar2 == undefined
+                ar2 = ar
+                break
+
+        console.log "ar1: ", ar1
+        console.log "ar2: ", ar2
+        if ar1 != undefined && ar2 != undefined
+            $http({
+                method: 'POST',
+                url: '/icsw/api/v2/mon/get_assetrun_diffs'
+                data: "pk1="+ar1.idx+"&pk2="+ar2.idx
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+            }).then(
+              (result) ->
+                  console.log "assetchangeset ", result
+            )
 
     $scope.refresh = ->
         hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, $scope.struct.devices)
