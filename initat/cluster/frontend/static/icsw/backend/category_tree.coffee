@@ -232,6 +232,11 @@ angular.module(
                     )
             )
 
+        # populate all gfx_locations of a given location
+        # populate_gfx_location_all: (loc, device_tree, sel_devices) =>
+        #    for gfx_loc in loc.$gfx_list
+        #        @populate_gfx_location(gfx_loc, device_tree, sel_devices)
+                
         # populate gfx_locations
         populate_gfx_location: (gfx_loc, device_tree, sel_devices) =>
             location = @lut[gfx_loc.location]
@@ -264,6 +269,7 @@ angular.module(
                     if gfx_loc.location in dev.categories
                         # physical location in device selection
                         gfx_loc.$unset_devices.push(dev)
+            # console.log "g", gfx_loc.idx, gfx_loc.$unset_devices.length
             # console.log gfx_loc.$dml_list
             # console.log gfx_loc.$unset_devices
 

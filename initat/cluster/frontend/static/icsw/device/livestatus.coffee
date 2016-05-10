@@ -2524,7 +2524,7 @@ angular.module(
             ).then(
                 (data) ->
                     device_tree = data[0]
-                    console.log scope.monitoring_data, scope.filter
+                    # console.log scope.monitoring_data, scope.filter
                     react_el = ReactDOM.render(
                         React.createElement(
                             icswDeviceLivestatusLocationMapReact

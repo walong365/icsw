@@ -541,16 +541,6 @@ angular.module(
                 minZoom: 1
                 maxZoom: 20
             }
-            bounds: {
-                northeast: {
-                    latitude: 4
-                    longitude: 4
-                }
-                southwest: {
-                    latitude: 20
-                    longitude: 30
-                }
-            }
         }
     }
     $scope.set_map_mode = (mode) ->
@@ -587,27 +577,17 @@ angular.module(
 
     $scope.zoom_to_locations = () ->
         # center map around the locations
-        _bounds = null
+        _bounds = new $scope.struct.google_maps.LatLngBounds()
         for entry in $scope.locations
-            if not _bounds
-                _bounds = {
-                    northeast: {
-                        latitude: entry.latitude
-                        longitude: entry.longitude
-                    }
-                    southwest: {
-                        latitude: entry.latitude
-                        longitude: entry.longitude
-                    }
-                }
-            else
-                _bounds.northeast.latitude = Math.max(_bounds.northeast.latitude, entry.latitude)
-                _bounds.northeast.longitude = Math.max(_bounds.northeast.longitude, entry.longitude)
-                _bounds.southwest.latitude = Math.min(_bounds.southwest.latitude, entry.latitude)
-                _bounds.southwest.longitude = Math.min(_bounds.southwest.longitude, entry.longitude)
-        $scope.struct.map_options.bounds = _bounds
-        $scope.struct.map_options.center.latitude = (_bounds.northeast.latitude + _bounds.southwest.latitude) / 2.0
-        $scope.struct.map_options.center.longitude = (_bounds.northeast.longitude + _bounds.southwest.longitude) / 2.0
+            _bounds.extend(new $scope.struct.google_maps.LatLng(entry.latitude, entry.longitude))
+        $scope.struct.map_options.control.getGMap().fitBounds(_bounds)
+
+    $scope.get_center = () ->
+        # center map around the locations
+        _bounds = new $scope.struct.google_maps.LatLngBounds()
+        for entry in $scope.locations
+            _bounds.extend(new $scope.struct.google_maps.LatLng(entry.latitude, entry.longitude))
+        $scope.struct.map_options.center = {latitude:_bounds.getCenter().lat(), longitude: _bounds.getCenter().lng()}
 
     # helper functions
 
@@ -659,30 +639,32 @@ angular.module(
     _update = () ->
         if $scope.struct.map_active and $scope.locations? and $scope.locations.length and not $scope.struct.maps_ready
             # console.log "Zoom"
-            $scope.zoom_to_locations()
             build_markers()
             uiGmapGoogleMapApi.then(
                 (maps) ->
                     $scope.struct.maps_ready = true
                     $scope.struct.google_maps = maps
-            )
-            $timeout(
-                () ->
-                    _map = $scope.struct.map_options
-                    # init overlay
-                    overlay = new $scope.struct.google_maps.OverlayView()
-                    angular.extend(overlay, new icswGoogleMapsLivestatusOverlay(overlay, $scope.struct.google_maps))
-                    overlay.setMap(_map.control.getGMap())
-
-                    console.log overlay
-                    if _map.control? and _map.control.refresh?
-                        _map.control.refresh(
-                            {
-                                latitude: _map.center.latitude
-                                longitude: _map.center.longitude
-                            }
-                        )
-                100
+                    $scope.get_center()
+                    $timeout(
+                        () ->
+                            _map = $scope.struct.map_options
+                            # zoom
+                            $scope.zoom_to_locations()
+                            # init overlay
+                            overlay = new $scope.struct.google_maps.OverlayView()
+                            angular.extend(overlay, new icswGoogleMapsLivestatusOverlay(overlay, $scope.struct.google_maps))
+                            # console.log $scope.struct.map_options.control
+                            overlay.setMap(_map.control.getGMap())
+                            # console.log overlay
+                            if _map.control? and _map.control.refresh?
+                                _map.control.refresh(
+                                    {
+                                        latitude: _map.center.latitude
+                                        longitude: _map.center.longitude
+                                    }
+                                )
+                        100
+                    )
             )
     $rootScope.$on(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), (event) ->
         _update()
