@@ -242,13 +242,16 @@ angular.module(
         ICSW_NETWORK_TAB_SELECTED: "icsw.network.tab.selected"
         ICSW_DEVICE_SCAN_CHANGED: "icsw.device.scan.changed"
         ICSW_MENU_PROGRESS_BAR_CHANGED: "icsw.menu.progress.bar.changed"
-        ICSW_CONFIG_UPLOADED: "icsw.config.uploaded",
-        ICSW_DEVICE_CONFIG_CHANGED: "icsw.device.config.changed",
-        ICSW_DOMAIN_NAME_TREE_CHANGED: "icsw.domain.name.tree.changed",
-        ICSW_CATEGORY_TREE_CHANGED: "icsw.category.tree.changed",
-        ICSW_LOCATION_SETTINGS_CHANGED: "icsw.location.settings.changed",
-        ICSW_USER_GROUP_TREE_LOADED: "icsw.user.group.tree.loaded",
-        ICSW_USER_GROUP_TREE_CHANGED: "icsw.user.group.tree.changed",
+        ICSW_CONFIG_UPLOADED: "icsw.config.uploaded"
+        ICSW_DEVICE_CONFIG_CHANGED: "icsw.device.config.changed"
+        ICSW_DOMAIN_NAME_TREE_CHANGED: "icsw.domain.name.tree.changed"
+        ICSW_CATEGORY_TREE_CHANGED: "icsw.category.tree.changed"
+        # settings changed
+        ICSW_LOCATION_SETTINGS_CHANGED: "icsw.location.settings.changed"
+        # gfx list updated
+        ICSW_LOCATION_SETTINGS_GFX_UPDATED: "icsw.location.settings.gfx.updated"
+        ICSW_USER_GROUP_TREE_LOADED: "icsw.user.group.tree.loaded"
+        ICSW_USER_GROUP_TREE_CHANGED: "icsw.user.group.tree.changed"
         ICSW_PACKAGE_INSTALL_LIST_CHANGED: "icsw.package.install.list.changed"
 
         # local signals (for local $emit / $on)

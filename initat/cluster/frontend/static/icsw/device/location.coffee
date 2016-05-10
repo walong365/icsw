@@ -225,7 +225,7 @@ angular.module(
                         $scope.struct.devices.push(dev)
                 $scope.struct.multi_device_mode = if $scope.struct.devices.length > 1 then true else false
                 $scope.struct.device_tree = device_tree
-                # $scope.rebuild_dnt()
+                # emit signal
                 $rootScope.$emit(ICSW_SIGNALS("ICSW_LOCATION_SETTINGS_CHANGED"))
         )
 
@@ -520,6 +520,7 @@ angular.module(
                             scope.cat_tree.populate_gfx_location(gfx, scope.device_tree, scope.devices)
                         if _clear_active
                             scope.active_gfx = null
+                        $rootScope.$emit(ICSW_SIGNALS("ICSW_LOCATION_SETTINGS_GFX_UPDATED"))
                 )
 
             scope.$watch("location", (new_loc) ->
@@ -529,18 +530,9 @@ angular.module(
             $rootScope.$on(ICSW_SIGNALS("ICSW_LOCATION_SETTINGS_CHANGED"), (event) ->
                 update()
             )
+
             scope.activate_loc_gfx = ($event, loc_gfx) ->
                 scope.active_gfx = loc_gfx
-
-            scope.get_button_class = (loc_gfx) ->
-                if scope.active_gfx == loc_gfx
-                    # active gfx
-                    return "btn btn-xs btn-success"
-                # else if loc_gfx.$dml_list.length
-                #    # not active but devices present
-                #    return "btn btn-sm btn-primary"
-                else
-                    return "btn btn-xs btn-default"
     }
 ]).directive("icswDeviceMonitoringLocationList",
 [
@@ -665,15 +657,84 @@ angular.module(
     $scope.toggle_locked = (dml) ->
         # toggle dml locked state
         dml.locked = !dml.locked
-        dml.put()
+        dml.put().then(
+            (ok) ->
+                $rootScope.$emit(ICSW_SIGNALS("ICSW_LOCATION_SETTINGS_GFX_UPDATED"))
+        )
 
-]).factory("icswDeviceLocationMapReact",
+]).factory("icswDeviceLocationMapReactNode",
 [
     "$q",
 (
     $q,
 ) ->
-    {div, h4, g, image, svg, polyline, circle, text} = React.DOM
+    {div, h3, g, image, svg, polyline, circle, text} = React.DOM
+
+    return React.createClass(
+        propTypes: {
+            dml: React.PropTypes.object
+        }
+
+        getInitialState: () ->
+            return {
+                counter: 0
+            }
+
+        render: () ->
+            dml = @props.dml
+            # build node
+            _id = dml.device
+            if dml.$$selected
+                if dml.locked
+                    _fc = "#dddd44"
+                    _opacity = 0.8
+                else
+                    _fc = "#44dd44"
+                    _opacity = 0.8
+            else
+                _fc = "#aaaaaa"
+                _opacity = 0.3
+            return g(
+                {
+                    key: "c#{_id}"
+                    transform: "translate(#{dml.pos_x}, #{dml.pos_y})"
+                    className: "draggable"
+                    id: _id
+                }
+                [
+                    circle(
+                        {
+                            key: "c#{_id}"
+                            r: 35
+                            fill: _fc
+                            stroke: "black"
+                            opacity: _opacity
+                            strokeWidth: 4
+                        }
+                    )
+                    text(
+                        {
+                            key: "t#{_id}"
+                            textAnchor: "middle"
+                            alignmentBaseline: "middle"
+                            stroke: "white"
+                            paintOrder: "stroke"
+                            fontWeight: "bold"
+                            strokeWidth: 2
+                        }
+                        dml.$device.full_name
+                    )
+
+                ]
+            )
+    )
+]).factory("icswDeviceLocationMapReact",
+[
+    "$q", "icswDeviceLocationMapReactNode", "svg_tools",
+(
+    $q, icswDeviceLocationMapReactNode, svg_tools,
+) ->
+    {div, h3, g, image, svg, polyline, circle, text} = React.DOM
 
     return React.createClass(
         propTypes: {
@@ -690,6 +751,8 @@ angular.module(
                 height: @props.location_gfx.height
                 counter: 0
                 zoom: 1.0
+                dragging: false
+                drag_node: false
             }
 
         componentWillMount: () ->
@@ -702,6 +765,17 @@ angular.module(
             @setState(
                 {counter: @state.counter + 1}
             )
+            
+        drag_start: (el) ->
+            console.log "s", el
+
+        drag_end: (el) ->
+            console.log "e", el
+
+        rescale: (point) ->
+            point.x /= @state.zoom
+            point.y /= @state.zoom
+            return point
 
         render: () ->
             _gfx = @props.location_gfx
@@ -709,6 +783,7 @@ angular.module(
             _header = _gfx.name
             if _gfx.comment
                 _header = "#{_header} (#{_gfx.comment})"
+            _header = "#{_header} (Size: #{width} x #{height}, scale: #{_.round(@state.zoom, 3)})"
 
             _dml_list = [
                 image(
@@ -728,42 +803,23 @@ angular.module(
                     }
                 )
             ]
-            # console.log @props
+            [_locked, _unlocked, _unset] = [0, 0, 0]
             for dml in _gfx.$dml_list
                 # build node
-                node = {
-                    id: dml.device
-                    x: dml.pos_x
-                    y: dml.pos_y
-                }
+                _id = dml.device
+                if dml.$$selected
+                    if dml.locked
+                        _locked++
+                    else
+                        _unlocked++
+                else
+                    _unset++
                 _dml_list.push(
-                    g(
+                    React.createElement(
+                        icswDeviceLocationMapReactNode
                         {
-                            key: "c#{node.id}"
-                            transform: "translate(#{node.x}, #{node.y})"
+                            dml: dml
                         }
-                        [
-                            circle(
-                                {
-                                    key: "c#{node.id}"
-                                    r: 50
-                                    fill: "#ff0000"
-                                }
-                            )
-                            text(
-                                {
-                                    key: "t#{node.id}"
-                                    textAnchor: "middle"
-                                    alignmentBaseline: "middle"
-                                    stroke: "white"
-                                    paintOrder: "stroke"
-                                    fontWeight: "bold"
-                                    strokeWidth: 2
-                                }
-                                dml.$device.full_name
-                            )
-                            
-                        ]
                     )
                 )
             return div(
@@ -774,12 +830,12 @@ angular.module(
                             _fac = 0.95
                         else
                             _fac = 1.05
-                        _zoom = _.max([_.min([@state.zoom * _fac, 6.0]), 0.5])
+                        _zoom = _.max([_.min([@state.zoom * _fac, 3.0]), 0.1])
                         @setState({zoom: _zoom})
                         event.preventDefault()
                 }
                 [
-                    h4(
+                    h3(
                         {key: "header"}
                         _header
                     )
@@ -790,6 +846,37 @@ angular.module(
                             height: "100%"
                             # preserveAspectRatio: "xMidYMid meet"
                             viewBox: "0 0 #{width} #{height}"
+                            onMouseDown: (event) =>
+                                event.stopPropagation()
+                                drag_el = svg_tools.find_draggable_element($(event.target))
+                                if drag_el
+                                    # get dml
+                                    _id = parseInt(drag_el.attr("id"))
+                                    dml = (entry for entry in @props.location_gfx.$dml_list when entry.device == _id)
+                                    if dml.length
+                                        dml = dml[0]
+                                        console.log "*", drag_el, dml
+                                        @setState({dragging: true, drag_node: dml})
+                                # console.log event.target
+                                # @setState({dragging: true})
+                                # @props.drag_start(@props.dml)
+                                # console.log "md"
+                                # console.log "md1", dml
+                            onMouseMove: (event) =>
+                                # if drag_el
+                                if @state.dragging
+                                    el = ReactDOM.findDOMNode(@)
+                                    _svg = $(el).parents("svg:first")[0]
+                                    _cp = @props.rescale(svg_tools.get_abs_coordinate(_svg, event.clientX, event.clientY))
+                                    console.log _cp.x, _cp.y
+                                    #@props.dml.pos_x = _cp.x
+                                    #@props.dml.pos_y = _cp.y
+                                    #@setState({counter: @state.counter++})
+                            onMouseUp: (event) =>
+                                if @state.dragging
+                                    @props.drag_end(@props.dml)
+                                    @setState({dragging: false})
+
                         }
                         [
                             g(
@@ -817,24 +904,25 @@ angular.module(
             # active gfx
             active_gfx: "=icswActiveGfx"
         link: (scope, element, attrs) ->
+            react_el = undefined
             scope.$watch("active_gfx", (new_val) ->
                 if new_val
                     react_el = ReactDOM.render(
                         React.createElement(
                             icswDeviceLocationMapReact
                             {
-                                # livestatus_filter: scope.filter
                                 location_gfx: scope.active_gfx
-                                # monitoring_data: scope.monitoring_data
-                                # draw_parameters: draw_params
-                                # device_tree: device_tree
                             }
                         )
                         element[0]
                     )
                 else
                     element.children().remove()
-
+                    react_el = undefined
+            )
+            $rootScope.$on(ICSW_SIGNALS("ICSW_LOCATION_SETTINGS_GFX_UPDATED"), (event) ->
+                if react_el?
+                    react_el.force_redraw()
             )
     }
 ]).directive("icswDeviceLocationMapOld",
