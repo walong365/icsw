@@ -57,6 +57,8 @@ def get_base_assets_from_raw_result(blob, runtype, scantype):
         if scantype == ScanType.NRPE:
             l = json.loads(blob)
             for (name, version, size, date) in l:
+                if size == "Unknown":
+                    size = 0
                 assets.append(BaseAssetPackage(name,
                                                version=version,
                                                size=size,

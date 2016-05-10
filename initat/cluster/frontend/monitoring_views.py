@@ -49,7 +49,7 @@ from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParam
 from initat.cluster.backbone.models import device
 from initat.cluster.backbone.models import get_related_models, mon_check_command, \
     parse_commandline, mon_check_command_special
-from initat.cluster.backbone.models.asset import AssetPackage, AssetRun
+from initat.cluster.backbone.models.asset import AssetPackage, AssetRun, AssetPackageVersion
 from initat.cluster.backbone.models.dispatch import ScheduleItem
 from initat.cluster.backbone.models.functions import duration
 from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListDeviceService
@@ -629,7 +629,7 @@ class get_asset_list(RetrieveAPIView):
     def get(self, request, *args, **kwargs):
         return Response(
             {
-                'assets': [(a.pk, a.name, [(v.version, v.release, v.size) for v in a.assetpackageversion_set.all()]) for a in AssetPackage.objects.all()],
+                'assets': [(a.pk, a.name, [(v.idx, v.version, v.release, v.size) for v in a.assetpackageversion_set.all()]) for a in AssetPackage.objects.all()],
             }
         )
 
@@ -649,9 +649,9 @@ class run_assets_now(View):
 
 class get_devices_for_asset(View):
     def post(self, request, *args, **kwargs):
-        ap = AssetPackage.objects.get(pk=int(request.POST['pk']))
+        apv = AssetPackageVersion.objects.get(pk=int(request.POST['pk']))
 
-        return HttpResponse(json.dumps({'devices': list(set([ar.device.pk for ar in ap.assetrun_set.all()]))}), content_type="application/json")
+        return HttpResponse(json.dumps({'devices': list(set([ar.device.pk for ar in apv.assetrun_set.all()]))}), content_type="application/json")
 
 
 class get_assetrun_diffs(View):

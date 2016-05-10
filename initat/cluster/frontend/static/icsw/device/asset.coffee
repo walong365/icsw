@@ -172,7 +172,7 @@ device_asset_module = angular.module(
         $http({
             method: 'POST',
             url: '/icsw/api/v2/mon/get_devices_for_asset'
-            data: "pk=" + obj.pk,
+            data: "pk=" + obj[0]
             headers: {'Content-Type': 'application/x-www-form-urlencoded'}
         }).then(
           (result) ->

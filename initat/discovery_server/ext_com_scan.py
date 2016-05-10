@@ -654,6 +654,9 @@ class Dispatcher(object):
         # remove schedule items that are no longer linked to a device/dispatch_setting
         schedule_items = ScheduleItem.objects.all()
         for sched in schedule_items:
+            if sched.run_now:
+                continue
+
             links = DeviceDispatcherLink.objects.all()
 
             found = False

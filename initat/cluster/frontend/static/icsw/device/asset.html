@@ -30,8 +30,6 @@
                     <thead>
                         <tr>
                             <th st-sort="name">Name</th>
-                            <th st-sort="version">Version</th>
-                            <th st-sort="release">Release</th>
                         </tr>
                         <th colspan="3">
                             <input st-search="" class="form-control" placeholder="global search ..." type="text"/>
@@ -48,11 +46,46 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr ng-repeat="package in $root.assets">
-                            <td><button ng-click="select_devices(package)">Select Devices</button></td>
+                        <tr ng-repeat-start="package in $root.assets">
                             <td>{{ package.name }}</td>
-                            <td>{{ package.version }}</td>
-                            <td>{{ package.release }}</td>
+                            <td>
+                                <icsw-tools-button size="xs" type="show" is-show="package.expanded" ng-click="package.expanded = !package.expanded"></icsw-tools-button>
+                            </td>
+                        </tr>
+
+                        <tr ng-repeat-end ng-if="package.expanded">
+                            <td colspan="99">
+                                <table
+                                    class="table table-condensed table-hover table-bordered"
+                                    style="width:auto;"
+                                    st-safe-src="package.version"
+                                    st-table="versions_shown"
+                                    ng-show="package.version.length"
+                                >
+                                    <tr>
+                                        <td colspan="99">
+                                            <div
+                                                icsw-tools-pagination
+                                                st-items-by-page="10"
+                                                st-displayed-pages="11"
+                                                possible-items-by-page="10,20,50,100"
+                                            ></div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>Version</th>
+                                        <th>Release</th>
+                                        <th>Size</th>
+                                        <th></th>
+                                    </tr>
+                                    <tr ng-repeat="obj in versions_shown">
+                                        <td>{{ obj[1] }}</td>
+                                        <td>{{ obj[2] }}</td>
+                                        <td>{{ obj[3] }}</td>
+                                        <td><icsw-tools-button type="reload" size="xs" ng-click="select_devices(obj)" value="Select Devices"/></td>
+                                    </tr>
+                                </table>
+                            </td>
                         </tr>
                     </tbody>
                 </table>
