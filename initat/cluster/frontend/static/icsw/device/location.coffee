@@ -668,17 +668,12 @@ angular.module(
 (
     $q,
 ) ->
-    {div, h3, g, image, svg, polyline, circle, text} = React.DOM
+    {g, circle, text} = React.DOM
 
     return React.createClass(
         propTypes: {
             dml: React.PropTypes.object
         }
-
-        getInitialState: () ->
-            return {
-                counter: 0
-            }
 
         render: () ->
             dml = @props.dml
@@ -766,12 +761,6 @@ angular.module(
                 {counter: @state.counter + 1}
             )
             
-        drag_start: (el) ->
-            console.log "s", el
-
-        drag_end: (el) ->
-            console.log "e", el
-
         rescale: (point) ->
             point.x /= @state.zoom
             point.y /= @state.zoom
@@ -783,8 +772,20 @@ angular.module(
             _header = _gfx.name
             if _gfx.comment
                 _header = "#{_header} (#{_gfx.comment})"
-            _header = "#{_header} (Size: #{width} x #{height}, scale: #{_.round(@state.zoom, 3)})"
+            _header = "#{_header} (Size: #{width} x #{height}, scale: #{_.round(@state.zoom, 3)}"
 
+            # count
+            _count = {locked: 0, unlocked: 0, unset: 0}
+            for dml in _gfx.$dml_list
+                # build node
+                if dml.$$selected
+                    if dml.locked
+                        _count.locked++
+                    else
+                        _count.unlocked++
+                else
+                    _count.unset++
+            _header = "#{_header}, " + ("#{value} #{key}" for key, value of _count when value).join(", ") + ")"
             _dml_list = [
                 image(
                     {
@@ -803,17 +804,7 @@ angular.module(
                     }
                 )
             ]
-            [_locked, _unlocked, _unset] = [0, 0, 0]
             for dml in _gfx.$dml_list
-                # build node
-                _id = dml.device
-                if dml.$$selected
-                    if dml.locked
-                        _locked++
-                    else
-                        _unlocked++
-                else
-                    _unset++
                 _dml_list.push(
                     React.createElement(
                         icswDeviceLocationMapReactNode
@@ -855,27 +846,23 @@ angular.module(
                                     dml = (entry for entry in @props.location_gfx.$dml_list when entry.device == _id)
                                     if dml.length
                                         dml = dml[0]
-                                        console.log "*", drag_el, dml
-                                        @setState({dragging: true, drag_node: dml})
-                                # console.log event.target
-                                # @setState({dragging: true})
-                                # @props.drag_start(@props.dml)
-                                # console.log "md"
-                                # console.log "md1", dml
+                                        if dml.$$selected and not dml.locked
+                                            @setState({dragging: true, drag_node: dml})
                             onMouseMove: (event) =>
                                 # if drag_el
                                 if @state.dragging
-                                    el = ReactDOM.findDOMNode(@)
-                                    _svg = $(el).parents("svg:first")[0]
-                                    _cp = @props.rescale(svg_tools.get_abs_coordinate(_svg, event.clientX, event.clientY))
-                                    console.log _cp.x, _cp.y
-                                    #@props.dml.pos_x = _cp.x
-                                    #@props.dml.pos_y = _cp.y
-                                    #@setState({counter: @state.counter++})
+                                    event.stopPropagation()
+                                    event.preventDefault()
+                                    _svg = $(ReactDOM.findDOMNode(@)).find("svg:first")[0]
+                                    _cp = @rescale(svg_tools.get_abs_coordinate(_svg, event.clientX, event.clientY))
+                                    @state.drag_node.pos_x = parseInt(_cp.x)
+                                    @state.drag_node.pos_y = parseInt(_cp.y)
+                                    @force_redraw()
                             onMouseUp: (event) =>
                                 if @state.dragging
-                                    @props.drag_end(@props.dml)
-                                    @setState({dragging: false})
+                                    # @props.drag_end(@props.dml)
+                                    @state.drag_node.put()
+                                    @setState({dragging: false, drag_node: null})
 
                         }
                         [
@@ -923,122 +910,6 @@ angular.module(
             $rootScope.$on(ICSW_SIGNALS("ICSW_LOCATION_SETTINGS_GFX_UPDATED"), (event) ->
                 if react_el?
                     react_el.force_redraw()
-            )
-    }
-]).directive("icswDeviceLocationMapOld",
-[
-    "d3_service", "$rootScope", "ICSW_SIGNALS",
-(
-    d3_service, $rootScope, ICSW_SIGNALS,
-) ->
-    return {
-        restrict : "EA"
-        scope:
-            # active gfx
-            active_gfx: "=icswActiveGfx"
-        link : (scope, element, attrs) ->
-            scope.cur_scale = 1.0
-            d3 = null
-
-            scope.rescale = () ->
-                scope.$apply(
-                    () -> scope.cur_scale = Math.max(Math.min(d3.event.scale, 1.0), 0.3)
-                )
-                scope.my_zoom.scale(scope.cur_scale)
-                scope.vis.attr("transform", "scale(#{scope.cur_scale})")
-
-            scope.add_symbols = (centers) ->
-                centers.append("circle").attr
-                    "r": (n) ->
-                        return 50
-                    "fill": (d) ->
-                        return if d.locked then "#00ff00" else "#ffff00"
-                    "stroke": "black"
-                    "stroke-width": "1"
-                centers.append("text")
-                .attr
-                    "text-anchor": "middle"
-                    "alignment-baseline": "middle"
-                    "stroke": "white"
-                    "font-weight": "bold"
-                    "stroke-width": "2"
-                .text(
-                    (d) ->
-                        return d.$device.full_name
-                )
-                centers.append("text")
-                .attr
-                    "text-anchor": "middle"
-                    "alignment-baseline": "middle"
-                    "font-weight": "bold"
-                    "fill": "black"
-                    "stroke-width": "0"
-                .text(
-                    (d) ->
-                        return d.$device.full_name
-                )
-
-            scope.draw_list = (dml_list) ->
-                # need objectEquality == true
-                scope.vis.selectAll(".pos").remove()
-                scope.centers = scope.vis.selectAll(".pos").data(dml_list).enter()
-                .append("g").call(scope.drag_node)
-                .attr
-                    "class": "pos"
-                    "node_id": (n) ->
-                        return n.device
-                    "transform": (n) ->
-                        return "translate(#{n.pos_x}, #{n.pos_y})"
-                scope.add_symbols(scope.centers)
-
-            _update = () ->
-                scope.cur_scale = 1.0
-                element.children().remove()
-                if scope.active_gfx
-                    width = scope.active_gfx.width
-                    height = scope.active_gfx.height
-                    svg = d3.select(element[0])
-                        .append("svg:svg")
-                        .attr(
-                            "width": "100%" # #{width}px"
-                            "height": "100%" # #{height}px"
-                            "viewBox": "0 0 #{width} #{height}"
-                        )
-                    scope.my_zoom = d3.behavior.zoom()
-                    scope.vis = svg.append("svg:g").call(scope.my_zoom.on("zoom", scope.rescale))
-                    scope.vis.append("svg:image").attr(
-                        "xlink:href": scope.active_gfx.image_url
-                        "width": width
-                        "height": height
-                        "preserveAspectRatio": "none"
-                    )
-                    scope.draw_list(scope.active_gfx.$dml_list)
-
-            d3_service.d3().then(
-                (new_d3) ->
-                    d3 = new_d3
-                    scope.drag_node = d3.behavior.drag()
-                    .on("dragstart", (d) -> )
-                    .on("dragend", (d) ->
-                        # console.log "dragend", d
-                        d.put()
-                    )
-                    .on("drag", (d) ->
-                        if not d.locked and d.$$selected
-                            d.changed = true
-                            x = Math.max(Math.min(d3.event.x, scope.active_gfx.width), 0)
-                            y = Math.max(Math.min(d3.event.y, scope.active_gfx.height), 0)
-                            d.pos_x = parseInt(x)
-                            d.pos_y = parseInt(y)
-                            d3.select(this).attr("transform": "translate(#{x},#{y})")
-                    )
-
-                    scope.$watch("active_gfx", (new_val) ->
-                        _update()
-                    )
-                    $rootScope.$on(ICSW_SIGNALS("ICSW_LOCATION_SETTINGS_CHANGED"), (event) ->
-                        _update()
-                    )
             )
     }
 ])

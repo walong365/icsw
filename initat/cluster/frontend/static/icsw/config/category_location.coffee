@@ -485,6 +485,142 @@ angular.module(
             )
             return _svg
     )
+]).service("reactMarkerEntry",
+[
+    "$q",
+(
+    $q,
+) ->
+    {svg, circle, div, g, text} = React.DOM
+    return React.createClass(
+        propTypes: {
+            # required types
+            location: React.PropTypes.object
+        }
+
+        render: () ->
+            _offset = 130
+            loc = @props.location
+            _render = div(
+                {
+                    key: "container"
+                    style: {
+                        position: "absolute"
+                        left: "#{loc.$$gm_x - _offset}px"
+                        top: "#{loc.$$gm_y - _offset}px"
+                    }
+                }
+                [
+                    svg(
+                        {
+                            key: "svg.top"
+                            width: "100%"
+                            height: "100%"
+                        }
+                        g(
+                            {
+                                key: "g"
+                                transform: "translate(#{_offset}, #{_offset})"
+                            }
+                            [
+                                circle(
+                                    {
+                                        key: "c"
+                                        r: "15"
+                                        fill: "#8888ee"
+                                        opacity: 0.5
+                                        stroke: "#000000"
+                                        strokeWidth: "2px"
+                                    }
+                                )
+                                text(
+                                    {
+                                        key: "c.text"
+                                        alignmentBaseline: "middle"
+                                        textAnchor: "middle"
+                                        fill: "#000000"
+                                        stroke: "#ffffff"
+                                        strokeWidth: "0.5px"
+                                    }
+                                    loc.full_name
+                                )
+
+                            ]
+                        )
+                    )
+                ]
+            )
+            return _render
+    )
+]).service("reactMarkerList",
+[
+    "$q", "reactMarkerEntry",
+(
+    $q, reactMarkerEntry,
+) ->
+    {div, svg, rect} = React.DOM
+    return React.createClass(
+        propTypes: {
+            # required types
+            locations: React.PropTypes.array
+        }
+
+        getInitialState: () ->
+            return {
+                counter: 0
+            }
+
+        redraw: () ->
+            @setState({counter: @state.counter + 1})
+
+        render: () ->
+            return div(
+                {
+                    key: "top"
+                }
+                (
+                    React.createElement(
+                        reactMarkerEntry
+                        {
+                            location: loc
+                        }
+                    ) for loc in @props.locations
+                )
+            )
+    )
+]).service("icswGoogleMapsMarkerOverlay",
+[
+    "$q", "reactMarkerList",
+(
+    $q, reactMarkerList,
+) ->
+    class icswGoogleMapsMarkerOverlay
+        constructor: (@overlay, @google_maps, @locations) ->
+
+        onAdd: () =>
+            panes = @overlay.getPanes()
+            @mydiv = angular.element("div")[0]
+            panes.markerLayer.appendChild(@mydiv)
+            @element = ReactDOM.render(
+                React.createElement(
+                    reactMarkerList
+                    {
+                        locations: @locations
+                    }
+                )
+                @mydiv
+            )
+
+        draw: () =>
+            _proj = @overlay.getProjection()
+            for _loc in @locations
+                center = _proj.fromLatLngToDivPixel(new @google_maps.LatLng(_loc.latitude, _loc.longitude))
+                _loc.$$gm_x = center.x
+                _loc.$$gm_y = center.y
+            @element.redraw()
+            # @mydiv.style.left = "#{center.x - 10}px"
+            # @mydiv.style.top = "#{center.y - 10}px"
+
 ]).service("icswGoogleMapsLivestatusOverlay",
 [
     "$q", "reactT",
@@ -497,7 +633,7 @@ angular.module(
 
         onAdd: () =>
             panes = @overlay.getPanes()
-            @mydiv = angular.element('div')[0]
+            @mydiv = angular.element("div")[0]
             panes.markerLayer.appendChild(@mydiv)
 
             @element = ReactDOM.render(
@@ -516,10 +652,10 @@ angular.module(
 ]).controller("icswConfigCategoryTreeGoogleMapCtrl",
 [
     "$scope", "$templateCache", "uiGmapGoogleMapApi", "$timeout", "$rootScope", "ICSW_SIGNALS",
-    "icswGoogleMapsLivestatusOverlay",
+    "icswGoogleMapsLivestatusOverlay", "icswGoogleMapsMarkerOverlay",
 (
     $scope, $templateCache, uiGmapGoogleMapApi, $timeout, $rootScope, ICSW_SIGNALS,
-    icswGoogleMapsLivestatusOverlay,
+    icswGoogleMapsLivestatusOverlay, icswGoogleMapsMarkerOverlay,
 ) ->
 
     $scope.struct = {
@@ -650,6 +786,10 @@ angular.module(
                             _map = $scope.struct.map_options
                             # zoom
                             $scope.zoom_to_locations()
+                            # marker overlay
+                            marker_overlay = new $scope.struct.google_maps.OverlayView()
+                            angular.extend(marker_overlay, new icswGoogleMapsMarkerOverlay(marker_overlay, $scope.struct.google_maps, $scope.locations))
+                            marker_overlay.setMap(_map.control.getGMap())
                             # init overlay
                             overlay = new $scope.struct.google_maps.OverlayView()
                             angular.extend(overlay, new icswGoogleMapsLivestatusOverlay(overlay, $scope.struct.google_maps))
