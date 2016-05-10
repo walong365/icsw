@@ -134,9 +134,9 @@ device_asset_module = angular.module(
         ar2 = undefined
 
         for ar in device.assetrun_set
-            if ar.isSelected && ar1 == undefined
+            if ar.$$selected && ar1 == undefined
                 ar1 = ar
-            else if ar.isSelected && ar2 == undefined
+            else if ar.$$selected && ar2 == undefined
                 ar2 = ar
                 break
 
@@ -250,15 +250,33 @@ device_asset_module = angular.module(
         console.log "input:", input
         console.log "predicate:" , predicate
 
+        new_predicate = {}
+
         strict = true
         if (predicate.hasOwnProperty("run_index"))
-            predicate.run_index = parseInt(predicate.run_index)
+            new_predicate.run_index = parseInt(predicate.run_index)
         if (predicate.hasOwnProperty("run_type"))
-            predicate.run_type = parseInt(predicate.run_type)
+            run_type = undefined
+            if predicate.run_type == "Package"
+                run_type = 1
+            else if predicate.run_type == "Hardware"
+                run_type = 2
+            else if predicate.run_type == "License"
+                run_type = 3
+            else if predicate.run_type == "Update"
+                run_type = 4
+            else if predicate.run_type == "Software version"
+                run_type = 5
+            else if predicate.run_type == "Process"
+                run_type = 6
+            else if predicate.run_type == "Pending update"
+                run_type = 7
+            new_predicate.run_type = run_type
         if (predicate.hasOwnProperty("$"))
+            new_predicate = predicate
             strict = false
 
-        return $filter('filter')(input, predicate, strict);
+        return $filter('filter')(input, new_predicate, strict);
 
 ]).filter('unique'
 [
