@@ -17,7 +17,12 @@
             </icsw-device-location-overview>
         </uib-tab>
         <uib-tab heading="Location configuration" select="set_active_tab('conf')">
-            <icsw-config-category-location-map-edit preview-gfx="preview_gfx" active-tab="active_tab" gfx-enhance-list="gfx_list" preview-close="close_preview">
+            <icsw-config-category-location-map-edit
+                preview-gfx="preview_gfx"
+                active-tab="active_tab"
+                gfx-enhance-list="gfx_list"
+                preview-close="close_preview"
+            >
             </icsw-config-category-location-map-edit>
             <hr ng-show="gfx_list.length"/>
             <uib-tabset ng-if="gfx_list.length">
@@ -25,7 +30,9 @@
                     <uib-tab-heading>
                         {{ gfx.name }} <icsw-tools-button size="xs" type="close" value="" ng-click="remove_gfx($event, gfx)"></icsw-tools-button>
                     </uib-tab-heading>
-                    <icsw-config-category-tree-map-enhance preview-gfx="gfx">
+                    <icsw-config-category-tree-map-enhance
+                        preview-gfx="gfx"
+                    >
                     </icsw-config-category-tree-map-enhance>
                 </uib-tab>
             </uib-tabset>
@@ -193,7 +200,54 @@
 
 <script type="text/ng-template" id="icsw.config.category.location.list.show">
     <h3 ng-show="!struct.locations.length">No locations</h3>
-    <ul class="list-group">
+    <table
+        st-table="struct.locations"
+        ng-if="struct.locations.length"
+        class="table table-condensed table-hover table-striped"
+        style="width:auto;"
+    >
+        <thead>
+            <tr>
+                <td colspan="99">
+                    <div
+                        icsw-tools-pagination
+                        st-items-by-page="10"
+                        st-displayed-pages="11"
+                        possible-items-by-page="10,20,50,100"
+                    ></div>
+                </td>
+            </tr>
+            <tr>
+                <th>Type</th>
+                <th>Name</th>
+                <th>#gfx</th>
+                <th>#devs</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="loc in struct.locations">
+                <td>
+                    <span class="glyphicon glyphicon-globe" ng-show="loc.physical" title="physical"></span>
+                    <span class="glyphicon glyphicon-th-list" ng-show="!loc.physical" title="structural"></span>&nbsp;
+                </td>
+                <td>
+                    <span title="{{ loc.full_name }}">{{ loc.name }}</span><span ng-show="loc.comment"> ({{ loc.comment }})</span>
+                </td>
+                <td class="text-center">
+                    {{ loc.$gfx_list.length }}
+                </td>
+                <td class="text-center">
+                    {{ loc.$dml_list.length }}
+                </td>
+                <td>
+                    <icsw-tools-button type="display" value="locate" size="sm" ng-click="locate($event, loc)" title="({{ loc.latitude }}, {{ loc.longitude }})"></icsw-tools-button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- <ul class="list-group">
         <li class="list-group-item" ng-repeat="loc in struct.locations">
             <icsw-tools-button type="display" value="locate" size="sm" ng-click="locate($event, loc)" title="({{ loc.latitude }}, {{ loc.longitude }})"></icsw-tools-button>
             <span class="glyphicon glyphicon-globe" ng-show="loc.physical" title="physical"></span>
@@ -205,7 +259,7 @@
                 </li>
             </ul>
         </li>
-    </ul>
+    </ul> -->
 </script>
 
 <script type="text/ng-template" id="icsw.config.category.location.show">

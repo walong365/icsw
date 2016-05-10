@@ -99,10 +99,20 @@
                         ></div>
                     </td>
                 </tr>
+                <tr>
+                    <th>Device</th>
+                    <th>State</th>
+                    <th>Coords</th>
+                    <th>Action</th>
+                </tr>
             </thead>
             <tbody>
                 <tr ng-repeat="dml in struct.active_gfx.$dml_list">
                     <td>{{ dml.$device.full_name }}</td>
+                    <td>
+                        <span class="label label-success" ng-show="dml.$$selected" title="Selected and set">S</span>
+                        <span class="label label-warning" ng-show="!dml.$$selected" title="Set but not selected">s</span>
+                    </td>
                     <td class="text-center">
                         {{ dml.pos_x }} / {{ dml.pos_y }}
                     </td>
@@ -115,6 +125,9 @@
                 </tr>
                 <tr class="warning" ng-repeat="dev in struct.active_gfx.$unset_devices">
                     <td>{{ dev.full_name }}</td>
+                    <td>
+                        <span class="label label-default" title="not set">.</span>
+                    </td>
                     <td></td>
                     <td>
                         <icsw-tools-button type="create" size="xs" value="set" ng-click="use_device($event, dev)"/>

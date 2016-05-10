@@ -100,6 +100,7 @@ angular.module(
                     {
                         key: "_sd"
                         className: "label label-primary"
+                        title: "Devices selected / total"
                     }
                     "#{num_current_sel} / #{num_total_sel}"
                 )
@@ -108,6 +109,7 @@ angular.module(
                     {
                         key: "_sd"
                         className: "label label-default"
+                        title: "Devices selected"
                     }
                     "#{num_total_sel}"
                 )
@@ -665,7 +667,177 @@ angular.module(
         dml.locked = !dml.locked
         dml.put()
 
+]).factory("icswDeviceLocationMapReact",
+[
+    "$q",
+(
+    $q,
+) ->
+    {div, h4, g, image, svg, polyline, circle, text} = React.DOM
+
+    return React.createClass(
+        propTypes: {
+            location_gfx: React.PropTypes.object
+            # monitoring_data: React.PropTypes.object
+            # draw_parameters: React.PropTypes.object
+            # device_tree: React.PropTypes.object
+            # livestatus_filter: React.PropTypes.object
+        }
+
+        getInitialState: () ->
+            return {
+                width: @props.location_gfx.width
+                height: @props.location_gfx.height
+                counter: 0
+                zoom: 1.0
+            }
+
+        componentWillMount: () ->
+            # @umount_defer = $q.defer()
+
+        componentWillUnmount: () ->
+            # @umount_defer.reject("stop")
+
+        force_redraw: () ->
+            @setState(
+                {counter: @state.counter + 1}
+            )
+
+        render: () ->
+            _gfx = @props.location_gfx
+            {width, height} = @state
+            _header = _gfx.name
+            if _gfx.comment
+                _header = "#{_header} (#{_gfx.comment})"
+
+            _dml_list = [
+                image(
+                    {
+                        key: "bgimage"
+                        width: width
+                        height: height
+                        href: _gfx.image_url
+                        preserveAspectRatio: "none"
+                    }
+                )
+                polyline(
+                    {
+                        key: "imageborder"
+                        style: {fill:"none", stroke:"black", strokeWidth:"3"}
+                        points: "0,0 #{width},0 #{width},#{height} 0,#{height} 0 0"
+                    }
+                )
+            ]
+            # console.log @props
+            for dml in _gfx.$dml_list
+                # build node
+                node = {
+                    id: dml.device
+                    x: dml.pos_x
+                    y: dml.pos_y
+                }
+                _dml_list.push(
+                    g(
+                        {
+                            key: "c#{node.id}"
+                            transform: "translate(#{node.x}, #{node.y})"
+                        }
+                        [
+                            circle(
+                                {
+                                    key: "c#{node.id}"
+                                    r: 50
+                                    fill: "#ff0000"
+                                }
+                            )
+                            text(
+                                {
+                                    key: "t#{node.id}"
+                                    textAnchor: "middle"
+                                    alignmentBaseline: "middle"
+                                    stroke: "white"
+                                    paintOrder: "stroke"
+                                    fontWeight: "bold"
+                                    strokeWidth: 2
+                                }
+                                dml.$device.full_name
+                            )
+                            
+                        ]
+                    )
+                )
+            return div(
+                {
+                    key: "top"
+                    onWheel: (event) =>
+                        if event.deltaY > 0
+                            _fac = 0.95
+                        else
+                            _fac = 1.05
+                        _zoom = _.max([_.min([@state.zoom * _fac, 6.0]), 0.5])
+                        @setState({zoom: _zoom})
+                        event.preventDefault()
+                }
+                [
+                    h4(
+                        {key: "header"}
+                        _header
+                    )
+                    svg(
+                        {
+                            key: "svgouter"
+                            width: "100%"
+                            height: "100%"
+                            # preserveAspectRatio: "xMidYMid meet"
+                            viewBox: "0 0 #{width} #{height}"
+                        }
+                        [
+                            g(
+                                {
+                                    key: "gouter"
+                                    transform: "scale(#{@state.zoom})"
+                                }
+                                _dml_list
+                            )
+                        ]
+                    )
+
+                ]
+            )
+    )
 ]).directive("icswDeviceLocationMap",
+[
+    "icswDeviceLocationMapReact", "$rootScope", "ICSW_SIGNALS",
+(
+    icswDeviceLocationMapReact, $rootScope, ICSW_SIGNALS,
+) ->
+    return {
+        restrict: "EA"
+        scope:
+            # active gfx
+            active_gfx: "=icswActiveGfx"
+        link: (scope, element, attrs) ->
+            scope.$watch("active_gfx", (new_val) ->
+                if new_val
+                    react_el = ReactDOM.render(
+                        React.createElement(
+                            icswDeviceLocationMapReact
+                            {
+                                # livestatus_filter: scope.filter
+                                location_gfx: scope.active_gfx
+                                # monitoring_data: scope.monitoring_data
+                                # draw_parameters: draw_params
+                                # device_tree: device_tree
+                            }
+                        )
+                        element[0]
+                    )
+                else
+                    element.children().remove()
+
+            )
+    }
+]).directive("icswDeviceLocationMapOld",
 [
     "d3_service", "$rootScope", "ICSW_SIGNALS",
 (
