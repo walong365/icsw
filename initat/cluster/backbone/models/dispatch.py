@@ -42,6 +42,7 @@ __all__ = [
     "DispatchSetting",
     "DiscoverySource",
     "ScanHistory",
+    "ScheduleItem",
 ]
 
 
@@ -223,6 +224,7 @@ class ScanHistory(models.Model):
     duration = models.IntegerField()  # seconds
 
     success = models.BooleanField(default=True)
+
 
 class ScheduleItem(models.Model):
     idx = models.AutoField(primary_key=True)

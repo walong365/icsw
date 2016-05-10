@@ -471,6 +471,7 @@ from initat.tools import logging_tools, process_tools, server_command, net_tools
 from initat.icsw.service.instance import InstanceXML
 from initat.cluster.backbone.models.dispatch import DeviceDispatcherLink, DispatcherSettingScheduleEnum, ScheduleItem
 
+
 def align_second(now, sched_start_second):
     while 1:
         now += datetime.timedelta(seconds=1)
@@ -478,6 +479,7 @@ def align_second(now, sched_start_second):
             break
 
     return now
+
 
 def align_minute(now, sched_start_minute):
     while 1:
@@ -487,6 +489,7 @@ def align_minute(now, sched_start_minute):
 
     return now
 
+
 def align_hour(now, sched_start_hour):
     while 1:
         now += datetime.timedelta(hours=1)
@@ -494,12 +497,15 @@ def align_hour(now, sched_start_hour):
             break
     return now
 
+
 def align_day(now, sched_start_day):
-    while 1:
+    while True:
+        # print(now, datetime.timedelta(days=1))
         now += datetime.timedelta(days=1)
         if now.day == sched_start_day:
             break
     return now
+
 
 def align_week(now, sched_start_week):
     while 1:
@@ -507,6 +513,7 @@ def align_week(now, sched_start_week):
         if (now.isocalendar()[1] % 4) == sched_start_week:
             break
     return now
+
 
 def align_month(now, sched_start_month):
     while 1:
@@ -551,6 +558,7 @@ def align_time_to_baseline(now, ds):
 
     return now
 
+
 def get_time_inc_from_ds(ds):
     if ds.run_schedule.baseline == DispatcherSettingScheduleEnum.second:
         time_inc = datetime.timedelta(seconds=(1 * ds.mult))
@@ -571,6 +579,7 @@ def get_time_inc_from_ds(ds):
 
 # from Queue import Queue
 # import threading
+
 
 class Dispatcher(object):
     def __init__(self, discovery_process):
@@ -605,8 +614,10 @@ class Dispatcher(object):
             for sched in ScheduleItem.objects.all():
                 # ignore run_now scheds
                 if sched.run_now:
+                    last_sched = sched
                     continue
-                #print sched
+
+                # print sched
                 if sched.device == device:
                     last_scheds += 1
                     if last_sched and sched.planned_date > last_sched.planned_date:
@@ -614,7 +625,7 @@ class Dispatcher(object):
                     elif not last_sched:
                         last_sched = sched
 
-            if last_sched == None:
+            if last_sched is None:
                 last_sched = _ScheduleItem(device, DiscoverySource.PACKAGE, align_time_to_baseline(_now, ds))
                 print "Next scheduled run: %s" % last_sched
                 # self.schedule_items.append(last_sched)
@@ -628,8 +639,8 @@ class Dispatcher(object):
                                          DiscoverySource.PACKAGE,
                                          last_sched.planned_date + get_time_inc_from_ds(ds))
                 print "Next scheduled run: %s" % next_run
-                #self.schedule_items.append(next_run)
-                #self.schedule_items.sort(key=lambda s: s.planned_date)
+                # self.schedule_items.append(next_run)
+                # self.schedule_items.sort(key=lambda s: s.planned_date)
                 ScheduleItem.objects.create(device=next_run.device,
                                             source=next_run.source,
                                             planned_date=next_run.planned_date)

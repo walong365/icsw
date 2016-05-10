@@ -33,6 +33,7 @@ import uuid
 from collections import defaultdict
 
 import cairosvg
+import pytz
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
 from django.db.models import Q
@@ -45,19 +46,21 @@ from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.response import Response
 
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
-from initat.cluster.backbone.models import device, domain_name_tree, netdevice, \
-    net_ip, peer_information, mon_ext_host, get_related_models, monitoring_hint, mon_check_command, \
-    parse_commandline, mon_check_command_special, device_group
+from initat.cluster.backbone.models import device
+from initat.cluster.backbone.models import get_related_models, mon_check_command, \
+    parse_commandline, mon_check_command_special
+from initat.cluster.backbone.models.asset import AssetPackage, AssetRun
+from initat.cluster.backbone.models.dispatch import ScheduleItem
 from initat.cluster.backbone.models.functions import duration
 from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListDeviceService
 from initat.cluster.backbone.models.status_history import mon_icinga_log_aggregated_host_data, \
     mon_icinga_log_aggregated_timespan, mon_icinga_log_aggregated_service_data, \
-    mon_icinga_log_raw_base, mon_icinga_log_raw_service_alert_data, mon_icinga_log_raw_host_alert_data, AlertList
+    mon_icinga_log_raw_base, mon_icinga_log_raw_service_alert_data, AlertList
 from initat.cluster.frontend.common import duration_utils
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.frontend.rest_views import rest_logging
 from initat.md_config_server.icinga_log_reader.log_reader_utils import host_service_id_util
-from initat.tools import logging_tools, process_tools, server_command
+from initat.tools import logging_tools, server_command
 
 logger = logging.getLogger("cluster.monitoring")
 
@@ -622,8 +625,6 @@ class fetch_png_from_cache(View):
             return HttpResponse("", content_type="image/png")
 
 
-from initat.cluster.backbone.models.asset import AssetPackage
-
 class get_asset_list(RetrieveAPIView):
     def get(self, request, *args, **kwargs):
         return Response(
@@ -632,28 +633,25 @@ class get_asset_list(RetrieveAPIView):
             }
         )
 
-from initat.cluster.backbone.models import device
-from initat.cluster.backbone.models.dispatch import ScheduleItem
-import pytz
 
 class run_assets_now(View):
     def post(self, request):
         _dev = device.objects.get(pk=int(request.POST['pk']))
-
-
-        ScheduleItem.objects.create(device=_dev,
-                                    source=10,
-                                    planned_date=datetime.datetime.now(tz=pytz.utc),
-                                    run_now=True)
+        ScheduleItem.objects.create(
+            device=_dev,
+            source=10,
+            planned_date=datetime.datetime.now(tz=pytz.utc),
+            run_now=True
+        )
         return HttpResponse()
 
-from initat.cluster.backbone.models.asset import AssetPackage, AssetRun
 
 class get_devices_for_asset(View):
     def post(self, request, *args, **kwargs):
         ap = AssetPackage.objects.get(pk=int(request.POST['pk']))
 
         return HttpResponse(json.dumps({'devices': list(set([ar.device.pk for ar in ap.assetrun_set.all()]))}), content_type="application/json")
+
 
 class get_assetrun_diffs(View):
     def post(self, request):

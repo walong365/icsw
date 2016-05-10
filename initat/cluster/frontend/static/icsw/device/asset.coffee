@@ -50,15 +50,35 @@ device_asset_module = angular.module(
         controller: "icswDeviceAssetCtrl"
         scope: true
     }
+]).service("icswAssetHelperFunctions",
+[
+    "$q",
+(
+    $q,
+) ->
+    resolve_asset_type = (_t) ->
+        return {
+            1: "Package"
+            2: "Hardware"
+            3: "License"
+            4: "Update"
+            5: "Software version"
+            6: "Process"
+            7: "Pending update"
+        }[_t]
+        
+    return {
+        resolve_asset_type: resolve_asset_type
+    }
 ]).controller("icswDeviceAssetCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "blockUI",
-    "icswTools",
-    "icswDeviceTreeService", "icswDeviceTreeHelperService", "$rootScope", "$http", "$timeout"
+    "icswTools", "icswSimpleAjaxCall", "ICSW_URLS", "$http", "icswAssetHelperFunctions",
+    "icswDeviceTreeService", "icswDeviceTreeHelperService", "$rootScope", "$timeout"
 (
     $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI,
-    icswTools,
-    icswDeviceTreeService, icswDeviceTreeHelperService, $rootScope, $http, $timeout
+    icswTools, icswSimpleAjaxCall, ICSW_URLS, $http, icswAssetHelperFunctions,
+    icswDeviceTreeService, icswDeviceTreeHelperService, $rootScope, $timeout
 ) ->
     # struct to hand over to VarCtrl
     $scope.struct = {
@@ -68,21 +88,46 @@ device_asset_module = angular.module(
         device_tree: undefined
         # data loaded
         data_loaded: false
+        # num_selected
+        num_selected: 0
     }
 
     $scope.run_now = ($event, obj) ->
-        obj.ar_button_loading = true
-        $http({
-            method: 'POST',
-            url: '/icsw/api/v2/mon/run_assets_now'
-            data: "pk=" + obj.idx,
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'}
-        })
-        $timeout (->
-          obj.ar_button_loading = false
-          return
-        ), 10000
+        obj.$$asset_run = true
+        icswSimpleAjaxCall(
+            {
+                url: ICSW_URLS.MON_RUN_ASSETS_NOW
+                data:
+                    pk: obj.idx
+            }
+        ).then(
+            (ok) ->
+                obj.$$asset_run = false
+            (not_ok) ->
+                obj.$$asset_run = false
+        )
 
+
+    $scope.resolve_asset_type = (a_t) ->
+        return icswAssetHelperFunctions.resolve_asset_type(a_t)
+
+    $scope.select_asset = ($event, device, assetrun) ->
+        assetrun.$$selected = !assetrun.$$selected
+        if assetrun.$$selected
+            # ensure only assetrun with same type are selected
+            _type = assetrun.run_type
+            for _run in device.assetrun_set
+                if _run.run_type !=_type and _run.$$selected
+                    _run.$$selected = false
+        $scope.struct.num_selected = (_run for _run in device.assetrun_set when _run.$$selected).length
+        if $scope.struct.num_selected > 2
+            # remove selected asset run
+            for _run in device.assetrun_set
+                if _run.run_type == _type and _run.$$selected and _run.run_index != assetrun.run_index
+                    _run.$$selected = false
+                    $scope.struct.num_selected--
+                    break
+            
 
     $scope.assetchangeset = (device) ->
         ar1 = undefined
@@ -143,6 +188,7 @@ device_asset_module = angular.module(
               $scope.struct.device_tree.enrich_devices(hs, ["asset_info"]).then(
                   (data) ->
                         for dev in $scope.struct.devices
+                            dev.$$asset_run = false
                             dev.assetrun_set_sf_src = []
                             for ar in dev.assetrun_set
                                 dev.assetrun_set_sf_src.push(ar)

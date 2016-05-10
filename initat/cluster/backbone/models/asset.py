@@ -23,12 +23,14 @@ import json
 import pickle
 import base64
 import marshal
+import datetime
 import bz2
 
 from lxml import etree
 from django.db import models
 from enum import IntEnum
 from rest_framework import serializers
+import django.utils.timezone
 
 ########################################################################################################################
 # Functions
@@ -312,24 +314,37 @@ class Asset(models.Model):
 
 class AssetPackage(models.Model):
     idx = models.AutoField(primary_key=True)
-
     name = models.TextField()
-
-    version = models.TextField(null=True, blank=True)
-
-    release = models.TextField(null=True, blank=True)
+    created = models.DateTimeField(auto_now_add=True)
 
     def __lt__(self, other):
         return self.name < other.name
 
     def __eq__(self, other):
-        return isinstance(other, self.__class__) \
-            and self.name == other.name \
-            and self.version == other.version \
+        return isinstance(other, self.__class__) and self.name == other.name
+
+    def __hash__(self):
+        return hash((self.name,))
+
+
+class AssetPackageVersion(models.Model):
+    idx = models.AutoField(primary_key=True)
+    asset_package = models.ForeignKey("backbone.AssetPackage")
+    name = models.TextField()
+    size = models.IntegerField(default=0)
+    version = models.TextField(default="", blank=True)
+    release = models.TextField(default="", blank=True)
+    created = models.DateTimeField(auto_now_add=True)
+
+    def __lt__(self, other):
+        return self.name < other.name
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and self.version == other.version \
             and self.release == other.release
 
     def __hash__(self):
-        return hash((self.name, self.version, self.release))
+        return hash((self.version, self.release, self.size))
 
 
 class AssetRun(models.Model):
@@ -420,10 +435,10 @@ class AssetRun(models.Model):
         self.save()
 
     def get_asset_changeset(self, other_asset_run):
-        #self.generate_assets()
-        #other_asset_run.generate_assets()
-        #this_assets = [_asset.getAssetInstance() for _asset in self.asset_set.all()]
-        #other_assets = [_asset.getAssetInstance() for _asset in other_asset_run.asset_set.all()]
+        # self.generate_assets()
+        # other_asset_run.generate_assets()
+        # this_assets = [_asset.getAssetInstance() for _asset in self.asset_set.all()]
+        # other_assets = [_asset.getAssetInstance() for _asset in other_asset_run.asset_set.all()]
         this_assets = self.generate_assets_no_save()
         other_assets = other_asset_run.generate_assets_no_save()
 
@@ -502,4 +517,76 @@ class DeviceInventory(models.Model):
     run_idx = models.IntegerField(default=0)
     # serialized XML
     value = models.TextField()
+    date = models.DateTimeField(auto_now_add=True)
+
+
+class StaticAssetType(IntEnum):
+    # related to a software
+    LICENSE = 1
+    # general contract
+    CONTRACT = 2
+    # special hardware
+    HARDWARE = 3
+
+
+class AssetTemplateFieldType(IntEnum):
+    INTEGER = 1
+    STRING = 2
+    DATE = 3
+
+
+# static assets
+class StaticAssetTemplate(models.Model):
+    # to be defined by administrator
+    idx = models.AutoField(primary_key=True)
+    # asset type
+    type = models.IntegerField(choices=[(_type.value, _type.name) for _type in StaticAssetType])
+    # name of Template
+    name = models.CharField(max_length=128, unique=True)
+    # is consumable
+    consumable = models.BooleanField(default=False)
+    date = models.DateTimeField(auto_now_add=True)
+
+
+class StaticAssetTemplateField(models.Model):
+    idx = models.AutoField(primary_key=True)
+    # template
+    static_asset_template = models.ForeignKey("backbone.StaticAssetTemplate")
+    field_type = models.IntegerField(choices=[(_type.value, _type.name) for _type in AssetTemplateFieldType])
+    # is optional
+    optional = models.BooleanField(default=False)
+    # default value
+    default_value_str = models.CharField(default="", blank=True, max_length=255)
+    default_value_int = models.IntegerField(default=0)
+    default_value_date = models.DateField(default=django.utils.timezone.now)
+    # bounds, for input checking
+    has_bounds = models.BooleanField(default=False)
+    value_int_lower_bound = models.IntegerField(default=0)
+    value_int_upper_bound = models.IntegerField(default=0)
+    # monitor flag, only for datefiles
+    monitor = models.BooleanField(default=False)
+    date = models.DateTimeField(auto_now_add=True)
+
+
+class StaticAsset(models.Model):
+    idx = models.AutoField(primary_key=True)
+    # template
+    static_asset_template = models.ForeignKey("backbone.StaticAssetTemplate")
+    # device
+    device = models.ForeignKey("backbone.device")
+    date = models.DateTimeField(auto_now_add=True)
+
+
+class StaticAssetFieldValue(models.Model):
+    idx = models.AutoField(primary_key=True)
+    # template
+    static_asset = models.ForeignKey("backbone.StaticAsset")
+    # field
+    static_asset_template_field = models.ForeignKey("backbone.StaticAssetTemplateField")
+    # change user
+    user = models.ForeignKey("backbone.user")
+    # value
+    value_str = models.CharField(null=True, blank=True, max_length=255, default=None)
+    value_int = models.IntegerField(null=True, blank=True, default=None)
+    value_date = models.DateField(null=True, blank=True, default=None)
     date = models.DateTimeField(auto_now_add=True)
