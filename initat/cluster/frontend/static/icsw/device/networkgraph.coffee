@@ -24,20 +24,35 @@ angular.module(
     "icsw.svg_tools",
     []
 ).factory("svg_tools", () ->
+    _has_class_svg = (s_target, name) ->
+        classes = s_target.attr("class")
+        if !classes
+            return false
+        return if classes.search(name) == -1 then false else true
+            
+    _find_element = (s_target) ->
+        # iterative search
+        if _has_class_svg(s_target, "draggable")
+            return s_target
+        s_target = s_target.parent()
+        if s_target.length
+            return _find_element(s_target)
+        else
+            return null
+            
     return {
-        has_class_svg: (obj, has) ->
-            classes = obj.attr("class")
-            if !classes
-                return false
-            return if classes.search(has) == -1 then false else true
+        has_class_svg: _has_class_svg
 
-        get_abs_coordinate : (svg_el, x, y) ->
+        get_abs_coordinate: (svg_el, x, y) ->
             screen_ctm = svg_el.getScreenCTM()
             svg_point = svg_el.createSVGPoint()
             svg_point.x = x
             svg_point.y = y
             first = svg_point.matrixTransform(screen_ctm.inverse())
             return first
+            
+        find_draggable_element: (s_target) ->
+            return _find_element(s_target)
     }
 )
 
