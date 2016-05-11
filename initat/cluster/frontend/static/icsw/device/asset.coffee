@@ -91,12 +91,15 @@ device_asset_module = angular.module(
         # num_selected
         num_selected: 0
 
-        # AssetRun tab variables
+        # AssetRun tab properties
         num_selected_ar: 0
         asset_runs: []
         show_changeset: false
         added_changeset: []
         removed_changeset: []
+
+        #Scheduled Runs tab properties
+        schedule_items: []
     }
 
     $scope.assetchangesetar = ($event) ->
@@ -126,7 +129,6 @@ device_asset_module = angular.module(
                   $scope.struct.removed_changeset = result.data.removed
             )
 
-
     $scope.select_assetrun = ($event, assetrun) ->
         assetrun.$$selected = !assetrun.$$selected
         if assetrun.$$selected
@@ -143,26 +145,6 @@ device_asset_module = angular.module(
                     _run.$$selected = false
                     $scope.struct.num_selected_ar--
                     break
-
-    $http.get(ICSW_URLS.MON_GET_ASSETRUNS).then(
-        (result) ->
-            console.log "get_assetrun_result: ", result
-
-
-            $scope.struct.asset_runs.length = 0
-            for obj in result.data.asset_runs
-                asset_run = {}
-                asset_run.idx = obj[0]
-                asset_run.pk = obj[0]
-                asset_run.run_index = obj[1]
-                asset_run.run_type = obj[2]
-                asset_run.run_start_time = obj[3]
-                asset_run.run_end_time = obj[4]
-                asset_run.device_name = obj[5]
-                asset_run.device_pk = obj[6]
-                asset_run.assets = []
-                $scope.struct.asset_runs.push asset_run
-    )
 
     $scope.run_now = ($event, obj) ->
         obj.$$asset_run = true
@@ -343,6 +325,50 @@ device_asset_module = angular.module(
                                 #$scope.struct.asset_runs.push(ar)
                         $scope.struct.data_loaded = true
                 )
+
+                $http.get(ICSW_URLS.MON_GET_ASSETRUNS).then(
+                    (result) ->
+                        console.log "get_assetruns result: ", result
+
+                        $scope.struct.asset_runs.length = 0
+                        for obj in result.data.asset_runs
+                            found = false
+                            for dev in devs
+                                if dev.idx == obj[6]
+                                    found = true
+                            if found
+                                asset_run = {}
+                                asset_run.idx = obj[0]
+                                asset_run.pk = obj[0]
+                                asset_run.run_index = obj[1]
+                                asset_run.run_type = obj[2]
+                                asset_run.run_start_time = obj[3]
+                                asset_run.run_end_time = obj[4]
+                                asset_run.device_name = obj[5]
+                                asset_run.device_pk = obj[6]
+                                asset_run.assets = []
+                                $scope.struct.asset_runs.push asset_run
+                )
+
+                $http.get(ICSW_URLS.MON_GET_SCHEDULE_LIST).then(
+                    (result) ->
+                        console.log "get_schedule_list result: ", result
+
+                        $scope.struct.schedule_items.length = 0
+                        for obj in result.data.schedules
+                            found = false
+                            for dev in devs
+                                if dev.idx == obj[0]
+                                    found = true
+
+                            if found
+                                sched_item = {}
+                                sched_item.dev_pk = obj[0]
+                                sched_item.dev_name = obj[1]
+                                sched_item.planned_time = obj[2]
+                                $scope.struct.schedule_items.push(sched_item)
+                )
+
         )
 ]).filter('strictFilter'
 [

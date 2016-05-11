@@ -685,7 +685,19 @@ class get_assetruns(RetrieveAPIView):
 
 class get_assets_for_asset_run(View):
     def post(self, request, *args, **kwargs):
-        print request.POST
         ar = AssetRun.objects.get(pk=int(request.POST['pk']))
 
         return HttpResponse(json.dumps({'assets': [str(obj) for obj in ar.generate_assets_no_save()]}), content_type="application/json")
+
+from initat.cluster.backbone.models.dispatch import ScheduleItem
+
+class get_schedule_list(RetrieveAPIView):
+    def get(self, request, *args, **kwargs):
+        for x in sorted([(s.device.idx, s.planned_date) for s in ScheduleItem.objects.all()], key=lambda item: item[1]):
+            print x
+
+        return Response(
+            {
+                'schedules': sorted([(s.device.idx, s.device.name, s.planned_date) for s in ScheduleItem.objects.all()], key=lambda item: item[1])
+            }
+        )

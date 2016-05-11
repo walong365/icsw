@@ -183,6 +183,7 @@ monitoring_patterns = [
     url("^get_versions_for_package", monitoring_views.get_versions_for_package.as_view(), name="get_versions_for_package"),
     url("^get_assetruns", monitoring_views.get_assetruns.as_view(), name="get_assetruns"),
     url("^get_assets_for_asset_run", monitoring_views.get_assets_for_asset_run.as_view(), name="get_assets_for_asset_run"),
+    url("^get_schedule_list", monitoring_views.get_schedule_list.as_view(), name="get_schedule_list"),
 ]
 
 user_patterns = [
