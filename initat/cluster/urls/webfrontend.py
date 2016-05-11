@@ -180,6 +180,7 @@ monitoring_patterns = [
     url("^run_assets_now", monitoring_views.run_assets_now.as_view(), name="run_assets_now"),
     url("^get_devices_for_asset", monitoring_views.get_devices_for_asset.as_view(), name="get_devices_for_asset"),
     url("^get_assetrun_diffs", monitoring_views.get_assetrun_diffs.as_view(), name="get_assetrun_diffs"),
+    url("^get_versions_for_package", monitoring_views.get_versions_for_package.as_view(), name="get_versions_for_package"),
 ]
 
 user_patterns = [

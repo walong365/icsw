@@ -629,7 +629,7 @@ class get_asset_list(RetrieveAPIView):
     def get(self, request, *args, **kwargs):
         return Response(
             {
-                'assets': [(a.pk, a.name, [(v.idx, v.version, v.release, v.size) for v in a.assetpackageversion_set.all()]) for a in AssetPackage.objects.all()],
+                'assets': [(package.pk, package.name) for package in AssetPackage.objects.all()],
             }
         )
 
@@ -666,3 +666,11 @@ class get_assetrun_diffs(View):
         added =  ar2.get_asset_changeset(ar1)
 
         return HttpResponse(json.dumps({'added': [str(obj) for obj in added], 'removed': [str(obj) for obj in removed]}), content_type="application/json")
+
+class get_versions_for_package(View):
+    def post(self, request):
+        pk = request.POST['pk']
+
+        ap = AssetPackage.objects.get(pk=int(pk))
+
+        return HttpResponse(json.dumps({'versions': [(v.idx, v.version, v.release, v.size) for v in ap.assetpackageversion_set.all()]}), content_type="application/json")

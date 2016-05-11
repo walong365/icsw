@@ -49,7 +49,7 @@
                         <tr ng-repeat-start="package in $root.assets">
                             <td>{{ package.name }}</td>
                             <td>
-                                <icsw-tools-button size="xs" type="show" is-show="package.expanded" ng-click="package.expanded = !package.expanded"></icsw-tools-button>
+                                <icsw-tools-button size="xs" type="show" is-show="package.expanded" ng-click="expand_package($event, package)"></icsw-tools-button>
                             </td>
                         </tr>
 
@@ -58,9 +58,9 @@
                                 <table
                                     class="table table-condensed table-hover table-bordered"
                                     style="width:auto;"
-                                    st-safe-src="package.version"
+                                    st-safe-src="package.versions"
                                     st-table="versions_shown"
-                                    ng-show="package.version.length"
+                                    ng-show="package.versions.length"
                                 >
                                     <tr>
                                         <td colspan="99">
@@ -204,6 +204,32 @@
                         </tr>
                     </tbody>
                 </table>
+
+                <div ng-if="dev.show_changeset">
+                    <h2>
+                        <span>
+                            Asset Changes
+                        </span>
+                    </h2>
+
+                    <span>
+                        Added:
+                    </span>
+                   <ul>
+                       <li ng-repeat="obj in dev.added_changeset">
+                           {{ obj }}
+                       </li>
+                   </ul>
+
+                    <span>
+                        Removed:
+                    </span>
+                    <ul>
+                        <li ng-repeat="obj in dev.removed_changeset">
+                            {{ obj }}
+                        </li>
+                    </ul>
+                </div>
 
             </uib-tab>
         </uib-tabset>
