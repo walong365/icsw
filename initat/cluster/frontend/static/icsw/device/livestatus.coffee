@@ -774,7 +774,7 @@ angular.module(
 ) ->
     class icswMonitoringResult
         constructor: () ->
-            console.log "new MonRes"
+            # console.log "new MonRes"
             # selection generation
             @sel_generation = 0
             # result generation
@@ -1003,10 +1003,10 @@ angular.module(
                             watch_dict[dev.idx].push(client)
 
                 if client not of result_dict
-                    console.log "n", client
+                    # console.log "n", client
                     result_dict[client] = new icswMonitoringResult()
                 else
-                    console.log "k", client
+                    # console.log "k", client
                     result_dict[client].new_selection()
 
                 _defer.resolve(result_dict[client])
@@ -1335,7 +1335,7 @@ angular.module(
 
         componentDidMount: () ->
             @burst_element = $(react_dom.findDOMNode(@)).parents("react-burst")
-            console.log @burst_element, @burst_element[0]
+            # console.log @burst_element, @burst_element[0]
 
         trigger_redraw: () ->
             @setState(
@@ -1361,7 +1361,7 @@ angular.module(
             # check if burst is interactive
             _ia = @props.draw_parameters.is_interactive
             if not @root_node?
-                console.log "rnd"
+                # console.log "rnd"
                 @root_node = icswDeviceLivestatusFunctions.build_structured_burst(@props.monitoring_data, @props.draw_parameters)
             # console.log _outer_width, _outer_height
             root_node = @root_node
@@ -1851,7 +1851,7 @@ angular.module(
     }
 
     $scope.start_loop = () ->
-        console.log "start loop"
+        # console.log "start loop"
         $scope.struct.filter.change_notifier.promise.then(
             (ok) ->
             (error) ->

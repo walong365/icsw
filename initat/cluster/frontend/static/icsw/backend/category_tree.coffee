@@ -258,6 +258,7 @@ angular.module(
                     gfx_loc.$map_devs_selected++
                 else
                     gfx_loc.$map_devs_other++
+            icswTools.order_in_place(gfx_loc.$dml_list, ["$$selected", "$device.full_name"], ["desc", "asc"])
             gfx_loc.$device_info = (entry.$device.full_name for entry in gfx_loc.$dml_list).join(", ")
             _set_pks = (entry.$device.idx for entry in gfx_loc.$dml_list)
             # _unset_pks = (dev.idx for dev in sel_devices when dev.idx not in _set_pks)

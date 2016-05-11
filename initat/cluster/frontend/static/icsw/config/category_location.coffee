@@ -238,7 +238,6 @@ angular.module(
             }
         ).then(
             (fin) ->
-                console.log "finish"
                 $rootScope.$emit(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), $scope.struct.category_tree)
                 sub_scope.$destroy()
         )
@@ -363,7 +362,7 @@ angular.module(
             }
         ).then(
             (fin) ->
-                console.log "gfx closed"
+                # console.log "gfx closed"
                 sub_scope.$destroy()
         )
 
@@ -423,11 +422,11 @@ angular.module(
     #        $event.preventDefault()
 
     $scope.show_gfx_preview = (gfx) ->
-        console.log $scope.enhance_list.length
+        # console.log $scope.enhance_list.length
         if gfx not in $scope.enhance_list
             $scope.enhance_list.push(gfx)
-        console.log $scope.enhance_list.length
-        console.log (entry.name for entry in $scope.enhance_list)
+        # console.log $scope.enhance_list.length
+        # console.log (entry.name for entry in $scope.enhance_list)
 
     # $scope.preview_close = () ->
     #     $scope.preview_gfx = undefined
@@ -451,6 +450,9 @@ angular.module(
         controller: "icswConfigCategoryTreeGoogleMapCtrl"
         link: (scope, element, attrs) ->
             scope.set_map_mode(attrs["icswMapMode"])
+            scope.$on("$destroy", () ->
+                # console.log "gmd"
+            )
     }
 # ]).service()
 ]).service("reactT",
@@ -503,7 +505,7 @@ angular.module(
             loc = @props.location
             _render = div(
                 {
-                    key: "container"
+                    key: "container.#{loc.idx}"
                     style: {
                         position: "absolute"
                         left: "#{loc.$$gm_x - _offset}px"
@@ -599,7 +601,7 @@ angular.module(
 
         onAdd: () =>
             panes = @overlay.getPanes()
-            @mydiv = angular.element("div")[0]
+            @mydiv = angular.element("<div/>")[0]
             panes.markerLayer.appendChild(@mydiv)
             @element = ReactDOM.render(
                 React.createElement(
@@ -730,7 +732,7 @@ angular.module(
     build_markers = () ->
         $scope.marker_list.length = 0
         marker_lut = {}
-        console.log "init markers", $scope.locations.length
+        # console.log "init markers", $scope.locations.length
         for _entry in $scope.locations
             comment = _entry.name
             if _entry.comment
