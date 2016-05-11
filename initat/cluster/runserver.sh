@@ -30,4 +30,4 @@ RSOPTIONS="--traceback"
 
 echo "settings: DEBUG=${_debug}, RSOPTIONS='${RSOPTIONS}', EXTRA_OPTIONS='${EXTRA_OPTIONS}'"
 
-./manage.py runserver ${RSOPTIONS} ${EXTRA_OPTIONS} 0.0.0.0:8080
+./manage.py runserver ${RSOPTIONS} ${EXTRA_OPTIONS} 0.0.0.0:8081
