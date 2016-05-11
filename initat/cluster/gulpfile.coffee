@@ -338,8 +338,6 @@ gulp.task("inject-addons-to-app", (cb) ->
     )
 )
 
-gulp.task("modify-app-js", gulp.series("create-all-urls", "inject-urls-to-app", "inject-addons-to-app"))
-
 # deploy task (from compile to deploy dir), needs to be done only at startup
 gulp.task("deploy-css", () ->
     _is_prod = options.production
@@ -402,8 +400,6 @@ gulp.task("deploy-addons", () ->
         gulp.dest(DEPLOY_DIR)
     )
 )
-
-gulp.task("deploy-all", gulp.parallel("deploy-css", "deploy-js", "deploy-html", "deploy-addons"))
 
 # static deployment of fonts, d3, images and gifs
 
@@ -515,10 +511,6 @@ gulp.task("inject-addons-to-main", (cb) ->
     )
 )
 
-# if options.production
-#     index_deps = gulp.series("dummyindex", "deploy-all", "appinject", "addons", "transform-main")
-#else
-
 # reload task
 gulp.task("reload-main", (cb) ->
     gulp.src(
@@ -529,7 +521,15 @@ gulp.task("reload-main", (cb) ->
     cb()
 )
 
-gulp.task("deploy-and-transform-all", gulp.series("deploy-all", "modify-app-js", "transform-main", "inject-addons-to-main"))
+if options.production
+    gulp.task("modify-app-js", gulp.series("create-all-urls", "inject-urls-to-app"))
+    gulp.task("deploy-all", gulp.parallel("deploy-css", "deploy-js", "deploy-html"))
+    gulp.task("deploy-and-transform-all", gulp.series("deploy-all", "modify-app-js", "transform-main"))
+else
+    gulp.task("modify-app-js", gulp.series("create-all-urls", "inject-urls-to-app", "inject-addons-to-app"))
+    gulp.task("deploy-all", gulp.parallel("deploy-css", "deploy-js", "deploy-html", "deploy-addons"))
+    gulp.task("deploy-and-transform-all", gulp.series("deploy-all", "modify-app-js", "transform-main", "inject-addons-to-main"))
+
 
 # watcher tasks
 
@@ -592,6 +592,21 @@ gulp.task("serve-main", (cb) ->
         }
     )
     cb()
+)
+
+gulp.task(
+    "create-content",
+    gulp.series(
+        "clean",
+        gulp.parallel(
+            # static media
+            "deploy-media",
+            # static js
+            "staticbuild",
+        ),
+        "dynamicbuild",
+        "deploy-and-transform-all",
+    )
 )
 
 gulp.task(
