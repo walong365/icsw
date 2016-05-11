@@ -47,7 +47,7 @@ def main():
                         _modified += 1
             _new_lines.append(_line)
         if _modified:
-            print("Modified {:d} lines, rewriting specfile".format(_modified))
+            print("Modified {:d} line(s), rewriting specfile".format(_modified))
             file(args.specfile, "w").write("\n".join(_new_lines))
     else:
         print("rebuild run, not modify specfile")

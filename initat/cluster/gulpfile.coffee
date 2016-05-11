@@ -505,9 +505,18 @@ gulp.task("inject-addons-to-main", (cb) ->
         {read: false}
     ).pipe(
         run(
-            "./manage.py inject_addons --srcfile=#{COMPILE_DIR}/main.html --modify --dstfile=#{DEPLOY_DIR}/main.html",
+            "./manage.py inject_addons --srcfile=#{COMPILE_DIR}/main.html --modify",
             {verbosity: 0}
         )
+    )
+)
+
+gulp.task("copy-main", (cb) ->
+    # add addon-javascript to main.htmlk
+    gulp.src(
+        "#{COMPILE_DIR}/main.html",
+    ).pipe(
+        gulp.dest(DEPLOY_DIR)
     )
 )
 
@@ -524,11 +533,11 @@ gulp.task("reload-main", (cb) ->
 if options.production
     gulp.task("modify-app-js", gulp.series("create-all-urls", "inject-urls-to-app"))
     gulp.task("deploy-all", gulp.parallel("deploy-css", "deploy-js", "deploy-html"))
-    gulp.task("deploy-and-transform-all", gulp.series("deploy-all", "modify-app-js", "transform-main"))
+    gulp.task("deploy-and-transform-all", gulp.series("deploy-all", "modify-app-js", "transform-main", "copy-main"))
 else
     gulp.task("modify-app-js", gulp.series("create-all-urls", "inject-urls-to-app", "inject-addons-to-app"))
     gulp.task("deploy-all", gulp.parallel("deploy-css", "deploy-js", "deploy-html", "deploy-addons"))
-    gulp.task("deploy-and-transform-all", gulp.series("deploy-all", "modify-app-js", "transform-main", "inject-addons-to-main"))
+    gulp.task("deploy-and-transform-all", gulp.series("deploy-all", "modify-app-js", "transform-main", "inject-addons-to-main", "copy-main"))
 
 
 # watcher tasks
@@ -540,7 +549,7 @@ gulp.task("watch", (cb) ->
             "frontend/static/icsw/*/*.coffee",
             "frontend/static/icsw/*/*.html",
         ]
-        gulp.series(gulp.parallel("icsw_cs", "icsw_html"), "deploy-all", "transform-main", "inject-addons-to-main", "reload-main")
+        gulp.series(gulp.parallel("icsw_cs", "icsw_html"), "deploy-all", "transform-main", "inject-addons-to-main", "copy-main", "reload-main")
     )
     cb()
 )
