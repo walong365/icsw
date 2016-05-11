@@ -674,3 +674,18 @@ class get_versions_for_package(View):
         ap = AssetPackage.objects.get(pk=int(pk))
 
         return HttpResponse(json.dumps({'versions': [(v.idx, v.version, v.release, v.size) for v in ap.assetpackageversion_set.all()]}), content_type="application/json")
+
+class get_assetruns(RetrieveAPIView):
+    def get(self, request, *args, **kwargs):
+        return Response(
+            {
+                'asset_runs': [(ar.idx, ar.run_index, ar.run_type, ar.run_start_time, ar.run_end_time, ar.device.name, ar.device.idx) for ar in AssetRun.objects.all()],
+            }
+        )
+
+class get_assets_for_asset_run(View):
+    def post(self, request, *args, **kwargs):
+        print request.POST
+        ar = AssetRun.objects.get(pk=int(request.POST['pk']))
+
+        return HttpResponse(json.dumps({'assets': [str(obj) for obj in ar.generate_assets_no_save()]}), content_type="application/json")

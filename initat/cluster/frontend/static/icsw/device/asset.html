@@ -12,6 +12,137 @@
         <uib-tabset>
             <uib-tab>
                 <uib-tab-heading>
+                    <span ng-show="struct.asset_runs.length">Asset Runs ({{ struct.asset_runs.length }})</span>
+                    <span ng-show="!struct.asset_runs.length">Asset Runs</span>
+                </uib-tab-heading>
+
+                    <h3>
+                    <span ng-show="struct.asset_runs.length">
+                        AssetRun Overview
+                    </span>
+                    <span ng-show="struct.num_selected_ar">
+                        , diff ({{ struct.num_selected_ar }} selected)
+                        <icsw-tools-button ng-if="struct.num_selected_ar == 2" type="reload" size="xs" ng-click="assetchangesetar($event)" value="Asset Changeset"/>
+                    </span>
+                </h3>
+
+
+                <table
+                    class="table table-condensed table-hover table-striped"
+                    style="width:auto;"
+                    ng-show="struct.asset_runs.length > 0"
+                    st-table="assetruns_shown"
+                    st-safe-src="struct.asset_runs"
+                    st-set-filter="strictFilter"
+                >
+                    <thead>
+                        <tr>
+                            <th st-sort="run_type">Run Type</th>
+                            <th st-sort="run_start_time">Run Start</th>
+                            <th st-sort="run_end_time">Run End</th>
+                            <th st-sort="device_name">Device</th>
+                            <th colspan="2">Action</th>
+
+                        </tr>
+                        <tr>
+                            <th colspan="1">
+                                <input st-search="run_type" placeholder="filter by run_type" class="input-sm form-control" type="search"/>
+                            </th>
+                            <th colspan="1">
+                                <input st-search="run_start_time" placeholder="search by start_time" class="input-sm form-control" type="search"/>
+                            </th>
+                            <th colspan="1">
+                                <input st-search="run_end_time" placeholder="search by end_time" class="input-sm form-control" type="search"/>
+                            </th>
+                            <th colspan="1">
+                                <input st-search="device_name" placeholder="filter by device name" class="input-sm form-control" type="search"/>
+                            </th>
+                            <th colspan="3">&nbsp;</th>
+                        </tr>
+                        <tr>
+                            <td colspan="99">
+                                <div
+                                    icsw-tools-pagination
+                                    st-items-by-page="10"
+                                    st-displayed-pages="11"
+                                    possible-items-by-page="10,20,50,100"
+                                ></div>
+                            </td>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr ng-class="{'success': assetrun.$$selected}" ng-repeat-start="assetrun in assetruns_shown track by $index">
+                            <td>{{ resolve_asset_type(assetrun.run_type) }}</td>
+                            <td>{{ assetrun.run_start_time }}</td>
+                            <td>{{ assetrun.run_end_time }}</td>
+                            <td>{{ assetrun.device_name }}</td>
+                            <td>
+                                <icsw-tools-button size="xs" type="show" is-show="assetrun.expanded" ng-click="expand_assetrun($event, assetrun)"></icsw-tools-button>
+                            </td>
+                            <td>
+                                <icsw-tools-button type="modify" size="xs" value="select" ng-click="select_assetrun($event, assetrun)"></icsw-tools-button>
+                            </td>
+                        </tr>
+                        <tr ng-repeat-end ng-if="assetrun.expanded">
+                            <td colspan="99">
+                                <table
+                                    class="table table-condensed table-hover table-bordered"
+                                    style="width:auto;"
+                                    st-safe-src="assetrun.assets"
+                                    st-table="assets_shown"
+                                    ng-show="assetrun.assets.length"
+                                >
+                                    <tr>
+                                        <td colspan="99">
+                                            <div
+                                                icsw-tools-pagination
+                                                st-items-by-page="10"
+                                                st-displayed-pages="11"
+                                                possible-items-by-page="10,20,50,100"
+                                            ></div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>Name</th>
+                                    </tr>
+                                    <tr ng-repeat="asset in assets_shown track by $index">
+                                        <td>{{ asset }}</td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div ng-if="struct.show_changeset">
+                    <h2>
+                        <span>
+                            Asset Changes
+                        </span>
+                    </h2>
+
+                    <span>
+                        Added:
+                    </span>
+                   <ul>
+                       <li ng-repeat="obj in struct.added_changeset">
+                           {{ obj }}
+                       </li>
+                   </ul>
+
+                    <span>
+                        Removed:
+                    </span>
+                    <ul>
+                        <li ng-repeat="obj in struct.removed_changeset">
+                            {{ obj }}
+                        </li>
+                    </ul>
+                </div>
+            </uib-tab>
+
+            <uib-tab>
+                <uib-tab-heading>
                     <span ng-show="$root.assets.length">Known Packages ({{ $root.assets_sf.length }})</span>
                     <span ng-show="!$root.assets.length">No known packages</span>
                 </uib-tab-heading>

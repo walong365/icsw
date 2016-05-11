@@ -90,7 +90,79 @@ device_asset_module = angular.module(
         data_loaded: false
         # num_selected
         num_selected: 0
+
+        # AssetRun tab variables
+        num_selected_ar: 0
+        asset_runs: []
+        show_changeset: false
+        added_changeset: []
+        removed_changeset: []
     }
+
+    $scope.assetchangesetar = ($event) ->
+        ar1 = undefined
+        ar2 = undefined
+
+        for ar in $scope.struct.asset_runs
+            if ar.$$selected && ar1 == undefined
+                ar1 = ar
+            else if ar.$$selected && ar2 == undefined
+                ar2 = ar
+                break
+
+        console.log "ar1: ", ar1
+        console.log "ar2: ", ar2
+
+        if ar1 != undefined && ar2 != undefined
+            $http({
+                method: 'POST',
+                url: '/icsw/api/v2/mon/get_assetrun_diffs'
+                data: "pk1="+ar1.idx+"&pk2="+ar2.idx
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+            }).then(
+              (result) ->
+                  $scope.struct.show_changeset = true
+                  $scope.struct.added_changeset = result.data.added
+                  $scope.struct.removed_changeset = result.data.removed
+            )
+
+
+    $scope.select_assetrun = ($event, assetrun) ->
+        assetrun.$$selected = !assetrun.$$selected
+        if assetrun.$$selected
+            # ensure only assetrun with same type are selected
+            _type = assetrun.run_type
+            for _run in $scope.struct.asset_runs
+                if _run.run_type !=_type and _run.$$selected
+                    _run.$$selected = false
+
+        $scope.struct.num_selected_ar = (_run for _run in $scope.struct.asset_runs when _run.$$selected).length
+        if $scope.struct.num_selected_ar > 2
+            for _run in $scope.struct.asset_runs
+                if _run.run_type == _type and _run.$$selected and _run.run_index != assetrun.run_index
+                    _run.$$selected = false
+                    $scope.struct.num_selected_ar--
+                    break
+
+    $http.get(ICSW_URLS.MON_GET_ASSETRUNS).then(
+        (result) ->
+            console.log "get_assetrun_result: ", result
+
+
+            $scope.struct.asset_runs.length = 0
+            for obj in result.data.asset_runs
+                asset_run = {}
+                asset_run.idx = obj[0]
+                asset_run.pk = obj[0]
+                asset_run.run_index = obj[1]
+                asset_run.run_type = obj[2]
+                asset_run.run_start_time = obj[3]
+                asset_run.run_end_time = obj[4]
+                asset_run.device_name = obj[5]
+                asset_run.device_pk = obj[6]
+                asset_run.assets = []
+                $scope.struct.asset_runs.push asset_run
+    )
 
     $scope.run_now = ($event, obj) ->
         obj.$$asset_run = true
@@ -155,19 +227,37 @@ device_asset_module = angular.module(
                   device.removed_changeset = result.data.removed
             )
 
+    $scope.expand_assetrun = ($event, assetrun) ->
+        assetrun.expanded = !assetrun.expanded
+
+        if assetrun.expanded
+            $http({
+                method: 'POST',
+                url: ICSW_URLS.MON_GET_ASSETS_FOR_ASSET_RUN
+                data: "pk="+assetrun.idx
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+            }).then(
+              (result) ->
+                  assetrun.assets = result.data.assets
+            )
+        else
+            assetrun.assets = []
+
     $scope.expand_package = ($event, pack) ->
         pack.expanded = !pack.expanded
-        console.log "pack: ", pack
 
-        $http({
-            method: 'POST',
-            url: '/icsw/api/v2/mon/get_versions_for_package'
-            data: "pk="+pack.pk
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'}
-        }).then(
-          (result) ->
-              pack.versions = result.data.versions
-        )
+        if pack.expanded
+            $http({
+                method: 'POST',
+                url: '/icsw/api/v2/mon/get_versions_for_package'
+                data: "pk="+pack.pk
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+            }).then(
+              (result) ->
+                  pack.versions = result.data.versions
+            )
+        else
+            pack.versions = []
 
     $scope.refresh = ->
         hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, $scope.struct.devices)
@@ -250,6 +340,7 @@ device_asset_module = angular.module(
                             dev.assetrun_set_sf_src = []
                             for ar in dev.assetrun_set
                                 dev.assetrun_set_sf_src.push(ar)
+                                #$scope.struct.asset_runs.push(ar)
                         $scope.struct.data_loaded = true
                 )
         )
@@ -285,6 +376,15 @@ device_asset_module = angular.module(
             else if predicate.run_type == "Pending update"
                 run_type = 7
             new_predicate.run_type = run_type
+        if (predicate.hasOwnProperty("run_start_time"))
+            new_predicate.run_start_time = predicate.run_start_time
+            strict = false
+        if (predicate.hasOwnProperty("run_end_time"))
+            new_predicate.run_end_time = predicate.run_end_time
+            strict = false
+        if (predicate.hasOwnProperty("device_name"))
+            new_predicate.device_name = predicate.device_name
+            strict = false
         if (predicate.hasOwnProperty("$"))
             new_predicate = predicate
             strict = false
