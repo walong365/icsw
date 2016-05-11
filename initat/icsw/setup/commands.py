@@ -227,20 +227,21 @@ def enter_data(c_dict, opts):
 
 @SetupLogger
 def init_webfrontend(opts):
-    for _what, _command, _target in [
-        ("collecting static", "collectstatic --noinput -c", None),
-        ("building url_list", "show_icsw_urls", os.path.join(get_icsw_root(), "initat", "cluster", "frontend", "templates", "all_urls.html")),
-    ]:
-        print(_what)
-        _success, _output = call_manage(_command.split(), output=True)
-        if _success and _target:
-            print(
-                "    writing {} to {}".format(
-                    logging_tools.get_size_str(len(_output), long_format=True),
-                    _target,
+    if False:
+        for _what, _command, _target in [
+            ("collecting static", "collectstatic --noinput -c", None),
+            ("building url_list", "show_icsw_urls", os.path.join(get_icsw_root(), "initat", "cluster", "frontend", "templates", "all_urls.html")),
+        ]:
+            print(_what)
+            _success, _output = call_manage(_command.split(), output=True)
+            if _success and _target:
+                print(
+                    "    writing {} to {}".format(
+                        logging_tools.get_size_str(len(_output), long_format=True),
+                        _target,
+                    )
                 )
-            )
-            file(_target, "w").write(_output)
+                file(_target, "w").write(_output)
     # already configured; run collectstatic
     _RELOAD_FLAG = "/opt/cluster/etc/uwsgi/reload/webfrontend.touch"
     if os.path.exists("/opt/cluster/etc/uwsgi/reload"):

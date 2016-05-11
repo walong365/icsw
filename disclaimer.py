@@ -170,7 +170,7 @@ class disclaimer_handler(object):
                         "link": "link",
                         "name": "name",
                         "position": "department",
-                        "mail":  "email",
+                        "mail": "email",
                     }.get(_code, _code)
                 )
                 try:
