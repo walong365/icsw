@@ -150,8 +150,24 @@ device_asset_module = angular.module(
                 headers: {'Content-Type': 'application/x-www-form-urlencoded'}
             }).then(
               (result) ->
-                  console.log "assetchangeset ", result
+                  device.show_changeset = true
+                  device.added_changeset = result.data.added
+                  device.removed_changeset = result.data.removed
             )
+
+    $scope.expand_package = ($event, pack) ->
+        pack.expanded = !pack.expanded
+        console.log "pack: ", pack
+
+        $http({
+            method: 'POST',
+            url: '/icsw/api/v2/mon/get_versions_for_package'
+            data: "pk="+pack.pk
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+        }).then(
+          (result) ->
+              pack.versions = result.data.versions
+        )
 
     $scope.refresh = ->
         hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, $scope.struct.devices)
@@ -207,13 +223,10 @@ device_asset_module = angular.module(
             angular.forEach result.data.assets, (item) ->
                 _pack = {
                     name: undefined
-                    version: undefined
-                    release: undefined
+                    versions: undefined
                 }
                 _pack.pk = item[0]
                 _pack.name = item[1]
-                _pack.version = item[2]
-                _pack.release = item[3]
                 $rootScope.assets.push _pack
                 $rootScope.assets_sf.push _pack
     )
