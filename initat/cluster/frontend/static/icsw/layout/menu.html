@@ -5,11 +5,7 @@
 
         <ul class="nav navbar-nav">
             <li>
-<<<<<<< HEAD
-                <a href="{{ ICSW_URLS.MAIN_INDEX }}"><span class="fa fa-home fa-lg" title="Dashboard"></span></a>
-=======
                 <a ui-sref="main.dashboard"><span class="fa fa-home fa-lg" title="Dashboard"></span></a>
->>>>>>> master-gulp
             </li>
         </ul>
 
@@ -32,11 +28,7 @@
                         </a>
                     </li>
                     <li ng-show="has_menu_permission('backbone.user.admin')"><a href="{{ ICSW_URLS.ADMIN_INDEX }}"><span class="fa fa-wrench fa_icsw"></span>Admin</a></li>
-<<<<<<< HEAD
-                    <li><a href="{{ ICSW_URLS.SESSION_LOGOUT }}"><span class="fa fa-sign-out fa_icsw"></span>Logout</a></li>
-=======
                     <li><a ui-sref="logout"><span class="fa fa-sign-out fa_icsw"></span>Logout</a></li>
->>>>>>> master-gulp
                     <li class="divider"></li>
                     <li>
                         <a ui-sref="main.serverinfo">

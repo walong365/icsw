@@ -23,60 +23,6 @@ menu_module = angular.module(
     [
         "ngSanitize", "ui.bootstrap", "icsw.layout.selection", "icsw.user",
     ]
-<<<<<<< HEAD
-).controller("menu_base", ["$scope", "$timeout", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswAcessLevelService", "initProduct", "icswLayoutSelectionDialogService", "icswActiveSelectionService", "$q", "icswUserService",
-    ($scope, $timeout, $window, ICSW_URLS, icswSimpleAjaxCall, icswAcessLevelService, initProduct, icswLayoutSelectionDialogService, icswActiveSelectionService, $q, icswUserService) ->
-        $scope.is_authenticated = false
-        # init background jobs
-        $scope.NUM_BACKGROUND_JOBS = 0
-        # init service types
-        $scope.ICSW_URLS = ICSW_URLS
-        $scope.initProduct = initProduct
-        $scope.CURRENT_USER = {}
-        $scope.HANDBOOK_PDF_PRESENT = false
-        $scope.HANDBOOK_CHUNKS_PRESENT = false
-        $scope.HANDBOOK_PAGE = "---"
-        icswAcessLevelService.install($scope)
-        $q.all(
-            [
-                icswSimpleAjaxCall(
-                    {
-                        "url": ICSW_URLS.MAIN_GET_DOCU_INFO,
-                        "dataType": "json"
-                    }
-                ),
-                icswUserService.load(),
-            ]
-        ).then(
-            (data) ->
-                $scope.HANDBOOK_PDF_PRESENT = data[0].HANDBOOK_PDF_PRESENT
-                $scope.HANDBOOK_CHUNKS_PRESENT = data[0].HANDBOOK_CHUNKS_PRESENT
-                $scope.is_authenticated = data[1].authenticated
-                $scope.CURRENT_USER = data[1]
-        )
-        $scope.get_progress_style = (obj) ->
-            return {"width" : "#{obj.value}%"}
-        $scope.redirect_to_init = () ->
-            window.location = "http://www.initat.org"
-            return false
-        $scope.handbook_url = "/"
-        $scope.handbook_url_valid = false
-        $scope.$watch(
-            "initProduct",
-            (new_val) ->
-                if new_val.name?
-                    $scope.handbook_url_valid = true
-                    $scope.handbook_url = "/cluster/doc/#{new_val.name.toLowerCase()}_handbook.pdf"
-            true
-        )
-        $scope.$watch("navbar_size", (new_val) ->
-            if new_val
-                if $scope.is_authenticated
-                    $("body").css("padding-top", parseInt(new_val["height"]) + 1)
-        )
-        $scope.device_selection = () ->
-            icswLayoutSelectionDialogService.show_dialog($scope)
-=======
 ).controller("icswMenuBaseCtrl",
 [
     "$scope", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswAcessLevelService",
@@ -182,7 +128,6 @@ menu_module = angular.module(
     # $scope.device_selection = () ->
     #    console.log "SHOW_DIALOG"
     #     icswLayoutSelectionDialogService.show_dialog()
->>>>>>> master-gulp
 ]).directive("icswLayoutMenubar", ["$templateCache", ($templateCache) ->
     return {
         restrict: "EA"
@@ -629,15 +574,10 @@ menu_module = angular.module(
                         React.createElement(icswReactMenuFactory, {"user": _user, "acls": _acls})
                         el[0]
                     )
-<<<<<<< HEAD
-            scope.$watch("user", (new_val) ->
-                _user = new_val
-=======
             $rootScope.$on(ICSW_SIGNALS("ICSW_USER_CHANGED"), (event, user) ->
                 # console.log "uc", user
                 _user = user
                 # console.log "user_render"
->>>>>>> master-gulp
                 _render()
             )
             $rootScope.$on(ICSW_SIGNALS("ICSW_ACLS_CHANGED"), (event, acls) ->

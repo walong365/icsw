@@ -25,31 +25,6 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "icsw.user.license",
     ]
-<<<<<<< HEAD
-).controller("icswLoginCtrl", ["$scope", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswParseXMLResponseService", "blockUI", "initProduct", "icswUserLicenseDataService", "$q",
-    ($scope, $window, ICSW_URLS, icswSimpleAjaxCall, icswParseXMLResponseService, blockUI, initProduct, icswUserLicenseDataService, $q) ->
-        $scope.ICSW_URLS = ICSW_URLS
-        $scope.initProduct = initProduct
-        $scope.lds = icswUserLicenseDataService
-        $scope.django_version = "---"
-        $scope.CLUSTER_NAME = ""
-        $scope.CLUSTER_ID = ""
-        $scope.LOGIN_SCREEN_TYPE = "big"
-        $scope.DATABASE_VERSION = ""
-        $scope.login_hints = []
-        $scope.disabled = true
-        style_dict = {
-            "medium" : {
-                "gfx_class" : "col-xs-4"
-                "gfx_style" : {}
-                "login_class" : "col-xs-6"
-            }
-            "big" : {
-                "gfx_class" : "col-md-offset-4 col-md-4"
-                "gfx_style" : {"margin-top": "60px"}
-                "login_class" : "col-md-offset-4 col-md-4"
-            }
-=======
 ).controller("icswLoginCtrl",
 [
     "$scope", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswParseXMLResponseService", "blockUI",
@@ -78,7 +53,6 @@ angular.module(
             gfx_class: "col-md-offset-4 col-md-4"
             gfx_style: {"margin-top": "60px"}
             login_class: "col-md-offset-4 col-md-4"
->>>>>>> master-gulp
         }
     }
     first_call = true
@@ -160,34 +134,6 @@ angular.module(
     $scope.login_class = () ->
         return style_dict[$scope.LOGIN_SCREEN_TYPE]["login_class"]
 
-<<<<<<< HEAD
-        $scope.do_login = () ->
-            blockUI.start()
-            icswSimpleAjaxCall(
-                {
-                    url: ICSW_URLS.SESSION_LOGIN
-                    data:
-                        blob: angular.toJson($scope.login_data)
-                }
-            ).then(
-                (xml) ->
-                    # blockUI.stop()
-                    if $(xml).find("value[name='redirect']").length
-                        _val = $(xml).find("value[name='redirect']").text()
-                        $window.location = _val
-                (error) ->
-                    blockUI.stop()
-                    $scope.init_login()
-            )
-        $scope.gfx_class = () ->
-            return style_dict[$scope.LOGIN_SCREEN_TYPE]["gfx_class"]
-        $scope.gfx_style = () ->
-            return style_dict[$scope.LOGIN_SCREEN_TYPE]["gfx_style"]
-        $scope.login_class = () ->
-            return style_dict[$scope.LOGIN_SCREEN_TYPE]["login_class"]
-        $scope.init_login()
-]).directive("icswLoginForm", ["$templateCache", ($templateCache) ->
-=======
     $scope.init_login()
 ]).directive("icswLoginForm",
 [
@@ -195,7 +141,6 @@ angular.module(
 (
     $templateCache
 ) ->
->>>>>>> master-gulp
     return {
         restrict: "EA"
         template: $templateCache.get("icsw.authentication.form")
