@@ -32,6 +32,8 @@ PYTHON_SITE=${PREFIX_PYTHON}/lib/python2.7/site-packages
 SCRIPTDIR=/usr/bin
 USRSBIN=/usr/sbin
 VARDIR=/var/lib/cluster/package-client
+# icsw will be installed below this dir
+STATICWEBDIR=/srv/www/init.at
 
 # list of target systems
 TARGET_SYS_LIST=snmp_relay cluster_config_server logcheck_server cluster_server discovery_server rrd_grapher logging_server rms host_monitoring collectd mother package_install/server package_install/client meta_server md_config_server
@@ -109,7 +111,12 @@ build:
 	cd .. ; \
 	unzip memtest*zip
 
-install:
+install_webcontent:
+	# copy static webcontent
+	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${STATICWEBDIR}
+	tar xzf ../webcontent.tar.gz -C ${DESTDIR}/${STATICWEBDIR}
+
+install: install_webcontent
 	# stonith from init-ha-addons
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${STONITH_DIR}
 	${INSTALL} ${INSTALL_OPTS} ha-addons/ibmbcs ${DESTDIR}/${STONITH_DIR}
@@ -239,6 +246,7 @@ install:
 	find ${DESTDIR}/${PYTHON_SITE} -iname "*.pyc" -exec rm {} \;
 	# create version cstore
 	./tools/create_version_file.py --version ${VERSION} --release ${RELEASE} --target ${DESTDIR}/${ICSW_ETC}/cstores.d/icsw.sysversion_config.xml ; \
+
 
 clean:
 	rm -f gpxelinux.0

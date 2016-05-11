@@ -35,6 +35,7 @@ APP = "icsw"
 
 def main():
     args = parser.parse()
+    sys.exit(0)
     if args.increase_release_on_build:
         # print args
         print("specfile is at {}".format(args.specfile))
