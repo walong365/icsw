@@ -18,19 +18,20 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import uuid
+import base64
+import bz2
 import json
 import pickle
-import base64
-import marshal
-import datetime
-import bz2
+import uuid
 
-from lxml import etree
+import django.utils.timezone
 from django.db import models
 from enum import IntEnum
+from lxml import etree
 from rest_framework import serializers
-import django.utils.timezone
+
+from initat.tools import server_command
+
 
 ########################################################################################################################
 # Functions
@@ -59,18 +60,30 @@ def get_base_assets_from_raw_result(blob, runtype, scantype):
             for (name, version, size, date) in l:
                 if size == "Unknown":
                     size = 0
-                assets.append(BaseAssetPackage(name,
-                                               version=version,
-                                               size=size,
-                                               install_date=date))
+                assets.append(
+                    BaseAssetPackage(
+                        name,
+                        version=version,
+                        size=size,
+                        install_date=date
+                    )
+                )
         elif scantype == ScanType.HM:
-            package_dict = pickle.loads(bz2.decompress(base64.b64decode(blob)))
-            for package_name in package_dict:
-                for versions_dict in package_dict[package_name]:
-                    assets.append(BaseAssetPackage(package_name,
-                                                   version=versions_dict['version'],
-                                                   size=versions_dict['size'],
-                                                   release=versions_dict['release']))
+            try:
+                package_dict = server_command.decompress(blob, pickle=True)
+            except:
+                raise
+            else:
+                for package_name in package_dict:
+                    for versions_dict in package_dict[package_name]:
+                        assets.append(
+                            BaseAssetPackage(
+                                package_name,
+                                version=versions_dict['version'],
+                                size=versions_dict['size'],
+                                release=versions_dict['release']
+                            )
+                        )
     elif runtype == AssetType.HARDWARE:
         s = blob
         if scantype == ScanType.NRPE:
@@ -198,11 +211,10 @@ class BaseAssetHardware(object):
 
     def __eq__(self, other):
         return isinstance(other, self.__class__) \
-               and self.type == other.type
+            and self.type == other.type
 
     def __hash__(self):
         return hash((self.type))
-
 
 
 class BaseAssetLicense(object):
@@ -409,9 +421,9 @@ class AssetRun(models.Model):
                 release = ba.release if ba.release else ""
                 size = ba.size if ba.size else 0
 
-                #kwfilterdict['name'] = ba.name
-                #kwfilterdict['version'] = ba.version
-                #kwfilterdict['release'] = ba.release
+                # kwfilterdict['name'] = ba.name
+                # kwfilterdict['version'] = ba.version
+                # kwfilterdict['release'] = ba.release
                 aps = AssetPackage.objects.filter(name=name)
                 assert (len(aps) < 2)
 
@@ -434,7 +446,6 @@ class AssetRun(models.Model):
                     apv = AssetPackageVersion(asset_package=ap, version=version, release=release, size=size)
                     apv.save()
                     self.packages.add(apv)
-
 
             # elif self.run_type == AssetType.HARDWARE:
             #     # todo implement me
@@ -512,6 +523,7 @@ class AssetSerializer(serializers.ModelSerializer):
     class Meta:
         model = Asset
 
+
 class AssetPackageVersionSerializer(serializers.ModelSerializer):
     class Meta:
         model = AssetPackageVersion
@@ -520,6 +532,7 @@ class AssetPackageVersionSerializer(serializers.ModelSerializer):
 
 class AssetPackageSerializer(serializers.ModelSerializer):
     versions = AssetPackageVersionSerializer(many=True)
+
     class Meta:
         model = AssetPackage
         fields = ("idx", "name")
