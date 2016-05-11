@@ -33,7 +33,6 @@ htmlmin = require("gulp-htmlmin")
 gzip = require("gulp-gzip")
 ng_annotate = require('gulp-ng-annotate')
 inject = require("gulp-inject")
-flatten = require("gulp-flatten")
 minimist = require('minimist')
 connect = require("gulp-connect")
 middleware = require("http-proxy-middleware")
@@ -455,7 +454,7 @@ gulp.task("transform-main", (cb) ->
                     read: false
                     cwd: "#{DEPLOY_DIR}"
                 }
-            ).pipe(flatten())
+            )
             {
                 relative: true
                 addRootSlash: false
@@ -469,7 +468,7 @@ gulp.task("transform-main", (cb) ->
                     read: false
                     cwd: "#{DEPLOY_DIR}"
                 }
-            ).pipe(flatten())
+            )
             {
                 relative: true
                 addRootSlash: false

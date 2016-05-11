@@ -74,7 +74,7 @@ class FileModify(object):
                             )
                     for _key, _value in _new_dict.iteritems():
                         _xml.attrib[_key] = _value
-                    line = etree.tostring(_xml)
+                    line = etree.tostring(_xml, method="html")
                 if line.lower().count("<body>"):
                     _body_found = True
             new_content.append(line)
