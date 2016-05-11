@@ -35,7 +35,7 @@ APP = "icsw"
 
 def main():
     args = parser.parse()
-    sys.exit(0)
+    # sys.exit(0)
     if args.increase_release_on_build:
         # print args
         print("specfile is at {}".format(args.specfile))
@@ -52,8 +52,9 @@ def main():
         binary_dir = os.path.join(args.binary_dir, APP)
         os.chdir(_icsw_dir)
         _temp_dir = tempfile.mkdtemp(suffix="_{}_wc".format(APP))
-        _deploy_dir = os.path.join(_temp_dir, APP)
-        _compile_dir = os.path.join(_temp_dir, "compile")
+        # 'work' is very important here to enable corrent handling of relative links
+        _deploy_dir = os.path.join(_temp_dir, "work", APP)
+        _compile_dir = os.path.join(_temp_dir, "work", "compile")
         subprocess.check_call(
             [
                 "gulp",
@@ -67,7 +68,7 @@ def main():
         )
         tar_file_name = os.path.join(binary_dir, "webcontent.tar.gz")
         tar_file = tarfile.open(tar_file_name, "w:gz")
-        os.chdir(_temp_dir)
+        os.chdir(os.path.join(_temp_dir, "work"))
         tar_file.add(APP)
         tar_file.close()
         shutil.rmtree(_temp_dir)
