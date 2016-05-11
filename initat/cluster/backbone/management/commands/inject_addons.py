@@ -27,6 +27,7 @@ from initat.tools import logging_tools
 import sys
 import os
 import re
+from lxml import etree
 from django.db.models import Q
 from initat.cluster.backbone import factories
 from initat.cluster.backbone.models import device_group
@@ -50,6 +51,34 @@ class FileModify(object):
                 self.name
             )
         )
+
+    def cleanup_path(self):
+        # cleanup include paths
+        _body_found = False
+        new_content = []
+        for line_num, line in enumerate(self._content.split("\n"), 1):
+            if not _body_found:
+                if line.count("css") and line.count("link"):
+                    line = line.strip().replace(">", "/>")
+                try:
+                    _xml = etree.fromstring(line)
+                except:
+                    pass
+                else:
+                    _new_dict = {}
+                    for _key, _value in _xml.attrib.iteritems():
+                        if _key in {"href", "src"}:
+                            _new_dict[_key] = "{}{}".format(
+                                "static/" if "/static/" in _value else "",
+                                os.path.basename(_value)
+                            )
+                    for _key, _value in _new_dict.iteritems():
+                        _xml.attrib[_key] = _value
+                    line = etree.tostring(_xml)
+                if line.lower().count("<body>"):
+                    _body_found = True
+            new_content.append(line)
+        self._content = "\n".join(new_content)
 
     def inject(self):
         marker_re = re.compile("^.*<!-- ICSWAPPS:(?P<type>[A-Z]+):(?P<mode>[A-Z]+) -->.*$")
@@ -122,6 +151,12 @@ class Command(BaseCommand):
             default=False,
             help="rewrite file (and disable debug)",
         ),
+        make_option(
+            "--cleanup-path",
+            action="store_true",
+            default=False,
+            help="fix wrong relative imports",
+        )
     )
     help = ("Inject module code in files.")
     args = ''
@@ -135,5 +170,8 @@ class Command(BaseCommand):
             sys.exit(2)
         for name in options["files"]:
             f_obj = FileModify(name, options["modify"])
-            f_obj.inject()
+            if options["cleanup_path"]:
+                f_obj.cleanup_path()
+            else:
+                f_obj.inject()
             f_obj.write()
