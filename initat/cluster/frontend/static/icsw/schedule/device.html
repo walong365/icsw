@@ -1,0 +1,251 @@
+
+<script type="text/ng-template" id="icsw.schedule.overview">
+    <uib-alert type="warning" ng-show="struct.loading">Fetching data from server...</uib-alert>
+    <h3>
+        Dispatch settings ({{ struct.dispatch_tree.list.length }} entries)
+        <icsw-tools-button type="create" size="xs" ng-click="create_or_edit($event, null, true)"></icsw-tools-button>
+    </h3>
+    <table
+        st-table="entries_displayed"
+        st-safe-src="struct.dispatch_tree.list"
+        class="table table-condensed table-hover"
+        style="width:auto;"
+        ng-if="struct.dispatch_tree.list.length"
+    >
+        <thead>
+            <tr>
+                <td colspan="99" class="form-inline">
+                    <icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                         possible-items-by-page="10,20,50,100,200,500,1000"></icsw-tools-pagination>
+                    <input st-search="" class="form-control" placeholder="filter ..." type="text"/>
+                </td>
+            </tr>
+            <tr>
+                <th st-sort="name" st-sort-default="true">Name</th>
+                <th st-sort="description">Description</th>
+                <th>Created</th>
+                <th>ComCaps</th>
+                <th>Schedule</th>
+                <th>Startoffset</th>
+                <th colspan="1" class="text-center">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="obj in entries_displayed">
+                <td>{{ obj.name }}</td>
+                <td>{{ obj.description }}</td>
+                <td class="text-center">
+                    <span ng-show="obj.is_system" class="label label-success">system</span>
+                    <span ng-show="!obj.is_system">{{ struct.user_group_tree.user_lut[obj.user].login }}</span>
+                </td>
+                <td>
+                    {{ obj.$$com_caps }}
+                </td>
+                <td>
+                    {{ obj.mult }} {{ struct.dispatch_tree.schedule_lut[obj.run_schedule].name }}
+                </td>
+                <td class="text-right">
+                    {{ obj.$$start_offset }}
+                </td>
+                <td>
+                    <icsw-tools-button ng-if="!obj.is_system" type="modify" size="xs" ng-click="create_or_edit($event, obj, false)"></icsw-tools-button>
+                    <icsw-tools-button ng-if="!obj.is_system" type="delete" size="xs" ng-click="delete($event, obj)"></icsw-tools-button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+</script>
+
+<script type="text/ng-template" id="icsw.schedule.dispatch.setting.form">
+    <form class="form-horizontal" name="form_data">
+        <fieldset>
+            <legend>Base settings</legend>
+            <div class="form-group">
+                <label class="control-label col-xs-3 requiredField">
+                    Name<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-xs-7">
+                    <input class="form-control" ng-model="edit_obj.name"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-xs-3 requiredField">
+                    Description
+                </label>
+                <div class="controls col-xs-7">
+                    <input class="form-control" ng-model="edit_obj.description"/>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Schedule</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Baseline<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <ui-select ng-model="edit_obj.run_schedule" style="max-width:400px; min-width:240px;">
+                        <ui-select-match class="ui-select-match" placeholder="please select a baseline">
+                            {{ $select.selected.name }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in dispatch_tree.schedule_list | props_filter:{name:$select.search}">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-3">
+                    Multiplicator
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="form-control" type="number" min="1" max="365" ng-model="edit_obj.mult"/>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>ComCapabilities</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-3">
+                    ComCaps
+                </label>
+                <div class="controls col-sm-7">
+                    <ui-select multiple="multiple" ng-model="edit_obj.com_capabilities" style="max-width:400px; min-width:240px;">
+                        <ui-select-match class="ui-select-match" placeholder="Select ComCapabilities">
+                            {{ $item.name }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in com_cap_tree.list | props_filter:{name:$select.search}">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Start parameters</legend>
+            <div class="form-group" ng-show="dispatch_tree.schedule_lut[edit_obj.run_schedule].$$filter_second">
+                <label class="control-label col-xs-3 requiredField">
+                    Startsecond
+                </label>
+                <div class="controls col-xs-7">
+                    <input class="form-control" ng-model="edit_obj.sched_start_second"/>
+                </div>
+            </div>
+            <div class="form-group" ng-show="dispatch_tree.schedule_lut[edit_obj.run_schedule].$$filter_minute">
+                <label class="control-label col-xs-3 requiredField">
+                    Startminute
+                </label>
+                <div class="controls col-xs-7">
+                    <input class="form-control" ng-model="edit_obj.sched_start_minute"/>
+                </div>
+            </div>
+            <div class="form-group" ng-show="dispatch_tree.schedule_lut[edit_obj.run_schedule].$$filter_hour">
+                <label class="control-label col-xs-3 requiredField">
+                    Starthour
+                </label>
+                <div class="controls col-xs-7">
+                    <input class="form-control" ng-model="edit_obj.sched_start_hour"/>
+                </div>
+            </div>
+            <div class="form-group" ng-show="dispatch_tree.schedule_lut[edit_obj.run_schedule].$$filter_day">
+                <label class="control-label col-xs-3 requiredField">
+                    Startday
+                </label>
+                <div class="controls col-xs-7">
+                    <input class="form-control" ng-model="edit_obj.sched_start_day"/>
+                </div>
+            </div>
+            <div class="form-group" ng-show="dispatch_tree.schedule_lut[edit_obj.run_schedule].$$filter_week">
+                <label class="control-label col-xs-3 requiredField">
+                    Startweek
+                </label>
+                <div class="controls col-xs-7">
+                    <input class="form-control" ng-model="edit_obj.sched_start_week"/>
+                </div>
+            </div>
+            <div class="form-group" ng-show="dispatch_tree.schedule_lut[edit_obj.run_schedule].$$filter_month">
+                <label class="control-label col-xs-3 requiredField">
+                    Startmonth
+                </label>
+                <div class="controls col-xs-7">
+                    <input class="form-control" ng-model="edit_obj.sched_start_month"/>
+                </div>
+            </div>
+
+        </fieldset>
+    </form>
+</script>
+
+<script type="text/ng-template" id="icsw.schedule.device">
+
+    <uib-alert type="warning" ng-show="struct.loading">Fetching data from server...</uib-alert>
+    <h3>
+        Device schedules ({{ struct.devices.length }} entries)
+        <icsw-tools-button type="modify" size="xs" ng-click="edit($event, null)" value="modify selected"></icsw-tools-button>
+    </h3>
+    <table
+        st-table="entries_displayed"
+        st-safe-src="struct.devices"
+        class="table table-condensed table-hover"
+        style="width:auto;"
+        ng-if="struct.devices.length"
+    >
+        <thead>
+            <tr>
+                <td colspan="99" class="form-inline">
+                    <icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                         possible-items-by-page="10,20,50,100,200,500,1000"></icsw-tools-pagination>
+                    <input st-search="" class="form-control" placeholder="filter ..." type="text"/>
+                </td>
+            </tr>
+            <tr>
+                <th st-sort="full_name" st-sort-default="true">Name</th>
+                <th>Selected</th>
+                <th>Dispatchers</th>
+                <th colspan="1" class="text-center">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr st-select-row="obj" st-select-mode="multiple" ng-repeat="obj in entries_displayed">
+                <td>{{ obj.full_name }}</td>
+                <td>
+                    <span ng-class="{'label label-success': obj.isSelected, 'label label-default':!obj.isSelected}">sel</span>
+                </td>
+                <td>
+                    <span ng-show="!obj.$$dispatcher_list.length">---</span>
+                    <span ng-show="obj.$$dispatcher_list.length">
+                        <span ng-repeat="disp in obj.$$dispatcher_list" class="label label-primary">{{ disp.name }}</span>
+                    </span>
+                </td>
+                <td>
+                    <icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)" value="modify"/>
+                    <icsw-tools-button data-style="slide-left" ladda="obj.loading" type="reload" size="xs" ng-click="run_now($event, obj)" value="run_now"/>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</script>
+
+<script type="text/ng-template" id="icsw.schedule.device.form">
+    <form class="form-horizontal" name="form_data">
+        <fieldset>
+            <legend>Dispatcher</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-3">
+                    Dispatcher
+                </label>
+                <div class="controls col-sm-7">
+                    <ui-select multiple="multiple" ng-model="edit_obj.$$dispatchers" style="max-width:400px; min-width:240px;">
+                        <ui-select-match class="ui-select-match" placeholder="Select Dispatchers">
+                            {{ $item.name }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in dispatcher_tree.list | props_filter:{name:$select.search}">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+        </fieldset>
+    </form>
+</script>

@@ -1,7 +1,10 @@
 <script type="text/ng-template" id="icsw/main.html">
-    <div id="center_deviceinfo" ng-controller="icswDeviceInfoOverviewCtrl">
-        <index-view ng-controller="icswUserIndexCtrl"></index-view>
-    </div>
+    <!-- main entry point for routes -->
+    <div ui-view></div>
+</script>
+
+<script type="text/ng-template" id="icsw/main/dashboard.html">
+    <icsw-dashboard-view></icsw-dashboard-view>
 </script>
 
 <script type="text/ng-template" id="icsw.dashboard.quicklinks">
@@ -76,7 +79,11 @@
 
 <script type="text/ng-template" id="icsw.dashboard.diskquota">
     <div ng-controller="icswUserAccountCtrl">
-        <icsw-user-quota-settings object='edit_obj' type='user'></icsw-user-quota-settings>
+        <icsw-user-quota-settings
+            icsw-object="struct.user"
+            icsw-object-type="'user'"
+            icsw-user-group-settings-tree="struct.settings_tree">
+        ></icsw-user-quota-settings>
         <icsw-user-disk-usage object="edit_obj" type="user"></icsw-user-disk-usage>
     </div>
 </script>
@@ -88,22 +95,33 @@
 </script>
 
 <script type="text/ng-template" id="icsw.dashboard.jobinfo">
-    <div ng-controller="icswUserJobInfoCtrl">
-        <icsw-user-job-info></icsw-user-job-info>
+    <icsw-user-job-info></icsw-user-job-info>
+</script>
+
+<script type="text/ng-template" id="icsw.dashboard.overview">
+    <uib-alert ng-if="!struct.data_loaded" class="warning">Loading initial data...</uib-alert>
+    <div class="panel panel-success" ng-if="struct.data_loaded">
+        <div class="panel-heading">
+            Main Dashboard ({{ struct.container.num_open }} of {{ struct.container.num_total }} shown)
+            <span ng-show="struct.container.num_close">
+                <icsw-tools-button type="create" size="sm" value="ReOpen" ng-click="struct.container.reopen_closed_elements()"></icsw-tools-button>
+            </span>
+        </div>
+        <div gridster="gridsterOpts" class="panel-body">
+            <ul>
+                <li gridster-item="item" ng-repeat="item in struct.container.open_elements track by item.element_id">
+                    <icsw-dashboard-element-display style="position:absolute;top:0;left:0;bottom:0;right:0;margin:0px;padding:0px;overflow:auto;" icsw-dashboard-element="item"></icsw-dashboard-element-display>
+                </li>
+            </ul>
+        </div>
     </div>
 </script>
 
-<script type="text/ng-template" id="icsw.user.index">
-    <div gridster="gridsterOpts">
-        <ul>
-            <li gridster-item="item" ng-repeat="item in elements">
-                <div class="panel" ng-class="get_panel_class(item)" style="height:100%;">
-                    <div class="panel-heading">
-                        {{  item.title }}
-                    </div>
-                    <icsw-dashboard-element element="{{ item.template }}"></icsw-dashboard-element>
-                </div>
-            </li>
-        </ul>
+<script type="text/ng-template" id="icsw.dashboard.element.title">
+    <div class="panel-heading">
+        {{ $$dashboard_element.title }}
+        <span class="pull-right">
+            <icsw-tools-button size="xs" type="close" value="" ng-click="$$dashboard_element.close()"></icsw-tools-button>
+        </span>
     </div>
 </script>

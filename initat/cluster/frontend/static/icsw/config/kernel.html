@@ -1,3 +1,22 @@
+<script type="text/ng-template" id="icsw.kernel.overview">
+    <uib-alert type="warning" ng-show="struct.loading">Fetching data from server...</uib-alert>
+    <h2>
+        Kernels ({{ struct.kernel_tree.list.length }} entries),
+        <icsw-tools-button type="search" size="xs" value="Scan for kernels" ng-click="scan_for_kernels()"></icsw-tools-button>
+    </h2>
+    <table
+        st-table="entries_displayed"
+        st-safe-src="struct.kernel_tree.list"
+        class="table table-hover table-condensed table-striped"
+        style="width:auto;"
+    >
+        <thead icsw-kernel-head></thead>
+        <tbody>
+            <tr icsw-kernel-row ng-repeat="obj in entries_displayed"></tr>
+        </tbody>
+    </table>
+</script>
+
 <script type="text/ng-template" id="icsw.kernel.head">
     <tr>
         <th st-sort="display_name" st-sort-default>Display Name</th>
@@ -21,7 +40,7 @@
     <td class="text-center">{{ obj.version }}.{{ obj.release }}</td>
     <td class="text-center">{{ obj.bitcount }}</td>
     <td class="text-center">
-        <a href="#" tooltip="{{obj.usecount_tooltip}}" tooltip-trigger="mouseenter">
+        <a uib-tooltip="{{ obj.$$new_kernel }}" uib-tooltip-trigger="mouseenter">
             {{ obj.kerneldevicehistory_set.length }} / {{ obj.new_kernel.length }}
         </a>
     </td>
@@ -33,21 +52,104 @@
         <icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button>
     </td>
     <td>
-        <icsw-tools-button type="delete" size="xs" ng-show="delete_ok(obj)" ng-click="delete(obj, $event)"></icsw-tools-button>
+        <icsw-tools-button type="delete" size="xs" ng-click="delete($event, obj)"></icsw-tools-button>
     </td>
 </script>
 
-<script type="text/ng-template" id="icsw.kernel.overview">
-    <icsw-tools-rest-table target-list="entries" config-service="icswKernelOverviewService">
-        <h2>Kernels ({{entries.length}} entries),
-            <icsw-tools-button type="search" value="Scan for kernels" ng-click="scan_for_kernels(reload)"></icsw-tools-button>
-            </h2>
-        <table st-table="entries_displayed" st-safe-src="entries"
-               class="table table-hover table-condensed table-striped" style="width:auto;">
-            <thead icsw-kernel-head></thead>
-            <tbody>
-                <tr icsw-kernel-row ng-repeat="obj in entries_displayed"></tr>
-            </tbody>
-        </table>
-    </icsw-tools-rest-table>
+<script type="text/ng-template" id="icsw.kernel.form">
+    <form class="form-horizontal" name="form_data">
+        <h2>Kernel details</h2>
+        <fieldset>
+            <legend>Base data</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Display name<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="128" name="display_name" ng-model="edit_obj.display_name" readonly required="True" type="text"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Name<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="384" name="name" ng-model="edit_obj.name" readonly required="True" type="text"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-3">
+                    Comment
+                </label>
+                <div class="controls col-sm-7">
+                    <textarea class="textarea form-control" cols="40" name="comment" ng-model="edit_obj.comment" rows="5"></textarea>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-3">
+                    Target module list
+                </label>
+                <div class="controls col-sm-7">
+                    <textarea class="textarea form-control" cols="40" rows="3" name="target_module_list" ng-model="edit_obj.target_module_list"></textarea>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-3">
+                    Module list
+                </label>
+                <div class="controls col-sm-7">
+                    <textarea class="textarea form-control" cols="40" rows="3" name="module_list" ng-model="edit_obj.module_list" readonly="readonly"></textarea>
+                </div>
+            </div>
+        </fieldset>
+        <div class="form-group">
+            <label class="control-label col-sm-3">
+                initrd built
+            </label>
+            <div class="col-sm-7">
+                <!-- hm, nowhere defined, FIXME, ToDo -->
+                {{ fn.get_initrd_built(edit_obj) }}
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="control-label col-sm-3">
+                Enabled
+            </label>
+            <div class="controls col-sm-7">
+                <icsw-tools-yes-no flag="edit_obj.enabled"></icsw-tools-yes-no>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="control-label col-sm-6">
+                stage1 lo present
+            </label>
+            <div class="col-sm-6">
+                <icsw-tools-yes-no flag="edit_obj.stage1_lo_present" disabled="disabled"></icsw-tools-yes-no>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="control-label col-sm-6">
+                stage1 cpio present
+            </label>
+            <div class="col-sm-6">
+                <icsw-tools-yes-no flag="edit_obj.stage1_cpio_present" disabled="disabled"></icsw-tools-yes-no>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="control-label col-sm-6">
+                stage1 cramfs present
+            </label>
+            <div class="col-sm-6">
+                <icsw-tools-yes-no flag="edit_obj.stage1_cramfs_present" disabled="disabled"></icsw-tools-yes-no>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="control-label col-sm-6">
+                stage2 present
+            </label>
+            <div class="col-sm-6">
+                <icsw-tools-yes-no flag="edit_obj.stage2_present" disabled="disabled"></icsw-tools-yes-no>
+            </div>
+        </div>
+    </form>
 </script>

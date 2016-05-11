@@ -1,4 +1,4 @@
-# Copyright (C) 2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2014-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 
 
 class network_device_type_serializer(serializers.ModelSerializer):
-    info_string = serializers.CharField()
+    info_string = serializers.CharField(read_only=True)
 
     class Meta:
         model = network_device_type
@@ -103,6 +103,9 @@ class netdevice_speed_serializer(serializers.ModelSerializer):
 
 
 class peer_information_serializer(serializers.ModelSerializer):
+    s_device = serializers.IntegerField(source="get_s_device", read_only=True)
+    d_device = serializers.IntegerField(source="get_d_device", read_only=True)
+    
     class Meta:
         model = peer_information
 

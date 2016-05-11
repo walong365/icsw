@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -28,40 +28,28 @@ import re
 
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
-from django.db.models import Q
+from django.db.models import Q, Max
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
+from rest_framework import serializers
 
 from initat.cluster.backbone.models import device_group, device, \
-    cd_connection, domain_tree_node, category
+    cd_connection, domain_tree_node, category, netdevice, ComCapability, \
+    partition_table, monitoring_hint, DeviceSNMPInfo, snmp_scheme, \
+    domain_name_tree, net_ip, peer_information, mon_ext_host, device_variable, \
+    SensorThreshold, package_device_connection, DeviceDispatcherLink
 from initat.cluster.backbone.models.functions import can_delete_obj
-from initat.cluster.backbone.render import permission_required_mixin, render_me
+from initat.cluster.backbone.render import permission_required_mixin
+from initat.cluster.backbone.serializers import netdevice_serializer, ComCapabilitySerializer, \
+    partition_table_serializer, monitoring_hint_serializer, DeviceSNMPInfoSerializer, \
+    snmp_scheme_serializer, device_variable_serializer, cd_connection_serializer, \
+    SensorThresholdSerializer, package_device_connection_serializer, DeviceDispatcherLinkSerializer
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from initat.tools import logging_tools, server_command, process_tools
+from initat.cluster.backbone.models.asset import AssetRun, AssetRunSerializer
 
 logger = logging.getLogger("cluster.device")
-
-
-class DeviceGeneral(View):
-    def get(self, request):
-        return render_me(
-            request,
-            "device_general.html",
-            {}
-        )()
-
-
-class device_tree_smart(permission_required_mixin, View):
-    all_required_permissions = ["backbone.user.modify_tree"]
-
-    def get(self, request):
-        return render_me(
-            request,
-            "device_tree_smart.html",
-            {
-            }
-        )()
 
 
 class change_devices(View):
@@ -92,26 +80,34 @@ class change_devices(View):
                 "monitor_server": None,
                 "enabled": False,
                 "store_rrd_data": False,
+                "enable_perfdata": False,
             }
             # build change_dict
-            c_dict = {key[7:]: c_dict.get(key[7:], def_dict.get(key[7:], None)) for key in c_dict.iterkeys() if key.startswith("change_") and c_dict[key]}
+            c_dict = {
+                key[7:]: c_dict.get(key[7:], def_dict.get(key[7:], None)) for key in c_dict.iterkeys() if key.startswith("change_") and c_dict[key]
+            }
             # resolve foreign keys
-            c_dict = {key: {
-                "device_group": device_group,
-                "domain_tree_node": domain_tree_node,
-                "bootserver": device,
-                "monitor_server": device,
-            }[key].objects.get(Q(pk=value)) if type(value) == int else value for key, value in c_dict.iteritems()}
-            logger.info("change_dict has {}".format(logging_tools.get_plural("key", len(c_dict))))
-            for key in sorted(c_dict):
+            res_c_dict = {
+                key: {
+                    "device_group": device_group,
+                    "domain_tree_node": domain_tree_node,
+                    "bootserver": device,
+                    "monitor_server": device,
+                }[key].objects.get(
+                    Q(pk=value)
+                ) if type(value) == int else value for key, value in c_dict.iteritems()
+            }
+            logger.info("change_dict has {}".format(logging_tools.get_plural("key", len(res_c_dict))))
+            for key in sorted(res_c_dict):
                 if key == "root_passwd":
-                    logger.info(" %s: %s" % (key, "****"))
+                    logger.info(" {}: {}".format(key, "****"))
                 else:
-                    logger.info(" %s: %s" % (key, unicode(c_dict.get(key))))
+                    logger.info(" {}: {}".format(key, unicode(res_c_dict.get(key))))
             dev_changes = 0
+            changes_json = []
             for cur_dev in device.objects.filter(Q(pk__in=pk_list)):
                 changed = False
-                for c_key, c_value in c_dict.iteritems():
+                for c_key, c_value in res_c_dict.iteritems():
                     if getattr(cur_dev, c_key) != c_value:
                         if c_key == "root_passwd":
                             c_value = cur_dev.crypt(c_value)
@@ -120,28 +116,21 @@ class change_devices(View):
                                 changed = True
                         else:
                             setattr(cur_dev, c_key, c_value)
+                            changes_json.append(
+                                {
+                                    "device": cur_dev.pk,
+                                    "attribute": c_key,
+                                    "value": c_dict[c_key],
+                                }
+                            )
                             changed = True
+
                 if changed:
                     cur_dev.save()
                     dev_changes += 1
             request.xml_response["changed"] = dev_changes
+            request.xml_response["json_changes"] = json.dumps(changes_json)
             request.xml_response.info("changed settings of {}".format(logging_tools.get_plural("device", dev_changes)))
-
-
-class set_selection(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        dev_list = json.loads(_post["angular_sel"])
-        devg_list = device_group.objects.filter(Q(device__in=dev_list)).values_list("pk", flat=True)
-        cur_list = [
-            "dev__{:d}".format(cur_pk) for cur_pk in dev_list
-        ] + [
-            "devg__{:d}".format(cur_pk) for cur_pk in devg_list
-        ]
-        request.session["sel_list"] = cur_list
-        request.session.save()
 
 
 class select_parents(View):
@@ -155,8 +144,7 @@ class select_parents(View):
                 (
                     Q(com_capability_list__matchcode="ipmi") |
                     Q(snmp_schemes__power_control=True)
-                ) &
-                Q(master_connections__in=devs)
+                ) & Q(master_connections__in=devs)
             ).values_list("pk", flat=True)
         )
         _res = {
@@ -164,26 +152,6 @@ class select_parents(View):
             "new_selection": list(set(cur_sel) | set(cd_pks))
         }
         return HttpResponse(json.dumps(_res), content_type="application/json")
-
-
-class show_configs(View):
-    @method_decorator(login_required)
-    def get(self, request):
-        return render_me(
-            request, "device_configs.html", {
-                "device_object_level_permission": "backbone.device.change_config",
-            }
-        )()
-
-
-class connections(View):
-    @method_decorator(login_required)
-    def get(self, request):
-        return render_me(request, "device_connections.html")()
-
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        pass
 
 
 class manual_connection(View):
@@ -262,20 +230,14 @@ class manual_connection(View):
             request.xml_response.warn("found no matching devices", logger)
 
 
-class variables(View):
-    @method_decorator(login_required)
-    def get(self, request):
-        return render_me(request, "device_variables.html", {
-            "device_object_level_permission": "backbone.device.change_variables",
-        })()
-
-
 class scan_device_network(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
-        _json_dev = json.loads(request.POST["dev"])
-        _dev = device.objects.get(Q(pk=_json_dev["idx"]))
+        _json_dev = json.loads(request.POST["settings"])
+        # copy address
+        _json_dev["scan_address"] = _json_dev["manual_address"]
+        _dev = device.objects.get(Q(pk=_json_dev["device"]))
         _sm = _json_dev["scan_mode"]
         logger.info("scanning network settings of device {} via {}".format(unicode(_dev.full_name), _sm))
         if _sm == "hm":
@@ -339,21 +301,6 @@ class scan_device_network(View):
             _result = contact_server(request, "discovery", srv_com, timeout=30)
 
 
-class device_info(View):
-    @method_decorator(login_required)
-    def get(self, request, **kwargs):
-        # set selection list
-        request.session["sel_list"] = ["dev__{}".format(kwargs["device_pk"])]
-        request.session.save()
-        return render_me(
-            request,
-            "index.html",
-            {
-                "DEVICE_MODE": kwargs.get("mode", "")
-            }
-        )()
-
-
 class get_device_location(View):
     @method_decorator(login_required)
     def get(self, request):
@@ -366,11 +313,334 @@ class get_device_location(View):
 
 
 class GetMatchingDevices(View):
-    """Search for device by ip or mac"""
+    """ Search for device by ip or mac """
     @method_decorator(login_required)
     def post(self, request):
         search_str = request.POST['search_str']
         result = device.objects.filter(
             Q(netdevice__macaddr__startswith=search_str) | Q(netdevice__net_ip__ip__startswith=search_str)
         ).values_list('pk', flat=True)
-        return HttpResponse(json.dumps(list(result)))
+        return HttpResponse(json.dumps(list(result)), content_type="application/json")
+
+
+class EnrichmentObject(object):
+    def __init__(self, base_object, serializer, related_name="device", prefetch_list=[], related_list=[]):
+        self.base_object = base_object
+        self.serializer = serializer
+        self.related_name = related_name
+        self.prefetch_list = prefetch_list
+        self.related_list = related_list
+
+    def fetch(self, pk_list):
+        _result = self.base_object.objects.filter(
+            Q(
+                **{
+                    "{}__in".format(self.related_name): pk_list
+                }
+            )
+        ).prefetch_related(
+            *self.prefetch_list
+        ).select_related(
+            *self.related_list
+        )
+        # create data
+        _data = self.serializer(_result, many=True).data
+        return _data
+
+
+class ComCapabilityEnrichment(object):
+    def fetch(self, pk_list):
+        # get reference list
+        _ref_list = ComCapability.objects.filter(
+            Q(device__in=pk_list)
+        ).values("pk", "device__pk")
+        # simple result
+        _result = {
+            _el.pk: _el for _el in ComCapability.objects.filter(
+                Q(device__in=pk_list)
+            )
+        }
+        # manually unroll n2m relations
+        _data = [
+            ComCapabilitySerializer(
+                _result[_ref["pk"]],
+                context={"device": _ref["device__pk"]}
+            ).data for _ref in _ref_list
+        ]
+        return _data
+
+
+class SNMPSchemeEnrichment(object):
+    def fetch(self, pk_list):
+        # get reference list
+        _ref_list = snmp_scheme.objects.filter(
+            Q(device__in=pk_list)
+        ).values("pk", "device__pk")
+        # simple result
+        _result = {
+            _el.pk: _el for _el in snmp_scheme.objects.filter(
+                Q(device__in=pk_list)
+            ).prefetch_related(
+                "snmp_scheme_tl_oid_set",
+            ).select_related(
+                "snmp_scheme_vendor",
+            )
+        }
+        # manually unroll n2m relations
+        _data = [
+            snmp_scheme_serializer(
+                _result[_ref["pk"]],
+                context={"device": _ref["device__pk"]}
+            ).data for _ref in _ref_list
+        ]
+        return _data
+
+
+class DiskEnrichment(object):
+    def fetch(self, pk_list):
+        # get reference list
+        _ref_list = partition_table.objects.filter(
+            Q(act_partition_table__in=pk_list)
+        ).values("pk", "act_partition_table__pk")
+        # simple result
+        _result = {
+            _el.pk: _el for _el in partition_table.objects.filter(
+                Q(act_partition_table__in=pk_list)
+            ).prefetch_related(
+                "partition_disc_set",
+                "partition_disc_set__partition_set",
+                "partition_disc_set__partition_set__partition_fs",
+                "sys_partition_set",
+            )
+        }
+        # manually unroll n2m relations
+        _data = [
+            partition_table_serializer(
+                _result[_ref["pk"]],
+                context={"device": _ref["act_partition_table__pk"]}
+            ).data for _ref in _ref_list
+        ]
+        return _data
+
+
+class AssetEnrichment(object):
+    def fetch(self, pk_list):
+        # get reference list
+        _ref_list = AssetRun.objects.filter(
+            Q(device__in=pk_list)
+        ).values("pk", "device__pk")
+        _result = {
+            _el.pk: _el for _el in AssetRun.objects.filter(
+                Q(device__in=pk_list)
+            )
+        }
+        # manually unroll n2m relations
+        _data = [
+            AssetRunSerializer(
+                _result[_ref["pk"]],
+                context={"device": _ref["device__pk"]}
+            ).data for _ref in _ref_list
+        ]
+        return _data
+
+
+class DeviceConnectionEnrichment(object):
+    def fetch(self, pk_list):
+        _ref_list = cd_connection.objects.filter(
+            Q(child__in=pk_list) | Q(parent__in=pk_list)
+        )
+        # result dict
+        _data = [
+            cd_connection_serializer(
+                _cd,
+            ).data for _cd in _ref_list
+        ]
+        return _data
+
+
+class ScanSerializer(serializers.Serializer):
+    device = serializers.IntegerField(source="pk")
+    active_scan = serializers.CharField()
+
+
+class ScanEnrichment(object):
+    def fetch(self, pk_list):
+        _res = device.objects.filter(Q(pk__in=pk_list)).values("pk", "active_scan")
+        return ScanSerializer(_res, many=True).data
+
+
+class SensorThresholdEnrichment(object):
+    def fetch(self, pk_list):
+        _res = SensorThreshold.objects.filter(
+            Q(mv_value_entry__mv_struct_entry__machine_vector__device__in=pk_list)
+        ).annotate(
+            device=Max("mv_value_entry__mv_struct_entry__machine_vector__device_id")
+        )
+        _data = [
+            SensorThresholdSerializer(
+                _cd,
+                context={"device": _cd.device}
+            ).data for _cd in _res
+        ]
+        return _data
+
+
+class EnrichmentHelper(object):
+    def __init__(self):
+        self._all = {}
+        self._all["network_info"] = EnrichmentObject(
+            netdevice,
+            netdevice_serializer,
+            prefetch_list=["net_ip_set"]
+        )
+        self._all["disk_info"] = DiskEnrichment()
+        self._all["com_info"] = ComCapabilityEnrichment()
+        self._all["snmp_info"] = EnrichmentObject(DeviceSNMPInfo, DeviceSNMPInfoSerializer)
+        self._all["snmp_schemes_info"] = SNMPSchemeEnrichment()
+        self._all["monitoring_hint_info"] = EnrichmentObject(monitoring_hint, monitoring_hint_serializer)
+        self._all["scan_info"] = ScanEnrichment()
+        self._all["variable_info"] = EnrichmentObject(device_variable, device_variable_serializer)
+        self._all["device_connection_info"] = DeviceConnectionEnrichment()
+        self._all["sensor_threshold_info"] = SensorThresholdEnrichment()
+        self._all["package_info"] = EnrichmentObject(package_device_connection, package_device_connection_serializer)
+        self._all["dispatcher_info"] = EnrichmentObject(DeviceDispatcherLink, DeviceDispatcherLinkSerializer)
+        self._all["asset_info"] = AssetEnrichment()
+
+    def create(self, key, pk_list):
+        if key not in self._all:
+            _error = "Unknown Enrichment type {}".format(key)
+            raise KeyError(_error)
+        else:
+            return self._all[key].fetch(pk_list)
+
+
+_my_en_helper = EnrichmentHelper()
+
+
+class EnrichDevices(View):
+    """ Returns enrichment info for the webfrontend """
+
+    @method_decorator(login_required)
+    def post(self, request):
+        _req = json.loads(request.POST["enrich_request"])
+        # pprint.pprint(_req)
+        result = {}
+        for en_key, pk_list in _req.iteritems():
+            # iterate over enrichment info
+            result[en_key] = _my_en_helper.create(en_key, pk_list)
+        # pprint.pprint(result)
+        return HttpResponse(json.dumps(result), content_type="application/json")
+
+
+class create_device(permission_required_mixin, View):
+    all_required_permissions = ["backbone.user.modify_tree"]
+
+    @method_decorator(login_required)
+    def get(self, request):
+        pass
+
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _post = request.POST
+        # domain name tree
+        dnt = domain_name_tree()
+        device_data = json.loads(_post["device_data"])
+        try:
+            cur_dg = device_group.objects.get(Q(name=device_data["device_group"]))
+        except device_group.DoesNotExist:
+            try:
+                cur_dg = device_group.objects.create(
+                    name=device_data["device_group"],
+                    domain_tree_node=dnt.get_domain_tree_node(""),
+                    description="auto created device group {}".format(device_data["device_group"]),
+                )
+            except:
+                request.xml_response.error(
+                    u"cannot create new device group: {}".format(
+                        process_tools.get_except_info()
+                    ),
+                    logger=logger
+                )
+                cur_dg = None
+            else:
+                request.xml_response.info(u"created new device group '{}'".format(unicode(cur_dg)), logger=logger)
+        else:
+            if cur_dg.cluster_device_group:
+                request.xml_response.error(
+                    u"no devices allowed in system (cluster) group",
+                    logger=logger
+                )
+                cur_dg = None
+        if cur_dg is not None:
+            if device_data["full_name"].count("."):
+                short_name, domain_name = device_data["full_name"].split(".", 1)
+                dnt_node = dnt.add_domain(domain_name)
+            else:
+                short_name = device_data["full_name"]
+                # top level node
+                dnt_node = dnt.get_domain_tree_node("")
+            try:
+                cur_dev = device.objects.get(Q(name=short_name) & Q(domain_tree_node=dnt_node))
+            except device.DoesNotExist:
+                # check image
+                if device_data["icon_name"].strip():
+                    try:
+                        cur_img = mon_ext_host.objects.get(Q(name=device_data["icon_name"]))
+                    except mon_ext_host.DoesNotExist:
+                        cur_img = None
+                    else:
+                        pass
+                try:
+                    cur_dev = device.objects.create(
+                        device_group=cur_dg,
+                        is_meta_device=False,
+                        domain_tree_node=dnt_node,
+                        name=short_name,
+                        mon_resolve_name=device_data["resolve_via_ip"],
+                        comment=device_data["comment"],
+                        mon_ext_host=cur_img,
+                    )
+                except:
+                    request.xml_response.error(
+                        u"cannot create new device: {}".format(
+                            process_tools.get_except_info()
+                        ),
+                        logger=logger
+                    )
+                    cur_dev = None
+                else:
+                    request.xml_response.info(u"created new device '{}'".format(unicode(cur_dev)), logger=logger)
+                    request.xml_response["device_pk"] = cur_dev.idx
+            else:
+                request.xml_response.warn(u"device {} already exists".format(unicode(cur_dev)), logger=logger)
+                cur_dev = None
+
+            if cur_dev is not None:
+                try:
+                    cur_nd = netdevice.objects.get(Q(device=cur_dev) & Q(devname='eth0'))
+                except netdevice.DoesNotExist:
+                    cur_nd = netdevice.objects.create(
+                        devname="eth0",
+                        device=cur_dev,
+                        routing=device_data["routing_capable"],
+                    )
+                    if device_data["peer"]:
+                        peer_information.objects.create(
+                            s_netdevice=cur_nd,
+                            d_netdevice=netdevice.objects.get(Q(pk=device_data["peer"])),
+                            penalty=1,
+                        )
+                try:
+                    cur_ip = net_ip.objects.get(Q(netdevice=cur_nd) & Q(ip=device_data["ip"]))
+                except net_ip.DoesNotExist:
+                    cur_ip = net_ip(
+                        netdevice=cur_nd,
+                        ip=device_data["ip"],
+                        domain_tree_node=dnt_node,
+                    )
+                    try:
+                        cur_ip.save()
+                    except:
+                        request.xml_response.error(u"cannot create IP: {}".format(process_tools.get_except_info()), logger=logger)
+                        cur_ip = None

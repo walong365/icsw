@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2015 init.at
+# Copyright (C) 2012-2016 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -17,449 +17,436 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+
+# variable related module
+
 device_variable_module = angular.module(
     "icsw.device.variables",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select"
     ]
-).directive("icswDeviceVariableHead", ["$templateCache", ($templateCache) ->
-    return {
-        restrict : "EA"
-        template : $templateCache.get("icsw.device.variable.head")
-    }
-]).service("icswDeviceVariableRestService", ["$q", "Restangular", "icswCachingCall", "ICSW_URLS", "icswTools", ($q, Restangular, icswCachingCall, ICSW_URLS, icswTools) ->
-    vstruct = {}
-    _data_loaded = false
-    _load_in_progress = false
-    fetch_waiters = []
-    # fingerprint of loaded pks
-    _loaded_pks = "*"
-    filter_string = ""
-    filter_re = undefined
-    hide_empty = false
-    pk_fingerprint = (pks) ->
-        return (val.toString() for val in pks).join(":")
-    salt_data = (entries, pks) ->
-        # all entries (including parent meta devices and CDG)
-        vstruct.cdg = (entry for entry in entries when entry.is_cluster_device_group)[0]
-        vstruct.deep_entries = icswTools.build_lut(entries)
-        vstruct.group_dev_lut = {}
-        for entry in entries
-            if entry.is_meta_device
-                vstruct.group_dev_lut[entry.device_group] = entry.idx
-        _entries = (entry for entry in entries when entry.idx in pks)
-        for entry in _entries
-            entry.expanded = false
-        if vstruct.entries_unfiltered
-            vstruct.entries_unfiltered.length = 0
-            for entry in _entries
-                vstruct.entries_unfiltered.push(entry)
-            vstruct.entries.length = 0
-        else
-            vstruct.entries_unfiltered = _entries
-            vstruct.entries = []
-        filter_data(false)
-        return vstruct
-    filter_data = (change_expand_state) ->
-        # check all devs
-        for entry in vstruct.entries_unfiltered
-            if filter_string
-                entry.num_filtered = (true for _var in entry.device_variable_set when _var.name.match(filter_re)).length
-                entry.filter_active = true
-            else
-                entry.num_filtered = entry.device_variable_set.length
-                entry.filter_active = false
-            if change_expand_state
-                if entry.num_filtered and filter_string
-                    entry.expanded = true
-                else
-                    entry.expanded = false
-        # check for hide_empty flag
-        vstruct.entries.length = 0
-        # always keep first entry
-        first = true
-        for entry in vstruct.entries_unfiltered
-            if entry.num_filtered or not hide_empty or first
-                vstruct.entries.push(entry)
-            first = false
-
-    fetch_data = (client) ->
-        _defer = $q.defer()
-        if _data_loaded and not _load_in_progress
-            _defer.resolve(vstruct)
-        else
-            fetch_waiters.push(_defer)
-        return _defer
-    load_data = (client, pks) ->
-        _defer = $q.defer()
-        if _data_loaded and pk_fingerprint(pks) == _loaded_pks
-            _defer.resolve(vstruct)
-        else
-            _load_in_progress = true
-            _wait_list = [
-                icswCachingCall.fetch(
-                    client
-                    ICSW_URLS.REST_DEVICE_TREE_LIST
-                    {
-                        "pks" : angular.toJson(pks)
-                        "with_variables" : true
-                        "with_meta_devices" : true
-                        "ignore_cdg" : false
-                        "olp" : "backbone.device.change_variables"
-                    }
-                    []
-                )
-            ]
-            $q.all(_wait_list).then((data) ->
-                salt_data(data[0], pks)
-                _defer.resolve(vstruct)
-                _data_loaded = true
-                _loaded_pks = pk_fingerprint(_.sortBy(pks))
-                _load_in_progress = false
-                (entry.resolve(vstruct) for entry in fetch_waiters)
-                fetch_waiters = []
-            )
-        return _defer
-    create_variable = (new_obj) ->
-        _defer = $q.defer()
-        Restangular.all(ICSW_URLS.REST_DEVICE_VARIABLE_LIST.slice(1)).post(new_obj).then(
-            (new_obj) ->
-                vstruct.deep_entries[new_obj.device].device_variable_set.push(new_obj)
-                _defer.resolve(new_obj)
-            (error) ->
-                _defer.reject("")
-        )
-        return _defer
-    create_many_variables = (new_obj, pks) ->
-        _defer = $q.defer()
-        _wait_list = []
-        for _pk in pks
-            new_var = angular.copy(new_obj)
-            new_var.device = _pk
-            _wait_list.push(Restangular.all(ICSW_URLS.REST_DEVICE_VARIABLE_LIST.slice(1)).post(new_var))
-        $q.allSettled(_wait_list).then(
-            (result) ->
-                rv = {"ok": 0, "error": 0}
-                for ret_val in result
-                    if ret_val.state == "fulfilled"
-                        new_val = ret_val.value
-                        vstruct.deep_entries[new_val.device].device_variable_set.push(new_val)
-                        rv.ok++
-                    else
-                        rv.error++
-                _defer.resolve(rv)
-        )
-        return _defer
-    set_filter_string = (new_filter, change_expand_state) ->
-        try
-            filter_re = new RegExp(new_filter, "gi")
-            filter_string = new_filter
-        catch exc
-            filter_re = new RegExp("^$", "gi")
-            filter_string = ""
-        filter_data(change_expand_state)
-    delete_variable = (dvar) ->
-        dev = vstruct.deep_entries[dvar.device]
-        dev.device_variable_set = (entry for entry in dev.device_variable_set when entry.idx != dvar.idx)
-        Restangular.restangularizeElement(null, dvar, ICSW_URLS.REST_DEVICE_VARIABLE_DETAIL.slice(1).slice(0, -2))
-        dvar.remove().then((del) ->
-        )
-        filter_data(false)
-    set_hidden_flag = (flag) ->
-        hide_empty = flag
-        if vstruct.entries?
-            filter_data(false)
-    return {
-        # load data, when pks have changed reload data
-        "load": (client, pks) ->
-            return load_data(client, pks).promise
-        # return loaded data, wait for load when load is in progress
-        "fetch": (client) ->
-            return fetch_data(client).promise
-        "create_variable": (new_obj) ->
-            return create_variable(new_obj).promise
-        "create_many_variables": (new_var, pks) ->
-            return create_many_variables(new_var, pks).promise
-        "set_filter_string": (new_fs, change_expand_state) ->
-            set_filter_string(new_fs, change_expand_state)
-        "delete_variable": (dvar) ->
-            return delete_variable(dvar)
-        "filter_vars": (vars) ->
-            if filter_string
-                return (entry for entry in vars when entry.name.match(filter_re))
-            else
-                return vars
-        "set_hidden_flag": (flag) ->
-            set_hidden_flag(flag)
-    }
-
-]).service("icswDeviceVariableListService", ["$q", "Restangular", "icswCachingCall", "icswDeviceVariableRestService", "icswSimpleAjaxCall", "ICSW_URLS", ($q, Restangular, icswCachingCall, icswDeviceVariableRestService, icswSimpleAjaxCall, ICSW_URLS) ->
-    load_vars = (pks) ->
-        lines = $q.defer()
-        icswDeviceVariableRestService.load("vars", pks).then((data) ->
-            lines.resolve(data.entries)
-        )
-        return lines.promise
-    set_hide_empty = (flag) ->
-        icswDeviceVariableRestService.set_hidden_flag(flag)
-    _scope = undefined
-    _dev_pks = []
-    set_pks = (pks) ->
-        _dev_pks = pks
-        icswDeviceVariableRestService.load("vars", pks).then((data) ->
-        )
-    return {
-        "load_promise": () ->
-            return load_vars(_dev_pks)
-        "set_pks": (pks) ->
-            return set_pks(pks)
-        "set_hide_empty": (flag) ->
-            set_hide_empty(flag)
-        "init_fn": (scope) ->
-            _scope = scope
-            scope.take_mon_var = () ->
-                if scope.edit_obj._mon_copy
-                    _mon_var = (entry for entry in scope.mon_vars when entry.idx == scope.edit_obj._mon_copy)[0]
-                    scope.edit_obj.var_type = _mon_var.type
-                    scope.edit_obj.name = _mon_var.name
-                    scope.edit_obj.inherit = false
-                    if _mon_var.type == "i"
-                        scope.edit_obj.val_int = parseInt(_mon_var.value)
-                    else
-                        scope.edit_obj.val_str = _mon_var.value
-        create_template: "device.variable.new.form"
-        edit_template: "device.variable.new.form"
-        delete_confirm_str: (dvar) ->
-            return "Really delete variable #{dvar.name} ?"
-        delete: (scope, dvar) ->
-            icswDeviceVariableRestService.delete_variable(dvar)
-        pre_modify: (dvar) ->
-            Restangular.restangularizeElement(null, dvar, ICSW_URLS.REST_DEVICE_VARIABLE_DETAIL.slice(1).slice(0, -2))
-        new_object: (device) ->
-            _scope.mon_vars = []
-            nv_idx = 0
-            if device?
-                icswSimpleAjaxCall(
-                    url : ICSW_URLS.MON_GET_MON_VARS
-                    data : {
-                        device_pk : device.idx
-                    }
-                    dataType : "json"
-                ).then((json) ->
-                    _scope.mon_vars = json
-                )
-                while true
-                    var_name = if nv_idx then "new variable #{nv_idx}" else "new variable"
-                    if (true for entry in device.device_variable_set when entry.name == var_name).length == 0
-                        break
-                    nv_idx++
-            else
-                var_name = "new variable"
-            return {
-                "device": if device? then device.idx else 0
-                "name": var_name
-                "var_type": "s"
-                "_mon_copy": 0
-                "inherit": true
-            }
-        save_defer: (new_obj) ->
-            return icswDeviceVariableRestService.create_variable(new_obj)
-        get_pks: () ->
-            return _dev_pks
-    }
-]).directive("icswDeviceVariableRow", ["$templateCache", "icswDeviceVariableRestService", ($templateCache, icswDeviceVariableRestService) ->
-    return {
-        restrict : "EA"
-        template : $templateCache.get("icsw.device.variable.row")
-        link : (scope) ->
-            scope.vstruct = undefined
-            icswDeviceVariableRestService.fetch().then((vstruct) ->
-                scope.vstruct = vstruct
-            )
-            scope.num_parent_vars = (obj) ->
-                if scope.vstruct
-                    my_names = (entry.name for entry in obj.device_variable_set)
-                    num_meta = 0
-                    if not obj.is_cluster_device_group
-                        if not obj.is_meta_device
-                            meta_server = scope.vstruct.deep_entries[scope.vstruct.group_dev_lut[obj.device_group]]
-                            meta_names = (entry.name for entry in meta_server.device_variable_set when entry.inherit)
-                            num_meta += (entry for entry in meta_names when entry not in my_names).length
-                        else
-                            meta_names = []
-                        num_meta += (entry for entry in scope.vstruct.cdg.device_variable_set when entry.name not in my_names and entry.name not in meta_names and entry.inherit).length
-                    return num_meta
-                else
-                    return 0
-            scope.num_vars = (obj) ->
-                return scope.num_parent_vars(obj) + obj.device_variable_set.length
-            scope.parent_vars_defined = (obj) ->
-                return if scope.num_parent_vars(obj) then true else false
-            scope.num_shadowed_vars = (obj) ->
-                if scope.vstruct
-                    my_names = (entry.name for entry in obj.device_variable_set)
-                    num_shadow = 0
-                    if not obj.is_cluster_device_group
-                        if not obj.is_meta_device
-                            meta_server = scope.vstruct.deep_entries[scope.vstruct.group_dev_lut[obj.device_group]]
-                            meta_names = (entry.name for entry in meta_server.device_variable_set)
-                            num_shadow += (entry for entry in meta_names when entry in my_names).length
-                        else
-                            meta_names = []
-                        num_shadow += (entry for entry in scope.vstruct.cdg.device_variable_set when entry.name in my_names and entry.name not in meta_names).length
-                    return num_shadow
-                else
-                    return 0
-            scope.any_shadowed_vars = (obj) ->
-                return if scope.num_shadowed_vars(obj) then true else false
-    }
-]).filter("filter_dv_name",  ["icswDeviceVariableRestService", (icswDeviceVariableRestService) ->
-    return (arr) ->
-        return icswDeviceVariableRestService.filter_vars(arr)
-]).directive("icswDeviceVariableTable", ["$templateCache", "$compile", "$q", "Restangular", "ICSW_URLS", "icswDeviceVariableRestService", ($templateCache, $compile, $q, Restangular, ICSW_URLS, icswDeviceVariableRestService) ->
-    return {
-        restrict : "EA"
-        template : $templateCache.get("icsw.device.variable.table")
-        link : (scope, el, attrs) ->
-            scope.vstruct = undefined
-            icswDeviceVariableRestService.fetch().then((vstruct) ->
-                scope.vstruct = vstruct
-            )
-            scope.device = scope.$eval(attrs["device"])
-            # scope.$watch(attrs.filtervalue, (new_val) ->
-            #     scope.filtervalue = new_val
-            # )
-            scope.get_value = (obj) ->
-                if obj.var_type == "s"
-                    return obj.val_str
-                else if obj.var_type == "i"
-                    return obj.val_int
-                else if obj.var_type == "b"
-                    return obj.val_blob.length + " bytes"
-                else if obj.var_type == "t"
-                    return obj.val_time
-                else if obj.var_type == "d"
-                    return moment(obj.val_date).format("dd, D. MMM YYYY HH:mm:ss")
-                else
-                    return "unknown type #{obj.var_type}"
-            scope.get_var_type = (obj) ->
-                if obj.var_type == "s"
-                    return "string"
-                else if obj.var_type == "i"
-                    return "integer"
-                else if obj.var_type == "b"
-                    return "blob"
-                else if obj.var_type == "t"
-                    return "time"
-                else if obj.var_type == "d"
-                    return "datetime"
-                else
-                    return obj.var_type
-            scope.get_parent_vars = (obj, src) ->
-                if scope.vstruct
-                    my_names = (entry.name for entry in obj.device_variable_set)
-                    parents = []
-                    if not obj.is_cluster_device_group
-                        if not obj.is_meta_device and src == "g"
-                            # device, inherited from group
-                            meta_group = scope.vstruct.deep_entries[scope.vstruct.group_dev_lut[obj.device_group]]
-                            parents = (entry for entry in meta_group.device_variable_set when entry.inherit)
-                        else if src == "c"
-                            if obj.is_meta_device
-                                # group, inherited from cluster
-                                parents = (entry for entry in scope.vstruct.cdg.device_variable_set when entry.inherit)
-                            else
-                                # device, inherited from cluster
-                                meta_group = scope.vstruct.deep_entries[scope.vstruct.group_dev_lut[obj.device_group]]
-                                meta_names = (_entry.name for _entry in meta_group.device_variable_set)
-                                parents = (entry for entry in scope.vstruct.cdg.device_variable_set when entry.name not in meta_names and entry.inherit)
-                        parents = (entry for entry in parents when entry.name not in my_names)
-                    return parents
-                else
-                    return []
-            scope.local_copy = (d_var, src) ->
-                new_var = angular.copy(d_var)
-                new_var.device = scope.obj.idx
-                Restangular.all(ICSW_URLS.REST_DEVICE_VARIABLE_LIST.slice(1)).post(new_var).then((data) ->
-                    scope.obj.device_variable_set.push(data)
-                )
-    }
-]).controller("icswDeviceVariableCtrl", ["$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "blockUI", "icswTools", "icswDeviceVariableListService", "icswDeviceVariableRestService",
-    ($scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI, icswTools, icswDeviceVariableListService, icswDeviceVariableRestService) ->
-        $scope.vars = {
-            name_filter: ""
-            hide_empty: false
+).config(["$stateProvider", ($stateProvider) ->
+    $stateProvider.state(
+        "main.devvars", {
+            url: "/variables"
+            template: '<icsw-device-variable-overview icsw-sel-man="0" icsw-sel-man-sel-mode="D"></icsw-device-variable-overview>'
+            icswData:
+                pageTitle: "Device variables"
+                rights: ["device.change_variables"]
+                menuEntry:
+                    menukey: "dev"
+                    icon: "fa-code"
+                    ordering: 30
         }
-        $scope.entries = []
-        $scope.vstruct = {}
-        $scope.dataLoaded = false
-        $scope.valid_var_types = [
+    )
+]).controller("icswConfigVarsCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$uibModal", "ICSW_URLS", "icswDeviceConfigurationConfigVarTreeService", "icswSimpleAjaxCall",
+    ($scope, $compile, $filter, $templateCache, Restangular, $q, $uibModal, ICSW_URLS, icswDeviceConfigurationConfigVarTreeService, icswSimpleAjaxCall) ->
+        $scope.devvar_tree = new icswDeviceConfigurationConfigVarTreeService($scope)
+        $scope.var_filter = ""
+        $scope.loaded = false
+        $scope.new_devsel = (_dev_sel) ->
+            console.log "icswConfigVarsCtrl", _dev_sel
+            # $scope.devsel_list = _dev_sel
+        $scope.load_vars = () ->
+            if not $scope.loaded
+                $scope.loaded = true
+                icswSimpleAjaxCall(
+                    url     : ICSW_URLS.CONFIG_GET_DEVICE_CVARS
+                    data    :
+                        "keys" : angular.toJson($scope.devsel_list)
+                ).then((xml) ->
+                    $scope.set_tree_content($(xml).find("devices"))
+                )
+        $scope.set_tree_content = (in_xml) ->
+            for dev_xml in in_xml.find("device")
+                dev_xml = $(dev_xml)
+                dev_entry = $scope.devvar_tree.new_node({folder: true, expand:true, obj:{"name" : dev_xml.attr("name"), "info_str": dev_xml.attr("info_str"), "state_level" : parseInt(dev_xml.attr("state_level"))}, _node_type:"d"})
+                $scope.devvar_tree.add_root_node(dev_entry)
+                for _xml in dev_xml.find("var_tuple_list").children()
+                    _xml = $(_xml)
+                    t_entry = $scope.devvar_tree.new_node(
+                        folder: true
+                        obj:
+                            "key": _xml.attr("key")
+                            "value": _xml.attr("value")
+                        _node_type: "c"
+                    )
+                    dev_entry.add_child(t_entry)
+                    _xml.children().each (idx, _sv) ->
+                        _sv = $(_sv)
+                        t_entry.add_child(
+                            $scope.devvar_tree.new_node(
+                                folder: false
+                                obj:
+                                    "key": _sv.attr("key")
+                                    "value": _sv.attr("value")
+                                _node_type: "v"
+                            )
+                        )
+            $scope.$digest()
+        $scope.$watch("var_filter", (new_val) -> $scope.new_filter_set(new_val, true))
+        $scope.new_filter_set = (new_val) ->
+            if new_val
+                try
+                    filter_re = new RegExp(new_val, "gi")
+                catch
+                    filter_re = new RegExp("^$", "gi")
+            else
+                filter_re = new RegExp("^$", "gi")
+            $scope.devvar_tree.iter(
+                (entry, filter_re) ->
+                    cmp_name = if entry._node_type == "d" then entry.obj.name else entry.obj.key
+                    entry.set_selected(if cmp_name.match(filter_re) then true else false)
+                filter_re
+            )
+            $scope.devvar_tree.show_selected(false)
+]).directive("icswDeviceConfigurationVarOverview",
+[
+    "$templateCache",
+(
+    $templateCache,
+) ->
+    return {
+        scope: true
+        restrict : "EA"
+        template : $templateCache.get("icsw.device.configuration.var.overview")
+        controller: "icswConfigVarsCtrl"
+    }
+]).service("icswDeviceConfigurationConfigVarTreeService", ["icswTreeConfig", (icswTreeConfig) ->
+    class device_config_var_tree extends icswTreeConfig
+        constructor: (@scope, args) ->
+            super(args)
+            @show_selection_buttons = false
+            @show_icons = true
+            @show_select = false
+            @show_descendants = false
+            @show_childs = false
+        get_name_class: (t_entry) =>
+            # override
+            obj = t_entry.obj
+            if obj.state_level?
+                if obj.state_level == 40
+                    return "text-danger"
+                else if obj.state_level == 20
+                    return "text-success"
+                else
+                    return "text-warning"
+            else
+                return ""
+        get_name : (t_entry) ->
+            obj = t_entry.obj
+            if t_entry._node_type == "d"
+                return "#{obj.name} (#{obj.info_str})"
+            else
+                if obj.value?
+                    return "#{obj.key} = #{obj.value}"
+                else
+                    return obj.key
+]).service("icswDeviceVariableListService",
+[
+    "$q", "Restangular", "icswCachingCall", "icswSimpleAjaxCall",
+    "ICSW_URLS", "icswDeviceTreeService", "icswToolsSimpleModalService", "icswComplexModalService",
+    "$compile", "$templateCache", "icswDeviceVariableBackup", "toaster", "blockUI",
+(
+    $q, Restangular, icswCachingCall, icswSimpleAjaxCall,
+    ICSW_URLS, icswDeviceTreeService, icswToolsSimpleModalService, icswComplexModalService,
+    $compile, $templateCache, icswDeviceVariableBackup, toaster, blockUI,
+) ->
+    create_or_edit = (scope, event, create, obj_or_parent) ->
+        if create
+            single_create = true
+            if obj_or_parent
+                device = obj_or_parent
+                nv_idx = 0
+                var_pf = "new_variable"
+                var_name = var_pf
+                while (true for entry in device.device_variable_set when entry.name == var_name).length > 0
+                    nv_idx++
+                    var_name = "#{var_pf}_#{nv_idx}"
+                obj_or_parent = {
+                    device: device.idx
+                    name: var_name
+                    var_type: "s"
+                    _mon_var: null
+                    inherit: true
+                }
+            else
+                single_create = false
+                obj_or_parent = {
+                    device: 0
+                    name: "new_variable"
+                    var_type: "s"
+                    _mon_var: null
+                    inherit: true
+                }
+        else
+            single_create = false
+            dbu = new icswDeviceVariableBackup()
+            dbu.create_backup(obj_or_parent)
+        sub_scope = scope.$new(false)
+        sub_scope.create = create
+        sub_scope.single_create = single_create
+        sub_scope.mon_vars = []
+        if single_create
+            # fetch mon_vars
+            icswSimpleAjaxCall(
+                url : ICSW_URLS.MON_GET_MON_VARS
+                data : {
+                    device_pk : device.idx
+                }
+                dataType : "json"
+            ).then(
+                (json) ->
+                    for entry in json
+                        sub_scope.mon_vars.push(entry)
+            )
+            # install take_mon_var command
+            sub_scope.take_mon_var = () ->
+                if sub_scope.edit_obj._mon_var?
+                    # copy monitoring var
+                    _mon_var = sub_scope.edit_obj._mon_var
+                    sub_scope.edit_obj.var_type = _mon_var.type
+                    sub_scope.edit_obj.name = _mon_var.name
+                    sub_scope.edit_obj.inherit = false
+                    if _mon_var.type == "i"
+                        sub_scope.edit_obj.val_int = parseInt(_mon_var.value)
+                    else
+                        sub_scope.edit_obj.val_str = _mon_var.value
+
+        sub_scope.edit_obj = obj_or_parent
+
+        sub_scope.valid_var_types = [
             {"short" : "i", "long" : "integer"},
             {"short" : "s", "long" : "string"},
         ]
-        $scope.$watch(
-            () ->
-                return $scope.vars.hide_empty
-            (new_val) ->
-                icswDeviceVariableListService.set_hide_empty(new_val)
+
+        icswComplexModalService(
+            {
+                message: $compile($templateCache.get("icsw.device.variable.form"))(sub_scope)
+                title: "Device Variable"
+                # css_class: "modal-wide"
+                ok_label: if create then "Create" else "Modify"
+                closable: true
+                ok_callback: (modal) ->
+                    d = $q.defer()
+                    if sub_scope.form_data.$invalid
+                        toaster.pop("warning", "form validation problem", "", 0)
+                        d.reject("form not valid")
+                    else
+                        if create
+                            if single_create
+                                # single creation
+                                scope.device_tree.create_device_variable(sub_scope.edit_obj).then(
+                                    (new_conf) ->
+                                        scope.helper.filter_device_variables()
+                                        d.resolve("created")
+                                    (notok) ->
+                                        d.reject("not created")
+                                )
+                            else
+                                # multi-var creation
+                                wait_list = []
+                                for dev in scope.devices
+                                    local_var = angular.copy(sub_scope.edit_obj)
+                                    local_var.device = dev.idx
+                                    wait_list.push(scope.device_tree.create_device_variable(local_var))
+                                $q.allSettled(wait_list).then(
+                                    (result) ->
+                                        # todo: check result
+                                        scope.helper.filter_device_variables()
+                                        d.resolve("created")
+                                )
+                        else
+                            Restangular.restangularizeElement(
+                                null
+                                sub_scope.edit_obj
+                                ICSW_URLS.REST_DEVICE_VARIABLE_DETAIL.slice(1).slice(0, -2)
+                            )
+                            sub_scope.edit_obj.put().then(
+                                (ok) ->
+                                    scope.helper.filter_device_variables()
+                                    d.resolve("updated")
+                                (not_ok) ->
+                                    d.reject("not updated")
+                            )
+                    return d.promise
+                cancel_callback: (modal) ->
+                    if not create
+                        dbu.restore_backup(obj_or_parent)
+                    d = $q.defer()
+                    d.resolve("cancel")
+                    return d.promise
+            }
+        ).then(
+            (fin) ->
+                console.log "finish"
+                sub_scope.$destroy()
         )
-        $scope.new_devsel = (dev_pks, group_pks) ->
-            icswDeviceVariableListService.set_pks(dev_pks)
-            $scope.entries = dev_pks
-            icswDeviceVariableRestService.load("ctrl", dev_pks).then((vstruct) ->
-                $scope.entries = vstruct.entries
-                $scope.vstruct = vstruct
-                $scope.dataLoaded = true
-            )
-        $scope.get_tr_class = (obj) ->
-            if obj.is_cluster_device_group
-                return "danger"
-            else if obj.is_meta_device
-                return "success"
-            else
-                return ""
-        $scope.get_name = (obj) ->
-            if obj.is_meta_device
-                if obj.is_cluster_device_group
-                    return obj.full_name.slice(8) + " [ClusterGroup]"
-                else
-                    return obj.full_name.slice(8) + " [Group]"
-            else
-                return obj.full_name
-        $scope.expand_vt = (obj) ->
-            obj.expanded = not obj.expanded
-        $scope.get_expand_class = (obj) ->
-            if obj.expanded
+
+    return {
+        fetch: (scope) ->
+            # copy device list and references from icsw_config_object
+
+            scope.helper = scope.icsw_config_object.helper
+            scope.devices = scope.icsw_config_object.devices
+            scope.device_tree = scope.icsw_config_object.device_tree
+
+            _list_defer = $q.defer()
+            _list_defer.resolve(scope.devices)
+            return _list_defer.promise
+
+        toggle_expand: (obj) ->
+            obj.$vars_expanded = not obj.$vars_expanded
+
+        get_expand_class: (obj) ->
+            if obj.$vars_expanded
                 return "glyphicon glyphicon-chevron-down"
             else
                 return "glyphicon glyphicon-chevron-right"
-        $scope.new_filter_set = (change_expand_state) ->
-            ces = change_expand_state?
-            icswDeviceVariableRestService.set_filter_string($scope.vars.name_filter, ces)
-        $scope.create_for_all = (event) ->
-            new_obj = icswDeviceVariableListService.new_object()
-            # copy to scope, fixme
-            $scope.edit_obj = new_obj
-            $scope.form = {}
-            $scope.action_string = "create for all"
-            cv_mixin = new angular_modal_mixin($scope, $templateCache, $compile, $q, "New variable for selected devices")
-            cv_mixin.cssClass = "modal-tall"
-            cv_mixin.template = "device.variable.new.form"
-            $scope.cv_mixin = cv_mixin
-            cv_mixin.edit(new_obj).then((new_var) ->
-                blockUI.start()
-                icswDeviceVariableRestService.create_many_variables(new_var, icswDeviceVariableListService.get_pks()).then((result) ->
-                    blockUI.stop()
-                    cv_mixin.close_modal()
-                )
+
+        # variable related calls
+        variable_edit_ok: (d_var, device) ->
+            return d_var.device == device.idx and d_var.is_public
+
+        variable_delete_ok: (d_var, device) ->
+            return d_var.device == device.idx and !d_var.protected
+
+        variable_local_copy_ok: (d_var, device) ->
+            return d_var.device != device.idx and d_var.local_copy_ok
+
+        get_source: (d_var, device) ->
+            if d_var.device == device.idx
+                return "direct"
+            else if d_var.$source == "m"
+                return "group"
+            else
+                return "cluster"
+
+        create_or_edit: (scope, event, create, obj_or_parent) ->
+            create_or_edit(scope, event, create, obj_or_parent)
+
+        delete: (scope, event, d_var) ->
+            icswToolsSimpleModalService("Really delete DeviceVariable #{d_var.name} ?").then(
+                () =>
+                    scope.device_tree.delete_device_variable(d_var).then(
+                        () ->
+                            scope.helper.filter_device_variables()
+                            console.log "DevVar deleted"
+                    )
             )
-        $scope.modify = () ->
-            # hack, redirect to
-            $scope.cv_mixin.modify()
-]).directive("icswDeviceVariableOverview", ["$templateCache", "msgbus", ($templateCache, msgbus) ->
+
+        special_fn: (scope, event, fn_name, d_var, device) ->
+            if fn_name == "local_copy"
+                new_var = angular.copy(d_var)
+                new_var.device = device.idx
+                blockUI.start()
+                scope.device_tree.create_device_variable(new_var).then(
+                    (new_conf) ->
+                        scope.helper.filter_device_variables()
+                        blockUI.stop()
+                    (notok) ->
+                        blockUI.stop()
+                )
+            else if fn_name == "create_for_all"
+                create_or_edit(scope, event, true, null)
+
+    }
+]).controller("icswDeviceVariableCtrl",
+[
+    "$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "blockUI",
+    "icswTools", "icswDeviceVariableListService",
+    "icswDeviceTreeService", "icswDeviceTreeHelperService",
+(
+    $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI,
+    icswTools, icswDeviceVariableListService,
+    icswDeviceTreeService, icswDeviceTreeHelperService,
+) ->
+    $scope.vars = {
+        name_filter: ""
+    }
+    # struct to hand over to VarCtrl
+    $scope.struct = {}
+    $scope.dataLoaded = false
+
+    $scope.new_devsel = (devs) ->
+        $q.all(
+            [
+                icswDeviceTreeService.load($scope.$id)
+            ]
+        ).then(
+            (data) ->
+                device_tree = data[0]
+                trace_devices =  device_tree.get_device_trace(devs)
+                hs = icswDeviceTreeHelperService.create(device_tree, trace_devices)
+                device_tree.enrich_devices(hs, ["variable_info"]).then(
+                    (_done) ->
+                        $scope.struct.devices = devs
+                        $scope.struct.device_tree = device_tree
+                        $scope.struct.helper = hs
+                        # console.log "****", $scope.devices
+                        $scope.dataLoaded = true
+                )
+        )
+    $scope.get_tr_class = (obj) ->
+        if obj.is_cluster_device_group
+            return "danger"
+        else if obj.is_meta_device
+            return "success"
+        else
+            return ""
+
+    $scope.get_name = (obj) ->
+        if obj.is_cluster_device_group
+            return obj.full_name.slice(8) + " [ClusterGroup]"
+        else if obj.is_meta_device
+            return obj.full_name.slice(8) + " [Group]"
+        else
+            return obj.full_name
+
+    $scope.new_filter_set = () ->
+        $scope.struct.helper.set_var_filter($scope.vars.name_filter)
+
+]).directive("icswDeviceVariableOverview",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
     return {
         restrict: "EA"
         template: $templateCache.get("icsw.device.variable.overview")
         controller: "icswDeviceVariableCtrl"
+    }
+]).directive("icswDeviceVariableTable",
+[
+    "$templateCache", "$compile", "$q", "Restangular", "ICSW_URLS",
+(
+    $templateCache, $compile, $q, Restangular, ICSW_URLS,
+) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("icsw.device.variable.table")
+        link : (scope, el, attrs) ->
+            scope.device = scope.$eval(attrs["device"])
+    }
+]).directive("icswDeviceVariableHead",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("icsw.device.variable.head")
+    }
+]).directive("icswDeviceVariableRow",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.device.variable.row")
     }
 ])

@@ -1,7 +1,7 @@
 #!/usr/bin/python -Ot
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2012-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2012-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -36,7 +36,6 @@ from django.views.generic import View
 from initat.cluster.backbone.models import device, cd_connection, cluster_timezone, \
     kernel, image, partition_table, status, network, DeviceLogEntry, mac_ignore
 from initat.cluster.backbone.serializers import device_serializer_boot
-from initat.cluster.backbone.render import render_me
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import IsAuthenticated
@@ -48,24 +47,17 @@ from initat.tools import logging_tools, server_command
 logger = logging.getLogger("cluster.boot")
 
 
-class show_boot(View):
-    @method_decorator(login_required)
-    def get(self, request):
-        return render_me(
-            request, "boot_overview.html", {}
-        )()
-
-
 class get_boot_info_json(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
+        # print _post
         sel_list = _post.getlist("sel_list[]")
         dev_result = device.objects.filter(
             Q(pk__in=sel_list)
         ).prefetch_related(
-            "bootnetdevice__net_ip_set__network__network_device_type",
+            # "bootnetdevice__net_ip_set__network__network_device_type",
             "categories",
             "domain_tree_node",
             "kerneldevicehistory_set",
@@ -93,7 +85,9 @@ class get_boot_info_json(View):
                     srv_com.builder("device", pk="{:d}".format(cur_dev.pk)) for cur_dev in dev_result
                 ]
             )
-            result = contact_server(request, "mother", srv_com, timeout=10, log_result=False, connection_id="webfrontend_status")
+            result = contact_server(
+                request, "mother", srv_com, timeout=10, log_result=False, connection_id="webfrontend_status"
+            )
         else:
             result = None
         # print result.pretty_print()
@@ -117,9 +111,23 @@ class get_boot_info_json(View):
             context=ctx,
         ).data
         _resp = JSONRenderer().render(_json)
-        # import pprint
-        # pprint.pprint(_json)
+        import pprint
+        pprint.pprint(_json)
         request.xml_response["response"] = _resp
+
+
+class update_device_bootsettings(APIView):
+    authentication_classes = (SessionAuthentication,)
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request, pk):
+        _data = request.data
+        cur_dev = device.objects.get(Q(pk=pk))
+        cur_dev.dhcp_mac = _data["dhcp_mac"]
+        cur_dev.dhcp_write = _data["dhcp_write"]
+        cur_dev.save(update_fields=["dhcp_mac", "dhcp_write"])
+        response = Response(["updated"])
+        return response
 
 
 class update_device(APIView):
@@ -313,7 +321,7 @@ class soft_control(View):
         dev_pk_list = json.loads(_post["dev_pk_list"])
         cur_devs = {
             _dev.pk: _dev for _dev in device.objects.filter(Q(pk__in=dev_pk_list))
-            }
+        }
         soft_state = _post["command"]
         logger.info(
             "sending soft_control '{}' to {}: {}".format(

@@ -1,0 +1,185 @@
+#tooltip {
+    position: absolute;
+    z-index: 3000;
+    border: 1px solid #111;
+    background-color: #eee;
+    padding: 5px;
+    opacity: 0.95;
+}
+
+/* domain tree node styles */
+
+ul.dynatree-container span.intermediate {
+    font-style : italic;
+}
+
+ul.dynatree-container span.ip_ok {
+    font-weight : bold;
+}
+
+.popover {
+    max-width: 100% !important;
+}
+
+/* for sidebar */
+.noborder {
+    border : none;
+    padding : 0;
+}
+.noborder.ui-tabs .ui-tabs-panel {
+    padding: 0 0 0 0 ;
+}
+
+/* css for timepicker */
+.ui-timepicker-div .ui-widget-header { margin-bottom: 8px; }
+.ui-timepicker-div dl { text-align: left; }
+.ui-timepicker-div dl dt { height: 25px; margin-bottom: -25px; }
+.ui-timepicker-div dl dd { margin: 0 10px 10px 65px; }
+.ui-timepicker-div td { font-size: 90%; }
+.ui-tpicker-grid-label { background: none; border: none; margin: 0; padding: 0; }
+
+.ui-timepicker-rtl{ direction: rtl; }
+.ui-timepicker-rtl dl { text-align: right; }
+.ui-timepicker-rtl dl dd { margin: 0 65px 10px 10px; }
+
+
+th.rotate {
+  height: 140px;
+  white-space: nowrap;
+}
+
+th.rotate > div {
+  transform:
+    translate(8px, -8px)
+    rotate(315deg);
+  width: 30px;
+}
+
+th.rotate > div > span {
+  border-bottom: 1px solid #ccc;
+  padding: 5px 10px;
+}
+
+.CodeMirror {
+    border-top: 1px solid black;
+    border-bottom: 1px solid black;
+    height: auto;
+}
+
+.CodeMirror-scroll {
+    overflow-y: hidden;
+    overflow-x: auto;
+    max-height: 600px;
+}
+
+.CodeMirror-activeline-background {
+    background: #ffff00 !important;
+}
+
+/*
+// workaround for missing code mirror indention (this bug does not seem to occur currently)  // BM 20150616
+.CodeMirror pre {
+    padding-left: 35px !important;
+}
+*/
+
+circle.fixed {
+    fill : #ffaaaa ;
+    stroke : #5555ff ;
+}
+.connect_line {
+    stroke : #9999ff ;
+    stroke-width : 4;
+    pointer-events : none;
+}
+.connect_line_hidden {
+    stroke-width : 0 ;
+}
+.angular-google-map-container { height: 480px; }
+
+/* modal changes */
+.modal.modal-wide .modal-dialog {
+  width: 90% !important ;
+}
+.modal-wide .modal-body {
+    overflow-y: auto !important ;
+}
+.modal-tall .modal-body {
+    overflow-y: auto !important ;
+}
+
+/* use for striping tables where every odd row is a regular row
+and every even row contains a collapsible row which is hidden by default */
+.icsw-table-striped-4 > tbody > tr:nth-child(4n+1) {
+    background-color: #f9f9f9;
+}
+
+/* always stripe 2 at a time */
+.icsw-table-striped-2-by-2 > tbody > tr:nth-child(4n+0) {
+    background-color: #f9f9f9;
+}
+.icsw-table-striped-2-by-2 > tbody > tr:nth-child(4n+1) {
+    background-color: #f9f9f9;
+}
+
+/* striping as bootstrap striping but exactly the other row */
+.icsw-table-striped-other > tbody > tr:nth-child(2n) {
+    background-color: #f9f9f9;
+}
+
+ins {
+    color: #080;
+}
+del {
+    color: #a00;
+}
+
+.fa_icsw {
+    width: 1.5em;
+    text-align: center;
+}
+
+.fa_top {
+    width:1.4em;
+}
+
+.icsw-tooltip {
+    position: absolute;
+    float: left;
+    min-width: 80px;
+    max-width: 600px;
+    padding: 5px 15px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 1);
+    color: #444;
+    font-size: 14px;
+    text-shadow: 0 1px 0 #fff;
+    // text-transform: uppercase;
+    text-align: center;
+    line-height: 1.3;
+    letter-spacing: .06em;
+    z-index: 2000;
+    box-shadow: 0 0 3px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.5);
+    pointer-events: none;
+}
+
+.icsw-tooltip:after {
+    /* triangle pointer at bottom of piechart tooltip */
+    position: absolute;
+    left: 50%;
+    bottom: -6px;
+    content: "";
+    height: 0;
+    z-index: 2000;
+    margin: 0 0 0 -6px;
+    border-right: 5px solid transparent;
+    border-left: 5px solid transparent;
+    border-top: 6px solid rgba(255, 255, 255, 0.95);
+    line-height: 0;
+}
+
+.icsw-chart {
+    cursor: pointer;
+    position: relative;
+}
+

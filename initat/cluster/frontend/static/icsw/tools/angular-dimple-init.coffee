@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2015 init.at
+# Copyright (C) 2012-2016 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -22,20 +22,21 @@
 
 #! angular-dimple-init - 1.1.4 - 2014-11-10
 #*   https://github.com/esripdx/angular-dimple
-#*   Licensed ISC 
+#*   Licensed ISC
+
 angular.module("icsw.tools.angular-dimple-init", [
-  "icsw.tools.angular-dimple-init.graphDimple"
-  "icsw.tools.angular-dimple-init.legendDimple"
-  "icsw.tools.angular-dimple-init.x"
-  "icsw.tools.angular-dimple-init.y"
-  "icsw.tools.angular-dimple-init.r"
-  "icsw.tools.angular-dimple-init.lineDimple"
-  "icsw.tools.angular-dimple-init.barDimple"
-  "icsw.tools.angular-dimple-init.stacked-bar"
-  "icsw.tools.angular-dimple-init.areaDimple"
-  "icsw.tools.angular-dimple-init.stacked-area"
-  "icsw.tools.angular-dimple-init.scatter-plot"
-  "icsw.tools.angular-dimple-init.ring"
+    "icsw.tools.angular-dimple-init.graphDimple"
+    "icsw.tools.angular-dimple-init.legendDimple"
+    "icsw.tools.angular-dimple-init.x"
+    "icsw.tools.angular-dimple-init.y"
+    "icsw.tools.angular-dimple-init.r"
+    "icsw.tools.angular-dimple-init.lineDimple"
+    "icsw.tools.angular-dimple-init.barDimple"
+    "icsw.tools.angular-dimple-init.stacked-bar"
+    "icsw.tools.angular-dimple-init.areaDimple"
+    "icsw.tools.angular-dimple-init.stacked-area"
+    "icsw.tools.angular-dimple-init.scatter-plot"
+    "icsw.tools.angular-dimple-init.ring"
 ])
 .constant("MODULE_VERSION", "0.0.1")
 .value "defaults",

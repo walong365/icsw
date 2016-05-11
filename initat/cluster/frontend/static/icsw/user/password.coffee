@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2015 init.at
+# Copyright (C) 2012-2016 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -22,91 +22,89 @@ password_module = angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
-).controller("icswUserPasswordCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$timeout", "icswSimpleAjaxCall", "ICSW_URLS",
-    ($scope, $compile, $filter, $templateCache, Restangular, $q, $timeout, icswSimpleAjaxCall, ICSW_URLS) ->
-        $scope.$on("icsw.enter_password", () ->
-            child_scope = $scope.$new()
-            child_scope.PASSWORD_CHARACTER_COUNT = 16
-            child_scope.pwd = {
-                "pwd1" : ""
-                "pwd2" : ""
+).service("icswUserGetPassword",
+[
+    "$q", "$templateCache", "icswComplexModalService", "ICSW_URLS", "icswSimpleAjaxCall", "$compile",
+(
+    $q, $templateCache, icswComplexModalService, ICSW_URLS, icswSimpleAjaxCall, $compile,
+) ->
+    return (scope, user) ->
+        child_scope = scope.$new()
+
+        child_scope.user = user
+        child_scope.PASSWOR_CHARACTER_COUNT = 16
+        child_scope.pwd = {
+            pwd1: ""
+            pwd2: ""
+        }
+
+        defer = $q.defer()
+        icswSimpleAjaxCall(
+            {
+                url: ICSW_URLS.SESSION_LOGIN_ADDONS
             }
-            icswSimpleAjaxCall(
-                {
-                    url: ICSW_URLS.SESSION_LOGIN_ADDONS
-                }
-            ).then((xml) ->
+        ).then(
+            (xml) ->
                 child_scope.PASSWORD_CHARACTER_COUNT = parseInt($(xml).find("value[name='password_character_count']").text())
-            )
-            child_scope.dyn_check = (val) ->
-                child_scope.check()
-                _rc = []
-                if val.length < 8
-                    _rc.push("has-error")
-                return _rc.join(" ")
-            child_scope.check = () ->
-                if child_scope.pwd.pwd1 == "" and child_scope.pwd.pwd1 == child_scope.pwd.pwd2
-                    child_scope.pwd_error = "empty passwords"
-                    child_scope.pwd_error_class = "alert alert-warning"
-                    return false
-                else if child_scope.pwd.pwd1.length >= child_scope.PASSWORD_CHARACTER_COUNT and child_scope.pwd.pwd1 == child_scope.pwd.pwd2
-                    child_scope.pwd_error = "passwords match"
-                    child_scope.pwd_error_class = "alert alert-success"
-                    return true
-                else
-                    child_scope.pwd_error = "passwords do not match or too short"
-                    child_scope.pwd_error_class = "alert alert-danger"
-                    return false
-            msg = $compile($templateCache.get("icsw.user.password.set"))(child_scope)
-            BootstrapDialog.show
-                message : msg
-                draggable: true
-                size: BootstrapDialog.SIZE_MEDIUM
-                title: "Enter password"
-                closable: true
-                closeByBackdrop: false
-                buttons: [
-                    {
-                         cssClass: "btn-primary"
-                         label: "Check"
-                         action: (dialog) ->
-                             child_scope.check()
-                    },
-                    {
-                         icon: "glyphicon glyphicon-ok"
-                         cssClass: "btn-success"
-                         label: "Save"
-                         action: (dialog) ->
-                             if child_scope.check()
-                                 $scope.$emit("icsw.set_password", child_scope.pwd.pwd1)
-                                 dialog.close()
-                    },
-                    {
-                        icon: "glyphicon glyphicon-remove"
-                        label: "Cancel"
-                        cssClass: "btn-warning"
-                        action: (dialog) ->
-                            dialog.close()
-                    },
-                ]
-                onshow: (modal) =>
-                    height = $(window).height() - 100
-                    modal.getModal().find(".modal-body").css("max-height", height)
         )
-]).directive("accountDetail", ["$templateCache", ($templateCache) ->
+
+        # helper functions
+
+        child_scope.dyn_check = (val) ->
+            child_scope.check()
+            _rc = []
+            if val.length < child_scope.PASSWORD_CHARACTER_COUNT
+                _rc.push("has-error")
+            return _rc.join(" ")
+
+        child_scope.check = () ->
+            if child_scope.pwd.pwd1 == "" and child_scope.pwd.pwd1 == child_scope.pwd.pwd2
+                child_scope.pwd_error = "empty passwords"
+                child_scope.pwd_error_class = "alert alert-warning"
+                return false
+            else if child_scope.pwd.pwd1.length >= child_scope.PASSWORD_CHARACTER_COUNT and child_scope.pwd.pwd1 == child_scope.pwd.pwd2
+                child_scope.pwd_error = "passwords match"
+                child_scope.pwd_error_class = "alert alert-success"
+                return true
+            else
+                child_scope.pwd_error = "passwords do not match or too short"
+                child_scope.pwd_error_class = "alert alert-danger"
+                return false
+
+        icswComplexModalService(
+            {
+                message: $compile($templateCache.get("icsw.user.password.set"))(child_scope)
+                title: "Enter password for user '#{user.login}'"
+                ok_callback: (modal) ->
+                    d = $q.defer()
+                    if child_scope.check()
+                        user.$$password_ok = true
+                        user.$$password = child_scope.pwd.pwd1
+                        d.resolve("ok")
+                    else
+                        d.reject("ont ok")
+                    return d.promise
+                cancel_callback: (modal) ->
+                    d = $q.defer()
+                    d.resolve("ok")
+                    return d.promise
+            }
+        ).then(
+            (fin) ->
+                child_scope.$destroy()
+                console.log child_scope.pwd
+                defer.resolve("done")
+        )
+        return defer.promise
+
+]).directive("icswUserAccountDetail",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
     return {
         restrict: "EA"
-        template: $templateCache.get("account.detail.form")
-        link: (scope, element, attrs) ->
-            scope._cur_user = null
-            scope.$watch(attrs["user"], (new_val) ->
-                if new_val
-                    scope._cur_user = new_val
-            )
-            scope.update_account = () ->
-                scope._cur_user.put().then(
-                   (data) ->
-                   (resp) ->
-                )
+        template: $templateCache.get("icsw.account.detail.form")
     }
 ])

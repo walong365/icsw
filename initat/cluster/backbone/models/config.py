@@ -82,7 +82,6 @@ def config_catalog_pre_save(sender, **kwargs):
 
 
 class config(models.Model):
-
     idx = models.AutoField(db_column="new_config_idx", primary_key=True)
     name = models.CharField(max_length=192, blank=False)
     config_catalog = models.ForeignKey(config_catalog, null=True)
@@ -96,9 +95,6 @@ class config(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     # categories for this config
     categories = models.ManyToManyField("backbone.category", blank=True)
-
-    def get_use_count(self):
-        return self.device_config_set.all().count()
 
     def __unicode__(self):
         return self.name

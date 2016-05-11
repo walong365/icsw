@@ -250,10 +250,17 @@ class server_process(
     def clear_caches(self, srv_com, **kwargs):
         all_devs = list(Client.name_set)
         if os.getuid():
-            self.log("root privileges required to clear cache", logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "root privileges required to clear cache",
+                logging_tools.LOG_LEVEL_ERROR
+            )
         else:
             self.send_to_process("repo", "clear_cache", unicode(srv_com))
-        self.log("sending clear_cache to %s" % (logging_tools.get_plural("device", len(all_devs))))
+        self.log(
+            "sending clear_cache to {}".format(
+                logging_tools.get_plural("device", len(all_devs))
+            )
+        )
         if all_devs:
             self._send_command("clear_cache", dev_list=all_devs)
         srv_com.set_result(

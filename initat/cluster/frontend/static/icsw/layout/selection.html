@@ -1,16 +1,23 @@
 <script type="text/ng-template" id="icsw.layout.selection.modify">
     <div ng-controller="icswLayoutSelectionController">
-        <uib-tabset>
-            <uib-tab heading="current selection">
+        <uib-tabset ng-if="selection_valid">
+            <uib-tab>
+                <uib-tab-heading>
+                    <span ng-class="synced && 'fa fa-lock' || 'fa fa-unlock'"></span>
+                    current selection
+                </uib-tab-heading>
                 <div class="input-group">
                     <div ng-class="search_ok && 'form-group' || 'form-group has-error'">
                         <input type="text" class="form-control" ng-disabled="is_loading" ng-model="vars.search_str" placeholder="search by name, IP or MAC" ng-change="update_search()"/>
                     </div>
                     <span class="input-group-btn">
-                        <button class="btn btn-success fa fa-chevron-right" title="Use selection (with resolve)" type="button" ng-click="call_devsel_func()" ng-show="devsel_receivers">
+                        <button class="btn btn-success" title="Use selection (with resolve)" type="button" ng-click="call_devsel_func()" ng-show="devsel_receivers">
+                            <span class="fa fa-chevron-right"></span>
                              Apply
                         </button>
-                        <button class="btn btn-warning fa fa-remove" title="Clear selection" type="button" ng-click="clear_search()">
+                        <button class="btn btn-warning" title="Clear selection" type="button" ng-click="clear_search()">
+                            <span class="fa fa-remove"></span>
+                             Clear
                         </button>
                     </span>
                 </div>
@@ -49,9 +56,9 @@
                     <div class="form-group" ng-show="synced">
                         <label class="col-md-2 control-label">Selected:</label>
                         <div class="col-md-10 form-control-static">
-                            {{ vars.current.info }}
+                            {{ selection.db_obj.info }}
                             <span class="pull-right">
-                                <icsw-tools-button type="save" size="sm" ng-show="vars.current.changed" ng-click="update_selection()"></icsw-tools-button>
+                                <icsw-tools-button type="save" size="sm" ng-show="selection.changed" ng-click="update_selection()"></icsw-tools-button>
                             </span>
                         </div>
                     </div>
@@ -69,7 +76,7 @@
                         </uib-tab-heading>
                         <!-- use tree for production or ntree for testing -->
                         <!-- add attribute max-heigth to limit used height -->
-                        <tree treeconfig="tc_devices" single="true"></tree>
+                        <icsw-react-tree icsw-tree-config="tc_devices" single="true"></icsw-react-tree>
                     </uib-tab>
                     <uib-tab select="activate_tab('g')" active="tabs['g']">
                         <uib-tab-heading>
@@ -81,7 +88,7 @@
                                 </button>
                             </span>
                         </uib-tab-heading>
-                        <tree treeconfig="tc_groups"></tree>
+                        <icsw-react-tree icsw-tree-config="tc_groups"></icsw-react-tree>
                     </uib-tab>
                     <uib-tab select="activate_tab('c')" active="tabs['c']">
                         <uib-tab-heading>
@@ -93,7 +100,7 @@
                                 </button>
                             </span>
                         </uib-tab-heading>
-                        <tree treeconfig="tc_categories"></tree>
+                        <icsw-react-tree icsw-tree-config="tc_categories"></icsw-react-tree>
                     </uib-tab>
                 </uib-tabset>
             </uib-tab>
@@ -102,23 +109,31 @@
                     <h3 ng-show="!saved_selections.length" class="text-warning">No saved selections found</h3>
                     <div ng-show="saved_selections.length">
                         <h3 class="text-success">{{ saved_selections.length }} saved selections found</h3>
-                        <div class="form-group">
-                            <div class="col-md-12 controls">
-                                <ui-select ng-model="vars.current" on-select="use_selection($item, $model)">
-                                    <ui-select-match placeholder="Choose a selection...">{{ $select.selected.info }}</ui-select-match>
-                                    <ui-select-choices repeat="sel in saved_selections">
+                        <div class="col-md-12 controls form-control-static">
+                            {{  selection_for_dropdown }}
+                            <div class="input-group">
+                                <ui-select ng-model="vars.selection_for_dropdown" on-select="use_selection($item, $model)">
+                                    <ui-select-match class="ui-select-match" placeholder="Choose a selection...">
+                                        {{ $select.selected.info }}
+                                    </ui-select-match>
+                                    <ui-select-choices class="ui-select-choices" repeat="sel in saved_selections">
                                         <div ng-bind-html="sel.info | highlight: $select.search"></div>
                                     </ui-select-choices>
                                 </ui-select>
+                                <span class="input-group-btn">
+                                    <button type="button" ng-click="unselect()" class="btn btn-default">
+                                        <span class="glyphicon glyphicon-trash"></span>
+                                    </button>
+                                </span>
                             </div>
                         </div>
                     </div>
-                    <div class="form-group" ng-show="vars.current.idx">
+                    <div class="form-group" ng-show="synced">
                         <label class="col-md-2 control-label">Selected:</label>
                         <div class="col-md-10 form-control-static">
-                            {{ vars.current.info }}
+                            {{ selection.db_obj.info }}
                             <span class="pull-right">
-                                <icsw-tools-button type="save" size="sm" ng-show="vars.current.changed" ng-click="update_selection()"></icsw-tools-button>
+                                <icsw-tools-button type="save" size="sm" ng-show="selection.changed" ng-click="update_selection()"></icsw-tools-button>
                                 <button class="btn btn-success btn-sm fa fa-chevron-right" title="Use selection (with resolve)" type="button" ng-click="call_devsel_func()" ng-show="devsel_receivers">
                                      Apply
                                 </button>
@@ -127,9 +142,12 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="col-md-2 control-label"><span ng-show="vars.current.idx">or </span>create:</label>
+                        <label class="col-md-2 control-label">
+                            <span ng-show="synced">or </span>
+                            create:
+                        </label>
                         <div class="col-md-8 controls">
-                            <input class="form-control" ng-model="vars.name" type="text"/>
+                            <input class="form-control" ng-model="selection.db_obj.name" type="text"/>
                         </div>
                         <div class="col-md-2 controls">
                             <icsw-tools-button type="create" size="sm" ng-click="create_selection()"></icsw-tools-button>

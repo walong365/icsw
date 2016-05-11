@@ -31,7 +31,7 @@ menu_module = angular.module(
             {
                 url: "/login",
                 templateUrl: "icsw/login.html"
-                data:
+                icswData:
                     pageTitle: "ICSW Login"
             }
         ).state(
@@ -39,68 +39,54 @@ menu_module = angular.module(
             {
                 url: "/logout",
                 templateUrl: "icsw/login.html"
-                data:
+                icswData:
                     pageTitle: "ICSW Logout"
-                # controller: ($scope) ->
-                #    console.log "lo", $scope
             }
         ).state(
             "main",
             {
                 url: "/main"
+                abstract: true
                 templateUrl: "icsw/main.html"
-                data:
+                icswData:
                     pageTitle: "ICSW Main page"
-            }
-        ).state(
-            "simple1"
-            {
-                url: "/simple1"
-                template: '
-<div class="col-md-4 col-xs-12 col-lg-6">
-    <div icsw-device-livestatus-fullburst icsw-element-size="size" ls-devsel="ls_devsel" ls-filter="ls_filter"></div>
-</div>
-<div class="col-md-4 col-xs-12 col-lg-6">
-    <div icsw-device-livestatus-maplist ls-devsel="ls_devsel" ls-filter="ls_filter"></div>
-</div>
-<div class="col-md-4 col-xs-12 col-lg-8">
-    <icsw-config-category-location-show ls-devsel="ls_devsel" ls-filter="ls_filter"></icsw-config-category-location-show>
-</div>
-<div class="col-md-4 col-xs-12 col-lg-2">
-    <icsw-device-livestatus-cat-tree ls-filter="ls_filter"></icsw-device-livestatus-cat-tree>
-</div>
-<div class="col-md-4 col-xs-12 col-lg-8">
-    <icsw-device-livestatus-table-view ls-filter="ls_filter" filtered-entries="filtered_entries" ls-devsel="ls_devsel"></icsw-device-livestatus-table-view>
-</div>
-'
-            }
-        ).state(
-            "simple2",
-            {
-                url: "/simple2"
-                template: '
-<div class="col-md-4 col-xs-12 col-lg-6">
-    <div icsw-device-livestatus-fullburst icsw-element-size="size" ls-devsel="ls_devsel" ls-filter="ls_filter"></div>
-</div>
-<div class="col-md-4 col-xs-12 col-lg-6">
-    <div icsw-device-livestatus-maplist ls-devsel="ls_devsel" ls-filter="ls_filter"></div>
-</div>
-<div class="col-md-4 col-xs-12 col-lg-8">
-    <icsw-device-livestatus-table-view ls-filter="ls_filter" filtered-entries="filtered_entries" ls-devsel="ls_devsel"></icsw-device-livestatus-table-view>
-</div>
-<div class="col-md-4 col-xs-12 col-lg-2">
-    <icsw-device-livestatus-cat-tree ls-filter="ls_filter"></icsw-device-livestatus-cat-tree>
-</div>
-'
+                resolve:
+                    user: ["$q", "icswUserService", ($q, icswUserService) ->
+                        _defer = $q.defer()
+                        icswUserService.load().then(
+                            (user) ->
+                                if user.idx
+                                    _defer.resolve(user)
+                                else
+                                    _defer.reject(user)
+                        )
+                        return _defer.promise
+                    ]
+                hotkeys: [
+                    ["s", "Show device selection", "show devsel"]
+                ]
+                controller: ["$scope", "hotkeys", "icswLayoutSelectionDialogService", ($scope, hotkeys, icswLayoutSelectionDialogService) ->
+                    hotkeys.bindTo($scope).add(
+                        combo: "s"
+                        description: "Show device selection"
+                        callback: () ->
+                            icswLayoutSelectionDialogService.quick_dialog()
+                    )
+                ]
             }
         )
-]).directive('updateTitle', ['$rootScope', '$timeout', ($rootScope, $timeout) ->
+]).directive('icswUpdateTitle',
+[
+    '$rootScope', '$timeout',
+(
+    $rootScope, $timeout
+) ->
     return {
         link: (scope, el) ->
             listener = (event, to_state) ->
                 title = "ICSW page"
-                if to_state.data && to_state.data.pageTitle
-                    title = to_state.data.pageTitle
+                if to_state.icswData && to_state.icswData.pageTitle
+                    title = to_state.icswData.pageTitle
 
                 $timeout(
                     ()->
@@ -110,4 +96,10 @@ menu_module = angular.module(
                 )
             $rootScope.$on("$stateChangeSuccess", listener)
     }
+]).run(["$window", ($window) ->
+      window = angular.element($window)
+      window.on("beforeunload", (event) ->
+           # not working ...
+           # event.preventDefault()
+      )
 ])

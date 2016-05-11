@@ -130,6 +130,11 @@ class SrvTypeRouting(object):
             return srv_type in self._resolv_dict
 
     @property
+    def unroutable_configs(self):
+        # unroutable configs may be unset in case of dev / prod mixture
+        return self._resolv_dict.get("_unroutable_configs", {})
+
+    @property
     def service_types(self):
         return [key for key in self._resolv_dict.keys() if not key.startswith("_")]
 
@@ -216,6 +221,8 @@ class SrvTypeRouting(object):
         _dev_srv_type_lut = {}
         # simple routing cache
         routing_cache = {}
+        # unroutable configs
+        _unroutable_configs = {}
         # get all configs
         for _conf_name in conf_names:
             _srv_type_list = _rv_lut[_conf_name]
@@ -294,6 +301,7 @@ class SrvTypeRouting(object):
                                     ),
                                     logging_tools.LOG_LEVEL_ERROR,
                                 )
+                            _unroutable_configs.setdefault(_conf_name, []).append(_dev.effective_device.full_name)
         # missing routes
         _missing_srv = _INSTANCES_WITH_NAMES - set(_resolv_dict.keys())
         if _missing_srv:
@@ -311,6 +319,7 @@ class SrvTypeRouting(object):
             _resolv_dict["_local_device"] = (_myself.device.pk,)
         _resolv_dict["_alias_dict"] = _INSTANCE.get_alias_dict()
         _resolv_dict["_node_split_list"] = node_split_list
+        _resolv_dict["_unroutable_configs"] = _unroutable_configs
         # valid for 15 minutes
         cache.set(self.ROUTING_KEY, json.dumps(_resolv_dict), 60 * 15)
         return _resolv_dict

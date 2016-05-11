@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -17,6 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+""" url definitions for ICSW """
 
 import os
 
@@ -28,24 +29,23 @@ from django.conf.urls.static import static
 from initat.cluster.frontend import rest_views, device_views, main_views, network_views, \
     monitoring_views, user_views, package_views, config_views, boot_views, session_views, rrd_views, \
     base_views, setup_views, doc_views, license_views, model_history_views, discovery_views, rms_views, \
-    lic_views
+    lic_views, auth_views
 
-handler404 = main_views.index.as_view()
+# handler404 = main_views.index.as_view()
 
 session_patterns = [
-    url(r"logout", session_views.sess_logout.as_view(), name="logout"),
-    url(r"login", session_views.sess_login.as_view(), name="login"),
+    url(r"logout", session_views.session_logout.as_view(), name="logout"),
+    url(r"login", session_views.session_login.as_view(), name="login"),
     url(r"log_addons$", session_views.login_addons.as_view(), name="login_addons"),
-    url(r"get_user$", session_views.get_user.as_view(), name="get_user"),
+    url(r"get_authenticated_user$", session_views.get_user.as_view(), name="get_authenticated_user"),
     url(r"get_csrf_token$", session_views.get_csrf_token.as_view(), name="get_csrf_token"),
 ]
 
 rms_patterns = [
-    url(r"overview", rms_views.overview.as_view(), name="overview"),
+    url(r"get_header_dict", rms_views.get_header_dict.as_view(), name="get_header_dict"),
     url(r"get_header_xml", rms_views.get_header_xml.as_view(), name="get_header_xml"),
     url(r"get_rms_json", rms_views.get_rms_json.as_view(), name="get_rms_json"),
     url(r"get_rms_jobinfo", rms_views.get_rms_jobinfo.as_view(), name="get_rms_jobinfo"),
-    url(r"get_node_info", rms_views.get_node_info.as_view(), name="get_node_info"),
     url(r"control_job", rms_views.control_job.as_view(), name="control_job"),
     url(r"control_queue", rms_views.control_queue.as_view(), name="control_queue"),
     url(r"get_file_content", rms_views.get_file_content.as_view(), name="get_file_content"),
@@ -56,7 +56,6 @@ rms_patterns = [
 
 # license overview
 lic_patterns = [
-    url(r"overview$", lic_views.overview.as_view(), name="overview"),
     url(r"license_liveview$", lic_views.license_liveview.as_view(), name="license_liveview"),
     url(r"get_license_overview_steps$", lic_views.get_license_overview_steps.as_view(),
         name="get_license_overview_steps"),
@@ -71,8 +70,6 @@ lic_patterns = [
 
 base_patterns = [
     url("^get_gauge_info$", base_views.get_gauge_info.as_view(), name="get_gauge_info"),
-    url("^DeviceCategory$", base_views.DeviceCategory.as_view(), name="DeviceCategory"),
-    url("^DeviceLocation$", base_views.DeviceLocation.as_view(), name="DeviceLocation"),
     url("^upload_loc_gfx$", base_views.upload_location_gfx.as_view(), name="upload_location_gfx"),
     url("^loc_gfx_thumbnail/(?P<id>\d+)/(?P<image_count>\d+)$", base_views.location_gfx_icon.as_view(),
         name="location_gfx_icon"),
@@ -80,21 +77,17 @@ base_patterns = [
         name="location_gfx_image"),
     url("^modify_loc_gfx$", base_views.modify_location_gfx.as_view(), name="modify_location_gfx"),
     url("^change_category", base_views.change_category.as_view(), name="change_category"),
-    url("^CategoryContents", base_views.CategoryContents.as_view(), name="CategoryContents"),
-    url("^prune_cat_tree", base_views.prune_category_tree.as_view(), name="prune_categories"),
+    url("^prune_category_tree$", base_views.prune_category_tree.as_view(), name="prune_category_tree"),
     url("^check_delete_object$", base_views.CheckDeleteObject.as_view(), name="check_delete_object"),
     url("^add_delete_request$", base_views.AddDeleteRequest.as_view(), name="add_delete_request"),
     url("^check_deletion_status$", base_views.CheckDeletionStatus.as_view(), name="check_deletion_status"),
-    url("^kpi$", base_views.KpiView.as_view(), name="kpi"),
     url("^GetKpiSourceData$", base_views.GetKpiSourceData.as_view(), name="GetKpiSourceData"),
     url("^CalculateKpiPreview$", base_views.CalculateKpiPreview.as_view(), name="CalculateKpiPreview"),
+    url("^CategoryReferences", base_views.CategoryReferences.as_view(), name="CategoryReferences"),
 ]
 
 setup_patterns = [
-    url(r"p_overview", setup_views.partition_overview.as_view(), name="partition_overview"),
     url(r"xml/validate", setup_views.validate_partition.as_view(), name="validate_partition"),
-    url(r"i_overview", setup_views.image_overview.as_view(), name="image_overview"),
-    url(r"k_overview", setup_views.kernel_overview.as_view(), name="kernel_overview"),
     url(r"xml/rescan_images", setup_views.scan_for_images.as_view(), name="rescan_images"),
     url(r"xml/use_image", setup_views.use_image.as_view(), name="use_image"),
     url(r"xml/rescan_kernels", setup_views.rescan_kernels.as_view(), name="rescan_kernels"),
@@ -102,7 +95,6 @@ setup_patterns = [
 ]
 
 config_patterns = [
-    url("^show_config$", config_views.show_configs.as_view(), name="show_configs"),
     url("^set_config_cb$", config_views.alter_config_cb.as_view(), name="alter_config_cb"),
     url("^generate_config$", config_views.generate_config.as_view(), name="generate_config"),
     url("^download_config/(?P<hash>.*)$", config_views.download_configs.as_view(), name="download_configs"),
@@ -115,30 +107,26 @@ config_patterns = [
 ]
 
 boot_patterns = [
-    url("^show_boot$", boot_views.show_boot.as_view(), name="show_boot"),
     url("^xml/get_boot_infojs$", boot_views.get_boot_info_json.as_view(), name="get_boot_info_json"),
     url("^xml/get_devlog_info$", boot_views.get_devlog_info.as_view(), name="get_devlog_info"),
     url("^soft_control$", boot_views.soft_control.as_view(), name="soft_control"),
     url("^hard_control$", boot_views.hard_control.as_view(), name="hard_control"),
     url("^update_device/(\d+)$", boot_views.update_device.as_view(), name="update_device"),
+    url("^update_device_settings/boot/(\d+)$", boot_views.update_device_bootsettings.as_view(), name="update_device_settings"),
     url("^modify_mbl$", boot_views.modify_mbl.as_view(), name="modify_mbl"),
 ]
 
 device_patterns = [
     # url("^device_tree$", device_views.device_tree.as_view(), name="tree"),
-    url("^DeviceGeneral$", device_views.DeviceGeneral.as_view(), name="DeviceGeneral"),
-    url("^device_tree_smart$", device_views.device_tree_smart.as_view(), name="tree_smart"),
-    url("^set_selection$", device_views.set_selection.as_view(), name="set_selection"),
+    # url("^device_tree_smart$", device_views.device_tree_smart.as_view(), name="tree_smart"),
     url("^select_parents$", device_views.select_parents.as_view(), name="select_parents"),
-    url("^config$", device_views.show_configs.as_view(), name="show_configs"),
-    url("^connections", device_views.connections.as_view(), name="connections"),
+    url("^enrich_devices$", device_views.EnrichDevices.as_view(), name="enrich_devices"),
     url("^manual_connection", device_views.manual_connection.as_view(), name="manual_connection"),
-    url("^variables$", device_views.variables.as_view(), name="variables"),
     url("^change_devices$", device_views.change_devices.as_view(), name="change_devices"),
     url("^scan_device_network$", device_views.scan_device_network.as_view(), name="scan_device_network"),
-    url("^device_info/(?P<device_pk>\d+)/(?P<mode>\S+)$", device_views.device_info.as_view(), name="device_info"),
     url("^get_device_locations$", device_views.get_device_location.as_view(), name="get_device_location"),
     url("^GetMatchingDevices$", device_views.GetMatchingDevices.as_view(), name="GetMatchingDevices"),
+    url("^create_device", device_views.create_device.as_view(), name="create_device"),
 ]
 
 
@@ -150,11 +138,11 @@ icsw_lic_patterns = [
 ]
 
 network_patterns = [
-    url("^network$", network_views.show_cluster_networks.as_view(), name="show_networks"),
-    url("^dev_network$", network_views.device_network.as_view(), name="device_network"),
+    # url("^network$", network_views.show_cluster_networks.as_view(), name="show_networks"),
+    # url("^dev_network$", network_views.device_network.as_view(), name="device_network"),
     url("^copy_network$", network_views.copy_network.as_view(), name="copy_network"),
     url("^json_network$", network_views.json_network.as_view(), name="json_network"),
-    url("^cdnt$", network_views.get_domain_name_tree.as_view(), name="domain_name_tree"),
+    # url("^cdnt$", network_views.get_domain_name_tree.as_view(), name="domain_name_tree"),
     url("^get_clusters$", network_views.get_network_clusters.as_view(), name="get_clusters"),
     url("^get_scans", network_views.get_active_scans.as_view(), name="get_active_scans"),
     url("^get_free_ip$", network_views.get_free_ip.as_view(), name="get_free_ip"),
@@ -163,26 +151,21 @@ network_patterns = [
 
 monitoring_patterns = [
     url("^create_config$", monitoring_views.create_config.as_view(), name="create_config"),
-    url("^setup$", monitoring_views.setup.as_view(), name="setup"),
-    url("^extsetupc$", monitoring_views.setup_cluster.as_view(), name="setup_cluster"),
-    url("^extsetupe$", monitoring_views.setup_escalation.as_view(), name="setup_escalation"),
-    url("^MonitoringHints$", monitoring_views.MonitoringHints.as_view(), name="MonitoringHints"),
-    url("^MonitoringDisk$", monitoring_views.MonitoringDisk.as_view(), name="MonitoringDisk"),
-    url("^xml/dev_config$", monitoring_views.device_config.as_view(), name="device_config"),
+    # url("^setup$", monitoring_views.setup.as_view(), name="setup"),
+    # url("^extsetupc$", monitoring_views.setup_cluster.as_view(), name="setup_cluster"),
+    # url("^extsetupe$", monitoring_views.setup_escalation.as_view(), name="setup_escalation"),
+    # url("^MonitoringHints$", monitoring_views.MonitoringHints.as_view(), name="MonitoringHints"),
+    # url("^MonitoringDisk$", monitoring_views.MonitoringDisk.as_view(), name="MonitoringDisk"),
+    # url("^xml/dev_config$", monitoring_views.device_config.as_view(), name="device_config"),
     url("^to_icinga$", monitoring_views.call_icinga.as_view(), name="call_icinga"),
     url("^xml/read_part$", monitoring_views.fetch_partition.as_view(), name="fetch_partition"),
     url("^xml/clear_part$", monitoring_views.clear_partition.as_view(), name="clear_partition"),
     url("^xml/use_part$", monitoring_views.use_partition.as_view(), name="use_partition"),
     url("^get_node_status", monitoring_views.get_node_status.as_view(), name="get_node_status"),
     url("^get_node_config", monitoring_views.get_node_config.as_view(), name="get_node_config"),
-    url("^build_info$", monitoring_views.build_info.as_view(), name="build_info"),
-    url("^livestatus$", monitoring_views.livestatus.as_view(), name="livestatus"),
-    url("^StatusHistory$", monitoring_views.StatusHistory.as_view(), name="StatusHistory"),
-    url("^graph$", monitoring_views.Graph.as_view(), name="graph"),
-    url("^overview$", monitoring_views.overview.as_view(), name="overview"),
-    url("^create_device$", monitoring_views.create_device.as_view(), name="create_device"),
+    # url("^build_info$", monitoring_views.build_info.as_view(), name="build_info"),
+    # url("^overview$", monitoring_views.overview.as_view(), name="overview"),
     url("^resolve_name$", monitoring_views.resolve_name.as_view(), name="resolve_name"),
-    url("^delete_hint$", monitoring_views.delete_hint.as_view(), name="delete_hint"),
     url("^get_mon_vars$", monitoring_views.get_mon_vars.as_view(), name="get_mon_vars"),
     url("^get_hist_timespan$", monitoring_views.get_hist_timespan.as_view(), name="get_hist_timespan"),
     url("^get_hist_device_data$", monitoring_views.get_hist_device_data.as_view(), name="get_hist_device_data"),
@@ -193,18 +176,18 @@ monitoring_patterns = [
         name="get_hist_device_line_graph_data"),
     url("^svg_to_png$", monitoring_views.svg_to_png.as_view(), name="svg_to_png"),
     url("^fetch_png/(?P<cache_key>\S+)$", monitoring_views.fetch_png_from_cache.as_view(), name="fetch_png_from_cache"),
+    url("^get_asset_list$", monitoring_views.get_asset_list.as_view(), name="get_asset_list"),
+    url("^run_assets_now", monitoring_views.run_assets_now.as_view(), name="run_assets_now"),
+    url("^get_devices_for_asset", monitoring_views.get_devices_for_asset.as_view(), name="get_devices_for_asset"),
+    url("^get_assetrun_diffs", monitoring_views.get_assetrun_diffs.as_view(), name="get_assetrun_diffs"),
 ]
 
 user_patterns = [
-    url("overview/$", user_views.overview.as_view(), name="overview"),
     url("sync$", user_views.sync_users.as_view(), name="sync_users"),
     url("^set_user_var$", user_views.set_user_var.as_view(), name="set_user_var"),
     url("^get_user_var$", user_views.get_user_var.as_view(), name="get_user_var"),
     url("^change_obj_perm$", user_views.change_object_permission.as_view(), name="change_object_permission"),
-    url("^account_info$", user_views.account_info.as_view(), name="account_info"),
-    url("^global_license$", user_views.global_license.as_view(), name="global_license"),
     url("^upload_license_file$", user_views.upload_license_file.as_view(), name="upload_license_file"),
-    url("^background_info$", user_views.background_job_info.as_view(), name="background_job_info"),
     url("^chdc$", user_views.clear_home_dir_created.as_view(), name="clear_home_dir_created"),
     url("^get_device_ip$", user_views.get_device_ip.as_view(), name="get_device_ip"),
     url("^GetGlobalPermissions$", user_views.GetGlobalPermissions.as_view(), name="GetGlobalPermissions"),
@@ -230,9 +213,7 @@ pack_patterns = [
 ]
 
 main_patterns = [
-    url(r"^index$", main_views.index.as_view(), name="index"),
-    url(r"^permission$", main_views.permissions_denied.as_view(), name="permission_denied"),
-    url(r"^info$", main_views.info_page.as_view(), name="info_page"),
+    # url(r"^permission$", main_views.permissions_denied.as_view(), name="permission_denied"),
     url(r"^server_info$", main_views.get_server_info.as_view(), name="get_server_info"),
     url(r"^server_control$", main_views.server_control.as_view(), name="server_control"),
     url(r"^virtual_desktop_viewer$", main_views.virtual_desktop_viewer.as_view(), name="virtual_desktop_viewer"),
@@ -249,10 +230,15 @@ rrd_patterns = [
 ]
 
 discovery_patterns = [
-    url(r"^Overview$", discovery_views.DiscoveryOverview.as_view(), name="Overview"),
-    url(r"^EventLogOverview$", discovery_views.EventLogOverview.as_view(), name="EventLogOverview"),
+    # url(r"^Overview$", discovery_views.DiscoveryOverview.as_view(), name="Overview"),
+    # url(r"^EventLogOverview$", discovery_views.EventLogOverview.as_view(), name="EventLogOverview"),
     url(r"^GetEventLog$", discovery_views.GetEventLog.as_view(), name="GetEventLog"),
     url(r"^GetEventLogDeviceInfo$", discovery_views.GetEventLogDeviceInfo.as_view(), name="GetEventLogDeviceInfo"),
+]
+
+auth_patterns = [
+    url(r"^test/auth_user$", auth_views.auth_user.as_view(), name="auth_test"),
+    url(r"^auth/do_login$", auth_views.do_login.as_view(), name="do_login"),
 ]
 
 rpl = []
@@ -275,11 +261,11 @@ for src_mod, obj_name in rest_views.REST_LIST:
 rpl.extend([
     url("^device_tree$", rest_views.device_tree_list.as_view(), name="device_tree_list"),
     url("^device_tree/(?P<pk>[0-9]+)$", rest_views.device_tree_detail.as_view(), name="device_tree_detail"),
-    url("^device_selection$", rest_views.device_selection_list.as_view(), name="device_selection_list"),
     url("^device_com_cap_list$", rest_views.device_com_capabilities.as_view(), name="device_com_capabilities"),
     url("^home_export_list$", rest_views.rest_home_export_list.as_view(), name="home_export_list"),
     url("^csw_object_list$", rest_views.csw_object_list.as_view({"get": "list"}), name="csw_object_list"),
-    url("^netdevice_peer_list$", rest_views.netdevice_peer_list.as_view({"get": "list"}), name="netdevice_peer_list"),
+    url("^used_peer_list$", rest_views.used_peer_list.as_view({"get": "list"}), name="used_peer_list"),
+    url("^peerable_netdevice_list$", rest_views.peerable_netdevice_list.as_view({"get": "list"}), name="peerable_netdevice_list"),
     url("^min_access_levels$", rest_views.min_access_levels.as_view({"get": "list"}), name="min_access_levels"),
 ])
 
@@ -287,7 +273,7 @@ rest_patterns = rpl
 
 dyndoc_patterns = [
     # "initat.cluster.frontend",
-    url(r"^hb/root$", doc_views.test_page.as_view(), name="doc_root"),
+    # url(r"^hb/root$", doc_views.test_page.as_view(), name="doc_root"),
     # TODO: fix handbook prefix in accordance with actual handbook html
     url(r"^(?P<page>.*)$", doc_views.doc_page.as_view(), name="doc_page"),
 ]
@@ -305,11 +291,6 @@ doc_patterns = [
 
 system_patterns = [
     url(
-        r"^history_overview$",
-        model_history_views.history_overview.as_view(),
-        name="history_overview"
-    ),
-    url(
         r"^get_historical_data$",
         model_history_views.get_historical_data.as_view(),
         name="get_historical_data"
@@ -323,9 +304,9 @@ system_patterns = [
 
 my_url_patterns = [
     # "",
-    url(r"^$", session_views.redirect_to_main.as_view()),
+    # url(r"^$", session_views.redirect_to_main.as_view()),
     # redirect old entry point
-    url(r"^main.py$", session_views.redirect_to_main.as_view()),
+    # url(r"^main.py$", session_views.redirect_to_main.as_view()),
     url(r"^base/", include(base_patterns, namespace="base")),
     url(r"^session/", include(session_patterns, namespace="session")),
     url(r"^config/", include(config_patterns, namespace="config")),
@@ -350,7 +331,8 @@ my_url_patterns = [
 
 urlpatterns = [
     url(r"^{}/".format(settings.REL_SITE_ROOT), include(my_url_patterns)),
-    url(r"^$", session_views.redirect_to_main.as_view()),
+] + [
+    url(r"^auth/", include(auth_patterns, namespace="auth")),
 ]
 
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

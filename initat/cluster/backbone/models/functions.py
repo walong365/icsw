@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2012-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -163,7 +163,11 @@ def get_related_models(in_obj, m2m=False, detail=False, check_all=False, ignore_
                 # ignore foreign keys where on_delete == SET_NULL
                 pass
             else:
-                ref_list = [entry for entry in rel_obj.related_model.objects.filter(Q(**{rel_field_name: in_obj})) if entry not in ignore_objs]
+                ref_list = [
+                    entry for entry in rel_obj.related_model.objects.filter(
+                        Q(**{rel_field_name: in_obj})
+                    ) if entry not in ignore_objs
+                ]
                 if ref_list:
                     if related_objects is not None:
                         rel_obj.ref_list = ref_list
@@ -191,9 +195,17 @@ def get_related_models(in_obj, m2m=False, detail=False, check_all=False, ignore_
         for m2m_obj in all_m2ms:
             m2m_field_name = m2m_obj.field.name
             if detail:
-                used_objs.extend(list(m2m_obj.related_model.objects.filter(Q(**{m2m_field_name: in_obj}))))
+                used_objs.extend(
+                    list(
+                        m2m_obj.related_model.objects.filter(
+                            Q(**{m2m_field_name: in_obj})
+                        )
+                    )
+                )
             else:
-                used_objs += m2m_obj.related_model.objects.filter(Q(**{m2m_field_name: in_obj})).count()
+                used_objs += m2m_obj.related_model.objects.filter(
+                    Q(**{m2m_field_name: in_obj})
+                ).count()
     in_obj._lock_list = _lock_list
     if ignore_list:
         raise ImproperlyConfigured(
@@ -375,6 +387,21 @@ class duration(object):
         def get_display_date(cls, timepoint):
             return u"{:04d}".format(timepoint.year)
 
+    class Decade(object):
+        ID = 6
+
+        @classmethod
+        def get_time_frame_start(cls, timepoint):
+            return timepoint.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0, year=10 * int(timepoint.year / 10))
+
+        @classmethod
+        def get_end_time_for_start(cls, starttime):
+            return cls.get_time_frame_start(starttime + datetime.timedelta(days=3660))
+
+        @classmethod
+        def get_display_date(cls, timepoint):
+            return u"{:04d}".format(timepoint.year)
+
     @classmethod
     def get_shorter_duration(cls, duration_type):
         if type(duration_type) == int:
@@ -388,6 +415,8 @@ class duration(object):
             shorter_duration = cls.Day  # weeks are not nice
         elif duration_type == cls.Year:
             shorter_duration = cls.Month
+        elif duration_type == cls.Decade:
+            shorter_duration = cls.Year
         else:
             raise ValueError("Invalid duration type: {}".format(duration_type))
         return shorter_duration

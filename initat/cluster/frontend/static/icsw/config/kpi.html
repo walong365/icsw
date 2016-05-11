@@ -39,8 +39,8 @@
 
                                 <div class="controls col-sm-6">
                                     <ui-select ng-model="cur_edit_kpi.time_range">
-                                        <ui-select-match placeholder="select a time range">{{$select.selected.display_str}}</ui-select-match>
-                                        <ui-select-choices repeat="value.id_str as value in kpi_time_ranges | props_filter:{display_str:$select.search}">
+                                        <ui-select-match class="ui-select-match" placeholder="select a time range">{{$select.selected.display_str}}</ui-select-match>
+                                        <ui-select-choices class="ui-select-choices" repeat="value.id_str as value in kpi_time_ranges | props_filter:{display_str:$select.search}">
                                             <div ng-bind-html="value.display_str | highlight: $select.search"></div>
                                         </ui-select-choices>
                                     </ui-select>

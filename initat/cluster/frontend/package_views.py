@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2012-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2012-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -35,7 +35,7 @@ from django.views.generic import View
 from initat.cluster.backbone.models import package_search, package_search_result, \
     package, get_related_models, package_device_connection, device, kernel, image, \
     package_repo
-from initat.cluster.backbone.render import permission_required_mixin, render_me
+from initat.cluster.backbone.render import permission_required_mixin
 from initat.cluster.backbone.serializers import package_device_connection_serializer
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from rest_framework.renderers import JSONRenderer
@@ -46,14 +46,6 @@ logger = logging.getLogger("cluster.package")
 
 class repo_overview(permission_required_mixin, View):
     all_required_permissions = ["backbone.package.package_install"]
-
-    @method_decorator(login_required)
-    def get(self, request):
-        return render_me(
-            request,
-            "package_install.html",
-            {}
-        )()
 
     @method_decorator(xml_wrapper)
     def post(self, request):
@@ -170,9 +162,19 @@ class add_package(View):
             else:
                 num_error += 1
         if num_ok:
-            request.xml_response.info("added {}".format(logging_tools.get_plural("connection", num_ok)), logger)
+            request.xml_response.info(
+                "added {}".format(
+                    logging_tools.get_plural("connection", num_ok)
+                ),
+                logger
+            )
         if num_error:
-            request.xml_response.warn("{} already existed".format(logging_tools.get_plural("connection", num_error)), logger)
+            request.xml_response.warn(
+                "{} already existed".format(
+                    logging_tools.get_plural("connection", num_error)
+                ),
+                logger
+            )
         request.xml_response["result"] = JSONRenderer().render(package_device_connection_serializer(new_pdcs, many=True).data)
 
 
@@ -191,9 +193,19 @@ class remove_package(View):
                 cur_pdc.delete()
                 num_ok += 1
         if num_ok:
-            request.xml_response.info("%s removed" % (logging_tools.get_plural("connection", num_ok)), logger)
+            request.xml_response.info(
+                "{} removed".format(
+                    logging_tools.get_plural("connection", num_ok)
+                ),
+                logger
+            )
         if num_error:
-            request.xml_response.error("%s not there" % (logging_tools.get_plural("connection", num_error)), logger)
+            request.xml_response.error(
+                "{} not there".format(
+                    logging_tools.get_plural("connection", num_error)
+                ),
+                logger
+            )
 
 
 class change_package(View):

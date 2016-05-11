@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2014-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2014-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -29,6 +29,7 @@ import inspect
 import os
 import random
 import smbpasswd
+import pprint
 import string
 
 import django.core.serializers
@@ -45,8 +46,7 @@ from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParam
 from initat.cluster.backbone.models.functions import check_empty_string, check_integer, \
     get_vnc_enc
 from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListUser
-from initat.cluster.backbone.signals import user_changed, group_changed, \
-    virtual_desktop_user_setting_changed
+from initat.cluster.backbone.signals import UserChanged, GroupChanged, VirtualDesktopUserSettingChanged
 from initat.constants import GEN_CS_NAME
 from initat.tools import config_store
 
@@ -63,8 +63,10 @@ __all__ = [
     "user_object_permission",
     "user_quota_setting",
     "group_quota_setting",
-    "AC_MASK_READ", "AC_MASK_MODIFY",
-    "AC_MASK_DELETE", "AC_MASK_CREATE",
+    "AC_MASK_READ",
+    "AC_MASK_MODIFY",
+    "AC_MASK_DELETE",
+    "AC_MASK_CREATE",
     "AC_MASK_DICT",
     "user_scan_run",
     "user_scan_result",
@@ -76,14 +78,6 @@ __all__ = [
 ]
 
 
-def _csw_key(perm):
-    return "{}.{}.{}".format(
-        perm.content_type.app_label,
-        perm.content_type.model_class().__name__.lower(),
-        perm.codename,
-    )
-
-
 # auth_cache structure
 class auth_cache(object):
     def __init__(self, auth_obj):
@@ -93,7 +87,10 @@ class auth_cache(object):
             auth_obj._meta.object_name,
             auth_obj.pk,
         )
+        # permissions with code_name
         self.__perms, self.__obj_perms = ({}, {})
+        # permissions on modellevel
+        self.__model_perms, self.__model_obj_perms = ({}, {})
         if self.auth_obj.__class__.__name__ == "user":
             self.has_all_perms = self.auth_obj.is_superuser
         else:
@@ -105,35 +102,74 @@ class auth_cache(object):
         self.__dg_lut = {}
 
     def _from_db(self):
-        self.__perm_dict = {_csw_key(cur_perm): cur_perm for cur_perm in csw_permission.objects.all().select_related("content_type")}
+        def icsw_key(perm):
+            return "{}.{}.{}".format(
+                perm.content_type.app_label,
+                perm.content_type.model_class().__name__.lower(),
+                perm.codename,
+            )
+
+        def model_key(perm_key):
+            return ".".join(perm_key.split(".")[:2])
+        # dict, icsw_perm_key -> icsw_perm
+        self.__perm_dict = {
+            icsw_key(cur_perm): cur_perm for cur_perm in csw_permission.objects.all().select_related("content_type")
+        }
+        # dict, content label -> list of perms
+        self.__model_perm_dict = {}
+        for _key, _value in self.__perm_dict.iteritems():
+            self.__model_perm_dict.setdefault(model_key(_key), {})[_key] = _value
+        # pprint.pprint(self.__model_perm_dict)
         # pprint.pprint(self.__perm_dict)
         # print self.__perm_dict.keys()
         if self.has_all_perms:
             # set all perms
             for perm in csw_permission.objects.all().select_related("content_type"):
-                self.__perms[_csw_key(perm)] = AC_FULL
+                self.__perms[icsw_key(perm)] = AC_FULL
+                self.__model_perms[model_key(icsw_key(perm))] = AC_FULL
         else:
             for perm in getattr(self.auth_obj, "{}_permission_set".format(self.model_name)).select_related("csw_permission__content_type"):
-                self.__perms[_csw_key(perm.csw_permission)] = perm.level
+                _icsw_key = icsw_key(perm.csw_permission)
+                _model_key = model_key(_icsw_key)
+                self.__perms[_icsw_key] = perm.level
+                if _model_key not in self.__model_perms:
+                    self.__model_perms[_model_key] = 0
+                self.__model_perms[_model_key] |= perm.level
         for perm in getattr(
             self.auth_obj,
             "{}_object_permission_set".format(
                 self.model_name
             )
         ).select_related("csw_object_permission__csw_permission__content_type"):
-            self.__obj_perms.setdefault(_csw_key(perm.csw_object_permission.csw_permission), {})[perm.csw_object_permission.object_pk] = perm.level
+            _icsw_key = icsw_key(perm.csw_object_permission.csw_permission)
+            _model_key = model_key(_icsw_key)
+            self.__obj_perms.setdefault(_icsw_key, {})[perm.csw_object_permission.object_pk] = perm.level
+            self.__model_obj_perms.setdefault(
+                _model_key,
+                {}
+            ).setdefault(perm.csw_object_permission.object_pk, 0)
+            self.__model_obj_perms[_model_key][perm.csw_object_permission.object_pk] |= perm.level
         # pprint.pprint(self.__perms)
         # pprint.pprint(self.__obj_perms)
 
-    def _get_code_key(self, app_label, content_name, code_name):
-        code_key = "{}.{}.{}".format(app_label, content_name, code_name)
-        if code_key not in self.__perm_dict:
-            raise ImproperlyConfigured("wrong permission name {}".format(code_key))
+    def _get_code_key(self, app_label, content_name, code_name=None):
+        if code_name is None:
+            code_key = "{}.{}".format(app_label, content_name)
+            if code_key not in self.__model_perm_dict:
+                raise ImproperlyConfigured("wrong content_type {}".format(code_key))
+        else:
+            code_key = "{}.{}.{}".format(app_label, content_name, code_name)
+            if code_key not in self.__perm_dict:
+                raise ImproperlyConfigured("wrong permission name {}".format(code_key))
         return code_key
 
-    def has_permission(self, app_label, content_name, code_name):
+    def has_global_permission(self, app_label, content_name, code_name):
         code_key = self._get_code_key(app_label, content_name, code_name)
         return code_key in self.__perms
+
+    def has_global_model_permission(self, app_label, content_name):
+        code_key = self._get_code_key(app_label, content_name)
+        return code_key in self.__model_perms
 
     def get_object_permission_level(self, app_label, content_name, code_name, obj=None):
         code_key = self._get_code_key(app_label, content_name, code_name)
@@ -145,7 +181,7 @@ class auth_cache(object):
 
     def has_object_permission(self, app_label, content_name, code_name, obj=None):
         code_key = self._get_code_key(app_label, content_name, code_name)
-        if self.has_permission(app_label, content_name, code_name):
+        if self.has_global_permission(app_label, content_name, code_name):
             # at fist check global permission
             return True
         elif code_key in self.__obj_perms:
@@ -162,12 +198,34 @@ class auth_cache(object):
 
     def get_allowed_object_list(self, app_label, content_name, code_name):
         code_key = self._get_code_key(app_label, content_name, code_name)
-        if self.has_permission(app_label, content_name, code_name) or getattr(self.auth_obj, "is_superuser", False):
+        if self.has_global_permission(app_label, content_name, code_name) or getattr(self.auth_obj, "is_superuser", False):
             # at fist check global permission, return all devices
-            return set(apps.get_model(app_label, self.__perm_dict[code_key].content_type.model_class().__name__).objects.all().values_list("pk", flat=True))
+            return set(
+                apps.get_model(
+                    app_label,
+                    self.__perm_dict[code_key].content_type.model_class().__name__
+                ).objects.all().values_list("pk", flat=True)
+            )
         elif code_key in self.__obj_perms:
             # only return devices where the code_key is set
             return set(self.__obj_perms[code_key].keys())
+        else:
+            return set()
+
+    def get_allowed_object_list_model(self, app_label, content_name):
+        # return all objects defined by app_label and content name where the auth_object has any rights for
+        code_key = self._get_code_key(app_label, content_name)
+        if self.has_global_model_permission(app_label, content_name) or getattr(self.auth_obj, "is_superuser", False):
+            # at fist check global permission, return all devices
+            return set(
+                apps.get_model(
+                    app_label,
+                    self.__model_perm_dict[code_key].values()[0].content_type.model_class().__name__
+                ).objects.all().values_list("pk", flat=True)
+            )
+        elif code_key in self.__model_obj_perms:
+            # only return devices where the code_key is set
+            return set(self.__model_obj_perms[code_key].keys())
         else:
             return set()
 
@@ -200,7 +258,9 @@ class auth_cache(object):
     def get_object_access_levels(self, obj, is_superuser):
         obj_type = obj._meta.model_name
         # returns a dict with all access levels for the given object
-        obj_perms = [key for key, value in self.__perm_dict.iteritems() if value.content_type.model_class().__name__ == obj_type]
+        obj_perms = [
+            key for key, value in self.__perm_dict.iteritems() if value.content_type.model_class().__name__ == obj_type
+        ]
         if is_superuser:
             ac_dict = {key: AC_FULL for key in obj_perms}
         else:
@@ -242,7 +302,7 @@ class csw_permission(models.Model):
 
     class Meta:
         unique_together = (("content_type", "codename"),)
-        ordering = ("content_type__app_label", "name",)
+        ordering = ("content_type__app_label", "content_type__model", "name",)
         verbose_name = "Global permission"
 
     @staticmethod
@@ -298,14 +358,14 @@ class group_permission(models.Model):
 def group_permission_save(sender, **kwargs):
     if not kwargs["raw"] and "instance" in kwargs:
         _cur_inst = kwargs["instance"]
-        group_changed.send(sender=_cur_inst, group=_cur_inst.group, cause="global_permission_create")
+        GroupChanged.send(sender=_cur_inst, group=_cur_inst.group, cause="global_permission_create")
 
 
 @receiver(signals.post_delete, sender=group_permission)
 def group_permission_delete(sender, **kwargs):
     if "instance" in kwargs:
         _cur_inst = kwargs["instance"]
-        group_changed.send(sender=_cur_inst, group=_cur_inst.group, cause="global_permission_delete")
+        GroupChanged.send(sender=_cur_inst, group=_cur_inst.group, cause="global_permission_delete")
 
 
 class group_object_permission(models.Model):
@@ -320,14 +380,14 @@ class group_object_permission(models.Model):
 def group_object_permission_save(sender, **kwargs):
     if not kwargs["raw"] and "instance" in kwargs:
         _cur_inst = kwargs["instance"]
-        group_changed.send(sender=_cur_inst, group=_cur_inst.group, cause="object_permission_create")
+        GroupChanged.send(sender=_cur_inst, group=_cur_inst.group, cause="object_permission_create")
 
 
 @receiver(signals.post_delete, sender=group_object_permission)
 def group_object_permission_delete(sender, **kwargs):
     if "instance" in kwargs:
         _cur_inst = kwargs["instance"]
-        group_changed.send(sender=_cur_inst, group=_cur_inst.group, cause="object_permission_delete")
+        GroupChanged.send(sender=_cur_inst, group=_cur_inst.group, cause="object_permission_delete")
 
 
 class user_permission(models.Model):
@@ -348,14 +408,14 @@ class user_permission(models.Model):
 def user_permission_save(sender, **kwargs):
     if not kwargs["raw"] and "instance" in kwargs:
         _cur_inst = kwargs["instance"]
-        user_changed.send(sender=_cur_inst, user=_cur_inst.user, cause="global_permission_create")
+        UserChanged.send(sender=_cur_inst, user=_cur_inst.user, cause="global_permission_create")
 
 
 @receiver(signals.post_delete, sender=user_permission)
 def user_permission_delete(sender, **kwargs):
     if "instance" in kwargs:
         _cur_inst = kwargs["instance"]
-        user_changed.send(sender=_cur_inst, user=_cur_inst.user, cause="global_permission_delete")
+        UserChanged.send(sender=_cur_inst, user=_cur_inst.user, cause="global_permission_delete")
 
 AC_MASK_READ = 0
 AC_MASK_MODIFY = 1
@@ -393,14 +453,14 @@ class user_object_permission(models.Model):
 def user_object_permission_save(sender, **kwargs):
     if not kwargs["raw"] and "instance" in kwargs:
         _cur_inst = kwargs["instance"]
-        user_changed.send(sender=_cur_inst, user=_cur_inst.user, cause="object_permission_create")
+        UserChanged.send(sender=_cur_inst, user=_cur_inst.user, cause="object_permission_create")
 
 
 @receiver(signals.post_delete, sender=user_object_permission)
 def user_object_permission_delete(sender, **kwargs):
     if "instance" in kwargs:
         _cur_inst = kwargs["instance"]
-        user_changed.send(sender=_cur_inst, user=_cur_inst.user, cause="object_permission_delete")
+        UserChanged.send(sender=_cur_inst, user=_cur_inst.user, cause="object_permission_delete")
 
 
 def get_label_codename(perm):
@@ -445,8 +505,6 @@ def check_content_permission(auth_obj, app_label, content_name):
         ]
         return content_name in names
 
-    print "ccp", app_label, content_name
-
     objects = auth_obj.perms.filter(content_type__app_label=app_label)
     content_types = [i.content_type for i in objects]
 
@@ -475,7 +533,7 @@ def check_permission(auth_obj, perm):
     app_label, content_name, codename = get_label_codename(perm)
     if app_label and content_name and codename:
         # caching code
-        return auth_obj._auth_cache.has_permission(app_label, content_name, codename)
+        return auth_obj._auth_cache.has_global_permission(app_label, content_name, codename)
     else:
         return False
 
@@ -537,6 +595,15 @@ def get_allowed_object_list(auth_obj, perm):
         auth_obj._auth_cache = auth_cache(auth_obj)
     app_label, content_name, code_name = get_label_codename(perm)
     return auth_obj._auth_cache.get_allowed_object_list(app_label, content_name, code_name)
+
+
+def get_allowed_object_list_model(auth_obj, content_type):
+    # return all allowed objects for all local permissions
+    if not hasattr(auth_obj, "_auth_cache"):
+        auth_obj._auth_cache = auth_cache(auth_obj)
+    # add dummy codename
+    app_label, content_name, code_name = get_label_codename("{}.*".format(content_type))
+    return auth_obj._auth_cache.get_allowed_object_list_model(app_label, content_name)
 
 
 def get_global_permissions(auth_obj):
@@ -737,6 +804,13 @@ class user(models.Model):
                     r_val[key] = max(value, r_val.get(key, 0))
         return r_val
 
+    def get_allowed_object_list_model(self, content_type, ask_parent=True):
+        # get all object pks we have any permission for
+        if ask_parent:
+            return get_allowed_object_list_model(self, content_type) | get_allowed_object_list_model(self.group, content_type)
+        else:
+            return get_allowed_object_list_model(self, content_type)
+
     def get_allowed_object_list(self, perm, ask_parent=True):
         # get all object pks we have an object permission for
         if ask_parent:
@@ -889,14 +963,14 @@ def user_pre_save(sender, **kwargs):
 def user_post_save(sender, **kwargs):
     if not kwargs["raw"] and "instance" in kwargs:
         _cur_inst = kwargs["instance"]
-        user_changed.send(sender=_cur_inst, user=_cur_inst, cause="save")
+        UserChanged.send(sender=_cur_inst, user=_cur_inst, cause="save")
 
 
 @receiver(signals.post_delete, sender=user)
 def user_post_delete(sender, **kwargs):
     if "instance" in kwargs:
         _cur_inst = kwargs["instance"]
-        user_changed.send(sender=_cur_inst, user=_cur_inst, cause="delete")
+        UserChanged.send(sender=_cur_inst, user=_cur_inst, cause="delete")
 
 
 class group(models.Model):
@@ -951,7 +1025,11 @@ class group(models.Model):
         # check if group has any of the object perms
         return any([self.has_object_perm(perm, obj) for perm in perms])
 
-    def get_allowed_object_list(self, perm, ask_parent=True):
+    def get_allowed_object_list_model(self, content_type):
+        # get all object pks we have any permission for
+        return get_allowed_object_list_model(self, content_type)
+
+    def get_allowed_object_list(self, perm):
         # get all object pks we have an object permission for
         return get_allowed_object_list(self, perm)
 
@@ -1011,20 +1089,19 @@ def group_pre_save(sender, **kwargs):
 def group_post_save(sender, **kwargs):
     if not kwargs["raw"] and "instance" in kwargs:
         _cur_inst = kwargs["instance"]
-        group_changed.send(sender=_cur_inst, group=_cur_inst, cause="save")
+        GroupChanged.send(sender=_cur_inst, group=_cur_inst, cause="save")
 
 
 @receiver(signals.post_delete, sender=group)
 def group_post_delete(sender, **kwargs):
     if "instance" in kwargs:
         _cur_inst = kwargs["instance"]
-        group_changed.send(sender=_cur_inst, group=_cur_inst, cause="delete")
+        GroupChanged.send(sender=_cur_inst, group=_cur_inst, cause="delete")
 
 
 @receiver(signals.m2m_changed, sender=group.perms.through)
 def group_perms_changed(sender, *args, **kwargs):
     if kwargs.get("action") == "pre_add" and "instance" in kwargs:
-        print "***", kwargs.get("pk_set")
         for add_pk in kwargs.get("pk_set"):
             if csw_permission.objects.get(Q(pk=add_pk)).codename in ["admin", "group_admin"]:
                 raise ValidationError("right not allowed for group")
@@ -1287,7 +1364,7 @@ def virtual_desktop_user_setting_post_save(sender, **kwargs):
     if not kwargs["raw"] and "instance" in kwargs:
         _cur_inst = kwargs["instance"]
         if _cur_inst._send_signals:
-            virtual_desktop_user_setting_changed.send(sender=_cur_inst, vdus=_cur_inst, cause="vdus_save")
+            VirtualDesktopUserSettingChanged.send(sender=_cur_inst, vdus=_cur_inst, cause="vdus_save")
 
         if _cur_inst.is_running and not _cur_inst.to_delete:
             LicenseUsage.log_usage(LicenseEnum.virtual_desktop, LicenseParameterTypeEnum.user, _cur_inst.user)

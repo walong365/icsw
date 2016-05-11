@@ -1,4 +1,4 @@
-// Copyright (C) 2012-2015 init.at
+// Copyright (C) 2012-2016 init.at
 //
 // Send feedback to: <lang-nevyjel@init.at>
 //
@@ -17,8 +17,6 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 //
-
-// {% load staticfiles %}
 
 // Naming conventions
 //
@@ -58,8 +56,10 @@ icsw_app = angular.module(
         "blockUI",
         "toaster",
         "gridster",
+        "cfp.hotkeys",
         "init.csw.filters",
         "icsw.tools.tree",
+        "icsw.tools.reacttree",
         "icsw.layout.menu",
         "icsw.tools",
         "icsw.login",
@@ -68,6 +68,12 @@ icsw_app = angular.module(
         "icsw.user.password",
         "icsw.user.dashboard",
         "icsw.user.license",
+        "icsw.backend.domain_name_tree",
+        "icsw.backend.category_tree",
+        "icsw.backend.devicetree",
+        "icsw.backend.backup",
+        "icsw.backend.network",
+        "icsw.backend.config",
         "icsw.rrd.graph",
         "icsw.info.background",
         "icsw.server.info",
@@ -76,11 +82,13 @@ icsw_app = angular.module(
         "icsw.device.variables",
         "icsw.device.info",
         "icsw.device.tree",
+        "icsw.device.asset",
         "icsw.config.category_tree",
         "icsw.config.category_location",
         "icsw.config.domain_name_tree",
         "icsw.device.network",
-        "icsw.device.configuration",
+        "icsw.device.network.graph",
+        "icsw.device.config",
         "icsw.device.connection",
         "icsw.device.category",
         "icsw.device.livestatus",
@@ -95,6 +103,7 @@ icsw_app = angular.module(
         "icsw.monitoring.cluster",
         "icsw.monitoring.escalation",
         "icsw.monitoring.build_info",
+        "icsw.schedule.device",
         "icsw.package.install",
         "icsw.device.boot",
         "icsw.device.create",
@@ -105,10 +114,9 @@ icsw_app = angular.module(
         "icsw.rms",
         "icsw.history",
         "icsw.discovery",
-        "icsw.discovery.event_log"{% if ADDITIONAL_ANGULAR_APPS %},{% endif %}  // make sure that in any case, the last entry does not have a comma (IE workaround)
-        // {% for app in ADDITIONAL_ANGULAR_APPS %}
-        "{{ app }}"{% if not forloop.last %},{% endif %}
-        // {% endfor %}
+        // <!-- ICSWAPPS:MODULES:START -->
+        // <!-- ICSWAPPS:MODULES:END -->
+        "icsw.discovery.event_log"
     ]
 ).config(
     [
@@ -120,12 +128,25 @@ icsw_app = angular.module(
             blockUIConfig.autoInjectBodyBlock = false;
         }
     ]
+).config(
+    function(hotkeysProvider) {
+        hotkeysProvider.templateHeader = "<h1>ICSW Key help</h1>"
+        hotkeysProvider.includeCheatSheet = true;
+    }
 ).constant(
     "ICSW_URLS", {
-        // {% load static %} // this is needed for get_static_prefix below
-        "STATIC_URL": "{% get_static_prefix %}",
-        "D3_MIN_JS": "{% static 'js/d3js/d3.min.js' %}",
-        {% include 'all_urls.html' %}
-        "DIMPLE_MIN_JS": "{% static 'js/dimple.v2.1.6.min.js' %}"
+        <!-- inject:urls:html -->
+        <!-- endinject -->
+        "D3_MIN_JS": "/icsw/static/d3.min.js",
+        "DIMPLE_MIN_JS": "/icsw/static/dimple.v2.1.6.min.js",
+        "STATIC_URL": "/icsw/static"
     }
-);
+).config(function(uiGmapGoogleMapApiProvider) {
+    uiGmapGoogleMapApiProvider.configure(
+        {
+            //    key: 'your api key',
+            v: '3.23', //defaults to latest 3.X anyhow
+            libraries: 'weather,geometry,visualization'
+        }
+    );
+});

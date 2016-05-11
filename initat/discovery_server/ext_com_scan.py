@@ -60,7 +60,6 @@ class ScanBatch(object):
             self.log("no valid IP found for {}".format(unicode(self.device)), logging_tools.LOG_LEVEL_ERROR)
             self.start_result = ResultNode(error="no valid IP found")
             self.finish()
-
         # NOTE: set self.start_result in subclass accordingly
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -371,7 +370,6 @@ class WmiScanBatch(ScanBatch):
 
         # TODO; check peers? (cf. snmp)
 
-
 class _ExtComScanMixin(object):
     """ Base class for all scan mixins """
     def _register_timer(self):
@@ -394,3 +392,508 @@ class WmiScanMixin(_ExtComScanMixin):
     def wmi_scan(self, dev_com, scan_dev):
         self._register_timer()
         return WmiScanBatch(dev_com, scan_dev).start_result
+
+class NRPEScanMixin(_ExtComScanMixin):
+    def nrpe_scan(self, dev_com, scan_dev):
+        self._register_timer()
+        return NRPEScanBatch(dev_com, scan_dev).start_result
+
+import pytz
+import datetime
+
+from initat.cluster.backbone.models.asset import AssetRun, RunStatus, AssetType, ScanType
+from initat.cluster.backbone.models.dispatch import DispatchSetting, DiscoverySource
+from initat.discovery_server.dispatcher import DiscoveryDispatcher
+
+
+PACKAGE_CMD = "package"
+LICENSE_CMD = "license"
+HARDWARE_CMD = "hardware"
+UPDATES_CMD = "updates"
+PROCESS_CMD = "process"
+PENDING_UPDATES_CMD = "pending_updates"
+
+class NRPEScanBatch(ScanBatch):
+    SCAN_TYPE = 'NRPE'
+
+    def __init__(self, dev_com, scan_dev):
+        dev_com.attrib['scan_address'] = "127.0.0.1"
+        super(NRPEScanBatch, self).__init__(dev_com, scan_dev)
+
+        self._commands = self._command = dev_com.attrib.get('commands').split(",")
+        self._build_command()
+
+        if self.device.target_ip:
+            # self._ext_com = ExtCom(self.log, self._build_command())
+            # self._ext_com.run()
+            self.start_result = ResultNode(ok="started NRPE_scan")
+
+    def _build_command(self):
+        for _command in self._commands:
+            source = None
+            if _command == PACKAGE_CMD:
+                source = DiscoverySource.PACKAGE
+            elif _command == LICENSE_CMD:
+                source = DiscoverySource.LICENSE
+            elif _command == HARDWARE_CMD:
+                source = DiscoverySource.HARDWARE
+            elif _command == UPDATES_CMD:
+                source = DiscoverySource.UPDATE
+            elif _command == PROCESS_CMD:
+                source = DiscoverySource.PROCESS
+            elif _command == PENDING_UPDATES_CMD:
+                source = DiscoverySource.PENDING_UPDATE
+
+            if not source:
+                continue
+
+            # run scan once every hour
+            ds = DispatchSetting(
+                device=self.device,
+                source=source,
+                duration_amount=5,
+                duration_unit=DispatchSetting.DurationUnits.minutes,
+                run_now=True
+            )
+            ds.save()
+
+        self.finish()
+
+LIST_SOFTWARE_CMD = "list-software-py3"
+LIST_KEYS_CMD = "list-keys-py3"
+LIST_METRICS_CMD = "list-metrics-py3"
+LIST_PROCESSES_CMD = "list-processes-py3"
+LIST_UPDATES_CMD = "list-updates-alt-py3"
+LIST_PENDING_UPDATES_CMD = "list-pending-updates-py3"
+LIST_HARDWARE_CMD = "list-hardware-lstopo-py3"
+
+from initat.tools import logging_tools, process_tools, server_command, net_tools
+from initat.icsw.service.instance import InstanceXML
+from initat.cluster.backbone.models.dispatch import DeviceDispatcherLink, DispatcherSettingScheduleEnum, ScheduleItem
+
+
+def align_second(now, sched_start_second):
+    while True:
+        now += datetime.timedelta(seconds=1)
+        if now.second == sched_start_second:
+            break
+
+    return now
+
+
+def align_minute(now, sched_start_minute):
+    while True:
+        now += datetime.timedelta(minutes=1)
+        if now.minute == sched_start_minute:
+            break
+
+    return now
+
+
+def align_hour(now, sched_start_hour):
+    while True:
+        now += datetime.timedelta(hours=1)
+        if now.hour == sched_start_hour:
+            break
+    return now
+
+
+def align_day(now, sched_start_day):
+    while True:
+        # print(now, datetime.timedelta(days=1))
+        now += datetime.timedelta(days=1)
+        if now.day == sched_start_day:
+            break
+    return now
+
+
+def align_week(now, sched_start_week):
+    while True:
+        now += datetime.timedelta(days=1)
+        if (now.isocalendar()[1] % 4) == sched_start_week:
+            break
+    return now
+
+
+def align_month(now, sched_start_month):
+    while True:
+        now += datetime.timedelta(days=1)
+        if now.month == sched_start_month:
+            break
+    return now
+
+
+def align_time_to_baseline(now, ds):
+    if ds.run_schedule.baseline == DispatcherSettingScheduleEnum.minute:
+        now = align_second(now, ds.sched_start_second)
+    elif ds.run_schedule.baseline == DispatcherSettingScheduleEnum.hour:
+        now = align_second(now, ds.sched_start_second)
+        now = align_minute(now, ds.sched_start_minute)
+
+    elif ds.run_schedule.baseline == DispatcherSettingScheduleEnum.day:
+        now = align_second(now, ds.sched_start_second)
+        now = align_minute(now, ds.sched_start_minute)
+        now = align_hour(now, ds.sched_start_hour)
+
+    elif ds.run_schedule.baseline == DispatcherSettingScheduleEnum.week:
+        now = align_second(now, ds.sched_start_second)
+        now = align_minute(now, ds.sched_start_minute)
+        now = align_hour(now, ds.sched_start_hour)
+        now = align_day(now, ds.sched_start_day)
+
+    elif ds.run_schedule.baseline == DispatcherSettingScheduleEnum.month:
+        now = align_second(now, ds.sched_start_second)
+        now = align_minute(now, ds.sched_start_minute)
+        now = align_hour(now, ds.sched_start_hour)
+        now = align_day(now, ds.sched_start_day)
+        now = align_week(now, ds.sched_start_week)
+
+    elif ds.run_schedule.baseline == DispatcherSettingScheduleEnum.year:
+        now = align_second(now, ds.sched_start_second)
+        now = align_minute(now, ds.sched_start_minute)
+        now = align_hour(now, ds.sched_start_hour)
+        now = align_day(now, ds.sched_start_day)
+        now = align_week(now, ds.sched_start_week)
+        now = align_month(now, ds.sched_start_month)
+
+    return now
+
+
+def get_time_inc_from_ds(ds):
+    if ds.run_schedule.baseline == DispatcherSettingScheduleEnum.second:
+        time_inc = datetime.timedelta(seconds=(1 * ds.mult))
+    elif ds.run_schedule.baseline == DispatcherSettingScheduleEnum.minute:
+        time_inc = datetime.timedelta(minutes=(1 * ds.mult))
+    elif ds.run_schedule.baseline == DispatcherSettingScheduleEnum.hour:
+        time_inc = datetime.timedelta(hours=(1 * ds.mult))
+    elif ds.run_schedule.baseline == DispatcherSettingScheduleEnum.day:
+        time_inc = datetime.timedelta(days=(1 * ds.mult))
+    elif ds.run_schedule.baseline == DispatcherSettingScheduleEnum.week:
+        time_inc = datetime.timedelta(weeks=(1 * ds.mult))
+    elif ds.run_schedule.baseline == DispatcherSettingScheduleEnum.month:
+        time_inc = datetime.timedelta(weeks=(4 * 1 * ds.mult))
+    elif ds.run_schedule.baseline == DispatcherSettingScheduleEnum.year:
+        time_inc = datetime.timedelta(weeks=(52 * 1 * ds.mult))
+
+    return time_inc
+
+# from Queue import Queue
+# import threading
+
+
+class Dispatcher(object):
+    def __init__(self, discovery_process):
+        self.discovery_process = discovery_process
+        self.device_asset_run_ext_coms = {}
+        self.device_running_ext_coms = {}
+    #    self.todo_asset_runs = Queue
+    #
+    #     thread = threading.Thread(target=self.generate_assets_call, args=())
+    #     thread.start()
+    #
+    # def generate_assets_call(self):
+    #     while True:
+    #         ar = self.todo_asset_runs.get()
+    #         print "starting argen"
+    #         ar.generate_assets_new()
+    #         ar.save()
+    #         print "argen stopped"
+    #         print ar
+
+    def dispatch_call(self):
+        _now = datetime.datetime.now(tz=pytz.utc).replace(microsecond=0)
+
+        links = DeviceDispatcherLink.objects.all()
+
+        for link in links:
+            device = link.device
+            ds = link.dispatcher_setting
+
+            last_scheds = {}
+            last_sched = {}
+            for sched in ScheduleItem.objects.all():
+                if sched.device == device and sched.dispatch_setting == ds:
+                    if ds not in last_scheds:
+                        last_scheds[ds] = 0
+                    last_scheds[ds] += 1
+
+                    if ds not in last_sched:
+                        last_sched[ds] = sched
+                    elif sched.planned_date > last_sched[ds].planned_date:
+                        last_sched[ds] = sched
+
+
+
+            if ds not in last_sched:
+                next_run = _ScheduleItem(device, DiscoverySource.PACKAGE, align_time_to_baseline(_now, ds))
+                print "Next scheduled run: %s" % next_run
+                # self.schedule_items.append(last_sched)
+                # self.schedule_items.sort(key=lambda s: s.planned_date)
+                ScheduleItem.objects.create(device=next_run.device,
+                                            source=next_run.source,
+                                            planned_date=next_run.planned_date,
+                                            dispatch_setting=ds)
+                last_scheds[ds] = 1
+                last_sched[ds] = next_run
+
+
+
+            if last_scheds[ds] < 2:
+                next_run = _ScheduleItem(device,
+                                         DiscoverySource.PACKAGE,
+                                         last_sched[ds].planned_date + get_time_inc_from_ds(ds))
+                print "Next scheduled run: %s" % next_run
+                # self.schedule_items.append(next_run)
+                # self.schedule_items.sort(key=lambda s: s.planned_date)
+                ScheduleItem.objects.create(device=next_run.device,
+                                            source=next_run.source,
+                                            planned_date=next_run.planned_date,
+                                            dispatch_setting = ds)
+
+
+        # remove schedule items that are no longer linked to a device/dispatch_setting
+        schedule_items = ScheduleItem.objects.all()
+        for sched in schedule_items:
+            if sched.run_now:
+                continue
+
+            links = DeviceDispatcherLink.objects.all()
+
+            found = False
+            for link in links:
+                device = link.device
+                ds = link.dispatcher_setting
+
+                if sched.device == device and sched.dispatch_setting == ds:
+                    found = True
+
+            if not found:
+                print "removing %s %s" % (sched.device, sched.planned_date)
+                sched.delete()
+
+        schedule_items = sorted(ScheduleItem.objects.all(), key=lambda x: x.planned_date)
+        while schedule_items:
+            schedule_item = schedule_items.pop(0)
+            if schedule_item.planned_date < _now:
+                print "need to run: %s" % schedule_item.__repr__()
+
+                hm_capable = False
+                nrpe_capable = False
+                for _com in schedule_item.device.com_capability_list.all():
+                    if _com.matchcode == "hm":
+                        hm_capable = True
+                    elif _com.matchcode == "nrpe":
+                        nrpe_capable = True
+
+                if hm_capable:
+                    self.__do_hm_scan(schedule_item)
+                elif nrpe_capable:
+                    self.__do_nrpe_scan(schedule_item)
+                else:
+                    print "Skipping non capable device"
+                schedule_item.delete()
+
+        for _device in self.device_asset_run_ext_coms:
+            if self.device_running_ext_coms[_device] == 0:
+                if self.device_asset_run_ext_coms[_device]:
+                    asset_run, com, timeout = self.device_asset_run_ext_coms[_device][0]
+                    asset_run.run_status = RunStatus.RUNNING
+                    asset_run.run_start_time = datetime.datetime.now()
+                    asset_run.save()
+
+                    if isinstance(com, ExtCom):
+                        print "Executing: %s" % com.command
+                        com.run()
+                    else:
+                        hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
+                        self.discovery_process.get_route_to_devices([_device])
+                        zmq_con = net_tools.zmq_connection(
+                            "server:{}".format(process_tools.get_machine_name()),
+                            context=self.discovery_process.zmq_context
+                        )
+
+                        ip = _device.all_ips()[0]
+                        if ip:
+                            conn_str = "tcp://{}:{:d}".format(
+                                ip,
+                                hm_port,
+                            )
+                            self.log(u"connection_str for {} is {}".format(unicode(_device), conn_str))
+                            zmq_con.add_connection(
+                                conn_str,
+                                server_command.srv_command(command=com),
+                                multi=True
+                            )
+                        else:
+                            print "no ip for %s" % _device
+
+                        # replace cmd_str in [AssetRun, com_type, timeout] list with zmq_con object
+                        self.device_asset_run_ext_coms[_device][0][1] = zmq_con
+
+                    self.device_running_ext_coms[_device] = 1
+            if self.device_running_ext_coms[_device] == 1:
+                asset_run, com, timeout = self.device_asset_run_ext_coms[_device][0]
+                self.device_asset_run_ext_coms[_device][0][2] = timeout - 1
+                print timeout
+                if timeout < 1:
+                    self.device_asset_run_ext_coms[_device].pop(0)
+                    asset_run.run_status = RunStatus.ENDED
+                    asset_run.run_end_time = datetime.datetime.now()
+                    asset_run.save()
+                    self.device_running_ext_coms[_device] = 0
+                elif isinstance(com, ExtCom):
+                    status = com.finished()
+                    if status == 0:
+                        self.device_asset_run_ext_coms[_device].pop(0)
+                        _output = com.communicate()
+                        asset_run.run_status = RunStatus.ENDED
+                        asset_run.run_end_time = datetime.datetime.now()
+                        asset_run.raw_result_str = _output[0]
+                        asset_run.generate_assets_new()
+                        #self.todo_asset_runs.append(asset_run)
+                        asset_run.save()
+                        self.device_running_ext_coms[_device] = 0
+                    elif status != None:
+                        self.device_asset_run_ext_coms[_device].pop(0)
+                        _output = com.communicate()
+                        asset_run.run_status = RunStatus.ENDED
+                        asset_run.run_end_time = datetime.datetime.now()
+                        asset_run.save()
+                        self.device_running_ext_coms[_device] = 0
+                else:
+                    if com.poller.poll(1):
+                        res_list = com.loop()
+                        self.device_asset_run_ext_coms[_device].pop(0)
+                        asset_run.run_status = RunStatus.ENDED
+                        asset_run.run_end_time = datetime.datetime.now()
+
+                        s = None
+                        if asset_run.run_type == AssetType.PACKAGE:
+                            s = res_list[0]["pkg_list"].text
+                        elif asset_run.run_type == AssetType.HARDWARE:
+                            s = res_list[0]["lstopo_dump"].text
+                        elif asset_run.run_type == AssetType.LICENSE:
+                            pass
+                            #todo implement me
+                        elif asset_run.run_type == AssetType.UPDATE:
+                            pass
+                            #todo implement me
+                        elif asset_run.run_type == AssetType.PROCESS:
+                            s = res_list[0]['process_tree'].text
+                        elif asset_run.run_type == AssetType.PENDING_UPDATE:
+                            s = res_list[0]["update_list"].text
+
+                        asset_run.raw_result_str = s
+                        asset_run.generate_assets_new()
+                        #self.todo_asset_runs.append(asset_run)
+                        asset_run.save()
+                        self.device_running_ext_coms[_device] = 0
+
+    def __do_hm_scan(self, schedule_item):
+        cmd_tuples = [(AssetType.PACKAGE, "rpmlist"),
+                      (AssetType.HARDWARE, "lstopo"),
+                      (AssetType.PROCESS, "proclist"),
+                      (AssetType.PENDING_UPDATE, "updatelist")]
+        for runtype, _command in cmd_tuples:
+            # runtype = None
+            # _command = None
+            # if schedule_item.source == DiscoverySource.PACKAGE:
+            #     runtype = AssetType.PACKAGE
+            #     _command = "rpmlist"
+            # elif schedule_item.source == DiscoverySource.HARDWARE:
+            #     runtype = AssetType.HARDWARE
+            #     _command = "lstopo"
+            # elif schedule_item.source == DiscoverySource.LICENSE:
+            #     runtype = AssetType.LICENSE
+            #     #todo implement me
+            # elif schedule_item.source == DiscoverySource.UPDATE:
+            #     runtype = AssetType.UPDATE
+            #     #todo implement me
+            # elif schedule_item.source == DiscoverySource.PROCESS:
+            #     runtype = AssetType.PROCESS
+            #     _command = "proclist"
+            # elif schedule_item.source == DiscoverySource.PENDING_UPDATE:
+            #     runtype = AssetType.PENDING_UPDATE
+            #     _command = "updatelist"
+
+            _device = schedule_item.device
+            asset_run_len = len(_device.assetrun_set.all())
+            new_asset_run = AssetRun(run_index=asset_run_len,
+                                     run_type=runtype,
+                                     run_status=RunStatus.PLANNED,
+                                     scan_type = ScanType.HM)
+            new_asset_run.save()
+            _device.assetrun_set.add(new_asset_run)
+
+            if _device not in self.device_running_ext_coms:
+                self.device_running_ext_coms[_device] = 0
+                self.device_asset_run_ext_coms[_device] = []
+
+            self.device_asset_run_ext_coms[_device].append([new_asset_run, _command, 120])
+
+    def __do_nrpe_scan(self, schedule_item):
+        cmd_tuples = [(AssetType.PACKAGE, LIST_SOFTWARE_CMD),
+                      (AssetType.HARDWARE, LIST_HARDWARE_CMD),
+                      (AssetType.PROCESS, LIST_PROCESSES_CMD),
+                      (AssetType.PENDING_UPDATE, LIST_PENDING_UPDATES_CMD),
+                      (AssetType.UPDATE, LIST_UPDATES_CMD),
+                      (AssetType.LICENSE, LIST_KEYS_CMD)]
+
+        for runtype, _command in cmd_tuples:
+            # if schedule_item.source == DiscoverySource.PACKAGE:
+            #     _command = LIST_SOFTWARE_CMD
+            #     runtype = AssetType.PACKAGE
+            # elif schedule_item.source == DiscoverySource.HARDWARE:
+            #     _command = LIST_HARDWARE_CMD
+            #     runtype = AssetType.HARDWARE
+            # elif schedule_item.source == DiscoverySource.LICENSE:
+            #     _command = LIST_KEYS_CMD
+            #     runtype = AssetType.LICENSE
+            # elif schedule_item.source == DiscoverySource.UPDATE:
+            #     _command = LIST_UPDATES_CMD
+            #     runtype = AssetType.UPDATE
+            # elif schedule_item.source == DiscoverySource.PROCESS:
+            #     _command = LIST_PROCESSES_CMD
+            #     runtype = AssetType.PROCESS
+            # elif schedule_item.source == DiscoverySource.PENDING_UPDATE:
+            #     _command = LIST_PENDING_UPDATES_CMD
+            #     runtype = AssetType.PENDING_UPDATE
+
+            _com = "/opt/cluster/sbin/check_nrpe -H {} -n -c {} -t120".format(schedule_item.device.all_ips()[0],
+                                                                              _command)
+            ext_com = ExtCom(self.log, _com)
+
+            _device = schedule_item.device
+
+            asset_run_len = len(_device.assetrun_set.all())
+
+            new_asset_run = AssetRun(run_index=asset_run_len,
+                                     run_type=runtype,
+                                     run_status=RunStatus.PLANNED,
+                                     scan_type=ScanType.NRPE)
+            new_asset_run.save()
+            _device.assetrun_set.add(new_asset_run)
+
+            if _device not in self.device_running_ext_coms:
+                self.device_running_ext_coms[_device] = 0
+                self.device_asset_run_ext_coms[_device] = []
+
+            self.device_asset_run_ext_coms[_device].append([new_asset_run, ext_com, 120])
+
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        print what
+
+class _ScheduleItem(object):
+    def __init__(self, device, source, planned_date):
+        """
+        :type dispatch_setting: DispatchSetting
+        """
+        # date always means datetime
+        self.device = device
+        self.source = source
+        self.planned_date = planned_date  # naive date according to interval
+
+    def __repr__(self):
+        return "ScheduleItem(dev={}, src={}, planned={})".format(
+            self.device, self.source, self.planned_date
+        )

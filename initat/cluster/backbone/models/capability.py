@@ -108,3 +108,5 @@ class ComCapability(models.Model):
         ipmi = 2
         snmp = 3
         wmi = 4
+        asu = 5
+        nrpe = 6

@@ -1,4 +1,4 @@
-# Copyright (C) 2015 Bernhard Mallinger, init.at
+# Copyright (C) 2015-2016 Bernhard Mallinger, init.at
 #
 # this file is part of cluster-backbone-sql
 #
@@ -30,8 +30,8 @@ from django.db.models import Max, Min, Prefetch, Q
 
 from initat.cluster.backbone.available_licenses import LicenseParameterTypeEnum
 from initat.cluster.backbone.models import mon_check_command
-from initat.cluster.backbone.models.license import LicenseLockListDeviceService, LicenseUsage
 from initat.cluster.backbone.models.functions import db_limit_1
+from initat.cluster.backbone.models.license import LicenseLockListDeviceService, LicenseUsage
 
 
 ########################################
@@ -69,7 +69,10 @@ class mon_icinga_log_raw_base(models.Model):
     STOP = "STOP"
 
     # use for CharFields
-    _start_stop_field_args = {'max_length': 5, 'choices': [(START, START), (STOP, STOP)]}
+    _start_stop_field_args = {
+        "max_length": 5,
+        "choices": [(START, START), (STOP, STOP)]
+    }
 
     class Meta:
         abstract = True
@@ -85,8 +88,9 @@ class raw_host_alert_manager(models.Manager):
         for entry in queryset.filter(Q(device_independent=False) & Q(date__range=(start_time, end_time))):
             host_alerts[entry.device_id].append(entry)
         # calc dev independent afterwards and add to all keys
-        for entry in mon_icinga_log_raw_host_alert_data.objects \
-                .filter(device_independent=True, date__range=(start_time, end_time)):
+        for entry in mon_icinga_log_raw_host_alert_data.objects.filter(
+            device_independent=True, date__range=(start_time, end_time)
+        ):
             for key in host_alerts:
                 host_alerts[key].append(entry)
 
@@ -344,7 +348,7 @@ class mon_icinga_log_aggregated_host_data(models.Model):
     STATE_CHOICES = mon_icinga_log_raw_host_alert_data.STATE_CHOICES + [(STATE_FLAPPING, "FLAPPING")]
     STATE_CHOICES_REVERSE_MAP = {val: key for (key, val) in STATE_CHOICES}
 
-    STATE_CHOICES_READABLE = dict((k, v.capitalize()) for (k, v) in STATE_CHOICES)
+    STATE_CHOICES_READABLE = {k: v.capitalize() for (k, v) in STATE_CHOICES}
 
     STATE_TYPES = mon_icinga_log_raw_base.STATE_TYPES + [(STATE_FLAPPING, STATE_FLAPPING)]
 
@@ -372,8 +376,12 @@ class mon_icinga_log_aggregated_service_data_manager(models.Manager):
         # merge state_types (soft/hard)
 
         for state in set(d['state'] for d in data):
-            data_merged_state_types.append({'state': state,
-                                            'value': sum(d['value'] for d in data if d['state'] == state)})
+            data_merged_state_types.append(
+                {
+                    'state': state,
+                    'value': sum(d['value'] for d in data if d['state'] == state)
+                }
+            )
 
         if normalize:
             # normalize to 1.0 (useful if the data is from multiple aggregated timespans)
@@ -405,8 +413,11 @@ class mon_icinga_log_aggregated_service_data_manager(models.Manager):
                 _queries = []
                 for dev_id, service_list in devices.iteritems():
                     # query: device_pk matches as well as one service_pk/service_info combination
-                    service_qs = ((Q(service_id=serv_pk) & Q(service_info=service_info))
-                                  for serv_pk, service_info in service_list)
+                    service_qs = (
+                        (
+                            Q(service_id=serv_pk) & Q(service_info=service_info)
+                        ) for serv_pk, service_info in service_list
+                    )
                     _queries.append(Q(device_id=dev_id) & reduce(lambda x, y: x | y, service_qs))
                 # or around all queries
                 query_filter = reduce(lambda x, y: x | y, _queries)
@@ -447,8 +458,7 @@ class mon_icinga_log_aggregated_service_data_manager(models.Manager):
                     }
 
                     if use_client_name:
-                        service_key =\
-                            mon_icinga_log_raw_service_alert_data.objects.calculate_service_name_for_client(entry)
+                        service_key = mon_icinga_log_raw_service_alert_data.objects.calculate_service_name_for_client(entry)
                     else:
                         service_key = (entry.service_id, entry.service_info)
 
@@ -465,11 +475,13 @@ class mon_icinga_log_aggregated_service_data_manager(models.Manager):
                     for service_key, timespans_present in service_name_timespans.iteritems():
                         num_missing = len(timespans) - len(timespans_present)
                         if num_missing > 0:
-                            data_per_device[device_id][service_key].append({
-                                'state': trans[mon_icinga_log_raw_service_alert_data.STATE_UNDETERMINED],
-                                'state_type': mon_icinga_log_raw_service_alert_data.STATE_UNDETERMINED,
-                                'value': 1 * num_missing,  # this works since we normalize afterwards
-                            })
+                            data_per_device[device_id][service_key].append(
+                                {
+                                    'state': trans[mon_icinga_log_raw_service_alert_data.STATE_UNDETERMINED],
+                                    'state_type': mon_icinga_log_raw_service_alert_data.STATE_UNDETERMINED,
+                                    'value': 1 * num_missing,  # this works since we normalize afterwards
+                                }
+                            )
 
             return data_per_device, used_device_services
 
@@ -480,9 +492,11 @@ class mon_icinga_log_aggregated_service_data_manager(models.Manager):
                 # we now just add the values,but we could e.g. also use the most common state of a service as it's state
                 # then we could say "4 services were ok, 3 were critical".
                 data_concat = list(itertools.chain.from_iterable(s_data for s_data in device_data.itervalues()))
-                return_data[device_id] = self.merge_state_types(data_concat,
-                                                                trans[mon_icinga_log_raw_base.STATE_UNDETERMINED],
-                                                                normalize=True)
+                return_data[device_id] = self.merge_state_types(
+                    data_concat,
+                    trans[mon_icinga_log_raw_base.STATE_UNDETERMINED],
+                    normalize=True
+                )
             return return_data
 
         def merge_service_state_types_per_device(data_per_device):
@@ -517,7 +531,7 @@ class mon_icinga_log_aggregated_service_data(models.Model):
     STATE_CHOICES = mon_icinga_log_raw_service_alert_data.STATE_CHOICES + [(STATE_FLAPPING, "FLAPPING")]
     STATE_CHOICES_REVERSE_MAP = {val: key for (key, val) in STATE_CHOICES}
 
-    STATE_CHOICES_READABLE = dict((k, v.capitalize()) for (k, v) in STATE_CHOICES)
+    STATE_CHOICES_READABLE = {k: v.capitalize() for (k, v) in STATE_CHOICES}
 
     idx = models.AutoField(primary_key=True)
     timespan = models.ForeignKey(mon_icinga_log_aggregated_timespan)
@@ -561,8 +575,10 @@ class StatusHistoryUtils(object):
         @param start_time: discard events which have finished before start_time
         @param end_time: discard events which start after end_time
         """
-        StartStopDuration = collections.namedtuple("StartStopDuration", ['start', 'end', 'start_entry',
-                                                                         'end_entry'])
+        StartStopDuration = collections.namedtuple(
+            "StartStopDuration",
+            ['start', 'end', 'start_entry', 'end_entry']
+        )
         cache = defaultdict(lambda: [])  # this is sorted by time
         aux_start_times = {}
         for entry in queryset:
@@ -600,15 +616,14 @@ class StatusHistoryUtils(object):
         # NOTE: code was written for 'last_before' mode and then generalised, hence some vars are called 'latest...'
         try:
             if mode == 'last before':
-                latest_dev_independent_service_alert = \
-                    obj_man.filter(date__lte=time, device_independent=True).latest('date')
+                latest_dev_independent_service_alert = obj_man.filter(date__lte=time, device_independent=True).latest('date')
             else:
-                latest_dev_independent_service_alert = \
-                    obj_man.filter(date__gte=time, device_independent=True).earliest('date')
+                latest_dev_independent_service_alert = obj_man.filter(date__gte=time, device_independent=True).earliest('date')
 
             # can't use values() on single entry
-            latest_dev_independent_service_alert = {key: getattr(latest_dev_independent_service_alert, key)
-                                                    for key in (group_by_fields + additional_fields)}
+            latest_dev_independent_service_alert = {
+                key: getattr(latest_dev_independent_service_alert, key) for key in (group_by_fields + additional_fields)
+            }
         except obj_man.model.DoesNotExist:
             latest_dev_independent_service_alert = None
 
@@ -619,8 +634,7 @@ class StatusHistoryUtils(object):
         else:
             queryset = obj_man.filter(Q(date__gte=time) & Q(device_independent=False))
 
-        apply_additional_filter = \
-            lambda x: x if additional_filter is None else x.filter(additional_filter)
+        apply_additional_filter = lambda x: x if additional_filter is None else x.filter(additional_filter)
 
         queryset = apply_additional_filter(queryset)
         queryset = queryset.values(*group_by_fields)
@@ -662,14 +676,20 @@ class StatusHistoryUtils(object):
         for k, v in last_service_alert_cache.iteritems():
             if any(key not in v[0] for key in additional_fields):
                 if is_host:
-                    additional_fields_query = obj_man.filter(device_id=k, date=v[1])
+                    additional_fields_query = obj_man.filter(
+                        device_id=k,
+                        date=v[1]
+                    )
                 else:
-                    additional_fields_query = obj_man.filter(device_id=k[0], service_id=k[1], service_info=k[2],
-                                                             date=v[1])
+                    additional_fields_query = obj_man.filter(
+                        device_id=k[0],
+                        service_id=k[1],
+                        service_info=k[2],
+                        date=v[1]
+                    )
 
                 if len(additional_fields_query) == 0:  # must be dev independent
                     additional_fields_query = obj_man.filter(device_independent=True, date=v[1])
-
                 v[0].update(additional_fields_query.values(*additional_fields)[0])
 
         # drop extreme date
@@ -706,6 +726,7 @@ class AlertList(object):
 
         # handle downtimes
         downtime_model = mon_icinga_log_raw_host_downtime_data if is_host else mon_icinga_log_raw_service_downtime_data
+        print downtime_model
         downtimes_qs = downtime_model.objects.all().order_by('date')
         if alert_filter is not None:
             downtimes_qs = downtimes_qs.filter(alert_filter)
@@ -714,7 +735,8 @@ class AlertList(object):
             StatusHistoryUtils.get_key_fun(is_host),
             'downtime_state',
             start_time,
-            end_time)
+            end_time
+        )
 
         for k, downtime_list in downtimes.iteritems():
             self.alerts[k] = self.add_downtimes_to_alerts(self.alerts[k], self.last_before.get(k, None), downtime_list)
@@ -722,8 +744,11 @@ class AlertList(object):
             if downtime_at_start_alert:
                 downtime_entry = {}
                 # create entry in "last before" format
-                for key in ['device_id', 'device_id', 'service_id', 'service_info', 'date', 'msg', 'state',
-                            'state_type']:
+                for key in [
+                    'device_id', 'service_id',
+                    'service_info', 'date', 'msg',
+                    'state', 'state_type'
+                ]:
                     if hasattr(downtime_at_start_alert, key):
                         downtime_entry[key] = getattr(downtime_entry, key)
 

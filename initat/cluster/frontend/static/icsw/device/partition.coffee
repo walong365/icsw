@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2015 init.at
+# Copyright (C) 2012-2016 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -22,78 +22,112 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "icsw.d3", "icsw.tools.button"
     ]
-).directive("icswDevicePartitionOverview", ["$templateCache", ($templateCache) ->
+).config(["$stateProvider", ($stateProvider) ->
+    $stateProvider.state(
+        "main.partition", {
+            url: "/partition"
+            templateUrl: "icsw/main/partition.html"
+            icswData:
+                pageTitle: "Partition overview"
+                rights: ["partition_fs.modify_partitions"]
+                licenses: ["netboot"]
+                menuEntry:
+                    menukey: "cluster"
+                    icon: "fa-database"
+                    ordering: 35
+        }
+    ).state(
+        "main.monitordisk", {
+            url: "/monitordisk"
+            template: '<icsw-device-partition-overview icsw-sel-man="0" icsw-sel-man-sel-mode="d"></icsw-device-partition-overview>'
+            icswData:
+                pageTitle: "Disk"
+                rights: ["mon_check_command.setup_monitoring"]
+                menuEntry:
+                    menukey: "mon"
+                    icon: "fa-hdd-o"
+                    ordering: 50
+        }
+    )
+]).directive("icswDevicePartitionOverview",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.device.partition.overview")
-        link : (scope, el, attrs) ->
-        controller: ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$uibModal", "blockUI", "ICSW_URLS", "icswSimpleAjaxCall",
-        ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $uibModal, blockUI, ICSW_URLS, icswSimpleAjaxCall) ->
-            $scope.entries = []
-            $scope.active_dev = undefined
-            $scope.devsel_list = []
-            $scope.new_devsel = (_dev_sel, _devg_sel) ->
-                $scope.devsel_list = _dev_sel
-                $scope.reload()
-            $scope.reload = () ->
-                active_tab = (dev for dev in $scope.entries when dev.tab_active)
-                restDataSource.reload([ICSW_URLS.REST_DEVICE_TREE_LIST, {"with_disk_info" : true, "with_meta_devices" : false, "pks" : angular.toJson($scope.devsel_list), "olp" : "backbone.device.change_monitoring"}]).then((data) ->
-                    $scope.entries = (dev for dev in data)
-                    if active_tab.length
-                        for dev in $scope.entries
-                            if dev.idx == active_tab[0].idx
-                                dev.tab_active = true
-                )
-            $scope.get_vg = (dev, vg_idx) ->
-                return (cur_vg for cur_vg in dev.act_partition_table.lvm_vg_set when cur_vg.idx == vg_idx)[0]
-            $scope.clear = (pk) ->
-                if pk?
-                    blockUI.start()
-                    icswSimpleAjaxCall(
-                        url     : ICSW_URLS.MON_CLEAR_PARTITION
-                        data    : {
-                            "pk" : pk
-                        }
-                    ).then(
-                        (xml) ->
-                            blockUI.stop()
-                            $scope.reload()
-                        (xml) ->
-                            blockUI.stop()
-                            $scope.reload()
-                    )
-            $scope.fetch = (pk) ->
-                if pk?
-                    blockUI.start()
-                    icswSimpleAjaxCall(
-                        url     : ICSW_URLS.MON_FETCH_PARTITION
-                        data    : {
-                            "pk" : pk
-                        }
-                    ).then(
-                        (xml) ->
-                            blockUI.stop()
-                            $scope.reload()
-                        (xml) ->
-                            blockUI.stop()
-                            $scope.reload()
-                    )
-            $scope.use = (pk) ->
-                if pk?
-                    blockUI.start()
-                    icswSimpleAjaxCall(
-                        url     : ICSW_URLS.MON_USE_PARTITION
-                        data    : {
-                            "pk" : pk
-                        }
-                    ).then(
-                        (xml) ->
-                            blockUI.stop()
-                            $scope.reload()
-                        (xml) ->
-                            blockUI.stop()
-                            $scope.reload()
-                    )
-        ]
+        controller: "icswDevicePartitionOverviewCtrl"
     }
+]).controller("icswDevicePartitionOverviewCtrl",
+[
+    "$scope", "$compile", "$filter", "$templateCache", "Restangular",
+    "$q", "blockUI", "ICSW_URLS",
+    "icswSimpleAjaxCall", "icswDeviceTreeService", "icswDeviceTreeHelperService",
+(
+    $scope, $compile, $filter, $templateCache, Restangular,
+    $q, blockUI, ICSW_URLS,
+    icswSimpleAjaxCall, icswDeviceTreeService, icswDeviceTreeHelperService,
+) ->
+    $scope.struct = {
+        # loading
+        loading: false
+        # device tree
+        device_tree: undefined
+        # devices
+        devices: []
+    }
+    $scope.new_devsel = (dev_sel) ->
+        $scope.struct.loading = true
+        $scope.struct.devices.length = 0
+        icswDeviceTreeService.load($scope.$id).then(
+            (data) ->
+                $scope.struct.device_tree = data
+                for dev in dev_sel
+                    if not dev.is_meta_device
+                        $scope.struct.devices.push(dev)
+                hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, $scope.struct.devices)
+                $scope.struct.device_tree.enrich_devices(hs, ["disk_info"]).then(
+                    (data) ->
+                        # console.log "*", data
+                        $scope.struct.loading = false
+                )
+        )
+
+    $scope.get_vg = (dev, vg_idx) ->
+        return (cur_vg for cur_vg in dev.act_partition_table.lvm_vg_set when cur_vg.idx == vg_idx)[0]
+
+    _call_server = ($event, device, url) ->
+        $scope.struct.loading = true
+        blockUI.start()
+        icswSimpleAjaxCall(
+            url: url
+            data: {
+                pk: device.idx
+            }
+        ).then(
+            (xml) ->
+                # reload partition set
+                hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, [device])
+                $scope.struct.device_tree.enrich_devices(hs, ["disk_info"], true).then(
+                    (data) ->
+                        $scope.struct.loading = false
+                        blockUI.stop()
+                )
+
+            (xml) ->
+                $scope.struct.loading = false
+                blockUI.stop()
+        )
+
+    $scope.clear = ($event, device) ->
+        _call_server($event, device, ICSW_URLS.MON_CLEAR_PARTITION)
+
+    $scope.fetch = ($event, device) ->
+        _call_server($event, device, ICSW_URLS.MON_FETCH_PARTITION)
+
+    $scope.use = ($event, device) ->
+        _call_server($event, device, ICSW_URLS.MON_USE_PARTITION)
+
 ])

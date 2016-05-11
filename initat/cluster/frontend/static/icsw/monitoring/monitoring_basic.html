@@ -1,64 +1,79 @@
-
 <script type="text/ng-template" id="icsw.monitoring.basic">
 
-<uib-tabset ng-cloack>
-
-    <uib-tab heading="Periods">
-        <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringBasicService">
-            <h2>Periods ({{entries.length}} entries), <icsw-tools-button type="create" value="create new" ng-click="create($event)"></icsw-tools-button></h2>
-            <table st-table="entries_displayed" st-safe-src="entries"
-                   class="table table-condensed table-hover" style="width:auto;">
-                <thead>
-                    <tr>
-                        <td colspan="99">
-                            <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
-                                 possible-items-by-page="10,20,50,100,200,500,1000"></div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th st-sort="name" st-sort-default="true">Name</th>
-                        <th st-sort="alias">Alias</th>
-                        <th st-sort="mon_range">Mon</th>
-                        <th st-sort="tue_range">Tue</th>
-                        <th st-sort="wed_range">Wed</th>
-                        <th st-sort="thu_range">Thu</th>
-                        <th st-sort="fri_range">Fri</th>
-                        <th st-sort="sat_range">Sat</th>
-                        <th st-sort="sun_range">Sun</th>
-                        <th st-sort="config_service.get_use_count">Use count</th>
-                        <th colspan="2" class="text-center">Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr ng-repeat="obj in entries_displayed">
-                        <td>{{ obj.name }}</td>
-                        <td>{{ obj.alias }}</td>
-                        <td class="text-center">{{ obj.mon_range }}</td>
-                        <td class="text-center">{{ obj.tue_range }}</td>
-                        <td class="text-center">{{ obj.wed_range }}</td>
-                        <td class="text-center">{{ obj.thu_range }}</td>
-                        <td class="text-center">{{ obj.fri_range }}</td>
-                        <td class="text-center">{{ obj.sat_range }}</td>
-                        <td class="text-center">{{ obj.sun_range }}</td>
-                        <td>{{ config_service.get_use_count(obj) }}</td>
-                        <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
-                        <td><icsw-tools-button type="delete" size="xs" ng-show="config_service.delete_ok(obj)" ng-click="delete(obj)"></icsw-tools-button></td>
-                    </tr>
-                </tbody>
-            </table>
-        </icsw-tools-rest-table>
-    </uib-tab>
-
-    <uib-tab heading="Notification templates">
-        <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringNotificationService">
-            <h2>Notification templates ({{entries.length}} entries), <icsw-tools-button type="create" value="create new" ng-click="create($event)"></icsw-tools-button></h2>
+    <uib-alert type="warning" ng-show="!struct.tree_valid">Loading tree...</uib-alert>
+    <uib-tabset ng-show="struct.tree_valid">
+        <uib-tab heading="Periods">
+            <icsw-tools-rest-table-new target-list="entries" config-service="icswMonitoringBasicPeriodService">
+                <h3>
+                    Periods ({{ entries.length }} entries),
+                    <icsw-tools-button type="create" size="xs" value="create new" ng-click="create($event, null)"></icsw-tools-button>
+                </h3>
                 <table st-table="entries_displayed" st-safe-src="entries"
-                       class="table table-condensed table-hover" style="width:auto;">
+                       class="table table-condensed table-hover table-striped" style="width:auto;">
                     <thead>
-                        <td colspan="99">
-                            <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
-                                 possible-items-by-page="10,20,50,100,200,500,1000"></div>
-                        </td>
+                        <tr>
+                            <td colspan="99">
+                                <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                                     possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="99">
+                                <input st-search="" class="form-control" placeholder="filter ..." type="text"/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th st-sort="name" st-sort-default="true">Name</th>
+                            <th st-sort="alias">Alias</th>
+                            <th st-sort="mon_range">Mon</th>
+                            <th st-sort="tue_range">Tue</th>
+                            <th st-sort="wed_range">Wed</th>
+                            <th st-sort="thu_range">Thu</th>
+                            <th st-sort="fri_range">Fri</th>
+                            <th st-sort="sat_range">Sat</th>
+                            <th st-sort="sun_range">Sun</th>
+                            <th colspan="2" class="text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr ng-repeat="obj in entries_displayed">
+                            <td>{{ obj.name }}</td>
+                            <td>{{ obj.alias }}</td>
+                            <td class="text-center">{{ obj.mon_range }}</td>
+                            <td class="text-center">{{ obj.tue_range }}</td>
+                            <td class="text-center">{{ obj.wed_range }}</td>
+                            <td class="text-center">{{ obj.thu_range }}</td>
+                            <td class="text-center">{{ obj.fri_range }}</td>
+                            <td class="text-center">{{ obj.sat_range }}</td>
+                            <td class="text-center">{{ obj.sun_range }}</td>
+                            <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
+                            <td><icsw-tools-button type="delete" size="xs" ng-click="delete($event, obj)"></icsw-tools-button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </icsw-tools-rest-table-new>
+        </uib-tab>
+
+        <uib-tab heading="Notification templates">
+            <icsw-tools-rest-table-new target-list="entries" config-service="icswMonitoringBasicNotificationService">
+                <h3>
+                    Notification templates ({{ entries.length }} entries),
+                    <icsw-tools-button type="create" size="xs" value="create new" ng-click="create($event, null)"></icsw-tools-button>
+                </h3>
+                <table st-table="entries_displayed" st-safe-src="entries"
+                       class="table table-condensed table-hover table-striped" style="width:auto;">
+                    <thead>
+                        <tr>
+                            <td colspan="99">
+                                <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                                     possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="99">
+                                <input st-search="" class="form-control" placeholder="filter ..." type="text"/>
+                            </td>
+                        </tr>
                         <tr>
                             <th st-sort="name" st-sort-default="true">Name</th>
                             <th st-sort="channel">Channel</th>
@@ -78,299 +93,1241 @@
                             <td>{{ obj.content | limit_text:50 }}</td>
                             <td>{{ obj.enabled | yesno1 }}</td>
                             <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
-                            <td><icsw-tools-button type="delete" size="xs" ng-click="delete(obj)"></icsw-tools-button></td>
+                            <td><icsw-tools-button type="delete" size="xs" ng-click="delete($event, obj)"></icsw-tools-button></td>
                         </tr>
                     </tbody>
                 </table>
-        </icsw-tools-rest-table>
-    </uib-tab>
+            </icsw-tools-rest-table-new>
+        </uib-tab>
 
-    <uib-tab heading="Service templates">
-        <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringServiceTemplateService">
-            <h2>Service templates ({{entries.length}} entries),
-                <icsw-tools-button disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
-                                   style="display: inline-block" title="{{config_service.get_data_incomplete_error()}}"
-                                   ng-click="create($event)"></icsw-tools-button>
-            </h2>
-            <table st-table="entries_displayed" st-safe-src="entries"
-                   class="table table-condensed table-hover" style="width:auto;">
-                <thead>
-                    <tr>
-                        <td colspan="99">
-                            <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
-                                 possible-items-by-page="10,20,50,100,200,500,1000"></div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th st-sort="name" st-sort-default="true">Name</th>
-                        <th st-sort="volatile">volatile</th>
-                        <th st-sort="nsc_period">Service:</th>
-                        <th st-sort="max_attempts">att</th>
-                        <th st-sort="check_interval">check</th>
-                        <th st-sort="retry_interval">retry</th>
-                        <th st-sort="nsn_period">Notify:</th>
-                        <th st-sort="ninterval">interval</th>
-                        <th st-sort="nrecovery">rec</th>
-                        <th st-sort="ncritical">crit</th>
-                        <th st-sort="nwarning">warn</th>
-                        <th st-sort="nunknown">unk</th>
-                        <th st-sort="nflapping">flap</th>
-                        <th st-sort="nplanned_downtime">planned</th>
-                        <th st-sort="flap_detection_enabled">FlapDet</th>
-                        <th st-sort="low_flap_threshold">min</th>
-                        <th st-sort="high_flap_threshold">max</th>
-                        <th st-sort="flap_detect_ok">ok</th>
-                        <th st-sort="flap_detect_warn">warn</th>
-                        <th st-sort="flap_detect_critical">crit</th>
-                        <th st-sort="flap_detect_unknown">unk</th>
-                        <th st-sort="check_freshness">frsh</th>
-                        <th st-sort="freshness_threshold">fth</th>
-                        <th colspan="2" class="text-center">Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr ng-repeat="obj in entries_displayed">
-                        <td>{{ obj.name }}</td>
-                        <td>{{ obj.volatile | yesno1 }}</td>
-                        <td>{{ obj.nsc_period | array_lookup:config_service.mon_period:'name' }}</td>
-                        <td>{{ obj.max_attempts }}</td>
-                        <td>{{ obj.check_interval }}</td>
-                        <td>{{ obj.retry_interval }}</td>
-                        <td>{{ obj.nsn_period | array_lookup:config_service.mon_period:'name' }}</td>
-                        <td>{{ obj.ninterval }}</td>
-                        <td>{{ obj.nrecovery | yesno1 }}</td>
-                        <td>{{ obj.ncritical | yesno1 }}</td>
-                        <td>{{ obj.nwarning | yesno1 }}</td>
-                        <td>{{ obj.nunknown | yesno1 }}</td>
-                        <td>{{ obj.nflapping | yesno1 }}</td>
-                        <td>{{ obj.nplanned_downtime | yesno1 }}</td>
-                        <td>{{ obj.flap_detection_enabled | yesno1 }}</td>
-                        <td>{{ obj.low_flap_threshold }}</td>
-                        <td>{{ obj.high_flap_threshold }}</td>
-                        <td>{{ obj.flap_detect_ok | yesno1 }}</td>
-                        <td>{{ obj.flap_detect_warn | yesno1 }}</td>
-                        <td>{{ obj.flap_detect_critical | yesno1 }}</td>
-                        <td>{{ obj.flap_detect_unknown | yesno1 }}</td>
-                        <td>{{ obj.check_freshness | yesno1 }}</td>
-                        <td>{{ obj.freshness_threshold }}</td>
-                        <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
-                        <td><icsw-tools-button type="delete" size="xs" ng-click="delete(obj)"></icsw-tools-button></td>
-                    </tr>
-                </tbody>
-            </table>
-        </icsw-tools-rest-table>
-    </uib-tab>
+        <uib-tab heading="Service templates">
+            <icsw-tools-rest-table-new target-list="entries" config-service="icswMonitoringBasicServiceTemplateService">
+                <h3>
+                    Service templates ({{ entries.length }} entries),
+                    <icsw-tools-button
+                        disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
+                        style="display: inline-block" title="{{config_service.get_data_incomplete_error()}}"
+                        ng-click="create($event)" size="xs">
 
-    <uib-tab heading="Device templates">
-        <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringDeviceTemplateService">
-                <h2>Device templates ({{entries.length}} entries),
-                    <icsw-tools-button disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
-                                       style="display: inline-block" title="{{config_service.get_data_incomplete_error()}}"
-                                       ng-click="create($event)"></icsw-tools-button>
-                </h2>
-            <table st-table="entries_displayed" st-safe-src="entries"
-                   class="table table-condensed table-hover" style="width:auto;">
-                <thead>
-                    <tr>
-                        <td colspan="99">
-                            <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
-                                 possible-items-by-page="10,20,50,100,200,500,1000"></div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th st-sort="name" st-sort-default="true">Name</th>
-                        <th st-sort="mon_service_templ">Service template</th>
-                        <th st-sort="host_check_command">Host check command</th>
-                        <th st-sort="not_period">Notify:</th>
-                        <th st-sort="ninterval">Interval</th>
-                        <th st-sort="mon_period">Mon period</th>
-                        <th st-sort="check_interval">check</th>
-                        <th st-sort="retry_interval">retry</th>
-                        <th st-sort="max_attempts">att</th>
-                        <th st-sort="nrecovery">rec</th>
-                        <th st-sort="ndown">down</th>
-                        <th st-sort="nunreachable">unr</th>
-                        <th st-sort="nflapping">flap</th>
-                        <th st-sort="nplanned_downtime">planned</th>
-                        <th st-sort="flap_detection_enabled">FlapDet</th>
-                        <th st-sort="low_flap_threshold">min</th>
-                        <th st-sort="high_flap_threshold">max</th>
-                        <th st-sort="flap_detect_up">up</th>
-                        <th st-sort="flap_detect_down">down</th>
-                        <th st-sort="flap_detect_unreachable">unr</th>
-                        <th st-sort="check_freshness">frsh</th>
-                        <th st-sort="freshness_threshold">fth</th>
-                        <th colspan="2" class="text-center">Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr ng-repeat="obj in entries_displayed">
-                        <td>{{ obj.name }}</td>
-                        <td>{{ obj.mon_service_templ | array_lookup:config_service.mon_service_templ:'name' }}</td>
-                        <td>{{ obj.host_check_command | array_lookup:config_service.host_check_command:'name' }}</td>
-                        <td>{{ obj.not_period | array_lookup:config_service.mon_period:'name' }}</td>
-                        <td>{{ obj.ninterval }}</td>
-                        <td>{{ obj.mon_period | array_lookup:config_service.mon_period:'name' }}</td>
-                        <td>{{ obj.check_interval }}</td>
-                        <td>{{ obj.retry_interval }}</td>
-                        <td>{{ obj.max_attempts }}</td>
-                        <td>{{ obj.nrecovery | yesno1 }}</td>
-                        <td>{{ obj.ndown | yesno1 }}</td>
-                        <td>{{ obj.nunreachable | yesno1 }}</td>
-                        <td>{{ obj.nflapping | yesno1 }}</td>
-                        <td>{{ obj.nplanned_downtime | yesno1 }}</td>
-                        <td>{{ obj.flap_detection_enabled | yesno1 }}</td>
-                        <td>{{ obj.low_flap_threshold }}</td>
-                        <td>{{ obj.high_flap_threshold }}</td>
-                        <td>{{ obj.flap_detect_up | yesno1 }}</td>
-                        <td>{{ obj.flap_detect_down | yesno1 }}</td>
-                        <td>{{ obj.flap_detect_unreachable | yesno1 }}</td>
-                        <td>{{ obj.check_freshness | yesno1 }}</td>
-                        <td>{{ obj.freshness_threshold }}</td>
-                        <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
-                        <td><icsw-tools-button type="delete" size="xs" ng-click="delete(obj)"></icsw-tools-button></td>
-                    </tr>
-                </tbody>
-            </table>
-        </icsw-tools-rest-table>
-    </uib-tab>
+                    </icsw-tools-button>
+                </h3>
+                <table st-table="entries_displayed" st-safe-src="entries"
+                       class="table table-condensed table-hover table-striped" style="width:auto;">
+                    <thead>
+                        <tr>
+                            <td colspan="99">
+                                <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                                     possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="99">
+                                <input st-search="" class="form-control" placeholder="filter ..." type="text"/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th st-sort="name" st-sort-default="true">Name</th>
+                            <th st-sort="volatile">volatile</th>
+                            <th st-sort="nsc_period">Service:</th>
+                            <th st-sort="max_attempts">att</th>
+                            <th st-sort="check_interval">check</th>
+                            <th st-sort="retry_interval">retry</th>
+                            <th st-sort="nsn_period">Notify:</th>
+                            <th st-sort="ninterval">interval</th>
+                            <th st-sort="nrecovery">rec</th>
+                            <th st-sort="ncritical">crit</th>
+                            <th st-sort="nwarning">warn</th>
+                            <th st-sort="nunknown">unk</th>
+                            <th st-sort="nflapping">flap</th>
+                            <th st-sort="nplanned_downtime">planned</th>
+                            <th st-sort="flap_detection_enabled">FlapDet</th>
+                            <th st-sort="low_flap_threshold">min</th>
+                            <th st-sort="high_flap_threshold">max</th>
+                            <th st-sort="flap_detect_ok">ok</th>
+                            <th st-sort="flap_detect_warn">warn</th>
+                            <th st-sort="flap_detect_critical">crit</th>
+                            <th st-sort="flap_detect_unknown">unk</th>
+                            <th st-sort="check_freshness">frsh</th>
+                            <th st-sort="freshness_threshold">fth</th>
+                            <th colspan="2" class="text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr ng-repeat="obj in entries_displayed">
+                            <td>{{ obj.name }}</td>
+                            <td>{{ obj.volatile | yesno1 }}</td>
+                            <td>{{ basic_tree.mon_period_lut[obj.nsc_period].name }}</td>
+                            <td>{{ obj.max_attempts }}</td>
+                            <td>{{ obj.check_interval }}</td>
+                            <td>{{ obj.retry_interval }}</td>
+                            <td>{{ basic_tree.mon_period_lut[obj.nsn_period].name }}</td>
+                            <td>{{ obj.ninterval }}</td>
+                            <td>{{ obj.nrecovery | yesno1 }}</td>
+                            <td>{{ obj.ncritical | yesno1 }}</td>
+                            <td>{{ obj.nwarning | yesno1 }}</td>
+                            <td>{{ obj.nunknown | yesno1 }}</td>
+                            <td>{{ obj.nflapping | yesno1 }}</td>
+                            <td>{{ obj.nplanned_downtime | yesno1 }}</td>
+                            <td>{{ obj.flap_detection_enabled | yesno1 }}</td>
+                            <td>{{ obj.low_flap_threshold }}</td>
+                            <td>{{ obj.high_flap_threshold }}</td>
+                            <td>{{ obj.flap_detect_ok | yesno1 }}</td>
+                            <td>{{ obj.flap_detect_warn | yesno1 }}</td>
+                            <td>{{ obj.flap_detect_critical | yesno1 }}</td>
+                            <td>{{ obj.flap_detect_unknown | yesno1 }}</td>
+                            <td>{{ obj.check_freshness | yesno1 }}</td>
+                            <td>{{ obj.freshness_threshold }}</td>
+                            <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
+                            <td><icsw-tools-button type="delete" size="xs" ng-click="delete($event, obj)"></icsw-tools-button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </icsw-tools-rest-table-new>
+        </uib-tab>
 
-    <uib-tab heading="Host check commands">
-        <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringHostCheckCommandService">
-            <h2>Host check commands ({{entries.length}} entries), <icsw-tools-button type="create" value="create new" ng-click="create($event)"></icsw-tools-button></h2>
-            <table st-table="entries_displayed" st-safe-src="entries"
-                   class="table table-condensed table-hover" style="width:auto;">
-                <thead>
-                    <tr>
-                        <td colspan="99">
-                            <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
-                                 possible-items-by-page="10,20,50,100,200,500,1000"></div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th st-sort="name" st-sort-default="true">Name</th>
-                        <th st-sort="command_line">Command</th>
-                        <th colspan="2" class="text-center">Action</th>
-                    </tr>
-                </thead>
+        <uib-tab heading="Device templates">
+            <icsw-tools-rest-table-new target-list="entries" config-service="icswMonitoringBasicDeviceTemplateService">
+                <h3>
+                    Device templates ({{ entries.length }} entries),
+                    <icsw-tools-button
+                        disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
+                        style="display: inline-block" title="{{ config_service.get_data_incomplete_error() }}"
+                        ng-click="create($event, null)" size="xs">
+                    </icsw-tools-button>
+                </h3>
+                <table st-table="entries_displayed" st-safe-src="entries"
+                       class="table table-condensed table-hover table-striped" style="width:auto;">
+                    <thead>
+                        <tr>
+                            <td colspan="99">
+                                <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                                     possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="99">
+                                <input st-search="" class="form-control" placeholder="filter ..." type="text"/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th st-sort="name" st-sort-default="true">Name</th>
+                            <th st-sort="mon_service_templ">Service template</th>
+                            <th st-sort="host_check_command">Host check command</th>
+                            <th st-sort="not_period">Notify:</th>
+                            <th st-sort="ninterval">Interval</th>
+                            <th st-sort="mon_period">Mon period</th>
+                            <th st-sort="check_interval">check</th>
+                            <th st-sort="retry_interval">retry</th>
+                            <th st-sort="max_attempts">att</th>
+                            <th st-sort="nrecovery">rec</th>
+                            <th st-sort="ndown">down</th>
+                            <th st-sort="nunreachable">unr</th>
+                            <th st-sort="nflapping">flap</th>
+                            <th st-sort="nplanned_downtime">planned</th>
+                            <th st-sort="flap_detection_enabled">FlapDet</th>
+                            <th st-sort="low_flap_threshold">min</th>
+                            <th st-sort="high_flap_threshold">max</th>
+                            <th st-sort="flap_detect_up">up</th>
+                            <th st-sort="flap_detect_down">down</th>
+                            <th st-sort="flap_detect_unreachable">unr</th>
+                            <th st-sort="check_freshness">frsh</th>
+                            <th st-sort="freshness_threshold">fth</th>
+                            <th colspan="2" class="text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr ng-repeat="obj in entries_displayed">
+                            <td>{{ obj.name }}</td>
+                            <td>{{ basic_tree.mon_service_templ_lut[obj.mon_service_templ].name }}</td>
+                            <td>{{ basic_tree.host_check_command_lut[obj.host_check_command].name }}</td>
+                            <td>{{ basic_tree.mon_period_lut[obj.not_period].name }}</td>
+                            <td>{{ obj.ninterval }}</td>
+                            <td>{{ basic_tree.mon_period_lut[obj.mon_period].name }}</td>
+                            <td>{{ obj.check_interval }}</td>
+                            <td>{{ obj.retry_interval }}</td>
+                            <td>{{ obj.max_attempts }}</td>
+                            <td>{{ obj.nrecovery | yesno1 }}</td>
+                            <td>{{ obj.ndown | yesno1 }}</td>
+                            <td>{{ obj.nunreachable | yesno1 }}</td>
+                            <td>{{ obj.nflapping | yesno1 }}</td>
+                            <td>{{ obj.nplanned_downtime | yesno1 }}</td>
+                            <td>{{ obj.flap_detection_enabled | yesno1 }}</td>
+                            <td>{{ obj.low_flap_threshold }}</td>
+                            <td>{{ obj.high_flap_threshold }}</td>
+                            <td>{{ obj.flap_detect_up | yesno1 }}</td>
+                            <td>{{ obj.flap_detect_down | yesno1 }}</td>
+                            <td>{{ obj.flap_detect_unreachable | yesno1 }}</td>
+                            <td>{{ obj.check_freshness | yesno1 }}</td>
+                            <td>{{ obj.freshness_threshold }}</td>
+                            <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
+                            <td><icsw-tools-button type="delete" size="xs" ng-click="delete($event, obj)"></icsw-tools-button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </icsw-tools-rest-table-new>
+        </uib-tab>
 
-                <tbody>
-                    <tr ng-repeat="obj in entries_displayed">
-                        <td>{{ obj.name }}</td>
-                        <td>{{ obj.command_line }}</td>
-                        <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
-                        <td><icsw-tools-button type="delete" size="xs" ng-click="delete(obj)"></icsw-tools-button></td>
-                    </tr>
-                </tbody>
-            </table>
-        </icsw-tools-rest-table>
-    </uib-tab>
-    
-    <uib-tab heading="Contacts">
-        <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringContactService">
-            <h2>Contacts ({{entries.length}} entries),
-                <icsw-tools-button disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
-                                   style="display: inline-block" title="{{config_service.get_data_incomplete_error()}}"
-                                   ng-click="create($event)"></icsw-tools-button>
-            </h2>
-            <table st-table="entries_displayed" st-safe-src="entries"
-                   class="table table-condensed table-hover" style="width:auto;">
-                <thead>
-                    <tr>
-                        <td colspan="99">
-                            <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
-                                 possible-items-by-page="10,20,50,100,200,500,1000"></div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th st-sort="user" st-sort-default="true">User</th>
-                        <th st-sort="snperiod">Service:</th>
-                        <th st-sort="snrecovery">rec</th>
-                        <th st-sort="sncritical">crit</th>
-                        <th st-sort="snwarning">warn</th>
-                        <th st-sort="snunknown">unkn</th>
-                        <th st-sort="sflapping">flap</th>
-                        <th st-sort="splanned_downtime">planned</th>
-                        <th st-sort="hnperiod">Host:</th>
-                        <th st-sort="hnrecovery">rec</th>
-                        <th st-sort="hndown">down</th>
-                        <th st-sort="hnunreachable">unrch</th>
-                        <th st-sort="hflapping">flap</th>
-                        <th st-sort="hplanned_downtime">planned</th>
-                        <th st-sort="notifications">Notifications</th>
-                        <th st-sort="alias">Alias</th>
-                        <th colspan="2" class="text-center">Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr ng-repeat="obj in entries_displayed">
-                        <td>{{ obj.user | array_lookup:config_service.user | show_user }}</td>
-                        <td>{{ obj.snperiod | array_lookup:config_service.mon_period:'name' }}</td>
-                        <td>{{ obj.snrecovery | yesno1 }}</td>
-                        <td>{{ obj.sncritical | yesno1 }}</td>
-                        <td>{{ obj.snwarning | yesno1 }}</td>
-                        <td>{{ obj.snunknown | yesno1 }}</td>
-                        <td>{{ obj.sflapping | yesno1 }}</td>
-                        <td>{{ obj.splanned_downtime | yesno1 }}</td>
-                        <td>{{ obj.hnperiod | array_lookup:config_service.mon_period:'name' }}</td>
-                        <td>{{ obj.hnrecovery | yesno1 }}</td>
-                        <td>{{ obj.hndown | yesno1 }}</td>
-                        <td>{{ obj.hnunreachable | yesno1 }}</td>
-                        <td>{{ obj.hflapping | yesno1 }}</td>
-                        <td>{{ obj.hplanned_downtime | yesno1 }}</td>
-                        <td>{{ obj.notifications | resolve_n2m:config_service.mon_notification:'name':'no notifications' }}
-                        </td>
-                        <td>{{ obj.alias || "---" }}</td>
-                        <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
-                        <td><icsw-tools-button type="delete" size="xs" ng-click="delete(obj)"></icsw-tools-button></td>
-                    </tr>
-                </tbody>
-            </table>
-        </icsw-tools-rest-table>
-    </uib-tab>
-    
-    <uib-tab heading="Contactgroups">
-        <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringContactgroupService">
-                <h2>Contactgroups ({{entries.length}} entries),  <icsw-tools-button type="create" value="create new" ng-click="create($event)"></icsw-tools-button></h2>
-            <table st-table="entries_displayed" st-safe-src="entries"
-                   class="table table-condensed table-hover" style="width:auto;">
-                <thead>
-                    <tr>
-                        <td colspan="99">
-                            <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
-                                 possible-items-by-page="10,20,50,100,200,500,1000"></div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th st-sort="name" st-sort-default="true">Name</th>
-                        <th st-sort="alias">Alias</th>
-                        <th st-sort="members">Members</th>
-                        <th st-sort="device_groups">Devicegroups</th>
-                        <th st-sort="service_templates">Service templates</th>
-                        <th colspan="2" class="text-center">Action</th>
-                    </tr>
-                </thead>
+        <uib-tab heading="Host check commands">
+            <icsw-tools-rest-table-new target-list="entries" config-service="icswMonitoringBasicHostCheckCommandService">
+                <h3>Host check commands ({{ entries.length }} entries),
+                    <icsw-tools-button type="create" size="xs" value="create new" ng-click="create($event, null)"></icsw-tools-button>
+                </h3>
+                <table st-table="entries_displayed" st-safe-src="entries"
+                       class="table table-condensed table-hover table-striped" style="width:auto;">
+                    <thead>
+                        <tr>
+                            <td colspan="99">
+                                <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                                     possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="99">
+                                <input st-search="" class="form-control" placeholder="filter ..." type="text"/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th st-sort="name" st-sort-default="true">Name</th>
+                            <th st-sort="command_line">Command</th>
+                            <th colspan="2" class="text-center">Action</th>
+                        </tr>
+                    </thead>
 
-                <tbody>
-                    <tr ng-repeat="obj in entries_displayed">
-                        <td>{{ obj.name }}</td>
-                        <td>{{ obj.alias }}</td>
-                        <td>{{ obj.members | resolve_n2m:config_service.mon_contact:'user' |
-                            resolve_n2m:config_service.user:'login' }}
-                        </td>
-                        <td>{{ obj.device_groups | resolve_n2m:config_service.device_group:'name' }}</td>
-                        <td>{{ obj.service_templates | resolve_n2m:config_service.mon_service_templ:'name' }}</td>
+                    <tbody>
+                        <tr ng-repeat="obj in entries_displayed">
+                            <td>{{ obj.name }}</td>
+                            <td>{{ obj.command_line }}</td>
+                            <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
+                            <td><icsw-tools-button type="delete" size="xs" ng-click="delete($event, obj)"></icsw-tools-button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </icsw-tools-rest-table-new>
+        </uib-tab>
 
-                        <td>
-                            <icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button>
-                        </td>
-                        <td>
-                            <icsw-tools-button type="delete" size="xs" ng-click="delete(obj)"></icsw-tools-button>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </icsw-tools-rest-table>
-    </uib-tab>
+        <uib-tab heading="Contacts">
+            <icsw-tools-rest-table-new target-list="entries" config-service="icswMonitoringBasicMonContactService">
+                <h3>
+                    Contacts ({{ entries.length }} entries),
+                    <icsw-tools-button
+                        disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
+                        style="display: inline-block" title="{{ config_service.get_data_incomplete_error() }}"
+                        ng-click="create($event)" size="xs"></icsw-tools-button>
+                </h3>
+                <table st-table="entries_displayed" st-safe-src="entries"
+                       class="table table-condensed table-hover table-striped" style="width:auto;">
+                    <thead>
+                        <tr>
+                            <td colspan="99">
+                                <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                                     possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="99">
+                                <input st-search="" class="form-control" placeholder="filter ..." type="text"/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th st-sort="user" st-sort-default="true">User</th>
+                            <th st-sort="snperiod">Service:</th>
+                            <th st-sort="snrecovery">rec</th>
+                            <th st-sort="sncritical">crit</th>
+                            <th st-sort="snwarning">warn</th>
+                            <th st-sort="snunknown">unkn</th>
+                            <th st-sort="sflapping">flap</th>
+                            <th st-sort="splanned_downtime">planned</th>
+                            <th st-sort="hnperiod">Host:</th>
+                            <th st-sort="hnrecovery">rec</th>
+                            <th st-sort="hndown">down</th>
+                            <th st-sort="hnunreachable">unrch</th>
+                            <th st-sort="hflapping">flap</th>
+                            <th st-sort="hplanned_downtime">planned</th>
+                            <th st-sort="notifications">Notifications</th>
+                            <th st-sort="alias">Alias</th>
+                            <th colspan="2" class="text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr ng-repeat="obj in entries_displayed">
+                            <td>{{ user_group_tree.user_lut[obj.user].login }}</td>
+                            <td>{{ basic_tree.mon_period_lut[obj.snperiod].name }}</td>
+                            <td>{{ obj.snrecovery | yesno1 }}</td>
+                            <td>{{ obj.sncritical | yesno1 }}</td>
+                            <td>{{ obj.snwarning | yesno1 }}</td>
+                            <td>{{ obj.snunknown | yesno1 }}</td>
+                            <td>{{ obj.sflapping | yesno1 }}</td>
+                            <td>{{ obj.splanned_downtime | yesno1 }}</td>
+                            <td>{{ basic_tree.mon_period_lut[obj.hnperiod].name }}</td>
+                            <td>{{ obj.hnrecovery | yesno1 }}</td>
+                            <td>{{ obj.hndown | yesno1 }}</td>
+                            <td>{{ obj.hnunreachable | yesno1 }}</td>
+                            <td>{{ obj.hflapping | yesno1 }}</td>
+                            <td>{{ obj.hplanned_downtime | yesno1 }}</td>
+                            <td>{{ config_service.get_notifications(obj) }}</td>
+                            <td>{{ obj.alias || "---" }}</td>
+                            <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
+                            <td><icsw-tools-button type="delete" size="xs" ng-click="delete($event, obj)"></icsw-tools-button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </icsw-tools-rest-table-new>
+        </uib-tab>
+
+        <uib-tab heading="Contactgroups">
+            <icsw-tools-rest-table-new target-list="entries" config-service="icswMonitoringBasicMonContactgroupService">
+                <h3>
+                    Contactgroups ({{ entries.length }} entries),
+                    <icsw-tools-button size="xs" type="create" value="create new" ng-click="create($event)"></icsw-tools-button>
+                </h3>
+                <table st-table="entries_displayed" st-safe-src="entries"
+                       class="table table-condensed table-hover table-striped" style="width:auto;">
+                    <thead>
+                        <tr>
+                            <td colspan="99">
+                                <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                                     possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="99">
+                                <input st-search="" class="form-control" placeholder="filter ..." type="text"/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th st-sort="name" st-sort-default="true">Name</th>
+                            <th st-sort="alias">Alias</th>
+                            <th st-sort="members">Members</th>
+                            <th st-sort="device_groups">Devicegroups</th>
+                            <th st-sort="service_templates">Service templates</th>
+                            <th colspan="2" class="text-center">Action</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        <tr ng-repeat="obj in entries_displayed">
+                            <td>{{ obj.name }}</td>
+                            <td>{{ obj.alias }}</td>
+                            <td>{{ config_service.get_members(obj) }}</td>
+                            <td>{{ config_service.get_device_groups(obj) }}</td>
+                            <td>{{ config_service.get_service_templates(obj) }}</td>
+                            <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
+                            <td><icsw-tools-button type="delete" size="xs" ng-click="delete($event, obj)"></icsw-tools-button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </icsw-tools-rest-table-new>
+        </uib-tab>
     </uib-tabset>
+</script>
+
+<script type="text/ng-template" id="icsw.mon.period.form">
+    <ng-form class="form-horizontal" name="form_data">
+        <h2>Monitoring period</h2>
+        <fieldset>
+            <legend>Base data</legend>
+            <div class="form-group ng-class:form_error('name')">
+                <label class="control-label col-sm-3 requiredField">
+                    Name<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="192" ng-model="edit_obj.name" placeholder="Name" required="True" name="name" type="text"/>
+                </div>
+            </div>
+            <div class="form-group  ng-class:form_error('alias')">
+                <label class="control-label col-sm-3">
+                    Alias
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="255" ng-model="edit_obj.alias" placeholder="Alias" type="text" name="alias"/>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Time ranges</legend>
+            <div class="form-group  ng-class:form_error('sun_range')">
+                <label class="control-label col-sm-3">
+                    Sun range
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="48" ng-model="edit_obj.sun_range" ng-pattern="/^\d+:\d+-\d+:\d+$/" placeholder="00:00-24:00" required="required" type="text" name="sun_range"/>
+                </div>
+            </div>
+            <div class="form-group  ng-class:form_error('mon_range')">
+                <label class="control-label col-sm-3">
+                    Mon range
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="48" ng-model="edit_obj.mon_range" ng-pattern="/^\d+:\d+-\d+:\d+$/" placeholder="00:00-24:00" required="required" type="text" name="mon_range"/>
+                </div>
+            </div>
+            <div class="form-group  ng-class:form_error('tue_range')">
+                <label class="control-label col-sm-3">
+                    Tue range
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="48" ng-model="edit_obj.tue_range" ng-pattern="/^\d+:\d+-\d+:\d+$/" placeholder="00:00-24:00" required="required" type="text" name="tue_range"/>
+                </div>
+            </div>
+            <div class="form-group  ng-class:form_error('wed_range')">
+                <label class="control-label col-sm-3">
+                    Wed range
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="48" ng-model="edit_obj.wed_range" ng-pattern="/^\d+:\d+-\d+:\d+$/" placeholder="00:00-24:00" required="required" type="text" name="wed_range"/>
+                </div>
+            </div>
+            <div class="form-group  ng-class:form_error('thu_range')">
+                <label class="control-label col-sm-3">
+                    Thu range
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="48" ng-model="edit_obj.thu_range" ng-pattern="/^\d+:\d+-\d+:\d+$/" placeholder="00:00-24:00" required="required" type="text" name="thu_range"/>
+                </div>
+            </div>
+            <div class="form-group  ng-class:form_error('fri_range')">
+                <label class="control-label col-sm-3">
+                    Fri range
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="48" ng-model="edit_obj.fri_range" ng-pattern="/^\d+:\d+-\d+:\d+$/" placeholder="00:00-24:00" required="required" type="text" name="fri_range"/>
+                </div>
+            </div>
+            <div class="form-group  ng-class:form_error('sat_range')">
+                <label class="control-label col-sm-3">
+                    Sat range
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="48" ng-model="edit_obj.sat_range" ng-pattern="/^\d+:\d+-\d+:\d+$/" placeholder="00:00-24:00" required="required" type="text" name="sat_range"/>
+                </div>
+            </div>
+        </fieldset>
+    </ng-form>
+</script>
+
+<script type="text/ng-template" id="icsw.mon.notification.form">
+    <ng-form class="form-horizontal" name="form_data">
+        <h2>Monitoring Notification</h2>
+        <fieldset>
+            <legend>Base data</legend>
+            <div class="form-group  ng-class:form_error('name')">
+                <label class="control-label col-sm-3 requiredField">
+                    Name<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="128" ng-model="edit_obj.name" placeholder="Name" required="True" type="text" name="name"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Channel<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <select class="select form-control"  ng-model="edit_obj.channel" required="True">
+                        <option value="mail">E-Mail</option>
+                        <option value="sms">SMS</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Notification type<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <select class="select form-control" ng-model="edit_obj.not_type" required="True">
+                        <option value="host">Host</option>
+                        <option value="service">Service</option>
+                    </select>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Flags and text</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-3">
+                    Enabled
+                </label>
+                <div class="controls col-sm-7">
+                    <icsw-tools-yes-no flag="edit_obj.enabled"></icsw-tools-yes-no>
+                </div>
+            </div>
+            <div class="form-group" ng_show="edit_obj.channel == 'mail'">
+                <label class="control-label col-sm-3">
+                    Subject
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="140" ng-model="edit_obj.subject" type="text"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Content<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <textarea class="textarea form-control" cols="40" ng-model="edit_obj.content" required="True" rows="10"></textarea>
+                </div>
+            </div>
+        </fieldset>
+    </ng-form>
+</script>
+
+<script type="text/ng-template" id="icsw.mon.device.templ.form">
+    <form class="form-horizontal" name="form_data">
+        <h2>Device template</h2>
+        <fieldset>
+            <legend>Base data</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField" title="Device template name">
+                    Name<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text" title="Device template name"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField" title="Choose monitoring service template">
+                    Service template<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <ui-select ng-model="edit_obj.mon_service_templ" style="max-width:400px; min-width:240px;" title="Choose monitoring service template">
+                        <ui-select-match class="ui-select-match" placeholder="please select a service template">
+                            {{ $select.selected.name }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in tree.mon_service_templ_list | orderBy:'name'| props_filter:{name:$select.search}">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Check</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField" title="Choose host check command">
+                    Host check command<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <ui-select ng-model="edit_obj.host_check_command" style="max-width:400px; min-width:240px;" title="Choose host check command">
+                        <ui-select-match class="ui-select-match" placeholder="please select a host check command">
+                            {{ $select.selected.name }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in tree.host_check_command_list | orderBy:'name'| props_filter:{name:$select.search}">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField" title="Monitoring check is active during this period">
+                    Monitoring period<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <ui-select ng-model="edit_obj.mon_period" style="max-width:400px; min-width:240px;" title="Monitoring check is sctive during this period">
+                        <ui-select-match class="ui-select-match" placeholder="please select a time period">
+                            {{ $select.selected.name }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in tree.mon_period_list | orderBy:'name'| props_filter:{name:$select.search}">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+        </fieldset>
+        <div class="form-actions">
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField" title="Normal check interval in minutes">
+                    Check interval<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="numberinput form-control" max="60" min="1" name="check_interval" ng-model="edit_obj.check_interval" required="True" type="number" value="1" title="Normal check interval in minutes"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-3" title="Number of attempts until switching from soft state into hard state">
+                    Max attempts
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="numberinput form-control" max="10" min="1" name="max_attempts" ng-model="edit_obj.max_attempts" type="number" value="1" title="Number of attempts until switching from soft state into hard state"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField" title="Check interval in minutes during soft state">
+                    Retry interval<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="numberinput form-control" max="60" min="1" name="retry_interval" ng-model="edit_obj.retry_interval" required="True" type="number" value="1" title="Check interval in minutes during soft state"/>
+                </div>
+            </div>
+        </div>
+        <fieldset>
+            <legend>Notification</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField" title="Notification is active during this period">
+                    Notification period<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <ui-select ng-model="edit_obj.not_period" style="max-width:400px; min-width:240px;" title="Notification is active during this period">
+                        <ui-select-match class="ui-select-match" placeholder="please select a time period">
+                            {{ $select.selected.name }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in tree.mon_period_list | orderBy:'name'| props_filter:{name:$select.search}">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField" title="Hard state notification interval in minutes">
+                    Notification interval<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="numberinput form-control" max="10080" min="0" name="ninterval" ng-model="edit_obj.ninterval" type="number" value="1" title="Hard state notification interval in minutes"/>
+                </div>
+            </div>
+        </fieldset>
+        <div class="row">
+            <div class="col-md-3">
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Notify in case of host state is recovery">
+                        recovery
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.nrecovery"></icsw-tools-yes-no>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Notify in case of host state is down">
+                        down
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.ndown"></icsw-tools-yes-no>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Notify in case of host state is unreachable">
+                        unreachable
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.nunreachable"></icsw-tools-yes-no>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Notify in case of host state is flapping">
+                        flapping
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.nflapping"></icsw-tools-yes-no>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Notify in case of host state is planned downtime">
+                        planned downtime
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.nplanned_downtime"></icsw-tools-yes-no>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <fieldset>
+            <legend>Freshness settings</legend>
+            <div class="form-group">
+                <label class="col-sm-3 control-label" title="Ensure whether passive check is fresh or not">
+                    Check freshness
+                </label>
+                <div class="col-sm-3 controls">
+                    <icsw-tools-yes-no flag="edit_obj.check_freshness"></icsw-tools-yes-no>
+                </div>
+            </div>
+            <div class="form-group" ng_show="edit_obj.check_freshness">
+                <label class="control-label col-sm-3 requiredField" title="Time in seconds the passive check is fresh enough. If check is older than the threshold it will be stale">
+                    Freshness threshold<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="numberinput form-control" name="freshness_threshold" ng-model="edit_obj.freshness_threshold" required="True" type="number" value="60" title="Time in seconds the passive check is fresh enough. If check is older than the threshold it will be stale"/>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Flap settings</legend>
+            <div class="form-group">
+                <label class="col-sm-3 control-label" title="Enable detection of flapping states">
+                    Flap detection
+                </label>
+                <div class="col-sm-3 controls">
+                    <icsw-tools-yes-no flag="edit_obj.flap_detection_enabled"></icsw-tools-yes-no>
+                </div>
+            </div>
+        </fieldset>
+        <div class="form-actions">
+            <div class="form-group" ng_show="edit_obj.flap_detection_enabled">
+                <label class="control-label col-sm-3 requiredField" title="Lower percent limit, if value falls below it, flapping stops">
+                    Low flap threshold<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="numberinput form-control" max="100" min="0" name="low_flap_threshold" ng-model="edit_obj.low_flap_threshold" required="True" type="number" value="0" title="Lower percent limit, if value falls below it, flapping stops"/>
+                </div>
+            </div>
+            <div class="form-group" ng_show="edit_obj.flap_detection_enabled">
+                <label class="control-label col-sm-3 requiredField" title="Higher percent limit, if value exceeds it, flapping starts">
+                    High flap threshold<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="numberinput form-control" max="100" min="0" name="high_flap_threshold" ng-model="edit_obj.high_flap_threshold" required="True" type="number" value="0" title="Higher percent limit, if value exceeds it, flapping starts"/>
+                </div>
+            </div>
+        </div>
+        <div class="row" ng_show="edit_obj.flap_detection_enabled">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Flapping detection for state up">
+                        Flap detect up
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.flap_detect_up"></icsw-tools-yes-no>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Flapping detection for state down">
+                        Flap detect down
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.flap_detect_down"></icsw-tools-yes-no>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Flapping detection for state unreachable">
+                        Flap detect unreachable
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.flap_detect_unreachable"></icsw-tools-yes-no>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</script>
+
+<script type="text/ng-template" id="icsw.mon.contact.form">
+    <form class="form-horizontal" name="form_data">
+        <h2>Contacts</h2>
+        <fieldset>
+            <legend>Base data</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    User<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <ui-select ng-model="edit_obj.user" style="max-width:400px; min-width:240px;">
+                        <ui-select-match class="ui-select-match" placeholder="please select an user">
+                            {{ $select.selected.info }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in user_group_tree.user_list | orderBy:'login'| props_filter:{info:$select.search}">
+                            <div ng-bind-html="value.info | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-3" title="Used notification templates">
+                    Notification templates
+                </label>
+                <div class="controls col-sm-7">
+                    <ui-select multiple="multiple" ng-model="edit_obj.notifications" style="max-width:400px; min-width:240px;" title="Used notification templates">
+                        <ui-select-match class="ui-select-match" placeholder="Select one or more notifications">
+                            {{ $item.name }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in tree.mon_notification_list | orderBy:'name'| props_filter:{name:$select.search}">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-3">
+                    Alias
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="64" name="mon_alias" ng-model="edit_obj.mon_alias" type="text"/>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Service settings</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField" title="Notification service period">
+                    Service period<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <ui-select ng-model="edit_obj.snperiod" style="max-width:400px; min-width:240px;" title="Notification service period">
+                        <ui-select-match class="ui-select-match" placeholder="please select a time period">
+                            {{ $select.selected.name }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in tree.mon_period_list | orderBy:'name'| props_filter:{name:$select.search}">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+        </fieldset>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Receive notification in case service recovers">
+                        Notify on service recovery
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.snrecovery"></icsw-tools-yes-no>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Receive notification in case service state is critical">
+                        Notify on service critical
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.sncritical"></icsw-tools-yes-no>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Receive notification in case service state is warning">
+                        Notify on service warning
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.snwarning"></icsw-tools-yes-no>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Receive notification in case service state is unknown">
+                        Notify on service unknown
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.snunknown"></icsw-tools-yes-no>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Receive notification in case service state is flapping">
+                        Notify on service flapping
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.sflapping"></icsw-tools-yes-no>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Receive notification in case service state is planned downtime">
+                        Notify on service planned downtime
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.splanned_downtime"></icsw-tools-yes-no>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <fieldset>
+            <legend>Host settings</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField" title="Notification host period">
+                    Host period<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <ui-select ng-model="edit_obj.hnperiod" style="max-width:400px; min-width:240px;" title="Notification host period">
+                        <ui-select-match class="ui-select-match" placeholder="please select a time period">
+                            {{ $select.selected.name }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in tree.mon_period_list | orderBy:'name'| props_filter:{name:$select.search}">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+        </fieldset>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Receive notification in case host recovers">
+                        Notify on host recovery
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.hnrecovery"></icsw-tools-yes-no>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Receive notification in case host state is down">
+                        Notify on host down
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.hndown"></icsw-tools-yes-no>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Receive notification in case host state is unreachable">
+                        Notify on host unreachable
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.hnunreachable"></icsw-tools-yes-no>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Receive notification in case host state is flapping">
+                        Notify on host flapping
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.hflapping"></icsw-tools-yes-no>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Receive notification in case host state is planned downtime">
+                        Notify on host planned downtime
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.hplanned_downtime"></icsw-tools-yes-no>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</script>
+
+<script type="text/ng-template" id="icsw.host.check.command.form">
+    <form class="form-horizontal" name="form_data">
+        <h2>Host check command</h2>
+        <fieldset>
+            <legend>Base data</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Name<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="64" name="name" ng-model="edit_obj.name" required="True" type="text"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Command line<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="128" name="command_line" ng-model="edit_obj.command_line" required="True" type="text"/>
+                </div>
+            </div>
+        </fieldset>
+    </form>
+</script>
+
+<script type="text/ng-template" id="icsw.mon.service.templ.form">
+    <form class="form-horizontal" name="form_data">
+        <h2>Service template</h2>
+        <fieldset>
+            <legend>Base data</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Name<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-3">
+                     Volatile
+                </label>
+                <div class="controls col-sm-7">
+                    <icsw-tools-yes-no flag="edit_obj.volatile"></icsw-tools-yes-no>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Check</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField" title="Monitoring check is active during this period">
+                    Monitoring period<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <ui-select ng-model="edit_obj.nsc_period" style="max-width:400px; min-width:240px;" title="Monitoring check is active during this period">
+                        <ui-select-match class="ui-select-match" placeholder="please select a time period">
+                            {{ $select.selected.name }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in tree.mon_period_list | orderBy:'name'| props_filter:{name:$select.search}">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+        </fieldset>
+        <div class="form-actions">
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField" title="Normal check interval in minutes">
+                    Check interval<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="numberinput form-control" style="max-width:400px; min-width:100px;" id="id_check_interval" max="60" min="1" name="check_interval" ng-model="edit_obj.check_interval" required="True" type="number" value="5" title="Normal check interval in minutes"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField" title="Number of attempts until switching from soft state into hard state">
+                    Max attempts<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="numberinput form-control" max="10" min="1" name="max_attempts" ng-model="edit_obj.max_attempts" required="True" type="number" value="1" title="Number of attempts until switching from soft state into hard state"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField" title="Check interval in minutes during soft state">
+                    Retry interval<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="numberinput form-control" max="60" min="1" name="retry_interval" ng-model="edit_obj.retry_interval" required="True" type="number" value="10" title="Check interval in minutes during soft state"/>
+                </div>
+            </div>
+        </div>
+        <fieldset>
+            <legend>Notification</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField" title="Notification is active during this period">
+                    Notification period<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <ui-select ng-model="edit_obj.nsn_period" style="max-width:400px; min-width:100px;" title="Notification is active during this period">
+                        <ui-select-match class="ui-select-match" placeholder="please select a time period">
+                            {{ $select.selected.name }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in tree.mon_period_list | orderBy:'name'| props_filter:{name:$select.search}">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField" title="Hard state notification interval in minutes">
+                    Notification interval<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="numberinput form-control" max="10080" min="0" name="ninterval" ng-model="edit_obj.ninterval" required="True" type="number" value="5" title="Hard state notification interval in minutes"/>
+                </div>
+            </div>
+        </fieldset>
+        <div class="row">
+            <div class="col-md-3">
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Notify in case of service state is recovery">
+                        recovery
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.nrecovery"></icsw-tools-yes-no>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Notify in case of service state is critical">
+                        critical
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.ncritical"></icsw-tools-yes-no>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Notify in case of service state is warning">
+                        warning
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.nwarning"></icsw-tools-yes-no>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Notify in case of service state is unknown">
+                        unknown
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.nunknown"></icsw-tools-yes-no>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Notify in case of service state is flapping">
+                        warning
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.nflapping"></icsw-tools-yes-no>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Notify in case of service state is planned downtime">
+                        unknown
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.nplanned_downtime"></icsw-tools-yes-no>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <fieldset>
+            <legend>Freshness settings</legend>
+            <div class="form-group">
+                <label class="col-sm-3 control-label" title="Ensure whether passive check is fresh or not">
+                    Check freshness
+                </label>
+                <div class="col-sm-3 controls">
+                    <icsw-tools-yes-no flag="edit_obj.check_freshness"></icsw-tools-yes-no>
+                </div>
+            </div>
+            <div class="form-group" ng_show="edit_obj.check_freshness">
+                <label  class="control-label col-sm-3 requiredField" title="Time in seconds passive check is fresh enough. If check is older than threshold it will be stale">
+                    Freshness threshold<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="numberinput form-control" name="freshness_threshold" ng-model="edit_obj.freshness_threshold" required="True" type="number" value="60" title="Time in seconds passive check is fresh enough. If check is older than threshold it will be stale"/>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Flap settings</legend>
+            <div class="form-group">
+                <label class="col-sm-3 control-label" title="Enable detection of flapping states">
+                    Flap detection enabled
+                </label>
+                <div class="col-sm-3 controls">
+                    <icsw-tools-yes-no flag="edit_obj.flap_detection_enabled"></icsw-tools-yes-no>
+                </div>
+            </div>
+        </fieldset>
+        <div class="form-actions">
+            <div class="form-group" ng_show="edit_obj.flap_detection_enabled">
+                <label class="control-label col-sm-3 requiredField" title="Lower percent limit, if value falls below, flapping stops">
+                    Low flap threshold<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="numberinput form-control" max="100" min="0" name="low_flap_threshold" ng-model="edit_obj.low_flap_threshold" required="True" type="number" value="0" title="Lower percent limit, if value falls below, flapping stops"/>
+                </div>
+            </div>
+            <div class="form-group" ng_show="edit_obj.flap_detection_enabled">
+                <label class="control-label col-sm-3 requiredField"  title="Higher percent limit, if value exceeds, flapping starts">
+                    High flap threshold<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="numberinput form-control" max="100" min="0" name="high_flap_threshold" ng-model="edit_obj.high_flap_threshold" required="True" type="number" value="0" title="Higher percent limit, if value exceeds, flapping starts"/>
+                </div>
+            </div>
+        </div>
+        <div class="row" ng_show="edit_obj.flap_detection_enabled">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Flapping detection for ok ststes">
+                        Flap detect ok
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.flap_detect_ok"></icsw-tools-yes-no>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Flapping detection for warning states">
+                        Flap detect warn
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.flap_detect_warn"></icsw-tools-yes-no>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Flapping detection for critical states">
+                        Flap detect critical
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.flap_detect_critical"></icsw-tools-yes-no>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Flapping detection for unknown states">
+                        Flap detect unknown
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.flap_detect_unknown"></icsw-tools-yes-no>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</script>
+
+<script type="text/ng-template" id="icsw.mon.contactgroup.form">
+    <form class="form-horizontal" name="form_data">
+        <h2>Contactgroup</h2>
+        <fieldset>
+            <legend>Base data</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Name<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-3">
+                    Alias
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="255" name="alias" ng-model="edit_obj.alias" type="text"/>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>settings</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-3">
+                    Members
+                </label>
+                <div class="controls col-sm-7">
+                    <ui-select multiple="multiple" ng-model="edit_obj.members" style="max-width:400px; min-width:240px;">
+                        <ui-select-match class="ui-select-match" placeholder="please select one or more users">
+                            {{ $item.user_name }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in tree.mon_contact_list | orderBy:'user_name'| props_filter:{user_name:$select.search}">
+                            <div ng-bind-html="value.user_name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-3">
+                    Device groups
+                </label>
+                <div class="controls col-sm-7">
+                    <ui-select multiple="multiple" ng-model="edit_obj.device_groups" style="max-width:400px; min-width:240px;">
+                        <ui-select-match class="ui-select-match" placeholder="please select one or more device groups">
+                            {{ $item.name }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in device_tree.enabled_ns_group_list | orderBy:'name'| props_filter:{name:$select.search}">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-3">
+                    Service templates
+                </label>
+                <div class="controls col-sm-7">
+                    <ui-select multiple="multiple" ng-model="edit_obj.service_templates" style="max-width:400px; min-width:240px;">
+                        <ui-select-match class="ui-select-match" placeholder="please select one or more service templates">
+                            {{ $item.name }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in tree.mon_service_templ_list | orderBy:'name'| props_filter:{name:$select.search}">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+        </fieldset>
+    </form>
 </script>

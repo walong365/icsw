@@ -1,19 +1,19 @@
 <script type="text/ng-template" id="icsw.layout.menubar">
-    <nav icsw-element-size="navbar_size" class="navbar navbar-default navbar-fixed-top" role="navigation" ng-controller="menu_base" ng-cloak ng-show="is_authenticated" ng-cloack>
+    <nav class="navbar navbar-default navbar-fixed-top" role="navigation" icsw-element-size="size" ng-controller="icswMenuBaseCtrl" ng-cloak ng-show="show_navbar" ng-cloak>
 
         <icsw-menu-progress-bars user="CURRENT_USER"></icsw-menu-progress-bars>
 
         <ul class="nav navbar-nav">
             <li>
+<<<<<<< HEAD
                 <a href="{{ ICSW_URLS.MAIN_INDEX }}"><span class="fa fa-home fa-lg" title="Dashboard"></span></a>
+=======
+                <a ui-sref="main.dashboard"><span class="fa fa-home fa-lg" title="Dashboard"></span></a>
+>>>>>>> master-gulp
             </li>
         </ul>
 
         <icsw-menu-directive user="CURRENT_USER"></icsw-menu-directive>
-
-        <ul class="nav navbar-nav">
-            <icsw-layout-menubar-addons></icsw-layout-menubar-addons>
-        </ul>
 
         <ul class="nav navbar-nav navbar-right">
             <li>
@@ -25,17 +25,36 @@
                     <span class="fa fa-sort-down pull-right"></span>&nbsp;&nbsp;
                 </a>
                 <ul class="dropdown-menu">
-                    <li><a href="{{ ICSW_URLS.USER_ACCOUNT_INFO }}"><span class="fa fa-info-circle fa_icsw"></span>Account Info</a></li>
+                    <li>
+                        <a ui-sref="main.useraccount">
+                            <span class="fa fa-info-circle fa_icsw"></span>
+                            Account Info
+                        </a>
+                    </li>
                     <li ng-show="has_menu_permission('backbone.user.admin')"><a href="{{ ICSW_URLS.ADMIN_INDEX }}"><span class="fa fa-wrench fa_icsw"></span>Admin</a></li>
+<<<<<<< HEAD
                     <li><a href="{{ ICSW_URLS.SESSION_LOGOUT }}"><span class="fa fa-sign-out fa_icsw"></span>Logout</a></li>
+=======
+                    <li><a ui-sref="logout"><span class="fa fa-sign-out fa_icsw"></span>Logout</a></li>
+>>>>>>> master-gulp
                     <li class="divider"></li>
-                    <li><a href="{{ ICSW_URLS.MAIN_INFO_PAGE }}"><span class="fa fa-info fa_icsw"></span>Server information</a></li>
+                    <li>
+                        <a ui-sref="main.serverinfo">
+                            <span class="fa fa-info fa_icsw"></span>
+                            Server information
+                        </a>
+                    </li>
                     <li ng-show="handbook_url_valid">
                         <a href="{{ handbook_url }}">
                             <span class="fa fa-book fa_icsw"></span>PDF Handbook
                         </a>
                     </li>
-                    <li ng-show="has_menu_permission('background_job.show_background')"><a href="{{ ICSW_URLS.USER_BACKGROUND_JOB_INFO }}"><span class="fa fa-list fa-sm fa_icsw"></span>Background Job Info</a></li>
+                    <li ng-show="has_menu_permission('background_job.show_background')">
+                        <a ui-sref="main.backgroundinfo">
+                            <span class="fa fa-list fa-sm fa_icsw"></span>
+                            Background Job Info
+                        </a>
+                    </li>
                 </ul>
             </li>
         </ul>
@@ -44,12 +63,12 @@
 
 <script type="text/ng-template" id="icsw.layout.menubar.progress">
     <ul class="nav navbar-nav">
-        <li class="active" ng-if="num_gauges" ng-mouseover="device_quicksel(true)" ng-mouseleave="device_quicksel(false)" >
+        <li class="active" ng-if="num_gauges" ng-click="device_quickselection()">
             <div ng-repeat="(key, obj) in cur_gauges" class="progress" style="width:200px; margin-top:10px;">
                 <uib-progressbar animate="true" value="obj.value" type="success"><span>{{ obj.value }} %</span></uib-progressbar>
             </div>
         </li>
-        <li class="active" ng-if="num_gauges == 0" ng-mouseover="device_quicksel(true)" ng-mouseleave="device_quicksel(false)" >
+        <li class="active" ng-if="num_gauges == 0" ng-click="device_quickselection()">
             <img height="42px" ng-attr-src="{{ initProduct.menu_gfx_url }}" ng-click="redirect_to_init()" style="cursor: pointer" title="{{ initProduct.name }}" alt="{{ initProduct.name }}"/>
         </li>
     </ul>

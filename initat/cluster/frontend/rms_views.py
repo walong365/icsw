@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -39,8 +39,7 @@ from django.utils.decorators import method_decorator
 from django.views.generic import View
 from lxml.builder import E
 
-from initat.cluster.backbone.models import device, user_variable, rms_job_run
-from initat.cluster.backbone.render import render_me
+from initat.cluster.backbone.models import user_variable, rms_job_run
 from initat.cluster.backbone.routing import SrvTypeRouting
 from initat.cluster.backbone.serializers import rms_job_run_serializer
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
@@ -115,30 +114,21 @@ def get_node_options(request):
     return sge_tools.get_empty_node_options(merge_node_queue=True, show_type=True)
 
 
-def rms_overview(request, template):
-    res = rms_headers(request)
-    if sge_tools is not None:
-        for change_obj in RMS_ADDONS:
-            change_obj.modify_headers(res)
-    header_dict = {}
-    for _entry in res:
-        _sub_list = header_dict.setdefault(_entry.tag, [])
-        if len(_entry):
-            for _header in _entry[0]:
-                _sub_list.append((_header.tag, {key: value for key, value in _header.attrib.iteritems()}))
-    return render_me(
-        request,
-        template,
-        {
-            "RMS_HEADERS": json.dumps(header_dict)
-        }
-    )()
-
-
-class overview(View):
+class get_header_dict(View):
     @method_decorator(login_required)
-    def get(self, request):
-        return rms_overview(request, "rms_overview.html")
+    def post(self, request):
+        res = rms_headers(request)
+        if sge_tools is not None:
+            for change_obj in RMS_ADDONS:
+                change_obj.modify_headers(res)
+        header_dict = {}
+        for _entry in res:
+            _sub_list = header_dict.setdefault(_entry.tag, [])
+            if len(_entry):
+                for _header in _entry[0]:
+                    _sub_list.append((_header.tag, {key: value for key, value in _header.attrib.iteritems()}))
+
+        return HttpResponse(json.dumps(header_dict), content_type="application/json")
 
 
 def rms_headers(request):
@@ -246,6 +236,8 @@ class get_rms_json(View):
                             )
                         )
                 fc_dict[file_el.attrib["full_id"]] = list(reversed(sorted(cur_fcd, cmp=lambda x, y: cmp(x[3], y[3]))))
+        # todo: add jobvars to running (waiting for rescheduled ?) list
+        # print dir(rms_info.run_job_list)
         done_jobs = rms_job_run.objects.all().exclude(
             Q(end_time=None)
         ).prefetch_related(
@@ -299,16 +291,6 @@ class get_rms_jobinfo(View):
         return HttpResponse(json.dumps(json_resp), content_type="application/json")
 
 
-class get_node_info(View):
-    @method_decorator(login_required)
-    def post(self, request):
-        _post = request.POST
-        _dev_names = json.loads(_post["devnames"])
-        dev_list = device.objects.filter(Q(name__in=_dev_names)).select_related("domain_tree_node")
-        json_resp = {_entry.name: (_entry.idx, _entry.has_active_rrds, _entry.full_name) for _entry in dev_list}
-        return HttpResponse(json.dumps(json_resp), content_type="application/json")
-
-
 class control_job(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
@@ -319,7 +301,8 @@ class control_job(View):
         srv_com = server_command.srv_command(command="job_control", action=c_action)
         srv_com["job_list"] = srv_com.builder(
             "job_list",
-            srv_com.builder("job", job_id=job_id))
+            srv_com.builder("job", job_id=job_id)
+        )
         contact_server(request, "rms", srv_com, timeout=10)
 
 
@@ -346,9 +329,12 @@ class get_file_content(View):
         if "file_ids" in _post:
             file_id_list = []
             for file_id in json.loads(_post["file_ids"]):
-                file_parts = file_id.split(".")
-                std_type = file_parts[2]
-                job_id = "{}.{}".format(file_parts[0], file_parts[1]) if file_parts[1] else file_parts[0]
+                _parts = file_id.split(".")
+                if len(_parts) == 3:
+                    job_id = _parts[:2].join(".")
+                    std_type = _parts[2]
+                else:
+                    job_id, std_type = _parts
                 file_id_list.append((file_id, job_id, std_type))
         elif _post["file_id"].count(":"):
             file_parts = _post["file_id"].split(":")

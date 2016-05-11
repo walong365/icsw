@@ -18,21 +18,34 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+# tree component
+# should be rewritten in ReactJS
+
 angular.module(
     "icsw.tools.tree",
     []
-).directive("tree", ["$compile", "$templateCache", ($compile, $templateCache) ->
+).directive("tree",
+[
+    "$compile", "$templateCache", "$injector",
+(
+    $compile, $templateCache, $injector,
+) ->
     return {
         restrict: "E"
         scope: {
             treeconfig: "="
-            maxHeight  : "&"
+            maxHeight: "&"
+            icsw_config_object: "=icswConfigObject"
         }
         replace: true
         link: (scope, element, attr) ->
             scope.$watch("treeconfig", (new_val) ->
                 # setup a list of nodes (with all subtrees)
                 if new_val
+                    if "configService" of attr
+                        cservice = $injector.get(attr.configService)
+                        new_val.config_service = cservice
+                        new_val.config_object = scope.icsw_config_object
                     element.children().remove()
                     _root_el = angular.element($templateCache.get("icsw.tree.root.node"))
                     if scope.maxHeight?
@@ -57,7 +70,13 @@ angular.module(
                     )
             )
     }
-]).service("icswTreeNode", () ->
+]).service("icswTreeNode",
+[
+    "$q",
+(
+    $q,
+) ->
+
     class TreeNode
         constructor: (args) ->
             # tree node element (li)
@@ -80,8 +99,6 @@ angular.module(
             @config = null
             # always shown as folder ?
             @always_folder = false
-            for key, value of args
-                @[key] = value
             # idx
             @_idx = 0
             # number of all nodes below this
@@ -96,6 +113,10 @@ angular.module(
             @_sel_descendants = 0
             # pruned (currently not shown)
             @pruned = false
+            # show selection entry
+            @_show_select = true
+            for key, value of args
+                @[key] = value
             @notify_child_selection_changed()
         set_selected: (flag, propagate=true) ->
             # if _show_select is false ignore selection request
@@ -184,7 +205,7 @@ angular.module(
             else
                 return "label label-default"
         is_selectable: () =>
-            return typeof(@_show_select) == "undefined" or @_show_select
+            return @_show_select
         all_selectable_descendant_and_self_selected: () =>
             if @is_selectable() and not @selected
                 return false
@@ -198,7 +219,14 @@ angular.module(
                     if !child.all_selectable_descendant_and_self_selected()
                         return false
                 return true
-).service("icswTreeConfig", ["icswTreeNode", (icswTreeNode) ->
+
+]).service("icswTreeConfig",
+[
+    "icswTreeNode",
+(
+    icswTreeNode,
+) ->
+
     class TreeConfig
         constructor: (args) ->
             # not really needed, enter more flags here
@@ -208,6 +236,7 @@ angular.module(
             @show_tree_expand_buttons = true
             @show_icons = true
             @show_select = true
+            @disable_select = false
             @change_select = true
             # show total descendants and not file-only entries
             @show_total_descendants = true
@@ -239,9 +268,6 @@ angular.module(
             @_node_idx++
             new_node = new icswTreeNode(args)
             new_node._is_root_node = false
-            if not new_node._show_select?
-                # only set _show_select if _show_select is not already set
-                new_node._show_select = true
             new_node._idx = @_node_idx
             new_node._depth = 0
             new_node.config = @
@@ -271,6 +297,23 @@ angular.module(
             # make all selected nodes visible
             (@_show_active(entry, keep) for entry in @root_nodes)
             @redraw_tree()
+
+        show_selected: (keep=true) =>
+            # make all selected nodes visible
+            (@_show_selected(entry, keep) for entry in @root_nodes)
+            @redraw_tree()
+
+        _show_selected: (entry, keep) =>
+            if (true for sub_entry in entry.children when @_show_selected(sub_entry, keep)).length
+                show = true
+            else
+                # keep: keep expand state if already expanded
+                if keep
+                    show = entry.expand or entry.selected
+                else
+                    show = entry.selected
+            entry.expand = show
+            return entry.expand
 
         redraw_tree: () =>
             for node in @root_nodes
@@ -362,7 +405,9 @@ angular.module(
             )
             _top_span.append(_exp)
             if @show_select and node._show_select
-                _sel_span = angular.element("<span class='fancytree-checkbox' style='margin-left:2px;'/>")
+                _sel_span = angular.element("<input type='checkbox' class='fancytree-checkbox' style='margin-left:2px;'/>")
+                if @disable_select
+                    _sel_span.attr("disabled", "disabled")
                 _sel_span.on("click", () => @_jq_toggle_checkbox_node(node))
                 node._sel_span = _sel_span
                 _top_span.append(_sel_span)
@@ -426,6 +471,9 @@ angular.module(
             _a_node.append(_bind_span)
             _a_node.bind("click", (event) =>
                 @handle_click(node, event)
+            )
+            _a_node.bind("dblclick", (event) =>
+                @handle_dblclick(node, event)
             )
             _top_span.append(_a_node)
             li_node.append(_top_span)
@@ -502,28 +550,13 @@ angular.module(
             entry.expand = show
             return entry.expand
 
-        show_selected: (keep=true) =>
-            # make all selected nodes visible
-            (@_show_selected(entry, keep) for entry in @root_nodes)
-            @redraw_tree()
-
-        _show_selected: (entry, keep) =>
-            if (true for sub_entry in entry.children when @_show_selected(sub_entry, keep)).length
-                show = true
-            else
-                # keep: keep expand state if already expanded
-                if keep
-                    show = entry.expand or entry.selected
-                else
-                    show = entry.selected
-            entry.expand = show
-            return entry.expand
-
         toggle_expand_node: (entry) ->
             if entry.children.length
                 entry.expand = not entry.expand
         toggle_checkbox_node: (entry) =>
             if @change_select
+                if @pre_change_cb?
+                    @pre_change_cb(entry)
                 entry.set_selected(!entry.selected)
                 if entry.selected and @single_select
                     # remove all other selections
@@ -609,8 +642,19 @@ angular.module(
         _iter: (entry, cb_func, cb_data) =>
             cb_func(entry, cb_data)
             (@_iter(child, cb_func, cb_data) for child in entry.children)
+        get_active: () =>
+            active = []
+            @iter(
+                (entry) ->
+                    if entry.active
+                        active.push(entry)
+            )
+            return active
         clear_active: () =>
-            @iter((entry) -> entry.active=false)
+            @iter(
+                (entry) ->
+                    entry.active = false
+            )
             @redraw_tree()
 
         get_icon_class: (entry) ->
@@ -624,8 +668,11 @@ angular.module(
                 r_class.push "fancytree-folder"
             if entry.active
                 r_class.push "fancytree-active"
-            if entry.selected
-                r_class.push "fancytree-selected"
+            if entry._sel_span?
+                if entry.selected
+                    entry._sel_span.prop("checked", true)
+                else
+                    entry._sel_span.prop("checked", false)
             if entry.children.length or entry.always_folder
                 r_class.push "fancytree-has-children"
                 if entry.expand and entry.children.length
@@ -649,4 +696,5 @@ angular.module(
         add_extra_span: (entry) ->
             # override
             return null
+
 ])

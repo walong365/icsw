@@ -1,49 +1,76 @@
 <script type="text/ng-template" id="icsw.device.livestatus.monconfig">
-    <h2>Monitoring Hints ({{devsel_list.length}} devices)</h2>
-    <icsw-tools-ensure-device-selection dev-list="devsel_list"> <!-- don't need list-ready since it's handled in the page below -->
-        <h4>
-            Action:
-            <div class="btn-group btn-xs">
-                <button type="button" ladda="reload_pending" class="btn btn-success btn-xs dropdown-toggle" data-spinner-size="12" data-toggle="dropdown">
-                    reload config <span class="caret"></span>
-                </button>
-                <ul class="dropdown-menu">
-                    <li ng-click="load_data('ALWAYS')"><a href="#">cached (fast)</a></li>
-                    <li ng-click="load_data('REFRESH')"><a href="#">refresh (contact device if necessary)</a></li>
-                </ul>
-            </div>
-        </h4>
-        <uib-accordion close-others="no" ng-show="!reload_pending">
-            <uib-accordion-group is-open="monconfig_open">
+    <h2 ng-show="struct.devices.length">
+        Monitoring Hints for {{ struct.devices.length }} devices
+        <span class="text-danger" ng-show="struct.fetching">Fetching MonitoringData from server</span>
+        <div class="btn-group btn-xs">
+            <button type="button" ladda="struct.fetching" class="btn btn-success btn-xs dropdown-toggle" data-spinner-size="12" data-toggle="dropdown">
+                reload config <span class="caret"></span>
+            </button>
+            <ul class="dropdown-menu">
+                <li ng-click="load_data('ALWAYS')"><a>cached (fast)</a></li>
+                <li ng-click="load_data('REFRESH')"><a>refresh (contact device if necessary)</a></li>
+            </ul>
+        </div>
+    </h2>
+    <uib-alert type="warning" ng-show="struct.loading">Fetching data from server ...</uib-alert>
+    <icsw-tools-ensure-device-selection dev-list="struct.devices"> <!-- don't need list-ready since it's handled in the page below -->
+        <uib-accordion close-others="no">
+            <uib-accordion-group is-open="struct.monconfig_open" ng-show="!struct.fetching">
                 <uib-accordion-heading>
-                    <i class="glyphicon" ng-class="{'glyphicon-chevron-down': monconfig_open, 'glyphicon-chevron-right': !monconfig_open}"></i>
-                    Monitoring config, {{ mc_tables.length }} tables shown,
+                    <i class="glyphicon" ng-class="{'glyphicon-chevron-down': struct.monconfig_open, 'glyphicon-chevron-right': !struct.monconfig_open}"></i>
+                    Monitoring config, {{ struct.mc_tables.length }} tables shown
                 </uib-accordion-heading>
                 <uib-tabset>
-                    <uib-tab ng-repeat="value in mc_tables" heading="{{ value.name }} ({{ value.entries.length }})">
-                        <h3>{{ value.entries.length }} entries for {{ value.short_name }}</h3>
-                        <table class="table table-condensed table-hover table-striped" style="width:auto;">
+                    <uib-tab ng-repeat="table in struct.mc_tables" heading="{{ table.name }} ({{ table.entries.length }})">
+                        <h3>{{ table.entries.length }} entries for {{ table.short_name }}</h3>
+                        <table
+                            st-table="table.entries_displayed"
+                            st-safe-src="table.entries"
+                            class="table table-condensed table-hover table-striped"
+                            style="width:auto;"
+                        >
                             <thead>
                                 <tr>
-                                    <td colspan="{{ value.attr_list.length }}" paginator entries="value.entries" pag_settings="value.pagSettings" per_page="20" paginator_filter="simple" paginator-epp="10,20,50,100,1000"></td>
+                                    <td colspan="99">
+                                        <div
+                                            icsw-tools-pagination
+                                            st-items-by-page="10"
+                                            st-displayed-pages="11"
+                                            possible-items-by-page="10,20,50,100,200,500,1000">
+                                        </div>
+                                    </td>
                                 </tr>
                                 <tr>
-                                    <th colspan="{{ value.attr_list.length }}">
+                                    <th colspan="99">
                                         <div class="btn-group btn-group-xs">
-                                            <button type="button" ng-repeat="attr in value.attr_list" class="btn btn-xs" ng-click="value.toggle_column(attr)" ng-class="value.columns_enabled[attr] && 'btn-success' || 'btn-default'" title="{{ get_long_attr_name(attr) }}" value="{{ get_short_attr_name(attr) }}">{{ get_short_attr_name(attr) }}</button>
+                                            <button
+                                                type="button"
+                                                ng-repeat="attr in table.attr_list"
+                                                class="btn btn-xs"
+                                                ng-click="table.toggle_column(attr)"
+                                                ng-class="table.columns_enabled[attr] && 'btn-success' || 'btn-default'"
+                                                title="{{ table.attr_dict[attr].long }}"
+                                                value="{{ table.attr_dict[attr].short }}"
+                                            >
+                                                {{ table.attr_dict[attr].short }}
+                                            </button>
                                         </div>
                                     </th>
                                 </tr>
                                 <tr>
-                                    <th ng-repeat="attr in value.attr_list" title="{{ get_long_attr_name(attr) }}" ng-show="value.columns_enabled[attr]" ng-click="value.toggle_order(attr)">
-                                        <span ng-class="value.get_order_glyph(attr)"></span>
-                                        {{ get_short_attr_name(attr) }}
+                                    <th
+                                        ng-repeat="attr in table.attr_list"
+                                        title="{{ table.attr_dict[attr].long }}"
+                                        ng-show="table.columns_enabled[attr]"
+                                        ng-click="table.toggle_order(attr)"
+                                    >
+                                        {{ table.attr_dict[attr].short }}
                                     </th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr ng-repeat="entry in value.entries | orderBy:value.get_order() | paginator2:value.pagSettings">
-                                    <td ng-repeat="attr in value.attr_list" ng-show="value.columns_enabled[attr]">
+                                <tr ng-repeat="entry in table.entries_displayed">
+                                    <td ng-repeat="attr in table.attr_list" ng-show="table.columns_enabled[attr]">
                                         {{ entry[attr] }}
                                     </td>
                                 </tr>
@@ -52,12 +79,16 @@
                     </uib-tab>
                 </uib-tabset>
             </uib-accordion-group>
-            <uib-accordion-group is-open="monhint_open">
+            <uib-accordion-group is-open="struct.monhint_open">
                 <uib-accordion-heading>
-                    <i class="glyphicon" ng-class="{'glyphicon-chevron-down': monhint_open, 'glyphicon-chevron-right': !monhint_open}"></i>
-                    Monitoring hint ({{ devices.length }} devices)
+                    <i class="glyphicon" ng-class="{'glyphicon-chevron-down': struct.monhint_open, 'glyphicon-chevron-right': !struct.monhint_open}"></i>
+                    Monitoring hint for {{ struct.devices.length }} devices
                 </uib-accordion-heading>
-                <table ng-show="devices.length" class="table table-condensed table-hover" style="width:auto;">
+                <table
+                    ng-show="struct.devices.length"
+                    class="table table-condensed table-hover"
+                    style="width:auto;"
+                >
                     <thead>
                         <tr>
                             <th></th>
@@ -68,10 +99,10 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr mhdevrow ng-repeat-start="obj in devices" ng-class="get_tr_class(obj)"></tr>
-                        <tr ng-repeat-end ng-if="obj.expanded" ng-show="obj.monitoring_hint_set.length">
+                        <tr icsw-monitoring-hint-device-row ng-repeat-start="device in struct.devices" ng-class="get_tr_class(device)"></tr>
+                        <tr ng-repeat-end ng-if="device.$$hints_expanded && device.monitoring_hint_set.length && !struct.fetching">
                             <td colspan="9">
-                                <monitoringhinttable></monitoringhinttable>
+                                <icsw-monitoring-hint-table icsw-device="device"></icsw-monitoring-hint-table>
                             </td>
                         </tr>
                     </tbody>
@@ -81,13 +112,64 @@
     </icsw-tools-ensure-device-selection>
 </script>
 
-<script type="text/ng-template" id="icsw.device.livestatus.hint.row">
+<script type="text/ng-template" id="icsw.monitoring.hint.device.row">
+    <td>
+        <button class="btn btn-primary btn-xs" ng-click="expand_vt(device)" ng-show="device.monitoring_hint_set.length">
+            <span ng_class="get_expand_class(device)"/>
+        </button>
+    <td/>
+    <td>{{ device.full_name }}</td>
+    <td>{{ device.device_group_name }}</td>
+    <td>{{ device.comment }}</td>
+    <td>hints : {{ device.monitoring_hint_set.length }}</td>
+    <td>
+        <icsw-tools-button type="delete" size="xs" value="delete selected hints" ng-click="delete_multiple_hints($event, device)"></icsw-tools-button>
+    </td>
+</script>
+
+<script type="text/ng-template" id="icsw.monitoring.hint.table">
+    <table
+        st-table="entries_display"
+        st-safe-src="device.monitoring_hint_set"
+        class="table table-condensed table-striped table-hover table-bordered"
+        style="width:auto;"
+    >
+        <thead>
+            <tr>
+                <td colspan="99">
+                    <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                </td>
+            </tr>
+            <tr>
+                <th st-sort="m_type">Source</th>
+                <th st-sort="key">key</th>
+                <th title="datasource">ds</th>
+                <th title="entry is persistent">persistent</th>
+                <th>Type</th>
+                <th>lower crit</th>
+                <th>lower warn</th>
+                <th>upper warn</th>
+                <th>upper crit</th>
+                <th st-sort="value">value</th>
+                <th title="check">active check</th>
+                <th colspan="3">action</th>
+                <th st-sort="info">info</th>
+                <th>Created</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr st-select-row="hint" st-select-mode="multiple" icsw-monitoring-hint-row ng-class="hint.isSelected && 'info'" ng-repeat="hint in entries_display"></tr>
+        </tbody>
+    </table>
+</script>
+
+<script type="text/ng-template" id="icsw.monitoring.hint.row">
     <td title="from run {{ hint.call_idx }}">
         <span ng-show="hint.enabled">
             {{ hint.m_type }}
         </span>
         <span ng-show="!hint.enabled">
-            <em><strike>{{ hint.m_type }}</strike></em>
+            <em><del>{{ hint.m_type }}</del></em>
         </span>
     </td>
     <td>
@@ -95,61 +177,71 @@
             {{ hint.key }}
         </span>
         <span ng-show="!hint.enabled">
-            <em><strike>{{ hint.key }}</strike></em>
+            <em><del>{{ hint.key }}</del></em>
         </span>
     </td>
     <td>{{ hint.datasource }}</td>
     <td class="text-center">{{ hint.persistent | yesno2 }}</td>
-    <td>{{ get_v_type() }}</td>
-    <td class="text-right" ng-class="get_td_class('lower_crit')" ng-attr-title="{{ get_td_title('lower_crit') }}">{{ get_limit('lower_crit') }}</td>
-    <td class="text-right" ng-class="get_td_class('lower_warn')" ng-attr-title="{{ get_td_title('lower_warn') }}">{{ get_limit('lower_warn') }}</td>
-    <td class="text-right" ng-class="get_td_class('upper_warn')" ng-attr-title="{{ get_td_title('upper_warn') }}">{{ get_limit('upper_warn') }}</td>
-    <td class="text-right" ng-class="get_td_class('upper_crit')" ng-attr-title="{{ get_td_title('upper_crit') }}">{{ get_limit('upper_crit') }}</td>
-    <td class="text-right success">{{ get_value() }}</td>>
+    <td>{{ hint.$$v_type }}</td>
+    <td class="text-right" ng-class="{{ hint.$$lower_crit_class }}" ng-attr-title="{{ hint.$$lower_crit_title }}">{{ hint.$$lower_crit_limit }}</td>
+    <td class="text-right" ng-class="{{ hint.$$lower_warn_class }}" ng-attr-title="{{ hint.$$lower_warn_title }}">{{ hint.$$lower_warn_limit }}</td>
+    <td class="text-right" ng-class="{{ hint.$$upper_warn_class }}" ng-attr-title="{{ hint.$$upper_warn_title }}">{{ hint.$$upper_warn_limit }}</td>
+    <td class="text-right" ng-class="{{ hint.$$upper_crit_class }}" ng-attr-title="{{ hint.$$upper_crit_title }}">{{ hint.$$upper_crit_limit }}</td>
+    <td class="text-right success">{{ hint.$$value }}</td>>
     <td class="text-center">{{ hint.is_active | yesno2 }}</td>
     <td class="text-center">
-        <icsw-tools-button type="delete" ng-click="delete(hint, $event)" size="xs"></icsw-tools-button>
+        <icsw-tools-button type="delete" ng-click="delete_hint($event, hint)" size="xs"></icsw-tools-button>
     </td>
     <td class="text-center">
-        <input type="button" class="btn btn-xs" ng-class="hint.enabled && 'btn-success' || 'btn-warning'" ng-value="hint.enabled && 'disable' || 'enable'" ng-click="toggle_enabled(hint, $event)"/></input>
+        <input type="button" class="btn btn-xs" ng-class="hint.enabled && 'btn-success' || 'btn-warning'" ng-value="hint.enabled && 'disable' || 'enable'" ng-click="toggle_enabled($event, hint)"/></input>
     </td>
     <td class="text-center">
-        <icsw-tools-button ng-show="show_modify(hint)" type="modify" ng-click="modify_hint(hint, $event)" size="xs"></icsw-tools-button>
+        <icsw-tools-button type="modify" ng-show="hint.$$show_modify" ng-click="edit_hint($event, hint)" size="xs"></icsw-tools-button>
     </td>
     <td>{{ hint.info }}</td>
-    <td>{{ from_now(hint.date) }}</td>
+    <td>{{ hint.$$from_now }}</td>
 </script>
 
-<script type="text/ng-template" id="icsw.device.livestatus.hint.table">
-    <icsw-tools-rest-table target-list="entries" config-service="icswDeviceMonConfigTableService">
-        <table st-table="entries_display" st-safe-src="obj.monitoring_hint_set" class="table table-condensed table-striped table-hover table-bordered" style="width:auto;">
-            <thead>
-                <tr>
-                    <td colspan="99">
-                        <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
-                    </td>
-                </tr>
-                <tr>
-                    <th st-sort="m_type">Source</th>
-                    <th st-sort="key">key</th>
-                    <th title="datasource">ds</th>
-                    <th title="entry is persistent">persistent</th>
-                    <th>Type</th>
-                    <th>lower crit</th>
-                    <th>lower warn</th>
-                    <th>upper warn</th>
-                    <th>upper crit</th>
-                    <th st-sort="value">value</th>
-                    <th title="check">active check</th>
-                    <th colspan="3">action</th>
-                    <th st-sort="info">info</th>
-                    <th>Created</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr st-select-row="hint" st-select-mode="multiple" mhrow ng-class="hint.isSelected && 'info'" ng-repeat="hint in entries_display"></tr>
-            </tbody>
-        </table>
-    </icsw-tools-rest-table>
-</script>
+<script type="text/ng-template" id="icsw.monitoring.hint.form">
+    <form class="form-horizontal" name="form_data">
+        <h2>Monitoring hint '{{ edit_obj.m_type }} / {{ edit_obj.key }}'</h2>
+        <fieldset>
+            <legend>lower bounds</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-4">Lower Critical</label>
 
+                <div class="controls col-sm-8">
+                    <input class="form-control" ng-model="edit_obj.lower_crit_float" required="required" type="number" step="any" ng-show="edit_obj.v_type == 'f'"/>
+                    <input class="form-control" ng-model="edit_obj.lower_crit_int" required="required" type="number" ng-show="edit_obj.v_type == 'i'"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-4">Lower Warning</label>
+
+                <div class="controls col-sm-8">
+                    <input class="form-control" ng-model="edit_obj.lower_warn_float" required="required" type="number" step="any" ng-show="edit_obj.v_type == 'f'"/>
+                    <input class="form-control" ng-model="edit_obj.lower_warn_int" required="required" type="number" ng-show="edit_obj.v_type == 'i'"/>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>upper bounds</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-4">Upper Warning</label>
+
+                <div class="controls col-sm-8">
+                    <input class="form-control" ng-model="edit_obj.upper_warn_float" required="required" type="number" step="any" ng-show="edit_obj.v_type == 'f'"/>
+                    <input class="form-control" ng-model="edit_obj.upper_warn_int" required="required" type="number" ng-show="edit_obj.v_type == 'i'"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-4">Upper Critial</label>
+
+                <div class="controls col-sm-8">
+                    <input class="form-control" ng-model="edit_obj.upper_crit_float" required="required" type="number" step="any" ng-show="edit_obj.v_type == 'f'"/>
+                    <input class="form-control" ng-model="edit_obj.upper_crit_int" required="required" type="number" ng-show="edit_obj.v_type == 'i'"/>
+                </div>
+            </div>
+        </fieldset>
+    </form>
+</script>

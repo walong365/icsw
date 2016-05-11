@@ -1,6 +1,7 @@
 <script type="text/ng-template" id="icsw.device.network.overview">
     <h3>
-        Network config for {{ devices.length }} devices ({{ get_nd_objects().length }} netdevices, {{ get_ip_objects().length }} IPs, {{ get_peer_objects().length }} peers)
+        Network config for {{ devices.length }} devices ({{ local_helper_obj.netdevice_list.length }} netdevices, {{ local_helper_obj.net_ip_list.length }} IPs, {{ local_helper_obj.peer_list.length }} peers)
+        <icsw-tools-button ng-if="show_copy_button" type="modify" size="xs" value="Copy networks" ng-click="copy_network()"></icsw-tools-button>
     </h3>
     <uib-accordion close-others="no">
         <uib-accordion-group is-open="device_open">
@@ -13,7 +14,6 @@
                     <tr>
                         <th>Device</th>
                         <th>Coms</th>
-                        <th>ScanInfo</th>
                         <th>BootInfo</th>
                         <th>#Ports</th>
                         <th>#IPs</th>
@@ -30,11 +30,11 @@
         <uib-accordion-group is-open="netdevice_open">
             <uib-accordion-heading>
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': netdevice_open, 'glyphicon-chevron-right': !netdevice_open}"></i>
-                {{ get_nd_objects().length }} netdevices
+                {{ local_helper_obj.netdevice_list.length }} netdevices
             </uib-accordion-heading>
             <icsw-tools-show-hide-columns ng-show="devices.length" columns="idx port ips peers bridge bond mac devtype mtu speed penalty flags status desired" create-show-column="true">
             </icsw-tools-show-hide-columns>
-            <table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
+            <table st-table="display_entries" st-safe-src="local_helper_obj.netdevice_list" ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
                 <thead>
                     <tr>
                         <th>Device</th>
@@ -54,16 +54,27 @@
                         <th ng-show="show_column.desired">desired</th>
                         <th colspan="4">action</th>
                     </tr>
+                    <tr>
+                        <td colspan="99">
+                            <input st-search="" class="form-control" placeholder="filter ..." type="text"/>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="99">
+                            <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                                 possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                        </td>
+                    </tr>
                 </thead>
                 <tbody>
-                    <tr icsw-device-network-netdevice-row ng-repeat="ndip_obj in get_nd_objects()"></tr>
+                    <tr icsw-device-network-netdevice-row ng-repeat="ndip_obj in display_entries"></tr>
                 </tbody>
             </table>
         </uib-accordion-group>
         <uib-accordion-group is-open="netip_open">
             <uib-accordion-heading>
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': netip_open, 'glyphicon-chevron-right': !netip_open}"></i>
-                {{ get_ip_objects().length }} IPs
+                {{ local_helper_obj.net_ip_list.length }} IPs
             </uib-accordion-heading>
             <table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
                 <thead>
@@ -78,14 +89,14 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr icsw-device-network-ip-row ng-repeat="ndip_obj in get_ip_objects()"></tr>
+                    <tr icsw-device-network-ip-row ng-repeat="ndip_obj in local_helper_obj.net_ip_list"></tr>
                 </tbody>
             </table>
         </uib-accordion-group>
         <uib-accordion-group is-open="peer_open">
             <uib-accordion-heading>
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': peer_open, 'glyphicon-chevron-right': !peer_open}"></i>
-                {{ get_peer_objects().length }} peer connections
+                {{ local_helper_obj.peer_list.length }} peer connections
             </uib-accordion-heading>
             <table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
                 <thead>
@@ -94,7 +105,9 @@
                         <th>Port</th>
                         <th>IPs</th>
                         <th>cost</th>
-                        <th>Dest</th>
+                        <th>Device</th>
+                        <th>Port</th>
+                        <th>IPs</th>
                         <th>type</th>
                         <th>Autocreated</th>
                         <th>Info</th>
@@ -102,27 +115,27 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr icsw-device-network-peer-row ng-repeat="ndip_obj in get_peer_objects()"></tr>
+                    <tr icsw-device-network-peer-row ng-repeat="ndip_obj in local_helper_obj.peer_list track by $index"></tr>
                 </tbody>
             </table>
         </uib-accordion-group>
     </uib-accordion>
-    <div class="input-group-btn" ng-show="devices.length > 1 && show_copy_button " ng-if="acl_create(null, 'backbone.device.change_network')">
-        <div class="btn-group">
-            <button type="button" class="btn btn-danger btn-md dropdown-toggle" data-toggle="dropdown">
-                Copy network from<span class="caret"></span>
-            </button>
-            <ul class="dropdown-menu">
-                <li ng-click="copy_network(obj, $event)" ng-repeat="obj in devices"><a href="#">{{ obj.full_name }}</a></li>
-            </ul>
-            <input type="button" ng-class="copy_com_class()" ng-value="copy_com_value()" ng-click="toggle_copy_com()"></input>
-        </div>
-    </div>
 </script>
 
-<script type="text/ng-template" id="icsw.device.com.capabilities">
-    <button type="button" class="btn btn-xs" ng-class="com_class()" data-spinner-size="12" ladda="pending" data-style="expand-left">
-    </button>
+<script type="text/ng-template" id="icsw.device.network.copy">
+    <form class="form-horizontal" name="form_data">
+        Copy network from
+        <ui-select ng-model="settings.src_device" style="max-width:400px; min-width:240px;">
+            <ui-select-match class="ui-select-match" placeholder="select a target netdevice speed">{{$select.selected.full_name}}</ui-select-match>
+            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in devices">
+                <div ng-bind-html="value.full_name | highlight: $select.search"></div>
+            </ui-select-choices>
+        </ui-select>
+        <ul class="dropdown-menu">
+            <li ng-click="copy_network(obj, $event)" ng-repeat="obj in devices"><a>{{ obj.full_name }}</a></li>
+        </ul>
+        <input type="button" ng-class="copy_com_class()" ng-value="copy_com_value()" ng-click="toggle_copy_com()"></input>
+    </form>
 </script>
 
 <script type="text/ng-template" id="icsw.device.network.device.row">
@@ -133,30 +146,24 @@
         <icsw-device-com-capabilities device="ndip_obj"></icsw-device-com-capabilities>
     </td>
     <td>
-        <button type="button" class="btn btn-xs btn-warning" data-spinner-size="12" ng-show="ndip_obj.active_scan" ladda="ndip_obj.active_scan" data-style="expand-left">
-            <span>{{ ndip_obj.active_scan }}</span>
-        </button>
-    </td>
-    <td>
         <input
             type="button"
             class="btn btn-xs"
             ng-class="get_bootdevice_info_class(ndip_obj)"
-            ng-show="get_num_bootips(ndip_obj)"
+            ng-show="ndip_obj.num_boot_ips"
             ng-value="get_boot_value(ndip_obj)"
             ng-click="edit_boot_settings(ndip_obj, $event)">
         </input>
-        <span ng-show="!get_num_bootips(ndip_obj)">N/A</span>
-        <!--<button class="btn btn-primary btn-xs" ladda="true" data-style="expand-left">xxx</button>-->
+        <span ng-show="!ndip_obj.num_boot_ips">N/A</span>
     </td>
     <td>
-        {{ get_num_netdevices(ndip_obj) }}
+        {{ ndip_obj.num_netdevices }}
     </td>
     <td>
-        {{ get_num_netips_dev(ndip_obj) }}
+        {{ ndip_obj.num_netips }}
     </td>
     <td>
-        {{ get_num_peers_dev(ndip_obj) }}
+        {{ ndip_obj.num_peers }}
     </td>
     <td>
         <span ng-repeat="obj in ndip_obj.snmp_schemes">
@@ -165,11 +172,8 @@
     </td>
     <td>
         <button type="button" class="btn btn-xs btn-success pull-right"
-            tooltip-placement="bottom"
-            tooltip-html-unsafe="<div class='text-left'>
-            devicegroup: {{ ndip_obj.device_group_name }}<br>
-            comment: {{ ndip_obj.comment }}<br>
-            </div>">
+            uib-tooltip-placement="bottom"
+            uib-tooltip-html="build_device_tooltip(ndip_obj)">
             <span class="glyphicon glyphicon-info-sign"></span>
         </button>
     </td>
@@ -177,13 +181,13 @@
         <div ng-show="acl_create(ndip_obj, 'backbone.device.change_network') && !ndip_obj.active_scan">
             <div class="btn-group btn-xs">
 
-                <button type="button" ng-attr-class="btn btn-xs dropdown-toggle fa fa-chevron-down {{ icswToolsButtonConfigService.get_css_class('create') }}" data-toggle="dropdown">
-                    Create new
+                <button type="button" ng-attr-class="btn btn-xs dropdown-toggle {{ icswToolsButtonConfigService.get_css_class('create') }}" data-toggle="dropdown">
+                    Create new <span class="caret"></span>
                 </button>
                 <ul class="dropdown-menu">
-                    <li ng-click="create_netdevice(ndip_obj, $event)"><a href="#">Netdevice</a></li>
-                    <li ng-show="ndip_obj.netdevice_set.length && networks.length" ng-click="create_netip_dev(ndip_obj, $event)"><a href="#">IP Address</a></li>
-                    <li ng-show="ndip_obj.netdevice_set.length && nd_peers.length" ng-click="create_peer_information_dev(ndip_obj, $event)"><a href="#">Network topology connection</a></li>
+                    <li ng-click="edit_netdevice(ndip_obj, $event, true)"><a>Netdevice</a></li>
+                    <li ng-show="create_netip_ok(ndip_obj)" ng-click="edit_netip(ndip_obj, 'dev', $event, true)"><a>IP Address</a></li>
+                    <li ng-show="create_peer_ok(ndip_obj)" ng-click="edit_peer(ndip_obj, 'dev', $event, true)"><a>Network topology connection</a></li>
                 </ul>
             </div>
             <icsw-tools-button type="reload" value="update network" size="xs"
@@ -196,7 +200,7 @@
 
 <script type="text/ng-template" id="icsw.device.network.netdevice.row">
     <td>
-        {{ dev_lut[ndip_obj.device].full_name }}
+        {{ device_tree.all_lut[ndip_obj.device].full_name }}
     </td>
     <td ng-show="show_column.idx">
         <span ng-show="ndip_obj.snmp_idx">{{ ndip_obj.snmp_idx }}</span>
@@ -209,7 +213,7 @@
         </span>
     </td>
     <td ng-show="show_column.ips">
-        {{ get_num_netips_nd(ndip_obj) }}
+        {{ ndip_obj.num_netips }}
     </td>
     <td ng-show="show_column.peers">
         {{ get_num_peers_nd(ndip_obj) }}
@@ -220,95 +224,79 @@
     <td ng-show="show_column.devtype">{{ get_network_type(ndip_obj) }}</td>
     <td ng-show="show_column.mtu" class="text-right">{{ ndip_obj.mtu }}</td>
     <td ng-if="show_column.speed && ndip_obj.ignore_netdevice_speed" style="text-decoration: line-through;">
-        {{ ndip_obj.netdevice_speed | array_lookup:netdevice_speeds:'info_string':'-' }}
+        {{ get_netdevice_speed(ndip_obj) }}
     </td>
     <td ng-if="show_column.speed && !ndip_obj.ignore_netdevice_speed">
-        {{ ndip_obj.netdevice_speed | array_lookup:netdevice_speeds:'info_string':'-' }}
+        {{ get_netdevice_speed(ndip_obj) }}
     </td>
     <td ng-show="show_column.penalty" class="text-right">{{ ndip_obj.penalty }}</td>
-    <td ng-show="show_column.flags">{{ get_flags(ndip_obj) }}</td>
+    <td ng-show="show_column.flags">{{ get_nd_flags(ndip_obj) }}</td>
     <td ng-show="show_column.status" ng-class="get_snmp_ao_status_class(ndip_obj)">{{ get_snmp_ao_status(ndip_obj) }}</td>
     <td ng-show="show_column.desired" class="text-center">{{ get_desired_status(ndip_obj) }}</td>
     <td>
         <button type="button" class="btn btn-xs btn-success"
-         tooltip-placement="right"
-         tooltip-html-unsafe="<div class='text-left'>
-            device: {{ get_netdevice_name(ndip_obj) }}<br>
-            SNMP: {{ ndip_obj.snmp_idx && 'yes' || 'no' }}<span ng-show='ndip_obj.snmp'> ( {{ ndip_obj.snmp_idx }} )</span><br>
-            enabled: {{ ndip_obj.enabled | yesno2 }}<br>
-            <hr>
-            driver: {{ ndip_obj.driver }}<br>
-            driver options: {{ ndip_obj.driver_options }}<br>
-            fake MACAddress: {{ ndip_obj.fake_macaddr }}<br>
-            force write DHCP: {{ ndip_obj.dhcp_device | yesno2 }}
-            <hr>
-            Autonegotiation: {{ ethtool_options(ndip_obj, 'a')}}<br>
-            Duplex: {{ ethtool_options(ndip_obj, 'd')}}<br>
-            Speed: {{ ethtool_options(ndip_obj, 's')}}
-            <hr>
-            Monitoring: {{ ndip_obj.netdevice_speed | array_lookup:netdevice_speeds:'info_string':'-' }}
-         </div>">
-         <span class="glyphicon glyphicon-info-sign"></span>
+         uib-tooltip-placement="right"
+         uib-tooltip-html="build_netdevice_tooltip(ndip_obj)">
+             <span class="glyphicon glyphicon-info-sign"></span>
          </button>
     </td>
     <td>
-        <div ng-show="!dev_lut[ndip_obj.device].active_scan">
-            <icsw-tools-button type="modify" ng-click="edit_netdevice(ndip_obj, $event)" size="xs"
+        <div ng-show="no_scan_running(ndip_obj)">
+            <icsw-tools-button type="modify" ng-click="edit_netdevice(ndip_obj, $event, false)" size="xs"
                     ng-show="acl_modify(obj, 'backbone.device.change_network')"></icsw-tools-button>
         </div>
     </td>
     <td>
-        <div ng-show="!dev_lut[ndip_obj.device].active_scan">
+        <div ng-show="no_scan_running(ndip_obj)">
             <icsw-tools-button type="delete" size="xs" ng-click="delete_netdevice(ndip_obj, $event)" ng-show="acl_delete(obj, 'backbone.device.change_network')"/>
         </div>
     </td>
     <td>
-        <div class="btn-group btn-xs" ng-show="acl_create(obj, 'backbone.device.change_network') && !dev_lut[ndip_obj.device].active_scan">
+        <div class="btn-group btn-xs" ng-show="acl_create(obj, 'backbone.device.change_network') && no_scan_running(ndip_obj)">
             <button type="button" class="btn {{ icswToolsButtonConfigService.get_css_class('create') }} btn-xs dropdown-toggle" data-toggle="dropdown">
                 Create new <span class="caret"></span>
             </button>
             <ul class="dropdown-menu">
-                <li ng-show="networks.length" ng-click="create_netip_nd(ndip_obj, $event)"><a href="#">IP Address</a></li>
-                <li ng-click="create_peer_information_nd(ndip_obj, $event)"><a href="#">Network topology connection</a></li>
+                <li ng-show="network_tree.nw_list.length" ng-click="edit_netip(ndip_obj, 'nd', $event, true)">
+                    <a>IP Address</a></li>
+                <li ng-click="edit_peer(ndip_obj, 'nd', $event, true)"><a>Network topology connection</a></li>
             </ul>
         </div>
     </td>
 </script>
 
 <script type="text/ng-template" id="icsw.device.network.ip.row">
-    <td>{{ dev_lut[nd_lut[ndip_obj.netdevice].device].full_name }}</td>
-    <td>{{ get_netdevice_name(ndip_obj.netdevice) }}</td>
+    <td>{{ get_devname_from_ip(ndip_obj) }}</td>
+    <td>{{ get_netdevice_name_from_ip(ndip_obj) }}</td>
     <td>{{ ndip_obj.ip }}</td>
-    <td>{{ ndip_obj.network | array_lookup:networks:'info_string':'-' }}</td>
-    <td>{{ ndip_obj.domain_tree_node | array_lookup:domain_tree_node:'tree_info':'-' }}</td>
+    <td>{{ get_network_name_from_ip(ndip_obj) }}</td>
+    <td>{{ get_domain_tree_name_from_ip(ndip_obj) }}</td>
     <td>
         <span ng-show="ndip_obj.alias">{{ ndip_obj.alias }} <span ng-show="ndip_obj.alias_excl">( exclusive )</span></span>
     </td>
     <td>
-        <div ng-show="!dev_lut[nd_lut[ndip_obj.netdevice].device].active_scan">
-            <icsw-tools-button type="modify" size="xs" ng-click="edit_netip(ndip_obj, $event)" ng-show="acl_modify(obj, 'backbone.device.change_network')"/>
+        <div ng-show="no_scan_running(ndip_obj)">
+            <icsw-tools-button type="modify" size="xs" ng-click="edit_netip(ndip_obj, 'ip', $event, false)" ng-show="acl_modify(obj, 'backbone.device.change_network')"/>
         </div>
     </td>
     <td>
-        <div ng-show="!dev_lut[nd_lut[ndip_obj.netdevice].device].active_scan">
+        <div ng-show="no_scan_running(ndip_obj)">
             <icsw-tools-button type="delete" size="xs" ng-click="delete_netip(ndip_obj, $event)" ng-show="acl_delete(obj, 'backbone.device.change_network')"/>
         </div>
     </td>
 </script>
 
 <script type="text/ng-template" id="icsw.device.network.peer.row">
-    <td>{{ dev_lut[nd_lut[ndip_obj.netdevice].device].full_name }}</td>
-    <td>{{ get_netdevice_name(ndip_obj.netdevice) }} ({{ nd_lut[ndip_obj.netdevice].penalty }})</td>
+    <td ng-class="get_peer_class(ndip_obj, 's')">{{ get_devname_from_peer(ndip_obj, "s") }}</td>
+    <td ng-class="get_peer_class(ndip_obj, 's')">{{ get_netdevice_name_from_peer(ndip_obj, "s") }}</td>
+    <td ng-class="get_peer_class(ndip_obj, 's')">{{ get_ip_list_from_peer(ndip_obj, "s") }}</td>
     <td>
-        <span ng-repeat="ip in get_ip_objects(nd_lut[ndip_obj.netdevice])">{{ ip.ip }}&nbsp;</span>
-    </td>
-    <td>
-        with cost {{ ndip_obj.peer.penalty }}
+        with cost {{ ndip_obj.penalty }}
         &nbsp;<span class="label label-primary">{{ get_peer_cost(ndip_obj) }}</span>&nbsp;
     </td>
-    <td>
-        to {{ get_peer_target(ndip_obj) }}
-    </td>
+    <td ng-class="get_peer_class(ndip_obj, 'd')">{{ get_devname_from_peer(ndip_obj, "d") }}</td>
+    <td ng-class="get_peer_class(ndip_obj, 'd')">{{ get_netdevice_name_from_peer(ndip_obj, "d") }}</td>
+    <td ng-class="get_peer_class(ndip_obj, 'd')">{{ get_ip_list_from_peer(ndip_obj, "d") }}</td>
     <td>
         {{ get_peer_type(ndip_obj) }}
     </td>
@@ -319,10 +307,10 @@
         {{ ndip_obj.peer.info }}
     </td>
     <td>
-        <icsw-tools-button type="modify" size="xs" ng-click="edit_peer_information(ndip_obj, $event)" ng-show="acl_modify(obj, 'backbone.device.change_network')"></icsw-tools-button>
+        <icsw-tools-button type="modify" size="xs" ng-click="edit_peer(ndip_obj, 'peer', $event, false)" ng-show="acl_modify(obj, 'backbone.device.change_network')"></icsw-tools-button>
     </td>
     <td>
-        <icsw-tools-button type="delete" size="xs" ng-click="delete_peer_information(ndip_obj, $event)" ng-show="acl_delete(obj, 'backbone.device.change_network')"></icsw-tools-button>
+        <icsw-tools-button type="delete" size="xs" ng-click="delete_peer(ndip_obj, $event)" ng-show="acl_delete(obj, 'backbone.device.change_network')"></icsw-tools-button>
     </td>
 </script>
 
@@ -334,80 +322,6 @@
     </ul>
 </script>
 
-<script type="text/ng-template" id="icsw.device.network.host.node">
-    <g class="node draggable" node_id="{{ node.id }}"
-        ng-mouseenter="mouse_enter()"
-        ng-mouseleave="mouse_leave()"
-        ng-click="mouse_click()"
-    >
-        <circle r="18" fill="{{ fill_color }}" stroke-width="{{ stroke_width }}" stroke="{{ stroke_color }}" cursor="crosshair"></circle>
-        <text text-anchor="middle" alignment-baseline="middle" cursor="crosshair">{{ node.name }}</text>
-    </g>
-</script>
-
-<script type="text/ng-template" id="icsw.device.network.host.livestatus">
-    <g class="node draggable" node_id="{{ node.id }}">
-        <newburst
-            ls-filter="ls_filter"
-            device-pk="devicepk"
-            innerradius="20"
-            outerradius="30"
-            noninteractive="true"
-            zoom-level="d"
-        ></newburst>
-        <text text-anchor="middle" alignment-baseline="middle" cursor="crosshair">{{ node.name }}</text>
-    </g>
-</script>
-
-<script type="text/ng-template" id="icsw.device.network.host.link">
-    <line stroke="#ff7788" stroke-width="2" opacity="1">
-    </line>
-</script>
-
-<script type="text/ng-template" id="icsw.device.network.graph">
-    <div>
-        <h4>{{ zoom.factor | number:2 }}@({{ offset.x | number:0 }}, {{ offset.y | number:0 }})</h4>
-        <icsw-device-network-graph2 icsw-mouse-capture></icsw-device-network-graph2>
-    </div>
-</script>
-
-<script type="text/ng-template" id="icsw.device.network.graph2">
-    <svg
-        class="draggable"
-        ng-attr-width="{{ size.width }}"
-        ng-attr-height="{{ size.height }}"
-        ng-attr-viewBox="0 0 {{ size.width }} {{ size.height }}"
-        preserveAspectRatio="xMidYMid"
-        pointer-events="all"
-        msd-wheel="mouse_wheel($event, $delta, $deltax, $deltay)"
-        ng-mousedown="mouse_down($event)"
-    >
-        <!-- translate before scale: no need to scale offsets -->
-        <rect style="stroke:black;stroke-width:2px;fill-opacity:0" x="0" y="0" ng-attr-width="{{ size.width }}" ng-attr-height="{{ size.height }}"></rect>
-        <g ng-attr-transform="translate({{ offset.x }}, {{ offset.y }}) scale({{ zoom.factor }})">
-            <icsw-device-network-host-link ng-repeat="link in links" link="link" redraw="redraw_nodes"></icsw-device-network-host-link>
-            <icsw-device-network-host-livestatus
-                ng-if="show_livestatus"
-                devicepk="node.id"
-                icsw-device-network-node-transform="node"
-                icsw-device-network-node-dbl-click="node"
-                ng-repeat="node in nodes"
-                ls-filter="ls_filter"
-                redraw="redraw_nodes"
-                ng-dblclick="double_click($event)"
-            ></icsw-device-network-host-livestatus>
-            <icsw-device-network-host-node
-                icsw-device-network-node-transform="node"
-                icsw-device-network-node-dbl-click="node"
-                ng-repeat="node in nodes"
-                node="node"
-                redraw="redraw_nodes"
-                ng-dblclick="double_click($event)"
-            ></icsw-device-network-host-node>
-        </g>
-    </svg>
-</script>
-
 <script type="text/ng-template" id="icsw.device.network.total">
     <uib-tabset icsw-tools-add-acl-functions>
         <uib-tab heading="Device settings">
@@ -416,42 +330,12 @@
         </uib-tab>
 
         <uib-tab heading="Network topology">
-            <div ng-controller="icswDeviceNetworkGraphCtrl">
-                <h3>
-                    Network topology for {{ devices.length }} devices
-                </h3>
-                <form class="form-inline">
-                    Show network topology for
-                    <div class="form-group">
-                        <select ng-model="graph_sel" class="form-control" ng-change="fetch_data()">
-                            <option value="none">none</option>
-                            <option value="all_with_peers" title="all devices with peers" ng-if="acl_read(null, 'backbone.network.show_clusters')">all peered</option>
-                            <option value="all" title="all devices">all</option>
-                            <option value="sel">selected</option>
-                            <option value="selp1" ng-if="acl_read(null, 'backbone.network.show_clusters')">selected + 1 (next ring)</option>
-                            <option value="selp2" ng-if="acl_read(null, 'backbone.network.show_clusters')">selected + 2</option>
-                            <option value="selp3" ng-if="acl_read(null, 'backbone.network.show_clusters')">selected + 3</option>
-                            <option value="core" ng-if="acl_read(null, 'backbone.network.show_clusters')">core (non-trivial)</option>
-                        </select>, mode:
-                    </div>
-                    <div class="form-group">
-                        <icsw-tools-button type="reload" value="Redraw" size="sm" ng-click="fetch_data()"></icsw-tools-button>
-                    </div>
-                    <div class="form-group">,
-                        <icsw-tools-button type="show" value="Show Livestatus" size="sm" is-show="!show_livestatus" ng-click="show_livestatus = !show_livestatus">
-                        </icsw-tools-button>
-                        livestatus
-                    </div>
-                    <icsw-device-livestatus-filter ng-show="show_livestatus" ls-filter="ls_filter"></icsw-device-livestatus-filter>
-                </form>
-                <icsw-device-network-graph ls-filter="ls_filter"></icsw-device-network-graph>
-            </div>
+            <icsw-device-network-topology icsw-sel-man="0"></icsw-device-network-topology>
         </uib-tab>
-        <uib-tab heading="Clusters" ng-if="acl_read(null, 'backbone.network.show_clusters')">
+        <uib-tab heading="Clusters" ng-if="acl_read(null, 'backbone.network.show_clusters')" select="select_tab('cluster')">
             <div ng-controller="icswDeviceNetworkClusterCtrl">
-                <h3>
-                    Network clusters ({{ clusters.length }}), <icsw-tools-button type="reload" value="reload" size="sm" ng-click="reload()"></icsw-tools-button>
-                </h3>
+                <h3>Network clusters ({{ clusters.length }})</h3>
+                <icsw-tools-button type="reload" value="reload" size="sm" ng-click="reload()"></icsw-tools-button>
                 <table class="table table-condensed table-hover table-striped" style="width:auto;">
                     <thead>
                         <tr>
@@ -480,131 +364,13 @@
         </uib-tab>
 
         <uib-tab heading="Networks">
-            <icsw-tools-rest-table target-list="entries" config-service="icswNetworkService">
-                <h3>
-                    Networks ({{entries.length}} entries),
-                    <div class="btn-group">
-                        <icsw-tools-button type="create" ng-click="create($event)" size="sm"></icsw-tools-button>
-                        <icsw-tools-button type="reload" ng-click="reload()" size="sm"></icsw-tools-button>
-                        <icsw-tools-button type="create" value="Scan networks" ng-if="!entries.length" ng-click="scan_networks()" size="sm"></icsw-tools-button>
-                    </div>
-                </h3>
-
-                <table st-table="entries_displayed" st-safe-src="entries" ng-show="entries.length"
-                       class="table table-hover table-condensed table-striped" style="width:auto;">
-
-                    <thead>
-                        <tr>
-                            <td colspan="99">
-                                <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
-                                     possible-items-by-page="10,20,50,100,200,500,1000">
-                                </div>
-                                <icsw-tools-show-hide-columns columns="network gateway autorange prefDTN" create-show-column="true">
-                                </icsw-tools-show-hide-columns>
-                            </td>
-                        </tr>
-                        <tr>
-                            <th st-sort="identifier" st-sort-default="true">Id</th>
-                            <th ng-show="show_column.network" st-sort="network">Network definition</th>
-                            <th ng-show="show_column.gateway" st-sort="gateway">Gateway</th>
-                            <th ng-show="show_column.gateway" st-sort="gw_pri">gw pri</th>
-                            <th ng-show="show_column.autorange">AutoRange</th>
-                            <th st-sort="num_ip">#IPs</th>
-                            <th st-sort="penalty">Penalty</th>
-                            <th st-sort="enforce_unique_ips">uniqueIP</th>
-                            <th st-sort="network_type">Type</th>
-                            <th st-sort="master_network">Master</th>
-                            <th ng-show="show_column.prefDTN">preferred DTN</th>
-                            <th st-sort="network_device_type">devtype(s)</th>
-                            <th colspan="2" class="text-center">action</th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
-                        <tr ng-repeat="obj in entries_displayed">
-                            <td>{{ obj.identifier }}</td>
-                            <td ng-show="show_column.network" style="font-family:monospace;">
-                                <span style="background-color:#ededed;" ng-bind-html="obj.network | ip_fixed_width"></span> /
-                                <span style="background-color:#ededed;" ng-bind-html="obj.netmask | ip_fixed_width"></span> /
-                                <span style="background-color:#ededed;" ng-bind-html="obj.broadcast | ip_fixed_width"></span>
-                            </td>
-                            <td ng-show="show_column.gateway" style="font-family:monospace;">
-                                <span style="background-color:#ededed;" ng-bind-html="obj.gateway | ip_fixed_width"></span>
-                            </td>
-                            <td ng-show="show_column.gateway" class="text-center">
-                                <span class="badge">{{ obj.gw_pri }}</span>
-                            </td>
-                            <td ng-show="show_column.autorange" style="font-family:monospace;">
-                                <span ng-switch="config_service.autorange_set(obj)">
-                                    <span ng-switch-when="true">
-                                        <span style="background-color:#ededed;" ng-bind-html="obj.start_range | ip_fixed_width"></span> -
-                                        <span style="background-color:#ededed;" ng-bind-html="obj.end_range | ip_fixed_width"></span>
-                                    </span>
-                                    <span ng-switch-default>
-                                        ----
-                                    </span>
-                                </span>
-                            </td>
-                            <td class="text-right">{{ obj.num_ip }}</td>
-                            <td class="text-center">{{ obj.penalty }}</td>
-                            <td class="text-center">{{ obj.enforce_unique_ips | yesno1 }}</td>
-                            <td>
-                                {{ obj.network_type | array_lookup:config_service.network_types:'description' }}
-                            </td>
-                            <td>
-                                {{ obj.master_network | array_lookup:entries:'identifier':'---' }}
-                            </td>
-                            <td ng-show="show_column.prefDTN">
-                                {{ config_service.preferred_dtn(obj) }}
-                            </td>
-                            <td>
-                                {{ obj.network_device_type | resolve_n2m:config_service.network_device_types:'identifier':'---' }}
-                            </td>
-                            <td>
-                                <icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"/>
-                            </td>
-                            <td>
-                                <icsw-tools-button type="delete" ng-show="obj.num_ip == 0" ng-click="delete(obj)" size="xs">
-                                </icsw-tools-button>
-                                <icsw-tools-button type="show" ng-show="obj.num_ip > 0" size="xs"
-                                                   is-show="config_service.network_display.active_network != obj "
-                                                   ng-click="config_service.show_network(obj)">
-                                </icsw-tools-button>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-
-                <div ng-show="config_service.network_display.active_network" >
-                    <h3>Network {{ config_service.network_display.active_network.identifier }}, {{ config_service.network_display.active_network.num_ip }} IP addresses</h3>
-                    <table st-table="network_entries_displayed" st-safe-src="config_service.network_display.iplist" class="table table-condensed table-hover" style="width:auto;">
-                        <thead>
-                            <tr>
-                                <td colspan="99">
-                                    <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th st-sort="ip">IP</th>
-                                <th st-sort="netdevice_name">Netdevice</th>
-                                <th st-sort="device_full_name">Device</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr ng-repeat="obj in network_entries_displayed">
-                               <td>{{ obj.ip }}</td>
-                               <td>{{ obj.netdevice_name }}</td>
-                               <td>{{ obj.device_full_name }}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </icsw-tools-rest-table>
+            <icsw-network-list></icsw-network-list>
         </uib-tab>
 
         <uib-tab heading="Network types">
-            <icsw-tools-rest-table target-list="entries" config-service="icswNetworkTypeService">
-                <h3>Network types ({{entries.length}} entries), <icsw-tools-button type="create" value="create new" ng-click="create($event)" size="sm"/></h3>
+            <icsw-tools-rest-table-new target-list="entries" config-service="icswNetworkTypeService">
+                <h3>Network types ({{ entries.length }} entries)</h3>
+                <icsw-tools-button type="create" value="create new" ng-click="create($event)" size="sm"/>
                 <table st-table="entries_displayed" st-safe-src="entries"
                        class="table table-hover table-condensed table-striped" style="width:auto;">
                     <thead>
@@ -616,19 +382,20 @@
                     </thead>
                     <tbody>
                         <tr ng-repeat="obj in entries_displayed">
-                            <td>{{ obj.identifier }}</td>
+                            <td>{{ config_service.resolve_type(obj.identifier) }} ({{ obj.identifier }})</td>
                             <td>{{ obj.description }}</td>
                             <td><icsw-tools-button type="modify" ng-click="edit($event, obj)" size="xs"></icsw-tools-button></td>
-                            <td><icsw-tools-button type="delete" ng-click="delete(obj)" size="xs"></icsw-tools-button></td>
+                            <td><icsw-tools-button type="delete" ng-click="delete($event, obj)" size="xs"></icsw-tools-button></td>
                         </tr>
                     </tbody>
                 </table>
-            </icsw-tools-rest-table>
+            </icsw-tools-rest-table-new>
         </uib-tab>
 
         <uib-tab heading="Network device types">
-            <icsw-tools-rest-table target-list="entries" config-service="icswNetworkDeviceTypeService">
-                <h3>Network device types ({{entries.length}} entries), <icsw-tools-button type="create" ng-click="create($event)" size="sm"/></h3>
+            <icsw-tools-rest-table-new target-list="entries" config-service="icswNetworkDeviceTypeService">
+                <h3>Network device types ({{entries.length}} entries)</h3>
+                <icsw-tools-button type="create" ng-click="create($event)" size="sm"/>
                 <table st-table="entries_displayed" st-safe-src="entries"
                        class="table table-hover table-condensed table-striped" style="width:auto;">
                     <thead>
@@ -658,25 +425,145 @@
                             <td class="text-center">{{ obj.for_matching | yesno2 }}</td>
                             <td class="text-center">{{ obj.auto_created | yesno2 }}</td>
                             <td><icsw-tools-button type="modify" ng-click="edit($event, obj)" size="xs"></icsw-tools-button></td>
-                            <td><icsw-tools-button type="delete" ng-click="delete(obj)" size="xs"></icsw-tools-button></td>
+                            <td><icsw-tools-button type="delete" ng-click="delete($event, obj)" size="xs"></icsw-tools-button></td>
                         </tr>
                     </tbody>
                 </table>
-            </icsw-tools-rest-table>
+            </icsw-tools-rest-table-new>
         </uib-tab>
     </uib-tabset>
 </script>
 
+<script type="text/ng-template" id="icsw.network.list">
+    <icsw-tools-rest-table-new target-list="entries" config-service="icswNetworkListService">
+        <h3>Networks ({{entries.length}} entries)</h3>
+        <div class="btn-group">
+            <icsw-tools-button type="create" ng-click="create($event)" size="sm"></icsw-tools-button>
+            <icsw-tools-button type="reload" ng-click="config_service.reload_networks()" size="sm"></icsw-tools-button>
+            <icsw-tools-button type="create" value="Scan networks" ng-if="!entries.length" ng-click="config_service.rescan_networks()" size="sm"></icsw-tools-button>
+        </div>
+
+        <table st-table="entries_displayed" st-safe-src="entries" ng-show="entries.length"
+               class="table table-hover table-condensed table-striped" style="width:auto;">
+
+            <thead>
+                <tr>
+                    <td colspan="99">
+                        <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                             possible-items-by-page="10,20,50,100,200,500,1000">
+                        </div>
+                        <icsw-tools-show-hide-columns columns="network gateway autorange prefDTN" create-show-column="true">
+                        </icsw-tools-show-hide-columns>
+                    </td>
+                </tr>
+                <tr>
+                    <th st-sort="identifier" st-sort-default="true">Id</th>
+                    <th ng-show="show_column.network" st-sort="network">Network definition</th>
+                    <th ng-show="show_column.gateway" st-sort="gateway">Gateway</th>
+                    <th ng-show="show_column.gateway" st-sort="gw_pri">gw pri</th>
+                    <th ng-show="show_column.autorange">AutoRange</th>
+                    <th st-sort="num_ip">#IPs</th>
+                    <th st-sort="penalty">Penalty</th>
+                    <th st-sort="enforce_unique_ips">uniqueIP</th>
+                    <th st-sort="network_type">Type</th>
+                    <th st-sort="master_network">Master</th>
+                    <th ng-show="show_column.prefDTN">preferred DTN</th>
+                    <th st-sort="network_device_type">devtype(s)</th>
+                    <th colspan="2" class="text-center">action</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                <tr ng-repeat="obj in entries_displayed">
+                    <td>{{ obj.identifier }}</td>
+                    <td ng-show="show_column.network" style="font-family:monospace;">
+                        <span style="background-color:#ededed;" ng-bind-html="obj.network | ip_fixed_width"></span> /
+                        <span style="background-color:#ededed;" ng-bind-html="obj.netmask | ip_fixed_width"></span> /
+                        <span style="background-color:#ededed;" ng-bind-html="obj.broadcast | ip_fixed_width"></span>
+                    </td>
+                    <td ng-show="show_column.gateway" style="font-family:monospace;">
+                        <span style="background-color:#ededed;" ng-bind-html="obj.gateway | ip_fixed_width"></span>
+                    </td>
+                    <td ng-show="show_column.gateway" class="text-center">
+                        <span class="badge">{{ obj.gw_pri }}</span>
+                    </td>
+                    <td ng-show="show_column.autorange" style="font-family:monospace;">
+                        <span ng-switch="config_service.autorange_set(obj)">
+                            <span ng-switch-when="true">
+                                <span style="background-color:#ededed;" ng-bind-html="obj.start_range | ip_fixed_width"></span> -
+                                <span style="background-color:#ededed;" ng-bind-html="obj.end_range | ip_fixed_width"></span>
+                            </span>
+                            <span ng-switch-default>
+                                ----
+                            </span>
+                        </span>
+                    </td>
+                    <td class="text-right">{{ obj.num_ip }}</td>
+                    <td class="text-center">{{ obj.penalty }}</td>
+                    <td class="text-center">{{ obj.enforce_unique_ips | yesno1 }}</td>
+                    <td>
+                        {{ config_service.nw_tree().nw_type_lut[obj.network_type].description }}
+                    </td>
+                    <td>
+                        {{ config_service.get_master_network_id(obj) }}
+                    </td>
+                    <td ng-show="show_column.prefDTN">
+                        {{ config_service.preferred_dtn(obj) }}
+                    </td>
+                    <td>
+                        {{ config_service.get_network_device_types(obj) }}
+                    </td>
+                    <td>
+                        <icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"/>
+                    </td>
+                    <td>
+                        <icsw-tools-button type="delete" ng-show="obj.num_ip == 0" ng-click="delete($event, obj)" size="xs">
+                        </icsw-tools-button>
+                        <icsw-tools-button type="show" ng-show="obj.num_ip > 0" size="xs"
+                                           is-show="config_service.network_display.active_network != obj "
+                                           ng-click="config_service.show_network(obj)">
+                        </icsw-tools-button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div ng-show="config_service.network_display.active_network" >
+            <h3>Network {{ config_service.network_display.active_network.identifier }}, {{ config_service.network_display.active_network.num_ip }} IP addresses</h3>
+            <table st-table="network_entries_displayed" st-safe-src="config_service.network_display.iplist" class="table table-condensed table-hover" style="width:auto;">
+                <thead>
+                    <tr>
+                        <td colspan="99">
+                            <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th st-sort="ip">IP</th>
+                        <th st-sort="netdevice_name">Netdevice</th>
+                        <th st-sort="device_full_name">Device</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr ng-repeat="obj in network_entries_displayed">
+                       <td>{{ obj.ip }}</td>
+                       <td>{{ obj.netdevice_name }}</td>
+                       <td>{{ obj.device_full_name }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </icsw-tools-rest-table-new>
+</script>
+
 <script type="text/ng-template" id="network.device.type.form">
-    <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
-        <h2>Network device type</h2>
+    <form class="form-horizontal" name="form_data">
         <fieldset>
             <legend>Base data</legend>
             <div class="form-group ng-class:form_error('identifier')">
                 <label class="control-label col-sm-3 requiredField">
                     Identifier<span class="asteriskField">*</span></label>
                 <div class="controls col-sm-7">
-                    <input class="textinput textInput form-control" maxlength="48" name="identifier" ng-model="edit_obj.identifier" placeholder="Identifier" required="True" type="text"/>
+                    <input class="textinput textInput form-control" maxlength="48" ng-model="edit_obj.identifier" placeholder="Identifier" required="True" type="text"/>
                 </div>
             </div>
             <div class="form-group ng-class:form_error('description')">
@@ -684,14 +571,14 @@
                     Description<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
-                    <input class="textinput textInput form-control" maxlength="192" name="description" ng-model="edit_obj.description" placeholder="Description" required="True" type="text"/>
+                    <input class="textinput textInput form-control" maxlength="192" ng-model="edit_obj.description" placeholder="Description" required="True" type="text"/>
                 </div>
             </div>
             <div class="form-group ng-class:form_error('name_re')">
                 <label class="control-label col-sm-3 requiredField">
                     Name regexp<span class="asteriskField">*</span></label>
                 <div class="controls col-sm-7">
-                    <input class="textinput textInput form-control" maxlength="128" name="name_re" ng-model="edit_obj.name_re" placeholder="Regular expression" required="True" type="text" value="^.*$"/>
+                    <input class="textinput textInput form-control" maxlength="128" ng-model="edit_obj.name_re" placeholder="Regular expression" required="True" type="text" value="^.*$"/>
                 </div>
             </div>
             <div class="form-group">
@@ -699,7 +586,7 @@
                     #MAC bytes<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
-                    <input class="numberinput form-control" max="24" min="6" ng-model="edit_obj.mac_bytes" placeholder="MAC bytes" required="True" type="number" value="6"></input>
+                    <input class="numberinput form-control" max="24" min="6" ng-model="edit_obj.mac_bytes" placeholder="MAC bytes" required="True" type="number" value="6"/>
                 </div>
             </div>
         </fieldset>
@@ -726,12 +613,11 @@
                 </div>
             </div>
         </fieldset>
-        <div class="form-actions"><input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="get_action_string()"></input></div>
     </form>
 </script>
 
-<script type="text/ng-template" id="netdevice.form">
-    <form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form">
+<script type="text/ng-template" id="icsw.netdevice.form">
+    <form class="form-horizontal" name="form_data">
         <uib-tabset>
             <uib-tab heading="Basic settings">
                 <fieldset>
@@ -740,7 +626,7 @@
                             Devname<span class="asteriskField">*</span>
                         </label>
                         <div class="controls col-sm-8">
-                            <input class="textinput textInput form-control" maxlength="64" ng-model="_edit_obj.devname" placeholder="devicename" required="True" type="text"/>
+                            <input class="textinput textInput form-control" maxlength="64" ng-model="edit_obj.devname" placeholder="devicename" required="True" type="text"/>
                         </div>
                     </div>
                     <div class="form-group">
@@ -748,7 +634,7 @@
                             Description
                         </label>
                         <div class="controls col-sm-8">
-                            <input class="textinput textInput form-control" maxlength="765" ng-model="_edit_obj.description" type="text"/>
+                            <input class="textinput textInput form-control" maxlength="765" ng-model="edit_obj.description" type="text"/>
                         </div>
                     </div>
                     <div class="form-group">
@@ -756,7 +642,7 @@
                             MTU<span class="asteriskField">*</span>
                         </label>
                         <div class="controls col-sm-8">
-                            <input class="numberinput form-control" ng-model="_edit_obj.mtu" required="True" type="number" value="1500"/>
+                            <input class="numberinput form-control" ng-model="edit_obj.mtu" required="True" type="number" value="1500"/>
                         </div>
                     </div>
                     <div class="form-group">
@@ -764,9 +650,9 @@
                             Netdevice speed
                         </label>
                         <div class="controls col-sm-8">
-                            <ui-select ng-model="_edit_obj.netdevice_speed" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                                <ui-select-match placeholder="select a target netdevice speed">{{$select.selected.info_string}}</ui-select-match>
-                                <ui-select-choices repeat="value.idx as value in netdevice_speeds">
+                            <ui-select ng-model="edit_obj.netdevice_speed" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                                <ui-select-match class="ui-select-match" placeholder="select a target netdevice speed">{{$select.selected.info_string}}</ui-select-match>
+                                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in network_tree.nw_speed_list">
                                     <div ng-bind-html="value.info_string | highlight: $select.search"></div>
                                 </ui-select-choices>
                             </ui-select>
@@ -776,7 +662,7 @@
                         <div class="checkbox">
                             <div class="controls col-lg-offset-0 col-sm-8">
                                 <label>
-                                    <input class="checkboxinput checkbox" ng-model="_edit_obj.ignore_netdevice_speed" type="checkbox"/>
+                                    <input class="checkboxinput checkbox" ng-model="edit_obj.ignore_netdevice_speed" type="checkbox"/>
                                     Ignore netdevice speed
                                 </label>
                             </div>
@@ -786,7 +672,7 @@
                         <div class="checkbox">
                             <div class="controls col-lg-offset-0 col-sm-8">
                                 <label>
-                                    <input class="checkboxinput checkbox" ng-model="_edit_obj.enabled" type="checkbox"/>
+                                    <input class="checkboxinput checkbox" ng-model="edit_obj.enabled" type="checkbox"/>
                                     Enabled
                                 </label>
                             </div>
@@ -797,9 +683,9 @@
                             Desired status
                         </label>
                         <div class="controls col-sm-8">
-                            <ui-select ng-model="_edit_obj.desired_status" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                                <ui-select-match placeholder="select the desired status">{{$select.selected.info_string}}</ui-select-match>
-                                <ui-select-choices repeat="value.short as value in desired_stati">
+                            <ui-select ng-model="edit_obj.desired_status" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                                <ui-select-match class="ui-select-match" placeholder="select the desired status">{{$select.selected.info_string}}</ui-select-match>
+                                <ui-select-choices class="ui-select-choices" repeat="value.short as value in desired_stati">
                                     <div ng-bind-html="value.info_string | highlight: $select.search"></div>
                                 </ui-select-choices>
                             </ui-select>
@@ -812,7 +698,7 @@
                         <div class="checkbox">
                             <div class="controls col-lg-offset-0 col-sm-8">
                                 <label>
-                                    <input class="checkboxinput checkbox" ng-model="_edit_obj.routing" type="checkbox"/>
+                                    <input class="checkboxinput checkbox" ng-model="edit_obj.routing" type="checkbox"/>
                                     network topology central node
                                 </label>
                             </div>
@@ -823,21 +709,21 @@
                             Cost
                         </label>
                         <div class="controls col-sm-8">
-                            <input class="numberinput form-control" max="128" min="1" name="penalty" ng-model="_edit_obj.penalty" type="number" value="1"/>
+                            <input class="numberinput form-control" max="128" min="1" name="penalty" ng-model="edit_obj.penalty" type="number" value="1"/>
                         </div>
                     </div>
                     <div class="form-group">
                         <div class="checkbox">
                             <div class="controls col-lg-offset-0 col-sm-8">
                                 <label>
-                                    <input class="checkboxinput checkbox" ng-model="_edit_obj.inter_device_routing" type="checkbox"/>
+                                    <input class="checkboxinput checkbox" ng-model="edit_obj.inter_device_routing" type="checkbox"/>
                                     Inter device routing
                                 </label>
                             </div>
                         </div>
                     </div>
                 </fieldset>
-                <fieldset ng-show="!_edit_obj.is_bridge && !_edit_obj.is_bond && !_edit_obj.bond_master && !_edit_obj.bridge_device && get_vlan_masters(_edit_obj).length">
+                <fieldset ng-show="!edit_obj.is_bridge && !edit_obj.is_bond && !edit_obj.bond_master && !edit_obj.bridge_device && get_vlan_masters(edit_obj).length">
                     <legend>VLAN settings</legend>
                     <div class="form-group">
                         <label class="control-label col-sm-3">
@@ -845,14 +731,14 @@
                         </label>
                         <div class="controls col-sm-8">
                             <div class="input-group" style="max-width:400px; min-width:240px;">
-                                <ui-select ng-model="_edit_obj.master_device" ng-disabled="false">
-                                    <ui-select-match placeholder="VLAN master device">{{$select.selected.devname}}</ui-select-match>
-                                    <ui-select-choices repeat="value.idx as value in get_vlan_masters(_edit_obj)">
+                                <ui-select ng-model="_dit_obj.master_device" ng-disabled="false">
+                                    <ui-select-match class="ui-select-match" placeholder="VLAN master device">{{$select.selected.devname}}</ui-select-match>
+                                    <ui-select-choices class="ui-select-choices" repeat="value.idx as value in get_vlan_masters(edit_obj)">
                                         <div ng-bind-html="value.devname | highlight: $select.search"></div>
                                     </ui-select-choices>
                                 </ui-select>
                                 <span class="input-group-btn">
-                                    <button type="button" ng-click="_edit_obj.master_device = undefined" class="btn btn-default">
+                                    <button type="button" ng-click="edit_obj.master_device = undefined" class="btn btn-default">
                                         <span class="glyphicon glyphicon-trash"></span>
                                     </button>
                                 </span>
@@ -864,38 +750,38 @@
                             VLAN id
                         </label>
                         <div class="controls col-sm-8">
-                            <input class="numberinput form-control" max="255" min="0" ng-model="_edit_obj.vlan_id" type="number" value="0"/>
+                            <input class="numberinput form-control" max="255" min="0" ng-model="edit_obj.vlan_id" type="number" value="0"/>
                         </div>
                     </div>
                 </fieldset>
             </uib-tab>
             <uib-tab heading="Bridge / Bond">
-                <fieldset ng-show="!_edit_obj.vlan_id && !_edit_obj.bond_master && !_edit_obj.is_bond">
+                <fieldset ng-show="!edit_obj.vlan_id && !edit_obj.bond_master && !edit_obj.is_bond">
                     <legend>Bridge settings</legend>
                     <div class="form-group">
-                        <div class="checkbox" ng_show="!_edit_obj.bridge_device">
+                        <div class="checkbox" ng_show="!edit_obj.bridge_device">
                             <div class="controls col-lg-offset-0 col-sm-8">
                                 <label>
-                                    <input class="checkboxinput checkbox" ng-disabled="has_bridge_slaves(_edit_obj)" ng-model="_edit_obj.is_bridge" type="checkbox"/>
+                                    <input class="checkboxinput checkbox" ng-disabled="has_bridge_slaves(edit_obj)" ng-model="edit_obj.is_bridge" type="checkbox"/>
                                     Is bridge device
                                 </label>
                             </div>
                         </div>
                     </div>
-                    <div class="form-group" ng_show="!_edit_obj.is_bridge && get_bridge_masters(_edit_obj).length">
+                    <div class="form-group" ng_show="!edit_obj.is_bridge && get_bridge_masters(edit_obj).length">
                         <label class="control-label col-sm-3">
                             Bridge device
                         </label>
                         <div class="controls col-sm-8">
                             <div class="input-group" style="max-width:400px; min-width:240px;">
-                                <ui-select ng-model="_edit_obj.bridge_device" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                                    <ui-select-match placeholder="bridge master device">{{ $select.selected.devname }}</ui-select-match>
-                                    <ui-select-choices repeat="value.idx as value in get_bridge_masters(_edit_obj)">
+                                <ui-select ng-model="edit_obj.bridge_device" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                                    <ui-select-match class="ui-select-match" placeholder="bridge master device">{{ $select.selected.devname }}</ui-select-match>
+                                    <ui-select-choices class="ui-select-choices" repeat="value.idx as value in get_bridge_masters(edit_obj)">
                                         <div ng-bind-html="value.devname | highlight: $select.search"></div>
                                     </ui-select-choices>
                                 </ui-select>
                                 <span class="input-group-btn">
-                                    <button type="button" ng-click="_edit_obj.bridge_device = undefined" class="btn btn-default">
+                                    <button type="button" ng-click="edit_obj.bridge_device = undefined" class="btn btn-default">
                                         <span class="glyphicon glyphicon-trash"></span>
                                     </button>
                                 </span>
@@ -903,32 +789,32 @@
                         </div>
                     </div>
                 </fieldset>
-                <fieldset ng-show="!_edit_obj.vlan_id && !_edit_obj.bridge_device && !_edit_obj.is_bridge">
+                <fieldset ng-show="!edit_obj.vlan_id && !edit_obj.bridge_device && !edit_obj.is_bridge">
                     <legend>Bond settings</legend>
                     <div class="form-group">
-                        <div class="checkbox" ng_show="!_edit_obj.bond_master">
+                        <div class="checkbox" ng_show="!edit_obj.bond_master">
                             <div class="controls col-lg-offset-0 col-sm-8">
                                 <label>
-                                    <input class="checkboxinput checkbox" ng-disabled="has_bond_slaves(_edit_obj)" ng-model="_edit_obj.is_bond" type="checkbox"/>
+                                    <input class="checkboxinput checkbox" ng-disabled="has_bond_slaves(edit_obj)" ng-model="_edit_obj.is_bond" type="checkbox"/>
                                     Is bond master
                                 </label>
                             </div>
                         </div>
                     </div>
-                    <div class="form-group" ng_show="!_edit_obj.is_bond && get_bond_masters(_edit_obj).length">
+                    <div class="form-group" ng_show="!edit_obj.is_bond && get_bond_masters(edit_obj).length">
                         <label class="control-label col-sm-3">
                             Bond master
                         </label>
                         <div class="controls col-sm-8">
                             <div class="input-group" style="max-width:400px; min-width:240px;">
-                                <ui-select ng-model="_edit_obj.bond_master" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                                    <ui-select-match placeholder="bond master device">{{ $select.selected.devname }}</ui-select-match>
-                                    <ui-select-choices repeat="value.idx as value in get_bond_masters(_edit_obj)">
+                                <ui-select ng-model="edit_obj.bond_master" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                                    <ui-select-match class="ui-select-match" placeholder="bond master device">{{ $select.selected.devname }}</ui-select-match>
+                                    <ui-select-choices class="ui-select-choices" repeat="value.idx as value in get_bond_masters(edit_obj)">
                                         <div ng-bind-html="value.devname | highlight: $select.search"></div>
                                     </ui-select-choices>
                                 </ui-select>
                                 <span class="input-group-btn">
-                                    <button type="button" ng-click="_edit_obj.bond_master = undefined" class="btn btn-default">
+                                    <button type="button" ng-click="edit_obj.bond_master = undefined" class="btn btn-default">
                                         <span class="glyphicon glyphicon-trash"></span>
                                     </button>
                                 </span>
@@ -944,7 +830,7 @@
                             Driver
                         </label>
                         <div class="controls col-sm-8">
-                            <input class="textinput textInput form-control" maxlength="384" ng-model="_edit_obj.driver" type="text" value="e1000e"/>
+                            <input class="textinput textInput form-control" maxlength="384" ng-model="edit_obj.driver" type="text" value="e1000e"/>
                         </div>
                     </div>
                     <div class="form-group">
@@ -952,7 +838,7 @@
                             Driver options
                         </label>
                         <div class="controls col-sm-8">
-                            <input class="textinput textInput form-control" maxlength="672" ng-model="_edit_obj.driver_options" type="text"/>
+                            <input class="textinput textInput form-control" maxlength="672" ng-model="edit_obj.driver_options" type="text"/>
                         </div>
                     </div>
                 </fieldset>
@@ -963,7 +849,7 @@
                             Ethtool autoneg<span class="asteriskField">*</span>
                         </label>
                         <div class="controls col-sm-8">
-                            <select class="select form-control" ng-change="update_ethtool(_edit_obj)" ng-model="_edit_obj.ethtool_autoneg" ng-options="a.id as a.option for a in ethtool_autoneg">
+                            <select class="select form-control" ng-change="update_ethtool(edit_obj)" ng-model="edit_obj.ethtool_autoneg" ng-options="a.id as a.option for a in ethtool_autoneg">
                             </select>
                         </div>
                     </div>
@@ -972,7 +858,7 @@
                             Ethtool duplex<span class="asteriskField">*</span>
                         </label>
                         <div class="controls col-sm-8">
-                            <select class="select form-control" ng-change="update_ethtool(_edit_obj)" ng-model="_edit_obj.ethtool_duplex" ng-options="a.id as a.option for a in ethtool_duplex">
+                            <select class="select form-control" ng-change="update_ethtool(edit_obj)" ng-model="edit_obj.ethtool_duplex" ng-options="a.id as a.option for a in ethtool_duplex">
                             </select>
                         </div>
                     </div>
@@ -981,7 +867,7 @@
                             Ethtool speed<span class="asteriskField">*</span>
                         </label>
                         <div class="controls col-sm-8">
-                            <select class="select form-control" ng-change="update_ethtool(_edit_obj)" ng-model="_edit_obj.ethtool_speed" ng-options="a.id as a.option for a in ethtool_speed">
+                            <select class="select form-control" ng-change="update_ethtool(edit_obj)" ng-model="edit_obj.ethtool_speed" ng-options="a.id as a.option for a in ethtool_speed">
                             </select>
                         </div>
                     </div>
@@ -995,7 +881,7 @@
                                     MAC-Address
                                 </label>
                                 <div class="controls col-sm-8">
-                                    <input class="textinput textInput form-control" maxlength="177" name="macaddr" ng-model="_edit_obj.macaddr" type="text"/>
+                                    <input class="textinput textInput form-control" maxlength="177" name="macaddr" ng-model="edit_obj.macaddr" type="text"/>
                                 </div>
                             </div>
                         </div>
@@ -1005,7 +891,7 @@
                                     Fake MAC-Address
                                 </label>
                                 <div class="controls col-sm-8">
-                                    <input class="textinput textInput form-control" maxlength="177" name="fake_macaddr" ng-model="_edit_obj.fake_macaddr" type="text"/>
+                                    <input class="textinput textInput form-control" maxlength="177" name="fake_macaddr" ng-model="edit_obj.fake_macaddr" type="text"/>
                                 </div>
                             </div>
                         </div>
@@ -1014,7 +900,7 @@
                         <div class="checkbox">
                             <div class="controls col-lg-offset-0 col-sm-8">
                                 <label>
-                                    <input class="checkboxinput checkbox" ng-model="_edit_obj.dhcp_device" type="checkbox"/>
+                                    <input class="checkboxinput checkbox" ng-model="edit_obj.dhcp_device" type="checkbox"/>
                                     force write DHCP address (greedy mode will not work)
                                 </label>
                             </div>
@@ -1023,14 +909,11 @@
                 </fieldset>
             </uib-tab>
         </uib-tabset>
-        <div class="form-actions">
-            <input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="action_string"/>
-        </div>
     </form>
 </script>
 
 <script type="text/ng-template" id="network.form">
-    <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
+    <form class="form-horizontal" name="form_data">
         <uib-tabset>
             <uib-tab heading="Base data">
                 <fieldset>
@@ -1083,9 +966,9 @@
                             Network type<span class="asteriskField">*</span>
                         </label>
                         <div class="controls col-sm-7">
-                            <ui-select ng-model="edit_obj.network_type" style="max-width:400px; min-width:240px;" ng-disabled="has_master_network(edit_obj)">
-                                <ui-select-match placeholder="network type">{{$select.selected.description}}</ui-select-match>
-                                <ui-select-choices repeat="value.idx as value in config_service.network_types| props_filter:{description:$select.search}">
+                            <ui-select ng-model="edit_obj.network_type" style="max-width:400px; min-width:240px;" ng-disabled="config_service.has_master_network(edit_obj)">
+                                <ui-select-match class="ui-select-match" placeholder="network type">{{$select.selected.description}}</ui-select-match>
+                                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.nw_tree().nw_type_list | props_filter:{description:$select.search}">
                                     <div ng-bind-html="value.description | highlight: $select.search"></div>
                                 </ui-select-choices>
                             </ui-select>
@@ -1098,14 +981,14 @@
                         <div class="controls col-sm-7">
                             <div class="input-group" style="max-width:400px; min-width:240px;">
                                 <ui-select ng-model="edit_obj.master_network" ng-disabled="false">
-                                    <ui-select-match placeholder="master network">{{$select.selected.identifier}}
+                                    <ui-select-match class="ui-select-match" placeholder="master network">{{$select.selected.identifier}}
                                     </ui-select-match>
-                                    <ui-select-choices repeat="value.idx as value in config_service.get_production_networks()| props_filter:{identifier:$select.search}">
+                                    <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.get_production_networks()| props_filter:{identifier:$select.search}">
                                         <div ng-bind-html="value.identifier | highlight: $select.search"></div>
                                     </ui-select-choices>
                                 </ui-select>
                                 <span class="input-group-btn">
-                                    <button type="button" ng-click="edit_obj.master_network = undefined" class="btn btn-default">
+                                    <button type="button" ng-click="edit_obj.master_network = null" class="btn btn-default">
                                         <span class="glyphicon glyphicon-trash"></span>
                                     </button>
                                 </span>
@@ -1139,16 +1022,14 @@
                         <label class="control-label col-sm-3">
                             Preferred domain tree node
                         </label>
-                        {{  config_service.domain_tree_node_list }}
                         <div class="controls col-sm-7">
                             <div class="input-group" style="max-width:400px; min-width:240px;">
                                 <ui-select ng-model="edit_obj.preferred_domain_tree_node">
-                                    <ui-select-match placeholder="preferred DTN">{{$select.selected.info}}</ui-select-match>
+                                    <ui-select-match class="ui-select-match" placeholder="preferred DTN">{{ $select.selected.full_name }}</ui-select-match>
                                     <ui-select-choices
-                                        repeat="value.idx as value in config_service.domain_tree_node_list() | props_filter:{full_name:$select.search}"
-                                        refresh="config_service.refresh_domain_tree_node()"
+                                        repeat="value.idx as value in config_service.domain_tree().list | props_filter:{full_name:$select.search}"
                                     >
-                                        <div ng-bind-html="value.info | highlight: $select.search"></div>
+                                        <div ng-bind-html="value.full_name | highlight: $select.search"></div>
                                     </ui-select-choices>
                                 </ui-select>
                                 <span class="input-group-btn">
@@ -1165,8 +1046,8 @@
                         </label>
                         <div class="controls col-sm-7">
                             <ui-select multiple="multiple" ng-model="edit_obj.network_device_type" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                                <ui-select-match placeholder="network device types">{{$item.identifier}}</ui-select-match>
-                                <ui-select-choices repeat="value.idx as value in config_service.network_device_types| props_filter:{identifier:$select.search}">
+                                <ui-select-match class="ui-select-match" placeholder="network device types">{{$item.identifier}}</ui-select-match>
+                                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.nw_tree().nw_device_type_list | props_filter:{identifier:$select.search}">
                                     <div ng-bind-html="value.identifier | highlight: $select.search"></div>
                                 </ui-select-choices>
                             </ui-select>
@@ -1176,10 +1057,10 @@
                 <fieldset>
                     <legend>Range</legend>
                     <div class="form-group ng-class:form_error('start_range')">
-                        <label class="control-label col-sm-5 requiredField">
+                        <label class="control-label col-sm-3 requiredField">
                             Range Start (incl.)
                         </label>
-                        <div class="controls col-sm-6">
+                        <div class="controls col-sm-7">
                             <div class="input-group">
                                 <input class="textinput textInput form-control" ng-focus="config_service.enter_range(edit_obj)" ng-blur="config_service.range_check(edit_obj)" ng-model="edit_obj.start_range" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Range start"  type="text"/>
                                 <span class="input-group-btn">
@@ -1191,10 +1072,10 @@
                         </div>
                     </div>
                     <div class="form-group ng-class:form_error('end_range')">
-                        <label class="control-label col-sm-5 requiredField">
+                        <label class="control-label col-sm-3 requiredField">
                             Range End (incl.)
                         </label>
-                        <div class="controls col-sm-6">
+                        <div class="controls col-sm-7">
                             <div class="input-group">
                                 <input class="textinput textInput form-control" ng-focus="config_service.enter_range(edit_obj)" ng-blur="config_service.range_check(edit_obj)" ng-model="edit_obj.end_range" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Range end" type="text"/>
                                 <span class="input-group-btn">
@@ -1208,14 +1089,11 @@
                 </fieldset>
             </uib-tab>
         </uib-tabset>
-        <div class="form-actions">
-            <input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="get_action_string()"/>
-        </div>
     </form>
 </script>
 
 <script type="text/ng-template" id="network.type.form">
-    <form id="form" class="form-horizontal" ng-submit="modify()" name="form">
+    <form id="form" class="form-horizontal" name="form_data">
         <fieldset>
             <legend>Base data</legend>
             <div class="form-group  ng-class:form_error('description')">
@@ -1223,7 +1101,7 @@
                     Description<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
-                    <input class="textinput textInput form-control" maxlength="192" name="description" ng-model="edit_obj.description" placeholder="Description" required="True" type="text"/>
+                    <input class="textinput textInput form-control" maxlength="192" ng-model="edit_obj.description" placeholder="Description" required="True" type="text"/>
                 </div>
             </div>
             <div class="form-group">
@@ -1232,22 +1110,19 @@
                 </label>
                 <div class="controls col-sm-7">
                     <ui-select ng-model="edit_obj.identifier" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                        <ui-select-match placeholder="network type type">{{$select.selected.name}}</ui-select-match>
-                        <ui-select-choices repeat="value.value as value in config_service.network_types">
+                        <ui-select-match class="ui-select-match" placeholder="network type type">{{$select.selected.name}}</ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.value as value in config_service.network_types">
                             <div ng-bind-html="value.name | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
                 </div>
             </div>
         </fieldset>
-        <div class="form-actions">
-            <input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="get_action_string()"/>
-        </div>
     </form>
 </script>
 
-<script type="text/ng-template" id="net.ip.form">
-    <form id="form" class="form-horizontal" ng-submit="cur_edit.modify(this)" name="form">
+<script type="text/ng-template" id="icsw.net.ip.form">
+    <form class="form-horizontal" name="form_data">
         <fieldset>
             <legend>Basic settings</legend>
             <div class="form-group">
@@ -1255,9 +1130,9 @@
                     Netdevice<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-8">
-                    <ui-select ng-model="_edit_obj.netdevice" style="max-width:400px; min-width:240px;" ng-disabled="!create_mode">-->
-                        <ui-select-match placeholder="netdevice">{{$select.selected.devname}}</ui-select-match>
-                        <ui-select-choices repeat="value.idx as value in _current_dev.netdevice_set">
+                    <ui-select ng-model="edit_obj.netdevice" style="max-width:400px; min-width:240px;" ng-disabled="!create_mode">-->
+                        <ui-select-match class="ui-select-match" placeholder="netdevice">{{$select.selected.devname}}</ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in device.netdevice_set">
                             <div ng-bind-html="value.devname | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
@@ -1268,9 +1143,9 @@
                     Network<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-8">
-                    <ui-select ng-model="_edit_obj.network" ng-change="network_changed(_edit_obj)" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                        <ui-select-match placeholder="network">{{$select.selected.info_string}}</ui-select-match>
-                        <ui-select-choices repeat="value.idx as value in networks| props_filter:{info_string:$select.search}" position="down">
+                    <ui-select ng-model="edit_obj.network" ng-change="network_changed(edit_obj)" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                        <ui-select-match class="ui-select-match" placeholder="network">{{$select.selected.info_string}}</ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in network_tree.nw_list | props_filter:{info_string:$select.search}" position="down">
                             <div ng-bind-html="value.info_string | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
@@ -1282,10 +1157,8 @@
                 </label>
                 <div class="controls col-sm-8">
                     <div class="input-group" style="max-width:400px; min-width:240px;">
-                        <input class="textinput textInput form-control" maxlength="16" name="ip" ng-model="_edit_obj.ip" placeholder="IP address" required="True" type="text"/>
-                        <span class="input-group-btn">
-                            <icsw-tools-button type="create" value="Get free IP" size="sm" ng-click="get_free_ip(_edit_obj)"></icsw-tools-button>
-                        </span>
+                        <input class="textinput textInput form-control" maxlength="16" name="ip" ng-model="edit_obj.ip" placeholder="IP address" required="True" type="text"/>
+                        <icsw-tools-button type="create" value="Get free IP" size="sm" ng-click="get_free_ip(edit_obj)"></icsw-tools-button>
                     </div>
                 </div>
             </div>
@@ -1294,9 +1167,9 @@
                     Domain tree node<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-8">
-                    <ui-select ng-model="_edit_obj.domain_tree_node" style="max-width:400px; min-width:240px;" ng-disabled="false">
-                        <ui-select-match placeholder="Domain tree node">{{$select.selected.tree_info}}</ui-select-match>
-                        <ui-select-choices repeat="value.idx as value in domain_tree_node| props_filter:{tree_info:$select.search}">
+                    <ui-select ng-model="edit_obj.domain_tree_node" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                        <ui-select-match class="ui-select-match" placeholder="Domain tree node">{{$select.selected.tree_info}}</ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in domain_tree.list | props_filter:{tree_info:$select.search}">
                             <div ng-bind-html="value.tree_info | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
@@ -1310,22 +1183,239 @@
                     Alias
                 </label>
                 <div class="controls col-sm-8">
-                    <input class="textinput textInput form-control" maxlength="765" name="alias" ng-model="_edit_obj.alias" type="text"/>
+                    <input class="textinput textInput form-control" maxlength="765" name="alias" ng-model="edit_obj.alias" type="text"/>
                 </div>
             </div>
             <div class="form-group">
                 <div class="checkbox">
                     <div class="controls col-sm-offset-4 col-sm-7">
                         <label>
-                            <input class="checkboxinput checkbox" name="alias_excl" ng-model="_edit_obj.alias_excl" type="checkbox"/>
+                            <input class="checkboxinput checkbox" name="alias_excl" ng-model="edit_obj.alias_excl" type="checkbox"/>
                             Alias is exclusive
                         </label>
                     </div>
                 </div>
             </div>
         </fieldset>
-        <div class="form-actions">
-            <input type="submit" name="submit" value="" class="btn btn-primary primaryAction" id="submit-id-submit" ng-value="action_string"/>
-        </div>
+    </form>
+</script>
+
+<script type="text/ng-template" id="icsw.peer.form">
+    <form class="form-horizontal" name="form_data">
+        <h2>
+            Network topology connection (peer)
+        </h2>
+        <fieldset>
+            <legend>Settings</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-2 requiredField">
+                    Cost<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-9">
+                    <input class="numberinput form-control" max="128" min="1" name="penalty" ng-model="edit_obj.penalty" required="True" type="number" value="0"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-2">
+                    Source
+                </label>
+
+                <div class="col-sm-9">
+                    <ui-select ng-model="edit_obj.s_netdevice">
+                        <ui-select-match class="ui-select-match" placeholder="select a netdevice">
+                            {{ $select.selected.info_string }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in source_helper.list | props_filter:{info_string:$select.search}" group-by="'device_group_name'">
+                            <div ng-bind-html="value.info_string | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-2">
+                    Destination
+                </label>
+                <div class="col-sm-9">
+                    <ui-select ng-model="edit_obj.d_netdevice">
+                        <ui-select-match class="ui-select-match" placeholder="select a target device">
+                            {{$select.selected.info_string}}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in dest_helper.list | props_filter:{info_string:$select.search}" group-by="'device_group_name'">
+                            <div ng-bind-html="value.info_string | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+            <div id="div_id_s_spec" class="form-group">
+                <label for="id_s_spec" class="control-label col-sm-2">
+                    Source spec
+                </label>
+                <div class="controls col-sm-9">
+                    <input class="textinput textInput form-control" maxlength="128" name="s_spec" ng-model="edit_obj.s_spec" type="text"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-2">
+                    Dest spec
+                </label>
+                <div class="controls col-sm-9">
+                    <input class="textinput textInput form-control" maxlength="128" name="d_spec" ng-model="edit_obj.d_spec" type="text"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-2">
+                    Info
+                </label>
+                <div class="controls col-sm-9">
+                    <input class="textinput textInput form-control" maxlength="256" name="info" ng-model="edit_obj.info" type="text"/>
+                </div>
+            </div>
+            <div class="form-group" ng-if="!create_mode">
+                <label class="control-label col-sm-2">
+                    Creation info
+                </label>
+                <div class="col-sm-9">
+                    <span ng-show="edit_obj.autocreated" class="label label-warning">autocreated</span>
+                    <span ng-show="!edit_obj.autocreated" class="label label-success">manually created</span>
+                </div>
+            </div>
+        </fieldset>
+    </form>
+</script>
+
+<script type="text/ng-template" id="icsw.device.network.scan.form">
+    <form class="form-horizontal" name="form_data">
+        <fieldset>
+            <legend>Scan address, {{ _current_dev.ip_list.length }} non-local IPs defined</legend>
+            <div>
+                <ul class="list-group">
+                    <li class="list-group-item" ng-repeat="name in network_type_names">
+                        {{ name }}:
+                        <input ng-repeat="ip in ip_dict[name]" type="button" class="btn btn-sm btn-primary" value="{{ ip }}" ng-click="set_ip(ip)"></input>
+                    </li>
+                    <li class="list-group-item">
+                        IP: <input ng-model="scan_settings.manual_address"/>
+                    </li>
+                </ul>
+            </div>
+        </fieldset>
+        <uib-tabset>
+            <uib-tab heading="BaseScan" select='set_scan_mode("base")' active="active_scan['base']">
+                <h3>
+                    Scan device for Communication capabilities
+                </h3>
+            </uib-tab>
+            <uib-tab ng-if='has_com_capability("hm")' heading="Hostmonitor" select='set_scan_mode("hm")' active="active_scan['hm']">
+                <fieldset>
+                    <legend>Flags</legend>
+                    <div class="form-group">
+                        <div class="checkbox">
+                            <div class="controls col-lg-offset-0 col-sm-7">
+                                <label>
+                                    <input class="checkboxinput checkbox" ng-model="scan_settings.strict_mode" type="checkbox"/>
+                                    all netdevices must be recognizable and all existing peers must be conserverd
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group checkbox">
+                        <div class="controls col-lg-offset-0 col-sm-7">
+                            <label>
+                                <input class="checkboxinput checkbox" ng-model="scan_settings.modify_peering" type="checkbox"/>
+                                Modify peering (dangerous)
+                            </label>
+                        </div>
+                    </div>
+                    <div class="alert alert-danger" ng-show="!scan_settings.strict_mode && scan_settings.modify_peering">
+                        attention: peers might get lost
+                    </div>
+                </fieldset>
+            </uib-tab>
+            <uib-tab ng-if='has_com_capability("snmp")' heading="SNMP" select='set_scan_mode("snmp")' active="active_scan['snmp']">
+                <fieldset>
+                    <legend>SNMP Scan Settings</legend>
+                    <div class="form-group">
+                        <label class="control-label col-sm-3 requiredField">
+                            SNMP community<span class="asteriskField">*</span>
+                        </label>
+                        <div class="controls col-sm-7">
+                            <input class="textinput textInput form-control" maxlength="128" ng-model="scan_settings.snmp_community" required="True" type="text"/>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label col-sm-3 requiredField">
+                            SNMP version<span class="asteriskField">*</span>
+                        </label>
+                        <div class="controls col-sm-7">
+                            <select class="select form-control" ng-model="scan_settings.snmp_version" required="True">
+                                <option value="1">1</option>
+                                <option value="2c">2c</option>
+                            </select>
+                        </div>
+                    </div>
+                </fieldset>
+                <fieldset>
+                    <legend>Flags</legend>
+                    <div class="form-group">
+                        <div class="checkbox">
+                            <div class="controls col-lg-offset-0 col-sm-7">
+                                <label>
+                                    <input class="checkboxinput checkbox" ng-model="scan_settings.remove_not_found" type="checkbox"/>
+                                    Remove not found
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group checkbox">
+                        <div class="controls col-lg-offset-0 col-sm-7">
+                            <label>
+                                <input class="checkboxinput checkbox" ng-model="scan_settings.modify_peering" type="checkbox"/>
+                                Modify peering (dangerous)
+                            </label>
+                        </div>
+                    </div>
+                </fieldset>
+            </uib-tab>
+            <uib-tab ng-if='has_com_capability("wmi")' heading="WMI" select='set_scan_mode("wmi")' active="active_scan['wmi']">
+                <fieldset>
+                    <legend>WMI Scan Settings</legend>
+                    <div class="form-group">
+                        <label class="control-label col-sm-3">
+                            Username
+                        </label>
+                        <div class="controls col-sm-7">
+                            <input class="textinput textInput form-control" maxlength="256" ng-model="scan_settings.wmi_username" type="text"/>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label col-sm-3">
+                            Password
+                        </label>
+                        <div class="controls col-sm-7">
+                            <input class="textinput textInput form-control" maxlength="256" ng-model="scan_settings.wmi_password" type="password"/>
+                        </div>
+                    </div>
+                    <div class="form-group checkbox">
+                        <div class="controls col-lg-offset-0 col-sm-7">
+                            <label>
+                                <input class="checkboxinput checkbox" ng-model="scan_settings.wmi_discard_disabled_interfaces" type="checkbox"/>
+                                Ignore disabled interfaces
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group checkbox">
+                        <div class="controls col-lg-offset-0 col-sm-7">
+                            <label>
+                                <input class="checkboxinput checkbox" ng-model="scan_settings.modify_peering" type="checkbox"/>
+                                Modify peering (dangerous)
+                            </label>
+                        </div>
+                    </div>
+                </fieldset>
+            </uib-tab>
+        </uib-tabset>
+        <uib-alert type="warning" ng-show="!scan_settings.manual_address">
+            Please enter or select an IP address
+        </uib-alert>
     </form>
 </script>

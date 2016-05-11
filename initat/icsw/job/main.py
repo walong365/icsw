@@ -131,4 +131,4 @@ def main(options):
     elif options.mode == "listvars":
         list_vars(options)
     else:
-        print("Unknown job mode '{}'".format(opts.mode))
+        print("Unknown job mode '{}'".format(options.mode))

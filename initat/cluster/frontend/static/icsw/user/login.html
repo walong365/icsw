@@ -1,7 +1,5 @@
 <script type="text/ng-template" id="icsw/login.html">
-    <div ng-controller="icswLoginCtrl">
-        <icsw-login-page></icsw-login-page>
-    </div>
+    <icsw-login-page></icsw-login-page>
 </script>
 
 <script type="text/ng-template" id="icsw.user.login.page">
@@ -45,8 +43,8 @@
     </div>
 </script>
 
-<script type="text/ng-template" id="authentication.form">
-    <form id="form" class="form-horizontal" ng-submit="do_login()">
+<script type="text/ng-template" id="icsw.authentication.form">
+    <form class="form-horizontal" ng-submit="do_login()">
         <div class="form-horizontal">
             <fieldset>
                 <legend>Please enter your login credentials <span ng-show="CLUSTER_NAME"> for {{ CLUSTER_NAME }}</span>
@@ -56,8 +54,7 @@
                     Username<span class="asteriskField">*</span></label>
 
                     <div class="controls col-sm-8">
-                        <input ng-disabled="disabled" autofocus="1" class="textinput textInput form-control" id="id_username" maxlength="30" name="username" ng-model="login_data.username" placeholder="user name" required="True" type="text">
-                        </input>
+                        <input ng-disabled="disabled" autofocus="1" class="textinput textInput form-control" maxlength="30" name="username" ng-model="login_data.username" placeholder="user name" required="True" type="text"/>
                     </div>
                 </div>
                 <div id="div_id_password" class="form-group">
@@ -65,14 +62,12 @@
                         Password<span class="asteriskField">*</span>
                     </label>
                     <div class="controls col-sm-8">
-                        <input ng-disabled="disabled" class="textinput textInput form-control" id="id_password" name="password" ng-model="login_data.password" placeholder="password" required="True" type="password">
-                        </input>
+                        <input ng-disabled="disabled" class="textinput textInput form-control" name="password" ng-model="login_data.password" placeholder="password" required="True" type="password"/>
                     </div>
                 </div>
             </fieldset>
             <div class="form-actions">
-                <input ng-disabled="disabled" type="submit" name="submit" value="Login" class="btn btn-primary btn btn-primary" id="submit-id-submit">
-                </input>
+                <icsw-tools-button ng-disabled="disabled" button-type="submit" type="submit" value="Login" ng-click="do_login()"></icsw-tools-button>
             </div>
         </div>
     </form>

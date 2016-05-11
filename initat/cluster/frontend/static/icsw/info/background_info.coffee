@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2015 init.at
+# Copyright (C) 2012-2016 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -18,14 +18,27 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-DT_FORM = "dd, D. MMM YYYY HH:mm:ss"
-
 background_job_info_module = angular.module(
     "icsw.info.background",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
-).service("icswBackgroundInfoRestService", ["$q", "Restangular", "icswCachingCall", "ICSW_URLS", ($q, Restangular, icswCachingCall, ICSW_URLS) ->
+).config(["$stateProvider", ($stateProvider) ->
+    $stateProvider.state(
+        "main.backgroundinfo",
+          {
+              url: "/backgroundinfo"
+              templateUrl: "icsw/main/backgroundinfo.html"
+              icswData:
+                  pageTitle: "Background Job Information"
+          }
+    )
+]).service("icswBackgroundInfoRestService",
+[
+    "$q", "Restangular", "icswCachingCall", "ICSW_URLS",
+(
+    $q, Restangular, icswCachingCall, ICSW_URLS
+) ->
     _bi_info = []
     load_data = (client) ->
         _defer = $q.defer()
@@ -36,21 +49,32 @@ background_job_info_module = angular.module(
         )
         return _defer
     return {
-        "load": (client) ->
+        load: (client) ->
             return load_data(client).promise
     }
 
-]).service("icswBackgroundInfoListService", ["icswBackgroundInfoRestService", "$q", (icswBackgroundInfoRestService, $q) ->
-    lines = $q.defer()
-    icswBackgroundInfoRestService.load("bis").then((data) ->
-        lines.resolve(data)
-    )
+]).service("icswBackgroundInfoListService",
+[
+    "icswBackgroundInfoRestService", "$q",
+(
+    icswBackgroundInfoRestService, $q
+) ->
     return {
-        "load_promise": () ->
-            return lines.promise
+        fetch: (scope) ->
+            defer= $q.defer()
+            icswBackgroundInfoRestService.load(scope.$id).then(
+                (data) ->
+                    defer.resolve(data)
+            )
+            return defer.promise
     }
 
-]).directive("icswBackgroundJobInfoTable", ["$templateCache", ($templateCache) ->
+]).directive("icswBackgroundJobInfoTable",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
     return {
         restrict: "EA"
         template: $templateCache.get("icsw.background.job.info.table")
@@ -80,6 +104,7 @@ background_job_info_module = angular.module(
                 return "???"
         get_time = (dt) ->
             if dt
+                DT_FORM = "dd, D. MMM YYYY HH:mm:ss"
                 return moment(dt).format(DT_FORM)
             else
                 return "---"
@@ -109,7 +134,12 @@ background_job_info_module = angular.module(
                 )
         )
         return job_line
-]).directive("icswBackgroundJobLine", ["$templateCache", "icswBackgroundJobFactory", ($templateCache, icswBackgroundJobFactory) ->
+]).directive("icswBackgroundJobLine",
+[
+    "$templateCache", "icswBackgroundJobFactory",
+(
+    $templateCache, icswBackgroundJobFactory
+) ->
     return {
         restrict: "EA"
         scope:

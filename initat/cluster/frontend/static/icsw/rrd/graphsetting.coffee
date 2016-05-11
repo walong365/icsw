@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2015 init.at
+# Copyright (C) 2012-2016 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -23,296 +23,423 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
-).service("icswRrdGraphSettingService", ["$q", "icswCachingCall", "ICSW_URLS", "icswUserService", "Restangular", ($q, icswCachingCall, ICSW_URLS, icswUserService, Restangular) ->
-    _url = ICSW_URLS.REST_GRAPH_SETTING_LIST
-    _size_url = ICSW_URLS.REST_GRAPH_SETTING_SIZE_LIST
-    _shift_url = ICSW_URLS.REST_GRAPH_SETTING_TIMESHIFT_LIST
-    _forecast_url = ICSW_URLS.REST_GRAPH_SETTING_FORECAST_LIST
-    _timeframe_url = ICSW_URLS.REST_GRAPH_TIME_FRAME_LIST
-    _sets = []
-    sizes = []
-    shifts = []
-    timeframes = []
-    forecasts = []
-    size_waiters = []
-    shift_waiters = []
-    forecast_waiters = []
-    timeframe_waiters = []
-    _set_version = 0
-    _active = undefined
-    _user = undefined
-    $q.all(
-        [
-            icswCachingCall.fetch("graphsize", _size_url, {}, [])
-            icswCachingCall.fetch("graphsize", _shift_url, {}, [])
-            icswCachingCall.fetch("graphsize", _forecast_url, {}, [])
-            icswCachingCall.fetch("graphsize", _timeframe_url, {}, [])
-        ]
-    ).then((data) ->
-        sizes = data[0]
-        shifts = data[1]
-        forecasts = data[2]
-        timeframes = data[3]
-        for size in sizes
-            size.info = "#{size.name} (#{size.width} x #{size.height})"
-        for waiter in size_waiters
-            waiter.resolve(sizes)
-        size_waiters = []
-        for waiter in shift_waiters
-            waiter.resolve(shifts)
-        shift_waiters = []
-        for waiter in forecast_waiters
-            waiter.resolve(forecasts)
-        forecast_waiters = []
-        for waiter in timeframe_waiters
-            waiter.resolve(timeframes)
-        timeframe_waiters = []
-    )
-    get_sizes = () ->
-        _defer = $q.defer()
-        if sizes.length
-            _defer.resolve(sizes)
-        else
-            size_waiters.push(_defer)
-        return _defer
-    get_shifts = () ->
-        _defer = $q.defer()
-        if shifts.length
-            _defer.resolve(shifts)
-        else
-            shift_waiters.push(_defer)
-        return _defer
-    get_forecasts = () ->
-        _defer = $q.defer()
-        if forecasts.length
-            _defer.resolve(forecasts)
-        else
-            forecast_waiters.push(_defer)
-        return _defer
-    get_timeframes = () ->
-        _defer = $q.defer()
-        if timeframes.length
-            _defer.resolve(timeframes)
-        else
-            timeframe_waiters.push(_defer)
-        return _defer
+).service("icswRRDGraphBaseSetting",
+[
+    "$q", "icswCachingCall", "ICSW_URLS", "icswUserService", "Restangular",
+(
+    $q, icswCachingCall, ICSW_URLS, icswUserService, Restangular
+) ->
+    class icswRRDGraphBaseSetting
+        constructor: (size_list, timeshift_list, forecast_list, timeframe_list, sensor_action_list) ->
+            @size_list = []
+            @timeshift_list = []
+            @forecast_list = []
+            @timeframe_list = []
+            @sensor_action_list = []
+            @update(size_list, timeshift_list, forecast_list, timeframe_list, sensor_action_list)
+            @legend_mode_list = [
+                {short: "f", long: "full"}
+                {short: "t", long: "only text"}
+                {short: "n", long: "nothing"}
+            ]
+            @scale_mode_list = [
+                {short: "l", long: "level"}
+                {short: "n", long: "none"}
+                {short: "t", long: "to100"}
+            ]
+            @cf_list = [
+                {short: "MIN", long: "minimum"}
+                {short: "AVERAGE", long: "average"}
+                {short: "MAX", long: "maximum"}
+            ]
+        update: (size_list, timeshift_list, forecast_list, timeframe_list, sensor_action_list) =>
+            for [attr_name, in_list] in [["size_list", size_list], ["timeshift_list", timeshift_list],
+            ["forecast_list", forecast_list], ["timeframe_list", timeframe_list],
+            ["sensor_action_list", sensor_action_list]]
+                @[attr_name].length = 0
+                for entry in in_list
+                    @[attr_name].push(entry)
+            @build_luts()
+
+        enrich_default: (ddict) =>
+            # set default values for default
+            ddict.graph_setting_size = (size for size in @size_list when size.default)[0].idx
+            ddict.graph_setting_timeshift = null
+            ddict.graph_setting_forecast = null
+            ddict.cf = "MIN"
+            ddict.legend_mode = "f"
+            ddict.scale_mode = "l"
+
+        build_luts: () =>
+            @size_lut = _.keyBy(@size_list, "idx")
+            @timeshift_lut = _.keyBy(@timeshift_list, "idx")
+            @forecast_lut = _.keyBy(@forecast_list, "idx")
+            @timeframe_lut = _.keyBy(@timeframe_list, "idx")
+            @sensor_action_lut = _.keyBy(@sensor_action_list, "idx")
+            @link()
+
+        link: () =>
+            # create info fields
+            for size_e in @size_list
+                size_e.info = "#{size_e.name} (#{size_e.width} x #{size_e.height})"
+
+]).service("icswRRDGraphBaseSettingService",
+[
+    "$q", "icswCachingCall", "ICSW_URLS", "icswUserService", "Restangular",
+    "icswRRDGraphBaseSetting",
+(
+    $q, icswCachingCall, ICSW_URLS, icswUserService, Restangular,
+    icswRRDGraphBaseSetting,
+) ->
+    rest_map = [
+        [ICSW_URLS.REST_GRAPH_SETTING_SIZE_LIST, {}]
+        [ICSW_URLS.REST_GRAPH_SETTING_TIMESHIFT_LIST, {}]
+        [ICSW_URLS.REST_GRAPH_SETTING_FORECAST_LIST, {}]
+        [ICSW_URLS.REST_GRAPH_TIME_FRAME_LIST, {}]
+        [ICSW_URLS.REST_SENSOR_ACTION_LIST, {}]
+    ]
+    _fetch_dict = {}
+    _result = undefined
+    # load called
+    load_called = false
+
     load_data = (client) ->
-        _defer= $q.defer()
-        icswUserService.load().then((user) ->
-            _user = user
-            $q.all(
-                [
-                    icswCachingCall.fetch(client, _url, {"user__in": angular.toJson([user.idx])}, [])
-                ]
-            ).then((data) ->
-                _sets = data[0]
-                if not _sets.length
-                    # create default setting
-                    create_default().promise.then((new_setting) ->
-                        _sets = [new_setting]
-                        _active = new_setting
-                        _defer.resolve(_sets)
+        load_called = true
+        _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in rest_map)
+        _defer = $q.defer()
+        $q.all(_wait_list).then(
+            (data) ->
+                console.log "*** graphbasesetting loaded ***"
+                _result = new icswRRDGraphBaseSetting(data[0], data[1], data[2], data[3], data[4], data[5])
+                _defer.resolve(_result)
+                for client of _fetch_dict
+                    # resolve clients
+                    _fetch_dict[client].resolve(_result)
+                # reset fetch_dict
+                _fetch_dict = {}
+        )
+        return _defer
+
+    fetch_data = (client) ->
+        if client not of _fetch_dict
+            # register client
+            _defer = $q.defer()
+            _fetch_dict[client] = _defer
+        if _result
+            # resolve immediately
+            _fetch_dict[client].resolve(_result)
+        return _fetch_dict[client]
+
+    return {
+        "load": (client) ->
+            if load_called
+                # fetch when data is present (after sidebar)
+                return fetch_data(client).promise
+            else
+                return load_data(client).promise
+    }
+
+]).service("icswRRDGraphUserSetting",
+[
+    "$q", "icswCachingCall", "ICSW_URLS", "icswUserService", "Restangular",
+(
+    $q, icswCachingCall, ICSW_URLS, icswUserService, Restangular
+) ->
+    class icswRRDGraphUserSetting
+        constructor: (s_list, th_list, @base, @user) ->
+            @list = []
+            @threshold_list = []
+            @_active = undefined
+            @update(s_list, th_list)
+
+        update: (s_list, th_list) =>
+            @list.length = 0
+            for entry in s_list
+                @list.push(entry)
+            @threshold_list.length = 0
+            for entry in th_list
+                @threshold_list.push(entry)
+            @build_luts()
+            @ensure_active()
+
+        ensure_active: () =>
+            defer = $q.defer()
+            # check actives
+            if not @_active
+                if not @list.length
+                    _def = @get_default()
+                    @create_setting(_def).then(
+                        (new_set) =>
+                            @_active = @list[0]
+                            defer.resolve(@_active)
                     )
                 else
-                    _active = _sets[0]
-                    _defer.resolve(data[0])
+                    @_active = @list[0]
+                    defer.resolve(@_active)
+            else
+                if not @_active.idx of @lut
+                    @_active = @list[0]
+                defer.resolve(@_active)
+            return defer.promise
+
+        get_default: () =>
+            _def = {
+                name: "default"
+                hide_empty: true
+                include_zero: false
+                merge_devices: false
+                merge_graphs: false
+                user: @user.idx
+            }
+            @base.enrich_default(_def)
+            return _def
+
+        build_luts: () =>
+            @lut = _.keyBy(@list, "idx")
+            @threshold_lut = _.keyBy(@threshold_list, "idx")
+            _mv_lut = {}
+            for entry in @threshold_list
+                if entry.mv_value_entry not of _mv_lut
+                    _mv_lut[entry.mv_value_entry] = []
+                _mv_lut[entry.mv_value_entry].push(entry)
+            @threshold_lut_by_mvv_id = _mv_lut
+            console.log "mv_lut=", _mv_lut
+
+        get_active: () =>
+            return @_active
+
+        set_active: (act) =>
+            @_active = act
+
+        delete_setting: (cur_set) =>
+            defer = $q.defer()
+            cur_set.remove().then(
+                (deleted) =>
+                    _.remove(@list, (entry) -> return entry.idx == cur_set.idx)
+                    @build_luts()
+                    if @_active? and @_active.idx == cur_set.idx
+                        # active was deleted
+                        @_active = undefined
+                        @ensure_active().then(
+                            (new_act) =>
+                                defer.resolve("deleted and created active")
+                        )
+                    else
+                        defer.resolve("deleted")
             )
-        )
-        return _defer
-    create_default = () ->
-        _defer = $q.defer()
-        get_sizes().promise.then((sizes) ->
-            _def_size = (size for size in sizes when size.default)[0]
-            _def_dict = get_default()
-            _def_dict.graph_setting_size = _def_size.idx
-            create(_def_dict).promise.then((new_setting) ->
-                _defer.resolve(new_setting)
+            return defer.promise
+
+        create_setting: (new_set) =>
+            defer = $q.defer()
+            Restangular.all(ICSW_URLS.REST_GRAPH_SETTING_LIST.slice(1)).post(new_set).then(
+                (created) =>
+                    @list.push(created)
+                    @build_luts()
+                    defer.resolve(created)
             )
-        )
-        return _defer
-    create = (setting) ->
-        _defer = $q.defer()
-        setting.user = _user.idx
-        Restangular.all(_url.slice(1)).post(setting).then((new_data) ->
-            _sets.push(new_data)
-            _defer.resolve(new_data)
-        )
-        return _defer
-    delete_ = (setting) ->
-        _defer = $q.defer()
-        setting.remove().then((del) ->
-            _.remove(_sets, (entry) -> return entry.idx == setting.idx)
-            _defer.resolve(setting.idx)
-        )
-        return _defer
-    refresh = (setting) ->
-        _defer = $q.defer()
-        # refresh setting (after create for instance)
-        setting.get().then((prev) ->
-            new_list = []
-            for entry in _sets
-                if entry.idx == prev.idx
-                    new_list.push(prev)
-                else
-                    new_list.push(entry)
-            _sets.length = 0
-            for entry in new_list
-                _sets.push(entry)
-            _defer.resolve(prev)
-        )
-        return _defer
-    legend_modes = [
-        {"short": "f", "long": "full"}
-        {"short": "t", "long": "only text"}
-        {"short": "n", "long": "nothing"}
+            return defer.promise
+
+        get_new_threshold: (sensor) =>
+            _mv = sensor.mean_value
+            none_action = (entry for entry in @base.sensor_action_list when entry.action == "none")[0].idx
+            threshold = {
+                "name": "Threshold for #{sensor.mv_key}"
+                "lower_value": _mv - _mv / 10
+                "upper_value": _mv + _mv / 10
+                "lower_mail": true
+                "upper_mail": true
+                "lower_enabled": false
+                "upper_enabled": false
+                "notify_users": []
+                "create_user": @user.idx
+                "lower_sensor_action": none_action
+                "upper_sensor_action": none_action
+                "device_selection": undefined
+                "mv_value_entry": sensor.mvv_id
+            }
+            return threshold
+
+        create_threshold_entry: (sensor, threshold) =>
+            d = $q.defer()
+            Restangular.all(ICSW_URLS.REST_SENSOR_THRESHOLD_LIST.slice(1)).post(threshold).then(
+                (new_obj) =>
+                    @threshold_list.push(new_obj)
+                    @build_luts()
+                    sensor.thresholds.push(new_obj)
+                    d.resolve(new_obj)
+                (not_ok) =>
+                    d.reject("create error")
+            )
+            return d.promise
+
+        remove_threshold_entry: (sensor, threshold) =>
+            d = $q.defer()
+            threshold.remove().then(
+                (removed) =>
+                    _.remove(@threshold_list, (entry) -> return entry.idx == threshold.idx)
+                    _.remove(sensor.thresholds, (entry) -> return entry.idx == threshold.idx)
+                    @build_luts()
+                    d.resolve("deleted")
+                (not_rem) =>
+                    d.resolve("not deleted")
+            )
+            return d.promise
+
+]).service("icswRRDGraphUserSettingService",
+[
+    "$q", "icswCachingCall", "ICSW_URLS", "icswUserService", "Restangular",
+    "icswRRDGraphBaseSettingService", "icswRRDGraphUserSetting",
+(
+    $q, icswCachingCall, ICSW_URLS, icswUserService, Restangular,
+    icswRRDGraphBaseSettingService, icswRRDGraphUserSetting,
+) ->
+    rest_map = [
+        [ICSW_URLS.REST_GRAPH_SETTING_LIST, {}]
+        [ICSW_URLS.REST_SENSOR_THRESHOLD_LIST, {}]
     ]
-    scale_modes = [
-        {"short": "l", "long": "level"}
-        {"short": "n", "long": "none"}
-        {"short": "t", "long": "to100"}
-    ]
-    cfs = [
-        {"short": "MIN", long: "minimum"}
-        {"short": "AVERAGE", long: "average"}
-        {"short": "MAX", long: "maximum"}
-    ]
-    get_default = () ->
-        cur_setting = {
-            "name": "default"
-            "hide_empty": true
-            "include_zero": false
-            "merge_devices": false
-            "merge_graphs": false
-            "legend_mode": legend_modes[0]["short"]
-            "scale_mode": scale_modes[0]["short"]
-            "cf": cfs[1]["short"]
-        }
-        return cur_setting
+    _fetch_dict = {}
+    _result = undefined
+    # load called
+    load_called = false
+
+    load_data = (client) ->
+        load_called = true
+        _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in rest_map)
+        _wait_list.push(icswRRDGraphBaseSettingService.load(client))
+        _wait_list.push(icswUserService.load(client))
+        _defer = $q.defer()
+        $q.all(_wait_list).then(
+            (data) ->
+                console.log "*** graphusersetting loaded ***"
+                _result = new icswRRDGraphUserSetting((entry for entry in data[0] when entry.user == data[3].idx), data[1], data[2], data[3])
+                _result.ensure_active().then(
+                    (_act) =>
+                        _defer.resolve(_result)
+                        for client of _fetch_dict
+                            # resolve clients
+                            _fetch_dict[client].resolve(_result)
+                        # reset fetch_dict
+                        _fetch_dict = {}
+                )
+        )
+        return _defer
+
+    fetch_data = (client) ->
+        if client not of _fetch_dict
+            # register client
+            _defer = $q.defer()
+            _fetch_dict[client] = _defer
+        if _result
+            # resolve immediately
+            _fetch_dict[client].resolve(_result)
+        return _fetch_dict[client]
+
     return {
-        "get_sizes": () ->
-            return get_sizes().promise
-        "get_shifts": () ->
-            return get_shifts().promise
-        "get_forecasts": () ->
-            return get_forecasts().promise
-        "get_timeframes": () ->
-            return get_timeframes().promise
-        "set_version": () ->
-            return _set_version
-        "get_active": () ->
-            return _active
-        "set_active": (active) ->
-            _active = active
         "load": (client) ->
-            return load_data(client).promise
-        "create_default": () ->
-            return create_default().promise
-        "create": (setting) ->
-            return create(setting).promise
-        "refresh": (setting) ->
-            return refresh(setting).promise
-        "delete": (setting) ->
-            return delete_(setting).promise
-        "get_list": () ->
-            return _sets
-        "scale_modes": () ->
-            return scale_modes
-        "cfs": () ->
-            return cfs
-        "legend_modes": () ->
-            return legend_modes
+            if load_called
+                # fetch when data is present (after sidebar)
+                return fetch_data(client).promise
+            else
+                return load_data(client).promise
     }
-]).directive("icswRrdGraphSetting", ["$templateCache", "icswRrdGraphSettingService", "$compile", ($templateCache, icswRrdGraphSettingService, $compile) ->
+
+]).directive("icswRrdGraphSetting",
+[
+    "$templateCache", "icswRRDGraphUserSettingService", "$compile", "icswComplexModalService",
+    "blockUI", "toaster", "icswToolsSimpleModalService", "icswRRDGraphSettingBackup", "$q",
+(
+    $templateCache, icswRRDGraphUserSettingService, $compile, icswComplexModalService,
+    blockUI, toaster, icswToolsSimpleModalService, icswRRDGraphSettingBackup, $q,
+) ->
     return {
         scope: true
         restrict: "EA"
         template: $templateCache.get("icsw.rrd.graphsetting.overview")
         link: (scope, el, attrs) ->
             scope.settings = []
-            icswRrdGraphSettingService.load(scope.$id).then((data) ->
-                scope.settings = data
-                scope.current = icswRrdGraphSettingService.get_active()
-                scope.show_settings = () ->
-                    dia_scope = scope.$new()
-                    dia_scope.settings = scope.settings
-                    dia_div = $compile("<icsw-rrd-graph-setting-modify></icsw-rrd-graph-setting-modify>")(dia_scope)
-                    BootstrapDialog.show
-                        message: dia_div
-                        draggable: true
-                        closeable: true
-                        title: "RRD graphing settings"
-                        size: BootstrapDialog.SIZE_WIDE
-                        cssClass: "modal-tall"
-                        onhide: () ->
-                            scope.current = icswRrdGraphSettingService.get_active()
-            )
-            scope.select_setting = (setting, x) ->
-                icswRrdGraphSettingService.set_active(setting)
-    }
-]).directive("icswRrdGraphSettingModify", ["$templateCache", "icswRrdGraphSettingService", "$compile", "icswToolsSimpleModalService", ($templateCache, icswRrdGraphSettingService, $compile, icswToolsSimpleModalService) ->
-    return {
-        scope: true
-        restrict: "EA"
-        template: $templateCache.get("icsw.rrd.graphsetting.modify")
-        link: (scope, el, attrs) ->
-            scope.legend_modes = icswRrdGraphSettingService.legend_modes()
-            scope.scale_modes = icswRrdGraphSettingService.scale_modes()
-            scope.cfs = icswRrdGraphSettingService.cfs()
-            scope.vars = {
-                "current" : undefined
-            }
-            scope.sizes = []
-            icswRrdGraphSettingService.get_sizes().then((sizes) ->
-                scope.sizes = sizes
-            )
-            scope.shifts = []
-            icswRrdGraphSettingService.get_shifts().then((shifts) ->
-                scope.shifts = shifts
-            )
-            scope.forecasts = []
-            icswRrdGraphSettingService.get_forecasts().then((forecasts) ->
-                scope.forecasts = forecasts
-            )
-            scope.set_current = (setting) ->
-                setting.legend_mode2 = (entry for entry in icswRrdGraphSettingService.legend_modes() when entry.short == setting.legend_mode)[0]
-                setting.scale_mode2 = (entry for entry in icswRrdGraphSettingService.scale_modes() when entry.short == setting.scale_mode)[0]
-                setting.cf2 = (entry for entry in icswRrdGraphSettingService.cfs() when entry.short == setting.cf)[0]
-                scope.vars.current = setting
-                icswRrdGraphSettingService.set_active(setting)
-            scope.update_setting = () ->
-                # transform legend_mode2 / scale_mode2
-                scope.vars.current.legend_mode = scope.vars.current.legend_mode2["short"]
-                scope.vars.current.scale_mode = scope.vars.current.scale_mode2["short"]
-                scope.vars.current.cf = scope.vars.current.cf2["short"]
+            icswRRDGraphUserSettingService.load(scope.$id).then(
+                (data) ->
+                    scope.settings = data
+                    scope.current = scope.settings.get_active()
+                    scope.edit_settings = () ->
+                        sub_scope = scope.$new()
+                        sub_scope.base_setting = scope.settings.base
+                        sub_scope.user_setting = scope.settings
+                        sub_scope.vars = {
+                            current: sub_scope.user_setting.get_active()
+                            # previous (for changing)
+                            prev: sub_scope.user_setting.get_active()
+                        }
+                        bu_obj = new icswRRDGraphSettingBackup()
+                        bu_obj.create_backup(sub_scope.vars.current)
 
-            scope.set_current(icswRrdGraphSettingService.get_active())
-            scope.save_setting = () ->
-                scope.update_setting()
-                scope.vars.current.save()
-            scope.create_setting = () ->
-                scope.update_setting()
-                icswRrdGraphSettingService.create(scope.vars.current).then((new_setting) ->
-                    icswRrdGraphSettingService.refresh(scope.vars.current).then((_prev) -> )
-                    scope.set_current(new_setting)
-                )
-            scope.delete_setting = () ->
-                icswToolsSimpleModalService("Really delete setting ?").then((_act) ->
-                    icswRrdGraphSettingService.delete(scope.vars.current).then((del_pk) ->
-                        if scope.vars.current.idx == del_pk
-                            if scope.settings.length
-                                scope.settings = icswRrdGraphSettingService.get_list()
-                                scope.set_current(scope.settings[0])
-                            else
-                                icswRrdGraphSettingService.create_default().then((new_setting) ->
-                                    scope.set_current(new_setting)
-                                    scope.settings = icswRrdGraphSettingService.get_list()
-                                )
+                        sub_scope.create_setting = () ->
+                            scope.settings.create_setting(sub_scope.vars.current).then(
+                                (new_setting) ->
+                                    scope.select_setting(new_setting)
+                                    # reset current
+                                    bu_obj.restore_backup(sub_scope.vars.current)
+                                    sub_scope.vars.current = new_setting
+                                    sub_scope.vars.prev = new_setting
+                                    # new backup
+                                    bu_obj.create_backup(sub_scope.vars.current)
+                            )
+
+                        sub_scope.save_setting = () ->
+                            scope.settings.get_active().save().then(
+                                (ok) ->
+                                    bu_obj.create_backup(sub_scope.vars.current)
+                            )
+
+                        sub_scope.delete_setting = () ->
+                            cur = sub_scope.vars.current
+                            icswToolsSimpleModalService("Really delete setting '#{cur.name}' ?").then(
+                                (is_ok) ->
+                                    scope.settings.delete_setting(sub_scope.vars.current).then(
+                                        (done) ->
+                                            scope.settings.ensure_active().then(
+                                                (new_act) ->
+                                                    scope.select_setting(new_act)
+                                                    sub_scope.vars.current = new_act
+                                                    sub_scope.vars.prev = new_act
+                                                    bu_obj.create_backup(sub_scope.vars.current)
+                                            )
+                                    )
+                            )
+
+                        sub_scope.select_setting = (a, b, c) ->
+                            bu_obj.restore_backup(sub_scope.vars.prev)
+                            bu_obj.create_backup(sub_scope.vars.current)
+                            sub_scope.vars.prev = sub_scope.vars.current
+                            scope.select_setting(sub_scope.vars.current)
+
+                        icswComplexModalService(
+                            {
+                                message: $compile($templateCache.get("icsw.rrd.graphsetting.modify"))(sub_scope)
+                                title: "RRD graph settings"
+                                ok_label: "Close"
+                                ok_callback: (modal) ->
+                                    # reset current
+                                    bu_obj.restore_backup(sub_scope.vars.current)
+                                    d = $q.defer()
+                                    d.resolve("Close")
+                                    return d.promise
+                            }
+                        ).then(
+                            (fin) ->
+                                sub_scope.$destroy()
+                                scope.current = scope.settings.get_active()
                         )
-                )
-            scope.select_setting = (new_setting, b) ->
-                scope.set_current(new_setting)
+            )
+            scope.select_setting = (setting) ->
+                scope.settings.set_active(setting)
     }
-]).directive("icswRrdGraphTimeFrame", ["$templateCache", "icswRrdGraphSettingService", "$compile", "$timeout", "toaster", ($templateCache, icswRrdGraphSettingService, $compile, $timeout, toaster) ->
+]).directive("icswRrdGraphTimeFrame",
+[
+    "$templateCache", "icswRRDGraphBaseSettingService", "$compile", "$timeout", "toaster",
+(
+    $templateCache, icswRRDGraphBaseSettingService, $compile, $timeout, toaster
+) ->
     return {
         scope: true
         restrict: "EA"
@@ -326,64 +453,140 @@ angular.module(
             else
                 scope.show_detail = false
             moment().utc()
+
+            _mom_to_date = () ->
+                scope.val.from_date = scope.val.from_date_mom.toDate()
+                scope.val.to_date = scope.val.to_date_mom.toDate()
+
             scope.timeframes = []
             scope.val =
                 current: undefined
-                from_data_mom: undefined
+                from_date_mom: undefined
                 to_date_mom: undefined
                 valid: false
+
+            scope.button_bar = {
+                show: true
+                now: {
+                    show: true
+                    text: 'Now'
+                },
+                today: {
+                    show: true
+                    text: 'Today'
+                },
+                clear: {
+                    show: false
+                    text: 'Clear'
+                },
+                date: {
+                    show: true
+                    text: 'Date'
+                },
+                time: {
+                    show: true
+                    text: 'Time'
+                },
+                close: {
+                    show: true
+                    text: 'Close'
+                }
+            }
+            # from / to picker options
+            scope.from_picker = {
+                date_options: {
+                    format: "dd.MM.yyyy"
+                    formatYear: "yyyy"
+                    maxDate: new Date()
+                    minDate: new Date(2000, 1, 1)
+                    startingDay: 1
+                    minMode: "day"
+                    datepickerMode: "day"
+                }
+                time_options: {
+                    showMeridian: false
+                }
+                open: false
+            }
+
+            scope.to_picker = {
+                date_options: {
+                    format: "dd.MM.yyyy"
+                    formatYear: "yyyy"
+                    minDate: new Date(2000, 1, 1)
+                    startingDay: 1
+                    minMode: "day"
+                    datepickerMode: "day"
+                }
+                time_options: {
+                    showMeridian: false
+                }
+                open: false
+            }
+
+            scope.open_calendar = ($event, picker) ->
+                scope[picker].open = true
+
+            # set timeframe from parent scope
             scope.timeframe = scope.val
-            icswRrdGraphSettingService.get_timeframes().then((data) ->
-                scope.timeframes = data
-                scope.val.current = data[0]
-                scope.change_tf()
-                scope.$watch(
-                    () ->
-                        return scope.val.from_date_mom
-                    (new_val) ->
-                        if scope.change_dt_to
-                            $timeout.cancel(scope.change_dt_to)
-                        scope.change_dt_to = $timeout(scope.update_dt, 2000)
-                )
-                scope.$watch(
-                    () ->
-                        return scope.val.to_date_mom
-                    (new_val) ->
-                        if scope.change_dt_to
-                            $timeout.cancel(scope.change_dt_to)
-                        scope.change_dt_to = $timeout(scope.update_dt, 2000)
-                )
+            icswRRDGraphBaseSettingService.load(scope.$id).then(
+                (base) ->
+                    scope.timeframes = base.timeframe_list
+                    scope.val.current = scope.timeframes[0]
+                    scope.change_tf()
+                    scope.$watch(
+                        () ->
+                            return scope.val.from_date
+                        (new_val) ->
+                            if scope.change_dt_to
+                                $timeout.cancel(scope.change_dt_to)
+                            scope.change_dt_to = $timeout(scope.update_dt, 2000)
+                    )
+                    scope.$watch(
+                        () ->
+                            return scope.val.to_date
+                        (new_val) ->
+                            if scope.change_dt_to
+                                $timeout.cancel(scope.change_dt_to)
+                            scope.change_dt_to = $timeout(scope.update_dt, 2000)
+                    )
             )
             scope.move_to_now = () ->
                 # shift timeframe
                 _timeframe = moment.duration(scope.val.to_date_mom.unix() - scope.val.from_date_mom.unix(), "seconds")
                 scope.val.from_date_mom = moment().subtract(_timeframe)
                 scope.val.to_date_mom = moment()
+                _mom_to_date()
+
             scope.set_to_now = () ->
                 # set to_date to now
                 scope.val.to_date_mom = moment()
+                _mom_to_date()
+
             scope.update_dt = () ->
                 # force moment
-                from_date = moment(scope.val.from_date_mom)
-                to_date = moment(scope.val.to_date_mom)
+                from_date = moment(scope.val.from_date)
+                to_date = moment(scope.val.to_date)
                 scope.val.valid = from_date.isValid() and to_date.isValid()
+                [scope.val.from_date_mom, scope.val.to_date_mom] = [from_date, to_date]
                 if scope.val.valid
                     diff = to_date - from_date
                     if diff < 0
                         toaster.pop("warning", "", "exchanged from with to date")
-                        scope.val.to_date_mom = from_date
-                        scope.val.from_date_mom = to_date
+                        [scope.val.from_date, scope.val.to_date] = [scope.val.to_date, scope.val.from_date]
+                        [scope.val.from_date_mom, scope.val.to_date_mom] = [scope.val.to_date_mom, scope.val.from_date_mom]
                     else if diff < 60000
                         scope.val.valid = false
+
             scope.change_tf = () ->
                 get_time_string = (short) ->
                     return {
-                        "h": "hour"
-                        "d": "day"
-                        "w": "week"
-                        "m": "month"
-                        "y": "year"
-                        "D": "year"
+                        h: "hour"
+                        d: "day"
+                        w: "week"
+                        m: "month"
+                        y: "year"
+                        D: "year"
                     }[short]
                 _tf = scope.val.current
                 _now = moment()
@@ -404,5 +607,6 @@ angular.module(
                             _start = _start.subtract(-_tf.timeframe_offset, tfs)
                     scope.val.from_date_mom = _start
                     scope.val.to_date_mom = moment(_start).add(_tf.seconds, "seconds")
+                _mom_to_date()
     }
 ])

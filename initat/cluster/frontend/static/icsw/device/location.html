@@ -1,74 +1,139 @@
 <script type="text/ng-template" id="icsw.device.location.overview">
-    <h2>Device location for <ng-pluralize count="device_pks.length" when="{'one':'1 device', 'other':'{} devices'}"></ng-pluralize></h2>
+    <h3>
+        Device location for
+        <ng-pluralize count="struct.devices.length" when="{'one':'1 device', 'other':'{} devices'}"></ng-pluralize>
+    </h3>
 
+    <!-- <div>
+        ReactTree:
+        <icsw-react-tree></icsw-react-tree>
+    </div> -->
     <uib-alert type="warning" style="max-width: 500px" ng-if="!is_any_location_defined()">Please create locations in the tab 'Available locations'.</uib-alert>
 
     <div class="row">
         <div class="col-md-6">
             <h3>Location Tree</h3>
-            <icsw-tools-ensure-device-selection dev-list="device_pks" list-ready="device_list_ready">
-                <tree treeconfig="loc_tree"></tree>
+            <icsw-tools-ensure-device-selection dev-list="struct.devices" list-ready="struct.device_list_ready">
+                <icsw-react-tree icsw-tree-config="struct.loc_tree"></icsw-react-tree>
             </icsw-tools-ensure-device-selection>
         </div>
-        <div class="col-md-6" ng-show="gfx_cat">
-            <icsw-device-location-list></icsw-device-location-list>
+        <div class="col-md-6">
+            <icsw-config-category-tree-google-map locations="struct.locations" icsw-google-maps-fn="struct.google_maps_fn" icsw-google-maps-cb-fn="google_maps_cb_fn" icsw-map-mode="show"></icsw-config-category-tree-google-map>
         </div>
     </div>
-    <h3 ng-show="gfx_cat && active_loc_gfx">Locations ({{ set_pks.length }} of {{ dev_pks.length }} set)<span ng-show="extra_dml_list.length">, {{ extra_dml_list.length }} extra</span>, zoom is {{ cur_scale | number:2 }}</h3>
-    <div class="row" ng-show="gfx_cat && active_loc_gfx">
-        <div class="col-md-3">
-            <icsw-device-monitoring-location-list></icsw-device-monitoring-location-list>
+    <h3 ng-show="struct.active_loc">
+        Location {{ struct.active_loc.full_name }},
+        <ng-pluralize count="struct.active_loc.$gfx_list.length" when="{'0': 'no Location maps', 'one': 'one Location map', 'other': '{} location maps'}"></ng-pluralize>
+        <!-- <span ng-show="extra_dml_list.length">, {{ extra_dml_list.length }} extra</span>, zoom is {{ cur_scale | number:2 }}-->
+    </h3>
+    <div class="row" ng-show="struct.active_gfx || struct.active_loc">
+        <div class="col-xs-12" ng-if="struct.active_loc">
+            <icsw-device-location-list icsw-location="struct.active_loc" icsw-active-gfx="struct.active_gfx" icsw-devices="struct.devices"></icsw-device-location-list>
         </div>
-        <div class="col-md-9">
-            <icsw-device-location-map></icsw-device-location-map>
+        <div class="col-xs-3">
+            <icsw-device-monitoring-location-list icsw-active-gfx="struct.active_gfx" icsw-devices="struct.devices"></icsw-device-monitoring-location-list>
         </div>
-    </div>
-</script>
-
-<script type="text/ng-template" id="icsw.device.monitoring.location.list">
-    <div ng-show="set_pks.length">
-        <h4>Set devices:</h4>
-        <ul class="list-group">
-            <li class="list-group-item" ng-repeat="pk in set_pks">
-                {{ dev_lut[pk].full_name }}, {{ set_lut[pk].pos_x }} / {{ set_lut[pk].pos_y }}
-                <span class="pull-right">
-                    <div class="btn-group">
-                        <input type="button" class="btn btn-xs" ng-class="{'btn-warning': is_locked(pk), 'btn-success': !is_locked(pk)}" ng-value="is_locked(pk) && 'unlock' || 'lock'" ng-click="toggle_locked(pk)"/>
-                        <input type="button" class="btn btn-xs btn-danger" ng-show='!is_locked(pk)', value="remove" ng-click="remove(pk)"/>
-                    </div>
-                </span>
-            </li>
-        </ul>
-    </div>
-    <div ng-show="unset_pks.length">
-        <h4>Unset devices:</h4>
-        <ul class="list-group">
-            <li class="list-group-item" ng-repeat="unset in unset_pks">
-                {{ dev_lut[unset].full_name }}
-                <input type="button" class="pull-right btn btn-xs btn-primary" value="set" ng-click="use_device(unset)"/>
-            </li>
-        </ul>
-    </div>
-    <div ng-show="extra_dml_list.length">
-        <h4>Extra devices:</h4>
-        <ul class="list-group">
-            <li class="list-group-item" ng-repeat="dml in extra_dml_list">
-                {{ dml.device_name }}, {{ dml.pos_x }} / {{ dml.pos_y }}
-            </li>
-        </ul>
+        <div class="col-xs-9">
+            <icsw-device-location-map icsw-active-gfx="struct.active_gfx" icsw-devices="struct.devices"></icsw-device-location-map>
+        </div>
     </div>
 </script>
 
 <script type="text/ng-template" id="icsw.device.location.list">
-    <h3><ng-pluralize count="gfx_cat.location_gfxs.length" when="{'0': 'No Location maps for {{ gfx_cat.full_name }}', 'one': 'One Location map for {{ gfx_cat.full_name }}', 'other': '{} location maps for {{ gfx_cat.full_name }}'}"></ng-pluralize></h3>
-    <ul class="list-group">
-        <li class="list-group-item" ng-repeat="loc_gfx in get_location_gfxs(gfx_cat)">
-            <span ng-show="DEBUG">[{{ loc_gfx.idx }}]</span><input type="button" ng-class="get_button_class(loc_gfx)" value="show" ng-click="activate_loc_gfx(loc_gfx)"/>
-            {{ loc_gfx.name }}<span ng-show="loc_gfx.comment"> ({{ loc_gfx.comment }})</span>
-            <ng-pluralize count="get_num_devices(loc_gfx)" when="{'0': '', 'one' : ', one device', 'other' : ', {} devices'}"></ng-pluralize>
-            <span ng-show="get_num_devices(loc_gfx)" class="glyphicon glyphicon-info-sign" tooltip="{{ get_device_list(loc_gfx) }}" tooltip-placement="right"></span>
-            , {{ loc_gfx.image_name }} {{ loc_gfx.width }} x {{ loc_gfx.height }} ({{ loc_gfx.content_type }})
-            <image ng-src="{{ loc_gfx.icon_url }}" width="24" height="24"></image>
-        </li>
-    </ul>
+    <table
+        st-table="location.$gfx_list"
+        ng-if="location.$gfx_list.length"
+        class="table table-condensed table-hover table-striped"
+        style="width:auto;"
+    >
+        <thead>
+            <tr>
+                <td colspan="99">
+                    <div
+                        icsw-tools-pagination
+                        st-items-by-page="10"
+                        st-displayed-pages="11"
+                        possible-items-by-page="10,20,50,100"
+                    ></div>
+                </td>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-class="{'success': active_gfx.idx == loc_gfx.idx}" ng-repeat="loc_gfx in location.$gfx_list">
+                <td>{{ loc_gfx.name_comment }}</td>
+                <td>
+                    <icsw-tools-button type="display" size="xs" ng-click="activate_loc_gfx($event, loc_gfx)"></icsw-tools-button>
+                </td>
+                <td class="text-center">
+                    <span ng-show="loc_gfx.$dml_list.length" class="label label-primary" uib-tooltip="{{ loc_gfx.$device_info }}" uib-tooltip-placement="right">
+                        {{ loc_gfx.$map_devs_selected }} / {{ loc_gfx.$map_devs_other }}
+                    </span>
+                </td>
+                <td>
+                    {{ loc_gfx.info_string }}
+                </td>
+                <td>
+                    <image ng-src="{{ loc_gfx.icon_url }}" width="24" height="24"></image>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</script>
+
+<script type="text/ng-template" id="icsw.device.monitoring.location.list">
+    <div ng-if="struct.data_valid">
+        <table
+            st-table="struct.active_gfx.$dml_list"
+            ng-if="struct.active_gfx.$dml_list.length || struct.active_gfx.$unset_devices.length"
+            class="table table-condensed table-hover table-striped"
+            style="width:auto;"
+        >
+            <thead>
+                <tr>
+                    <td colspan="99">
+                        <div
+                            icsw-tools-pagination
+                            st-items-by-page="10"
+                            st-displayed-pages="11"
+                            possible-items-by-page="10,20,50,100"
+                        ></div>
+                    </td>
+                </tr>
+                <tr>
+                    <th>Device</th>
+                    <th>State</th>
+                    <th>Coords</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr ng-repeat="dml in struct.active_gfx.$dml_list">
+                    <td>{{ dml.$device.full_name }}</td>
+                    <td>
+                        <span class="label label-success" ng-show="dml.$$selected" title="Selected and set">S</span>
+                        <span class="label label-warning" ng-show="!dml.$$selected" title="Set but not selected">s</span>
+                    </td>
+                    <td class="text-center">
+                        {{ dml.pos_x }} / {{ dml.pos_y }}
+                    </td>
+                    <td>
+                        <div class="btn-group" ng-if="dml.$$selected">
+                            <icsw-tools-button type="delete" size="xs" ng-show="!dml.locked" ng-click="remove_dml(dml)"/>
+                            <icsw-tools-button type="lock" size="xs" is-lock="dml.locked" ng-click="toggle_locked(dml)"/>
+                        </div>
+                    </td>
+                </tr>
+                <tr class="warning" ng-repeat="dev in struct.active_gfx.$unset_devices">
+                    <td>{{ dev.full_name }}</td>
+                    <td>
+                        <span class="label label-default" title="not set">u</span>
+                    </td>
+                    <td></td>
+                    <td>
+                        <icsw-tools-button type="create" size="xs" value="set" ng-click="use_device($event, dev)"/>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
 </script>

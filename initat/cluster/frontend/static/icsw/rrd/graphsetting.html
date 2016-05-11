@@ -1,13 +1,17 @@
+<!--- todo: split timeframesetting into separate page -->
+
 <script type="text/ng-template" id="icsw.rrd.graphsetting.overview">
     <div class="input-group">
         <ui-select ng-model="current" on-select="select_setting($item, $model)" style="width:160px;">
-            <ui-select-match title="Stored RRD graphing settings">{{ $select.selected.name }}&nbsp;&nbsp;&nbsp;</ui-select-match>
-            <ui-select-choices repeat="entry in settings">
+            <ui-select-match class="ui-select-match" title="Stored RRD graphing settings">
+                {{ $select.selected.name }}&nbsp;&nbsp;&nbsp;
+            </ui-select-match>
+            <ui-select-choices class="ui-select-choices" repeat="entry in settings.list">
                 <div ng-bind-html="entry.name"></div>
             </ui-select-choices>
         </ui-select>
         <span class="input-group-btn">
-            <button class="btn btn-sm btn-primary" type="modify" value="" size="sm" ng-click="show_settings()" title="RRD graphing settings">
+            <button class="btn btn-sm btn-primary" type="modify" value="" size="sm" ng-click="edit_settings()" title="RRD graphing settings">
                 <span class="fa fa-wrench"></span>
             </button>
         </span>
@@ -15,53 +19,53 @@
 </script>
 
 <script type="text/ng-template" id="icsw.rrd.graphsetting.modify">
-    <form>
-        <h3>Settings defined: {{ settings.length }}</h3>
+    <form name="form_data">
+        <h3>Settings defined: {{ user_setting.list.length }}</h3>
         <fieldset>
             <legend>
                 Graph Flags
             </legend>
             <div class="form-group row">
-                <label class="col-md-3 control-label">
+                <label class="col-xs-3 control-label">
                     <span class="fa fa-eye-slash"/>
                     Hide Empty:
                 </label>
-                <div class="col-md-3 controls">
+                <div class="col-xs-3 controls">
                     <icsw-tools-yes-no flag="vars.current.hide_empty"></icsw-tools-yes-no>
                 </div>
-                <label class="col-md-3 control-label">
+                <label class="col-xs-3 control-label">
                     <span class="fa fa-area-chart"/>
                     Include y=0:
                 </label>
-                <div class="col-md-3 controls">
+                <div class="col-xs-3 controls">
                     <icsw-tools-yes-no flag="vars.current.include_zero"></icsw-tools-yes-no>
                 </div>
             </div>
             <div class="form-group row">
-                <label class="col-md-3 control-label">
+                <label class="col-xs-3 control-label">
                     <span class="fa fa-hdd-o"/>
                     Merge devices:
                 </label>
-                <div class="col-md-3 controls">
+                <div class="col-xs-3 controls">
                     <icsw-tools-yes-no flag="vars.current.merge_devices"></icsw-tools-yes-no>
                 </div>
-                <label class="col-md-3 control-label">
+                <label class="col-xs-3 control-label">
                     <span class="fa fa-line-chart"/>
                     Merge graphs:
                 </label>
-                <div class="col-md-3 controls">
+                <div class="col-xs-3 controls">
                     <icsw-tools-yes-no flag="vars.current.merge_graphs"></icsw-tools-yes-no>
                 </div>
             </div>
             <div class="form-group row">
-                <label class="col-md-3 control-label">
+                <label class="col-xs-3 control-label">
                     <span class="fa fa-arrows-v"/>
                     CF:
                 </label>
-                <div class="col-md-9 controls">
-                    <ui-select ng-model="vars.current.cf2">
-                        <ui-select-match placeholder="Consolidation function...">{{ $select.selected.long }}</ui-select-match>
-                        <ui-select-choices repeat="cf in cfs">
+                <div class="col-xs-9 controls">
+                    <ui-select ng-model="vars.current.cf">
+                        <ui-select-match class="ui-select-match" placeholder="Consolidation function...">{{ $select.selected.long }}</ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="cf.short as cf in base_setting.cf_list">
                             <div ng-bind-html="cf.long"></div>
                         </ui-select-choices>
                     </ui-select>
@@ -73,40 +77,40 @@
                 Legend / Scale / Size
             </legend>
             <div class="form-group row">
-                <label class="col-md-3 control-label">
+                <label class="col-xs-3 control-label">
                     <span class="fa fa-lightbulb-o"/>
                     Legend mode:
                 </label>
-                <div class="col-md-3 controls">
-                    <ui-select ng-model="vars.current.legend_mode2">
-                        <ui-select-match placeholder="Legend mode...">{{ $select.selected.long }}</ui-select-match>
-                        <ui-select-choices repeat="lm in legend_modes">
+                <div class="col-xs-3 controls">
+                    <ui-select ng-model="vars.current.legend_mode">
+                        <ui-select-match class="ui-select-match" placeholder="Legend mode...">{{ $select.selected.long }}</ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="lm.short as lm in base_setting.legend_mode_list">
                             <div ng-bind-html="lm.long"></div>
                         </ui-select-choices>
                     </ui-select>
                 </div>
-                <label class="col-md-3 control-label">
+                <label class="col-xs-3 control-label">
                     <span class="fa fa-arrows-v"/>
                     Scale mode:
                 </label>
-                <div class="col-md-3 controls">
-                    <ui-select ng-model="vars.current.scale_mode2">
-                        <ui-select-match placeholder="Scale mode...">{{ $select.selected.long }}</ui-select-match>
-                        <ui-select-choices repeat="sm in scale_modes">
+                <div class="col-xs-3 controls">
+                    <ui-select ng-model="vars.current.scale_mode">
+                        <ui-select-match class="ui-select-match" placeholder="Scale mode...">{{ $select.selected.long }}</ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="sm.short as sm in base_setting.scale_mode_list">
                             <div ng-bind-html="sm.long"></div>
                         </ui-select-choices>
                     </ui-select>
                 </div>
             </div>
             <div class="form-group row">
-                <label class="col-md-3 control-label">
+                <label class="col-xs-3 control-label">
                     <span class="fa fa-expand"/>
                     Size:
                 </label>
-                <div class="col-md-9 controls">
+                <div class="col-xs-9 controls">
                     <ui-select ng-model="vars.current.graph_setting_size">
-                        <ui-select-match placeholder="Size">{{ $select.selected.info }}</ui-select-match>
-                        <ui-select-choices repeat="sz.idx as sz in sizes">
+                        <ui-select-match class="ui-select-match" placeholder="Size">{{ $select.selected.info }}</ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="sz.idx as sz in base_setting.size_list">
                             <div ng-bind-html="sz.info"></div>
                         </ui-select-choices>
                     </ui-select>
@@ -118,40 +122,36 @@
                 Timeshift / Forecast
             </legend>
             <div class="form-group row">
-                <label class="col-md-3 control-label">
+                <label class="col-xs-3 control-label">
                     <span class="fa fa-exchange"/>
                     Timeshift:
                 </label>
-                <div class="col-md-9 controls">
+                <div class="col-xs-9 controls">
                     <div class="input-group">
                         <ui-select ng-model="vars.current.graph_setting_timeshift">
-                            <ui-select-match placeholder="Shift">{{ $select.selected.name }}</ui-select-match>
-                            <ui-select-choices repeat="sh.idx as sh in shifts">
+                            <ui-select-match class="ui-select-match" placeholder="Shift">{{ $select.selected.name }}</ui-select-match>
+                            <ui-select-choices class="ui-select-choices" repeat="sh.idx as sh in base_setting.timeshift_list">
                                 <div ng-bind-html="sh.name"></div>
                             </ui-select-choices>
                         </ui-select>
-                        <span class="input-group-btn">
-                            <icsw-tools-button type="delete" value="" ng-click="vars.current.graph_setting_timeshift=null"></icsw-tools-button>
-                        </span>
+                        <icsw-tools-button type="delete" value="" ng-click="vars.current.graph_setting_timeshift=null"></icsw-tools-button>
                     </div>
                 </div>
             </div>
             <div class="form-group row">
-                <label class="col-md-3 control-label">
+                <label class="col-xs-3 control-label">
                     <span class="fa fa-eye"/>
                     Forecast:
                 </label>
-                <div class="col-md-9 controls">
+                <div class="col-xs-9 controls">
                     <div class="input-group">
                         <ui-select ng-model="vars.current.graph_setting_forecast">
-                            <ui-select-match placeholder="Forecast">{{ $select.selected.name }}</ui-select-match>
-                            <ui-select-choices repeat="fc.idx as fc in forecasts">
+                            <ui-select-match class="ui-select-match" placeholder="Forecast">{{ $select.selected.name }}</ui-select-match>
+                            <ui-select-choices class="ui-select-choices" repeat="fc.idx as fc in base_setting.forecast_list">
                                 <div ng-bind-html="fc.name"></div>
                             </ui-select-choices>
                         </ui-select>
-                        <span class="input-group-btn">
-                            <icsw-tools-button type="delete" value="" ng-click="vars.current.graph_setting_forecast=null"></icsw-tools-button>
-                        </span>
+                        <icsw-tools-button type="delete" value="" ng-click="vars.current.graph_setting_forecast=null"></icsw-tools-button>
                     </div>
                 </div>
             </div>
@@ -161,33 +161,31 @@
                 Selection / Action
             </legend>
             <div class="form-group row">
-                <label class="col-md-3 control-label">
+                <label class="col-xs-3 control-label">
                     <span class="fa fa-anchor"/>
                     Select:
                 </label>
-                <div class="col-md-9 controls">
+                <div class="col-xs-9 controls">
                     <div class="input-group">
                         <ui-select ng-model="vars.current" on-select="select_setting($item, $model)">
-                            <ui-select-match>{{ $select.selected.name }}</ui-select-match>
-                            <ui-select-choices repeat="entry in settings">
+                            <ui-select-match>
+                                {{ $select.selected.name }}
+                            </ui-select-match>
+                            <ui-select-choices class="ui-select-choices" repeat="entry in user_setting.list">
                                 <div ng-bind-html="entry.name"></div>
                             </ui-select-choices>
                         </ui-select>
-                        <span class="input-group-btn">
-                            <icsw-tools-button type="delete" value="" ng-click="delete_setting()"></icsw-tools-button>
-                        </span>
+                        <icsw-tools-button type="delete" value="" ng-click="delete_setting()"></icsw-tools-button>
                     </div>
                 </div>
             </div>
             <div class="form-group row">
-                <label class="col-md-3 control-label">Name:</label>
-                <div class="col-md-9 controls">
+                <label class="col-xs-3 control-label">Name:</label>
+                <div class="col-xs-9 controls">
                     <div class="input-group">
                         <input class="form-control" type="text" size="100" max_length="100" ng-model="vars.current.name"/>
-                        <span class="input-group-btn">
-                            <icsw-tools-button type="create" size="sm" ng-click="create_setting()"></icsw-tools-button>
-                            <icsw-tools-button type="save" size="sm" ng-click="save_setting()"></icsw-tools-button>
-                        </span>
+                        <icsw-tools-button type="create" size="sm" ng-click="create_setting()"></icsw-tools-button>
+                        <icsw-tools-button type="save" size="sm" ng-click="save_setting()"></icsw-tools-button>
                     </div>
                 </div>
             </div>
@@ -199,8 +197,8 @@
     <div class="form-group">
         <div class="input-group">
             <ui-select ng-disabled="timeframes.length == 0" ng-change="change_tf()" ng-model="val.current" style="width:160px;" title="choose graphing timeframe">
-                <ui-select-match>{{ $select.selected.name }}&nbsp;&nbsp;&nbsp;</ui-select-match>
-                <ui-select-choices repeat="entry in timeframes">
+                <ui-select-match class="ui-select-match">{{ $select.selected.name }}&nbsp;&nbsp;&nbsp;</ui-select-match>
+                <ui-select-choices class="ui-select-choices" repeat="entry in timeframes">
                     <div ng-bind-html="entry.name"></div>
                 </ui-select-choices>
             </ui-select>
@@ -223,34 +221,47 @@
             <span class="input-group-addon">
                  from
             </span>
-            <input type="text" class="form-control" ng-model="val.from_date_mom">
-            </input>
-            <span class="dropdown-toggle input-group-addon">
-                <div class="dropdown">
-                    <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">
-                         <i class="glyphicon glyphicon-calendar"></i>
-                    </button>
-                    <ul class="dropdown-menu" role="menu">
-                        <datetimepicker ng-model="val.from_date_mom" data-datetimepicker-config="{ dropdownSelector: '#dropdownfrom' }"/>
-                    </ul>
-                </div>
+            <span class="input-group">
+                <input type="text"
+                    class="form-control"
+                    ng-model="val.from_date"
+                    is-open="from_picker.open"
+                    datetime-picker="dd.MM.yyyy HH:mm"
+                    datepicker-options="from_picker.date_options"
+                    timepicker-options="from_picker.time_options"
+                    button-bar="button_bar"
+                    close-text="Close"
+                >
+                    <span class="input-group-btn">
+                        <button type="button" class="btn btn-default" ng-click="open_calendar($event, 'from_picker')">
+                            <i class="glyphicon glyphicon-calendar"></i>
+                        </button>
+                    </span>
+                </input>
+
             </span>
         </div>
         <div class="input-group" ng-if="show_detail">
             <span class="input-group-addon">
                  to
             </span>
-            <input type="text" class="form-control" ng-model="val.to_date_mom">
-            </input>
-            <span class="dropdown-toggle input-group-addon">
-                <div class="dropdown">
-                    <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">
-                         <i class="glyphicon glyphicon-calendar"></i>
-                    </button>
-                    <ul class="dropdown-menu" role="menu">
-                        <datetimepicker ng-model="val.to_date_mom" data-datetimepicker-config="{ dropdownSelector: '#dropdownfrom' }"/>
-                    </ul>
-                </div>
+            <span class="input-group">
+                <input type="text"
+                    class="form-control"
+                    ng-model="val.to_date"
+                    is-open="to_picker.open"
+                    datetime-picker="dd.MM.yyyy HH:mm"
+                    datepicker-options="to_picker.date_options"
+                    timepicker-options="to_picker.time_options"
+                    button-bar="button_bar"
+                    close-text="Close"
+                >
+                    <span class="input-group-btn">
+                        <button type="button" class="btn btn-default" ng-click="open_calendar($event, 'to_picker')">
+                            <i class="glyphicon glyphicon-calendar"></i>
+                        </button>
+                    </span>
+                </input>
             </span>
         </div>
     </div>

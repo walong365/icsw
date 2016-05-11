@@ -2,7 +2,7 @@
 #
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -150,7 +150,10 @@ def main():
                     # take the first one
                     dom_id = valid_ips[0].domain_tree_node_id
             if cur_dev.name.count("."):
-                new_domain = "{}.{}".format(cur_dev.name.split(".", 1)[1], cur_dnt[dom_id].full_name)
+                new_domain = "{}.{}".format(
+                    cur_dev.name.split(".", 1)[1],
+                    cur_dnt[dom_id].full_name
+                )
                 cur_dev.name = cur_dev.name.split(".")[0]
                 new_dom = cur_dnt.add_domain(new_domain)
                 # is not intermediate

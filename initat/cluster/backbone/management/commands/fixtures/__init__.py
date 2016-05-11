@@ -20,9 +20,10 @@
 """ creates all defined fixtures """
 
 
-from . import srv_fixtures, graph_fixtures
+from . import srv_fixtures, graph_fixtures, dispatch_fixtures
 
 
 def add_fixtures(**kwargs):
     srv_fixtures.add_fixtures(**kwargs)
     graph_fixtures.add_fixtures(**kwargs)
+    dispatch_fixtures.add_fixtures(**kwargs)

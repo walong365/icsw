@@ -55,7 +55,7 @@ from initat.cluster.backbone.models.config import *  # @UnusedWildImport
 from initat.cluster.backbone.models.monitoring import *  # @UnusedWildImport
 from initat.cluster.backbone.models.network import *  # @UnusedWildImport
 from initat.cluster.backbone.models.package import *  # @UnusedWildImport
-from initat.cluster.backbone.models.inventory import *  # @UnusedWildImport
+from initat.cluster.backbone.models.asset import *  # @UnusedWildImport
 from initat.cluster.backbone.models.user import *  # @UnusedWildImport
 from initat.cluster.backbone.models.background import *  # @UnusedWildImport
 from initat.cluster.backbone.models.hints import *  # @UnusedWildImport
@@ -67,9 +67,10 @@ from initat.cluster.backbone.models.selection import *  # @UnusedWildImport
 from initat.cluster.backbone.models.kpi import *  # @UnusedWildImport
 from initat.cluster.backbone.models.license import *  # @UnusedWildImport
 from initat.cluster.backbone.models.status_history import *  # @UnusedWildImport
-from initat.cluster.backbone.signals import user_changed, group_changed, \
-    bootsettings_changed, virtual_desktop_user_setting_changed, SensorThresholdChanged
-from initat.cluster.backbone.models.discovery import *  # @UnusedWildImport
+from initat.cluster.backbone.models.dispatch import *  # @UnusedWildImport
+from initat.cluster.backbone.signals import UserChanged, GroupChanged, \
+    BootsettingsChanged, VirtualDesktopUserSettingChanged, SensorThresholdChanged
+from initat.cluster.backbone.models.asset import *
 import initat.cluster.backbone.models.model_history
 
 
@@ -90,17 +91,17 @@ def bg_req_finished(*args, **kwargs):
         signal_localhost()
 
 
-@receiver(user_changed)
+@receiver(UserChanged)
 def user_changed(*args, **kwargs):
     _insert_bg_job("sync_users", kwargs["cause"], kwargs["user"])
 
 
-@receiver(group_changed)
+@receiver(GroupChanged)
 def group_changed(*args, **kwargs):
     _insert_bg_job("sync_users", kwargs["cause"], kwargs["group"])
 
 
-@receiver(virtual_desktop_user_setting_changed)
+@receiver(VirtualDesktopUserSettingChanged)
 def vdus_changed(*args, **kwargs):
     _insert_bg_job("reload_virtual_desktop_dispatcher", kwargs["cause"], kwargs["vdus"])
 
@@ -110,7 +111,7 @@ def sensor_threshold_changed(*args, **kwargs):
     _insert_bg_job("sync_sensor_threshold", kwargs["cause"], kwargs["sensor_threshold"])
 
 
-@receiver(bootsettings_changed)
+@receiver(BootsettingsChanged)
 def rcv_bootsettings_changed(*args, **kwargs):
     # not signal when bootserver is not set
     if kwargs["device"].bootserver_id:
@@ -439,8 +440,8 @@ class device(models.Model):
     name = models.CharField(max_length=192)
     # FIXME
     device_group = models.ForeignKey("device_group", related_name="device_group")
-    alias = models.CharField(max_length=384, blank=True)
-    comment = models.CharField(max_length=384, blank=True)
+    alias = models.CharField(max_length=384, blank=True, default="")
+    comment = models.CharField(max_length=384, blank=True, default="")
     mon_device_templ = models.ForeignKey("backbone.mon_device_templ", null=True, blank=True)
     mon_device_esc_templ = models.ForeignKey("backbone.mon_device_esc_templ", null=True, blank=True)
     mon_ext_host = models.ForeignKey("backbone.mon_ext_host", null=True, blank=True)
@@ -735,7 +736,7 @@ def device_post_save(sender, **kwargs):
     if "instance" in kwargs:
         _cur_inst = kwargs["instance"]
         if _cur_inst.bootserver_id:
-            bootsettings_changed.send(sender=_cur_inst, device=_cur_inst, cause="device_changed")
+            BootsettingsChanged.send(sender=_cur_inst, device=_cur_inst, cause="device_changed")
         if _cur_inst.is_meta_device:
             _stripped = strip_metadevice_name(_cur_inst.name)
             if _stripped != _cur_inst.device_group.name:
@@ -855,7 +856,8 @@ class cd_connection(models.Model):
         return "{} (via {}) {}".format(
             unicode(self.parent),
             self.connection_info,
-            unicode(self.child))
+            unicode(self.child)
+        )
 
     class Meta:
         ordering = ("parent__name", "child__name",)
@@ -882,7 +884,8 @@ def cd_connection_pre_save(sender, **kwargs):
 class device_group(models.Model):
     idx = models.AutoField(db_column="device_group_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192, blank=False)
-    description = models.CharField(max_length=384, default="")
+    # will be copied to comment of meta-device
+    description = models.CharField(max_length=384, default="", blank=True)
     # device = models.ForeignKey("device", null=True, blank=True, related_name="group_device")
     # must be an IntegerField, otherwise we have a cycle reference
     # device = models.IntegerField(null=True, blank=True)
@@ -910,6 +913,17 @@ class device_group(models.Model):
 
     def get_metadevice_name(self, name=None):
         return "METADEV_{}".format(name if name else self.name)
+
+    # not really needed
+    # @property
+    # def full_name(self):
+    #    if not self.domain_tree_node_id:
+    #        self.domain_tree_node = domain_tree_node.objects.get(Q(depth=0))
+    #        self.save()
+    #    if self.domain_tree_node.full_name:
+    #        return ".".join([self.name, self.domain_tree_node.full_name])
+    #    else:
+    #        return self.name
 
     class Meta:
         db_table = u'device_group'
@@ -961,6 +975,9 @@ def device_group_post_save(sender, **kwargs):
             for c_field in ["enabled", "domain_tree_node"]:
                 if getattr(cur_inst.device, c_field) != getattr(cur_inst, c_field):
                     setattr(cur_inst.device, c_field, getattr(cur_inst, c_field))
+                    save_meta = True
+                if cur_inst.device.comment != cur_inst.description:
+                    cur_inst.device.comment = cur_inst.description
                     save_meta = True
             if save_meta:
                 cur_inst.device.save()

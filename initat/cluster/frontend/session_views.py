@@ -26,33 +26,25 @@ import base64
 import json
 import logging
 
+import django
 from django.contrib.auth import login, logout, authenticate
-from django.core.exceptions import ValidationError
-from django.http.response import HttpResponse
-from django.core.urlresolvers import reverse
 from django.core.cache import cache
-from django.db.models import Q, Sum
-from django.http import HttpResponseRedirect
+from django.core.exceptions import ValidationError
+from django.db.models import Q
+from django.http.response import HttpResponse
+from django.middleware import csrf
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import never_cache
-from django.views.generic import View
-import django
-
-from initat.tools import config_store
-from initat.constants import GEN_CS_NAME
-from initat.cluster.backbone.models import user, login_history
-from initat.cluster.backbone.render import render_me
-from initat.cluster.frontend.helper_functions import xml_wrapper
 from django.views.decorators.csrf import csrf_exempt
-from django.middleware import csrf
+from django.views.generic import View
+
+from initat.cluster.backbone.models import user, login_history
+from initat.cluster.backbone.serializers import user_serializer
+from initat.cluster.frontend.helper_functions import xml_wrapper
+from initat.constants import GEN_CS_NAME
+from initat.tools import config_store
 
 logger = logging.getLogger("cluster.setup")
-
-
-class redirect_to_main(View):
-    @method_decorator(never_cache)
-    def get(self, request):
-        return HttpResponseRedirect(reverse("session:login"))
 
 
 class get_csrf_token(View):
@@ -83,28 +75,16 @@ def _get_login_hints():
     return _hints
 
 
-def login_page(request, **kwargs):
-    # this is checked in sess_login
-    # not longer used due to gulp
-    # request.session.set_test_cookie()
-    # store next url
-    _ckey = "_NEXT_URL_{}".format(request.META["REMOTE_ADDR"])
-    cache.set(_ckey, kwargs.get("next", ""), 15)
-    return render_me(
-        request,
-        "login.html",
-        {
-            "from_logout": kwargs.get("from_logout", False),
-            # "app_path": reverse("session:login"),
-        }
-    )()
-
-
-class sess_logout(View):
-    def get(self, request):
+class session_logout(View):
+    def post(self, request):
         from_logout = request.user.is_authenticated()
         logout(request)
-        return login_page(request, from_logout=from_logout)
+        return HttpResponse(
+            json.dumps(
+                {"logout": True}
+            ),
+            content_type="application/json"
+        )
 
 
 def _failed_login(request, user_name):
@@ -121,8 +101,9 @@ def _failed_login(request, user_name):
 def _login(request, _user_object, login_credentials=None):
     login(request, _user_object)
     login_history.login_attempt(_user_object, request, True)
-    request.session["user_vars"] =\
-        dict([(user_var.name, user_var) for user_var in _user_object.user_variable_set.all()])
+    request.session["user_vars"] = {
+        user_var.name: user_var for user_var in _user_object.user_variable_set.all()
+    }
     # for alias logins login_name != login
     if login_credentials is not None:
         real_user_name, login_password, login_name = login_credentials
@@ -155,23 +136,7 @@ class login_addons(View):
         request.xml_response["password_character_count"] = "{:d}".format(_cs["password.character.count"])
 
 
-class sess_login(View):
-    def get(self, request):
-        if request.user.is_authenticated():
-            # return HttpResponseRedirect(reverse("user:account_info"))
-            return HttpResponseRedirect(reverse("main:index"))
-        else:
-            if user.objects.all().count():  # @UndefinedVariable
-                if user.objects.all().aggregate(total_logins=Sum("login_count"))["total_logins"] == 0:
-                    first_user = authenticate(
-                        username=user.objects.all().values_list("login", flat=True)[0],  # @UndefinedVariable
-                        password="AUTO_LOGIN"
-                    )
-                    if first_user is not None:
-                        _login(request, first_user)
-                        return HttpResponseRedirect(reverse("user:account_info"))
-            return login_page(request, next=request.GET.get("next", ""))
-
+class session_login(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = json.loads(request.POST["blob"])
@@ -192,7 +157,7 @@ class sess_login(View):
             if _post.get("next_url", "").strip():
                 request.xml_response["redirect"] = _post["next_url"]
             else:
-                request.xml_response["redirect"] = reverse("main:index")
+                request.xml_response["redirect"] = "main.dashboard"
 
     @classmethod
     def _check_login_data(cls, request, username, password):
@@ -235,7 +200,9 @@ class sess_login(View):
             ) if al_list is not None and al_list.strip()
         ]
         rev_dict = {}
-        all_logins = [login_name for login_name, al_list in all_aliases]
+        all_logins = [
+            login_name for login_name, al_list in all_aliases
+        ]
         for pk, al_list in all_aliases:
             for cur_al in al_list:
                 if cur_al in rev_dict:
@@ -255,18 +222,10 @@ class sess_login(View):
 class get_user(View):
     def post(self, request):
         if request.user and not request.user.is_anonymous:
-            _user = {
-                "idx": request.user.pk,
-                "pk": request.user.pk,
-                "is_superuser": request.user.is_superuser,
-                "authenticated": True,
-                "login": request.user.login,
-                "login_name": request.session["login_name"],
-                "full_name": unicode(request.user),
-            }
+            _user = user_serializer(request.user, context={"request": request}).data
         else:
-            _user = {
-                "is_superuser": False,
-                "authenticated": False,
-            }
-        return HttpResponse(json.dumps(_user), content_type="application/json")
+            _user = user_serializer(user(), context={"request": request}).data
+        return HttpResponse(
+            json.dumps(_user),
+            content_type="application/json"
+        )

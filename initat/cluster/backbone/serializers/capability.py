@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of cluster-backbone-sql
 #
@@ -19,9 +19,10 @@
 #
 """ database definitions for monitoring """
 
+from rest_framework import serializers
+
 from initat.cluster.backbone.models import snmp_scheme, snmp_scheme_vendor, \
     snmp_scheme_tl_oid, ComCapability
-from rest_framework import serializers
 
 __all__ = [
     "snmp_scheme_serializer",
@@ -45,12 +46,26 @@ class snmp_scheme_serializer(serializers.ModelSerializer):
     snmp_scheme_vendor = snmp_scheme_vendor_serializer()
     snmp_scheme_tl_oid_set = snmp_scheme_tl_oid_serializer(many=True)
     full_name = serializers.CharField()
+    device = serializers.SerializerMethodField()
+
+    def get_device(self, obj):
+        if self.context and "device" in self.context:
+            return self.context["device"]
+        else:
+            return 0
 
     class Meta:
         model = snmp_scheme
 
 
 class ComCapabilitySerializer(serializers.ModelSerializer):
+    device = serializers.SerializerMethodField()
+
+    def get_device(self, obj):
+        if self.context and "device" in self.context:
+            return self.context["device"]
+        else:
+            return 0
 
     class Meta:
         model = ComCapability

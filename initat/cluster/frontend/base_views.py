@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# Copyright (C) 2012-2016 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -27,20 +28,22 @@ import logging
 import PIL
 from PIL import Image
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Q
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from lxml.builder import E  # @UnresolvedImport
+from lxml.builder import E
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 
 import initat.cluster.backbone.models
 from initat.cluster.backbone.models import device_variable, category, \
-    category_tree, location_gfx, DeleteRequest, device, config, mon_check_command
+    category_tree, location_gfx, DeleteRequest, device, config, mon_check_command, \
+    device_mon_location
 from initat.cluster.backbone.models.functions import can_delete_obj, get_related_models
-from initat.cluster.backbone.render import permission_required_mixin, render_me
+from initat.cluster.backbone.render import permission_required_mixin
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from initat.cluster.frontend.rest_views import rest_logging
 from initat.tools import logging_tools, process_tools, server_command
@@ -58,8 +61,8 @@ class get_gauge_info(View):
             gauge_info.append(
                 E.gauge_element(
                     gauge_dv.description,
-                    value="%d" % (gauge_dv.val_int),
-                    idx="%d" % (gauge_dv.pk),
+                    value="{:d}".format(gauge_dv.val_int),
+                    idx="{:d}".format(gauge_dv.pk),
                 )
             )
         # for testing
@@ -67,28 +70,15 @@ class get_gauge_info(View):
         request.xml_response["response"] = gauge_info
 
 
-class DeviceLocation(permission_required_mixin, View):
-    all_required_permissions = ["backbone.user.modify_category_tree"]
-
-    @method_decorator(login_required)
-    def get(self, request):
-        return render_me(
-            request,
-            "device_location.html",
-            {}
-        )()
-
-
-class DeviceCategory(permission_required_mixin, View):
-    all_required_permissions = ["backbone.user.modify_category_tree"]
-
-    @method_decorator(login_required)
-    def get(self, request):
-        return render_me(
-            request,
-            "device_category.html",
-            {}
-        )()
+# class DeviceLocation(permission_required_mixin, View):
+#    all_required_permissions = ["backbone.user.modify_category_tree"]
+#    @method_decorator(login_required)
+#    def get(self, request):
+#        return render_me(
+#            request,
+#            "device_location.html",
+#            {}
+#        )()
 
 
 class prune_category_tree(permission_required_mixin, View):
@@ -96,8 +86,27 @@ class prune_category_tree(permission_required_mixin, View):
 
     @method_decorator(xml_wrapper)
     def post(self, request):
-        category_tree().prune(mode=request.POST['mode'])
-        request.xml_response.info("tree pruned")
+        doit = True if int(request.POST.get("doit", "0")) else False
+        to_delete = category_tree().prune(mode=request.POST['mode'], doit=doit)
+        if doit:
+            request.xml_response.info(
+                "tree pruned ({})".format(
+                    logging_tools.get_plural("element", len(to_delete))
+                )
+            )
+            request.xml_response["deleted"] = E.categories(
+                *[
+                    E.category(pk="{:d}".format(_del.saved_pk)) for _del in to_delete
+                ]
+            )
+        else:
+            request.xml_response["nodes"] = len(to_delete)
+            if to_delete:
+                request.xml_response["info"] = "OK to delete {} ?".format(
+                    logging_tools.get_plural("element", len(to_delete))
+                )
+            else:
+                request.xml_response["info"] = "Nothing to prune"
 
 
 TARGET_WIDTH, TARGET_HEIGTH = (1920, 1920)
@@ -106,7 +115,7 @@ TARGET_WIDTH, TARGET_HEIGTH = (1920, 1920)
 class upload_location_gfx(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
-        _location = location_gfx.objects.get(Q(pk=request.POST["location_id"]))
+        _location = location_gfx.objects.get(Q(pk=request.POST["location_gfx_id"]))
         if _location.locked:
             request.xml_response.warn("location_gfx is locked")
         else:
@@ -124,16 +133,27 @@ class upload_location_gfx(View):
                     try:
                         _location.store_graphic(_img, _file.content_type, _file.name)
                     except:
-                        request.xml_response.critical("error storing image: {}".format(process_tools.get_except_info()), logger=logger)
+                        request.xml_response.critical(
+                            "error storing image: {}".format(
+                                process_tools.get_except_info()
+                            ),
+                            logger=logger
+                        )
                     else:
-                        request.xml_response.info("uploaded {} (type {}, size {:d} x {:d})".format(
-                            _file.name,
-                            _file.content_type,
-                            _w,
-                            _h,
-                        ))
+                        request.xml_response.info(
+                            "uploaded {} (type {}, size {:d} x {:d})".format(
+                                _file.name,
+                                _file.content_type,
+                                _w,
+                                _h,
+                            )
+                        )
                 else:
-                    request.xml_response.error("wrong content_type '{}'".format(_file.content_type))
+                    request.xml_response.error(
+                        "wrong content_type '{}'".format(
+                            _file.content_type
+                        )
+                    )
             else:
                 request.xml_response.error("need exactly one file")
 
@@ -198,121 +218,93 @@ class change_category(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
+        def remove_mon_loc(_dev, _loc):
+            # get all dmls which are not from the current location and DMLs
+            # which are not on structural entries
+            dml_set = device_mon_location.objects.exclude(
+                Q(location__physical=False)
+            ).filter(
+                Q(location=_loc) & Q(device=_dev)
+            )
+            if dml_set.count():
+                mon_loc_removed.extend(list(dml_set))
+                dml_set.delete()
+
         _post = request.POST
-        multi_mode = True if _post.get("multi", "False").lower()[0] in ["1", "t", "y"] else False
+        # import pprint
+        # pprint.pprint(_post)
+        add_cat = True if int(_post.get("set", "0").lower()) else False
         # format: [(device_idx, cat_idx), ...]
         _added, _removed = ([], [])
-        if multi_mode:
-            set_mode = True if int(_post["set"]) else False
-            sc_cat = category.objects.get(Q(pk=_post["cat_pk"]))
-            devs_added, devs_removed = ([], [])
-            for _obj in getattr(
-                initat.cluster.backbone.models, _post["obj_type"]
-            ).objects.filter(
-                Q(pk__in=json.loads(_post["obj_pks"]))
-            ).prefetch_related("categories"):
-                if set_mode and sc_cat not in _obj.categories.all():
-                    devs_added.append(_obj)
-                    _obj.categories.add(sc_cat)
-                    _remcats = [_cat for _cat in _obj.categories.all() if _cat != sc_cat and _cat.single_select()]
-                    _obj.categories.remove(*_remcats)
-                    _added.append((_obj.idx, sc_cat.idx))
-                    _removed.extend([(_obj.idx, _remcat.idx) for _remcat in _remcats])
-                elif not set_mode and sc_cat in _obj.categories.all():
-                    devs_removed.append(_obj)
-                    _removed.append((_obj.idx, sc_cat.idx))
-                    _obj.categories.remove(sc_cat)
-            request.xml_response.info(
-                u"{}: added to {}, removed from {}".format(
-                    unicode(sc_cat),
-                    logging_tools.get_plural("device", len(devs_added)),
-                    logging_tools.get_plural("device", len(devs_removed)),
+        devs_added, devs_removed, dev_ss_removed, mon_loc_removed = ([], [], [], [])
+        for sc_cat in category.objects.filter(Q(pk__in=json.loads(_post["cat_pks"]))):
+            for _dev in device.objects.filter(
+                Q(pk__in=json.loads(_post["dev_pks"]))
+            ).prefetch_related(
+                "categories"
+            ):
+                if add_cat and sc_cat not in _dev.categories.all():
+                    devs_added.append(_dev)
+                    _dev.categories.add(sc_cat)
+                    _added.append((_dev.idx, sc_cat.idx))
+                    if sc_cat.single_select:
+                        _single_del_list = [
+                            _del_cat for _del_cat in _dev.categories.all() if _del_cat != sc_cat and _del_cat.single_select
+                        ]
+                        if len(_single_del_list):
+                            dev_ss_removed.append(_dev)
+                            for _to_del in _single_del_list:
+                                _dev.categories.remove(_to_del)
+                                remove_mon_loc(_dev, _to_del)
+                                _removed.append((_dev.idx, _to_del.idx))
+                elif not add_cat and sc_cat in _dev.categories.all():
+                    devs_removed.append(_dev)
+                    _dev.categories.remove(sc_cat)
+                    remove_mon_loc(_dev, sc_cat)
+                    _removed.append((_dev.idx, sc_cat.idx))
+        _info_f = []
+        if devs_added:
+            _info_f.append(
+                "added to {}".format(
+                    logging_tools.get_plural("device", len(devs_added))
                 )
             )
-        else:
-            cur_obj = getattr(initat.cluster.backbone.models, _post["obj_type"]).objects.get(Q(pk=_post["obj_pk"]))
-            cur_sel = set(cur_obj.categories.filter(Q(full_name__startswith=_post["subtree"])).values_list("pk", flat=True))
-            new_sel = set(json.loads(_post["cur_sel"]))
-            # remove
-            to_del = [_entry for _entry in cur_sel - new_sel]
-            to_add = [_entry for _entry in new_sel - cur_sel]
-            if to_del:
-                cur_obj.categories.remove(*category.objects.filter(Q(pk__in=to_del)))
-                _removed.extend([(cur_obj.idx, _to_del) for _to_del in to_del])
-            if to_add:
-                cur_obj.categories.add(*category.objects.filter(Q(pk__in=to_add)))
-                _added.extend([(cur_obj.idx, _to_add) for _to_add in to_add])
-            request.xml_response.info(
-                "added {:d}, removed {:d}".format(
-                    len(to_add),
-                    len(to_del)
+        if devs_removed:
+            _info_f.append(
+                "removed from {}".format(
+                    logging_tools.get_plural("device", len(devs_removed))
                 )
             )
-        request.xml_response["changes"] = json.dumps({"added": _added, "removed": _removed})
+        if dev_ss_removed:
+            request.xml_response.warn(
+                "removed location from {} due to single-select policy".format(
+                    logging_tools.get_plural("device", len(dev_ss_removed)),
+                ),
+                logger
+            )
+        if mon_loc_removed:
+            request.xml_response.warn(
+                u"removed {}".format(
+                    logging_tools.get_plural("Location reference", len(mon_loc_removed))
+                ),
+                logger
+            )
 
-
-class CategoryContents(ListAPIView):
-    @method_decorator(login_required)
-    @rest_logging
-    def list(self, request, *args, **kwargs):
-        contents = []
-        try:
-            cat_db = category.objects.get(pk=request.GET['category_pk'])
-        except category.DoesNotExist:
-            # on category deletion, client often triggers a reload, so just return empty list in that case
-            pass
-        else:
-
-            # NOTE: gui currently assumes homogenous category contents, i.e. at most one of the following types:
-
-            for dev in device.objects.filter(categories=cat_db).select_related('device_group'):
-                contents.append({
-                    "pk": dev.pk,
-                    'properties': {
-                        "name": dev.full_name,
-                        "group": dev.device_group.name,
-                    },
-                    "type": "device",
-                })
-
-            for mcc in mon_check_command.objects.filter(categories=cat_db):
-                contents.append({
-                    "pk": mcc.pk,
-                    'properties': {
-                        "Check command": mcc.name
-                    },
-                    "type": "mon_check_command",
-                })
-
-            for conf in config.objects.filter(categories=cat_db):
-                contents.append({
-                    "pk": conf.pk,
-                    'properties': {
-                        "Config": conf.name,
-                    },
-                    "type": "config",
-                })
-
-            for loc_dev in device.objects.filter(device_mon_location__location=cat_db):
-                contents.append({
-                    "pk": loc_dev.pk,
-                    'properties': {
-                        "Location": loc_dev.name,
-                    },
-                    "type": "location_device",
-                })
-
-        return Response(contents)
-
-
-class KpiView(View):
-    @method_decorator(login_required)
-    def get(self, request):
-        return render_me(
-            request,
-            "kpi.html",
-            {}
-        )()
+        request.xml_response.info(
+            u"{}: {}".format(
+                unicode(sc_cat),
+                ", ".join(_info_f) or "nothing done",
+            )
+        )
+        request.xml_response["changes"] = json.dumps(
+            {
+                "added": _added,
+                "removed": _removed,
+                "dml_removed": [
+                    (entry.device_id, entry.location_id, entry.location_gfx_id, entry.idx) for entry in mon_loc_removed
+                ]
+            }
+        )
 
 
 class GetKpiSourceData(View):
@@ -390,17 +382,19 @@ class CheckDeleteObject(View):
                         )
                         refs_of_refs.update(get_related_models(referenced_object, detail=True))
 
-                    info.append({
-                        'model': related_object.model._meta.object_name,
-                        'model_verbose_name': related_object.model._meta.verbose_name.capitalize(),
-                        'field_name': related_object.field.name,
-                        'field_verbose_name': related_object.field.verbose_name.capitalize(),
-                        'null': related_object.field.null,
-                        'objects': {
-                            'num_refs_of_refs': len(refs_of_refs),
-                            'list': referenced_objects_list,
-                        },
-                    })
+                    info.append(
+                        {
+                            'model': related_object.model._meta.object_name,
+                            'model_verbose_name': related_object.model._meta.verbose_name.capitalize(),
+                            'field_name': related_object.field.name,
+                            'field_verbose_name': related_object.field.verbose_name.capitalize(),
+                            'null': related_object.field.null,
+                            'objects': {
+                                'num_refs_of_refs': len(refs_of_refs),
+                                'list': referenced_objects_list,
+                            },
+                        }
+                    )
                 related_objects_info[obj_to_delete.pk] = info
                 # print 'build 2nd level rel list', time.time() - a
             # print 'obj', obj_pk, ' took ', time.time() - a
@@ -472,3 +466,28 @@ class CheckDeletionStatus(View):
                 msg = "Deleting {}{}".format(logging_tools.get_plural("object", len(obj_pks)), additional)
 
             request.xml_response['msg_{}'.format(k)] = msg
+
+
+class CategoryReferences(ListAPIView):
+    @method_decorator(login_required)
+    @rest_logging
+    def list(self, request, *args, **kwargs):
+        all_m2ms = [
+            _f for _f in category._meta.get_fields(include_hidden=True) if _f.many_to_many and _f.auto_created
+        ]
+        _names = [_f.name for _f in all_m2ms]
+        _required = {"config", "mon_check_command", "deviceselection", "device"}
+        if set(_names) != _required:
+            raise ValidationError("Related fields for category_tree changed")
+        # not optimal, improve format
+        contents = []
+        for rel in all_m2ms:
+            for cat_id, remote_id in getattr(
+                category,
+                rel.get_accessor_name()
+            ).through.objects.all().values_list(
+                "category_id",
+                "{}_id".format(rel.name)
+            ):
+                contents.append((rel.name, cat_id, remote_id))
+        return Response(contents)

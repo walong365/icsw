@@ -140,7 +140,7 @@ class Zone(object):
             while _iter:
                 _iter = False
                 for _src, _dst in cname_dict.iteritems():
-                    if _dst in used_names and _src not in _cnames_consumed:
+                    if (_dst in used_names or _dst.endswith(".")) and _src not in _cnames_consumed:
                         _cnames_consumed.add(_src)
                         used_names.append(_src)
                         _iter = True

@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='ASCII'?>
+<config-store name="icsw.hm.pgpool_access">
+  <key-list>
+    <key type="int" name="pgpool.timeout">10</key>
+    <key type="int" name="pgpool.port">9898</key>
+    <key type="str" name="pgpool.address">localhost</key>
+    <key type="str" name="pgpool.user">user</key>
+    <key type="str" name="pgpool.password">pwd</key>
+  </key-list>
+</config-store>

@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2015 init.at
+# Copyright (C) 2012-2016 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -26,61 +26,95 @@ dashboard_module = angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular",
         "noVNC", "ui.select", "icsw.tools", "icsw.user.password", "icsw.user", "icsw.user.license",
     ]
-).controller("icswUserJobInfoCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$timeout", "$uibModal", "ICSW_URLS", "icswSimpleAjaxCall",
-    ($scope, $compile, $filter, $templateCache, Restangular, $q, $timeout, $uibModal, ICSW_URLS, icswSimpleAjaxCall)->
-        $scope.jobs_waiting = []
-        $scope.jobs_running = []
-        $scope.jobs_finished = []
-        $scope.jobinfo_valid = false
-        class jobinfo_timedelta
-            constructor: (@name, @timedelta_description) ->
-        $scope.all_timedeltas = [
-            new jobinfo_timedelta("last 15 minutes", [15, "minutes"])
-            new jobinfo_timedelta("last hour", [1, "hours"])
-            new jobinfo_timedelta("last 4 hours", [4, "hours"])
-            new jobinfo_timedelta("last day", [1, "days"])
-            new jobinfo_timedelta("last week", [1, "weeks"])
-        ]
-        $scope.set_jobinfo_timedelta = (ts) ->
-            $scope.last_jobinfo_timedelta = ts
-            jobsfrom = moment().subtract(
-                ts.timedelta_description[0],
-                ts.timedelta_description[1]
-            ).unix()
-            icswSimpleAjaxCall(
-                url      : ICSW_URLS.RMS_GET_RMS_JOBINFO
-                data     :
-                    "jobinfo_jobsfrom" : jobsfrom
-                dataType : "json"
-            ).then((json) ->
-              $scope.jobinfo_valid = true
-              $scope.jobs_running = json.jobs_running
-              $scope.jobs_waiting = json.jobs_waiting
-              $scope.jobs_finished = json.jobs_finished
-            )
-        $scope.set_jobinfo_timedelta( $scope.all_timedeltas[1] )
-        listmax = 15
-        jobidToString = (j) -> 
-            if j[1] != ""
-                return " "+j[0]+":"+j[1]
-            else
-                return " "+j[0]
-                    
-        $scope.longListToString = (l) ->
-            if l.length < listmax
-                return [jobidToString(i) for i in l].toString()
-            else
-                return (jobidToString(i) for i in l[0..listmax]).toString() + ", ..."
-]).directive("icswUserJobInfo", ["$templateCache", ($templateCache) ->
-        restrict : "EA"
-        template : $templateCache.get("icsw.user.job.info")
-        link: (scope, element, attrs) ->
-]).directive("icswUserVduOverview", ["$compile", "$window", "$templateCache", "icswTools", "ICSW_URLS", "icswSimpleAjaxCall", ($compile, $window, $templateCache, icswTools, ICSW_URLS, icswSimpleAjaxCall) ->
-        restrict : "EA"
-        template : $templateCache.get("icsw.user.vdu.overview")
+).config(["$stateProvider", ($stateProvider) ->
+    $stateProvider.state(
+        "main.dashboard",
+          {
+              url: "/dashboard"
+              templateUrl: "icsw/main/dashboard.html"
+              icswData:
+                  pageTitle: "Dashboard"
+          }
+    )
+]).directive("icswUserJobInfo",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.user.job.info")
+        controller: "icswUserJobInfoCtrl"
+    }
+]).controller("icswUserJobInfoCtrl",
+[
+    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q",
+    "$timeout", "$uibModal", "ICSW_URLS", "icswSimpleAjaxCall",
+(
+    $scope, $compile, $filter, $templateCache, Restangular, $q,
+    $timeout, $uibModal, ICSW_URLS, icswSimpleAjaxCall
+)->
+    class jobinfo_timedelta
+        constructor: (@name, @timedelta_description) ->
+
+    $scope.jobs_waiting = []
+    $scope.jobs_running = []
+    $scope.jobs_finished = []
+    $scope.jobinfo_valid = false
+
+    $scope.all_timedeltas = [
+        new jobinfo_timedelta("last 15 minutes", [15, "minutes"])
+        new jobinfo_timedelta("last hour", [1, "hours"])
+        new jobinfo_timedelta("last 4 hours", [4, "hours"])
+        new jobinfo_timedelta("last day", [1, "days"])
+        new jobinfo_timedelta("last week", [1, "weeks"])
+    ]
+
+    $scope.set_jobinfo_timedelta = (ts) ->
+        $scope.last_jobinfo_timedelta = ts
+        jobsfrom = moment().subtract(
+            ts.timedelta_description[0],
+            ts.timedelta_description[1]
+        ).unix()
+        icswSimpleAjaxCall(
+            url: ICSW_URLS.RMS_GET_RMS_JOBINFO
+            data:
+                "jobinfo_jobsfrom": jobsfrom
+            dataType: "json"
+        ).then(
+            (json) ->
+                $scope.jobinfo_valid = true
+                $scope.jobs_running = json.jobs_running
+                $scope.jobs_waiting = json.jobs_waiting
+                $scope.jobs_finished = json.jobs_finished
+        )
+    $scope.set_jobinfo_timedelta( $scope.all_timedeltas[1] )
+    listmax = 15
+    jobidToString = (j) ->
+        if j[1] != ""
+            return " "+j[0]+":"+j[1]
+        else
+            return " "+j[0]
+
+    $scope.longListToString = (l) ->
+        if l.length < listmax
+            return [jobidToString(i) for i in l].toString()
+        else
+            return (jobidToString(i) for i in l[0..listmax]).toString() + ", ..."
+
+]).directive("icswUserVduOverview",
+[
+    "$compile", "$window", "$templateCache", "icswTools", "ICSW_URLS", "icswSimpleAjaxCall",
+(
+    $compile, $window, $templateCache, icswTools, ICSW_URLS, icswSimpleAjaxCall
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.user.vdu.overview")
         link: (scope, element, attrs) ->
             scope.object = undefined
-            
+
             scope.ips_for_devices = {}
             scope.ips_loaded = false
 
@@ -93,9 +127,9 @@ dashboard_module = angular.module(
             scope.virtual_desktop_user_setting = []
             scope.$watch(attrs["object"], (new_val) ->
                 scope.object = new_val
-                    
+
                 if scope.object?
-                    scope.virtual_desktop_sessions = scope.virtual_desktop_user_setting.filter((vdus) ->  vdus.user == scope.object.idx && vdus.to_delete == false)
+                    scope.virtual_desktop_sessions = scope.virtual_desktop_user_setting.filter((vdus) -> vdus.user == scope.object.idx && vdus.to_delete == false)
                     # get all ips
                     scope.retrieve_device_ip vdus.device for vdus in scope.virtual_desktop_sessions
 
@@ -105,7 +139,7 @@ dashboard_module = angular.module(
             )
             scope.get_vnc_display_attribute_value = (geometry) ->
                 [w, h] = screen_size.parse_screen_size(geometry)
-                return "{width:"+w+",height:"+h+",fitTo:'width',}"
+                return "{width:" + w + ",height:" + h + ",fitTo:'width',}"
             scope.get_device_by_index = (index) ->
                 return _.find(scope.device, (vd) -> vd.idx == index)
             scope.get_virtual_desktop_protocol = (index) ->
@@ -124,10 +158,10 @@ dashboard_module = angular.module(
                 dummy_ip = "0.0.0.0"
                 scope.ips_for_devices[index] = dummy_ip
                 icswSimpleAjaxCall(
-                    url      : ICSW_URLS.USER_GET_DEVICE_IP
-                    data     :
-                        "device" : index
-                    dataType : "json"
+                    url: ICSW_URLS.USER_GET_DEVICE_IP
+                    data:
+                        "device": index
+                    dataType: "json"
                 ).then((json) ->
                     scope.ips_for_devices[index] = json.ip
                     if _.indexOf(scope.ips_for_devices, dummy_ip) == -1
@@ -141,100 +175,276 @@ dashboard_module = angular.module(
 
             scope.download_vdus_start_script = (vdus) ->
                 # create .vnc file (supported by at least tightvnc and realvnc on windows)
-                content = ["[Connection]\n",
-                          "Host=#{ scope.ips_for_devices[vdus.device] }:#{ vdus.effective_port }\n",
-                          "Password=#{ vdus.vnc_obfuscated_password }\n"]
+                content = [
+                    "[Connection]\n",
+                    "Host=#{ scope.ips_for_devices[vdus.device] }:#{ vdus.effective_port }\n",
+                    "Password=#{ vdus.vnc_obfuscated_password }\n"
+                ]
                 blob = new Blob(content, {type: "text/plain;charset=utf-8"});
                 # use FileSaver.js
                 saveAs(blob, "#{ scope.get_device_by_index(vdus.device).name }.vnc");
-]).controller("icswUserIndexCtrl", ["$scope", "$timeout", "$window", "ICSW_URLS", "icswAcessLevelService", "icswSimpleAjaxCall",
-    ($scope, $timeout, $window, ICSW_URLS, icswAcessLevelService, icswSimpleAjaxCall) ->
-        $scope.ICSW_URLS = ICSW_URLS
-        $scope.show_index = true
-        $scope.quick_open = true
-        $scope.ext_open = false
-        $scope.diskusage_open = true
-        $scope.vdesktop_open = true
-        $scope.jobinfo_open = true
-        $scope.show_devices = false
-        $scope.NUM_QUOTA_SERVERS = 0
-        icswSimpleAjaxCall(
-            {
-                "url": ICSW_URLS.USER_GET_NUM_QUOTA_SERVERS
-                "dataType": "json"
-            }
-        ).then(
-            (json) ->
-                $scope.NUM_QUOTA_SERVERS = json.num_quota_servers
-        )
-        $scope.has_menu_permission = icswAcessLevelService.has_menu_permission
-]).directive("indexView", ["$templateCache", "icswAcessLevelService", "icswUserLicenseDataService", ($templateCache, icswAcessLevelService, icswUserLicenseDataService) ->
-    return {
-        restrict : "EA"
-        template : $templateCache.get("icsw.user.index")
-        link : (scope, element, attrs) ->
-            scope.gridsterOpts = {
-                columns: 6
-                pushing: true
-                floating: true
-                swapping: false
-                width: 'auto'
-                colWidth: 'auto'
-                rowHeight: '200'
-                margins: [10, 10]
-                outerMargin: true
-                isMobile: true
-                mobileBreakPoint: 600
-                mobileModeEnabled: true
-                minColumns: 1
-                minRows: 2
-                maxRows: 100,
-                defaultSizeX: 2
-                defaultSizeY: 1
-                minSizeX: 1
-                maxSizeX: null
-                minSizeY: 1
-                maxSizeY: null
-                resizable: {
-                   enabled: true,
-                   handles: ['n', 'e', 's', 'w', 'ne', 'se', 'sw', 'nw']
-                },
-                draggable: {
-                   enabled: true
-                   handle: '.my-class'
-                }
-            }
-            scope.elements = [
-                { sizeX: 2, sizeY: 1, row: 0, col: 0, class: "warning", title: "Quick links", "template": "icsw.dashboard.quicklinks" },
-                { sizeX: 2, sizeY: 2, row: 0, col: 2, class: "success", title: "External links", template: "icsw.dashboard.externallinks" },
-                # Disk usage and Quota info from <ng-pluralize count="NUM_QUOTA_SERVERS" when="{'0' : 'no quota servers', 'one' : 'one quota server', 'other' : '{} quota servers'}"></ng-pluralize>
-                { sizeX: 1, sizeY: 1, row: 0, col: 4, class: "success", title: "Disk usage and Quota info ???", template: "icsw.dashboard.diskquota" },
-                { sizeX: 1, sizeY: 1, row: 0, col: 5, class: "primary", title: "Virtual desktops", template: "icsw.dashboard.virtualdesktops" },
-                { sizeX: 2, sizeY: 1, row: 1, col: 0, class: "success", title: "Job info", template: "icsw.dashboard.jobinfo" },
-            ]
-            scope.get_panel_class = (item) ->
-                return "panel-" + item.class
-            scope.$on(
-                "gridster-item-resized"
-                (item) ->
-                    # console.log "gite", item
-            )
-            scope.$watch(
-                "elements"
-                (els) ->
-                    # console.log "c", els
-                true
-            )
-            icswAcessLevelService.install(scope)
-            scope.lds = icswUserLicenseDataService
     }
-]).directive("icswDashboardElement", ["$templateCache", "$compile", ($templateCache, $compile) ->
+]).directive("icswDashboardView",
+[
+    "$templateCache",
+(
+    $templateCache,
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.dashboard.overview")
+        controller: "icswDashboardViewCtrl"
+    }
+]).controller("icswDashboardViewCtrl",
+[
+    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$timeout",
+    "icswAcessLevelService", "ICSW_URLS", "icswSimpleAjaxCall",  "icswUserLicenseDataService",
+    "icswDashboardElement", "icswDashboardContainerService", "icswUserService",
+(
+    $scope, $compile, $filter, $templateCache, Restangular, $q, $timeout,
+    icswAcessLevelService, ICSW_URLS, icswSimpleAjaxCall, icswUserLicenseDataService,
+    icswDashboardElement, icswDashboardContainerService, icswUserService,
+) ->
+    icswAcessLevelService.install($scope)
+    $scope.ICSW_URLS = ICSW_URLS
+    $scope.show_index = true
+    $scope.quick_open = true
+    $scope.ext_open = false
+    $scope.diskusage_open = true
+    $scope.vdesktop_open = true
+    $scope.jobinfo_open = true
+    $scope.show_devices = false
+    $scope.NUM_QUOTA_SERVERS = 0
+    icswSimpleAjaxCall(
+        {
+            url: ICSW_URLS.USER_GET_NUM_QUOTA_SERVERS
+            dataType: "json"
+        }
+    ).then(
+        (json) ->
+            $scope.NUM_QUOTA_SERVERS = json.num_quota_servers
+    )
+    $scope.gridsterOpts = {
+        columns: 6
+        pushing: true
+        floating: true
+        swapping: false
+        width: 'auto'
+        colWidth: 'auto'
+        rowHeight: '200'
+        margins: [10, 10]
+        outerMargin: true
+        isMobile: true
+        mobileBreakPoint: 600
+        mobileModeEnabled: true
+        minColumns: 1
+        minRows: 2
+        maxRows: 100,
+        defaultSizeX: 2
+        defaultSizeY: 1
+        minSizeX: 1
+        maxSizeX: null
+        minSizeY: 1
+        maxSizeY: null
+        resizable: {
+           enabled: true,
+           handles: ["n", 'w', 'ne', 'se', 'sw', 'nw']
+           stop: (event, element, options) ->
+               console.log "size stop", event, element, options
+        }
+        draggable: {
+           enabled: true
+           handle: '.my-class'
+           stop: (event, element, options) ->
+               console.log "drag stop", event, element, options
+        }
+    }
+    $scope.struct = {
+        # data loaded
+        data_loaded: false
+        # user
+        user: undefined
+        # elements
+        container: []
+    }
+
+    load = () ->
+        $q.all(
+            [
+                icswUserService.load($scope.$id)
+            ]
+        ).then(
+            (data) ->
+                $scope.struct.user = data[0]
+                $scope.struct.container = icswDashboardContainerService.get_container()
+                $scope.struct.container.populate($scope.struct.user)
+                $scope.struct.data_loaded = true
+                console.log $scope.struct.elements
+        )
+
+    load()
+
+    $scope.$on(
+        "gridster-item-resized"
+        (item) ->
+            # console.log "git-r", item
+    )
+    $scope.$on(
+        "gridster-resized"
+        (item) ->
+            # console.log "git-R", item
+    )
+    $scope.$on(
+        "gridster-resizable-changed"
+        (item) ->
+            # console.log "git-c", item
+    )
+    $scope.$on(
+        "gridster-draggable-changed"
+        (item) ->
+            # console.log "git-d", item
+    )
+    $scope.$on(
+        "gridster-item-transition-end"
+        (sizes, gridster) ->
+            # console.log "tchanged", sizes, gridster
+    )
+    $scope.$watch(
+        "elements"
+        (els) ->
+            # console.log "c", els
+        true
+    )
+    $scope.lds = icswUserLicenseDataService
+    $scope.has_menu_permission = icswAcessLevelService.has_menu_permission
+]).service("icswDashboardElement", [
+    "$templateCache", "$q", "$compile",
+(
+    $templateCache, $q, $compile,
+) ->
+    class icswDashboardElement
+        constructor: (@sizeX, @sizeY, @cls, @title, @template) ->
+            # camelcase is important here
+            @$$panel_class = "panel-#{@cls}"
+            @user = undefined
+
+        close: ($event) ->
+            @container.close_element(@)
+            
+        link: (scope, element) =>
+            sub_scope = scope.$new(true)
+            sub_scope.$$dashboard_element = @
+            _header = $templateCache.get("icsw.dashboard.element.title")
+            _content = $templateCache.get(@template)
+            _content = "
+<div class='panel #{@$$panel_class}' style='height: 100%;'>
+#{_header}
+#{_content}
+</div>
+"
+            element.append($compile(_content)(sub_scope))
+            sub_scope.$on("$destroy", () =>
+                console.log "DESTROY"
+                console.log @sizeX, @sizeY
+            )
+
+]).service("icswDashboardStaticList", [
+    "icswDashboardElement",
+(
+    icswDashboardElement,
+) ->
+    return [
+        new icswDashboardElement(2, 1, "warning", "Quick links", "icsw.dashboard.quicklinks")
+        new icswDashboardElement(2, 2, "success", "External links", "icsw.dashboard.externallinks")
+        # Disk usage and Quota info from <ng-pluralize count="NUM_QUOTA_SERVERS" when="{'0' : 'no quota servers', 'one' : 'one quota server', 'other' : '{} quota servers'}"></ng-pluralize>
+        new icswDashboardElement(1, 1, "success", "Disk usage and Quota info ???", "icsw.dashboard.diskquota")
+        new icswDashboardElement(1, 1, "primary", "Virtual desktops", "icsw.dashboard.virtualdesktops")
+        new icswDashboardElement(2, 1, "success", "Job info", "icsw.dashboard.jobinfo")
+        new icswDashboardElement(3, 3, "success", "Graphing", "icsw.rrd.graph")
+        new icswDashboardElement(2, 2, "danger", "Assets", "icsw/device/asset/overview")
+    ]
+]).service("icswDashboardContainer", [
+    "$q", "icswDashboardStaticList",
+(
+    $q, icswDashboardStaticList,
+) ->
+    class icswDashboardContainer
+        constructor: () ->
+            @elements = []
+            @populated = false
+            @reset()
+        
+        populate: (user) =>
+            @reset()
+            for el in icswDashboardStaticList
+                @add_element(el, user)
+            @elements_lut = _.keyBy(@elements, "element_id")
+            @open_elements = (el for el in @elements when el.$$open)
+            @populated = true
+            
+        reset: () =>
+            @element_id = 0
+            @num_total = 0
+            @num_open = 0
+            @num_close = 0
+            @elements.length = 0
+
+        add_element: (element, user) =>
+            @element_id++
+            element.container = @
+            element.element_id = @element_id
+            element.user = user
+            # default settings
+            element.$$open = true
+            @elements.push(element)
+            @num_total++
+            if element.$$open
+                @num_open++
+            else
+                @num_close++
+            return element
+            
+        close_element: (element) =>
+            if element.$$open
+                @num_close++
+                @num_open--
+                element.$$open = false
+                _.remove(@open_elements, (el) -> return el.element_id == element.element_id)
+
+        open_element: (element) =>
+            if not element.$$open
+                @num_close--
+                @num_open++
+                element.$$open = true
+                @open_elements.push(element)
+
+        reopen_closed_elements: () =>
+            (@open_element(el) for el in @elements when not el.$$open)
+
+]).service("icswDashboardContainerService", [
+    "$q", "icswDashboardContainer",
+(
+    $q, icswDashboardContainer,
+) ->
+    _elements = new icswDashboardContainer()
+
+    return {
+        get_container: () ->
+            return _elements
+
+    }
+]).directive("icswDashboardElementDisplay",
+[
+    "$templateCache", "$compile",
+(
+    $templateCache, $compile
+) ->
     return {
         restrict: "E"
+        scope:
+            db_element: "=icswDashboardElement"
         link: (scope, element, attrs) ->
-            if attrs["element"]?
-                _el_name = attrs["element"]
-                element.append($compile($templateCache.get(_el_name))(scope))
+            scope.db_element.link(scope, element)
     }
 ])
 

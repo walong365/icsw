@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2012-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2012-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -33,10 +33,11 @@ import uuid
 from collections import defaultdict
 
 import cairosvg
+import pytz
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
 from django.db.models import Q
-from django.http import HttpResponseRedirect, HttpResponse
+from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from lxml import etree
@@ -45,89 +46,23 @@ from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.response import Response
 
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
-from initat.cluster.backbone.models import device, domain_name_tree, netdevice, \
-    net_ip, peer_information, mon_ext_host, get_related_models, monitoring_hint, mon_check_command, \
-    parse_commandline, mon_check_command_special, device_group
+from initat.cluster.backbone.models import device
+from initat.cluster.backbone.models import get_related_models, mon_check_command, \
+    parse_commandline, mon_check_command_special
+from initat.cluster.backbone.models.asset import AssetPackage, AssetRun, AssetPackageVersion
+from initat.cluster.backbone.models.dispatch import ScheduleItem
 from initat.cluster.backbone.models.functions import duration
 from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListDeviceService
 from initat.cluster.backbone.models.status_history import mon_icinga_log_aggregated_host_data, \
     mon_icinga_log_aggregated_timespan, mon_icinga_log_aggregated_service_data, \
-    mon_icinga_log_raw_base, mon_icinga_log_raw_service_alert_data, mon_icinga_log_raw_host_alert_data, AlertList
-from initat.cluster.backbone.render import permission_required_mixin, render_me
+    mon_icinga_log_raw_base, mon_icinga_log_raw_service_alert_data, AlertList
 from initat.cluster.frontend.common import duration_utils
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.frontend.rest_views import rest_logging
 from initat.md_config_server.icinga_log_reader.log_reader_utils import host_service_id_util
-from initat.tools import logging_tools, process_tools, server_command
+from initat.tools import logging_tools, server_command
 
 logger = logging.getLogger("cluster.monitoring")
-
-
-class setup(permission_required_mixin, View):
-    all_required_permissions = ["backbone.mon_check_command.setup_monitoring"]
-
-    def get(self, request):
-        return render_me(
-            request, "monitoring_setup.html", {}
-        )()
-
-
-class setup_cluster(permission_required_mixin, View):
-    all_required_permissions = ["backbone.mon_check_command.setup_monitoring"]
-
-    def get(self, request):
-        return render_me(
-            request, "monitoring_setup_cluster.html", {}
-        )()
-
-
-class build_info(permission_required_mixin, View):
-    all_required_permissions = ["backbone.mon_check_command.setup_monitoring"]
-
-    def get(self, request):
-        return render_me(
-            request, "monitoring_build_info.html", {}
-        )()
-
-
-class setup_escalation(permission_required_mixin, View):
-    all_required_permissions = ["backbone.mon_check_command.setup_monitoring"]
-
-    def get(self, request):
-        return render_me(
-            request, "monitoring_setup_escalation.html", {}
-        )()
-
-
-class device_config(permission_required_mixin, View):
-    all_required_permissions = ["backbone.mon_check_command.change_monitoring"]
-
-    def get(self, request):
-        return render_me(
-            request, "monitoring_device.html", {
-                "device_object_level_permission": "backbone.device.change_monitoring",
-            }
-        )()
-
-
-class MonitoringHints(permission_required_mixin, View):
-    all_required_permissions = ["backbone.mon_check_command.change_monitoring"]
-
-    def get(self, request):
-        return render_me(
-            request, "monitoring_hints.html", {
-            }
-        )()
-
-
-class MonitoringDisk(permission_required_mixin, View):
-    all_required_permissions = ["backbone.device.change_disk"]
-
-    def get(self, request):
-        return render_me(
-            request, "monitoring_disk.html", {
-            }
-        )()
 
 
 class create_config(View):
@@ -145,19 +80,20 @@ class create_config(View):
 
 class call_icinga(View):
     @method_decorator(login_required)
-    def get(self, request):
+    def post(self, request):
         pw = request.session.get("password")
         pw = base64.b64decode(pw) if pw else "no_passwd"
-        resp = HttpResponseRedirect(
-            u"http{}://{}:{}@{}/icinga/".format(
-                "s" if request.is_secure() else "",
-                request.user.login,
-                # fixme, if no password is set (due to automatic login) use no_passwd
-                pw,
-                request.get_host()
-            )
+        _url = u"http{}://{}:{}@{}/icinga/".format(
+            "s" if request.is_secure() else "",
+            request.user.login,
+            # fixme, if no password is set (due to automatic login) use no_passwd
+            pw,
+            request.get_host()
         )
-        return resp
+        return HttpResponse(
+            json.dumps({"url": _url}),
+            content_type="application/json"
+        )
 
 
 class fetch_partition(View):
@@ -270,11 +206,17 @@ class get_node_status(View):
                             try:
                                 dev_pk = int(split[1])
                                 locked = LicenseLockListDeviceService.objects.is_device_locked(
-                                    LicenseEnum.monitoring_dashboard, dev_pk)
+                                    LicenseEnum.monitoring_dashboard,
+                                    dev_pk
+                                )
                                 if not locked:
                                     devices_used.add(dev_pk)
                             except ValueError:
-                                logger.warn("Invalid device pk in get_node_result access logging: {}".format(entry))
+                                logger.warn(
+                                    "Invalid device pk in get_node_result access logging: {}".format(
+                                        entry
+                                    )
+                                )
 
                     if not locked:
                         host_results_filtered.append(dev_res)
@@ -305,11 +247,16 @@ class get_node_status(View):
 
                     any_locked |= locked
 
-                LicenseUsage.log_usage(LicenseEnum.monitoring_dashboard, LicenseParameterTypeEnum.service,
-                                       services_used)
+                LicenseUsage.log_usage(
+                    LicenseEnum.monitoring_dashboard,
+                    LicenseParameterTypeEnum.service,
+                    services_used
+                )
 
                 if any_locked:
-                    request.xml_response.info("Some entries are on the license lock list and therefore not displayed.")
+                    request.xml_response.info(
+                        "Some entries are on the license lock list and therefore not displayed."
+                    )
 
                 # simply copy json dump
                 request.xml_response["host_result"] = json.dumps(host_results_filtered)
@@ -317,43 +264,6 @@ class get_node_status(View):
 
             else:
                 request.xml_response.error("no service or node_results", logger=logger)
-
-
-class livestatus(View):
-    @method_decorator(login_required)
-    def get(self, request):
-        return render_me(
-            request, "monitoring_livestatus.html", {}
-        )()
-
-
-class StatusHistory(permission_required_mixin, View):
-    def get(self, request):
-        return render_me(
-            request, "monitoring_status_history.html", {}
-        )()
-
-
-class Graph(permission_required_mixin, View):
-    def get(self, request):
-        return render_me(
-            request, "monitoring_graph.html", {}
-        )()
-
-
-class overview(View):
-    @method_decorator(login_required)
-    def get(self, request):
-        return render_me(
-            request, "monitoring_overview.html", {}
-        )()
-
-
-class delete_hint(View):
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        monitoring_hint.objects.get(Q(pk=_post["hint_pk"])).delete()
 
 
 class get_mon_vars(View):
@@ -439,131 +349,19 @@ class resolve_name(View):
                 request.xml_response["ip"] = _ip
 
 
-class create_device(permission_required_mixin, View):
-    all_required_permissions = ["backbone.user.modify_tree"]
-
-    @method_decorator(login_required)
-    def get(self, request):
-        return render_me(
-            request, "create_new_device.html", {}
-        )()
-
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        # domain name tree
-        dnt = domain_name_tree()
-        device_data = json.loads(_post["device_data"])
-        try:
-            cur_dg = device_group.objects.get(Q(name=device_data["device_group"]))
-        except device_group.DoesNotExist:
-            try:
-                cur_dg = device_group.objects.create(
-                    name=device_data["device_group"],
-                    domain_tree_node=dnt.get_domain_tree_node(""),
-                    description="auto created device group {}".format(device_data["device_group"]),
-                )
-            except:
-                request.xml_response.error(
-                    u"cannot create new device group: {}".format(
-                        process_tools.get_except_info()
-                    ),
-                    logger=logger
-                )
-                cur_dg = None
-            else:
-                request.xml_response.info(u"created new device group '{}'".format(unicode(cur_dg)), logger=logger)
-        else:
-            if cur_dg.cluster_device_group:
-                request.xml_response.error(
-                    u"no devices allowed in system (cluster) group",
-                    logger=logger
-                )
-                cur_dg = None
-        if cur_dg is not None:
-            if device_data["full_name"].count("."):
-                short_name, domain_name = device_data["full_name"].split(".", 1)
-                dnt_node = dnt.add_domain(domain_name)
-            else:
-                short_name = device_data["full_name"]
-                # top level node
-                dnt_node = dnt.get_domain_tree_node("")
-            try:
-                cur_dev = device.objects.get(Q(name=short_name) & Q(domain_tree_node=dnt_node))
-            except device.DoesNotExist:
-                # check image
-                if device_data["icon_name"].strip():
-                    try:
-                        cur_img = mon_ext_host.objects.get(Q(name=device_data["icon_name"]))
-                    except mon_ext_host.DoesNotExist:
-                        cur_img = None
-                    else:
-                        pass
-                try:
-                    cur_dev = device.objects.create(
-                        device_group=cur_dg,
-                        is_meta_device=False,
-                        domain_tree_node=dnt_node,
-                        name=short_name,
-                        mon_resolve_name=device_data["resolve_via_ip"],
-                        comment=device_data["comment"],
-                        mon_ext_host=cur_img,
-                    )
-                except:
-                    request.xml_response.error(
-                        u"cannot create new device: {}".format(
-                            process_tools.get_except_info()
-                        ),
-                        logger=logger
-                    )
-                    cur_dev = None
-                else:
-                    request.xml_response.info(u"created new device '{}'".format(unicode(cur_dev)), logger=logger)
-            else:
-                request.xml_response.warn(u"device {} already exists".format(unicode(cur_dev)), logger=logger)
-                cur_dev = None
-
-            if cur_dev is not None:
-                try:
-                    cur_nd = netdevice.objects.get(Q(device=cur_dev) & Q(devname='eth0'))
-                except netdevice.DoesNotExist:
-                    cur_nd = netdevice.objects.create(
-                        devname="eth0",
-                        device=cur_dev,
-                        routing=device_data["routing_capable"],
-                    )
-                    if device_data["peer"]:
-                        peer_information.objects.create(
-                            s_netdevice=cur_nd,
-                            d_netdevice=netdevice.objects.get(Q(pk=device_data["peer"])),
-                            penalty=1,
-                        )
-                try:
-                    cur_ip = net_ip.objects.get(Q(netdevice=cur_nd) & Q(ip=device_data["ip"]))
-                except net_ip.DoesNotExist:
-                    cur_ip = net_ip(
-                        netdevice=cur_nd,
-                        ip=device_data["ip"],
-                        domain_tree_node=dnt_node,
-                    )
-                    try:
-                        cur_ip.save()
-                    except:
-                        request.xml_response.error(u"cannot create IP: {}".format(process_tools.get_except_info()), logger=logger)
-                        cur_ip = None
-
-
 ########################################
 # device status history views
 class _device_status_history_util(object):
     @staticmethod
     def get_timespan_tuple_from_request(request):
         date = duration_utils.parse_date(request.GET["date"])
-        duration_type = {'day': duration.Day,
-                         'week': duration.Week,
-                         'month': duration.Month,
-                         'year': duration.Year}[request.GET['duration_type']]
+        duration_type = {
+            'day': duration.Day,
+            'week': duration.Week,
+            'month': duration.Month,
+            'year': duration.Year,
+            "decade": duration.Decade,
+        }[request.GET['duration_type']]
         start = duration_type.get_time_frame_start(date)
         end = duration_type.get_end_time_for_start(start)
         return start, end, duration_type
@@ -589,20 +387,27 @@ class _device_status_history_util(object):
         :return: dict of either {(dev_id, service_id): values} or {dev_id: values}
         """
         if for_host:
-            obj_man = mon_icinga_log_raw_host_alert_data.objects
-            trans = dict((k, v.capitalize()) for (k, v) in mon_icinga_log_aggregated_host_data.STATE_CHOICES)
+            trans = {
+                k: v.capitalize() for (k, v) in mon_icinga_log_aggregated_host_data.STATE_CHOICES
+            }
         else:
-            obj_man = mon_icinga_log_raw_service_alert_data.objects
-            trans = dict((k, v.capitalize()) for (k, v) in mon_icinga_log_aggregated_service_data.STATE_CHOICES)
+            trans = {
+                k: v.capitalize() for (k, v) in mon_icinga_log_aggregated_service_data.STATE_CHOICES
+            }
 
-        device_ids = [int(i) for i in request.GET["device_ids"].split(",")]
+        device_ids = json.loads(request.GET["device_ids"])
 
         # calculate detailed view based on all events
         start, end, _ = _device_status_history_util.get_timespan_tuple_from_request(request)
         alert_filter = Q(device__in=device_ids)
 
-        alert_list = AlertList(is_host=for_host, alert_filter=alert_filter, start_time=start, end_time=end,
-                               calc_first_after=True)
+        alert_list = AlertList(
+            is_host=for_host,
+            alert_filter=alert_filter,
+            start_time=start,
+            end_time=end,
+            calc_first_after=True
+        )
 
         return_data = {}
 
@@ -622,9 +427,21 @@ class _device_status_history_util(object):
             l = []
             for entry in amended_list:
                 if isinstance(entry, dict):
-                    l.append({'date': entry['date'], 'state': trans[entry['state']], 'msg': entry['msg']})
+                    l.append(
+                        {
+                            'date': entry['date'],
+                            'state': trans[entry['state']],
+                            'msg': entry['msg']
+                        }
+                    )
                 else:
-                    l.append({'date': entry.date, 'state': trans[entry.state], 'msg': entry.msg})
+                    l.append(
+                        {
+                            'date': entry.date,
+                            'state': trans[entry.state],
+                            'msg': entry.msg
+                        }
+                    )
 
             if not for_host:
                 # use nice service id for services
@@ -640,9 +457,14 @@ class get_hist_timespan(RetrieveAPIView):
     def retrieve(self, request, *args, **kwargs):
         timespan = _device_status_history_util.get_timespan_db_from_request(request)
         if timespan:
-            data = {'status': 'found', 'start': timespan.start_date, 'end': timespan.end_date}
+            data = {
+                'status': 'found',
+                'start': timespan.start_date, 'end': timespan.end_date
+            }
         else:
-            data = {'status': 'not found'}
+            data = {
+                'status': 'not found'
+            }
             start, end, duration_type = _device_status_history_util.get_timespan_tuple_from_request(request)
             # return most recent data type if this type is not yet finished
             try:
@@ -662,7 +484,7 @@ class get_hist_device_data(ListAPIView):
     @method_decorator(login_required)
     @rest_logging
     def list(self, request, *args, **kwargs):
-        device_ids = [int(i) for i in request.GET["device_ids"].split(",")]
+        device_ids = json.loads(request.GET.get("device_ids"))
 
         timespan_db = _device_status_history_util.get_timespan_db_from_request(request)
 
@@ -686,9 +508,11 @@ class get_hist_device_data(ListAPIView):
                     mon_icinga_log_aggregated_host_data.STATE_CHOICES_READABLE[mon_icinga_log_raw_base.STATE_UNDETERMINED]
                 )
 
-        LicenseUsage.log_usage(LicenseEnum.reporting,
-                               LicenseParameterTypeEnum.device,
-                               data_merged_state_types.iterkeys())
+        LicenseUsage.log_usage(
+            LicenseEnum.reporting,
+            LicenseParameterTypeEnum.device,
+            data_merged_state_types.iterkeys()
+        )
 
         return Response([data_merged_state_types])  # fake a list, see coffeescript
 
@@ -697,15 +521,17 @@ class get_hist_service_data(ListAPIView):
     @method_decorator(login_required)
     @rest_logging
     def list(self, request, *args, **kwargs):
-        device_ids = [int(i) for i in request.GET["device_ids"].split(",")]
+        device_ids = json.loads(request.GET.get("device_ids"))
 
         timespan_db = _device_status_history_util.get_timespan_db_from_request(request)
 
         merge_services = bool(int(request.GET.get("merge_services", 0)))
-        return_data = mon_icinga_log_aggregated_service_data.objects.get_data(devices=device_ids,
-                                                                              timespans=[timespan_db],
-                                                                              license=LicenseEnum.reporting,
-                                                                              merge_services=merge_services)
+        return_data = mon_icinga_log_aggregated_service_data.objects.get_data(
+            devices=device_ids,
+            timespans=[timespan_db],
+            license=LicenseEnum.reporting,
+            merge_services=merge_services
+        )
 
         return Response([return_data])  # fake a list, see coffeescript
 
@@ -797,3 +623,46 @@ class fetch_png_from_cache(View):
             return HttpResponse(_val, content_type="image/png")
         else:
             return HttpResponse("", content_type="image/png")
+
+
+class get_asset_list(RetrieveAPIView):
+    def get(self, request, *args, **kwargs):
+        return Response(
+            {
+                'assets': [(a.pk, a.name, [(v.idx, v.version, v.release, v.size) for v in a.assetpackageversion_set.all()]) for a in AssetPackage.objects.all()],
+            }
+        )
+
+
+class run_assets_now(View):
+    def post(self, request):
+        _dev = device.objects.get(pk=int(request.POST['pk']))
+        ScheduleItem.objects.create(
+            device=_dev,
+            source=10,
+            planned_date=datetime.datetime.now(tz=pytz.utc),
+            run_now=True,
+            dispatch_setting=None
+        )
+        return HttpResponse()
+
+
+class get_devices_for_asset(View):
+    def post(self, request, *args, **kwargs):
+        apv = AssetPackageVersion.objects.get(pk=int(request.POST['pk']))
+
+        return HttpResponse(json.dumps({'devices': list(set([ar.device.pk for ar in apv.assetrun_set.all()]))}), content_type="application/json")
+
+
+class get_assetrun_diffs(View):
+    def post(self, request):
+        ar_pk1 = request.POST['pk1']
+        ar_pk2 = request.POST['pk2']
+
+        ar1 = AssetRun.objects.get(pk=int(ar_pk1))
+        ar2 = AssetRun.objects.get(pk=int(ar_pk2))
+
+        removed = ar1.get_asset_changeset(ar2)
+        added =  ar2.get_asset_changeset(ar1)
+
+        return HttpResponse(json.dumps({'added': [str(obj) for obj in added], 'removed': [str(obj) for obj in removed]}), content_type="application/json")

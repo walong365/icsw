@@ -2,7 +2,7 @@
 #
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2005-2008,2012-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2005-2008,2012-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -22,7 +22,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from lxml import etree
 import datetime
 import os
 import re
@@ -30,7 +29,9 @@ import subprocess
 import sys
 import time
 
+from lxml import etree
 from lxml.builder import E
+
 from initat.tools import logging_tools, process_tools
 
 SITE_CONF_NAME = "lic_SITES.conf"

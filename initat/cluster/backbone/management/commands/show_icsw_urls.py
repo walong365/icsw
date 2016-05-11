@@ -2,7 +2,7 @@
 #
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2015 Andreas Lang-Nevyjel
+# Copyright (C) 2015-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -22,7 +22,6 @@
 """ shows all URLS """
 
 import re
-from optparse import make_option
 
 from django.conf import settings
 from django.core.exceptions import ViewDoesNotExist
@@ -142,4 +141,4 @@ class Command(BaseCommand):
                         }.get(_reverse, None)
                         if _url is None:
                             _url = _rewrite(url_name)
-                        print("    \"{}\": \"{}\",".format(_url, _reverse))
+                        print("        \"{}\": \"{}\",".format(_url, _reverse))

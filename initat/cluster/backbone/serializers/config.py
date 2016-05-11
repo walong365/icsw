@@ -24,7 +24,7 @@
 from rest_framework import serializers
 
 from initat.cluster.backbone.models import config_catalog, config, config_str, \
-    config_int, config_bool, config_blob, config_script
+    config_int, config_bool, config_blob, config_script, device_config
 from initat.cluster.backbone.serializers.monitoring import mon_check_command_serializer, \
     mon_check_command_nat_serializer
 
@@ -42,6 +42,7 @@ __all__ = [
     "config_blob_nat_serializer",
     "config_script_nat_serializer",
     "config_dump_serializer",
+    "device_config_serializer",
 ]
 
 
@@ -85,6 +86,12 @@ class config_script_serializer(serializers.ModelSerializer):
         model = config_script
 
 
+# should reside in __init__.py (device related)
+class device_config_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = device_config
+
+
 class config_serializer(serializers.ModelSerializer):
     config_str_set = config_str_serializer(many=True, read_only=True)
     config_int_set = config_int_serializer(many=True, read_only=True)
@@ -92,7 +99,7 @@ class config_serializer(serializers.ModelSerializer):
     config_bool_set = config_bool_serializer(many=True, read_only=True)
     config_script_set = config_script_serializer(many=True, read_only=True)
     mon_check_command_set = mon_check_command_serializer(many=True, read_only=True)
-    usecount = serializers.IntegerField(source="get_use_count", read_only=True)
+    device_config_set = device_config_serializer(many=True, read_only=True)
     # categories only as flat list, no nesting
 
     class Meta:
@@ -135,13 +142,16 @@ class config_script_nat_serializer(serializers.ModelSerializer):
 
 
 class config_dump_serializer(serializers.ModelSerializer):
-    config_str_set = config_str_nat_serializer(many=True)
-    config_int_set = config_int_nat_serializer(many=True)
-    config_blob_set = config_blob_nat_serializer(many=True)
-    config_bool_set = config_bool_nat_serializer(many=True)
-    config_script_set = config_script_nat_serializer(many=True)
-    mon_check_command_set = mon_check_command_nat_serializer(many=True)
+    config_str_set = config_str_nat_serializer(many=True, allow_null=True)
+    config_int_set = config_int_nat_serializer(many=True, allow_null=True)
+    config_blob_set = config_blob_nat_serializer(many=True, allow_null=True)
+    config_bool_set = config_bool_nat_serializer(many=True, allow_null=True)
+    config_script_set = config_script_nat_serializer(many=True, allow_null=True)
+    mon_check_command_set = mon_check_command_nat_serializer(many=True, allow_null=True)
     # categories only as flat list, no nesting
+
+    def create(self, validated_data):
+        return config(**validated_data)
 
     class Meta:
         model = config

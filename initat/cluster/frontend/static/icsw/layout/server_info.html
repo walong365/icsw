@@ -1,10 +1,35 @@
+<script type="text/ng-template" id="icsw/main/serverinfo.html">
+    <icsw-layout-server-info-overview></icsw-layout-server-info-overview>
+</script>
+
 <script type="text/ng-template" id="icsw.layout.server.info.overview">
     <uib-accordion close-others="no">
-        <uib-accordion-group is-open="is_open_roles">
+        <uib-accordion-group is-open="struct.is_open_roles">
             <uib-accordion-heading>
-                <i class="glyphicon" ng-class="{'glyphicon-chevron-down': is_open_roles, 'glyphicon-chevron-right': !is_open_roles}"></i>
-                {{ num_roles() }} valid cluster roles defined (viewed from {{ local_device }})
+                <i class="glyphicon" ng-class="{'glyphicon-chevron-down': struct.is_open_roles, 'glyphicon-chevron-right': !struct.is_open_roles}"></i>
+                {{ num_roles() }} valid cluster roles defined (viewed from {{ struct.local_device }})
+                <span class="text-warning" ng-show="struct.loading">Updating ...</span>
+                <span class="label label-danger" ng-show="struct.unroutable_config_names.length">There are {{ struct.unroutable_config_names.length }} unroutable configs</span>
             </uib-accordion-heading>
+            <uib-alert type="warning" ng-show="struct.unroutable_config_names.length">
+                <h2>Unroutable Configs</h2>
+                <table class="table table-hover table-striped" style="width:auto;">
+                    <thead>
+                        <tr>
+                            <th>Config</th>
+                            <th># devs</th>
+                            <th>devices</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr ng-repeat="conf in struct.unroutable_config_names">
+                            <td class="text-danger">{{ conf }}</td>
+                            <td class="text-danger">{{ struct.unroutable_configs[conf].length }}</td>
+                            <td>{{ struct.unroutable_configs[conf].join(", ") }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </uib-alert>
             <table class="table table-hover table-striped" style="width:auto;">
                 <thead>
                     <tr>
@@ -20,29 +45,20 @@
                         <th colspan="5">{{ role }}, {{ get_num_servers(role) }} devices</th>
                     </tr>
                     <tr ng-repeat-end ng-repeat="server in get_servers(role)">
-                        <td>
-                            {{ server[0] }}
-                        </td>
-                        <td>
-                            {{ server[4].length }}
-                        </td>
-                        <td>
-                            {{ get_config_names(server) }}
-                        </td>
-                        <td>
-                            {{ server[1] }}
-                        </td>
-                        <td>
-                            {{ server[3] }}
-                        </td>
+                        <td>{{ server[0] }}</td>
+                        <td>{{ server[4].length }}</td>
+                        <td>{{ get_config_names(server) }}</td>
+                        <td>{{ server[1] }}</td>
+                        <td>{{ server[3] }}</td>
                     </tr>
                 </tbody>
             </table>
         </uib-accordion-group>
-        <uib-accordion-group is-open="is_open_list">
+        <uib-accordion-group is-open="struct.is_open_list">
             <uib-accordion-heading>
-                <i class="glyphicon" ng-class="{'glyphicon-chevron-down': is_open_list, 'glyphicon-chevron-right': !is_open_list}"></i>
-                <ng-pluralize count="server_info_list.length" when="{'0': 'No Server results', 'one': 'One Server result', 'other': '{} Server results'}"></ng-pluralize>
+                <i class="glyphicon" ng-class="{'glyphicon-chevron-down': struct.is_open_list, 'glyphicon-chevron-right': !struct.is_open_list}"></i>
+                <ng-pluralize count="struct.server_info_list.length" when="{'0': 'No Server results', 'one': 'One Server result', 'other': '{} Server results'}"></ng-pluralize>
+                <span class="text-warning" ng-show="struct.loading">Updating ...</span>
             </uib-accordion-heading>
             <table class="table table-hover table-striped" style="width:auto;">
                 <thead>
@@ -58,7 +74,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr ng-repeat="srv_info in server_info_list" ng-class="srv_info.get_tr_class()">
+                    <tr ng-repeat="srv_info in struct.server_info_list" ng-class="srv_info.get_tr_class()">
                         <td>{{ srv_info.valid | yesno2 }}</td>
                         <td>{{ srv_info.get_name() }}</td>
                         <td>{{ srv_info.server_reply }}</td>
@@ -80,10 +96,11 @@
                 </tbody>
             </table>
         </uib-accordion-group>
-        <uib-accordion-group is-open="is_open_detail">
+        <uib-accordion-group is-open="struct.is_open_detail">
             <uib-accordion-heading>
-                <i class="glyphicon" ng-class="{'glyphicon-chevron-down': is_open_detail, 'glyphicon-chevron-right': !is_open_detail}"></i>
-                <ng-pluralize count="server_info_list.length" when="{'0': 'No Servers checked', 'one': 'One Server checked', 'other': '{} Servers checked'}"></ng-pluralize>
+                <i class="glyphicon" ng-class="{'glyphicon-chevron-down': struct.is_open_detail, 'glyphicon-chevron-right': !struct.is_open_detail}"></i>
+                <ng-pluralize count="struct.server_info_list.length" when="{'0': 'No Servers checked', 'one': 'One Server checked', 'other': '{} Servers checked'}"></ng-pluralize>
+                <span class="text-warning" ng-show="struct.loading">Updating ...</span>
             </uib-accordion-heading>
             <table class="table table-hover table-striped" style="width:auto;">
                 <thead>
@@ -99,11 +116,11 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr ng-repeat="instance in instance_list">
+                    <tr ng-repeat="instance in struct.instance_list">
                         <td>{{ instance }}</td>
                         <td>{{ get_runs_on(instance) }}</td>
                         <td>{{ server_info_list[0].get_check_source(instance) }}</td>
-                        <td ng-repeat="srv_info in server_info_list">
+                        <td ng-repeat="srv_info in struct.server_info_list">
                             <icsw-layout-server-info-instance></icsw-layout-server-info-instance>
                         </td>
                     </tr>

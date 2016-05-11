@@ -18,6 +18,7 @@
 """ SNMP schemes for SNMP relayer """
 
 import socket
+import re
 
 from initat.host_monitoring import limits
 from initat.snmp.snmp_struct import snmp_oid
@@ -78,6 +79,87 @@ class MemoryMixin(object):
             allp,
             k_str(all_total)
         )
+
+
+class host_process_scheme(SNMPRelayScheme):
+    def __init__(self, **kwargs):
+        SNMPRelayScheme.__init__(self, "host_process", **kwargs)
+        self.requests = snmp_oid("1.3.6.1.2.1.25.4.2.1", cache=True, cache_timeout=5)
+        self.parser.add_argument("--overview", default=False, action="store_true", help="overview mode [%(default)s]")
+        self.parser.add_argument("--name", default="", type=str, help="process to check [%(default)s]")
+        self.parser.add_argument("--detail", default=False, action="store_true", help="show additional info [%(default)s]")
+        self.parser.add_argument("-w", type=int, default=0, help="minimum number of processes for warning [%(default)s]")
+        self.parser.add_argument("-c", type=int, default=0, help="minimum number of processes for critical [%(default)s]")
+        self.parse_options(kwargs["options"])
+
+    def process_return(self):
+        _dict = self._reorder_dict(self.snmp_dict.values()[0])
+        # keys:
+        # 1 ... pid
+        # 2 ... name
+        # 3 ... oid (always (0, 0))
+        # 4 ... path
+        # 5 ... options
+        # 6 ... type (4 ... application 2 ... operatingSystem)
+        # 7 ... status (1 ... running, 2 ... runnable)
+        if self.opts.name:
+            _name_re = re.compile(self.opts.name)
+            # import pprint
+            # pprint.pprint(_dict)
+            _dict = {key: value for key, value in _dict.iteritems() if 2 in value and _name_re.match(value[2])}
+            _lim = limits.limits(warn_val=self.opts.w, crit_val=self.opts.c)
+            ret_state, _state_str = _lim.check_floor(len(_dict))
+            info_f = [
+                "found {} of {}".format(
+                    logging_tools.get_plural("instance", len(_dict)),
+                    self.opts.name
+                )
+            ]
+            if self.opts.detail:
+                if _dict:
+                    for _key in sorted(_dict):
+                        _value = _dict[_key]
+                        print _value
+                        info_f.append(
+                            "{}@{:d}: {} {}".format(
+                                _value[2],
+                                _value[1],
+                                _value[4],
+                                _value[5],
+                            )
+                        )
+                else:
+                    info_f.append("nothing found")
+            ret_str = ", ".join(info_f)
+            # use range_parameter in limits for comparision
+        elif self.opts.overview:
+            _type_dict = {}
+            for _entry in _dict.itervalues():
+                _type_dict.setdefault(_entry[6], []).append(_entry)
+            _info_str = ", ".join(
+                [
+                    "{}: {}".format(
+                        {
+                            4: "application",
+                            2: "operatingSystem",
+                        }.get(_key, "type {:d}".format(_key)),
+                        logging_tools.get_plural("entry", len(_type_dict[_key]))
+                    ) for _key in sorted(_type_dict.keys())
+                ]
+            )
+            ret_state, ret_str = (
+                limits.nag_STATE_OK,
+                "{:d} Processes, {}".format(
+                    len(_dict),
+                    _info_str,
+                )
+            )
+        else:
+            ret_state, ret_str = (
+                limits.nag_STATE_OK,
+                "Process tree has {}".format(logging_tools.get_plural("entry", len(_dict)))
+            )
+        return ret_state, ret_str
 
 
 class ucd_memory_scheme(SNMPRelayScheme, MemoryMixin):

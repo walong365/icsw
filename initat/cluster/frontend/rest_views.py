@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2012-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2012-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -32,11 +32,11 @@ from initat.cluster.backbone.models import get_related_models, get_change_reset_
     domain_name_tree, category_tree, device_selection, device_config, home_export_list, \
     csw_permission, netdevice, cd_connection, ext_license_state_coarse, ext_license_check_coarse, \
     ext_license_version_state_coarse, ext_license_version, ext_license_user, ext_license_client, \
-    ext_license_usage_coarse
+    ext_license_usage_coarse, peer_information
 from initat.cluster.backbone.serializers import device_serializer, \
     device_selection_serializer, partition_table_serializer_save, partition_disc_serializer_save, \
     partition_disc_serializer_create, device_config_help_serializer, device_serializer_only_boot, \
-    network_with_ip_serializer, ComCapabilitySerializer
+    network_with_ip_serializer, ComCapabilitySerializer, peer_information_serializer
 from rest_framework import mixins, generics, status, viewsets, serializers
 import rest_framework
 from rest_framework.authentication import SessionAuthentication
@@ -177,8 +177,11 @@ class rest_logging(object):
                 self.log(u"  {}".format(line))
             raise
         e_time = time.time()
-        self.log("call took {}".format(
-            logging_tools.get_diff_time_str(e_time - s_time)))
+        self.log(
+            "call took {}".format(
+                logging_tools.get_diff_time_str(e_time - s_time)
+            )
+        )
         return result
 
 
@@ -218,6 +221,9 @@ class DBPrefetchMixin(object):
 
     def _network_prefetch(self):
         return ["network_device_type", "net_ip_set"]
+
+    def _category_prefetch(self):
+        return ["config_set", "device_set", "mon_check_command_set", "deviceselection_set"]
 
     def _virtual_desktop_protocol_prefetch(self):
         return ["devices"]
@@ -387,10 +393,10 @@ class list_view(mixins.ListModelMixin,
     @rest_logging
     def get_queryset(self):
         model_name = self.model._meta.model_name
-        if model_name == "domain_tree_node":
-            return domain_name_tree()
-        elif model_name == "category":
-            return category_tree(with_ref_count=True)
+        # if model_name == "domain_tree_node":
+        #    return domain_name_tree()
+        # elif model_name == "category":
+        #    return category_tree(with_ref_count=True)
         related_fields, prefetch_fields = (
             getattr(self, "_{}_related".format(model_name), lambda: [])(),
             getattr(self, "_{}_prefetch".format(model_name), lambda: [])(),
@@ -433,9 +439,11 @@ class form_serializer(serializers.Serializer):
 class ext_peer_object(dict):
     def __init__(self, *args, **kwargs):
         dict.__init__(self, **kwargs)
-        self["fqdn"] = "{}{}".format(
+        self["full_name"] = "{}{}".format(
             self["device__name"],
-            ".{}".format(self["device__domain_tree_node__full_name"]) if self["device__domain_tree_node__full_name"] else "",
+            ".{}".format(
+                self["device__domain_tree_node__full_name"]
+            ) if self["device__domain_tree_node__full_name"] else "",
         )
 
 
@@ -446,21 +454,38 @@ class ext_peer_serializer(serializers.Serializer):
     device_group_name = serializers.CharField(source="device__device_group__name")
     devname = serializers.CharField()
     routing = serializers.BooleanField()
-    fqdn = serializers.CharField()
+    full_name = serializers.CharField()
 
 
-class netdevice_peer_list(viewsets.ViewSet):
-    display_name = "netdevice_peer_list"
+class used_peer_list(viewsets.ViewSet):
+    display_name = "used_peer_list"
 
     @rest_logging
     def list(self, request):
-        ext_list = [
+        _dev_pks = json.loads(request.GET.get("primary_dev_pks"))
+        _peers = peer_information.objects.filter(
+            Q(s_netdevice__device__in=_dev_pks) |
+            Q(d_netdevice__device__in=_dev_pks)
+        ).select_related(
+            "s_netdevice",
+            "d_netdevice",
+        )
+        _ser = peer_information_serializer(_peers, many=True)
+        return Response(_ser.data)
+
+
+class peerable_netdevice_list(viewsets.ViewSet):
+    display_name = "peerable_netdevice_list"
+
+    @rest_logging
+    def list(self, request):
+        peer_list = [
             ext_peer_object(**_obj) for _obj in netdevice.objects.filter(
                 Q(device__enabled=True) & Q(device__device_group__enabled=True)
             ).filter(
                 Q(enabled=True)
             ).filter(
-                Q(peer_s_netdevice__gt=0) | Q(peer_d_netdevice__gt=0) | Q(routing=True)
+                Q(routing=True)
             ).distinct().order_by(
                 "device__device_group__name",
                 "device__name",
@@ -479,8 +504,7 @@ class netdevice_peer_list(viewsets.ViewSet):
                 "device__domain_tree_node__full_name"
             )
         ]
-        # .filter(Q(net_ip__network__network_type__identifier="x") | Q(net_ip__network__network_type__identifier__in=["p", "o", "s", "b"])) \
-        _ser = ext_peer_serializer(ext_list, many=True)
+        _ser = ext_peer_serializer(peer_list, many=True)
         return Response(_ser.data)
 
 
@@ -514,22 +538,12 @@ class csw_object_serializer(serializers.Serializer):
 class csw_object_group_serializer(serializers.Serializer):
     content_label = serializers.CharField()
     content_type = serializers.IntegerField()
-    object_list = csw_object_serializer(many=True)
 
 
 class csw_object_group(object):
-    def __init__(self, ct_label, ct_idx, obj_list):
+    def __init__(self, ct_label, ct_idx):
         self.content_label = ct_label
         self.content_type = ct_idx
-        self.object_list = obj_list
-
-
-class csw_object(object):
-    def __init__(self, idx, name, group, tr_class):
-        self.idx = idx
-        self.name = name
-        self.group = group
-        self.tr_class = tr_class
 
 
 class min_access_levels(viewsets.ViewSet):
@@ -559,51 +573,19 @@ class csw_object_list(viewsets.ViewSet):
     @rest_logging
     def list(self, request):
         all_db_perms = csw_permission.objects.filter(Q(valid_for_object_level=True)).select_related("content_type")
-        perm_cts = ContentType.objects.filter(Q(pk__in=[cur_perm.content_type_id for cur_perm in all_db_perms]))
+        perm_cts = ContentType.objects.filter(
+            Q(pk__in=[cur_perm.content_type_id for cur_perm in all_db_perms])
+        )
         perm_cts = sorted(perm_cts, key=operator.attrgetter("name"))
         group_list = []
         for perm_ct in perm_cts:
             cur_group = csw_object_group(
                 "{}.{}".format(perm_ct.app_label, perm_ct.model_class().__name__),
                 perm_ct.pk,
-                self._get_objects(perm_ct, [ct_perm for ct_perm in all_db_perms if ct_perm.content_type_id == perm_ct.pk])
             )
             group_list.append(cur_group)
         _ser = csw_object_group_serializer(group_list, many=True)
         return Response(_ser.data)
-
-    def _get_objects(self, cur_ct, perm_list):
-        cur_model = apps.get_model(cur_ct.app_label, cur_ct.model_class().__name__)
-        _q = cur_model.objects
-        _key = "{}.{}".format(cur_ct.app_label, cur_ct.model_class().__name__)
-        if _key == "backbone.device":
-            _q = _q.select_related("device_group"). \
-                filter(Q(enabled=True, device_group__enabled=True)). \
-                order_by("-device_group__cluster_device_group", "device_group__name", "-is_meta_device", "name")
-        if _key == "backbone.user":
-            _q = _q.select_related("group")
-        return [csw_object(cur_obj.pk, self._get_name(_key, cur_obj), self._get_group(_key, cur_obj), self._tr_class(_key, cur_obj)) for cur_obj in _q.all()]
-
-    def _get_name(self, _key, cur_obj):
-        if _key == "backbone.device":
-            if cur_obj.is_meta_device:
-                return unicode(cur_obj)[8:] + (" [CDG]" if cur_obj.device_group.cluster_device_group else " [MD]")
-        return unicode(cur_obj)
-
-    def _get_group(self, _key, cur_obj):
-        if _key == "backbone.device":
-            return unicode(cur_obj.device_group)
-        elif _key == "backbone.user":
-            return unicode(cur_obj.group)
-        else:
-            return "top"
-
-    def _tr_class(self, _key, cur_obj):
-        _lt = ""
-        if _key == "backbone.device":
-            if cur_obj.is_meta_device:
-                _lt = "warning"
-        return _lt
 
 
 class device_tree_mixin(object):
@@ -623,24 +605,10 @@ class device_tree_mixin(object):
         if self.request.query_params.get("olp", ""):
             ctx["olp"] = self.request.query_params["olp"]
         _fields = []
-        if self._get_post_boolean("with_com_info", False):
-            _fields.extend(["DeviceSNMPInfo", "snmp_schemes", "com_capability_list"])
-        if self._get_post_boolean("with_disk_info", False):
-            _fields.extend(["partition_table", "act_partition_table"])
         if self._get_post_boolean("with_network", False):
             _fields.append("netdevice_set")
-        if self._get_post_boolean("with_monitoring_hint", False):
-            _fields.append("monitoring_hint_set")
         if self._get_post_boolean("with_categories", False):
             _fields.append("categories")
-        if self._get_post_boolean("with_variables", False):
-            _fields.append("device_variable_set")
-        if self._get_post_boolean("with_device_configs", False):
-            _fields.append("device_config_set")
-        if self._get_post_boolean("with_mon_locations", False):
-            _fields.append("device_mon_location_set")
-        if self._get_post_boolean("package_state", False):
-            _fields.extend(["package_device_connection_set", "latest_contact", "client_version"])
         if self._get_post_boolean("monitor_server_type", False):
             _fields.append("monitor_type")
         if _fields:
@@ -697,33 +665,35 @@ class device_tree_list(
 
     @rest_logging
     def get_queryset(self):
-        # with_variables = self._get_post_boolean("with_variables", False)
-        package_state = self._get_post_boolean("package_state", False)
         _q = device.objects
         # permission handling
         if not self.request.user.is_superuser:
-            if self.request.query_params.get("olp", ""):
-                # object permissions needed for devices, get a list of all valid pks
-                allowed_pks = self.request.user.get_allowed_object_list(self.request.query_params["olp"])
-                dg_list = list(
-                    device.objects.filter(
-                        Q(pk__in=allowed_pks)
-                    ).values_list("pk", "device_group", "device_group__device")
+            # get all pks for device model
+            allowed_pks = self.request.user.get_allowed_object_list_model("backbone.device")
+            dg_list = list(
+                device.objects.filter(
+                    Q(pk__in=allowed_pks)
+                ).values_list(
+                    "pk",
+                    "device_group",
+                    "device_group__device",
+                    "device_group__device__is_meta_device"
                 )
-                # meta_list, device group selected
-                meta_list = Q(device_group__in=[devg_idx for dev_idx, devg_idx, md_idx, dt in dg_list if dt])
-                # device list, direct selected
-                device_list = Q(
-                    pk__in=set(
-                        sum(
-                            [
-                                [dev_idx, md_idx] for dev_idx, devg_idx, md_idx, dt in dg_list if not dt
-                            ],
-                            []
-                        )
+            )
+            # meta_list, device group selected
+            meta_list = Q(device_group__in=[devg_idx for dev_idx, devg_idx, md_idx, dt in dg_list if dt])
+            # device list, direct selected
+            device_list = Q(
+                pk__in=set(
+                    sum(
+                        [
+                            [dev_idx, md_idx] for dev_idx, devg_idx, md_idx, dt in dg_list if not dt
+                        ],
+                        []
                     )
                 )
-                _q = _q.filter(meta_list | device_list)
+            )
+            _q = _q.filter(meta_list | device_list)
             if not self.request.user.has_perm("backbone.device.all_devices"):
                 _q = _q.filter(Q(device_group__in=self.request.user.allowed_device_groups.all()))
         if self._get_post_boolean("monitor_server_type", False):
@@ -788,36 +758,8 @@ class device_tree_list(
             "DeviceSNMPInfo",
             "snmp_schemes__snmp_scheme_tl_oid_set",
         )
-        if package_state:
-            _q = _q.prefetch_related(
-                "package_device_connection_set",
-                "device_variable_set",
-                "package_device_connection_set__kernel_list",
-                "package_device_connection_set__image_list",
-            )
         if self._get_post_boolean("with_categories", False):
             _q = _q.prefetch_related("categories")
-        if self._get_post_boolean("with_variables", False):
-            _q = _q.prefetch_related("device_variable_set")
-        if self._get_post_boolean("with_device_configs", False):
-            _q = _q.prefetch_related("device_config_set")
-        if self._get_post_boolean("with_mon_locations", False):
-            _q = _q.prefetch_related("device_mon_location_set")
-        if self._get_post_boolean("with_disk_info", False):
-            _q = _q.prefetch_related(
-                "partition_table__partition_disc_set__partition_set",
-                "partition_table__lvm_vg_set",
-                "partition_table__lvm_lv_set",
-                "partition_table__sys_partition_set",
-                "partition_table__new_partition_table",
-                "partition_table__act_partition_table",
-                "act_partition_table__partition_disc_set__partition_set",
-                "act_partition_table__lvm_vg_set",
-                "act_partition_table__lvm_lv_set",
-                "act_partition_table__sys_partition_set",
-                "act_partition_table__new_partition_table",
-                "act_partition_table__act_partition_table",
-            )
         if self._get_post_boolean("mark_cd_devices", False):
             _q = _q.prefetch_related(
                 "snmp_schemes",
@@ -829,18 +771,9 @@ class device_tree_list(
             )
         # ordering: at first cluster device group, then by group / is_meta_device / name
         _q = _q.order_by("-device_group__cluster_device_group", "device_group__name", "-is_meta_device", "name")
+        logger.info("device_tree_list has {}".format(logging_tools.get_plural("entry", _q.count())))
         # print _q.count(), self.request.query_params, self.request.session.get("sel_list", [])
         return _q
-
-
-class device_selection_list(APIView):
-    authentication_classes = (SessionAuthentication,)
-    permission_classes = (IsAuthenticated,)
-
-    @rest_logging
-    def get(self, request):
-        ser = device_selection_serializer([device_selection(cur_sel) for cur_sel in request.session.get("sel_list", [])], many=True)
-        return Response(ser.data)
 
 
 class device_com_capabilities(APIView):
@@ -857,6 +790,7 @@ class device_com_capabilities(APIView):
             _data.append(ComCapabilitySerializer([_cap for _cap in _dev.com_capability_list.all()], many=True).data)
         return Response(_data)
 
+# print len(REST_LIST)
 
 for src_mod, obj_name in REST_LIST:
     is_camelcase = obj_name[0].lower() != obj_name[0]

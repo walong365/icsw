@@ -1,3 +1,34 @@
+<script type="text/ng-template" id="icsw/main/imagekernel.html">
+    <uib-tabset icsw-tools-add-acl-functions>
+        <uib-tab heading="Images" ng-if="has_menu_permission('image.modify_images')">
+            <icsw-image-overview></icsw-image-overview>
+        </uib-tab>
+        <uib-tab heading="Kernels" ng-if="has_menu_permission('kernel.modify_kernels')">
+            <icsw-kernel-overview></icsw-kernel-overview>
+        </uib-tab>
+    </uib-tabset>
+</script>
+
+<script type="text/ng-template" id="icsw.image.overview">
+    <uib-alert type="warning" ng-show="struct.loading">Fetching data from server...</uib-alert>
+    <h2>
+        Images ({{ struct.image_tree.list.length }} entries),
+        <icsw-tools-button type="search" size="xs" value="Scan for images" ng-click="scan_for_images()"></icsw-tools-button>
+    </h2>
+    <table
+        st-table="entries_displayed"
+        st-safe-src="struct.image_tree.list"
+        class="table table-hover table-condensed table-striped"
+        style="width:auto;"
+    >
+        <thead icsw-image-head></thead>
+        <tbody>
+            <tr icsw-image-row ng-repeat="obj in entries_displayed" ng-class="{warning: obj.build_lock}"></tr>
+        </tbody>
+    </table>
+    <icsw-image-new-images></icsw-image-new-images>
+</script>
+
 <script type="text/ng-template" id="icsw.image.head">
     <tr>
         <th st-sort="name">Name</th>
@@ -16,10 +47,10 @@
     <td>{{ obj.name }}</td>
     <td class="text-center">{{ obj.version  }}.{{ obj.release }}</td>
     <td>{{ obj.enabled | yesno1 }}</td>
-    <td>{{ obj.architecture | array_lookup:architectures:'architecture':'---' }}</td>
+    <td>{{ struct.image_tree.arch_lut[obj.architecture].architecture }}</td>
     <td>{{ obj.sys_vendor }}, {{ obj.sys_version || "?" }}.{{ obj.sys_release || "?" }}</td>
     <td class="text-center">
-        <a href="#" tooltip="{{obj.usecount_tooltip}}" tooltip-trigger="mouseenter">
+        <a uib-tooltip="{{ obj.$$new_image }}" uib-tooltip-trigger="mouseenter">
             {{ obj.imagedevicehistory_set.length }} / {{ obj.new_image.length }}
         </a>
     </td>
@@ -41,37 +72,17 @@
     </td>
     -->
     <td ng-if="!obj.build_lock">
-        <icsw-tools-button type="delete" size="xs" ng-show="delete_ok(obj)" ng-click="delete(obj, $event)"></icsw-tools-button>
+        <icsw-tools-button type="delete" size="xs" ng-click="delete($event, obj)"></icsw-tools-button>
     </td>
 </script>
 
-<script type="text/ng-template" id="icsw.image.overview">
-    <icsw-tools-rest-table target-list="entries" config-service="icswImageOverviewService">
-        <h2>Images ({{entries.length}} entries),
-            <icsw-image-scan-button new-entries="new_entries"></icsw-image-scan-button>
-        </h2>
-        <table
-            st-table="entries_displayed"
-            st-safe-src="entries"
-            class="table table-hover table-condensed table-striped"
-            style="width:auto;"
-        >
-            <thead icsw-image-head></thead>
-            <tbody>
-                <tr icsw-image-row ng-repeat="obj in entries_displayed" ng-class="{warning: obj.build_lock}"></tr>
-            </tbody>
-        </table>
-        <icsw-image-new-images new-entries="new_entries" reload="reload"></icsw-image-new-images>
-    </icsw-tools-rest-table>
-</script>
-
-<script type="text/ng-template" id="icsw.image.new-images">
-    <div ng-show="new_entries.length > 0">
-        <h2>Images found ({{ new_entries.length}})</h2>
+<script type="text/ng-template" id="icsw.image.new.images">
+    <div ng-show="struct.new_images.length > 0">
+        <h2>Images found ({{ struct.new_images.length}})</h2>
         <table class="table table-condensed table-hover" style="width:auto;">
             <thead icsw-image-head-new></thead>
             <tbody>
-                <tr icsw-image-row-new ng-repeat="obj in new_entries | orderBy:'-identifier':true"></tr>
+                <tr icsw-image-row-new ng-repeat="obj in struct.new_images | orderBy:'-identifier':true"></tr>
             </tbody>
         </table>
     </div>
@@ -92,5 +103,32 @@
     <td>{{ obj.vendor }}, {{ obj.version }}</td>
     <td>{{ obj.arch }}</td>
     <td>{{ obj.present | yesno1 }}
-    <td><input type="button" class="btn btn-primary" value="take" ng-click="take_image(obj)" ng-show="! obj.present"/></td>
+    <td>
+        <icsw-tools-button type="create" ng-click="take_image(obj)" ng-show="! obj.present"/>
+    </td>
+</script>
+
+<script type="text/ng-template" id="icsw.image.form">
+    <form class="form-horizontal" name="form_data">
+        <h2>Image details</h2>
+        <fieldset>
+            <legend>Base data</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-3">
+                    Name
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="192" name="name" ng-model="edit_obj.name" readonly type="text"/>
+                </div>
+            </div>
+        </fieldset>
+        <div class="form-group">
+            <label class="control-label col-sm-3">
+                Enabled
+            </label>
+            <div class="controls col-sm-7">
+                <icsw-tools-yes-no flag="edit_obj.enabled"></icsw-tools-yes-no>
+            </div>
+        </div>
+    </form>
 </script>

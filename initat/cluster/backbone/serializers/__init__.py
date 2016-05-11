@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -31,7 +31,7 @@ from initat.cluster.backbone.models import device, device_selection, device_conf
 from initat.cluster.backbone.serializers.background import *  # @UnusedWildImport
 from initat.cluster.backbone.serializers.capability import *  # @UnusedWildImport
 from initat.cluster.backbone.serializers.config import *  # @UnusedWildImport
-from initat.cluster.backbone.serializers.discovery import *  # @UnusedWildImport
+from initat.cluster.backbone.serializers.dispatch import *  # @UnusedWildImport
 from initat.cluster.backbone.serializers.domain import *  # @UnusedWildImport
 from initat.cluster.backbone.serializers.graph import *  # @UnusedWildImport
 from initat.cluster.backbone.serializers.hints import *  # @UnusedWildImport
@@ -49,11 +49,6 @@ from initat.cluster.backbone.serializers.user import *  # @UnusedWildImport
 class device_variable_serializer(serializers.ModelSerializer):
     class Meta:
         model = device_variable
-
-
-class device_config_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = device_config
 
 
 class device_config_help_serializer(serializers.ModelSerializer):
@@ -89,10 +84,8 @@ class device_selection_serializer(serializers.Serializer):
 
 
 class device_group_serializer(serializers.ModelSerializer):
-    def validate(self, in_dict):
-        if "description" not in in_dict:
-            in_dict["description"] = ""
-        return in_dict
+    # not really needed
+    # full_name = serializers.CharField(read_only=True)
 
     class Meta:
         model = device_group
@@ -155,7 +148,7 @@ class device_serializer(serializers.ModelSerializer):
     is_meta_device = serializers.BooleanField(read_only=True, required=False)
     is_cluster_device_group = serializers.BooleanField(read_only=True)
     device_group_name = serializers.CharField(read_only=True)
-    access_level = serializers.SerializerMethodField()
+    # access_level = serializers.SerializerMethodField()
     access_levels = serializers.SerializerMethodField()
     root_passwd_set = serializers.BooleanField(read_only=True)
     act_partition_table = partition_table_serializer(read_only=True)
@@ -186,13 +179,14 @@ class device_serializer(serializers.ModelSerializer):
             if _to_remove in self.fields:
                 self.fields.pop(_to_remove)
 
-    def get_access_level(self, obj):
-        if "olp" in self.context:
-            return self.context["request"].user.get_object_perm_level(self.context["olp"], obj)
-        return -1
+    # no longer used / supported
+    # def get_access_level(self, obj):
+    #    if "olp" in self.context:
+    #        return self.context["request"].user.get_object_perm_level(self.context["olp"], obj)
+    #    return -1
 
     def get_access_levels(self, obj):
-        return {key: value for key, value in self.context["request"].user.get_object_access_levels(obj).iteritems()}
+        return self.context["request"].user.get_object_access_levels(obj)
 
     def get_is_cd_device(self, obj):
         return True if (
@@ -215,8 +209,7 @@ class device_serializer(serializers.ModelSerializer):
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "is_meta_device", "device_group_name", "bootserver",
             "is_cluster_device_group", "root_passwd_set", "has_active_rrds",
-            "mon_resolve_name", "access_level", "access_levels", "store_rrd_data",
-            "access_level", "access_levels", "store_rrd_data",
+            "mon_resolve_name", "access_levels", "store_rrd_data",
             # dhcp error
             "dhcp_error",
             # disk info
@@ -265,7 +258,7 @@ class device_serializer_package_state(device_serializer):
             "idx", "name", "device_group", "is_meta_device",
             "comment", "full_name", "domain_tree_node", "enabled",
             "package_device_connection_set", "latest_contact",
-            "access_level", "access_levels", "client_version",
+            "access_levels", "client_version",
         )
 
 
@@ -283,7 +276,7 @@ class device_serializer_monitoring(device_serializer):
             "monitor_checks", "mon_device_templ", "mon_device_esc_templ", "md_cache_mode",
             "act_partition_table", "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
-            "mon_resolve_name", "access_level", "access_levels", "store_rrd_data",
+            "mon_resolve_name", "access_levels", "store_rrd_data",
         )
         read_only_fields = ("act_partition_table",)
 
@@ -300,7 +293,7 @@ class device_serializer_boot(device_serializer):
     partition_table = serializers.SerializerMethodField()
     # current partition table
     act_partition_table = serializers.SerializerMethodField()
-    bootnetdevice = netdevice_serializer()
+    # bootnetdevice = netdevice_serializer()
     hoststatus_source = serializers.SerializerMethodField()
     # uptime = serializers.Field(source="get_uptime")
     # uptime_valid = serializers.Field(source="uptime_valid")
@@ -386,7 +379,7 @@ class device_serializer_boot(device_serializer):
     class Meta:
         model = device
         fields = (
-            "idx", "name", "full_name", "device_group_name", "access_level", "access_levels",
+            "idx", "name", "full_name", "device_group_name", "access_levels",
             # meta-fields
             "hoststatus_source", "network", "net_state", "hoststatus_str",
             # target state
@@ -398,7 +391,7 @@ class device_serializer_boot(device_serializer):
             # kernel
             "new_kernel", "act_kernel", "stage1_flavour", "kernel_append",
             # boot device
-            "dhcp_mac", "dhcp_write", "dhcp_written", "dhcp_error", "bootnetdevice", "bootnetdevice",
+            "dhcp_mac", "dhcp_write", "dhcp_written", "dhcp_error", "bootnetdevice",
             # connections
             "master_connections", "slave_connections",
         )

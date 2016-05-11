@@ -22,6 +22,8 @@ import marshal
 import os
 import re
 import time
+import bz2
+import pickle
 
 from initat.host_monitoring import hm_classes
 from initat.host_monitoring import limits
@@ -65,7 +67,7 @@ class rpmlist_command(hm_classes.hm_command):
             )
             srv_com["root_dir"] = rpm_root_dir
             srv_com["format"] = "deb" if is_debian else "rpm"
-            srv_com["pkg_list"] = base64.b64encode(marshal.dumps(ret_dict))
+            srv_com["pkg_list"] = base64.b64encode(bz2.compress(pickle.dumps(ret_dict)))
         else:
             srv_com["result"].set_result(
                 "error getting list: {:d}".format(cur_stat),
@@ -73,7 +75,7 @@ class rpmlist_command(hm_classes.hm_command):
             )
 
     def interpret(self, srv_com, cur_ns):
-        r_dict = marshal.loads(base64.b64decode(srv_com["pkg_list"].text))
+        r_dict = pickle.loads(bz2.decompress(base64.b64decode(srv_com["pkg_list"].text)))
         root_dir = srv_com["root_dir"].text
         in_format = srv_com["format"].text
         out_f = logging_tools.new_form_list()

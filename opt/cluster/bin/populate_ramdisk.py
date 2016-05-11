@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001-2010,2012,2015 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2010,2012,2015-2016 Andreas Lang-Nevyjel
 #
 # this file is part of cluster-backbone
 #
@@ -19,6 +19,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+
 """ generates the inital ramdisk for clusterboot """
 
 import os

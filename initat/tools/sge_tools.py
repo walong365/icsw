@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2008,2012-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2012-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -30,9 +30,9 @@ import time
 import uuid
 from StringIO import StringIO
 
-import zmq  # @UnresolvedImport
+import zmq
 from lxml import etree
-from lxml.builder import E  # @UnresolvedImport
+from lxml.builder import E
 
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import logging_tools, process_tools, server_command
@@ -686,7 +686,9 @@ class sge_info(object):
                     logging_tools.LOG_LEVEL_ERROR
                 )
             if kwargs.get("simple_split", False) and not c_stat:
-                c_out = [line.split(None, 1) for line in c_out.split("\n") if len(line.split(None, 1)) == 2]
+                c_out = [
+                    line.split(None, 1) for line in c_out.split("\n") if len(line.split(None, 1)) == 2
+                ]
         else:
             c_stat, c_out = (1, "{} does not exist".format(base_com))
             self.log(c_out, logging_tools.LOG_LEVEL_ERROR)
@@ -787,33 +789,49 @@ class sge_info(object):
             else:
                 cur_job.attrib["full_id"] = cur_job.attrib["name"]
         for state_el in all_qhosts.xpath(".//queue/queuevalue[@name='state_string']", smart_strings=False):
-            state_el.addnext(E.queuevalue(",".join(["({}){}".format(
-                cur_state,
-                {
-                    "-": "-",
-                    "u": "unknown",
-                    "a": "alarm",
-                    "A": "alarm",
-                    "C": "calendar suspended",
-                    "s": "suspended",
-                    "S": "subordinate",
-                    "d": "disabled",
-                    "D": "disabled",
-                    "E": "error"
-                }.get(cur_state, cur_state)[1:]) for cur_state in state_el.text or "-"]),
-                name="long_state_string")
+            state_el.addnext(
+                E.queuevalue(
+                    ",".join(
+                        [
+                            "({}){}".format(
+                                cur_state,
+                                {
+                                    "-": "-",
+                                    "u": "unknown",
+                                    "a": "alarm",
+                                    "A": "alarm",
+                                    "C": "calendar suspended",
+                                    "s": "suspended",
+                                    "S": "subordinate",
+                                    "d": "disabled",
+                                    "D": "disabled",
+                                    "E": "error"
+                                }.get(cur_state, cur_state)[1:]
+                            ) for cur_state in state_el.text or "-"
+                        ]
+                    ),
+                    name="long_state_string"
+                )
             )
         for qtype_el in all_qhosts.xpath(".//queue/queuevalue[@name='qtype_string']", smart_strings=False):
-            qtype_el.addnext(E.queuevalue(",".join(["({}){}".format(
-                cur_qtype,
-                {
-                    "B": "Batch",
-                    "I": "Interactive",
-                    "C": "Checkpointing",
-                    "P": "Parallel",
-                    "T": "Transfer"
-                }[cur_qtype][1:]) for cur_qtype in qtype_el.text or "-"]),
-                name="long_qtype_string")
+            qtype_el.addnext(
+                E.queuevalue(
+                    ",".join(
+                        [
+                            "({}){}".format(
+                                cur_qtype,
+                                {
+                                    "B": "Batch",
+                                    "I": "Interactive",
+                                    "C": "Checkpointing",
+                                    "P": "Parallel",
+                                    "T": "Transfer"
+                                }[cur_qtype][1:]
+                            ) for cur_qtype in qtype_el.text or "-"
+                        ]
+                    ),
+                    name="long_qtype_string"
+                )
             )
         return all_qhosts
 
@@ -861,22 +879,31 @@ class sge_info(object):
                     cur_job.append(job_info)
         self._add_stdout_stderr_info(all_jobs)
         for state_el in all_jobs.xpath(".//job_list/state", smart_strings=False):
-            state_el.addnext(E.state_long(",".join(["({}){}".format(
-                cur_state,
-                {
-                    "q": "queued",
-                    "d": "deleted",
-                    "h": "hold",
-                    "r": "running",
-                    "R": "Restarted",
-                    "s": "suspended",
-                    "S": "Subordinated",
-                    "t": "transfering",
-                    "T": "Threshold",
-                    "w": "waiting",
-                    "o": "orphaned",
-                    "E": "Error"
-                }.get(cur_state, cur_state)[1:]) for cur_state in state_el.text or "-"])))
+            state_el.addnext(
+                E.state_long(
+                    ",".join(
+                        [
+                            "({}){}".format(
+                                cur_state,
+                                {
+                                    "q": "queued",
+                                    "d": "deleted",
+                                    "h": "hold",
+                                    "r": "running",
+                                    "R": "Restarted",
+                                    "s": "suspended",
+                                    "S": "Subordinated",
+                                    "t": "transfering",
+                                    "T": "Threshold",
+                                    "w": "waiting",
+                                    "o": "orphaned",
+                                    "E": "Error"
+                                }.get(cur_state, cur_state)[1:]
+                            ) for cur_state in state_el.text or "-"
+                        ]
+                    )
+                )
+            )
         for node_name, attr_name in [
             ("JAT_start_time", "start_time"),
             ("JB_submission_time", "submit_time")
@@ -950,7 +977,12 @@ class sge_info(object):
         return self.__queue_lut.itervalues()
 
     def get_job(self, j_id, default=None):
-        return self.__job_lut.get(j_id, default)
+        # for strange errors happening at LWN
+        try:
+            # hasattr on private entries does not work
+            return self.__job_lut.get(j_id, default)
+        except:
+            return default
 
     def build_luts(self):
         # build look up tables for fast processing
@@ -1425,7 +1457,16 @@ def build_node_list(s_info, options):
     else:
         d_list = []
         for act_q in s_info.get_all_queues():
-            d_list.extend([(act_q.attrib["name"], h_name.text) for h_name in act_q.findall(".//host") if h_name.text != "NONE"])
+            d_list.extend(
+                [
+                    (act_q.attrib["name"], h_text) for h_text in sorted(
+                        [
+                            h_name.text for h_name in act_q.findall(".//host") if h_name.text != "NONE"
+                        ]
+                    )
+                ]
+            )
+        # node_sort still needed ?
         d_list = sorted(d_list, key=lambda node: node[1 if options.node_sort else 0])
         if options.queue_name:
             d_list = [(_q_name, _d_name) for _q_name, _d_name in d_list if _q_name == options.queue_name]
@@ -1436,10 +1477,18 @@ def build_node_list(s_info, options):
             act_q_list = [_entry for _entry in act_q_list if _entry is not None]
             s_name = act_h.get("short_name")
             m_queue_list = [act_h.find("queue[@name='{}']".format(act_q.attrib["name"])) for act_q in act_q_list]
-            if options.suppress_empty and all([int(m_queue.findtext("queuevalue[@name='slots_used']")) == 0 for m_queue in m_queue_list]):
+            if options.suppress_empty and all(
+                [
+                    int(m_queue.findtext("queuevalue[@name='slots_used']")) == 0 for m_queue in m_queue_list
+                ]
+            ):
                 continue
             if options.show_nonstd:
-                if all([m_queue.findtext("queuevalue[@name='state_string']") not in [""] for m_queue in m_queue_list]):
+                if all(
+                    [
+                        m_queue.findtext("queuevalue[@name='state_string']") not in [""] for m_queue in m_queue_list
+                    ]
+                ):
                     if all(
                         [
                             m_queue.findtext("queuevalue[@name='state_string']") == "a" for m_queue in m_queue_list
@@ -1711,17 +1760,35 @@ def build_node_list(s_info, options):
             if options.show_complexes:
                 cur_node.append(
                     E.complex(
-                        ",".join(sorted(set(act_q.xpath("complex_values/conf_var[not(@host) or @host='{}']/@name".format(
-                            act_h.get("short_name")
-                        ), smart_strings=False))))
+                        ",".join(
+                            sorted(
+                                set(
+                                    act_q.xpath(
+                                        "complex_values/conf_var[not(@host) or @host='{}']/@name".format(
+                                            act_h.get("short_name")
+                                        ),
+                                        smart_strings=False
+                                    )
+                                )
+                            )
+                        )
                     )
                 )
             if options.show_pe:
                 cur_node.append(
                     E.pe_list(
-                        ",".join(sorted(set(act_q.xpath("pe_list/conf_var[not(@host) or @host='{}']/@name".format(
-                            act_h.get("short_name")
-                        ), smart_strings=False))))
+                        ",".join(
+                            sorted(
+                                set(
+                                    act_q.xpath(
+                                        "pe_list/conf_var[not(@host) or @host='{}']/@name".format(
+                                            act_h.get("short_name")
+                                        ),
+                                        smart_strings=False
+                                    )
+                                )
+                            )
+                        )
                     )
                 )
             if options.show_memory:
@@ -1743,12 +1810,24 @@ def build_node_list(s_info, options):
             if options.show_acl:
                 for ref_name, header_name in [("user_list", "userlists"),
                                               ("project", "projects")]:
-                    pos_list = " or ".join(act_q.xpath(".//{}s/conf_var[not(@host) or @host='{}']/@name".format(
-                        ref_name,
-                        act_h.get("short_name")), smart_strings=False))
-                    neg_list = " or ".join(act_q.xpath(".//x{}s/conf_var[not(@host) or @host='{}']/@name".format(
-                        ref_name,
-                        act_h.get("short_name")), smart_strings=False))
+                    pos_list = " or ".join(
+                        act_q.xpath(
+                            ".//{}s/conf_var[not(@host) or @host='{}']/@name".format(
+                                ref_name,
+                                act_h.get("short_name")
+                            ),
+                            smart_strings=False
+                        )
+                    )
+                    neg_list = " or ".join(
+                        act_q.xpath(
+                            ".//x{}s/conf_var[not(@host) or @host='{}']/@name".format(
+                                ref_name,
+                                act_h.get("short_name")
+                            ),
+                            smart_strings=False
+                        )
+                    )
                     if not pos_list and not neg_list:
                         acl_str = "all"
                     elif not neg_list:

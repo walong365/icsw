@@ -1,14 +1,21 @@
 #!/bin/bash
 
 _debug=1
+<<<<<<< HEAD
 _localstatic=0
 _nostatic=0
 _insecure=0
+=======
+>>>>>>> master-gulp
 
 function print_help {
     echo "usage:"
     echo
+<<<<<<< HEAD
     echo "$0 [--nostatic] [--localstatic] [-h] [[ EXTRA_OPTIONS ]]"
+=======
+    echo "$0 [-h] [[ EXTRA_OPTIONS ]]"
+>>>>>>> master-gulp
     echo
     exit -1
 }
@@ -17,6 +24,7 @@ EXTRA_OPTIONS=""
 
 while (( "$#" )) ; do
     case "$1" in
+<<<<<<< HEAD
         "--nostatic")
             _nostatic=1
             ;;
@@ -25,6 +33,8 @@ while (( "$#" )) ; do
             _insecure=1
             _debug=0
             ;;
+=======
+>>>>>>> master-gulp
         "-h")
             print_help
             ;;
@@ -38,6 +48,7 @@ done
 RSOPTIONS="--traceback"
 
 [ "${_debug}" = "1" ] && export DEBUG_WEBFRONTEND=1
+<<<<<<< HEAD
 [ "${_localstatic}" == "1" ] && export LOCAL_STATIC=1
 [ "${_insecure}" == "1" ] && RSOPTIONS="${RSOPTIONS} --insecure"
 
@@ -52,14 +63,9 @@ if [ "${_nostatic}" == "0" ] ; then
     ./manage.py collectstatic --noinput -c > /dev/null
     echo "done"
 fi
+=======
+>>>>>>> master-gulp
 
-if [ "${_gulp}" == "1" ] ; then
-    echo "special gulp-mode, no static handling via django"
-else
-    all_urls=$(dirname $0)/frontend/templates/all_urls.html
-    echo -ne "writing URLS to ${all_urls} ... "
-    ./manage.py show_icsw_urls > ${all_urls}
-    echo "done"
-fi
+echo "settings: DEBUG=${_debug}, RSOPTIONS='${RSOPTIONS}', EXTRA_OPTIONS='${EXTRA_OPTIONS}'"
 
 ./manage.py runserver ${RSOPTIONS} ${EXTRA_OPTIONS} 0.0.0.0:8080

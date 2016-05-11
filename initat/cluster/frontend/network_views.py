@@ -1,7 +1,6 @@
-#!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -36,29 +35,11 @@ from django.views.generic import View
 from networkx.readwrite import json_graph
 
 from initat.cluster.backbone.models import device, peer_information, network, network_type
-from initat.cluster.backbone.render import permission_required_mixin, render_me
+from initat.cluster.backbone.render import permission_required_mixin
 from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.tools import config_tools, ipvx_tools, logging_tools
 
 logger = logging.getLogger("cluster.network")
-
-
-class device_network(View):
-    @method_decorator(login_required)
-    def get(self, request):
-        return render_me(
-            request, "device_network.html", {
-                "device_object_level_permission": "backbone.device.change_network",
-            }
-        )()
-
-
-class show_cluster_networks(permission_required_mixin, View):
-    all_required_permissions = ["backbone.network.modify_network"]
-
-    def get(self, request):
-        return render_me(request, "cluster_networks.html", {
-        })()
 
 
 class json_network(View):
@@ -69,21 +50,21 @@ class json_network(View):
     def post(self, request):
         _post = request.POST
         graph_mode = _post["graph_sel"]
-        dev_list = [int(value.split("__")[1]) for value in request.session.get("sel_list", [])]
+        dev_list = json.loads(_post["devices"])
         logger.info(
             "drawing network, mode is {}, {}".format(
                 graph_mode,
                 logging_tools.get_plural("device", len(dev_list)),
             )
         )
-        r_obj = config_tools.topology_object(
+        r_obj = config_tools.TopologyObject(
             self.log,
             graph_mode,
             dev_list=dev_list,
             only_allowed_device_groups=True,
             user=request.user
         )
-        r_obj.add_full_names()
+        # r_obj.add_full_names()
         json_obj = json.dumps(json_graph.node_link_data(r_obj.nx))
         # import time
         # time.sleep(10)
@@ -247,16 +228,10 @@ class copy_network(View):
             request.xml_response.error("no target_devices", logger)
 
 
-class get_domain_name_tree(permission_required_mixin, View):
-    all_required_permissions = ["backbone.user.modify_domain_name_tree"]
-
-    def get(self, request):
-        return render_me(request, "domain_name_tree.html", {})()
-
-
 class get_network_clusters(permission_required_mixin, View):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        logger.log(log_level, "[jsn] %s" % (what))
+        logger.log(log_level, "[jsn] {}".format(what))
+
     all_required_permissions = []
 
     def post(self, request):

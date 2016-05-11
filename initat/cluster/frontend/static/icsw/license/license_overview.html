@@ -1,24 +1,142 @@
+<script type="text/ng-template" id="icsw/main/rms/licoverview.html">
+    <icsw-license-live-view></icsw-license-live-view>
+</script>
+
+<script type="text/ng-template" id="icsw.license.liveview">
+    <uib-accordion close-others="no" ng-show="lic_overview.length">
+        <uib-accordion-group is-open="overview_open">
+            <uib-accordion-heading>
+                <div class="row">
+                    <div class="col-md-2">
+                        <i class="glyphicon" ng-class="{'glyphicon-chevron-down': overview_open, 'glyphicon-chevron-right': !overview_open}"></i>
+                        License overview ({{ lic_overview.length }} entries)
+                    </div>
+                    <div class="col-md-8">
+                    </div>
+                </div>
+            </uib-accordion-heading>
+            <table class="table table-condensed table-hover table-striped" style="width:auto;" ng-show="lic_overview.length">
+                <thead>
+                    <tr class="info">
+                        <th>License</th>
+                        <th>Flags</th>
+                        <th>used</th>
+                        <th>reserved</th>
+                        <th>free</th>
+                        <th>total</th>
+                        <th>Cluster</th>
+                        <th>external</th>
+                        <th>graph</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr ng-repeat="ov in lic_overview">
+                        <td>{{ ov.name }}</td>
+                        <td>
+                            <span class="label label-primary" ng-show="ov.sge_used">RMS</span>
+                        </td>
+                        <td class="text-right">{{ ov.used }}</td>
+                        <td class="text-right">{{ ov.reserved }}</td>
+                        <td class="text-right">{{ ov.free }}</td>
+                        <td class="text-right">{{ ov.total }}</td>
+                        <td class="text-right">{{ ov.sge_used }}</td>
+                        <td class="text-right">{{ ov.external_used }}</td>
+                        <td>
+                            <div style="width:200px;height:10px;margin-bottom:0px;" ng-show="ov.total">
+                                <icsw-rms-license-graph license="ov"></icsw-rms-license-graph>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </uib-accordion-group>
+    </uib-accordion>
+    <h2>Licenses from Licenseserver: {{ licenses.length }}</h2>
+    <uib-accordion close-others="no" ng-show="licenses.length">
+        <uib-accordion-group ng-repeat="license in licenses" is-open="license.open">
+            <uib-ccordion-heading>
+                <div class="row">
+                    <div class="col-md-2">
+                    <i class="glyphicon" ng-class="{'glyphicon-chevron-down': license.open, 'glyphicon-chevron-right': !license.open}"></i>
+                    {{ license.name }}
+                    </div>
+                    <div class="col-md-8">
+                        <span class="label label-warning" ng-show="license.used">{{ license.used }} used</span>
+                        <span class="label label-success" ng-show="license.free">{{ license.free }} free</span>
+                        <span class="label label-critical" ng-show="license.reserved">{{ license.reserved }} free</span>
+                        <span class="label label-primary">{{ license.issued }} issued</span>
+                    </div>
+                </div>
+            </uib-ccordion-heading>
+            <h4 ng-show="!license.used">No licenses in use</h4>
+            <table class="table table-condensed table-hover table-striped" style="width:auto;" ng-show="license.used">
+                <thead>
+                    <tr class="info">
+                        <th>Vendor</th>
+                        <th>(Version)</th>
+                        <th>User</th>
+                        <th>total licenses</th>
+                        <th>Client</th>
+                        <th>(Version)</th>
+                        <th>#</th>
+                        <th colspan="2">checkout time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr ng-repeat="usage in license.all_usages">
+                        <td>{{ usage.version.vendor }}</td>
+                        <td>{{ usage.version.version }}</td>
+                        <td>{{ usage.user }}</td>
+                        <td class="text-right">{{ usage.user_usage }}</td>
+                        <td>{{ usage.client_long }}</td>
+                        <td>{{ usage.client_version }}</td>
+                        <td>{{ usage.num }}</td>
+                        <td>{{ usage.absolute_co }}</td>
+                        <td>{{ usage.relative_co }}</td>
+                    </tr>
+                </tbody>
+            </table>
+            <ul class="list-group" ng-show="license.versions.length && 0">
+                <li ng-repeat="version in license.versions" class="list-group-item">
+                    {{ version.vendor }} {{ version.version }}
+                    <ul class="list-group" ng-show="version.usages.length">
+                        <li ng-repeat="usage in version.usages" class="list-group-item">
+                            {{ usage.client_short }} {{ usage.user }} {{ usage.num }}
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+        </uib-accordion-group>
+    </uib-accordion>
+    <uib-accordion close-others="no" ng-show="servers.length">
+        <uib-accordion-group is-open="server_open">
+            <uib-accordion-heading>
+                <i class="glyphicon" ng-class="{'glyphicon-chevron-down': server_open, 'glyphicon-chevron-right': !server_open}"></i>
+                License servers: {{ servers.length }}
+            </uib-accordion-heading>
+            <ul class="list-group" ng-show="servers.length">
+                <li ng-repeat="server in servers" class="list-group-item">
+                    {{ server.info }}
+                </li>
+            </ul>
+        </uib-accordion-group>
+    </uib-accordion>
+</script>
 
 <script type="text/ng-template" id="icsw.license.overview">
     <div class="container-fluid">
         <div class="row">
-
             <div class="col-md-2">
-
                 <div class="panel panel-default">
-
                     <div class="panel-heading">
                         <h3 class="panel-title">
                             Time range
                         </h3>
                     </div>
-
                     <div class="panel-body">
-
                         <p>
                             <button type="button" ng-class="multi_view && 'btn btn-small btn-warning' || 'btn btn-small'" ng-click="multi_view = !multi_view" title="show data for current year, month and day side by side">Multi view</button>
                         </p>
-
                         <div ng-show="!multi_view"> <!-- this must not be an ng-if, otherwise data binding breaks -->
 
                             <div class="form-group" style="margin-bottom: 0px">
@@ -43,10 +161,10 @@
                                             {{timerange}} <span class="caret"></span>
                                         </button>
                                         <ul class="dropdown-menu">
-                                            <li ng-click="set_timerange('day')"><a href="#">day</a></li>
-                                            <li ng-click="set_timerange('week')"><a href="#">week</a></li>
-                                            <li ng-click="set_timerange('month')"><a href="#">month</a></li>
-                                            <li ng-click="set_timerange('year')"><a href="#">year</a></li>
+                                            <li ng-click="set_timerange('day')"><a>day</a></li>
+                                            <li ng-click="set_timerange('week')"><a>week</a></li>
+                                            <li ng-click="set_timerange('month')"><a>month</a></li>
+                                            <li ng-click="set_timerange('year')"><a>year</a></li>
                                             <!-- values parsed by rest_views.py -->
                                         </ul>
                                     </div>
@@ -86,7 +204,7 @@
                         <div ng-repeat="li in ext_license_list">
                             <input type="button" ng-class="get_li_sel_class(li)" ng-click="toggle_li_sel(li)" value="sel">
                             <!-- <input type="checkbox" id="cb_{{li.idx}}" ng-model="li.selected" ng-change="license_select_change()"> -->
-                            <label for="cb_{{li.idx}}">{{li.name}} {{li.usage}}</label>
+                                <label for="cb_{{li.idx}}">{{li.name}} {{li.usage}}</label>
                             </input>
                         </div>
                         <div ng-show="ext_license_list.length == 0">
@@ -124,7 +242,7 @@
                                 </tr>
                             </table>
                         </div>
-                     <div>
+                     </div>
                  </div>
             </div>
         </div>

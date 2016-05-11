@@ -1,72 +1,79 @@
-
 <script type="text/ng-template" id="icsw.discovery.event_log">
     <h2>
         Event Log
+        <span class="struct.device_pks_ordered.leng"> for {{ struct.device_pks_ordered.length }} devices</span>
+        <span class="text-warning" ng-show="struct.loading">Loading initial data...</span>
     </h2>
 
-    <uib-alert type="danger" ng-if="error">
-        <strong>
-            {{error}}
-        </strong>
+    <uib-alert type="danger" ng-if="struct.error">
+        <strong>{{ struct.error }}</strong>
     </uib-alert>
 
-    <icsw-tools-ensure-device-selection dev-list="device_pks_ordered" list-ready="device_list_ready">
+    <icsw-tools-ensure-device-selection dev-list="struct.device_pks_ordered" list-ready="struct.device_list_ready">
         <uib-tabset>
-            <uib-tab ng-if="!error && no_device_with_logs_selected" heading="N/A" active="device_tab_active['no_device_tab']">
+            <uib-tab ng-if="!error && no_device_with_logs_selected" heading="N/A" active="struct.device_tab_active['no_device_tab']">
                 <uib-alert type="warning">
                     No device with logs selected.
                 </uib-alert>
             </uib-tab>
-            <uib-tab ng-repeat="device_pk in [ALL_DEVICES_PK].concat(device_pks_ordered) track by device_pk"
-                    heading="{{devices_rest[device_pk].name}} ({{devices_rest[device_pk].capabilities_description}})"
-                    active="device_tab_active[device_pk]"
-                    select="set_active(device_pk)"
-                    disable="devices_rest[device_pk].capabilities.length == 0"
-                    >
-
-                <div ng-if="device_tab_active[device_pk]">
-
+            <uib-tab ng-repeat="device_pk in struct.all_pks_ordered"
+                heading="{{ struct.devices_rest[device_pk].name }} ({{ struct.devices_rest[device_pk].capabilities_description}} )"
+                active="struct.device_tab_active[device_pk]"
+                select="set_active(device_pk)"
+                disable="struct.devices_rest[device_pk].capabilities.length == 0"
+            >
+                <div ng-if="struct.device_tab_active[device_pk]">
                     <div style="margin-top: 5px;" class="form-inline">
                         <div class="input-group">
                             <span class="input-group-addon">
-                                <label>
-                                    Type:
-                                </label>
-                                </span>
-                            <select class="form-control input-sm" ng-model="device_mode[device_pk]"
-                                    ng-options="value as value for value in devices_rest[device_pk].capabilities"
-                                    ng-change="query_parameter_changed()"></select>
+                                <label>Type:</label>
+                            </span>
+                            <select
+                                class="form-control input-sm" ng-model="struct.device_mode[device_pk]"
+                                ng-options="value as value for value in struct.devices_rest[device_pk].capabilities"
+                                ng-change="query_parameter_changed()">
+                            </select>
                         </div>
                         <icsw-discovery-event-log-filters></icsw-discovery-event-log-filters>
                     </div>
 
                     <table class="table table-condensed table-striped" style="width: auto"
-                           st-pipe="server_pagination_pipe[device_pk]" st-table="entries">
-                        <thead ng-show="!entries.is_loading">  <!-- need pagination in dom for limit -->
-                            <tr ng-if="entries.keys.length > 0">
+                           st-pipe="struct.server_pagination_pipe[device_pk]" st-table="struct.entries">
+                        <thead ng-show="!struct.entries_is_loading">  <!-- need pagination in dom for limit -->
+                            <tr ng-if="struct.entries.keys.length > 0">
                                 <td colspan="99">
-                                    <icsw-tools-show-hide-columns columns-list="{{entries.keys}}"></icsw-tools-show-hide-columns>
+                                    <icsw-tools-show-hide-columns columns-list="{{ struct.entries.keys }}"></icsw-tools-show-hide-columns>
                                 </td>
                             </tr>
                             <tr>
                                 <td colspan="99">
 
-                                    <div class="" style="display: inline-block;" ng-if="entries.total_num != undefined">
-                                        Query returned {{entries.total_num}} entries
+                                    <div class="" style="display: inline-block;" ng-if="struct.entries.total_num != undefined">
+                                        Query returned {{ struct.entries.total_num }} entries
                                     </div>
                                     &nbsp;
-                                    <div style="display: inline-block;" icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500" no-number-of-elements="true"></div>
-
+                                    <div style="display: inline-block;"
+                                        ng-show="struct.entries.length"
+                                        icsw-tools-pagination
+                                        st-items-by-page="10"
+                                        st-displayed-pages="11"
+                                        possible-items-by-page="10,20,50,100,200,500"
+                                        no-number-of-elements="true">
+                                    </div>
                                 </td>
                             </tr>
                             <tr>
-                                <th ng-repeat="key in entries.keys" ng-if="show_column[key]">
-                                    {{key}}
-                                </th>
+                                <th ng-repeat="key in struct.entries.keys" ng-if="show_column[key]">{{ key }}</th>
                             </tr>
                         </thead>
-                        <tbody icsw-discovery-event-log-table-body keys="entries.keys" entries="entries" column-toggle-dict="show_column" ng-show="!entries.is_loading"></tbody>
-                        <tbody ng-if="entries.length == 0 && !entries.is_loading">
+                        <tbody icsw-discovery-event-log-table-body
+                            keys="struct.entries.keys"
+                            reload="struct.entries_reload_observable"
+                            entries="struct.entries"
+                            column-toggle-dict="show_column"
+                            ng-show="!struct.entries_is_loading">
+                        </tbody>
+                        <tbody ng-if="struct.entries.length == 0 && !struct.entries_is_loading">
                             <tr>
                                 <td colspan="99" class="text-center">
                                     <uib-alert type="info" style="max-width: 450px">
@@ -75,7 +82,7 @@
                                 </td>
                             </tr>
                         </tbody>
-                        <tbody ng-show="entries.is_loading">
+                        <tbody ng-show="struct.entries_is_loading">
                             <tr>
                                 <td colspan="99" class="text-center">
                                     <i class="fa fa-4x fa-spinner fa-pulse"></i>
@@ -114,56 +121,17 @@
                 </label>
             </span>
             <ui-select ng-model="tab_query_parameters[device_pk].logfile">
-                <ui-select-match placeholder="Filter by Logfile" allow-clear="true">{{$select.selected}}</ui-select-match>
-                <ui-select-choices repeat="key in entries.mode_specific_parameters.logfiles | filter:$select.search">
+                <ui-select-match class="ui-select-match" placeholder="Filter by Logfile" allow-clear="true">
+                    {{ $select.selected }}
+                </ui-select-match>
+                <ui-select-choices class="ui-select-choices" repeat="key in entries.mode_specific_parameters.logfiles | filter:$select.search">
                     <div ng-bind-html="key | highlight: $select.search"></div>
                 </ui-select-choices>
             </ui-select>
         </div>
     </div>
-    <div class="form-group form-inline">
-        <div class="input-group">
-                                <span class="input-group-addon">
-                                    <label>
-                                        From
-                                    </label>
-                                </span>
-            <input type="text" class="form-control" ng-model="tab_query_parameters[device_pk].from_date"/>
-                                <span class="dropdown-toggle input-group-addon">
-                                    <div class="dropdown">
-                                        <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">
-                                            <i class="glyphicon glyphicon-calendar"></i>
-                                        </button>
-                                        <ul class="dropdown-menu" role="menu">
-                                            <datetimepicker ng-model="tab_query_parameters[device_pk].from_date"
-                                                            data-datetimepicker-config="{ dropdownSelector: '#dropdownfrom' }">
-                                            </datetimepicker>
-                                        </ul>
-                                    </div>
-                                </span>
-        </div>
-    </div>
-    <div class="form-group form-inline">
-        <div class="input-group">
-                                <span class="input-group-addon">
-                                    <label>
-                                        To
-                                    </label>
-                                </span>
-            <input type="text" class="form-control" ng-model="tab_query_parameters[device_pk].to_date"/>
-                                <span class="dropdown-toggle input-group-addon">
-                                    <div class="dropdown">
-                                        <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">
-                                            <i class="glyphicon glyphicon-calendar"></i>
-                                        </button>
-                                        <ul class="dropdown-menu" role="menu">
-                                            <datetimepicker ng-model="tab_query_parameters[device_pk].to_date"
-                                                            data-datetimepicker-config="{ dropdownSelector: '#dropdownfrom' }">
-                                            </datetimepicker>
-                                        </ul>
-                                    </div>
-                                </span>
-        </div>
+    <div class="input-group form-inline">
+        <icsw-rrd-graph-time-frame timeframe="struct.timeframe" detail="1"></icsw-rrd-graph-time-frame>
     </div>
     <div class="form-group form-inline">
         <div class="input-group">
@@ -173,12 +141,13 @@
                 </label>
             </span>
             <ui-select ng-model="tab_query_parameters[device_pk].group_by">
-                <ui-select-match placeholder="Group results by.." allow-clear="true">{{$select.selected}}</ui-select-match>
-                <ui-select-choices repeat="key in entries.grouping_keys | filter:$select.search">
+                <ui-select-match class="ui-select-match" placeholder="Group results by.." allow-clear="true">
+                    {{ $select.selected }}
+                </ui-select-match>
+                <ui-select-choices class="ui-select-choices" repeat="key in entries.grouping_keys | filter:$select.search">
                     <div ng-bind-html="key | highlight: $select.search"></div>
                 </ui-select-choices>
             </ui-select>
         </div>
     </div>
-
 </script>

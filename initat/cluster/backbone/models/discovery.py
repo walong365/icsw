@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2015 Bernhard Mallinger, init.at
+# Copyright (C) 2015-2016 Bernhard Mallinger, init.at
 #
 # this file is part of icsw-server
 #
@@ -34,15 +34,23 @@ class DiscoverySource(IntEnum):
     ASU = 2
     IPMI = 3
 
+    PACKAGE = 4
+    HARDWARE = 5
+    LICENSE = 6
+    UPDATE = 7
+    SOFTWARE_VERSION = 8
+    PROCESS = 9
+    PENDING_UPDATE = 10
+
     def get_maximal_concurrent_runs(self):
         # TODO: move to database?
-        if self == DiscoverySource.ASU:
-            return 1
-        else:
+        if self == DiscoverySource.SNMP or self == DiscoverySource.IPMI:
             return 5
+        else:
+            return 1
 
 
-class DispatchSetting(models.Model):
+class DiscoDispatchSetting(models.Model):
     class DurationUnits(IntEnum):
         # as understood by dateutil.relativedelta
         months = 1
@@ -86,7 +94,7 @@ class _ScanHistoryManager(models.Manager):
         return cache
 
 
-class ScanHistory(models.Model):
+class DiscoScanHistory(models.Model):
     objects = _ScanHistoryManager()
     idx = models.AutoField(primary_key=True)
     date = models.DateTimeField(default=django.utils.timezone.now)  # auto_add_now breaks factory boy

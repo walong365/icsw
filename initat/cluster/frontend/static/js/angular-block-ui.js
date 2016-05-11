@@ -404,7 +404,6 @@ blkUI.factory('blockUI', ["blockUIConfig", "$timeout", "blockUIUtils", "$documen
     this._refs = 0;
 
     this.start = function(messageOrOptions) {
-      
       messageOrOptions = messageOrOptions || {};
       
       if(angular.isString(messageOrOptions)) {

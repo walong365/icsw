@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2015 init.at
+# Copyright (C) 2012-2016 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -17,10 +17,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+
+# unified button for angular
+
 angular.module(
     "icsw.tools.button",
-    [
-    ]
+    []
 ).service('icswToolsButtonConfigService', ['gettextCatalog', (gettextCatalog) ->
     get_config_for_button_type = (type) ->
         ret_obj = {}
@@ -62,6 +64,10 @@ angular.module(
             ret_obj.icon_class = "fa fa-check"
             ret_obj.button_value = "enable"
             ret_obj.css_class = "btn-ok"
+        else if type == "lock"
+            ret_obj.icon_class = "fa fa-lock"
+            ret_obj.button_value = "lock"
+            ret_obj.css_class = "btn-ok"
         else if type == "disable"
             ret_obj.css_class = "btn-danger"
             ret_obj.button_value = "disable"
@@ -76,10 +82,17 @@ angular.module(
         else if type == "search"
             ret_obj.css_class = "btn-primary"
             ret_obj.icon_class = "fa fa-search"
+        else if type == "draw"
+            ret_obj.css_class = "btn-primary"
+            ret_obj.icon_class = "fa fa-pencil"
         else if type == "download"
             ret_obj.css_class = "btn-success"
             ret_obj.button_value = gettextCatalog.getString("download")
             ret_obj.icon_class = "fa fa-download"
+        else if type == "upload"
+            ret_obj.css_class = "btn-success"
+            ret_obj.button_value = gettextCatalog.getString("upload")
+            ret_obj.icon_class = "fa fa-upload"
         else if type == "revert"
             ret_obj.css_class = "btn-warning"
             ret_obj.button_value = "revert"
@@ -126,16 +139,44 @@ angular.module(
     return {
         restict: "EA"
         template: """
-<button class="btn btn-xs form-control" ng-class="get_class()" ng-click="change_value($event)">{{ get_value() }}</button>
+<button class="btn btn-xs form-control" ng-class="get_class()" style="width:100px;" ng-click="change_value($event)">{{ get_value() }}</button>
+"""
+        scope:
+            flag: "="
+        link: (scope, element, attrs) ->
+            if attrs.disabled?
+                _disabled = true
+            else
+                _disabled = false
+            scope.change_value = ($event) ->
+                if not _disabled
+                    scope.flag = !scope.flag
+                $event.preventDefault()
+
+            scope.get_value = () ->
+                return if scope.flag then "yes" else "no"
+
+            scope.get_class = () ->
+                return if scope.flag then "btn-success" else "btn-default"
+    }
+]).directive("icswToolsYesNoSmall", [() ->
+    return {
+        restict: "EA"
+        template: """
+<button class="btn btn-xs" ng-class="get_class()" style="width:50px;" ng-click="change_value($event)">{{ get_value() }}</button>
 """
         scope:
             flag: "="
         link: (scope, element, attrs) ->
             scope.change_value = ($event) ->
-                scope.flag = !scope.flag
+                if not attrs.ngClick?
+                    # ngClick not defined in attributes
+                    scope.flag = !scope.flag
                 $event.preventDefault()
+
             scope.get_value = () ->
                 return if scope.flag then "yes" else "no"
+
             scope.get_class = () ->
                 return if scope.flag then "btn-success" else "btn-default"
     }
@@ -143,7 +184,7 @@ angular.module(
     return {
         restrict: "EA",
         template: """
-    <button ng-attr-type="{{button_type}}" name="button" class="btn {{css_class}} {{additional_class}} {{icon_class}}"
+    <button ng-attr-type="{{ button_type }}" name="button" class="btn {{ css_class }} {{ additional_class }} {{ icon_class }}"
             ng-disabled="is_disabled">
         {{ button_value }}
     </button>
@@ -158,6 +199,7 @@ visible-md visible-lg
             isShow: '&'
             disabled: '&'
             isEnable: '&'
+            isLock: '&'
         link: (scope, element, attrs) ->
 
             # attrs:
@@ -194,7 +236,8 @@ visible-md visible-lg
                 )
 
             if attrs.type == "show"
-                scope.$watch(scope.isShow
+                scope.$watch(
+                    scope.isShow
                     (new_val) ->
                         if new_val
                             scope.button_value = attrs.showValue or gettextCatalog.getString("show")
@@ -202,7 +245,8 @@ visible-md visible-lg
                             scope.button_value = attrs.hideValue or gettextCatalog.getString("hide")
                 )
             else if attrs.type == "enable"
-                scope.$watch(scope.isEnable
+                scope.$watch(
+                    scope.isEnable
                     (new_val) ->
                         if new_val
                             scope.button_value = gettextCatalog.getString("disable")
@@ -211,5 +255,41 @@ visible-md visible-lg
                             scope.button_value = gettextCatalog.getString("enable")
                             scope.css_class = "btn-success"
                 )
+            else if attrs.type == "lock"
+                scope.$watch(
+                    scope.isLock
+                    (new_val) ->
+                        if new_val
+                            scope.button_value = gettextCatalog.getString("unlock")
+                            scope.css_class = "btn-warning"
+                            scope.icon_class = "fa fa-unlock"
+                        else
+                            scope.button_value = gettextCatalog.getString("lock")
+                            scope.css_class = "btn-success"
+                            scope.icon_class = "fa fa-lock"
+                )
+    }
+]).directive('icswToolsButtonStatic', ["icswToolsButtonConfigService", "gettextCatalog", (icswToolsButtonsConfigService, gettextCatalog) ->
+    # static button, doenst change its face during his lifetime
+    return {
+        restrict: "EA",
+        template: '<button type="button" class="btn" ng-disabled="is_disabled">value</button>'
+        link: (scope, element, attrs) ->
+            # attrs:
+            # - type (mandatory): "modify", "create", "delete", "reload", "show", "clear_selection", "download"
+            # - size: inserted into "btn-{{size}}", no default
+            # - value: Custom text to display in button
+
+            settings = icswToolsButtonsConfigService.get_config_for_button_type(attrs.type)
+
+            if attrs.value?
+                value = attrs.value
+            else
+                value = settings.button_value
+            element.text(value)
+            element.addClass("btn " + settings.css_class + " " + settings.icon_class)
+            if attrs.size?
+                element.addClass("btn-#{attrs.size}")
+
     }
 ])

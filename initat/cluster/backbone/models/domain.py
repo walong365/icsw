@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -403,7 +403,8 @@ class category_tree(object):
                     name=cat_part,
                     parent=cur_node,
                     full_name="{}/{}".format(cur_node.full_name, cat_part),
-                    depth=cur_node.depth + 1)
+                    depth=cur_node.depth + 1
+                )
                 new_node.save()
                 self.__node_dict[new_node.pk] = new_node
                 cur_node._sub_tree.setdefault(cat_part, []).append(new_node)
@@ -431,25 +432,33 @@ class category_tree(object):
     def keys(self):
         return self.__node_dict.keys()
 
-    def prune(self, mode=None):
+    def prune(self, mode=None, doit=False):
         # removes all unreferenced nodes
         assert mode in [None, u'mon', u'device', u'location', u'config']
 
         removed = True
+        # set of already deleted leafs
+        _deleted = set()
         while removed:
             removed = False
             del_nodes = []
             for cur_leaf in self.__node_dict.itervalues():
-                if mode is None or cur_leaf.full_name.startswith("/{}".format(mode)):
-                    if not cur_leaf._sub_tree and not cur_leaf.immutable:
-                        # count related models (with m2m)
-                        if not get_related_models(cur_leaf, m2m=True):
-                            del_nodes.append(cur_leaf)
+                if cur_leaf not in _deleted:
+                    if mode is None or cur_leaf.full_name.startswith("/{}".format(mode)):
+                        if not cur_leaf.immutable:
+                            # count related models (with m2m)
+                            if not get_related_models(cur_leaf, m2m=True, ignore_objs=_deleted):
+                                del_nodes.append(cur_leaf)
             for del_node in del_nodes:
-                del self[del_node.parent_id]._sub_tree[del_node.name]
-                del self.__node_dict[del_node.pk]
-                del_node.delete()
+                # store idx in an extra field
+                del_node.saved_pk = del_node.idx
+                _deleted.add(del_node)
+                if doit:
+                    del self[del_node.parent_id]._sub_tree[del_node.name]
+                    del self.__node_dict[del_node.pk]
+                    del_node.delete()
             removed = len(del_nodes) > 0
+        return _deleted
 
     def __iter__(self):
         return self.all()
@@ -486,6 +495,8 @@ class category(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     # immutable
     immutable = models.BooleanField(default=False)
+    # useable flag, False for intermediate entries
+    useable = models.BooleanField(default=True)
     # for location fields: physical or structural (for overview location maps)
     # a device can be used on a structural (non-physical) loction map even if
     # this location map is not attached to the location node the devices is attached to
@@ -521,17 +532,30 @@ class category(models.Model):
     def __unicode__(self):
         return u"{}".format(self.full_name if self.depth else "[TLN]")
 
+    @property
     def single_select(self):
-        return True if self.full_name.startswith("/location/") else False
+        return True if (self.full_name.startswith("/location/") and self.physical) else False
 
-    def get_references(self):
-        num_refs = 0
-        all_m2ms = [
-            _f for _f in self._meta.get_fields(include_hidden=True) if _f.many_to_many and _f.auto_created
-        ]
-        for rel in all_m2ms:
-            num_refs += getattr(self, rel.get_accessor_name()).count()
-        return num_refs
+    # no longer needed
+    # def get_reference_dict(self):
+    #    all_m2ms = [
+    #        _f for _f in self._meta.get_fields(include_hidden=True) if _f.many_to_many and _f.auto_created
+    #    ]
+    #    _names = [_f.name for _f in all_m2ms]
+    #    _required = {"config", "mon_check_command", "deviceselection", "device"}
+    #    if set(_names) != _required:
+    #        raise ValidationError("Related fields for category_tree changed")
+    #    ref_dict = {}
+    #    for rel in all_m2ms:
+    #        if rel.name == "device":
+    #            # print getattr(self, rel.get_accessor_name()).count()
+    #            # print getattr(self, rel.get_accessor_name()).all()
+    #            ref_dict[rel.name] = getattr(self, rel.get_accessor_name()).values_list("pk", flat=True)
+    #        else:
+    #            ref_dict[rel.name] = getattr(self, rel.get_accessor_name()).count()
+    #    # print self.device.get_accessor_name().values_list("device")
+    #    # print ref_dict
+    #    return ref_dict
 
     class Meta:
         verbose_name = "Category"
@@ -556,6 +580,7 @@ def category_pre_save(sender, **kwargs):
                         _parent = category(
                             name=cur_part,
                             parent=cur_parent,
+                            useable=False,
                             comment="autocreated intermediate",
                         )
                         _parent.save()
@@ -567,7 +592,9 @@ def category_pre_save(sender, **kwargs):
         if cur_inst.parent_id:
             if cur_inst.pk:
                 # check for valid parent
-                all_parents = {_v[0]: _v[1] for _v in category.objects.all().values_list("idx", "parent")}
+                all_parents = {
+                    _v[0]: _v[1] for _v in category.objects.all().values_list("idx", "parent")
+                }
                 cur_p_id = cur_inst.parent_id
                 while cur_p_id:
                     if cur_p_id == cur_inst.pk:
@@ -577,6 +604,9 @@ def category_pre_save(sender, **kwargs):
         if cur_inst.depth and not valid_category_re.match(cur_inst.name):
             raise ValidationError("illegal characters in name '{}'".format(cur_inst.name))
         if cur_inst.depth:
+            if cur_inst.depth == 1:
+                if "/{}".format(cur_inst.name) not in TOP_LOCATIONS:
+                    raise ValidationError("illegal top-level category name '{}'".format(cur_inst.name))
             check_empty_string(cur_inst, "name")
             parent_node = cur_inst.parent
             new_full_name = "{}/{}".format(
@@ -772,11 +802,13 @@ class location_gfx(models.Model):
         self.locked = True
         if cache.get(self.icon_cache_key):
             cache.delete(self.icon_cache_key)
-        self.save(update_fields=[
-            "changes",
-            "width", "height",
-            "content_type",
-            "locked", "image_stored", "image_count", "image_name"])
+        self.save(
+            update_fields=[
+                "changes", "width", "height",
+                "content_type",
+                "locked", "image_stored", "image_count", "image_name"
+            ]
+        )
 
 
 @receiver(signals.pre_save, sender=location_gfx)
@@ -806,8 +838,8 @@ class device_mon_location(models.Model):
     # creation date
     created = models.DateTimeField(auto_now_add=True)
 
-    def get_device_name(self):
-        return self.device.full_name
+    # def get_device_name(self):
+    #    return self.device.full_name
 
     class Meta:
         verbose_name = "Monitoring location"

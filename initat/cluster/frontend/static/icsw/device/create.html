@@ -1,3 +1,7 @@
+<script type="text/ng-template" id="icsw/main/device/create.html">
+    <icsw-device-create-mask ng-cloak></icsw-device-create-mask>
+</script>
+
 <script type="text/ng-template" id="icsw.device.create.icon.template">
     <a>
         <img ng-src="{{ match.label.data_image }}" width="16"/>
@@ -6,45 +10,46 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.create.mask">
-    <h3>Create a new device</h3>
-    <form class="form-horizontal" name="baseForm" novalidate ng-controller="form_ctrl">
-        <uib-accordion ng-cloack close-others="false">
+    <h3>Create a new Device</h3>
+    <form class="form-horizontal" name="form_data" novalidate ng-if="data_ready">
+        <uib-accordion ng-cloak close-others="false">
             <uib-accordion-group heading="Base data" is-open="base_open">
-                <!-- {{ baseForm || json }} {{baseForm.$valid}} -->
+                <!-- {{ form_data || json }} {{form_data.$valid}} -->
                 <div class="form-group">
-                    <label class="control-label col-md-5">Fully qualified device name</label>
-                    <div class="controls col-md-6" ng-class="baseForm.full_name.$invalid && 'has-error'">
+                    <label class="control-label col-md-5">
+                        Fully qualified device name
+                    </label>
+                    <div class="controls col-md-6" ng-class="form_data.full_name.$invalid && 'has-error'">
                         <input name="full_name" class="form-control" ng-model="device_data.full_name" required ng-pattern="/^[a-zA-Z0-9\.\-_]+$/" placeholder="device name" ng-blur="device_name_changed()"/>
-                        <span ng-show="baseForm.full_name.$invalid" class="text-danger">
+                        <span ng-show="form_data.full_name.$invalid" class="text-danger">
                             Need name without any special characters or whitespace (for instance 'server.my.domain')
                         </span>
                     </div>
                 </div>
                 <div class="form-group">
                     <label class="control-label col-md-5">Devicegroup</label>
-                    <div class="controls col-md-6" ng-class="baseForm.device_group.$invalid && 'has-error'">
+                    <div class="controls col-md-6" ng-class="form_data.device_group.$invalid && 'has-error'">
                         <input
                             type="text"
                             name="device_group"
                             class="form-control"
                             ng-model="device_data.device_group" required ng-pattern="/^[a-zA-Z][a-zA-Z0-9\-_]*$/"
-                            typeahead="value for value in device_groups() | filter:$viewValue"
-                            ng-change="new_dg()"
+                            uib-typeahead="value.name for value in device_tree.group_list | filter:$viewValue"
                         />
-                        <span ng-show="baseForm.device_group.$invalid" class="text-danger">
+                        <span ng-show="form_data.device_group.$invalid" class="text-danger">
                             Please enter a valid device group name (no spaces or dots allowed)
                         </span>
                     </div>
                 </div>
                 <div class="form-group">
                     <label class="control-label col-md-5">IP Address</label>
-                    <div class="controls col-md-6" ng-class="baseForm.ip.$invalid && 'has-error'">
+                    <div class="controls col-md-6" ng-class="form_data.ip.$invalid && 'has-error'">
                         <div class="form-inline">
                             <input name="ip" class="form-control" ng-model="device_data.ip" required ng-pattern="/^(\d+)\.(\d+)\.(\d)+\.(\d+)$/" placeholder="IP Address"/>
                             <button class="btn btn-primary btn-sm" ng-show="!resolve_pending && device_data.full_name" ng-click="resolve_name()">Resolve</button>
                             <span ng-show="resolve_pending" class="glyphicon glyphicon-refresh"></span>
                         </div>
-                        <span ng-show="baseForm.ip.$invalid" class="text-danger">
+                        <span ng-show="form_data.ip.$invalid" class="text-danger">
                             Please enter a valid IP address
                         </span>
                     </div>
@@ -59,9 +64,9 @@
                                 name="icon"
                                 class="form-control"
                                 ng-model="device_data.icon_name"
-                                typeahead="value.name as value for value in rest_data.mon_ext_host | filter:{name:$viewValue}"
-                                typeahead-template-url="icsw.device.create.icon.template"
-                                typeahead-append-to-body="true"
+                                uib-typeahead="value.name as value for value in rest_data.mon_ext_host | filter:{name:$viewValue}"
+                                uib-typeahead-template-url="icsw.device.create.icon.template"
+                                uib-typeahead-append-to-body="true"
                             />
                         </div>
                     </div>
@@ -79,27 +84,38 @@
                     <label class="control-label col-md-5">is routing capable (switch, firewall)</label>
                     <div class="controls col-md-6">
                         <div class="btn-group btn-sn">
-                            <button ng-class="device_data.routing_capable && 'btn btn-success' || 'btn'" ng-click="device_data.routing_capable=true">yes</button>
-                            <button ng-class="device_data.routing_capable && 'btn' || 'btn btn-success'" ng-click="device_data.routing_capable=false">no</button>
+                            <icsw-tools-yes-no flag="device_data.routing_capable"></icsw-tools-yes-no>
                         </div>
                     </div>
                 </div>
-                <div class="form-group" ng-show="any_peers()">
+                <div class="form-group" ng-if="peer_tree.peer_list.length">
                     <label class="control-label col-md-5">Connect to</label>
                     <div class="controls col-md-6">
-                        <select name="peer" class="form-control" ng-model="device_data.peer" ng-options="value.idx as value.info group by value.device_group_name for value in all_peers"></select>
+                        <ui-select ng-model="device_data.peer" style="max-width:400px; min-width:240px;">
+                            <ui-select-match class="ui-select-match" placeholder="Please select a valid peer"">
+                                {{ $select.selected.full_name }}
+                            </ui-select-match>
+                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in peer_tree.peer_list | props_filter:{full_name:$select.search}">
+                                <div ng-bind-html="value.full_name | highlight: $select.search"></div>
+                            </ui-select-choices>
+                        </ui-select>
                     </div>
                 </div>
                 <div class="form-group">
                     <label class="control-label col-md-5">Comment</label>
-                    <div class="controls col-md-6" ng-class="baseForm.comment.$invalid && 'has-error'">
+                    <div class="controls col-md-6" ng-class="form_data.comment.$invalid && 'has-error'">
                         <input name="comment" class="form-control" ng-model="device_data.comment"/>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="control-label col-md-5">Create</label>
+                    <div class="controls col-md-6" ng-class="form_data.comment.$invalid && 'has-error'">
+                        <icsw-tools-button type="create" ng-show="form_data.$valid" value="create device" ng-click="create_device()"/>
                     </div>
                 </div>
             </uib-accordion-group>
             <uib-accordion-group heading="Optional data">
             </uib-accordion-group>
         </uib-accordion>
-        <input type="button" class="btn btn-sm btn-success" ng-show="baseForm.$valid" value="create device" ng-click="create_device()"/>
     </form>
 </script>

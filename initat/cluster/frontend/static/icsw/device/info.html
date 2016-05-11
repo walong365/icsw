@@ -4,6 +4,56 @@
             <uib-tab-heading>
                 General
             </uib-tab-heading>
+            <icsw-simple-device-info icsw-sel-man="{{ popupmode }}" icsw-device-list="devicelist"></icsw-simple-device-info>
+        </uib-tab>
+        <uib-tab ng-if="acl_read(null, 'backbone.device.change_network') && dev_pk_nmd_list.length" select="activate('network')" active="network_active">
+            <uib-tab-heading>
+                Network{{ addon_text_nmd }}
+            </uib-tab-heading>
+            <icsw-device-network-overview icsw-sel-man="{{ popupmode }}" icsw-device-list="dev_list['network']"></icsw-device-network-overview>
+        </uib-tab>
+        <uib-tab ng-if="acl_read(null, 'backbone.device.change_config')" select="activate('config')" active="config_active">
+            <uib-tab-heading>
+                Config{{ addon_text }}
+            </uib-tab-heading>
+            <icsw-device-configuration-overview icsw-sel-man="{{ popupmode }}" icsw-device-list="dev_list['config']">
+            </icsw-device-configuration-overview>
+            <!-- only valid for corvus -->
+            <icsw-device-configuration-var-overview icsw-sel-man="{{ popupmode }}" icsw-device-list="dev_list['config']">
+            </icsw-device-configuration-var-overview>
+        </uib-tab>
+         <uib-tab ng-if="acl_read(null, 'backbone.device.change_category') && dev_pk_nmd_list.length" select="activate('category')" active="category_active">
+            <uib-tab-heading>
+                Category{{ addon_text_nmd }}
+            </uib-tab-heading>
+
+            <icsw-device-category-overview icsw-sel-man="{{ popupmode }}" icsw-device-list="dev_list['category']">
+            </icsw-device-category-overview>
+        </uib-tab>
+         <uib-tab ng-if="acl_read(null, 'backbone.device.change_location') && dev_pk_nmd_list.length" select="activate('location')" active="category_active">
+            <uib-tab-heading>
+                Location{{ addon_text_nmd }}
+            </uib-tab-heading>
+
+            <icsw-device-location-overview icsw-sel-man="{{ popupmode }}" icsw-device-list="dev_list['location']">
+            </icsw-device-location-overview>
+        </uib-tab>
+        <uib-tab ng-if="acl_read(null, 'backbone.device.change_variables')" select="activate('device_variable')" active="device_variable_active">
+            <uib-tab-heading>
+                Device Variable{{ addon_text }}
+            </uib-tab-heading>
+            <icsw-device-variable-overview icsw-sel-man="{{ popupmode }}" icsw-device-list="dev_list['device_variable']">
+            </icsw-device-variable-overview>
+        </uib-tab>
+    </uib-tabset>
+</script>
+
+<script type="text/ng-template" id="icsw.device.info.old">
+    <uib-tabset>
+        <uib-tab select="activate('general')" active="general_active">
+            <uib-tab-heading>
+                General
+            </uib-tab-heading>
             <icsw-simple-device-info icsw-sel-man="{{ popupmode }}" devicepklist="devicepklist"></icsw-simple-device-info>
         </uib-tab>
         <uib-tab ng-if="acl_read(null, 'backbone.device.change_network') && dev_pk_nmd_list.length" select="activate('network')" active="network_active">
@@ -65,4 +115,373 @@
             </icsw-rrd-graph>
         </uib-tab>
     </uib-tabset>
+</script>
+
+<script type="text/ng-template" id="icsw.deviceempty.info.form">
+    <h2>Details</h2>
+    <alert type="warning" style="max-width:500px;">No devices selected</alert>
+</script>
+
+<script type="text/ng-template" id="icsw.device.info.form">
+    <h2>Details for '{{ edit_obj.$$full_device_name }}'
+        <img ng-if="edit_obj.mon_ext_host" ng-src="{{ edit_obj.$$image_source }}" width="16"></img>
+    </h2>
+    <fieldset>
+        <legend>Basic settings</legend>
+        <div class="form-group row">
+            <label class="control-label col-xs-3 requiredField">
+                FQDN
+            </label>
+            <div class="form-control-static col-xs-9">
+                {{ edit_obj.name }}.{{ domain_tree.lut[edit_obj.domain_tree_node].full_name }}
+            </div>
+            <label class="control-label col-xs-3 requiredField">
+                DeviceGroup
+            </label>
+            <div class="form-control-static col-xs-9">
+                {{ dev_tree.group_lut[edit_obj.device_group].name }}
+            </div>
+            <label class="control-label col-xs-3" ng-show="edit_obj.comment">
+                Comment
+            </label>
+            <div class="form-control-static col-xs-9" ng-show="edit_obj.comment">
+                {{ edit_obj.comment }}
+            </div>
+            <label class="control-label col-xs-3" ng-show="edit_obj.alias">
+                Alias
+            </label>
+            <div class="form-control-static col-xs-9" ng-show="edit_obj.alias">
+                {{ edit_obj.alias }}
+            </div>
+        </div>
+        <div class="form-group row">
+            <label class="control-label col-xs-3">
+                ComCapabilities
+            </label>
+            <div class="col-xs-9 form-control-static">
+                <icsw-device-com-capabilities device="edit_obj" detail="1"></icsw-device-com-capabilities>
+            </div>
+            <label class="control-label col-xs-3">
+                IP Info
+            </label>
+            <div class="col-xs-9 form-control-static">
+                {{ edit_obj.$$ip_info }}
+            </div>
+            <label class="control-label col-xs-3">
+                SNMP scheme
+            </label>
+            <div class="col-xs-9 form-control-static">
+                {{ edit_obj.$$snmp_scheme_info }}
+            </div>
+            <label class="control-label col-xs-3">
+                SNMP Info
+            </label>
+            <div class="col-xs-9 form-control-static">
+                {{ edit_obj.$$snmp_info }}
+            </div>
+        </div>
+    </fieldset>
+    <fieldset>
+        <legend>Monitor settings</legend>
+        <div class="form-group row">
+            <label class="control-label col-xs-3" ng_show="mon_device_templ_list">
+                Mon device templ
+            </label>
+            <div class="controls col-xs-9" ng_show="mon_device_templ_list">
+                {{ monitoring_tree.mon_device_templ_lut[edit_obj.mon_device_templ].name }}
+            </div>
+            <label class="control-label col-xs-3">
+                Monitoring hints
+            </label>
+            <div class="col-xs-9 form-control-static">
+                {{ get_monitoring_hint_info() }}
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-xs-6">
+                <div class="form-group">
+                    <div class="col-xs-9 control-label">
+                        <label>Monitoringchecks enabled</label>
+                    </div>
+                    <div class="col-xs-3 form-control-static">
+                        {{ edit_obj.monitor_checks | yesno2 }}
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="col-xs-9 control-label">
+                        <label>Enable perfdata, check IPMI and SNMP</label>
+                    </div>
+                    <div class="col-xs-3 form-control-static">
+                        {{ edit_obj.enable_perfdata | yesno2 }}
+                    </div>
+                </div>
+            </div>
+            <div class="col-xs-6">
+                <div class="form-group">
+                    <div class="col-xs-9 control-label">
+                        <label>Flap detection enabled</label>
+                    </div>
+                    <div class="col-xs-3 form-control-static">
+                        {{ edit_obj.flap_detection_enabled | yesno2 }}
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="col-xs-9 control-label">
+                        <label>Resolve to IP for monitoring</label>
+                    </div>
+                    <div class="col-xs-3 form-control-static">
+                        {{ edit_obj.mon_resolve_name | yesno2 }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </fieldset>
+    <fieldset>
+        <legend>RRD / graph settings</legend>
+        <div class="row">
+            <div class="col-xs-6">
+                <div class="form-group row">
+                    <div class="col-xs-9 control-label">
+                        <label>Store RRD data</label>
+                    </div>
+                    <div class="col-xs-3 form-control-static">
+                        {{ edit_obj.store_rrd_data | yesno2 }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </fieldset>
+    <fieldset>
+        <legend>UUID Info</legend>
+        <h4>Copy the following snippet to <code>/opt/cluster/etc/cstores.d/icsw.device_config.xml</code> :</h4>
+        <pre><code>&lt;?xml version='1.0' encoding='ASCII'?&gt;
+&lt;config-store name="icsw.device"&gt;
+  &lt;key-list&gt;
+    &lt;key type="str" name="cluster.device.uuid"&gt;urn:uuid:{{ edit_obj.uuid }}&lt;/key&gt;
+  &lt;/key-list&gt;
+&lt;/config-store&gt;
+</code></pre>
+        <h4>and restart host-monitoring with <code>icsw service restart host-monitoring</code></h4>
+    </fieldset>
+    <div class="pull-right" ng-show="acl_modify(edit_obj, 'backbone.device.change_basic')">
+        <icsw-tools-button type="modify" button-type="submit" ng-click="modify()"></icsw-tools-button>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.device.info.edit.form">
+    <form class="form-horizontal" name="form_data">
+        <h2>Details for '{{ edit_obj.$$full_device_name }}'
+            <img ng-if="edit_obj.mon_ext_host" ng-src="{{ edit_obj.$$image_source }}" width="16"></img>
+        </h2>
+        <fieldset>
+            <legend>Basic settings</legend>
+            <div class="form-group">
+                <label class="control-label col-xs-3 requiredField">
+                    Name<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-xs-9">
+                    <input class="textinput textInput form-control" maxlength="192" ng-model="edit_obj.name" required="True" type="text"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-xs-3 requiredField">
+                    Domain tree node<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-xs-9">
+                    <ui-select ng-model="edit_obj.domain_tree_node" style="max-width:400px; min-width:240px;">
+                        <ui-select-match class="ui-select-match" placeholder="Select a domain tree node for this device">
+                            {{ $select.selected.tree_info }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in domain_tree.list | props_filter:{tree_info:$select.search}">
+                            <div ng-bind-html="value.tree_info | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-xs-3 requiredField">
+                    DeviceGroup<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-xs-9">
+                    <ui-select ng-model="edit_obj.device_group" style="max-width:400px; min-width:240px;">
+                        <ui-select-match class="ui-select-match" placeholder="Select a DeviceGroup for this device">
+                            {{ $select.selected.name }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in dev_tree.group_list | filter:dev_tree.ignore_cdg | props_filter:{name:$select.search}">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-xs-3">
+                    Comment
+                </label>
+                <div class="controls col-xs-9">
+                    <input class="textinput textInput form-control" maxlength="384" ng-model="edit_obj.comment" type="text"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-xs-3">
+                    Alias
+                </label>
+                <div class="controls col-xs-9">
+                    <input class="textinput textInput form-control" maxlength="384"  ng-model="edit_obj.alias" type="text"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-xs-3">
+                    ComCapabilities
+                </label>
+                <div class="col-xs-9 form-control-static">
+                    <icsw-device-com-capabilities device="edit_obj" detail="1"></icsw-device-com-capabilities>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Monitor settings</legend>
+            <div class="form-group" ng_show="mon_device_templ_list">
+                <label class="control-label col-xs-3">
+                    Mon device templ
+                </label>
+
+                <div class="controls col-xs-9">
+                    <div class="input-group" style="max-width:400px; min-width:240px;">
+                        <ui-select ng-model="edit_obj.mon_device_templ" ng-disabled="false">
+                            <ui-select-match class="ui-select-match" placeholder="Select a monitoring device template for this device">
+                                {{ $select.selected.name }}
+                            </ui-select-match>
+                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in monitoring_tree.mon_device_templ_list| props_filter:{name:$select.search}">
+                                <div ng-bind-html="value.name | highlight: $select.search"></div>
+                            </ui-select-choices>
+                        </ui-select>
+                        <span class="input-group-btn">
+                            <button type="button" ng-click="edit_obj.mon_device_templ = undefined" class="btn btn-default">
+                                <span class="glyphicon glyphicon-trash"/>
+                            </button>
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-xs-6">
+                    <div class="form-group row">
+                        <div class="col-xs-9 control-label">
+                            <label>Monitoringchecks enabled</label>
+                        </div>
+                        <div class="col-xs-3 controls">
+                            <icsw-tools-yes-no flag="edit_obj.monitor_checks"></icsw-tools-yes-no>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <div class="col-xs-9 control-label">
+                            <label>Enable perfdata, check IPMI and SNMP</label>
+                        </div>
+                        <div class="col-xs-3 controls">
+                            <icsw-tools-yes-no flag="edit_obj.enable_perfdata"></icsw-tools-yes-no>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xs-6">
+                    <div class="form-group row">
+                        <div class="col-xs-9 control-label">
+                            <label>Flap detection enabled</label>
+                        </div>
+                        <div class="col-xs-3 controls">
+                            <icsw-tools-yes-no flag="edit_obj.flap_detection_enabled"></icsw-tools-yes-no>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <div class="col-xs-9 control-label">
+                            <label>Resolve to IP for monitoring</label>
+                        </div>
+                        <div class="col-xs-3 controls">
+                            <icsw-tools-yes-no flag="edit_obj.mon_resolve_name"></icsw-tools-yes-no>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>RRD / graph settings</legend>
+            <div class="row">
+                <div class="col-xs-6">
+                    <div class="form-group row">
+                        <div class="col-xs-9 control-label">
+                            <label>Store RRD data</label>
+                        </div>
+                        <div class="col-xs-3 controls">
+                            <icsw-tools-yes-no flag="edit_obj.store_rrd_data"></icsw-tools-yes-no>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </fieldset>
+    </form>
+</script>
+
+<script type="text/ng-template" id="icsw.devicegroup.info.form">
+    <h2>Details for Group '{{ edit_obj.name }}'</h2>
+    <fieldset>
+        <legend>Basic settings</legend>
+        <div class="form-group">
+            <label class="control-label col-sm-3 requiredField">
+                Name
+            </label>
+            <div class="form-control-static col-sm-9">
+                {{ edit_obj.name }}.{{ domain_tree.lut[edit_obj.domain_tree_node].full_name }}
+            </div>
+        </div>
+        <div class="form-group" ng-show="edit_obj.description">
+            <label class="control-label col-sm-3">
+                Description
+            </label>
+            <div class="form-control-static col-sm-9">
+                {{ edit_obj.description }}
+            </div>
+        </div>
+    </fieldset>
+    <div class="pull-right" ng-show="acl_modify(edit_obj, 'backbone.device.change_basic')">
+        <icsw-tools-button type="modify" button-type="submit" ng-click="modify()"></icsw-tools-button>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.devicegroup.info.edit.form">
+    <form class="form-horizontal" name="form_data">
+        <h2>Details for Group '{{ edit_obj.name }}'</h2>
+        <fieldset>
+            <legend>Basic settings</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Name<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-9">
+                    <input class="textinput textInput form-control" maxlength="192" ng-model="edit_obj.name" required="True" type="text"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Domain tree node<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-9">
+                    <ui-select ng-model="edit_obj.domain_tree_node" style="max-width:400px; min-width:240px;">
+                        <ui-select-match class="ui-select-match" placeholder="Select a domain tree node for this device">
+                            {{ $select.selected.tree_info }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in domain_tree.list | props_filter:{tree_info:$select.search}">
+                            <div ng-bind-html="value.tree_info | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-3">
+                    Description
+                </label>
+                <div class="controls col-sm-9">
+                    <input class="textinput textInput form-control" maxlength="384" ng-model="edit_obj.description" type="text"/>
+                </div>
+            </div>
+        </fieldset>
+    </form>
 </script>
