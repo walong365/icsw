@@ -310,9 +310,7 @@ device_asset_module = angular.module(
             )
 
     $scope.expand_assetrun = ($event, assetrun) ->
-        assetrun.expanded = !assetrun.expanded
-
-        if assetrun.expanded
+        if !assetrun.expanded
             $http({
                 method: 'POST',
                 url: ICSW_URLS.MON_GET_ASSETS_FOR_ASSET_RUN
@@ -321,14 +319,14 @@ device_asset_module = angular.module(
             }).then(
               (result) ->
                   assetrun.assets = result.data.assets
+                  assetrun.expanded = !assetrun.expanded
             )
         else
             assetrun.assets = []
+            assetrun.expanded = !assetrun.expanded
 
     $scope.expand_package = ($event, pack) ->
-        pack.expanded = !pack.expanded
-
-        if pack.expanded
+        if !pack.expanded
             $http({
                 method: 'POST',
                 url: ICSW_URLS.MON_GET_VERSIONS_FOR_PACKAGE
@@ -337,9 +335,11 @@ device_asset_module = angular.module(
             }).then(
               (result) ->
                   pack.versions = result.data.versions
+                  pack.expanded = !pack.expanded
             )
         else
             pack.versions = []
+            pack.expanded = !pack.expanded
 
     $scope.select_devices = (obj) ->
         $http({
