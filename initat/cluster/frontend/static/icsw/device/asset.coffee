@@ -141,12 +141,24 @@ device_asset_module = angular.module(
     $scope.filterAssetRunArrayForCsvExport = (filteredARItems) ->
         moreFilteredARItems = []
         for obj in filteredARItems
-            asset_run = {}
-            asset_run.run_type = $scope.resolve_asset_type(obj.run_type)
-            asset_run.run_start_time = obj.run_start_time
-            asset_run.run_end_time = obj.run_end_time
-            asset_run.device_name = obj.device_name
-            moreFilteredARItems.push(asset_run)
+            if obj.assets.length > 0
+                for asset in obj.assets
+                    asset_run = {}
+                    asset_run.run_type = $scope.resolve_asset_type(obj.run_type)
+                    asset_run.run_start_time = obj.run_start_time
+                    asset_run.run_end_time = obj.run_end_time
+                    if obj.hasOwnProperty("device_name")
+                        asset_run.device_name = obj.device_name
+                    asset_run.asset = asset
+                    moreFilteredARItems.push(asset_run)
+            else
+                asset_run = {}
+                asset_run.run_type = $scope.resolve_asset_type(obj.run_type)
+                asset_run.run_start_time = obj.run_start_time
+                asset_run.run_end_time = obj.run_end_time
+                if obj.hasOwnProperty("device_name")
+                    asset_run.device_name = obj.device_name
+                moreFilteredARItems.push(asset_run)
 
         return moreFilteredARItems
 
@@ -167,9 +179,6 @@ device_asset_module = angular.module(
                 _pack.name = obj.name
                 moreFilteredPackageItems.push(_pack)
 
-
-
-
         return moreFilteredPackageItems
 
     $scope.assetchangesetar = ($event) ->
@@ -189,7 +198,7 @@ device_asset_module = angular.module(
         if ar1 != undefined && ar2 != undefined
             $http({
                 method: 'POST',
-                url: '/icsw/api/v2/mon/get_assetrun_diffs'
+                url: ICSW_URLS.MON_GET_ASSETRUN_DIFFS
                 data: "pk1="+ar1.idx+"&pk2="+ar2.idx
                 headers: {'Content-Type': 'application/x-www-form-urlencoded'}
             }).then(
@@ -269,7 +278,7 @@ device_asset_module = angular.module(
         if ar1 != undefined && ar2 != undefined
             $http({
                 method: 'POST',
-                url: '/icsw/api/v2/mon/get_assetrun_diffs'
+                url: ICSW_URLS.MON_GET_ASSETRUN_DIFFS
                 data: "pk1="+ar1.idx+"&pk2="+ar2.idx
                 headers: {'Content-Type': 'application/x-www-form-urlencoded'}
             }).then(
@@ -301,7 +310,7 @@ device_asset_module = angular.module(
         if pack.expanded
             $http({
                 method: 'POST',
-                url: '/icsw/api/v2/mon/get_versions_for_package'
+                url: ICSW_URLS.MON_GET_VERSIONS_FOR_PACKAGE
                 data: "pk="+pack.pk
                 headers: {'Content-Type': 'application/x-www-form-urlencoded'}
             }).then(
@@ -311,25 +320,10 @@ device_asset_module = angular.module(
         else
             pack.versions = []
 
-    $scope.refresh = ->
-        hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, $scope.struct.devices)
-        $scope.struct.device_tree.enrich_devices(hs, ["asset_info"]).then(
-            (data) ->
-                for dev in $scope.struct.devices
-                    dev.assetrun_set_sf_src = []
-                    for ar in dev.assetrun_set
-                        dev.assetrun_set_sf_src.push(ar)
-                $scope.struct.data_loaded = true
-        )
-
-
-
-        console.log "refresh"
-
     $scope.select_devices = (obj) ->
         $http({
             method: 'POST',
-            url: '/icsw/api/v2/mon/get_devices_for_asset'
+            url: ICSW_URLS.MON_GET_DEVICES_FOR_ASSET
             data: "pk=" + obj[0]
             headers: {'Content-Type': 'application/x-www-form-urlencoded'}
         }).then(
@@ -339,19 +333,43 @@ device_asset_module = angular.module(
               for dev in $scope.struct.device_tree.all_list
                   for pk in result.data.devices
                       if dev.idx == pk
+                          dev.assetrun_set = []
                           new_devs.push dev
+                          $http({
+                                method: 'POST',
+                                url: ICSW_URLS.MON_GET_ASSETRUNS_FOR_DEVICE
+                                data: "pk="+dev.idx
+                                headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+                          }).then(
+                              (result) ->
+                                  console.log "result: ", result
+                                  for obj in result.data.asset_runs
+                                        asset_run = {}
+                                        asset_run.idx = obj[0]
+                                        asset_run.pk = obj[0]
+                                        asset_run.run_index = obj[1]
+                                        asset_run.run_type = obj[2]
+                                        asset_run.run_start_time = obj[3]
+                                        asset_run.run_end_time = obj[4]
+                                        asset_run.device_name = obj[5]
+                                        asset_run.device_pk = obj[6]
+                                        asset_run.assets = []
+                                        dev.assetrun_set.push asset_run
+                          )
 
-              $scope.struct.devices = new_devs
-              hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, $scope.struct.devices)
-              $scope.struct.device_tree.enrich_devices(hs, ["asset_info"]).then(
-                  (data) ->
-                        for dev in $scope.struct.devices
-                            dev.$$asset_run = false
-                            dev.assetrun_set_sf_src = []
-                            for ar in dev.assetrun_set
-                                dev.assetrun_set_sf_src.push(ar)
-                        $scope.struct.data_loaded = true
-                )
+              $scope.struct.devices.length = 0
+              for dev in new_devs
+                  $scope.struct.devices.push dev
+#              hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, $scope.struct.devices)
+#              $scope.struct.device_tree.enrich_devices(hs, ["asset_info"]).then(
+#                  (data) ->
+#                        for dev in $scope.struct.devices
+#                            dev.$$asset_run = false
+#                            #dev.assetrun_set_sf_src = []
+#                            #for ar in dev.assetrun_set
+#                            #    dev.assetrun_set_sf_src.push(ar)
+#                        $scope.struct.data_loaded = true
+#                )
         )
         
     $http.get(ICSW_URLS.MON_GET_ASSET_LIST).then(
@@ -376,32 +394,47 @@ device_asset_module = angular.module(
             ]
         ).then(
             (data) ->
+
                 $scope.struct.device_tree = data[0]
                 $scope.struct.devices.length = 0
                 for entry in devs
+                    entry.assetrun_set = []
                     $scope.struct.devices.push(entry)
 
-                hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, $scope.struct.devices)
-                $scope.struct.device_tree.enrich_devices(hs, ["asset_info"]).then(
-                    (data) ->
-                        for dev in $scope.struct.devices
-                            dev.assetrun_set_sf_src = []
-                            for ar in dev.assetrun_set
-                                dev.assetrun_set_sf_src.push(ar)
-                                #$scope.struct.asset_runs.push(ar)
-                        $scope.struct.data_loaded = true
-                )
+                $scope.struct.data_loaded = true
+
+#                hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, $scope.struct.devices)
+#                $scope.struct.device_tree.enrich_devices(hs, ["asset_info"]).then(
+#                    (data) ->
+#                        for dev in $scope.struct.devices
+#                            dev.$$asset_run = false
+#                            #dev.assetrun_set_sf_src = []
+#                            #for ar in dev.assetrun_set
+#                            #    dev.assetrun_set_sf_src.push(ar)
+#                                #$scope.struct.asset_runs.push(ar)
+#                        $scope.struct.data_loaded = true
+#                )
 
                 $http.get(ICSW_URLS.MON_GET_ASSETRUNS).then(
                     (result) ->
-                        console.log "get_assetruns result: ", result
-
                         $scope.struct.asset_runs.length = 0
                         for obj in result.data.asset_runs
                             found = false
                             for dev in devs
                                 if dev.idx == obj[6]
                                     found = true
+                                    asset_run = {}
+                                    asset_run.idx = obj[0]
+                                    asset_run.pk = obj[0]
+                                    asset_run.run_index = obj[1]
+                                    asset_run.run_type = obj[2]
+                                    asset_run.run_start_time = obj[3]
+                                    asset_run.run_end_time = obj[4]
+                                    asset_run.device_name = obj[5]
+                                    asset_run.device_pk = obj[6]
+                                    asset_run.assets = []
+                                    dev.assetrun_set.push asset_run
+
                             if found
                                 asset_run = {}
                                 asset_run.idx = obj[0]
@@ -418,8 +451,6 @@ device_asset_module = angular.module(
 
                 $http.get(ICSW_URLS.MON_GET_SCHEDULE_LIST).then(
                     (result) ->
-                        console.log "get_schedule_list result: ", result
-
                         $scope.struct.schedule_items.length = 0
                         for obj in result.data.schedules
                             found = false

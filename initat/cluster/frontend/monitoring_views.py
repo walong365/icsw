@@ -45,6 +45,7 @@ from initat.cluster.backbone.models import device
 from initat.cluster.backbone.models import get_related_models, mon_check_command, \
     parse_commandline, mon_check_command_special
 from initat.cluster.backbone.models.asset import AssetPackage, AssetRun, AssetPackageVersion
+from initat.cluster.backbone.models.dispatch import ScheduleItem
 from initat.cluster.backbone.models.functions import duration
 from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListDeviceService
 from initat.cluster.backbone.models.status_history import mon_icinga_log_aggregated_host_data, \
@@ -644,7 +645,6 @@ class get_assets_for_asset_run(View):
 
         return HttpResponse(json.dumps({'assets': [str(obj) for obj in ar.generate_assets_no_save()]}), content_type="application/json")
 
-from initat.cluster.backbone.models.dispatch import ScheduleItem
 
 class get_schedule_list(RetrieveAPIView):
     def get(self, request, *args, **kwargs):
@@ -656,3 +656,9 @@ class get_schedule_list(RetrieveAPIView):
                 'schedules': sorted([(s.device.idx, s.device.name, s.planned_date, s.dispatch_setting.name) for s in ScheduleItem.objects.all()], key=lambda item: item[1])
             }
         )
+
+class get_assetruns_for_device(View):
+    def post(self, request):
+        dev = device.objects.get(idx=int(request.POST['pk']))
+
+        return HttpResponse(json.dumps({'asset_runs': [(ar.idx, ar.run_index, ar.run_type, str(ar.run_start_time), str(ar.run_end_time), ar.device.name, ar.device.idx) for ar in dev.assetrun_set.all()]}), content_type="application/json")

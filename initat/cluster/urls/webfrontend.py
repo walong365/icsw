@@ -175,13 +175,14 @@ monitoring_patterns = [
     url("^get_hist_device_line_graph_data$", monitoring_views.get_hist_device_line_graph_data.as_view(),
         name="get_hist_device_line_graph_data"),
     url("^get_asset_list$", monitoring_views.get_asset_list.as_view(), name="get_asset_list"),
-    url("^run_assets_now", monitoring_views.run_assets_now.as_view(), name="run_assets_now"),
-    url("^get_devices_for_asset", monitoring_views.get_devices_for_asset.as_view(), name="get_devices_for_asset"),
-    url("^get_assetrun_diffs", monitoring_views.get_assetrun_diffs.as_view(), name="get_assetrun_diffs"),
-    url("^get_versions_for_package", monitoring_views.get_versions_for_package.as_view(), name="get_versions_for_package"),
-    url("^get_assetruns", monitoring_views.get_assetruns.as_view(), name="get_assetruns"),
-    url("^get_assets_for_asset_run", monitoring_views.get_assets_for_asset_run.as_view(), name="get_assets_for_asset_run"),
-    url("^get_schedule_list", monitoring_views.get_schedule_list.as_view(), name="get_schedule_list"),
+    url("^run_assets_now$", monitoring_views.run_assets_now.as_view(), name="run_assets_now"),
+    url("^get_devices_for_asset$", monitoring_views.get_devices_for_asset.as_view(), name="get_devices_for_asset"),
+    url("^get_assetrun_diffs$", monitoring_views.get_assetrun_diffs.as_view(), name="get_assetrun_diffs"),
+    url("^get_versions_for_package$", monitoring_views.get_versions_for_package.as_view(), name="get_versions_for_package"),
+    url("^get_assetruns$", monitoring_views.get_assetruns.as_view(), name="get_assetruns"),
+    url("^get_assets_for_asset_run$", monitoring_views.get_assets_for_asset_run.as_view(), name="get_assets_for_asset_run"),
+    url("^get_schedule_list$", monitoring_views.get_schedule_list.as_view(), name="get_schedule_list"),
+    url("^get_assetruns_for_device$", monitoring_views.get_assetruns_for_device.as_view(), name="get_assetruns_for_device"),
 ]
 
 user_patterns = [
