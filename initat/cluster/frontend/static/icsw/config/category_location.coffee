@@ -65,20 +65,11 @@ angular.module(
         restrict: "EA"
         template: $templateCache.get("icsw.config.category.location.show")
         scope: {
-            ls_devsel: "=lsDevsel"
-            ls_filter: "=lsFilter"
+            filter: "=icswLivestatusFilter"
+            monitoring_data: "=icswMonitoringData"
         }
         controller: "icswConfigCategoryLocationCtrl"
-        link: (scope, element, attrs) ->
-            if attrs["lsFilter"]?
-                scope.$watch("ls_filter", (new_val) ->
-                    if new_val
-                        scope.$watch(
-                            new_val.changed
-                            (new_filter) ->
-                                scope.redraw_svgs()
-                        )
-                )
+        # link: (scope, element, attrs) ->
     }
 ]).directive("icswConfigCategoryLocationListEdit",
 [
@@ -375,51 +366,6 @@ angular.module(
                         $rootScope.$emit(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), $scope.struct.category_tree)
                 )
         )
-
-    $scope.redraw_svgs = () ->
-        if $scope.dtl_list? and $scope.dtl_list.length
-            _wait_list = []
-            for loc in $scope.locations
-                if loc.dev_pks.length
-                    _wait_list.push(_svg_to_png(loc.idx, loc.dev_pks))
-            $q.all(_wait_list).then((data) ->
-                for _tuple in data
-                    $scope.loc_lut[_tuple[0]].svg_url = _tuple[1]
-            )
-
-    _svg_to_png = (loc_pk, dev_pks) ->
-        defer = $q.defer()
-        sub_scope = $scope.$new(true)
-        sub_scope.response = {
-            drawn: 0
-        }
-        sub_scope.ls_filter = $scope.ls_filter
-        pk_str = _.uniq(dev_pks).join(",")
-        _el = $compile("<icsw-device-livestatus-map devicepk='#{pk_str}' is-drawn='response.drawn' ls-filter='ls_filter'></icsw-device-livestatus-map>")(sub_scope)
-        sub_scope.$watch('response.drawn', (new_val) ->
-            if new_val
-                $timeout(
-                    () ->
-                        icswSimpleAjaxCall(
-                            hidden: true
-                            url : ICSW_URLS.MON_SVG_TO_PNG
-                            data :
-                                svg : _el[0].outerHTML
-                        ).then((xml) ->
-                            _url = ICSW_URLS.MON_FETCH_PNG_FROM_CACHE.slice(0, -1) + $(xml).find("value[name='cache_key']").text()
-                            sub_scope.$destroy()
-                            defer.resolve([loc_pk, _url])
-                        )
-                )
-        )
-        return defer.promise
-
-    #$scope.toggle_lock = ($event, loc) ->
-    #    loc.locked = !loc.locked
-    #    loc.put()
-    #    if $event
-    #        $event.stopPropagation()
-    #        $event.preventDefault()
 
     $scope.show_gfx_preview = (gfx) ->
         # console.log $scope.enhance_list.length
