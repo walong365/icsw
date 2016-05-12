@@ -698,6 +698,6 @@ class get_schedule_list(RetrieveAPIView):
 
         return Response(
             {
-                'schedules': sorted([(s.device.idx, s.device.name, s.planned_date) for s in ScheduleItem.objects.all()], key=lambda item: item[1])
+                'schedules': sorted([(s.device.idx, s.device.name, s.planned_date, s.dispatch_setting.name) for s in ScheduleItem.objects.all()], key=lambda item: item[1])
             }
         )
