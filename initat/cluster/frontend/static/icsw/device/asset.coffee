@@ -66,9 +66,16 @@ device_asset_module = angular.module(
             6: "Process"
             7: "Pending update"
         }[_t]
+
+    resolve_package_type = (_t) ->
+        return {
+            1: "Windows"
+            2: "Linux"
+        }[_t]
         
     return {
-        resolve_asset_type: resolve_asset_type
+        resolve_asset_type: resolve_asset_type,
+        resolve_package_type: resolve_package_type
     }
 ]).controller("icswDeviceAssetCtrl",
 [
@@ -127,6 +134,18 @@ device_asset_module = angular.module(
             "Pending update": 7
         }[_t]
 
+    $scope.resolve_package_type = (_t) ->
+        return {
+            1: "Windows"
+            2: "Linux"
+        }[_t]
+
+    $scope.resolve_package_type_reverse = (_t) ->
+        return {
+            "Windows": 1
+            "Linux": 2
+        }[_t]
+
     $scope.filterSchedArrayForCsvExport = (filteredSchedItems) ->
         moreFilteredSchedItems = []
         for obj in filteredSchedItems
@@ -170,6 +189,7 @@ device_asset_module = angular.module(
                 for version in obj.versions
                     _pack = {}
                     _pack.name = obj.name
+                    _pack.package_type = obj.package_type
                     _pack.version = version[1]
                     _pack.release = version[2]
                     _pack.size = version[3]
@@ -177,6 +197,7 @@ device_asset_module = angular.module(
             else
                 _pack = {}
                 _pack.name = obj.name
+                _pack.package_type = obj.package_type
                 moreFilteredPackageItems.push(_pack)
 
         return moreFilteredPackageItems
@@ -383,6 +404,7 @@ device_asset_module = angular.module(
                 }
                 _pack.pk = item[0]
                 _pack.name = item[1]
+                _pack.package_type = item[2]
                 _pack.versions = []
                 $scope.struct.packages.push(_pack)
     )
@@ -481,6 +503,13 @@ device_asset_module = angular.module(
         new_predicate = {}
 
         strict = true
+        if (predicate.hasOwnProperty("package_type"))
+            package_type = undefined
+            if predicate.package_type == "Windows"
+                package_type = 1
+            else if predicate.package_type == "Linux"
+                package_type = 2
+            new_predicate.package_type = package_type
         if (predicate.hasOwnProperty("run_index"))
             new_predicate.run_index = parseInt(predicate.run_index)
         if (predicate.hasOwnProperty("run_type"))

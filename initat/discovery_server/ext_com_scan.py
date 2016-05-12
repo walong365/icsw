@@ -577,28 +577,24 @@ def get_time_inc_from_ds(ds):
 
     return time_inc
 
-# from Queue import Queue
-# import threading
-
+from Queue import Queue
+import threading
 
 class Dispatcher(object):
     def __init__(self, discovery_process):
         self.discovery_process = discovery_process
         self.device_asset_run_ext_coms = {}
         self.device_running_ext_coms = {}
-    #    self.todo_asset_runs = Queue
-    #
-    #     thread = threading.Thread(target=self.generate_assets_call, args=())
-    #     thread.start()
-    #
-    # def generate_assets_call(self):
-    #     while True:
-    #         ar = self.todo_asset_runs.get()
-    #         print "starting argen"
-    #         ar.generate_assets_new()
-    #         ar.save()
-    #         print "argen stopped"
-    #         print ar
+        self.todo_asset_runs = Queue()
+
+        thread = threading.Thread(target=self.generate_assets_call, args=())
+        thread.start()
+
+    def generate_assets_call(self):
+        while True:
+            ar = self.todo_asset_runs.get()
+            ar.generate_assets_new()
+            ar.save()
 
     def dispatch_call(self):
         _now = datetime.datetime.now(tz=pytz.utc).replace(microsecond=0)
@@ -749,9 +745,9 @@ class Dispatcher(object):
                         asset_run.run_status = RunStatus.ENDED
                         asset_run.run_end_time = datetime.datetime.now()
                         asset_run.raw_result_str = _output[0]
-                        asset_run.generate_assets_new()
-                        #self.todo_asset_runs.append(asset_run)
-                        asset_run.save()
+                        #asset_run.generate_assets_new()
+                        self.todo_asset_runs.put(asset_run)
+                        #asset_run.save()
                         self.device_running_ext_coms[_device] = 0
                     elif status != None:
                         self.device_asset_run_ext_coms[_device].pop(0)
@@ -784,9 +780,9 @@ class Dispatcher(object):
                             s = res_list[0]["update_list"].text
 
                         asset_run.raw_result_str = s
-                        asset_run.generate_assets_new()
-                        #self.todo_asset_runs.append(asset_run)
-                        asset_run.save()
+                        #asset_run.generate_assets_new()
+                        self.todo_asset_runs.put(asset_run)
+                        #asset_run.save()
                         self.device_running_ext_coms[_device] = 0
 
     def __do_hm_scan(self, schedule_item):

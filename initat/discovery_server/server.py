@@ -148,7 +148,8 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=3)
         self.log("Initialising meta-server-info block")
         msi_block = process_tools.meta_server_info("discovery-server")
-        msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4)
+        #msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4)
+        msi_block.add_actual_pid(mult=4, fuzzy_ceiling=10)
         msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=4)
         msi_block.kill_pids = True
         msi_block.save_block()

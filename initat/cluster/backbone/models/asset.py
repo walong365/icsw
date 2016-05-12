@@ -65,7 +65,8 @@ def get_base_assets_from_raw_result(blob, runtype, scantype):
                         name,
                         version=version,
                         size=size,
-                        install_date=date
+                        install_date=date,
+                        package_type=PackageTypeEnum.WINDOWS
                     )
                 )
         elif scantype == ScanType.HM:
@@ -81,7 +82,8 @@ def get_base_assets_from_raw_result(blob, runtype, scantype):
                                 package_name,
                                 version=versions_dict['version'],
                                 size=versions_dict['size'],
-                                release=versions_dict['release']
+                                release=versions_dict['release'],
+                                package_type=PackageTypeEnum.LINUX
                             )
                         )
     elif runtype == AssetType.HARDWARE:
@@ -165,12 +167,13 @@ class BaseAssetProcess(object):
 
 
 class BaseAssetPackage(object):
-    def __init__(self, name, version=None, release=None, size=None, install_date=None):
+    def __init__(self, name, version=None, release=None, size=None, install_date=None, package_type=None):
         self.name = name
         self.version = version
         self.release = release
         self.size = size
         self.install_date = install_date
+        self.package_type = package_type
 
     def __repr__(self):
         s = "Name: %s" % self.name
@@ -182,6 +185,8 @@ class BaseAssetPackage(object):
             s += " Size: %s" % self.size
         if self.install_date:
             s += " InstallDate: %s" % self.install_date
+        if self.package_type:
+            s += " PackageType: %s" % self.package_type
 
         return s
 
@@ -194,10 +199,11 @@ class BaseAssetPackage(object):
             and self.version == other.version \
             and self.release == other.release \
             and self.size == other.size \
-            and self.install_date == other.install_date
+            and self.install_date == other.install_date \
+            and self.package_type == other.package_type
 
     def __hash__(self):
-        return hash((self.name, self.version, self.release, self.size, self.install_date))
+        return hash((self.name, self.version, self.release, self.size, self.install_date, self.package_type))
 
 
 class BaseAssetHardware(object):
@@ -314,6 +320,10 @@ class RunStatus(IntEnum):
     RUNNING = 2
     ENDED = 3
 
+class PackageTypeEnum(IntEnum):
+    WINDOWS = 1
+    LINUX = 2
+
 ########################################################################################################################
 # (Django Database) Classes
 ########################################################################################################################
@@ -338,15 +348,18 @@ class AssetPackage(models.Model):
     idx = models.AutoField(primary_key=True)
     name = models.TextField()
     created = models.DateTimeField(auto_now_add=True)
+    package_type = models.IntegerField(choices=[(pt.value, pt.name) for pt in PackageTypeEnum])
 
     def __lt__(self, other):
         return self.name < other.name
 
     def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.name == other.name
+        return isinstance(other, self.__class__) \
+               and self.name == other.name \
+               and self.package_type == other.package_type
 
     def __hash__(self):
-        return hash((self.name,))
+        return hash((self.name, self.package_type))
 
 
 class AssetPackageVersion(models.Model):
@@ -420,11 +433,12 @@ class AssetRun(models.Model):
                 version = ba.version if ba.version else ""
                 release = ba.release if ba.release else ""
                 size = ba.size if ba.size else 0
+                package_type = ba.package_type
 
                 # kwfilterdict['name'] = ba.name
                 # kwfilterdict['version'] = ba.version
                 # kwfilterdict['release'] = ba.release
-                aps = AssetPackage.objects.filter(name=name)
+                aps = AssetPackage.objects.filter(name=name, package_type=package_type)
                 assert (len(aps) < 2)
 
                 if aps:
@@ -441,7 +455,7 @@ class AssetRun(models.Model):
 
                     self.packages.add(apv)
                 else:
-                    ap = AssetPackage(name=name)
+                    ap = AssetPackage(name=name, package_type=package_type)
                     ap.save()
                     apv = AssetPackageVersion(asset_package=ap, version=version, release=release, size=size)
                     apv.save()

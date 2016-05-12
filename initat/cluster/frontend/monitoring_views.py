@@ -585,7 +585,7 @@ class get_asset_list(RetrieveAPIView):
     def get(self, request, *args, **kwargs):
         return Response(
             {
-                'assets': [(package.pk, package.name) for package in AssetPackage.objects.all()],
+                'assets': [(package.pk, package.name, package.package_type) for package in AssetPackage.objects.all()],
             }
         )
 
