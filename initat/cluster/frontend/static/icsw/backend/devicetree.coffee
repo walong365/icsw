@@ -49,7 +49,7 @@ angular.module(
         # global post calls
 
         post_g_network_info: () =>
-            # FIXME, todo: remove entries when a device gets delete
+            # FIXME, todo: remove entries when a device gets deleted
             @netdevice_list.length = 0
             @net_ip_list.length = 0
             for dev in @devices

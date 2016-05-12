@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -898,8 +898,8 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                     # action url
                     if self.gc["ENABLE_COLLECTD"]:
                         act_host["process_perf_data"] = 1 if host.enable_perfdata else 0
-                    # always set action_url
-                    act_host["action_url"] = reverse("device:device_info", kwargs={"device_pk": host.pk, "mode": "rrd"})
+                    # always set action_url, to be fixed, FIXME, TODO
+                    # act_host["action_url"] = reverse("device:device_info", kwargs={"device_pk": host.pk, "mode": "rrd"})
                     act_host["_device_pk"] = host.pk
                     if global_config["USE_ONLY_ALIAS_FOR_ALIAS"]:
                         act_host["alias"] = host.alias or host.name

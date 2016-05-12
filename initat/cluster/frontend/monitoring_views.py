@@ -22,25 +22,20 @@
 
 """ monitoring views """
 
-import StringIO
 import base64
 import collections
 import datetime
 import json
 import logging
 import socket
-import uuid
 from collections import defaultdict
 
-import cairosvg
 import pytz
 from django.contrib.auth.decorators import login_required
-from django.core.cache import cache
 from django.db.models import Q
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from lxml import etree
 from lxml.builder import E
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.response import Response
@@ -50,7 +45,6 @@ from initat.cluster.backbone.models import device
 from initat.cluster.backbone.models import get_related_models, mon_check_command, \
     parse_commandline, mon_check_command_special
 from initat.cluster.backbone.models.asset import AssetPackage, AssetRun, AssetPackageVersion
-from initat.cluster.backbone.models.dispatch import ScheduleItem
 from initat.cluster.backbone.models.functions import duration
 from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListDeviceService
 from initat.cluster.backbone.models.status_history import mon_icinga_log_aggregated_host_data, \
@@ -60,7 +54,7 @@ from initat.cluster.frontend.common import duration_utils
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.frontend.rest_views import rest_logging
 from initat.md_config_server.icinga_log_reader.log_reader_utils import host_service_id_util
-from initat.tools import logging_tools, server_command
+from initat.tools import server_command
 
 logger = logging.getLogger("cluster.monitoring")
 
@@ -584,45 +578,6 @@ class get_hist_service_line_graph_data(ListAPIView):
         return Response([return_data])  # fake a list, see coffeescript
         """
         return Response([return_data])  # fake a list, see coffeescript
-
-
-class svg_to_png(View):
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        parser = etree.XMLParser(remove_comments=True)
-        _post = request.POST
-        _bytes = _post["svg"]
-        _out = StringIO.StringIO()
-        # _xml = etree.fromstring(_post["svg"], parser)
-        # for _el in _xml.iter():
-        #    for _key, _value in _el.attrib.iteritems():
-        #        if _key.startswith("ng-"):
-        #            del _el.attrib[_key]
-        try:
-            cairosvg.svg2png(bytestring=_bytes.strip(), write_to=_out)
-        except:
-            request.xml_response.error("error converting svg to png")
-        else:
-            _png_content = _out.getvalue()
-            _cache_key = "SVG2PNG_{}".format(uuid.uuid4().get_urn().split("-")[-1])
-            cache.set(_cache_key, _png_content, 60)
-            logger.info(
-                "converting svg with {} to png with {} (cache_key is {})".format(
-                    logging_tools.get_size_str(len(_post["svg"])),
-                    logging_tools.get_size_str(len(_png_content)),
-                    _cache_key,
-                )
-            )
-            request.xml_response["cache_key"] = _cache_key
-
-
-class fetch_png_from_cache(View):
-    def get(self, request, cache_key=None):
-        _val = cache.get(cache_key)
-        if _val:
-            return HttpResponse(_val, content_type="image/png")
-        else:
-            return HttpResponse("", content_type="image/png")
 
 
 class get_asset_list(RetrieveAPIView):
