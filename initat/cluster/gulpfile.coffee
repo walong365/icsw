@@ -163,8 +163,8 @@ sources = {
         "js"
         true
     )
-    "icsw_cs": new SourceMap(
-        "icsw_cs"
+    "icsw-cs": new SourceMap(
+        "icsw-cs"
         "partd.js"
         [
             "frontend/static/icsw/**/*.coffee"
@@ -172,8 +172,8 @@ sources = {
         "coffee"
         false
     )
-    "icsw_html": new SourceMap(
-        "icsw_html"
+    "icsw-html": new SourceMap(
+        "icsw-html"
         "icsw.html"
         [
             "frontend/static/icsw/**/*.html"
@@ -394,8 +394,7 @@ gulp.task("deploy-html", () ->
 gulp.task("deploy-addons", () ->
     return gulp.src(
         [
-            "addons/liebherr/initat/cluster/work/icsw/*.js",
-            "addons/licadmin/initat/cluster/work/icsw/*.js",
+            "addons/*/initat/cluster/work/icsw/*.js",
         ]
     ).pipe(
         gulp.dest(DEPLOY_DIR)
@@ -563,8 +562,11 @@ gulp.task("watch", (cb) ->
         [
             "frontend/static/icsw/*/*.coffee",
             "frontend/static/icsw/*/*.html",
+            # addons
+            "addons/*/initat/cluster/work/icsw/*.js",
+            "addons/*/initat/cluster/work/icsw/*.html",
         ]
-        gulp.series(gulp.parallel("icsw_cs", "icsw_html"), "deploy-all", "transform-main", "fix-main-import-path", "inject-addons-to-main", "copy-main", "reload-main")
+        gulp.series(gulp.parallel("icsw-cs", "icsw-html"), "deploy-all", "transform-main", "fix-main-import-path", "inject-addons-to-main", "copy-main", "reload-main")
     )
     cb()
 )
