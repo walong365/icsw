@@ -19,6 +19,8 @@
                         <uib-tab-heading>
                             <span>Scheduled Runs ({{ struct.schedule_items.length }})</span>
                         </uib-tab-heading>
+
+
                         <table
                             class="table table-condensed table-hover table-striped"
                             style="width:auto;"
@@ -30,13 +32,18 @@
                                 <tr>
                                     <th st-sort="dev_name">Device</th>
                                     <th st-sort="planned_time">Planned Time</th>
+                                    <th st-sort="ds_name">Dispatch Setting Name</th>
+                                    <th><button type="button" ng-csv="filterSchedArrayForCsvExport(scheduleitems_shown)" csv-header="['Device', 'Planned Time', 'Dispatch Setting Name']" filename="test.csv">Export to CSV</button></th>
                                 </tr>
                                 <tr>
                                     <th colspan="1">
-                                        <input st-search="dev_name" placeholder="filter by device" class="input-sm form-control" type="search"/>
+                                        <input st-search="dev_name" placeholder="filter by device name" class="input-sm form-control" type="search"/>
                                     </th>
                                     <th colspan="1">
                                         <input st-search="planned_time" placeholder="search by time" class="input-sm form-control" type="search"/>
+                                    </th>
+                                    <th colspan="2">
+                                        <input st-search="ds_name" placeholder="search by dispatch setting name" class="input-sm form-control" type="search"/>
                                     </th>
                                 </tr>
                                 <tr>
@@ -54,6 +61,7 @@
                                 <tr ng-repeat="schedule_item in scheduleitems_shown track by $index">
                                     <td>{{ schedule_item.dev_name }}</td>
                                     <td>{{ schedule_item.planned_time }}</td>
+                                    <td colspan="2">{{ schedule_item.ds_name }}</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -87,7 +95,7 @@
                                     <th st-sort="run_end_time">Run End</th>
                                     <th st-sort="device_name">Device</th>
                                     <th colspan="2">Action</th>
-
+                                    <th><button type="button" ng-csv="filterAssetRunArrayForCsvExport(assetruns_shown)" csv-header="['Run Type', 'Run Start', 'Run End', 'Device']" filename="test.csv">Export to CSV</button></th>
                                 </tr>
                                 <tr>
                                     <th colspan="1">
@@ -204,24 +212,24 @@
 
             <uib-tab>
                 <uib-tab-heading>
-                    <span ng-show="$root.assets.length">Known Packages ({{ $root.assets_sf.length }})</span>
-                    <span ng-show="!$root.assets.length">No known packages</span>
+                    <span>Known Packages ({{ struct.packages.length }})</span>
                 </uib-tab-heading>
 
-                <h3 ng-if="!$root.assets.length">
+                <h3 ng-if="!struct.packages.length">
                     <span>No know Packages! Start an AssetRun to populate this list</span>
                 </h3>
 
                 <table
                     class="table table-condensed table-hover table-striped"
                     style="width:auto;"
-                    ng-show="$root.assets_sf.length > 0"
-                    st-table="$root.assets"
-                    st-safe-src="$root.assets_sf"
+                    ng-show="struct.packages.length > 0"
+                    st-table="packages_shown"
+                    st-safe-src="struct.packages"
                 >
                     <thead>
                         <tr>
                             <th st-sort="name">Name</th>
+                            <th><button type="button" ng-csv="filterPackageArrayForCsvExport(packages_shown)" csv-header="['Package Name', 'Version', 'Release', 'Size']" filename="test.csv">Export to CSV</button></th>
                         </tr>
                         <th colspan="3">
                             <input st-search="" class="form-control" placeholder="global search ..." type="text"/>
@@ -232,13 +240,13 @@
                                     icsw-tools-pagination
                                     st-items-by-page="10"
                                     st-displayed-pages="11"
-                                    possible-items-by-page="10,20,50,100"
+                                    possible-items-by-page="10,20,50,100,500,1000,2000,5000,10000"
                                 ></div>
                             </td>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr ng-repeat-start="package in $root.assets">
+                        <tr ng-repeat-start="package in packages_shown">
                             <td>{{ package.name }}</td>
                             <td>
                                 <icsw-tools-button size="xs" type="show" is-show="package.expanded" ng-click="expand_package($event, package)"></icsw-tools-button>

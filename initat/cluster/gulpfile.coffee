@@ -158,6 +158,7 @@ sources = {
             "frontend/static/js/angular-simple-logger.js",
             "frontend/static/js/angular-google-maps.min.js",
             "frontend/static/js/bootstrap-dialog.js",
+            "frontend/static/js/ng-csv.min.js",
         ]
         "js"
         true

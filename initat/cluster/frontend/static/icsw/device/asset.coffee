@@ -23,7 +23,7 @@
 device_asset_module = angular.module(
     "icsw.device.asset",
     [
-        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select"
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "ngCsv"
     ]
 ).config(["$stateProvider", ($stateProvider) ->
     $stateProvider.state(
@@ -74,11 +74,11 @@ device_asset_module = angular.module(
 [
     "$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "blockUI",
     "icswTools", "icswSimpleAjaxCall", "ICSW_URLS", "$http", "icswAssetHelperFunctions",
-    "icswDeviceTreeService", "icswDeviceTreeHelperService", "$rootScope", "$timeout"
+    "icswDeviceTreeService", "icswDeviceTreeHelperService"
 (
     $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI,
     icswTools, icswSimpleAjaxCall, ICSW_URLS, $http, icswAssetHelperFunctions,
-    icswDeviceTreeService, icswDeviceTreeHelperService, $rootScope, $timeout
+    icswDeviceTreeService, icswDeviceTreeHelperService
 ) ->
     # struct to hand over to VarCtrl
     $scope.struct = {
@@ -100,7 +100,77 @@ device_asset_module = angular.module(
 
         #Scheduled Runs tab properties
         schedule_items: []
+        
+        #Known packages tab properties
+        packages: []
     }
+
+    $scope.resolve_asset_type = (_t) ->
+        return {
+            1: "Package"
+            2: "Hardware"
+            3: "License"
+            4: "Update"
+            5: "Software version"
+            6: "Process"
+            7: "Pending update"
+        }[_t]
+        
+    $scope.resolve_asset_type_reverse = (_t) ->
+        return {
+            "Package": 1
+            "Hardware": 2
+            "License": 3
+            "Update": 4
+            "Software version": 5
+            "Process": 6
+            "Pending update": 7
+        }[_t]
+
+    $scope.filterSchedArrayForCsvExport = (filteredSchedItems) ->
+        moreFilteredSchedItems = []
+        for obj in filteredSchedItems
+            sched_item = {}
+            sched_item.dev_name = obj.dev_name
+            sched_item.planned_time = obj.planned_time
+            sched_item.ds_name = obj.ds_name
+            moreFilteredSchedItems.push(sched_item)
+
+        return moreFilteredSchedItems
+
+    $scope.filterAssetRunArrayForCsvExport = (filteredARItems) ->
+        moreFilteredARItems = []
+        for obj in filteredARItems
+            asset_run = {}
+            asset_run.run_type = $scope.resolve_asset_type(obj.run_type)
+            asset_run.run_start_time = obj.run_start_time
+            asset_run.run_end_time = obj.run_end_time
+            asset_run.device_name = obj.device_name
+            moreFilteredARItems.push(asset_run)
+
+        return moreFilteredARItems
+
+    $scope.filterPackageArrayForCsvExport = (filteredPackageItems) ->
+        moreFilteredPackageItems = []
+        for obj in filteredPackageItems
+
+            if obj.versions.length > 0
+                for version in obj.versions
+                    _pack = {}
+                    _pack.name = obj.name
+                    _pack.version = version[1]
+                    _pack.release = version[2]
+                    _pack.size = version[3]
+                    moreFilteredPackageItems.push(_pack)
+            else
+                _pack = {}
+                _pack.name = obj.name
+                moreFilteredPackageItems.push(_pack)
+
+
+
+
+        return moreFilteredPackageItems
 
     $scope.assetchangesetar = ($event) ->
         ar1 = undefined
@@ -283,24 +353,20 @@ device_asset_module = angular.module(
                         $scope.struct.data_loaded = true
                 )
         )
-
-    $rootScope.assets = []
-    $rootScope.assets_sf = []
-
-    $http.get('/icsw/api/v2/mon/get_asset_list').then(
+        
+    $http.get(ICSW_URLS.MON_GET_ASSET_LIST).then(
         (result) ->
-            $rootScope.assets = []
-            $rootScope.assets_sf = []
-
-            angular.forEach result.data.assets, (item) ->
+            $scope.struct.packages.length = 0
+            
+            for item in result.data.assets
                 _pack = {
                     name: undefined
                     versions: undefined
                 }
                 _pack.pk = item[0]
                 _pack.name = item[1]
-                $rootScope.assets.push _pack
-                $rootScope.assets_sf.push _pack
+                _pack.versions = []
+                $scope.struct.packages.push(_pack)
     )
 
     $scope.new_devsel = (devs) ->
@@ -366,6 +432,7 @@ device_asset_module = angular.module(
                                 sched_item.dev_pk = obj[0]
                                 sched_item.dev_name = obj[1]
                                 sched_item.planned_time = obj[2]
+                                sched_item.ds_name = obj[3]
                                 $scope.struct.schedule_items.push(sched_item)
                 )
 
