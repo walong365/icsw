@@ -88,7 +88,12 @@ class SrvTypeRouting(object):
                 # old version, recalc
                 _resolv_dict = self._build_resolv_dict()
         if "_local_device" in _resolv_dict:
-            self._local_device = device.objects.get(Q(pk=_resolv_dict["_local_device"][0]))
+            try:
+                self._local_device = device.objects.get(Q(pk=_resolv_dict["_local_device"][0]))
+            except device.DoesNotExist:
+                self._local_device = None
+                # re-create resolv_dict
+                _resolv_dict = self._build_resolv_dict()
         else:
             self._local_device = None
         self._alias_dict = _resolv_dict.get("_alias_dict", {})

@@ -1,4 +1,4 @@
-# Copyright (C) 2014-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2014-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -45,6 +45,7 @@ def create_bg_job(server_pk, user_obj, cmd, cause, obj, **kwargs):
             ) for obj in obj_list
         ]
     )
+    # print "***", server_pk
     _new_job = background_job.objects.create(
         command=cmd,
         cause=u"{} of '{}'".format(cause, unicode(obj))[:255],

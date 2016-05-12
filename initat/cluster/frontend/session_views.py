@@ -163,9 +163,9 @@ class session_login(View):
     def _check_login_data(cls, request, username, password):
         """Returns a valid user instance to be logged in or raises ValidationError"""
         if username and password:
-            print "*"
+            # print "*"
             db_user = authenticate(username=username, password=password)
-            print "+", db_user
+            # print "+", db_user
             if db_user is None:
                 raise ValidationError(
                     "Please enter a correct username and password. " +
