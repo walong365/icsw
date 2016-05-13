@@ -86,13 +86,16 @@
                             ng-show="struct.asset_runs.length > 0"
                             st-table="assetruns_shown"
                             st-safe-src="struct.asset_runs"
-                            st-set-filter="strictFilter"
+                            st-set-filter="assetRunFilter"
                         >
                             <thead>
                                 <tr>
                                     <th st-sort="run_type">Run Type</th>
-                                    <th st-sort="run_start_time">Run Start</th>
-                                    <th st-sort="run_end_time">Run End</th>
+                                    <th st-sort="run_start_day">Run Start Day</th>
+                                    <th st-sort="run_start_hour">Run Start Hour</th>
+                                    <th st-sort="run_end_day">Run End Day</th>
+                                    <th st-sort="run_end_hour">Run End Hour</th>
+                                    <th st-sort="total_run_time">Run Time</th>
                                     <th st-sort="device_name">Device</th>
                                     <th colspan="2">Action</th>
                                     <th><button type="button" ng-csv="filterAssetRunArrayForCsvExport(assetruns_shown)" csv-header="['Run Type', 'Run Start', 'Run End', 'Device', 'Asset']" filename="test.csv">Export to CSV</button></th>
@@ -102,10 +105,19 @@
                                         <input st-search="run_type" placeholder="filter by run_type" class="input-sm form-control" type="search"/>
                                     </th>
                                     <th colspan="1">
-                                        <input st-search="run_start_time" placeholder="search by start_time" class="input-sm form-control" type="search"/>
+                                        <input st-search="run_start_day" placeholder="search by start_time" class="input-sm form-control" type="search"/>
                                     </th>
                                     <th colspan="1">
-                                        <input st-search="run_end_time" placeholder="search by end_time" class="input-sm form-control" type="search"/>
+                                        <input st-search="run_start_hour" placeholder="search by start_time" class="input-sm form-control" type="search"/>
+                                    </th>
+                                    <th colspan="1">
+                                        <input st-search="run_end_day" placeholder="search by end_time" class="input-sm form-control" type="search"/>
+                                    </th>
+                                    <th colspan="1">
+                                        <input st-search="run_end_hour" placeholder="search by end_time" class="input-sm form-control" type="search"/>
+                                    </th>
+                                    <th colspan="1">
+                                        <input st-search="total_run_time" placeholder="search by total_run_time" class="input-sm form-control" type="search"/>
                                     </th>
                                     <th colspan="1">
                                         <input st-search="device_name" placeholder="filter by device name" class="input-sm form-control" type="search"/>
@@ -126,8 +138,11 @@
                             <tbody>
                                 <tr ng-class="{'success': assetrun.$$selected}" ng-repeat-start="assetrun in assetruns_shown track by $index">
                                     <td>{{ resolve_asset_type(assetrun.run_type) }}</td>
-                                    <td>{{ assetrun.run_start_time }}</td>
-                                    <td>{{ assetrun.run_end_time }}</td>
+                                    <td>{{ assetrun.run_start_day }}</td>
+                                    <td>{{ assetrun.run_start_hour }}</td>
+                                    <td>{{ assetrun.run_end_day }}</td>
+                                    <td>{{ assetrun.run_end_hour }}</td>
+                                    <td>{{ assetrun.total_run_time }}</td>
                                     <td>{{ assetrun.device_name }}</td>
                                     <td>
                                         <icsw-tools-button size="xs" type="show" is-show="assetrun.expanded" ng-click="expand_assetrun($event, assetrun)"></icsw-tools-button>
@@ -291,7 +306,7 @@
                         <tr>
                             <th st-sort="name">Name</th>
                             <th st-sort="package_type">Package Type</th>
-                            <th><button type="button" ng-csv="filterPackageArrayForCsvExport(packages_shown)" csv-header="['Package Name', 'Version', 'Release', 'Size']" filename="test.csv">Export to CSV</button></th>
+                            <th><button type="button" ng-csv="filterPackageArrayForCsvExport(packages_shown)" csv-header="['Package Name', 'Package Type', 'Version', 'Release', 'Size']" filename="test.csv">Export to CSV</button></th>
                         </tr>
                         <tr>
                             <th colspan="1">
@@ -385,13 +400,15 @@
                     ng-show="dev.assetrun_set.length > 0"
                     st-table="assetruns_shown"
                     st-safe-src="dev.assetrun_set"
-                    st-set-filter="strictFilter"
+                    st-set-filter="assetRunFilter"
                 >
                     <thead>
                         <tr>
                             <th st-sort="run_type">Run Type</th>
-                            <th st-sort="run_start_time">Run Start</th>
-                            <th st-sort="run_end_time">Run End</th>
+                            <th st-sort="run_start_day">Run Start Day</th>
+                            <th st-sort="run_start_hour">Run Start Hour</th>
+                            <th st-sort="run_end_day">Run End Day</th>
+                            <th st-sort="run_end_hour">Run End Hour</th>
                             <th colspan="2">Action</th>
 
                         </tr>
@@ -400,10 +417,16 @@
                                 <input st-search="run_type" placeholder="filter by run_type" class="input-sm form-control" type="search"/>
                             </th>
                             <th colspan="1">
-                                <input st-search="run_start_time" placeholder="search by start_time" class="input-sm form-control" type="search"/>
+                                <input st-search="run_start_day" placeholder="search by start_time" class="input-sm form-control" type="search"/>
                             </th>
                             <th colspan="1">
-                                <input st-search="run_end_time" placeholder="search by end_time" class="input-sm form-control" type="search"/>
+                                <input st-search="run_start_hour" placeholder="search by start_time" class="input-sm form-control" type="search"/>
+                            </th>
+                            <th colspan="1">
+                                <input st-search="run_end_day" placeholder="search by end_time" class="input-sm form-control" type="search"/>
+                            </th>
+                            <th colspan="1">
+                                <input st-search="run_end_hour" placeholder="search by end_time" class="input-sm form-control" type="search"/>
                             </th>
                             <th colspan="3">&nbsp;</th>
                             <th><button type="button" ng-csv="filterAssetRunArrayForCsvExport(assetruns_shown)" csv-header="['Run Type', 'Run Start', 'Run End', 'Device', 'Assets']" filename="test.csv">Export to CSV</button></th>
@@ -422,8 +445,10 @@
                     <tbody>
                         <tr ng-class="{'success': assetrun.$$selected}" ng-repeat-start="assetrun in assetruns_shown">
                             <td>{{ resolve_asset_type(assetrun.run_type) }}</td>
-                            <td>{{ assetrun.run_start_time }}</td>
-                            <td>{{ assetrun.run_end_time }}</td>
+                            <td>{{ assetrun.run_start_day }}</td>
+                            <td>{{ assetrun.run_start_hour }}</td>
+                            <td>{{ assetrun.run_end_day }}</td>
+                            <td>{{ assetrun.run_end_hour }}</td>
                             <td>
                                 <icsw-tools-button size="xs" type="show" is-show="assetrun.expanded" ng-click="expand_assetrun($event, assetrun)"></icsw-tools-button>
                             </td>

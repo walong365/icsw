@@ -112,6 +112,41 @@ device_asset_module = angular.module(
         packages: []
     }
 
+    $scope.createAssetRunFromObj = (obj) ->
+        asset_run = {}
+        asset_run.idx = obj[0]
+        asset_run.pk = obj[0]
+        asset_run.run_index = obj[1]
+        asset_run.run_type = obj[2]
+        asset_run.run_start_time = obj[3]
+        if obj[3]!= null && obj[3].length > 0
+            date_time_arr = obj[3].split("T")
+            if date_time_arr.length < 2
+                date_time_arr = obj[3].split(" ")
+
+            asset_run.run_start_day = date_time_arr[0]
+            asset_run.run_start_hour = date_time_arr[1].split(".")[0]
+        else
+            asset_run.run_start_day = ""
+            asset_run.run_start_hour = ""
+        if obj[4]!= null && obj[4].length > 0
+            date_time_arr = obj[4].split("T")
+            if date_time_arr.length < 2
+                date_time_arr = obj[4].split(" ")
+            asset_run.run_end_day = date_time_arr[0]
+            asset_run.run_end_hour = date_time_arr[1].split(".")[0]
+        else
+            asset_run.run_end_day = ""
+            asset_run.run_end_hour = ""
+
+        asset_run.run_end_time = obj[4]
+        asset_run.total_run_time = obj[5]
+        asset_run.device_name = obj[6]
+        asset_run.device_pk = obj[7]
+        asset_run.assets = []
+
+        return asset_run
+
     $scope.resolve_asset_type = (_t) ->
         return {
             1: "Package"
@@ -189,7 +224,7 @@ device_asset_module = angular.module(
                 for version in obj.versions
                     _pack = {}
                     _pack.name = obj.name
-                    _pack.package_type = obj.package_type
+                    _pack.package_type = $scope.resolve_package_type(obj.package_type)
                     _pack.version = version[1]
                     _pack.release = version[2]
                     _pack.size = version[3]
@@ -197,7 +232,7 @@ device_asset_module = angular.module(
             else
                 _pack = {}
                 _pack.name = obj.name
-                _pack.package_type = obj.package_type
+                _pack.package_type = $scope.resolve_package_type(obj.package_type)
                 moreFilteredPackageItems.push(_pack)
 
         return moreFilteredPackageItems
@@ -381,17 +416,7 @@ device_asset_module = angular.module(
                                 (result) ->
                                     console.log "result: ", result
                                     for obj in result.asset_runs
-                                        asset_run = {}
-                                        asset_run.idx = obj[0]
-                                        asset_run.pk = obj[0]
-                                        asset_run.run_index = obj[1]
-                                        asset_run.run_type = obj[2]
-                                        asset_run.run_start_time = obj[3]
-                                        asset_run.run_end_time = obj[4]
-                                        asset_run.device_name = obj[5]
-                                        asset_run.device_pk = obj[6]
-                                        asset_run.assets = []
-                                        dev.assetrun_set.push asset_run
+                                        dev.assetrun_set.push($scope.createAssetRunFromObj(obj))
 
                                 (not_ok) ->
                                     console.log not_ok
@@ -447,9 +472,27 @@ device_asset_module = angular.module(
             (data) ->
                 $scope.struct.device_tree = data[0]
                 $scope.struct.devices.length = 0
-                for entry in devs
-                    entry.assetrun_set = []
-                    $scope.struct.devices.push(entry)
+                $scope.struct.asset_runs.length = 0
+                for dev in devs
+                    dev.assetrun_set = []
+                    $scope.struct.devices.push(dev)
+
+                    icswSimpleAjaxCall({
+                            url: ICSW_URLS.MON_GET_ASSETRUNS_FOR_DEVICE
+                            data:
+                                pk: dev.idx
+                            dataType: 'json'
+                    }).then(
+                        (result) ->
+                            console.log "result: ", result
+
+                            for obj in result.asset_runs
+                                dev.assetrun_set.push($scope.createAssetRunFromObj(obj))
+                                $scope.struct.asset_runs.push($scope.createAssetRunFromObj(obj))
+
+                        (not_ok) ->
+                            console.log not_ok
+                    )
 
                 $scope.struct.data_loaded = true
 
@@ -465,43 +508,24 @@ device_asset_module = angular.module(
 #                        $scope.struct.data_loaded = true
 #                )
 
-                icswSimpleAjaxCall({
-                    url: ICSW_URLS.MON_GET_ASSETRUNS
-                    type: "GET"
-                    dataType: 'json'
-                }).then(
-                    (result) ->
-                        $scope.struct.asset_runs.length = 0
-                        for obj in result.asset_runs
-                            found = false
-                            for dev in devs
-                                if dev.idx == obj[6]
-                                    found = true
-                                    asset_run = {}
-                                    asset_run.idx = obj[0]
-                                    asset_run.pk = obj[0]
-                                    asset_run.run_index = obj[1]
-                                    asset_run.run_type = obj[2]
-                                    asset_run.run_start_time = obj[3]
-                                    asset_run.run_end_time = obj[4]
-                                    asset_run.device_name = obj[5]
-                                    asset_run.device_pk = obj[6]
-                                    asset_run.assets = []
-                                    dev.assetrun_set.push asset_run
-
-                            if found
-                                asset_run = {}
-                                asset_run.idx = obj[0]
-                                asset_run.pk = obj[0]
-                                asset_run.run_index = obj[1]
-                                asset_run.run_type = obj[2]
-                                asset_run.run_start_time = obj[3]
-                                asset_run.run_end_time = obj[4]
-                                asset_run.device_name = obj[5]
-                                asset_run.device_pk = obj[6]
-                                asset_run.assets = []
-                                $scope.struct.asset_runs.push asset_run
-                )
+#                icswSimpleAjaxCall({
+#                    url: ICSW_URLS.MON_GET_ASSETRUNS
+#                    type: "GET"
+#                    dataType: 'json'
+#                }).then(
+#                    (result) ->
+#                        console.log "get_assetruns: ", result
+#                        $scope.struct.asset_runs.length = 0
+#                        for obj in result.asset_runs
+#                            found = false
+#                            for dev in devs
+#                                if dev.idx == obj[7]
+#                                    found = true
+#                                    dev.assetrun_set.push($scope.createAssetRunFromObj(obj))
+#
+#                            if found
+#                                $scope.struct.asset_runs.push($scope.createAssetRunFromObj(obj))
+#                )
 
                 icswSimpleAjaxCall({
                     url: ICSW_URLS.MON_GET_SCHEDULE_LIST
@@ -520,7 +544,7 @@ device_asset_module = angular.module(
                                 sched_item = {}
                                 sched_item.dev_pk = obj[0]
                                 sched_item.dev_name = obj[1]
-                                sched_item.planned_time = obj[2]
+                                sched_item.planned_time = obj[2] #obj[2].split("T")[0] + " " +  (obj[2].split("T")[1])
                                 sched_item.ds_name = obj[3]
                                 $scope.struct.schedule_items.push(sched_item)
                 )
@@ -581,7 +605,7 @@ device_asset_module = angular.module(
             new_predicate = predicate
             strict = false
 
-        return $filter('filter')(input, new_predicate, strict);
+        return $filter('filter')(input, new_predicate, strict)
 
 ]).filter('unique'
 [
@@ -606,4 +630,51 @@ device_asset_module = angular.module(
         console.log "*r: ", r
 
         return r
+]).filter('assetRunFilter'
+[
+    "$filter",
+(
+    $filter
+) ->
+    return (input, predicate) ->
+        console.log "input:", input
+        console.log "predicate:" , predicate
+
+        new_predicate = {}
+        strict = true
+
+        if (predicate.hasOwnProperty("run_type"))
+            run_type = undefined
+            if predicate.run_type == "Package"
+                run_type = 1
+            else if predicate.run_type == "Hardware"
+                run_type = 2
+            else if predicate.run_type == "License"
+                run_type = 3
+            else if predicate.run_type == "Update"
+                run_type = 4
+            else if predicate.run_type == "Software version"
+                run_type = 5
+            else if predicate.run_type == "Process"
+                run_type = 6
+            else if predicate.run_type == "Pending update"
+                run_type = 7
+            new_predicate.run_type = run_type
+        if (predicate.hasOwnProperty("run_start_day"))
+            new_predicate.run_start_day = predicate.run_start_day
+            strict = false
+        if (predicate.hasOwnProperty("run_start_hour"))
+            new_predicate.run_start_hour = predicate.run_start_hour
+            strict = false
+        if (predicate.hasOwnProperty("run_end_day"))
+            new_predicate.run_end_day = predicate.run_end_day
+            strict = false
+        if (predicate.hasOwnProperty("run_end_hour"))
+            new_predicate.run_end_hour = predicate.run_end_hour
+            strict = false
+        if (predicate.hasOwnProperty("device_name"))
+            new_predicate.device_name = predicate.device_name
+            strict = false
+
+        return $filter('filter')(input, new_predicate, strict)
 ])

@@ -806,10 +806,10 @@ class Dispatcher(object):
             #     _command = "lstopo"
             # elif schedule_item.source == DiscoverySource.LICENSE:
             #     runtype = AssetType.LICENSE
-            #     #todo implement me
+            #     # todo implement me
             # elif schedule_item.source == DiscoverySource.UPDATE:
             #     runtype = AssetType.UPDATE
-            #     #todo implement me
+            #     # todo implement me
             # elif schedule_item.source == DiscoverySource.PROCESS:
             #     runtype = AssetType.PROCESS
             #     _command = "proclist"

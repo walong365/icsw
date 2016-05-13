@@ -635,7 +635,14 @@ class get_assetruns(RetrieveAPIView):
     def get(self, request, *args, **kwargs):
         return Response(
             {
-                'asset_runs': [(ar.idx, ar.run_index, ar.run_type, ar.run_start_time, ar.run_end_time, ar.device.name, ar.device.idx) for ar in AssetRun.objects.all()],
+                'asset_runs': [(ar.idx,
+                                ar.run_index,
+                                ar.run_type,
+                                str(ar.run_start_time),
+                                str(ar.run_end_time),
+                                str((ar.run_end_time - ar.run_start_time).total_seconds()),
+                                ar.device.name,
+                                ar.device.idx) for ar in AssetRun.objects.all()],
             }
         )
 
@@ -715,9 +722,6 @@ class get_assets_for_asset_run(View):
 
 class get_schedule_list(RetrieveAPIView):
     def get(self, request, *args, **kwargs):
-        for x in sorted([(s.device.idx, s.planned_date) for s in ScheduleItem.objects.all()], key=lambda item: item[1]):
-            print x
-
         return Response(
             {
                 'schedules': sorted([(s.device.idx, s.device.name, s.planned_date, s.dispatch_setting.name) for s in ScheduleItem.objects.all()], key=lambda item: item[1])
@@ -728,4 +732,11 @@ class get_assetruns_for_device(View):
     def post(self, request):
         dev = device.objects.get(idx=int(request.POST['pk']))
 
-        return HttpResponse(json.dumps({'asset_runs': [(ar.idx, ar.run_index, ar.run_type, str(ar.run_start_time), str(ar.run_end_time), ar.device.name, ar.device.idx) for ar in dev.assetrun_set.all()]}), content_type="application/json")
+        return HttpResponse(json.dumps({'asset_runs': [(ar.idx,
+                                                        ar.run_index,
+                                                        ar.run_type,
+                                                        str(ar.run_start_time),
+                                                        str(ar.run_end_time),
+                                                        str((ar.run_end_time - ar.run_start_time).total_seconds()),
+                                                        ar.device.name,
+                                                        ar.device.idx) for ar in dev.assetrun_set.all()]}), content_type="application/json")
