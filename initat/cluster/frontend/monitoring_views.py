@@ -44,7 +44,7 @@ from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParam
 from initat.cluster.backbone.models import device
 from initat.cluster.backbone.models import get_related_models, mon_check_command, \
     parse_commandline, mon_check_command_special
-from initat.cluster.backbone.models.asset import AssetPackage, AssetRun, AssetPackageVersion
+from initat.cluster.backbone.models.asset import AssetPackage, AssetRun, AssetPackageVersion, AssetType
 from initat.cluster.backbone.models.dispatch import ScheduleItem
 from initat.cluster.backbone.models.functions import duration
 from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListDeviceService
@@ -643,7 +643,74 @@ class get_assets_for_asset_run(View):
     def post(self, request, *args, **kwargs):
         ar = AssetRun.objects.get(pk=int(request.POST['pk']))
 
-        return HttpResponse(json.dumps({'assets': [str(obj) for obj in ar.generate_assets_no_save()]}), content_type="application/json")
+        if ar.run_type == AssetType.PACKAGE:
+            return HttpResponse(
+                json.dumps(
+                    {'assets': [(str(bap.name),
+                                 str(bap.version),
+                                 str(bap.release),
+                                 str(bap.size),
+                                 str(bap.install_date),
+                                 str(bap.package_type)) for bap in ar.generate_assets_no_save()]
+                    }
+                )
+            )
+        elif ar.run_type == AssetType.HARDWARE:
+            return HttpResponse(
+                json.dumps(
+                    {'assets': [(str(bah.type), str(bah.info_dict)) for bah in ar.generate_assets_no_save()]
+
+                    }
+                )
+            )
+        elif ar.run_type == AssetType.LICENSE:
+            return HttpResponse(
+                json.dumps(
+                    {'assets': [(str(bal.name),
+                                 str(bal.license_key)) for bal in ar.generate_assets_no_save()]
+                    }
+                )
+            )
+        elif ar.run_type == AssetType.UPDATE:
+            return HttpResponse(
+                json.dumps(
+                    {'assets': [(str(bau.name),
+                                 str(bau.install_date),
+                                 str(bau.status)) for bau in ar.generate_assets_no_save()]
+                    }
+                )
+            )
+        elif ar.run_type == AssetType.SOFTWARE_VERSION:
+            return HttpResponse(
+                json.dumps(
+                    {'assets': [str(basv) for basv in ar.generate_assets_no_save()]
+                    }
+                )
+            )
+        elif ar.run_type == AssetType.PROCESS:
+            return HttpResponse(
+                json.dumps(
+                    {'assets': [(str(bap.name),
+                                 str(bap.pid)) for bap in ar.generate_assets_no_save()]
+                    }
+                )
+            )
+        elif ar.run_type == AssetType.PENDING_UPDATE:
+            return HttpResponse(
+                json.dumps(
+                    {'assets': [(str(bapu.name),
+                                 str(bapu.version),
+                                 str(bapu.optional)) for bapu in ar.generate_assets_no_save()]
+                    }
+                )
+            )
+        else:
+            return HttpResponse(
+                json.dumps(
+                    {'assets': [str(ba) for ba in ar.generate_assets_no_save]
+                    }
+                )
+            )
 
 
 class get_schedule_list(RetrieveAPIView):

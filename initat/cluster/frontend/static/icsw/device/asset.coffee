@@ -539,6 +539,9 @@ device_asset_module = angular.module(
         new_predicate = {}
 
         strict = true
+        if (predicate.hasOwnProperty("name"))
+            new_predicate.name = predicate.name
+            strict = false
         if (predicate.hasOwnProperty("package_type"))
             package_type = undefined
             if predicate.package_type == "Windows"
