@@ -243,39 +243,77 @@ angular.module(
         parameters_sortable = _.sum(_.values(issued_lic.parameters))
         if moment(issued_lic.valid_from) < moment() and moment() < add_grace_period(moment(issued_lic.valid_to))
             if moment() < moment(issued_lic.valid_to)
-                return ([0, parameters_sortable, 0, {
-                    state_id: 'valid'
-                    state_str: gettextCatalog.getString('Valid')
-                    date_info: gettextCatalog.getString('until') + ' ' + moment(issued_lic.valid_to).format("YYYY-MM-DD")
-                }])
+                return (
+                    [
+                        0
+                        parameters_sortable
+                        0
+                        {
+                            state_id: 'valid'
+                            state_str: gettextCatalog.getString('Valid')
+                            date_info: gettextCatalog.getString('until') + ' ' + moment(issued_lic.valid_to).format("YYYY-MM-DD")
+                        }
+                    ]
+                )
             else
-                return ([3, parameters_sortable, 0,  {
-                    state_id: 'grace'
-                    state_str: gettextCatalog.getString('In grace period')
-                    date_info: gettextCatalog.getString('since') + ' ' + moment(issued_lic.valid_to).format("YYYY-MM-DD")
-                }])
+                return (
+                    [
+                        3
+                        parameters_sortable
+                        0
+                        {
+                            state_id: 'grace'
+                            state_str: gettextCatalog.getString('In grace period')
+                            date_info: gettextCatalog.getString('since') + ' ' + moment(issued_lic.valid_to).format("YYYY-MM-DD")
+                        }
+                    ]
+                )
         else if moment(issued_lic.valid_from) < moment()
-            return ([5, parameters_sortable, moment(issued_lic.valid_to), {
-                state_id: 'expired'
-                state_str: gettextCatalog.getString('Expired')
-                date_info: gettextCatalog.getString('since') + ' ' + moment(issued_lic.valid_to).format("YYYY-MM-DD")
-            }])
+            return (
+                [
+                    5
+                    parameters_sortable
+                    moment(issued_lic.valid_to)
+                    {
+                        state_id: 'expired'
+                        state_str: gettextCatalog.getString('Expired')
+                        date_info: gettextCatalog.getString('since') + ' ' + moment(issued_lic.valid_to).format("YYYY-MM-DD")
+                    }
+                ]
+            )
         else
-            return ([8, parameters_sortable, moment(issued_lic.valid_from), {
-                state_id: 'valid_in_future'
-                state_str: gettextCatalog.getString('Will be valid')
-                date_info: gettextCatalog.getString('on') + ' ' + moment(issued_lic.valid_from).format("YYYY-MM-DD")
-            }])
+            return (
+                [
+                    8
+                    parameters_sortable
+                    moment(issued_lic.valid_from)
+                    {
+                        state_id: 'valid_in_future'
+                        state_str: gettextCatalog.getString('Will be valid')
+                        date_info: gettextCatalog.getString('on') + ' ' + moment(issued_lic.valid_from).format("YYYY-MM-DD")
+                    }
+                ]
+            )
     get_license_state_bootstrap_class = (state) ->
         if state?
-            return {'valid': 'success', 'expired': 'danger', 'grace': 'warning', 'valid_in_future': 'warning',
-            'parameter_violated': 'danger'}[state]
+            return {
+                valid: 'success'
+                expired: 'danger'
+                grace: 'warning'
+                valid_in_future: 'warning'
+                parameter_violated: 'danger'
+            }[state]
         else
             return ""
     get_license_state_icon_class = (state) ->
         if state?
-            return {'valid': 'fa fa-check', 'expired': 'fa fa-times', 'grace': 'fa fa-clock-o', 'valid_in_future': 'fa fa-clock-o',
-            'parameter_violated': 'fa fa-times'}[state]
+            return {
+                valid: 'fa fa-check'
+                expired: 'fa fa-times'
+                grace: 'fa fa-clock-o'
+                valid_in_future: 'fa fa-clock-o'
+                parameter_violated: 'fa fa-times'
+            }[state]
         else
             return ""
     get_license_state = (issued_lic) ->

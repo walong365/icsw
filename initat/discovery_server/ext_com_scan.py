@@ -501,9 +501,9 @@ def align_hour(now, sched_start_hour):
 def align_day(now, sched_start_day):
     while True:
         # print(now, datetime.timedelta(days=1))
-        now += datetime.timedelta(days=1)
-        if now.day == sched_start_day:
+        if now.weekday() == sched_start_day:
             break
+        now += datetime.timedelta(days=1)
     return now
 
 
@@ -539,6 +539,7 @@ def align_time_to_baseline(now, ds):
         now = align_second(now, ds.sched_start_second)
         now = align_minute(now, ds.sched_start_minute)
         now = align_hour(now, ds.sched_start_hour)
+        print now, ds.sched_start_day
         now = align_day(now, ds.sched_start_day)
 
     elif ds.run_schedule.baseline == DispatcherSettingScheduleEnum.month:
@@ -763,26 +764,30 @@ class Dispatcher(object):
                         asset_run.run_status = RunStatus.ENDED
                         asset_run.run_end_time = datetime.datetime.now()
 
-                        s = None
-                        if asset_run.run_type == AssetType.PACKAGE:
-                            s = res_list[0]["pkg_list"].text
-                        elif asset_run.run_type == AssetType.HARDWARE:
-                            s = res_list[0]["lstopo_dump"].text
-                        elif asset_run.run_type == AssetType.LICENSE:
-                            pass
-                            #todo implement me
-                        elif asset_run.run_type == AssetType.UPDATE:
-                            pass
-                            #todo implement me
-                        elif asset_run.run_type == AssetType.PROCESS:
-                            s = res_list[0]['process_tree'].text
-                        elif asset_run.run_type == AssetType.PENDING_UPDATE:
-                            s = res_list[0]["update_list"].text
+                        try:
+                            s = None
+                            if asset_run.run_type == AssetType.PACKAGE:
+                                s = res_list[0]["pkg_list"].text
+                            elif asset_run.run_type == AssetType.HARDWARE:
+                                s = res_list[0]["lstopo_dump"].text
+                            elif asset_run.run_type == AssetType.LICENSE:
+                                pass
+                                # todo implement me
+                            elif asset_run.run_type == AssetType.UPDATE:
+                                pass
+                                # todo implement me
+                            elif asset_run.run_type == AssetType.PROCESS:
+                                s = res_list[0]['process_tree'].text
+                            elif asset_run.run_type == AssetType.PENDING_UPDATE:
+                                s = res_list[0]["update_list"].text
+                        except KeyError:
+                            self.log("KeyError: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                            s = None
 
                         asset_run.raw_result_str = s
-                        #asset_run.generate_assets_new()
+                        # asset_run.generate_assets_new()
                         self.todo_asset_runs.put(asset_run)
-                        #asset_run.save()
+                        # asset_run.save()
                         self.device_running_ext_coms[_device] = 0
 
     def __do_hm_scan(self, schedule_item):
