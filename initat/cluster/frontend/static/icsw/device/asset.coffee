@@ -477,22 +477,22 @@ device_asset_module = angular.module(
                     dev.assetrun_set = []
                     $scope.struct.devices.push(dev)
 
-                    icswSimpleAjaxCall({
-                            url: ICSW_URLS.MON_GET_ASSETRUNS_FOR_DEVICE
-                            data:
-                                pk: dev.idx
-                            dataType: 'json'
-                    }).then(
-                        (result) ->
-                            console.log "result: ", result
-
-                            for obj in result.asset_runs
-                                dev.assetrun_set.push($scope.createAssetRunFromObj(obj))
-                                $scope.struct.asset_runs.push($scope.createAssetRunFromObj(obj))
-
-                        (not_ok) ->
-                            console.log not_ok
-                    )
+#                    icswSimpleAjaxCall({
+#                            url: ICSW_URLS.MON_GET_ASSETRUNS_FOR_DEVICE
+#                            data:
+#                                pk: dev.idx
+#                            dataType: 'json'
+#                    }).then(
+#                        (result) ->
+#                            console.log "result: ", result
+#
+#                            for obj in result.asset_runs
+#                                dev.assetrun_set.push($scope.createAssetRunFromObj(obj))
+#                                $scope.struct.asset_runs.push($scope.createAssetRunFromObj(obj))
+#
+#                        (not_ok) ->
+#                            console.log not_ok
+#                    )
 
                 $scope.struct.data_loaded = true
 
@@ -508,24 +508,24 @@ device_asset_module = angular.module(
 #                        $scope.struct.data_loaded = true
 #                )
 
-#                icswSimpleAjaxCall({
-#                    url: ICSW_URLS.MON_GET_ASSETRUNS
-#                    type: "GET"
-#                    dataType: 'json'
-#                }).then(
-#                    (result) ->
-#                        console.log "get_assetruns: ", result
-#                        $scope.struct.asset_runs.length = 0
-#                        for obj in result.asset_runs
-#                            found = false
-#                            for dev in devs
-#                                if dev.idx == obj[7]
-#                                    found = true
-#                                    dev.assetrun_set.push($scope.createAssetRunFromObj(obj))
-#
-#                            if found
-#                                $scope.struct.asset_runs.push($scope.createAssetRunFromObj(obj))
-#                )
+                icswSimpleAjaxCall({
+                    url: ICSW_URLS.MON_GET_ASSETRUNS
+                    type: "GET"
+                    dataType: 'json'
+                }).then(
+                    (result) ->
+                        console.log "get_assetruns: ", result
+                        $scope.struct.asset_runs.length = 0
+                        for obj in result.asset_runs
+                            found = false
+                            for dev in devs
+                                if dev.idx == obj[7]
+                                    found = true
+                                    dev.assetrun_set.push($scope.createAssetRunFromObj(obj))
+
+                            if found
+                                $scope.struct.asset_runs.push($scope.createAssetRunFromObj(obj))
+                )
 
                 icswSimpleAjaxCall({
                     url: ICSW_URLS.MON_GET_SCHEDULE_LIST
