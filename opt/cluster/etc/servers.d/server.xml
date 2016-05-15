@@ -131,7 +131,7 @@
         <access-rights>
             <dir value="/var/run/rrd-grapher" user="idrrd" group="idg" create="1"/>
             <dir value="/tmp/.icsw/static/graphs" user="idrrd" group="idg" create="1"/>
-            <dir value="/srv/www/htdocs/icsw/static/graphs" user="idrrd" group="idg" create="1"/>
+            <dir value="/srv/www/init.at/icsw/static/graphs" user="idrrd" group="idg" create="1"/>
             <dir value="/var/cache/rrd" user="idrrd" group="idg" create="1"/>
         </access-rights>
     </instance>

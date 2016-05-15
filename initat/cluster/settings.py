@@ -172,7 +172,7 @@ else:
     if LOCAL_STATIC:
         STATIC_ROOT = STATIC_ROOT_DEBUG
     else:
-        STATIC_ROOT = "/srv/www/htdocs/icsw/static"
+        STATIC_ROOT = "/srv/www/init.at/icsw/static"
 
 if not os.path.isdir(STATIC_ROOT_DEBUG):
     try:
