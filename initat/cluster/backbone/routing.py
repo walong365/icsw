@@ -90,7 +90,11 @@ class SrvTypeRouting(object):
                 _resolv_dict = self._build_resolv_dict()
         if "_local_device" in _resolv_dict:
             try:
-                self._local_device = device.objects.get(Q(pk=_resolv_dict["_local_device"][0]))
+                self._local_device = device.objects.select_related(
+                    "domain_tree_node"
+                ).get(
+                    Q(pk=_resolv_dict["_local_device"][0])
+                )
             except device.DoesNotExist:
                 self._local_device = None
                 # re-create resolv_dict
@@ -119,7 +123,11 @@ class SrvTypeRouting(object):
             self.log("update SrvTypeRouting")
             self._resolv_dict = self._build_resolv_dict()
             if "_local_device" in self._resolv_dict:
-                self._local_device = device.objects.get(Q(pk=self._resolv_dict["_local_device"][0]))
+                self._local_device = device.objects.select_related(
+                    "domain_tree_node"
+                ).get(
+                    Q(pk=self._resolv_dict["_local_device"][0])
+                )
             else:
                 self._local_device = None
 

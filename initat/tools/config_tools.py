@@ -511,6 +511,8 @@ class server_check(object):
                         # search with full host name
                         self.device = device.objects.prefetch_related(
                             "netdevice_set__net_ip_set__network__network_type"
+                        ).select_related(
+                            "domain_tree_node"
                         ).get(
                             Q(name=self.short_host_name) & Q(domain_tree_node__full_name=self.host_name.split(".", 1)[1])
                         )
@@ -518,6 +520,8 @@ class server_check(object):
                         # search with short host name
                         self.device = device.objects.prefetch_related(
                             "netdevice_set__net_ip_set__network__network_type"
+                        ).select_related(
+                            "domain_tree_node"
                         ).get(
                             Q(name=self.short_host_name)
                         )
@@ -541,7 +545,9 @@ class server_check(object):
                         except config.DoesNotExist:  # @UndefinedVariable
                             self.config = None
                         else:
-                            self.effective_device = device.objects.get(
+                            self.effective_device = device.objects.select_related(
+                                "domain_tree_node"
+                            ).get(
                                 Q(device_group=self.device.device_group_id) &
                                 Q(is_meta_device=True)
                             )
@@ -647,7 +653,7 @@ class server_check(object):
         my_ips = set(sum(ipv4_dict.values(), []))
         # check for virtual-device
         # get all real devices with the requested config, no meta-device handling possible
-        dev_list = device.objects.filter(Q(device_config__config__name=self.__server_type))
+        dev_list = device.objects.select_related("domain_tree_node").filter(Q(device_config__config__name=self.__server_type))
         if not dev_list:
             # no device(s) found with IP and requested config
             return
@@ -802,7 +808,11 @@ class device_with_config(dict):
         # expand device groups
         group_dict, md_set, group_md_lut = ({}, set(), {})
         if exp_group:
-            for group_dev in device.objects.filter(Q(device_group__in=exp_group)).values_list("name", "pk", "device_group", "is_meta_device"):
+            for group_dev in device.objects.select_related(
+                "domain_tree_node"
+            ).filter(
+                Q(device_group__in=exp_group)
+            ).values_list("name", "pk", "device_group", "is_meta_device"):
                 if not group_dev[3]:
                     group_dict.setdefault(group_dev[2], []).append(group_dev)
                 else:
@@ -822,13 +832,17 @@ class device_with_config(dict):
         for cur_entry in all_list:
             dev_conf_dict.setdefault(tuple(cur_entry[2:6]), []).append((cur_entry[0], cur_entry[1], cur_entry[5], cur_entry[5]))
         dev_dict = {
-            cur_dev.pk: cur_dev for cur_dev in device.objects.filter(
+            cur_dev.pk: cur_dev for cur_dev in device.objects.select_related(
+                "domain_tree_node"
+            ).filter(
                 Q(pk__in=[key[1] for key in dev_conf_dict.iterkeys()] + list(md_set))
             ).prefetch_related(
                 "netdevice_set__net_ip_set__network__network_type"
             )
         }
-        conf_dict = {cur_conf.pk: cur_conf for cur_conf in config.objects.filter(Q(pk__in=conf_pks))}  # @UndefinedVariable
+        conf_dict = {
+            cur_conf.pk: cur_conf for cur_conf in config.objects.filter(Q(pk__in=conf_pks))
+        }
         for dev_key, conf_list in dev_conf_dict.iteritems():
             dev_name, dev_pk, devg_pk, _dev_type = dev_key
             for conf_name, conf_pk, m_type, src_type in conf_list:
