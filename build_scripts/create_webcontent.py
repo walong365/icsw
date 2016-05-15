@@ -22,18 +22,19 @@
 
 """ create content for webfrontend on full rebuild """
 
-import sys
-from helper import parser
-import subprocess
 import os
-import tempfile
 import shutil
+import subprocess
+import sys
 import tarfile
+import tempfile
 
-APP = "icsw"
+from helper import parser
 
 
 def main():
+    build_dir = os.path.split(os.getcwd())
+    APP = build_dir[1]
     args = parser.parse()
     # sys.exit(0)
     if args.increase_release_on_build:

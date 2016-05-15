@@ -370,6 +370,7 @@ class WmiScanBatch(ScanBatch):
 
         # TODO; check peers? (cf. snmp)
 
+
 class _ExtComScanMixin(object):
     """ Base class for all scan mixins """
     def _register_timer(self):
@@ -393,6 +394,7 @@ class WmiScanMixin(_ExtComScanMixin):
         self._register_timer()
         return WmiScanBatch(dev_com, scan_dev).start_result
 
+
 class NRPEScanMixin(_ExtComScanMixin):
     def nrpe_scan(self, dev_com, scan_dev):
         self._register_timer()
@@ -412,6 +414,7 @@ HARDWARE_CMD = "hardware"
 UPDATES_CMD = "updates"
 PROCESS_CMD = "process"
 PENDING_UPDATES_CMD = "pending_updates"
+
 
 class NRPEScanBatch(ScanBatch):
     SCAN_TYPE = 'NRPE'
@@ -581,6 +584,7 @@ def get_time_inc_from_ds(ds):
 from Queue import Queue
 import threading
 
+
 class Dispatcher(object):
     def __init__(self, discovery_process):
         self.discovery_process = discovery_process
@@ -619,8 +623,6 @@ class Dispatcher(object):
                     elif sched.planned_date > last_sched[ds].planned_date:
                         last_sched[ds] = sched
 
-
-
             if ds not in last_sched:
                 next_run = _ScheduleItem(device, DiscoverySource.PACKAGE, align_time_to_baseline(_now, ds))
                 print "Next scheduled run: %s" % next_run
@@ -633,8 +635,6 @@ class Dispatcher(object):
                 last_scheds[ds] = 1
                 last_sched[ds] = next_run
 
-
-
             if last_scheds[ds] < 2:
                 next_run = _ScheduleItem(device,
                                          DiscoverySource.PACKAGE,
@@ -645,8 +645,7 @@ class Dispatcher(object):
                 ScheduleItem.objects.create(device=next_run.device,
                                             source=next_run.source,
                                             planned_date=next_run.planned_date,
-                                            dispatch_setting = ds)
-
+                                            dispatch_setting=ds)
 
         # remove schedule items that are no longer linked to a device/dispatch_setting
         schedule_items = ScheduleItem.objects.all()
@@ -746,11 +745,11 @@ class Dispatcher(object):
                         asset_run.run_status = RunStatus.ENDED
                         asset_run.run_end_time = datetime.datetime.now()
                         asset_run.raw_result_str = _output[0]
-                        #asset_run.generate_assets_new()
+                        # asset_run.generate_assets_new()
                         self.todo_asset_runs.put(asset_run)
-                        #asset_run.save()
+                        # asset_run.save()
                         self.device_running_ext_coms[_device] = 0
-                    elif status != None:
+                    elif status is not None:
                         self.device_asset_run_ext_coms[_device].pop(0)
                         _output = com.communicate()
                         asset_run.run_status = RunStatus.ENDED
@@ -791,10 +790,12 @@ class Dispatcher(object):
                         self.device_running_ext_coms[_device] = 0
 
     def __do_hm_scan(self, schedule_item):
-        cmd_tuples = [(AssetType.PACKAGE, "rpmlist"),
-                      (AssetType.HARDWARE, "lstopo"),
-                      (AssetType.PROCESS, "proclist"),
-                      (AssetType.PENDING_UPDATE, "updatelist")]
+        cmd_tuples = [
+            (AssetType.PACKAGE, "rpmlist"),
+            (AssetType.HARDWARE, "lstopo"),
+            (AssetType.PROCESS, "proclist"),
+            (AssetType.PENDING_UPDATE, "updatelist")
+        ]
         for runtype, _command in cmd_tuples:
             # runtype = None
             # _command = None
@@ -822,7 +823,7 @@ class Dispatcher(object):
             new_asset_run = AssetRun(run_index=asset_run_len,
                                      run_type=runtype,
                                      run_status=RunStatus.PLANNED,
-                                     scan_type = ScanType.HM)
+                                     scan_type=ScanType.HM)
             new_asset_run.save()
             _device.assetrun_set.add(new_asset_run)
 
@@ -883,6 +884,7 @@ class Dispatcher(object):
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         print what
+
 
 class _ScheduleItem(object):
     def __init__(self, device, source, planned_date):

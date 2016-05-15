@@ -639,15 +639,7 @@ gulp.task(
 gulp.task(
     "serve-all",
     gulp.series(
-        "clean",
-        gulp.parallel(
-            # static media
-            "deploy-media",
-            # static js
-            "staticbuild",
-        ),
-        "dynamicbuild",
-        "deploy-and-transform-all",
+        "create-content",
         gulp.parallel("serve-graphics", "serve-django", "serve-main", "watch")
     ), (cb) ->
         cb()
