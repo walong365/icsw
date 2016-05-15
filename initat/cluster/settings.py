@@ -281,6 +281,8 @@ AUTHENTICATION_BACKENDS = (
 ICSW_ADDON_APPS = []
 # add everything below cluster
 dir_name = os.path.dirname(__file__)
+ICSW_PRODUCTION_MODE = dir_name.startswith("/opt/python")
+
 for sub_dir in os.listdir(dir_name):
     full_path = os.path.join(dir_name, sub_dir)
     if os.path.isdir(full_path):
@@ -299,21 +301,23 @@ for sub_dir in os.listdir(dir_name):
                         ADDITIONAL_ANGULAR_APPS.extend(
                             [_el.attrib["name"] for _el in _tree.findall(".//app")]
                         )
-                        if DEBUG:
+                        if not ICSW_PRODUCTION_MODE:
                             # search local dirs in debug mode
                             js_full_paths = glob.glob(os.path.join(dir_name, "addons", sub_dir, "initat", "cluster", "work", "icsw", "*.js"))
+                            html_full_paths = glob.glob(os.path.join(dir_name, "addons", sub_dir, "initat", "cluster", "work", "icsw", "*.html"))
                         else:
                             # search static_root in production mode
-                        js_full_paths = glob.glob(os.path.join(ICSW_PROD_WEB_DIR, _tree.findtext("js-glob")))
+                            js_full_paths = []
+                            for _js_glob in _tree.findall(".//app/js-glob"):
+                                js_full_paths.extend(glob.glob(os.path.join(ICSW_PROD_WEB_DIR, _js_glob.text)))
+                            html_full_paths = []
+                            for _html_glob in _tree.findall(".//app/html-glob"):
+                                html_full_paths.extend(glob.glob(os.path.join(ICSW_PROD_WEB_DIR, _html_glob.text)))
                         ICSW_ADDITIONAL_JS.extend(
                             [
                                 js_file for js_file in js_full_paths
                             ]
                         )
-                        if DEBUG:
-                            html_full_paths = glob.glob(os.path.join(dir_name, "addons", sub_dir, "initat", "cluster", "work", "icsw", "*.html"))
-                        else:
-                            html_full_paths = glob.glob(os.path.join(ICSW_PROD_WEB_DIR, _tree.findtext("html-glob")))
                         ICSW_ADDITIONAL_HTML.extend(
                             [
                                 html_file for html_file in html_full_paths
