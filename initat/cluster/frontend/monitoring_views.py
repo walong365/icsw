@@ -659,7 +659,7 @@ class get_assetruns(RetrieveAPIView):
                         ar.run_type,
                         str(ar.run_start_time),
                         str(ar.run_end_time),
-                        str((ar.run_end_time - ar.run_start_time).total_seconds()),
+                        str((ar.run_end_time - ar.run_start_time).total_seconds()) if ar.run_end_time and ar.run_start_time else "0",
                         ar.device.name,
                         ar.device.idx
                     ) for ar in AssetRun.objects.all()

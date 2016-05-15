@@ -298,7 +298,7 @@ class TopologyObject(object):
                     if not rem_devs:
                         break
         if self.__only_allowed_device_groups:
-            print self.__user
+            # print self.__user
             _allowed_dev_pks = device.objects.filter(Q(device_group__in=self.__user.allowed_device_groups.all())).values_list("pk", flat=True)
             _dev_pks &= _allowed_dev_pks
             # self.dev_dict = {_key: _value for _key, _value in self.dev_dict.iteritems() if _key in _allowed_dev_pks}

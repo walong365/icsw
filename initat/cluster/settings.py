@@ -24,6 +24,7 @@
 import glob
 import os
 import sys
+import hashlib
 
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.crypto import get_random_string
@@ -74,7 +75,9 @@ DATABASES = {
     }
 }
 
-DATABASE_ROUTERS = ["initat.cluster.backbone.routers.db_router"]
+DATABASE_ROUTERS = [
+    "initat.cluster.backbone.routers.db_router"
+]
 
 # config stores
 # database config
@@ -101,15 +104,25 @@ if _cs["password.hash.function"] not in ["SHA1", "CRYPT"]:
 
 SECRET_KEY = _cs["django.secret.key"]
 
-for src_key, dst_key in [
-    ("db.database", "NAME"),
-    ("db.user", "USER"),
-    ("db.passwd", "PASSWORD"),
-    ("db.host", "HOST"),
-    ("db.engine", "ENGINE")
+_c_key = hashlib.new("md5")
+
+for src_key, dst_key, _add_to_cache_key in [
+    ("db.database", "NAME", True),
+    ("db.user", "USER", True),
+    ("db.passwd", "PASSWORD", True),
+    # to make cache_key the same on different machines
+    ("db.host", "HOST", False),
+    ("db.engine", "ENGINE", True),
 ]:
     if src_key in _ps:
+        if _add_to_cache_key:
+            _c_key.update(src_key)
+            _c_key.update(_ps[src_key])
         DATABASES["default"][dst_key] = _ps[src_key]
+
+ICSW_CACHE_KEY_LONG = _c_key.hexdigest()
+# short to ICSW_CACHE_KEY
+ICSW_CACHE_KEY = ICSW_CACHE_KEY_LONG[:4]
 
 FILE_ROOT = os.path.normpath(os.path.dirname(__file__))
 

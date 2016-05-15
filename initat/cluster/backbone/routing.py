@@ -25,6 +25,7 @@
 import json
 import logging
 
+from django.conf import settings
 from django.core.cache import cache
 from django.db.models import Q
 from lxml import etree
@@ -65,7 +66,7 @@ def get_server_uuid(srv_type, uuid=None):
 
 
 class SrvTypeRouting(object):
-    ROUTING_KEY = "_WF_ROUTING"
+    ROUTING_KEY = "_WF_ROUTING_{}".format(settings.ICSW_CACHE_KEY)
 
     def __init__(self, force=False, logger=None, log_com=None, ignore_errors=False):
         self._logger = None
