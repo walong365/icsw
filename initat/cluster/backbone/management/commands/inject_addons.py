@@ -81,6 +81,14 @@ class FileModify(object):
         self._content = "\n".join(new_content)
 
     def inject(self):
+        for _attr_name in [
+            "ADDITIONAL_ANGULAR_APPS",
+            "ICSW_ADDITIONAL_JS",
+            "ICSW_ADDITIONAL_HTML",
+        ]:
+            self.debug("attribute '{}'".format(_attr_name))
+            _val = getattr(settings, _attr_name)
+            self.debug("  ->  {}".format(str(_val)))
         marker_re = re.compile("^.*<!-- ICSWAPPS:(?P<type>[A-Z]+):(?P<mode>[A-Z]+) -->.*$")
         new_content = []
         in_marker = False

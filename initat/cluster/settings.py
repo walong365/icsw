@@ -46,7 +46,6 @@ if (sys.version_info.major, sys.version_info.minor) in [(2, 7)]:
     threading._DummyThread._Thread__stop = lambda x: 42  # @IgnorePep8
 
 DEBUG = "DEBUG_WEBFRONTEND" in os.environ
-LOCAL_STATIC = "LOCAL_STATIC" in os.environ
 
 ADMINS = (
     ("Andreas Lang-Nevyjel", "lang-nevyjel@init.at"),
@@ -168,11 +167,10 @@ MEDIA_URL = "{}/media/".format(SITE_ROOT)
 STATIC_ROOT_DEBUG = "/tmp/.icsw/static/"
 if DEBUG:
     STATIC_ROOT = STATIC_ROOT_DEBUG
+    ICSW_PROD_WEB_DIR = "/tmp/NOT_DEFINED"
 else:
-    if LOCAL_STATIC:
-        STATIC_ROOT = STATIC_ROOT_DEBUG
-    else:
-        STATIC_ROOT = "/srv/www/init.at/icsw/static"
+    STATIC_ROOT = "/srv/www/init.at/icsw/static"
+    ICSW_PROD_WEB_DIR = "/srv/www/init.at/icsw"
 
 if not os.path.isdir(STATIC_ROOT_DEBUG):
     try:
@@ -301,13 +299,21 @@ for sub_dir in os.listdir(dir_name):
                         ADDITIONAL_ANGULAR_APPS.extend(
                             [_el.attrib["name"] for _el in _tree.findall(".//app")]
                         )
-                        js_full_paths = glob.glob(os.path.join(dir_name, "addons", sub_dir, "initat", "cluster", "work", "icsw", "*.js"))
+                        if DEBUG:
+                            # search local dirs in debug mode
+                            js_full_paths = glob.glob(os.path.join(dir_name, "addons", sub_dir, "initat", "cluster", "work", "icsw", "*.js"))
+                        else:
+                            # search static_root in production mode
+                        js_full_paths = glob.glob(os.path.join(ICSW_PROD_WEB_DIR, _tree.findtext("js-glob")))
                         ICSW_ADDITIONAL_JS.extend(
                             [
                                 js_file for js_file in js_full_paths
                             ]
                         )
-                        html_full_paths = glob.glob(os.path.join(dir_name, "addons", sub_dir, "initat", "cluster", "work", "icsw", "*.html"))
+                        if DEBUG:
+                            html_full_paths = glob.glob(os.path.join(dir_name, "addons", sub_dir, "initat", "cluster", "work", "icsw", "*.html"))
+                        else:
+                            html_full_paths = glob.glob(os.path.join(ICSW_PROD_WEB_DIR, _tree.findtext("html-glob")))
                         ICSW_ADDITIONAL_HTML.extend(
                             [
                                 html_file for html_file in html_full_paths
