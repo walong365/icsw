@@ -19,17 +19,21 @@
 #
 # -*- coding: utf-8 -*-
 #
+
 """ model definitions for key performance indicators """
+
 import datetime
 
 import django.utils.timezone
 from django.db import models
 
 from initat.cluster.backbone.models.functions import duration
+from initat.cluster.backbone.models.domain import category
 
 
 __all__ = [
     "Kpi",
+    "DataSourceTuple",
     "KpiDataSourceTuple",
     "KpiStoredResult",
 ]
@@ -136,12 +140,14 @@ class Kpi(models.Model):
 
 class DataSourceTuple(models.Model):
     idx = models.AutoField(primary_key=True)
-    device_category = models.ForeignKey('category', related_name="device_category")
-    monitoring_category = models.ForeignKey('category', related_name="monitoring_category")
+    # we have to use the category class definition due to a strange Django-bug (ALN, 2016-05-16)
+    device_category = models.ForeignKey(category, related_name="device_category")
+    monitoring_category = models.ForeignKey(category, related_name="monitoring_category")
 
     def __repr__(self):
         return u"DataSourceTuple(dev_cat={}, mon_cat={})".format(
-            self.device_category, self.monitoring_category
+            self.device_category,
+            self.monitoring_category,
         )
 
     __unicode__ = __repr__  # useful for force_text
@@ -157,7 +163,9 @@ class KpiDataSourceTuple(DataSourceTuple):
 
     def __repr__(self):
         return u"KpiDataSourceTuple(kpi={}, dev_cat={}, mon_cat={})".format(
-            self.kpi, self.device_category, self.monitoring_category
+            self.kpi,
+            self.device_category,
+            self.monitoring_category,
         )
 
     __unicode__ = __repr__  # useful for force_text
@@ -170,5 +178,4 @@ class KpiStoredResult(models.Model):
     idx = models.AutoField(primary_key=True)
     kpi = models.OneToOneField(Kpi)
     date = models.DateTimeField()
-
     result = models.TextField(null=True)  # json

@@ -19,23 +19,23 @@
 
 import collections
 import json
+import operator
 import time
-from django.db.models import Q
-from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
-from initat.cluster.backbone.models.kpi import DataSourceTuple
-from initat.cluster.backbone.models.license import LicenseUsageDeviceService, LicenseUsage
 
 import memcache
-import operator
-from initat.md_config_server.icinga_log_reader.log_aggregation import icinga_log_aggregator
-from initat.tools import logging_tools
-# noinspection PyUnresolvedReferences
-import pprint
+from django.db.models import Q
 
-from initat.cluster.backbone.models import device, mon_check_command, Kpi, KpiDataSourceTuple, category
+from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
+from initat.cluster.backbone.models import device, mon_check_command, Kpi, KpiDataSourceTuple,\
+    category
+from initat.cluster.backbone.models.kpi import DataSourceTuple
+from initat.cluster.backbone.models.license import LicenseUsage
 from initat.md_config_server.common import LiveSocket
+from initat.md_config_server.icinga_log_reader.log_aggregation import icinga_log_aggregator
 from initat.md_config_server.icinga_log_reader.log_reader_utils import host_service_id_util
-from initat.md_config_server.kpi.kpi_language import KpiObject, KpiResult, KpiRRDObject, KpiServiceObject, KpiSet
+from initat.md_config_server.kpi.kpi_language import KpiObject, KpiResult, KpiRRDObject, \
+    KpiServiceObject, KpiSet
+from initat.tools import logging_tools
 
 
 class KpiData(object):
@@ -50,12 +50,14 @@ class KpiData(object):
         :param dev_mon_cat_tuples: if specified, only load data for these dev_mon_cat tuples
         """
         self.log = log
-        self._mccs = {mcc.pk: mcc for mcc in mon_check_command.objects.all()}
+        self._mccs = {
+            mcc.pk: mcc for mcc in mon_check_command.objects.all()
+        }
 
         self.data_source_tuples = None if dev_mon_cat_tuples is None else [
             DataSourceTuple(
-                device_category_id=tup[0],
-                monitoring_category_id=tup[1],
+                device_category=category.objects.get(Q(pk=tup[0])),
+                monitoring_category=category.objects.get(Q(pk=tup[1])),
             ) for tup in dev_mon_cat_tuples
         ]
 
@@ -125,9 +127,13 @@ class KpiData(object):
             kpi_objects.extend(service_kpi_objects)
 
             for service_kpi_obj in service_kpi_objects:
-                timespan_services.discard((service_kpi_obj.host_pk,
-                                           service_kpi_obj.service_id,
-                                           service_kpi_obj.service_info))
+                timespan_services.discard(
+                    (
+                        service_kpi_obj.host_pk,
+                        service_kpi_obj.service_id,
+                        service_kpi_obj.service_info,
+                    )
+                )
 
         LicenseUsage.log_usage(LicenseEnum.kpi, LicenseParameterTypeEnum.device, dev_services_used.iterkeys())
         LicenseUsage.log_usage(LicenseEnum.kpi, LicenseParameterTypeEnum.service, dev_services_used)
@@ -210,9 +216,11 @@ class KpiData(object):
             service_check_results[dev.pk][mcc.pk] = self._get_service_check_results(dev, mcc)
 
         for dev in dev_list:
-            self.host_data[dev.pk] = HostData(rrd_data=host_rrd_data.get(dev.pk, None),
-                                              host_check_results=self._get_host_check_results(dev),
-                                              service_check_results=service_check_results[dev.pk])
+            self.host_data[dev.pk] = HostData(
+                rrd_data=host_rrd_data.get(dev.pk, None),
+                host_check_results=self._get_host_check_results(dev),
+                service_check_results=service_check_results[dev.pk]
+            )
 
     def _get_dev_mon_tuples_from_category_tuples(self, queryset):
         ":rtype: (set[device, mon_check_command], set[device]) "
@@ -232,8 +240,9 @@ class KpiData(object):
 
     def _get_memcached_data(self):
 
-        device_full_names = \
-            {entry.full_name: entry for entry in device.objects.all().prefetch_related('domain_tree_node')}
+        device_full_names = {
+            entry.full_name: entry for entry in device.objects.all().prefetch_related('domain_tree_node')
+        }
 
         from initat.md_config_server.config.objects import global_config
         mc = memcache.Client(

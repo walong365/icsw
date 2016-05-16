@@ -66,12 +66,22 @@ class KpiProcess(threading_tools.process_obj):
     def _get_kpi_source_data(self, srv_com_src, **kwargs):
         srv_com = server_command.srv_command(source=srv_com_src)
         dev_mon_cat_tuples = json.loads(srv_com['dev_mon_cat_tuples'].text)
+        KpiGlobals.set_context()
         start, end = Kpi.objects.parse_kpi_time_range(
             json.loads(srv_com['time_range'].text),
             json.loads(srv_com['time_range_parameter'].text),
         )
-        self.log("Calculating KPI source data for: {}; start: {}; end: {}".format(dev_mon_cat_tuples, start, end))
-        kpi_set = KpiData(self.log, dev_mon_cat_tuples=dev_mon_cat_tuples).get_kpi_set_for_dev_mon_cat_tuples(
+        self.log(
+            "Calculating KPI source data for: {}; start: {}; end: {}".format(
+                dev_mon_cat_tuples,
+                start,
+                end
+            )
+        )
+        kpi_set = KpiData(
+            self.log,
+            dev_mon_cat_tuples=dev_mon_cat_tuples
+        ).get_kpi_set_for_dev_mon_cat_tuples(
             start,
             end,
         )
@@ -241,8 +251,10 @@ class KpiProcess(threading_tools.process_obj):
                 result = eval_locals['kpi']
 
                 if result is None:
-                    raise KpiEvaluationError("Kpi formula did not return a result.\n" +
-                                             "Please use `return kpi_set`, where kpi_set is your result.")
+                    raise KpiEvaluationError(
+                        "Kpi formula did not return a result.\n" +
+                        "Please use `return kpi_set`, where kpi_set is your result."
+                    )
 
                 if not isinstance(result, KpiSet):
                     raise KpiEvaluationError("Result is not a KpiSet but {}".format(type(result)))

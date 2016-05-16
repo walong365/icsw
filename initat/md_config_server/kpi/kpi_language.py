@@ -1,4 +1,4 @@
-# Copyright (C) 2015 Bernhard Mallinger, init.at
+# Copyright (C) 2015-2016 Bernhard Mallinger, Andreas Lang-Nevyjel init.at
 #
 # this file is part of md-config-server
 #
@@ -18,23 +18,19 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import re
-from types import NoneType
-# noinspection PyUnresolvedReferences
-import collections
-# noinspection PyUnresolvedReferences
-import pprint
-
-from collections import defaultdict
 import datetime
-from enum import IntEnum, Enum
-import pytz
+import re
+from collections import defaultdict
+from types import NoneType
 
-from initat.md_config_server.kpi.kpi_historic import TimeLineUtils
-from initat.tools import logging_tools
+import pytz
+from enum import IntEnum, Enum
+
+from initat.cluster.backbone.models import mon_check_command, device
 from initat.cluster.backbone.models.status_history import mon_icinga_log_raw_service_alert_data, \
     mon_icinga_log_raw_host_alert_data
-from initat.cluster.backbone.models import mon_check_command, device
+from initat.md_config_server.kpi.kpi_historic import TimeLineUtils
+from initat.tools import logging_tools
 
 logger = logging_tools.logging.getLogger("cluster.kpi")
 

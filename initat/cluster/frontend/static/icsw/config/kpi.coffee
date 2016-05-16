@@ -143,14 +143,27 @@ angular.module(
                 scope.device_category_tree.clear_root_nodes()
                 scope.monitoring_category_tree = new monitoring_category_tree_config(scope)
                 roots = []
+                # delayed link list
+                _d_link = []
                 lut = {}
                 for entry in icswConfigKpiDataService.category
                     lut[entry.idx] = entry
                     entry.children = []
                     if entry.parent
-                        lut[entry.parent].children.push(entry)
+                        if entry.parent of lut
+                            lut[entry.parent].children.push(entry)
+                        else
+                            _d_link.push(entry)
                     else
                         roots.push(entry)
+                while _d_link.length
+                    _nd_link = []
+                    for entry in _d_link
+                        if entry.parent of lut
+                            lut[entry.parent].children.push(entry)
+                        else
+                            _nd_link.push(entry)
+                    _d_link = _nd_link
 
                 add_to_tree_rec = (tree, node, sel_list) ->
                     _do_add_to_tree = (tree, node) ->
