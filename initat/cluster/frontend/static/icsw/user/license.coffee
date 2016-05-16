@@ -330,17 +330,14 @@ angular.module(
 
         # fx mode activated ?
         fx_mode: () =>
-            if "fast_frontend" of @lut_by_id
-                _state = @lut_by_id["fast_frontend"]
-                _fx_mode = _state.$$state.use
-            else
-                _fx_mode = false
-            return _fx_mode
+            return @license_is_valid("fast_frontend")
 
         license_is_valid: (lic_name) =>
             _valid = false
             if lic_name of @lut_by_id
-                _valid = @lut_by_id[lic_name].$$state.use
+                _lic = @lut_by_id[lic_name]
+                if _lic.$$state?
+                    _valid = _lic.$$state.use
             # console.log "lic_check", lic_name, @lut_by_id, _valid
             return _valid
 
