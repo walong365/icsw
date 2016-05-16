@@ -200,10 +200,12 @@ dashboard_module = angular.module(
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$timeout",
     "icswAcessLevelService", "ICSW_URLS", "icswSimpleAjaxCall",  "icswUserLicenseDataService",
     "icswDashboardElement", "icswDashboardContainerService", "icswUserService",
+    "toaster",
 (
     $scope, $compile, $filter, $templateCache, Restangular, $q, $timeout,
     icswAcessLevelService, ICSW_URLS, icswSimpleAjaxCall, icswUserLicenseDataService,
     icswDashboardElement, icswDashboardContainerService, icswUserService,
+    toaster,
 ) ->
     icswAcessLevelService.install($scope)
     $scope.ICSW_URLS = ICSW_URLS

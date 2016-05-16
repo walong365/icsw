@@ -314,7 +314,7 @@ angular.module(
             if lic_state? and lic_state.state_id == "grace"
                 expiration = icswUserLicenseFunctions.add_grace_period(moment(lic_state.lic.valid_to))
                 date_str = expiration.format("YYYY-MM-DD HH:mm")
-                msg = "Your license for #{issued_license.name} is in the grace period and "
+                msg = "Your license for #{license.name} is in the grace period and "
                 msg += "will be revoked on <strong>#{date_str}</strong>."
 
                 warnings.push [expiration, msg]
