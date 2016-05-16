@@ -97,17 +97,16 @@ menu_module = angular.module(
             $scope.show_navbar = false
     )
     route_counter = 0
-    lic_tree = undefined
+    # load license tree
+    icswUserLicenseDataService.load($scope.$id).then(
+        (data) ->
+    )
+
     $scope.$on("$stateChangeSuccess", (event, to_state, to_params, from_state, from_params) ->
         to_main = if to_state.name.match(/^main/) then true else false
         from_main = if from_state.name.match(/^main/) then true else false
         console.log "success", to_state.name, to_main, from_state.name, from_main
         route_counter++
-        if not lic_tree?
-            icswUserLicenseDataService.load($scope.$id).then(
-                (data) ->
-                    lic_tree = data
-            )
         if to_state.name == "logout"
             blockUI.start("Logging out...")
             icswUserService.logout().then(
@@ -120,14 +119,8 @@ menu_module = angular.module(
             $scope.show_navbar = true
             # console.log to_params, $scope
         else
-            _spa_mode = true
-            if lic_tree?
-                _spa_mode = false
-                if "fast_frontend" of lic_tree.lut_by_id
-                    _state = lic_tree.lut_by_id["fast_frontend"]
-                    _spa_mode = _state.$$state.use
             # we allow one gentle transfer
-            if route_counter >= 2 and not _spa_mode
+            if route_counter >= 2 and not icswUserLicenseDataService.fx_mode()
                 # reduce flicker
                 $(document.body).hide()
                 $window.location.reload()
@@ -161,10 +154,12 @@ menu_module = angular.module(
 ]).directive("icswMenuProgressBars",
 [
     "$templateCache", "ICSW_URLS", "$timeout", "icswSimpleAjaxCall", "initProduct",
-    "icswMenuProgressService", "icswLayoutSelectionDialogService", "ICSW_SIGNALS", "$rootScope",
+    "icswMenuProgressService", "icswLayoutSelectionDialogService", "ICSW_SIGNALS",
+    "$rootScope",
 (
     $templateCache, ICSW_URLS, $timeout, icswSimpleAjaxCall, initProduct,
-    icswMenuProgressService, icswLayoutSelectionDialogService, ICSW_SIGNALS, $rootScope
+    icswMenuProgressService, icswLayoutSelectionDialogService, ICSW_SIGNALS,
+    $rootScope,
 ) ->
     return {
         restrict: "EA"
@@ -260,81 +255,6 @@ menu_module = angular.module(
     # console.log icswAcessLevelService
     {input, ul, li, a, span, h4} = React.DOM
     react_dom = ReactDOM
-    rebuild_config = (cache_mode) ->
-        blockUI.start()
-        icswSimpleAjaxCall(
-            {
-                url: ICSW_URLS.MON_CREATE_CONFIG
-                data: {
-                    "cache_mode": cache_mode
-                }
-                title: "create config"
-            }
-        ).then(
-            (xml) ->
-                blockUI.stop()
-                icswMenuProgressService.set_rebuilding(1)
-                # make at least five iterations to catch slow startup of md-config-server
-                # $scope.progress_iters = 5
-                # $scope.update_progress_bar()
-            (xml) ->
-                blockUI.stop()
-                icswMenuProgressService.set_rebuilding(1)
-        )
-    menu_rebuild_mon_config = React.createClass(
-        render: () ->
-            _disabled = if icswMenuProgressService.get_rebuilding() then true else false
-            return li(
-                {className: "text-left", key: "bmc"}
-                ul(
-                    {className: "list-group", style: {marginBottom: "10px", marginTop: "5px"}}
-                    [
-                        li(
-                            {className: "list-group-item", key: "mr.alw"}
-                            input(
-                                {
-                                    className: "btn btn-success btn-xs",
-                                    type: "button",
-                                    value: "\uf021 rebuild config (cached, RC)"
-                                    title: "fully cached (using also the routing cache)"
-                                    disabled: _disabled
-                                    onClick: () ->
-                                        rebuild_config("ALWAYS")
-                                }
-                            )
-                        )
-                        li(
-                            {className: "list-group-item", key: "mr.dyn"}
-                            input(
-                                {
-                                    className: "btn btn-warning btn-xs",
-                                    type: "button",
-                                    value: "\uf021 rebuild config (dynamic)"
-                                    title: "refresh depends on timeout settings"
-                                    disabled: _disabled
-                                    onClick: () ->
-                                        rebuild_config("DYNAMIC")
-                                }
-                            )
-                        )
-                        li(
-                            {className: "list-group-item", key: "mr.ref"}
-                            input(
-                                {
-                                    className: "btn btn-danger btn-xs",
-                                    type: "button",
-                                    value: "\uf021 rebuild config (refresh)"
-                                    title: "rebuild network and contact devices"
-                                    disabled: _disabled
-                                    onClick: () ->
-                                        rebuild_config("REFRESH")
-                                }
-                            )
-                        )
-                    ]
-                )
-            )
-    )
     menu_line = React.createClass(
         displayName: "menuline"
         render: () ->

@@ -433,8 +433,10 @@ angular.module(
 ]).service("icswAcessLevelService",
 [
     "ICSW_URLS", "ICSW_SIGNALS", "Restangular", "$q", "$rootScope",
+    "icswUserLicenseDataService",
 (
-    ICSW_URLS, ICSW_SIGNALS, Restangular, $q, $rootScope
+    ICSW_URLS, ICSW_SIGNALS, Restangular, $q, $rootScope,
+    icswUserLicenseDataService,
 ) ->
     data = {}
     _changed = () ->
@@ -443,8 +445,8 @@ angular.module(
         data.global_permissions = {}
         # these are not permissions for single objects, but the merged permission set of all objects
         data.object_permissions = {}
-        # license data
-        data.license_data = {}
+        # license tree
+        data.license_tree = {}
         # routing info
         data.routing_info = {}
         data.acls_are_valid = false
@@ -461,7 +463,7 @@ angular.module(
         $q.all(
             [
                 Restangular.all(ICSW_URLS.USER_GET_GLOBAL_PERMISSIONS.slice(1)).customGET()
-                Restangular.all(ICSW_URLS.ICSW_LIC_GET_VALID_LICENSES.slice(1)).customGET()
+                icswUserLicenseDataService.load("access_level")
                 Restangular.all(ICSW_URLS.USER_GET_OBJECT_PERMISSIONS.slice(1)).customGET()
                 Restangular.all(ICSW_URLS.MAIN_ROUTING_INFO.slice(1)).customPOST({dataType: "json"})
             ]
@@ -471,7 +473,7 @@ angular.module(
                 _acls_loaded = true
                 _last_load = moment().unix()
                 data.global_permissions = r_data[0]
-                data.license_data = r_data[1]
+                data.license_tree = r_data[1]
                 data.object_permissions = r_data[2]
                 data.routing_info = r_data[3]
                 # console.log data.routing_info.service_types
@@ -523,14 +525,13 @@ angular.module(
         return p_name of data.global_permissions or p_name of data.object_permissions
     has_service_type = (s_name) ->
         return s_name of data.routing_info.service_types
+
     has_valid_license = (license) ->
         if not data.acls_are_valid
             # not loaded yet
             return false
-        if license not in data.license_data.all_licenses
-            if license not in ["netboot"]
-                console.warn("Invalid license check for #{license}. Licenses are: #{data.license_data.all_licenses}")
-        return license in data.license_data.valid_licenses
+        return data.license_tree.license_is_valid(license)
+
     func_dict = {
         # functions to check permissions for single objects
         "acl_delete" : (obj, ac_name) ->

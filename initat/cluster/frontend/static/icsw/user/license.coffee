@@ -320,6 +320,22 @@ angular.module(
                 license.$$warning_info = ""
                 license.$$in_warning = false
 
+        # fx mode activated ?
+        fx_mode: () =>
+            if "fast_frontend" of @lut_by_id
+                _state = @lut_by_id["fast_frontend"]
+                _fx_mode = _state.$$state.use
+            else
+                _fx_mode = false
+            return _fx_mode
+
+        license_is_valid: (lic_name) =>
+            _valid = false
+            if lic_name of @lut_by_id
+                _valid = @lut_by_id[lic_name].$$state.use
+            # console.log "lic_check", lic_name, @lut_by_id, _valid
+            return _valid
+
 ]).service("icswUserLicenseDataService",
 [
     "Restangular", "ICSW_URLS", "gettextCatalog", "icswSimpleAjaxCall", "$q",
@@ -395,8 +411,18 @@ angular.module(
                 return fetch_data(client).promise
             else
                 return load_data(client).promise
+
         is_valid: () ->
             return if _result? then true else false
+
+        fx_mode: () ->
+            # return true if fx_mode (== fast frontend) is enabled
+            if _result?
+                _fx_mode = _result.fx_mode()
+            else
+                _fx_mode = false
+            return _fx_mode
+                
     }
 ]).service("icswUserLicenseFunctions", [
     "$q", "gettextCatalog",

@@ -13,6 +13,21 @@
                 <p class="text-right">{{ initProduct.family }} ({{ initProduct.version }}) on Django {{ django_version }}</p>
                 <p class="text-right" ng-show="CLUSTER_ID">ClusterID is {{ CLUSTER_ID }}</p>
                 <p class="text-right" ng-show="DATABASE_VERSION">Version info is {{ DATABASE_VERSION }}[D] {{ SOFTWARE_VERSION }}[S] {{ MODELS_VERSION }}[M]</p>
+                <uib-alert type="warning" ng-show="!struct.fx_mode && struct.data_valid">
+                    <p class="text-right">
+                        FX-Mode is not licensed
+                        <span class="fa-stack fa-2x">
+                            <i class="fa fa-bolt fa-stack-2x"></i>
+                            <i class="fa fa-ban fa-stack-2x text-danger"></i>
+                        </span>
+                    </p>
+                </uib-alert>
+                <uib-alert type="success" ng-show="struct.fx_mode && struct.data_valid">
+                    <p class="text-right">
+                        FX-Mode activated
+                        <span class="fa fa-bolt fa-border fa-2x"></span>
+                    </p>
+                </uib-alert>
                 <uib-alert ng-show="license_tree.pack_list.length == 0" style="font-size: larger">
                     You are running an <strong>unlicensed version</strong>.<br />
                     Please contact <strong>support@init.at</strong> in order to obtain a license.
@@ -47,18 +62,22 @@
     <form class="form-horizontal" ng-submit="do_login()">
         <div class="form-horizontal">
             <fieldset>
-                <legend>Please enter your login credentials <span ng-show="CLUSTER_NAME"> for {{ CLUSTER_NAME }}</span>
+                <legend>
+                    Please enter your login credentials
+                    <span ng-show="CLUSTER_NAME">
+                        for {{ CLUSTER_NAME }}
+                    </span>
                 </legend>
-                <div id="div_id_username" class="form-group">
-<label for="id_username" class="control-label col-sm-2 requiredField">
-                    Username<span class="asteriskField">*</span></label>
-
+                <div class="form-group">
+                    <label class="control-label col-sm-2 requiredField">
+                        Username<span class="asteriskField">*</span>
+                    </label>
                     <div class="controls col-sm-8">
                         <input ng-disabled="disabled" autofocus="1" class="textinput textInput form-control" maxlength="30" name="username" ng-model="login_data.username" placeholder="user name" required="True" type="text"/>
                     </div>
                 </div>
-                <div id="div_id_password" class="form-group">
-                    <label for="id_password" class="control-label col-sm-2 requiredField">
+                <div class="form-group">
+                    <label class="control-label col-sm-2 requiredField">
                         Password<span class="asteriskField">*</span>
                     </label>
                     <div class="controls col-sm-8">

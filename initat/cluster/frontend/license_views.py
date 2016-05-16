@@ -51,7 +51,7 @@ def login_required_rest(default_value_generator=lambda: []):
 
 
 class get_all_licenses(ListAPIView):
-    @method_decorator(login_required_rest(lambda: []))
+    # @method_decorator(login_required_rest(lambda: []))
     @rest_logging
     def list(self, request, *args, **kwargs):
         # pseudo-serialize named dict

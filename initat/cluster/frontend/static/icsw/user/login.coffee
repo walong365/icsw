@@ -50,11 +50,19 @@ angular.module(
         }
         big: {
             gfx_class: "col-md-offset-4 col-md-4"
-            gfx_style: {"margin-top": "60px"}
+            gfx_style: {
+                marginTop: "60px"
+            }
             login_class: "col-md-offset-4 col-md-4"
         }
     }
     first_call = true
+    $scope.struct = {
+        # fx mode
+        fx_mode: false
+        # data valid
+        data_valid: false
+    }
     $scope.init_login = () ->
         $q.all(
             [
@@ -84,7 +92,8 @@ angular.module(
                 $scope.SOFTWARE_VERSION = data[1].SOFTWARE_VERSION
                 $scope.MODELS_VERSION = data[1].MODELS_VERSION
                 $scope.license_tree = data[2]
-                console.log $scope.license_tree
+                $scope.struct.fx_mode = icswUserLicenseDataService.fx_mode()
+                $scope.struct.data_valid = true
                 if first_call
                     first_call = false
                     $scope.login_data.next_url = $(xml).find("value[name='next_url']").text()
