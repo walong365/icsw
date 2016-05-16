@@ -236,8 +236,12 @@ angular.module(
                     for lic in lic_list
                         lic.$$license = @lut_by_id[lic.id]
                         lic.$$state = icswUserLicenseFunctions.get_license_state_internal(lic)[3]
-                        lic.$$bootstrap_class = icswUserLicenseFunctions.get_license_state_bootstrap_class(lic.$$state.state_id)
-                        lic.$$icon_class = icswUserLicenseFunctions.get_license_state_icon_class(lic.$$state.state_id)
+                        if lic.$$state?
+                            lic.$$bootstrap_class = icswUserLicenseFunctions.get_license_state_bootstrap_class(lic.$$state.state_id)
+                            lic.$$icon_class = icswUserLicenseFunctions.get_license_state_icon_class(lic.$$state.state_id)
+                        else
+                            lic.$$bootstrap_class = ""
+                            lic.$$icon_class = ""
 
         # calculate_license_state: (packages, license_id=undefined, cluster_id=undefined) ->
         calculate_license_state: (license) =>
@@ -283,8 +287,12 @@ angular.module(
             #    state.state_id = "parameter_violated"
             #    state.state_str = gettextCatalog.getString('License parameter violated')
             license.$$state = state
-            license.$$bootstrap_class = icswUserLicenseFunctions.get_license_state_bootstrap_class(license.$$state.state_id)
-            license.$$icon_class = icswUserLicenseFunctions.get_license_state_icon_class(license.$$state.state_id)
+            if license.$$state?
+                license.$$bootstrap_class = icswUserLicenseFunctions.get_license_state_bootstrap_class(license.$$state.state_id)
+                license.$$icon_class = icswUserLicenseFunctions.get_license_state_icon_class(license.$$state.state_id)
+            else
+                license.$$bootstrap_class = ""
+                license.$$icon_class = ""
 
         set_warning: (license) =>
             warnings = []
