@@ -27,11 +27,11 @@ menu_module = angular.module(
 [
     "$scope", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswAcessLevelService",
     "initProduct", "icswLayoutSelectionDialogService", "icswActiveSelectionService",
-    "$q", "icswUserService", "blockUI", "$state",
+    "$q", "icswUserService", "blockUI", "$state", "icswUserLicenseDataService",
 (
     $scope, $window, ICSW_URLS, icswSimpleAjaxCall, icswAcessLevelService,
     initProduct, icswLayoutSelectionDialogService, icswActiveSelectionService,
-    $q, icswUserService, blockUI, $state,
+    $q, icswUserService, blockUI, $state, icswUserLicenseDataService,
 ) ->
     # init service types
     $scope.ICSW_URLS = ICSW_URLS
@@ -58,6 +58,7 @@ menu_module = angular.module(
             $scope.HANDBOOK_PDF_PRESENT = data[0].HANDBOOK_PDF_PRESENT
             $scope.HANDBOOK_CHUNKS_PRESENT = data[0].HANDBOOK_CHUNKS_PRESENT
     )
+    console.log
     $scope.get_progress_style = (obj) ->
         return {"width" : "#{obj.value}%"}
     $scope.redirect_to_init = () ->
@@ -96,12 +97,17 @@ menu_module = angular.module(
             $scope.show_navbar = false
     )
     route_counter = 0
-
+    lic_tree = undefined
     $scope.$on("$stateChangeSuccess", (event, to_state, to_params, from_state, from_params) ->
         to_main = if to_state.name.match(/^main/) then true else false
         from_main = if from_state.name.match(/^main/) then true else false
         console.log "success", to_state.name, to_main, from_state.name, from_main
         route_counter++
+        if not lic_tree?
+            icswUserLicenseDataService.load($scope.$id).then(
+                (data) ->
+                    lic_tree = data
+            )
         if to_state.name == "logout"
             blockUI.start("Logging out...")
             icswUserService.logout().then(
@@ -114,8 +120,14 @@ menu_module = angular.module(
             $scope.show_navbar = true
             # console.log to_params, $scope
         else
+            _spa_mode = true
+            if lic_tree?
+                _spa_mode = false
+                if "fast_frontend" of lic_tree.lut_by_id
+                    _state = lic_tree.lut_by_id["fast_frontend"]
+                    _spa_mode = _state.$$state.use
             # we allow one gentle transfer
-            if route_counter >= 2 and false  # add one SinglePageApp License check
+            if route_counter >= 2 and not _spa_mode
                 # reduce flicker
                 $(document.body).hide()
                 $window.location.reload()

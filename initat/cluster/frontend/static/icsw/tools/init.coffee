@@ -180,7 +180,8 @@ angular.module(
                                 _new_sel(new_val)
                         )
                     else
-                        $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"), (event) ->
+                        dereg = $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"), (event) ->
+                            # console.log "emit", scope.$id
                             # console.log "icsw_overview_emit_selection received"
                             if DeviceOverviewSettings.is_active()
                                 console.log "ov is active"
@@ -194,6 +195,10 @@ angular.module(
                                     icswDeviceTreeService.load(scope.$id).then(
                                         (tree) ->
                                     )
+                        )
+                        # very important: unregister $on
+                        scope.$on("$destroy", () ->
+                            dereg()
                         )
                         icswActiveSelectionService.register_receiver()
                 # post: (scope, el, attrs) ->

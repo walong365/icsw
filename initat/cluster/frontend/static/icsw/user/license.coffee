@@ -52,6 +52,24 @@ angular.module(
     ICSW_URLS, FileUploader, icswCSRFService, blockUI, icswParseXMLResponseService,
     icswUserLicenseDataService, icswAcessLevelService,
 ) ->
+    $scope.struct = {
+        # data valid
+        data_valid: false
+        # license tree
+        license_tree: undefined
+    }
+    load = () ->
+        $q.all(
+            [
+                icswUserLicenseDataService.load($scope.$id)
+            ]
+        ).then(
+            (data) ->
+                $scope.struct.license_tree = data[0]
+                $scope.struct.data_valid = true
+        )
+    load()
+    
     $scope.uploader = new FileUploader(
         scope: $scope
         url: ICSW_URLS.USER_UPLOAD_LICENSE_FILE
@@ -83,162 +101,315 @@ angular.module(
 
 ]).directive("icswUserLicenseOverview",
 [
-    "icswUserLicenseDataService", "icswSimpleAjaxCall", "ICSW_URLS",
+    "$q",
 (
-    icswUserLicenseDataService, icswSimpleAjaxCall, ICSW_URLS
+    $q,
 ) ->
     return {
         restrict : "EA"
         controller: 'icswUserLicenseCtrl'
         templateUrl : "icsw.user.license.overview"
         link: (scope, el, attrs) ->
-            icswSimpleAjaxCall(
-                {
-                    url: ICSW_URLS.MAIN_GET_CLUSTER_INFO,
-                    dataType: "json"
-                }
-            ).then(
-                (json) ->
-                    scope.CLUSTER_ID = json.CLUSTER_ID
-            )
-            scope.CLUSTER_ID = "---"
             scope.your_licenses_open = false
             scope.lic_packs_open = false
             scope.lic_upload_open = true
-            scope.$watch(
-                () -> icswUserLicenseDataService.license_packages.length
-                (new_val, old_val) ->
-                    scope.license_views_disabled = new_val == 0
-                    # only change accordion states on actual change
-                    if old_val == 0 and new_val > 0
-                        scope.your_licenses_open = true
-                        scope.lic_packs_open = true
-                    if old_val > 1 and new_val == 0
-                        scope.your_licenses_open = false
-                        scope.lic_packs_open = false
-            )
+            if false
+                scope.$watch(
+                    () -> icswUserLicenseDataService.license_packages.length
+                    (new_val, old_val) ->
+                        scope.license_views_disabled = new_val == 0
+                        # only change accordion states on actual change
+                        if old_val == 0 and new_val > 0
+                            scope.your_licenses_open = true
+                            scope.lic_packs_open = true
+                        if old_val > 1 and new_val == 0
+                            scope.your_licenses_open = false
+                            scope.lic_packs_open = false
+                )
     }
-]).directive("icswUserLicenseYourLicenses",
+]).directive("icswUserLicenseLocalLicenses",
 [
-    "icswUserLicenseDataService",
+    "$q",
  (
-     icswUserLicenseDataService
+     $q,
  ) ->
         return {
             restrict : "EA"
-            templateUrl : "icsw.user.license.your_licenses"
-            scope: true
-            link: (scope, el, attrs) ->
-                icswUserLicenseDataService.add_to_scope(scope)
-                scope.get_merged_key_list = (a, b) ->
-                    if !a?
-                        a = {}
-                    if !b?
-                        b = {}
-                    return _.uniq(Object.keys(a).concat(Object.keys(b)))
-                scope._state = icswUserLicenseDataService.calculate_effective_license_state
-                scope.undefined_to_zero = (x) ->
-                    return if x? then x else 0
+            templateUrl : "icsw.user.license.local.licenses"
+            scope: {
+                license_tree: "=icswLicenseTree"
+            }
+            controller: "icswUserLicenseLocalLicensesCtrl"
         }
+]).controller("icswUserLicenseLocalLicensesCtrl", [
+    "$scope",
+(
+    $scope,
+) ->
+    # console.log "$scope=", $scope, $scope.license_tree
+
+    $scope.get_merged_key_list = (a, b) ->
+        if !a?
+            a = {}
+        if !b?
+            b = {}
+        return _.uniq(Object.keys(a).concat(Object.keys(b)))
+
+    $scope.undefined_to_zero = (x) ->
+        return if x? then x else 0
 ]).directive("icswUserLicensePackages",
 [
-    "icswUserLicenseDataService", "icswSimpleAjaxCall", "ICSW_URLS",
+    "icswSimpleAjaxCall", "ICSW_URLS",
 (
-    icswUserLicenseDataService, icswSimpleAjaxCall, ICSW_URLS
+    icswSimpleAjaxCall, ICSW_URLS,
 ) ->
     return {
         restrict : "EA"
         controller: 'icswUserLicenseCtrl'
         templateUrl : "icsw.user.license.packages"
         link: (scope, el, attrs) ->
-            scope.CLUSTER_ID = "---"
-            icswSimpleAjaxCall(
-                {
-                    url: ICSW_URLS.MAIN_GET_CLUSTER_INFO,
-                    dataType: "json"
-                }
-            ).then(
-                (json) ->
-                    scope.CLUSTER_ID = json.CLUSTER_ID
-            )
-            icswUserLicenseDataService.add_to_scope(scope)
             scope.cluster_accordion_open = {
                 0: true  # show first accordion which is the cluster id of this cluster by the ordering below
             }
             scope.package_order_fun = (pack) ->
                 return moment(pack.date).unix()
+
             scope.cluster_order_fun = (data) ->
                 # order by is_this_cluster, cluster_id
                 prio = 0
-                if data[0] == scope.CLUSTER_ID
+                if data[0] == scope.struct.license_tree.cluster_info.CLUSTER_ID
                     prio -= 1
                 return [prio, data[0]]
+
             scope.get_list = (obj) ->
                 if !obj.__transformed_list?
+                    # cluster-id, license
                     obj.__transformed_list = ([k, v] for k, v of obj)
                 return obj.__transformed_list
 
             scope.get_cluster_title = (cluster_id) ->
-                if cluster_id == scope.CLUSTER_ID
+                if cluster_id == scope.struct.license_tree.cluster_info.CLUSTER_ID
                     return "Current cluster (#{cluster_id})"
                 else
                     return "Cluster #{cluster_id}"
     }
+]).service("icswUserLicenseDataTree",
+[
+    "Restangular", "ICSW_URLS", "icswSimpleAjaxCall", "$q",
+    "icswUserLicenseFunctions",
+(
+    Restangular, ICSW_URLS, icswSimpleAjaxCall, $q,
+    icswUserLicenseFunctions,
+) ->
+    class icswUserLicenseDataTree
+        constructor: (list, pack_list, violation_list, @cluster_info) ->
+            @list = []
+            @pack_list = []
+            @violation_list = []
+            @update(list, pack_list, violation_list)
+
+        update: (list, pack_list, violation_list) =>
+            @list.length = 0
+            for entry in list
+                @list.push(entry)
+            @pack_list.length = 0
+            for entry in pack_list
+                @pack_list.push(entry)
+            @violation_list.length = 0
+            for entry in violation_list
+                @violation_list.push(entry)
+            @build_luts()
+        
+        build_luts: () =>
+            @lut = _.keyBy(@list, "idx")
+            @lut_by_id = _.keyBy(@list, "id")
+            @pack_lut = _.keyBy(@pack_list, "idx")
+            @link()
+
+        link: () =>
+            # salt lists
+            for lic in @list
+                @calculate_license_state(lic)
+                @set_warning(lic)
+            for pack in @pack_list
+                for c_id, lic_list of pack.cluster_licenses
+                    for lic in lic_list
+                        lic.$$license = @lut_by_id[lic.id]
+                        lic.$$state = icswUserLicenseFunctions.get_license_state_internal(lic)[3]
+                        lic.$$bootstrap_class = icswUserLicenseFunctions.get_license_state_bootstrap_class(lic.$$state.state_id)
+                        lic.$$icon_class = icswUserLicenseFunctions.get_license_state_icon_class(lic.$$state.state_id)
+
+        # calculate_license_state: (packages, license_id=undefined, cluster_id=undefined) ->
+        calculate_license_state: (license) =>
+            # calculate the current state of either all licenses in a package or of a certain one for a given cluster_id or all cluster_ids
+            state = undefined
+            if @pack_list.length
+                states = []
+                # build list [priority, data] in states
+                for pack in @pack_list
+                    check_licenses = (lic_list) ->
+                        for pack_lic in lic_list
+                            if !license? or pack_lic.id == license.id
+                                lic_state = icswUserLicenseFunctions.get_license_state_internal(pack_lic)
+                                lic_state[3].package = pack
+                                lic_state[3].lic = pack_lic
+                                states.push(lic_state)
+
+                    # has dict of cluster_licenses (get_license_packages django view)
+                    for cluster_id_iter, cluster_lic_list of pack.cluster_licenses
+                        # cluster_id is string (actual cluster id)
+                        # console.log cluster_id_iter, @cluster_info.CLUSTER_ID
+                        if cluster_id_iter == @cluster_info.CLUSTER_ID
+                            check_licenses(cluster_lic_list)
+
+                if states.length
+                    # NOTE: duplicated in license admin
+                    states.sort((a, b) ->
+                        if a[0] != b[0]
+                            # lower state id is better
+                            return if a[0] > b[0] then 1 else -1
+                        else
+                            # for parameters, we want higher values
+                            return if a[1] < b[1] then 1 else -1
+                    )
+                    state = states[0][3]
+
+            if @violation_list.length
+                # FIXME, ToDo
+                console.error "add license_violation test"
+            #if data.license_violations[license_id]? and data.license_violations[license_id].type == 'hard'
+            #    if !state?
+            #        state = {}
+            #    state.state_id = "parameter_violated"
+            #    state.state_str = gettextCatalog.getString('License parameter violated')
+            license.$$state = state
+            license.$$bootstrap_class = icswUserLicenseFunctions.get_license_state_bootstrap_class(license.$$state.state_id)
+            license.$$icon_class = icswUserLicenseFunctions.get_license_state_icon_class(license.$$state.state_id)
+
+        set_warning: (license) =>
+            warnings = []
+            if false
+                if @license_violations[issued_license.id]?
+                    violation = data.license_violations[issued_license.id]
+                    revocation_date = moment(violation['revocation_date'])
+                    date_str = revocation_date.format("YYYY-MM-DD HH:mm")
+
+                    msg =  "Your license for #{violation['name']} is violated and "
+                    if revocation_date > moment()
+                        msg += "will be revoked on <strong>#{date_str}</strong>."
+                    else
+                        msg += "has been revoked on <strong>#{date_str}</strong>."
+
+                    warnings.push [violation['revocation_date'], msg]
+
+            lic_state = license.$$state
+            if lic_state? and lic_state.state_id == "grace"
+                expiration = add_grace_period(moment(lic_state.lic.valid_to))
+                date_str = expiration.format("YYYY-MM-DD HH:mm")
+                msg = "Your license for #{issued_license.name} is in the grace period and "
+                msg += "will be revoked on <strong>#{date_str}</strong>."
+
+                warnings.push [expiration, msg]
+
+            license.$$warnings = warnings
+            if warnings.length
+                warnings.sort()
+                license.$$warning_info = warnings[0][1]
+                license.$$in_warning = true
+            else
+                license.$$warning_info = ""
+                license.$$in_warning = false
+
 ]).service("icswUserLicenseDataService",
 [
     "Restangular", "ICSW_URLS", "gettextCatalog", "icswSimpleAjaxCall", "$q",
+    "icswUserLicenseDataTree", "icswCachingCall",
 (
-    Restangular, ICSW_URLS, gettextCatalog, icswSimpleAjaxCall, $q
+    Restangular, ICSW_URLS, gettextCatalog, icswSimpleAjaxCall, $q,
+    icswUserLicenseDataTree, icswCachingCall,
 ) ->
-    cluster_id_wrapper = {
-        CLUSTER_ID: "---"
-    }
-    icswSimpleAjaxCall(
-        {
-            url: ICSW_URLS.MAIN_GET_CLUSTER_INFO,
-            dataType: "json"
-        }
-    ).then((json) ->
-        cluster_id_wrapper.CLUSTER_ID = json.CLUSTER_ID
-    )
-    data = {
-        state_valid: false
-        all_licenses: []
-        license_packages: []
-        # no reload:
-        license_violations: Restangular.all(ICSW_URLS.ICSW_LIC_GET_LICENSE_VIOLATIONS.slice(1)).customGET().$object
-    }
-
-    reload_data = () ->
-        promises = [
-            Restangular.all(ICSW_URLS.ICSW_LIC_GET_ALL_LICENSES.slice(1)).getList(),
-            Restangular.all(ICSW_URLS.ICSW_LIC_GET_LICENSE_PACKAGES.slice(1)).getList(),
+    rest_map = [
+        [
+            ICSW_URLS.ICSW_LIC_GET_ALL_LICENSES, {}
         ]
-        $q.all(promises).then((new_lists) ->
-            data.state_valid = true
-            data.all_licenses.length = 0
-            for entry in new_lists[0]
-                data.all_licenses.push(entry)
-            data.license_packages.length = 0
-            for entry in new_lists[1]
-                data.license_packages.push(entry)
+        [
+            ICSW_URLS.ICSW_LIC_GET_LICENSE_PACKAGES, {}
+        ]
+        [
+            ICSW_URLS.ICSW_LIC_GET_LICENSE_VIOLATIONS, {}
+        ]
+    ]
+
+    _fetch_dict = {}
+    _result = undefined
+    # load called
+    load_called = false
+
+    load_data = (client) ->
+        load_called = true
+        _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in rest_map)
+        _wait_list.push(
+            icswSimpleAjaxCall(
+                {
+                    url: ICSW_URLS.MAIN_GET_CLUSTER_INFO
+                    dataType: "json"
+                }
+            )
         )
+        _defer = $q.defer()
+        $q.all(_wait_list).then(
+            (data) ->
+                console.log "*** license tree loaded ***"
+                _result = new icswUserLicenseDataTree(data[0], data[1], data[2], data[3])
+                _defer.resolve(_result)
+                for client of _fetch_dict
+                    # resolve clients
+                    _fetch_dict[client].resolve(_result)
+                # reset fetch_dict
+                _fetch_dict = {}
+        )
+        return _defer
 
-    reload_data()
+    fetch_data = (client) ->
+        if client not of _fetch_dict
+            # register client
+            _defer = $q.defer()
+            _fetch_dict[client] = _defer
+        if _result
+            # resolve immediately
+            _fetch_dict[client].resolve(_result)
+        return _fetch_dict[client]
 
-    data.reload_data = reload_data
-
-    data.get_license_by_id = (id) ->
-        return _.find(data.all_licenses, (elem) -> return elem.id == id)
-
-    data.add_to_scope = (scope) ->
-        for k, v of data
-            if k != 'add_to_scope'
-                scope[k] = v
-
+    # data.get_license_by_id = (id) ->
+    #     return _.find(data.all_licenses, (elem) -> return elem.id == id)
 
     # NOTE: code below here is just utils, but we can't have it in a proper service since that would create a circular dependency
-    _get_license_state_internal = (issued_lic) ->
+    # get_license_state = (issued_lic) ->
+    #     state =  _get_license_state_internal(issued_lic)
+    #     return if state? then state[3] else undefined
+
+    return {
+        load: (client) ->
+            if load_called
+                # fetch when data is present (after sidebar)
+                return fetch_data(client).promise
+            else
+                return load_data(client).promise
+        is_valid: () ->
+            return if _result? then true else false
+    }
+]).service("icswUserLicenseFunctions", [
+    "$q", "gettextCatalog",
+(
+    $q, gettextCatalog,
+) ->
+
+    add_grace_period = (date) ->
+        # NOTE: keep grace period in sync with py
+        return date.add(2, 'weeks')
+
+    get_license_state_internal = (issued_lic) ->
+        # console.log "*", issued_lic
         # add this such that licenses with higher parameters have priority if state is equal
         parameters_sortable = _.sum(_.values(issued_lic.parameters))
         if moment(issued_lic.valid_from) < moment() and moment() < add_grace_period(moment(issued_lic.valid_to))
@@ -250,6 +421,7 @@ angular.module(
                         0
                         {
                             state_id: 'valid'
+                            use: true
                             state_str: gettextCatalog.getString('Valid')
                             date_info: gettextCatalog.getString('until') + ' ' + moment(issued_lic.valid_to).format("YYYY-MM-DD")
                         }
@@ -263,6 +435,7 @@ angular.module(
                         0
                         {
                             state_id: 'grace'
+                            use: true
                             state_str: gettextCatalog.getString('In grace period')
                             date_info: gettextCatalog.getString('since') + ' ' + moment(issued_lic.valid_to).format("YYYY-MM-DD")
                         }
@@ -276,6 +449,7 @@ angular.module(
                     moment(issued_lic.valid_to)
                     {
                         state_id: 'expired'
+                        use: false
                         state_str: gettextCatalog.getString('Expired')
                         date_info: gettextCatalog.getString('since') + ' ' + moment(issued_lic.valid_to).format("YYYY-MM-DD")
                     }
@@ -289,11 +463,13 @@ angular.module(
                     moment(issued_lic.valid_from)
                     {
                         state_id: 'valid_in_future'
+                        use: false
                         state_str: gettextCatalog.getString('Will be valid')
                         date_info: gettextCatalog.getString('on') + ' ' + moment(issued_lic.valid_from).format("YYYY-MM-DD")
                     }
                 ]
             )
+
     get_license_state_bootstrap_class = (state) ->
         if state?
             return {
@@ -305,6 +481,7 @@ angular.module(
             }[state]
         else
             return ""
+
     get_license_state_icon_class = (state) ->
         if state?
             return {
@@ -316,106 +493,28 @@ angular.module(
             }[state]
         else
             return ""
-    get_license_state = (issued_lic) ->
-        state =  _get_license_state_internal(issued_lic)
-        return if state? then state[3] else undefined
 
-    calculate_license_state = (packages, license_id=undefined, cluster_id=undefined) ->
-        # calculate the current state of either all licenses in a package or of a certain one for a given cluster_id or all cluster_ids
-        state = undefined
-        if packages.length
-            states = []
-            # build list [priority, data] in states
-            for pack in packages
-                check_licenses = (lic_list) ->
-                    for pack_lic in lic_list
-                        if !license_id? or pack_lic.id == license_id
-                            lic_state = _get_license_state_internal(pack_lic)
-                            lic_state[3].package = pack
-                            lic_state[3].lic = pack_lic
-                            states.push(lic_state)
-
-                # has dict of cluster_licenses (get_license_packages django view)
-                for cluster_id_iter, cluster_lic_list of pack.cluster_licenses
-                    # cluster_id is string (actual cluster id)
-                    if cluster_id_iter == cluster_id
-                        check_licenses(cluster_lic_list)
-
-            if states.length
-                # NOTE: duplicated in license admin
-                states.sort((a, b) ->
-                    if a[0] != b[0]
-                        # lower state id is better
-                        return if a[0] > b[0] then 1 else -1
-                    else
-                        # for parameters, we want higher values
-                        return if a[1] < b[1] then 1 else -1
-                )
-                state = states[0][3]
-
-        if data.license_violations[license_id]? and data.license_violations[license_id].type == 'hard'
-            if !state?
-                state = {}
-            state.state_id = "parameter_violated"
-            state.state_str = gettextCatalog.getString('License parameter violated')
-        return state
-
-    calculate_effective_license_state = (license_id) ->
-        return calculate_license_state(data.license_packages, license_id, cluster_id_wrapper.CLUSTER_ID)
-
-    add_grace_period = (date) ->
-        # NOTE: keep grace period in sync with py
-        return date.add(2, 'weeks')
-
-    angular.extend(data, {
-        get_license_bootstrap_class : (issued_lic) ->
-            state = get_license_state(issued_lic)
-            return if state? then get_license_state_bootstrap_class(state.state_id) else undefined
-        get_license_state : get_license_state
+    return {
         get_license_state_bootstrap_class : get_license_state_bootstrap_class
         get_license_state_icon_class: get_license_state_icon_class
-        _get_license_state_internal: _get_license_state_internal  # expose for licadmin
-        calculate_effective_license_state: calculate_effective_license_state
-        calculate_license_state: calculate_license_state
-        get_license_warning: (issued_license) ->
-            warnings = []
-            if data.license_violations[issued_license.id]?
-                violation = data.license_violations[issued_license.id]
-                revocation_date = moment(violation['revocation_date'])
-                date_str = revocation_date.format("YYYY-MM-DD HH:mm")
-
-                msg =  "Your license for #{violation['name']} is violated and "
-                if revocation_date > moment()
-                    msg += "will be revoked on <strong>#{date_str}</strong>."
-                else
-                    msg += "has been revoked on <strong>#{date_str}</strong>."
-
-                warnings.push [violation['revocation_date'], msg]
-
-            lic_state = calculate_effective_license_state(issued_license.id)
-            if lic_state? and lic_state.state_id == "grace"
-                expiration = add_grace_period(moment(lic_state.lic.valid_to))
-                date_str = expiration.format("YYYY-MM-DD HH:mm")
-                msg = "Your license for #{issued_license.name} is in the grace period and "
-                msg += "will be revoked on <strong>#{date_str}</strong>."
-
-                warnings.push [expiration, msg]
-
-            if warnings.length
-                warnings.sort()
-                return warnings[0][1]
-    })
-
-    return data
-]).run(["toaster", "icswUserLicenseDataService", "$rootScope", (toaster, icswUserLicenseDataService, $rootScope) ->
-    $rootScope.$watch(
-        () -> return Object.keys(icswUserLicenseDataService.license_violations).length + Object.keys(icswUserLicenseDataService.license_packages).length
-        () ->
-            if icswUserLicenseDataService.license_violations? and icswUserLicenseDataService.license_violations.plain? and
-                    Object.keys(icswUserLicenseDataService.all_licenses).length > 0
-                for license in icswUserLicenseDataService.all_licenses
-                    msg = icswUserLicenseDataService.get_license_warning(license)
-                    if msg?
-                        toaster.pop("warning", "License warning", msg, 10000, 'trustedHtml')
-    )
+        get_license_state_internal: get_license_state_internal
+        add_grace_period: add_grace_period
+    }
 ])
+# FIXME
+#.run([
+##    "toaster", "icswUserLicenseDataService", "$rootScope",
+#(
+#    toaster, icswUserLicenseDataService, $rootScope
+#) ->
+#    $rootScope.$watch(
+#        () -> return Object.keys(icswUserLicenseDataService.license_violations).length + Object.keys(icswUserLicenseDataService.license_packages).length
+#        () ->
+#            if icswUserLicenseDataService.license_violations? and icswUserLicenseDataService.license_violations.plain? and
+#                    Object.keys(icswUserLicenseDataService.all_licenses).length > 0
+#                for license in icswUserLicenseDataService.all_licenses
+#                    msg = icswUserLicenseDataService.get_license_warning(license)
+#                    if msg?
+#                        toaster.pop("warning", "License warning", msg, 10000, 'trustedHtml')
+#    )
+#])

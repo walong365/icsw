@@ -4,9 +4,10 @@
 
 <script type="text/ng-template" id="icsw.user.license.overview">
 
-    <h3>License overview (ClusterID is {{ CLUSTER_ID }})</h3>
 
-    <uib-accordion close-others="false">
+    <uib-alert type="warning" ng-if="!struct.data_valid">Loading License data</uib-alert>
+    <h3 ng-show="struct.data_valid">License overview (ClusterID is {{ struct.license_tree.cluster_info.CLUSTER_ID }})</h3>
+    <uib-accordion close-others="false" ng-if="struct.data_valid">
 
         <uib-accordion-group is-open="your_licenses_open" is-disabled="license_views_disabled">
             <uib-accordion-heading>
@@ -15,7 +16,7 @@
                    ng-class="{'glyphicon-chevron-down': your_licenses_open, 'glyphicon-chevron-right': !your_licenses_open}"></i>
             </uib-accordion-heading>
 
-            <icsw-user-license-your-licenses></icsw-user-license-your-licenses>
+            <icsw-user-license-local-licenses icsw-license-tree="struct.license_tree"></icsw-user-license-local-licenses>
         </uib-accordion-group>
 
 
@@ -47,9 +48,13 @@
 
 </script>
 
-<script type="text/ng-template" id="icsw.user.license.your_licenses">
-    <table st-table="entries_displayed" st-safe-src="all_licenses" class="table table-condensed table-hover"
-           style="width:auto;">
+<script type="text/ng-template" id="icsw.user.license.local.licenses">
+    <table
+        st-table="entries_displayed"
+        st-safe-src="license_tree.list"
+        class="table table-condensed table-hover table-striped"
+        style="width:auto;"
+    >
         <thead>
             <tr>
                 <th st-sort="name">License</th>
@@ -63,50 +68,54 @@
         </thead>
         <tbody>
             <tr ng-repeat="lic in entries_displayed">
-                <td><strong>{{lic.name}}</strong></td>
-                <td>{{lic.description}}</td>
                 <td>
-                    <div ng-repeat="param_type in get_merged_key_list(_state(lic.id).lic.parameters, lic.parameter_usage)">
+                    <strong>{{ lic.name }}</strong>
+                </td>
+                <td>{{ lic.description }}</td>
+                <td>
+                    <div ng-repeat="param_type in get_merged_key_list(lic.$$state.lic.parameters, lic.parameter_usage)">
 
-                        <div ng-show="_state(lic.id).lic.parameters[param_type]">
+                        <div ng-show="lic.$$state.lic.parameters[param_type]">
                             <div ng-switch on="_state(lic.id).lic.parameters[param_type] < lic.parameter_usage[param_type]">
                                 <div ng-switch-when="true">
                                     <!-- parameter exceeded -->
                                     <uib-alert type="danger" style="padding: 5px">
                                         <i class="glyphicon glyphicon-exclamation-sign"></i>
-                                        <strong>{{param_type}}</strong>: {{_state(lic.id).lic.parameters[param_type]}}
-                                        (used: {{lic.parameter_usage[param_type]}})
+                                        <strong>{{ param_type }}</strong>:
+                                        {{ lic.$$state.lic.parameters[param_type] }}
+                                        (used: {{ lic.parameter_usage[param_type] }})
                                     </uib-alert>
                                 </div>
                                 <div ng-switch-default>
                                     <!-- everything ok, parameter usage within limits -->
-                                    <strong>{{param_type}}</strong>: {{ _state(lic.id).lic.parameters[param_type] }}
+                                    <strong>{{ param_type }}</strong>:
+                                    {{ lic.$$state.lic.parameters[param_type] }}
                                     (used: {{ undefined_to_zero(lic.parameter_usage[param_type]) }})
                                 </div>
                             </div>
                         </div>
-                        <uib-alert type="danger" ng-show="!_state(lic.id).lic.parameters[param_type]" style="padding: 5px">
+                        <uib-alert type="danger" ng-show="!lic.$$state.lic.parameters[param_type]" style="padding: 5px">
                             <!-- parameter used which is not present -->
                             <i class="glyphicon glyphicon-exclamation-sign"></i>
-                            <strong>{{param_type}}</strong>: used: {{lic.parameter_usage[param_type]}}
+                            <strong>{{ param_type }}</strong>: used: {{ lic.parameter_usage[param_type] }}
                         </uib-alert>
                     </div>
                 </td>
-                <td ng-class="get_license_state_bootstrap_class(_state(lic.id).state_id)">
-                    <i ng-attr-class="{{get_license_state_icon_class(_state(lic.id).state_id)}}"></i>
+                <td ng-class="lic.$$bootstrap_class">
+                    <i ng-attr-class="{{ lic.$$icon_class }}"></i>
                 </td>
-                <td ng-class="get_license_state_bootstrap_class(_state(lic.id).state_id)">
-                    <strong>{{_state(lic.id).state_str}}</strong>
+                <td ng-class="lic.$$bootstrap_class">
+                    <strong>{{ lic.$$state.state_str }}</strong>
                 </td>
-                <td>{{_state(lic.id).date_info}}</td>
+                <td>{{ lic.$$state.date_info }}</td>
                 <td>
-                    <div ng-show="get_license_warning(lic)">
-                        <uib-alert type="danger" ng-bind-html="get_license_warning(lic, true)" style="padding: 5px">
+                    <div ng-show="lic.$$in_warning">
+                        <uib-alert type="danger" ng-bind-html="lic.$$warning_info" style="padding: 5px">
                         </uib-alert>
                     </div>
                 </td>
-                <td>{{_state(lic.id).package.type_name}}</td>
-                <td>{{_state(lic.id).package.name}}</td>
+                <td>{{ lic.$$state.package.type_name }}</td>
+                <td>{{ lic.$$state.package.name }}</td>
             </tr>
         </tbody>
     </table>
@@ -114,35 +123,45 @@
 
 <script type="text/ng-template" id="icsw.user.license.packages">
     <uib-tabset>
-        <uib-tab ng-repeat="pack in license_packages | orderBy:package_order_fun:true" heading="{{pack.name}}">
-            <h4>{{pack.name}}</h4>
-
+        <uib-tab
+            ng-repeat="pack in struct.license_tree.pack_list | orderBy:package_order_fun:true"
+        >
+            <uib-tab-heading>
+                {{ pack.name }}
+            </uib-tab-heading>
+            <h3>
+                License package {{ pack.name }}
+            </h3>
             <table class="table table-condensed table-hover" style="width: auto;">
                 <tbody>
                     <tr>
                         <th>Customer</th>
-                        <td>{{pack.customer}}</td>
+                        <td>{{ pack.customer }}</td>
                     </tr>
                     <tr>
                         <th>Type</th>
-                        <td>{{pack.type_name}}</td>
+                        <td>{{ pack.type_name }}</td>
                     </tr>
                 </tbody>
-
             </table>
-
             <uib-accordion close-others="true">
-                <uib-accordion-group is-open="cluster_uib-accordion_open[$index]"
-                                 ng-repeat="data in get_list(pack.cluster_licenses) | orderBy:cluster_order_fun">
+                <uib-accordion-group
+                    ng-repeat="data in get_list(pack.cluster_licenses) | orderBy:cluster_order_fun"
+                >
                     <!-- workaround for angular bug https://github.com/angular/angular.js/issues/1286 -->
                     <uib-accordion-heading>
                         <!-- data[0] is cluster_id, data[1] is cluster_licenses -->
-                        {{get_cluster_title(data[0])}}
+                        {{ get_cluster_title(data[0]) }}
                         <i class="pull-right glyphicon"
-                           ng-class="{'glyphicon-chevron-down': cluster_uib-accordion_open[$index], 'glyphicon-chevron-right': !cluster_uib-accordion_open[$index]}"></i>
+                           ng-class="{'glyphicon-chevron-down': cluster_uib-accordion_open[$index], 'glyphicon-chevron-right': !cluster_uib-accordion_open[$index]}"
+                        ></i>
                     </uib-accordion-heading>
-                    <table st-table="entries_displayed" st-safe-src="data[1]" class="table table-condensed table-hover"
-                           style="width:auto;">
+                    <table
+                        st-table="entries_displayed"
+                        st-safe-src="data[1]"
+                        class="table table-condensed table-hover"
+                        style="width:auto;"
+                    >
                         <thead>
                             <tr>
                                 <th st-sort="id" st-sort-default="true" width="150">License</th>
@@ -154,18 +173,18 @@
                         </thead>
                         <tbody>
                             <tr ng-repeat="pack_lic in entries_displayed">
-                                <td>{{get_license_by_id(pack_lic.id).name}}</td>
-                                <td ng-class="get_license_bootstrap_class(pack_lic)">
-                                    <i ng-attr-class="{{get_license_state_icon_class(get_license_state(pack_lic).state_id)}}"></i>
+                                <td>{{ pack_lic.$$license.name }}</td>
+                                <td ng-class="pack_lic.$$bootstrap_class">
+                                    <i ng-attr-class="{{ pack_lic.$$icon_class }}"></i>
                                 </td>
-                                <td ng-class="get_license_bootstrap_class(pack_lic)">
-                                    {{get_license_state(pack_lic).state_str}}
+                                <td ng-class="pack_lic.$$bootstrap_class">
+                                    {{ pack_lic.$$state.state_str }}
                                 </td>
-                                <td>{{pack_lic.valid_from | date:'yyyy-MM-dd'}}</td>
-                                <td>{{pack_lic.valid_to | date:'yyyy-MM-dd'}}</td>
+                                <td>{{ pack_lic.valid_from | date:'yyyy-MM-dd' }}</td>
+                                <td>{{ pack_lic.valid_to | date:'yyyy-MM-dd' }}</td>
                                 <td>
                                     <div ng-repeat="(param_type, param_value) in pack_lic.parameters">
-                                        <strong>{{param_type}}</strong>: {{param_value}}
+                                        <strong>{{ param_type }}</strong>: {{ param_value }}
                                     </div>
                                 </td>
                             </tr>
@@ -173,9 +192,6 @@
                     </table>
                 </uib-accordion-group>
             </uib-accordion>
-
         </uib-tab>
-
-
     </uib-tabset>
 </script>

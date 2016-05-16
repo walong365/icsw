@@ -40,23 +40,29 @@ angular.module(
     # cur_selection = new icswSelection([], [], [3], [3])
     # cur_selection = new icswSelection([], [], [16], [16]) # only firewall
     # cur_selection = new icswSelection([], [], [], [])
+
     $rootScope.$on(ICSW_SIGNALS("ICSW_DEVICE_TREE_LOADED"), (event) ->
         # tree loaded, re-emit selection
         send_selection()
     )
+
     register_receiver = () ->
         _receivers += 1
         # console.log "registered receiver"
         $rootScope.$emit(ICSW_SIGNALS("ICSW_DSR_REGISTERED"))
         send_selection()
+
     sync_selection = (new_sel) ->
         cur_selection.update(new_sel.categories, new_sel.device_groups, new_sel.devices, [])
         cur_selection.sync_with_db(new_sel)
+
     unsync_selection = () ->
         cur_selection.sync_with_db(undefined)
+
     send_selection = () ->
         # console.log "emit current device selection"
         $rootScope.$emit(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"))
+
     return {
         "num_receivers": () ->
             return _receivers

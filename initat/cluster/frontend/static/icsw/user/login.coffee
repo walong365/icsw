@@ -33,9 +33,8 @@ angular.module(
     $scope, $window, ICSW_URLS, icswSimpleAjaxCall, icswParseXMLResponseService, blockUI,
     initProduct, icswUserLicenseDataService, $q, $state, icswCSRFService, icswUserService
 ) ->
-    $scope.ICSW_URLS = ICSW_URLS
     $scope.initProduct = initProduct
-    $scope.lds = icswUserLicenseDataService
+    $scope.license_tree = undefined
     $scope.django_version = "---"
     $scope.CLUSTER_NAME = ""
     $scope.CLUSTER_ID = ""
@@ -70,6 +69,7 @@ angular.module(
                         dataType: "json"
                     }
                 )
+                icswUserLicenseDataService.load($scope.$id)
             ]
         ).then(
             (data) ->
@@ -83,6 +83,8 @@ angular.module(
                 $scope.DATABASE_VERSION = data[1].DATABASE_VERSION
                 $scope.SOFTWARE_VERSION = data[1].SOFTWARE_VERSION
                 $scope.MODELS_VERSION = data[1].MODELS_VERSION
+                $scope.license_tree = data[2]
+                console.log $scope.license_tree
                 if first_call
                     first_call = false
                     $scope.login_data.next_url = $(xml).find("value[name='next_url']").text()

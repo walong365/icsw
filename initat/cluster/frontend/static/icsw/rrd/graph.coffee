@@ -297,11 +297,13 @@ angular.module(
 
         $scope.set_job_mode = (new_jm) ->
             $scope.job_mode = new_jm
+
         $scope.get_job_mode = (_jm) ->
             if _jm == "selected"
                 return "#{_jm} (#{$scope.selected_job})"
             else
                 return _jm    
+
         $scope.job_mode_allowed = (cur_jm) ->
             if cur_jm == "selected" and not $scope.selected_job
                 return false
