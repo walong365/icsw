@@ -459,41 +459,7 @@ device_asset_module = angular.module(
                     devidx_dev_dict[dev.idx] = dev
                     $scope.struct.devices.push(dev)
 
-<<<<<<< HEAD
-
-#                    icswSimpleAjaxCall({
-#                            url: ICSW_URLS.MON_GET_ASSETRUNS_FOR_DEVICE
-#                            data:
-#                                pk: dev.idx
-#                            dataType: 'json'
-#                    }).then(
-#                        (result) ->
-#                            console.log "result: ", result
-#
-#                            for obj in result.asset_runs
-#                                dev.assetrun_set.push($scope.createAssetRunFromObj(obj))
-#                                $scope.struct.asset_runs.push($scope.createAssetRunFromObj(obj))
-#
-#                        (not_ok) ->
-#                            console.log not_ok
-#                    )
-
                 $scope.struct.data_loaded = true
-
-#                hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, $scope.struct.devices)
-#                $scope.struct.device_tree.enrich_devices(hs, ["asset_info"]).then(
-#                    (data) ->
-#                        for dev in $scope.struct.devices
-#                            dev.$$asset_run = false
-#                            #dev.assetrun_set_sf_src = []
-#                            #for ar in dev.assetrun_set
-#                            #    dev.assetrun_set_sf_src.push(ar)
-#                                #$scope.struct.asset_runs.push(ar)
-#                        $scope.struct.data_loaded = true
-#                )
-
-=======
->>>>>>> a563623bc5f925cd54b918c6cc14ada110933117
                 icswSimpleAjaxCall({
                         url: ICSW_URLS.ASSET_GET_ASSETRUNS_FOR_DEVICES
                         data:
