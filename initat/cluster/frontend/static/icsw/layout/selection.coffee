@@ -35,11 +35,11 @@ angular.module(
     # used by menu.coffee (menu_base)
     _receivers = 0
     # for testing
-    cur_selection = new icswSelection([], [], [666, 3, 5, 16, 21], [3, 5, 16, 21, 666])
+    # cur_selection = new icswSelection([], [], [666, 3, 5, 16, 21], [3, 5, 16, 21, 666])
     # cur_selection = new icswSelection([], [], [3, 5], [3, 5])
     # cur_selection = new icswSelection([], [], [3], [3])
     # cur_selection = new icswSelection([], [], [16], [16]) # only firewall
-    # cur_selection = new icswSelection([], [], [], [])
+    cur_selection = new icswSelection([], [], [], [])
 
     $rootScope.$on(ICSW_SIGNALS("ICSW_DEVICE_TREE_LOADED"), (event) ->
         # tree loaded, re-emit selection
@@ -66,7 +66,7 @@ angular.module(
     return {
         "num_receivers": () ->
             return _receivers
-        "current": () ->
+        current: () ->
             return cur_selection
         "get_selection": () ->
             return cur_selection
@@ -269,12 +269,12 @@ angular.module(
                 return false
         save_db_obj: () =>
             if @db_obj
-                console.log @db_obj
-                console.log @dev_sel
+                # console.log @db_obj
+                # console.log @dev_sel
                 @db_obj.categories = (entry for entry in @cat_sel)
                 @db_obj.device_groups = (entry for entry in @devg_sel)
                 @db_obj.devices = (entry for entry in @dev_sel)
-                console.log @db_obj
+                # console.log @db_obj
                 @db_obj.put().then(
                     (old_obj) =>
                         @selection_saved()
@@ -920,10 +920,10 @@ angular.module(
                 dev = @current.all_lut[entry.obj]
                 DeviceOverviewSelection.set_selection([dev])
                 DeviceOverviewService(event)
-                @notifier.info("go")
+                @notifier.notify("go")
             else
                 entry.set_selected(not entry.selected)
-                @notifier.info("go")
+                @notifier.notify("go")
             # need $apply() here, $digest is not enough
 
         get_name: (t_entry) =>
@@ -961,6 +961,7 @@ angular.module(
                 if info_f.length
                     d_name = "#{d_name} (" + info_f.join(", ") + ")"
                 return d_name
+
         get_icon_class: (t_entry) =>
             if t_entry._node_type == "d"
                 entry = @get_dev_entry(t_entry)

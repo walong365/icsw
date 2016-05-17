@@ -422,11 +422,17 @@ angular.module(
                 st_attrs['rrd_store'] = obj.store_rrd_data
                 st_attrs['passwd'] = obj.root_passwd_set
                 if obj.monitor_server
-                    st_attrs['mon_master'] = $scope.struct.monitor_server_lut[obj.monitor_server].$$full_name_with_type
+                    if obj.monitor_server of $scope.struct.monitor_server_lut
+                        st_attrs['mon_master'] = $scope.struct.monitor_server_lut[obj.monitor_server].$$full_name_with_type
+                    else
+                        st_attrs["mon_master"] = "Error"
                 else
                     st_attrs["mon_master"] = ""
                 if obj.bootserver
-                    st_attrs['boot_master'] = $scope.struct.mother_server_lut[obj.bootserver].full_name
+                    if obj.bootserver of $scope.struct.mother_server_lut
+                        st_attrs['boot_master'] = $scope.struct.mother_server_lut[obj.bootserver].full_name
+                    else
+                        st_attrs["boot_master"] = "Error"
                 else
                     st_attrs["boot_master"] = ""
             obj.st_attrs = st_attrs

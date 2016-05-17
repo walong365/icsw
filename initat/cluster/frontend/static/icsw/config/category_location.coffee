@@ -581,7 +581,7 @@ angular.module(
 
         onAdd: () =>
             panes = @overlay.getPanes()
-            @mydiv = angular.element("div")[0]
+            @mydiv = angular.element("<div/>")[0]
             panes.markerLayer.appendChild(@mydiv)
 
             @element = ReactDOM.render(
@@ -600,10 +600,10 @@ angular.module(
 ]).controller("icswConfigCategoryTreeGoogleMapCtrl",
 [
     "$scope", "$templateCache", "uiGmapGoogleMapApi", "$timeout", "$rootScope", "ICSW_SIGNALS",
-    "icswGoogleMapsLivestatusOverlay", "icswGoogleMapsMarkerOverlay",
+    "icswGoogleMapsLivestatusOverlay", "icswGoogleMapsMarkerOverlay", "uiGmapIsReady",
 (
     $scope, $templateCache, uiGmapGoogleMapApi, $timeout, $rootScope, ICSW_SIGNALS,
-    icswGoogleMapsLivestatusOverlay, icswGoogleMapsMarkerOverlay,
+    icswGoogleMapsLivestatusOverlay, icswGoogleMapsMarkerOverlay, uiGmapIsReady,
 ) ->
 
     $scope.struct = {
@@ -664,7 +664,10 @@ angular.module(
         _bounds = new $scope.struct.google_maps.LatLngBounds()
         for entry in $scope.locations
             _bounds.extend(new $scope.struct.google_maps.LatLng(entry.latitude, entry.longitude))
-        $scope.struct.map_options.control.getGMap().fitBounds(_bounds)
+        if $scope.struct.map_options.control.getGMap?
+            $scope.struct.map_options.control.getGMap().fitBounds(_bounds)
+        else
+            console.log "maps control not populated"
 
     $scope.get_center = () ->
         # center map around the locations
@@ -729,11 +732,14 @@ angular.module(
                     $scope.struct.maps_ready = true
                     $scope.struct.google_maps = maps
                     $scope.get_center()
-                    $timeout(
-                        () ->
+                    # console.log "WFR"
+                    uiGmapIsReady.promise(1).then(
+                        (ok) ->
+                            # console.log "GMR", ok
                             _map = $scope.struct.map_options
                             # zoom
                             $scope.zoom_to_locations()
+                            console.log _map.control
                             # marker overlay
                             marker_overlay = new $scope.struct.google_maps.OverlayView()
                             angular.extend(marker_overlay, new icswGoogleMapsMarkerOverlay(marker_overlay, $scope.struct.google_maps, $scope.locations))
@@ -751,7 +757,6 @@ angular.module(
                                         longitude: _map.center.longitude
                                     }
                                 )
-                        100
                     )
             )
     $rootScope.$on(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), (event) ->

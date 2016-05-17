@@ -465,6 +465,7 @@ device_asset_module = angular.module(
                     devidx_dev_dict[dev.idx] = dev
                     $scope.struct.devices.push(dev)
 
+                $scope.struct.data_loaded = true
                 icswSimpleAjaxCall({
                         url: ICSW_URLS.ASSET_GET_ASSETRUNS_FOR_DEVICES
                         data:

@@ -726,7 +726,7 @@ class AlertList(object):
 
         # handle downtimes
         downtime_model = mon_icinga_log_raw_host_downtime_data if is_host else mon_icinga_log_raw_service_downtime_data
-        print downtime_model
+        # print downtime_model
         downtimes_qs = downtime_model.objects.all().order_by('date')
         if alert_filter is not None:
             downtimes_qs = downtimes_qs.filter(alert_filter)
@@ -745,9 +745,13 @@ class AlertList(object):
                 downtime_entry = {}
                 # create entry in "last before" format
                 for key in [
-                    'device_id', 'service_id',
-                    'service_info', 'date', 'msg',
-                    'state', 'state_type'
+                    'device_id',
+                    'service_id',
+                    'service_info',
+                    'date',
+                    'msg',
+                    'state',
+                    'state_type'
                 ]:
                     if hasattr(downtime_at_start_alert, key):
                         downtime_entry[key] = getattr(downtime_entry, key)

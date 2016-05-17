@@ -44,7 +44,7 @@ logger = logging.getLogger("cluster.network")
 
 class json_network(View):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        logger.log(log_level, "[jsn] %s" % (what))
+        logger.log(log_level, "[jsn] {}".format(what))
 
     @method_decorator(login_required)
     def post(self, request):
