@@ -66,15 +66,19 @@ class FileModify(object):
                     pass
                 else:
                     _new_dict = {}
-                    for _key, _value in _xml.attrib.iteritems():
-                        if _key in {"href", "src"}:
-                            _new_dict[_key] = "{}{}".format(
-                                "static/" if "/static/" in _value else "",
-                                os.path.basename(_value)
-                            )
-                    for _key, _value in _new_dict.iteritems():
-                        _xml.attrib[_key] = _value
-                    line = etree.tostring(_xml, method="html")
+                    if _xml.attrib.get("rel", "") == "icon":
+                        # ignore icon location
+                        pass
+                    else:
+                        for _key, _value in _xml.attrib.iteritems():
+                            if _key in {"href", "src"}:
+                                _new_dict[_key] = "{}{}".format(
+                                    "static/" if "/static/" in _value else "",
+                                    os.path.basename(_value)
+                                )
+                        for _key, _value in _new_dict.iteritems():
+                            _xml.attrib[_key] = _value
+                        line = etree.tostring(_xml, method="html")
                 if line.lower().count("<body>"):
                     _body_found = True
             new_content.append(line)
