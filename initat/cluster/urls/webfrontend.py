@@ -182,7 +182,7 @@ monitoring_patterns = [
     url("^get_assetruns$", monitoring_views.get_assetruns.as_view(), name="get_assetruns"),
     url("^get_assets_for_asset_run$", monitoring_views.get_assets_for_asset_run.as_view(), name="get_assets_for_asset_run"),
     url("^get_schedule_list$", monitoring_views.get_schedule_list.as_view(), name="get_schedule_list"),
-    url("^get_assetruns_for_device$", monitoring_views.get_assetruns_for_device.as_view(), name="get_assetruns_for_device"),
+    url("^get_assetruns_for_devices$", monitoring_views.get_assetruns_for_devices.as_view(), name="get_assetruns_for_devices"),
 ]
 
 user_patterns = [

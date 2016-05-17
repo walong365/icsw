@@ -792,26 +792,34 @@ class get_schedule_list(RetrieveAPIView):
             }
         )
 
-
-class get_assetruns_for_device(View):
+class get_assetruns_for_devices(View):
     def post(self, request):
-        dev = device.objects.get(idx=int(request.POST['pk']))
+        pks = request.POST['pks']
+        pk_list = [int(pk) for pk in pks.split(",") if len(pk) > 0]
+
+        assetruns = []
+        for pk in pk_list:
+            dev = device.objects.get(idx=pk)
+            assetruns.extend([
+                (
+                    ar.idx,
+                    ar.run_index,
+                    ar.run_type,
+                    str(ar.run_start_time),
+                    str(ar.run_end_time),
+                    str((
+                            ar.run_end_time - ar.run_start_time).total_seconds()) if ar.run_end_time and ar.run_start_time else "0",
+                    ar.device.name,
+                    ar.device.idx
+                ) for ar in dev.assetrun_set.all()
+            ])
+
+
 
         return HttpResponse(
             json.dumps(
                 {
-                    'asset_runs': [
-                        (
-                            ar.idx,
-                            ar.run_index,
-                            ar.run_type,
-                            str(ar.run_start_time),
-                            str(ar.run_end_time),
-                            str((ar.run_end_time - ar.run_start_time).total_seconds()),
-                            ar.device.name,
-                            ar.device.idx
-                        ) for ar in dev.assetrun_set.all()
-                    ]
+                    'asset_runs': assetruns
                 }
             ),
             content_type="application/json"
