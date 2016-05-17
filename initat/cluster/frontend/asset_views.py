@@ -24,6 +24,9 @@ import pytz
 import datetime
 import json
 
+from django.utils.decorators import method_decorator
+from django.contrib.auth.decorators import login_required
+
 from initat.cluster.backbone.models.asset import AssetPackage, AssetRun, AssetPackageVersion, AssetType
 from initat.cluster.backbone.models.dispatch import ScheduleItem
 from initat.cluster.backbone.models import device
@@ -35,6 +38,7 @@ from rest_framework.response import Response
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 
 class get_asset_list(RetrieveAPIView):
+    @method_decorator(login_required)
     def get(self, request, *args, **kwargs):
         return Response(
             {
@@ -43,7 +47,8 @@ class get_asset_list(RetrieveAPIView):
         )
 
 
-class run_assets_now(View):
+class run_assetrun_for_device_now(View):
+    @method_decorator(login_required)
     def post(self, request):
         _dev = device.objects.get(pk=int(request.POST['pk']))
         ScheduleItem.objects.create(
@@ -57,6 +62,7 @@ class run_assets_now(View):
 
 
 class get_devices_for_asset(View):
+    @method_decorator(login_required)
     def post(self, request, *args, **kwargs):
         apv = AssetPackageVersion.objects.get(pk=int(request.POST['pk']))
 
@@ -64,6 +70,7 @@ class get_devices_for_asset(View):
 
 
 class get_assetrun_diffs(View):
+    @method_decorator(login_required)
     def post(self, request):
         ar_pk1 = request.POST['pk1']
         ar_pk2 = request.POST['pk2']
@@ -86,6 +93,7 @@ class get_assetrun_diffs(View):
 
 
 class get_versions_for_package(View):
+    @method_decorator(login_required)
     def post(self, request):
         pk = request.POST['pk']
 
@@ -100,28 +108,8 @@ class get_versions_for_package(View):
             content_type="application/json"
         )
 
-
-class get_assetruns(RetrieveAPIView):
-    def get(self, request, *args, **kwargs):
-        return Response(
-            {
-                'asset_runs': [
-                    (
-                        ar.idx,
-                        ar.run_index,
-                        ar.run_type,
-                        str(ar.run_start_time),
-                        str(ar.run_end_time),
-                        str((ar.run_end_time - ar.run_start_time).total_seconds()) if ar.run_end_time and ar.run_start_time else "0",
-                        ar.device.name,
-                        ar.device.idx
-                    ) for ar in AssetRun.objects.all()
-                ]
-            }
-        )
-
-
 class get_assets_for_asset_run(View):
+    @method_decorator(login_required)
     def post(self, request, *args, **kwargs):
         ar = AssetRun.objects.get(pk=int(request.POST['pk']))
 
@@ -135,8 +123,8 @@ class get_assets_for_asset_run(View):
                                 str(bap.version),
                                 str(bap.release),
                                 str(bap.size),
-                                str(bap.install_date),
-                                str(bap.package_type)
+                                str(bap.install_date) if bap.install_date else "Unknown",
+                                str(bap.package_type.name)
                             ) for bap in ar.generate_assets_no_save()
                         ]
                     }
@@ -228,6 +216,7 @@ class get_assets_for_asset_run(View):
 
 
 class get_schedule_list(RetrieveAPIView):
+    @method_decorator(login_required)
     def get(self, request, *args, **kwargs):
         return Response(
             {
@@ -236,7 +225,7 @@ class get_schedule_list(RetrieveAPIView):
                         (
                             s.device.idx,
                             s.device.name,
-                            s.planned_date,
+                            s.planned_date.isoformat(),
                             s.dispatch_setting.name
                         ) for s in ScheduleItem.objects.all()
                     ],
@@ -246,6 +235,7 @@ class get_schedule_list(RetrieveAPIView):
         )
 
 class get_assetruns_for_devices(View):
+    @method_decorator(login_required)
     def post(self, request):
         pks = request.POST['pks']
         pk_list = [int(pk) for pk in pks.split(",") if len(pk) > 0]
@@ -258,10 +248,9 @@ class get_assetruns_for_devices(View):
                     ar.idx,
                     ar.run_index,
                     ar.run_type,
-                    str(ar.run_start_time),
-                    str(ar.run_end_time),
-                    str((
-                            ar.run_end_time - ar.run_start_time).total_seconds()) if ar.run_end_time and ar.run_start_time else "0",
+                    ar.run_start_time.isoformat() if ar.run_start_time else "",
+                    ar.run_end_time.isoformat() if ar.run_end_time else "",
+                    str((ar.run_end_time - ar.run_start_time).total_seconds()) if ar.run_end_time and ar.run_start_time else "0",
                     ar.device.name,
                     ar.device.idx
                 ) for ar in dev.assetrun_set.all()

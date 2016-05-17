@@ -35,11 +35,10 @@ from initat.cluster.frontend import rest_views, device_views, main_views, networ
 
 asset_patterns = [
     url("^get_asset_list$", asset_views.get_asset_list.as_view(), name="get_asset_list"),
-    url("^run_assets_now$", asset_views.run_assets_now.as_view(), name="run_assets_now"),
+    url("^run_assetrun_for_device_now$", asset_views.run_assetrun_for_device_now.as_view(), name="run_assetrun_for_device_now"),
     url("^get_devices_for_asset$", asset_views.get_devices_for_asset.as_view(), name="get_devices_for_asset"),
     url("^get_assetrun_diffs$", asset_views.get_assetrun_diffs.as_view(), name="get_assetrun_diffs"),
     url("^get_versions_for_package$", asset_views.get_versions_for_package.as_view(), name="get_versions_for_package"),
-    url("^get_assetruns$", asset_views.get_assetruns.as_view(), name="get_assetruns"),
     url("^get_assets_for_asset_run$", asset_views.get_assets_for_asset_run.as_view(), name="get_assets_for_asset_run"),
     url("^get_schedule_list$", asset_views.get_schedule_list.as_view(), name="get_schedule_list"),
     url("^get_assetruns_for_devices$", asset_views.get_assetruns_for_devices.as_view(), name="get_assetruns_for_devices"),

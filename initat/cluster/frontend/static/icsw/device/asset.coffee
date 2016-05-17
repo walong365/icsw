@@ -68,15 +68,21 @@ device_asset_module = angular.module(
         }[_t]
 
     resolve_asset_type_reverse = (_t) ->
-        return {
-            "Package": 1
-            "Hardware": 2
-            "License": 3
-            "Update": 4
-            "Software version": 5
-            "Process": 6
-            "Pending update": 7
-        }[_t]
+        items = ["package", "hardware", "license", "update", "software version", "process", "pending update"]
+        item_idx = {
+            "package": 1
+            "hardware": 2
+            "license": 3
+            "update": 4
+            "software version": 5
+            "process": 6
+            "pending update": 7
+        }
+
+        for item in items
+            if item.indexOf(_t.toLowerCase()) > -1
+                return item_idx[item]
+        return -1
 
     resolve_package_type = (_t) ->
         return {
@@ -91,9 +97,9 @@ device_asset_module = angular.module(
         }[_t]
         
     return {
-        resolve_asset_type: resolve_asset_type,
-        resolve_asset_type_reverse: resolve_asset_type_reverse,
-        resolve_package_type: resolve_package_type,
+        resolve_asset_type: resolve_asset_type
+        resolve_asset_type_reverse: resolve_asset_type_reverse
+        resolve_package_type: resolve_package_type
         resolve_package_type_reverse: resolve_package_type_reverse
     }
 ]).controller("icswDeviceAssetCtrl",
@@ -139,27 +145,24 @@ device_asset_module = angular.module(
         asset_run.run_type = obj[2]
         asset_run.run_start_time = obj[3]
         if obj[3]!= null && obj[3].length > 0
-            date_time_arr = obj[3].split("T")
-            if date_time_arr.length < 2
-                date_time_arr = obj[3].split(" ")
+            _moment = moment(obj[3])
 
-            asset_run.run_start_day = date_time_arr[0]
-            asset_run.run_start_hour = date_time_arr[1].split(".")[0]
+            asset_run.run_start_day = _moment.format("YYYY-MM-DD")
+            asset_run.run_start_hour = _moment.format("HH:mm:ss")
         else
             asset_run.run_start_day = ""
             asset_run.run_start_hour = ""
         if obj[4]!= null && obj[4].length > 0
-            date_time_arr = obj[4].split("T")
-            if date_time_arr.length < 2
-                date_time_arr = obj[4].split(" ")
-            asset_run.run_end_day = date_time_arr[0]
-            asset_run.run_end_hour = date_time_arr[1].split(".")[0]
+            _moment = moment(obj[4])
+
+            asset_run.run_end_day = _moment.format("YYYY-MM-DD")
+            asset_run.run_end_hour = _moment.format("HH:mm:ss")
         else
             asset_run.run_end_day = ""
             asset_run.run_end_hour = ""
 
         asset_run.run_end_time = obj[4]
-        asset_run.total_run_time = obj[5]
+        asset_run.total_run_time = parseFloat(obj[5]).toFixed(2)
         asset_run.device_name = obj[6]
         asset_run.device_pk = obj[7]
         asset_run.assets = []
@@ -274,7 +277,7 @@ device_asset_module = angular.module(
         obj.$$asset_run = true
         icswSimpleAjaxCall(
             {
-                url: ICSW_URLS.ASSET_RUN_ASSETS_NOW
+                url: ICSW_URLS.ASSET_RUN_ASSETRUN_FOR_DEVICE_NOW
                 data:
                     pk: obj.idx
             }
@@ -288,6 +291,9 @@ device_asset_module = angular.module(
 
     $scope.resolve_asset_type = (a_t) ->
         return icswAssetHelperFunctions.resolve_asset_type(a_t)
+
+    $scope.resolve_package_type = (a_t) ->
+        return icswAssetHelperFunctions.resolve_package_type(a_t)
 
     $scope.select_asset = ($event, device, assetrun) ->
         assetrun.$$selected = !assetrun.$$selected
@@ -496,7 +502,8 @@ device_asset_module = angular.module(
                                 sched_item = {}
                                 sched_item.dev_pk = obj[0]
                                 sched_item.dev_name = obj[1]
-                                sched_item.planned_time = obj[2] #obj[2].split("T")[0] + " " +  (obj[2].split("T")[1])
+                                sched_item.planned_time_moment = moment(obj[2])
+                                sched_item.planned_time = sched_item.planned_time_moment.format("YYYY-MM-DD HH:mm:ss")
                                 sched_item.ds_name = obj[3]
                                 $scope.struct.schedule_items.push(sched_item)
                 )
@@ -584,9 +591,9 @@ device_asset_module = angular.module(
         return r
 ]).filter('assetRunFilter'
 [
-    "$filter",
+    "$filter", "icswAssetHelperFunctions"
 (
-    $filter
+    $filter, icswAssetHelperFunctions
 ) ->
     return (input, predicate) ->
         console.log "input:", input
@@ -596,22 +603,10 @@ device_asset_module = angular.module(
         strict = true
 
         if (predicate.hasOwnProperty("run_type"))
-            run_type = undefined
-            if predicate.run_type == "Package"
-                run_type = 1
-            else if predicate.run_type == "Hardware"
-                run_type = 2
-            else if predicate.run_type == "License"
-                run_type = 3
-            else if predicate.run_type == "Update"
-                run_type = 4
-            else if predicate.run_type == "Software version"
-                run_type = 5
-            else if predicate.run_type == "Process"
-                run_type = 6
-            else if predicate.run_type == "Pending update"
-                run_type = 7
+            run_type = icswAssetHelperFunctions.resolve_asset_type_reverse(predicate.run_type)
+            console.log "run_type: ", run_type
             new_predicate.run_type = run_type
+            strict = false
         if (predicate.hasOwnProperty("run_start_day"))
             new_predicate.run_start_day = predicate.run_start_day
             strict = false

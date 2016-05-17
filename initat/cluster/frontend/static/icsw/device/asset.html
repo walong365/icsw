@@ -12,7 +12,7 @@
         <uib-tabset>
             <uib-tab>
                 <uib-tab-heading>
-                    <span>AssetRuns</span>
+                    <span>Overview</span>
                 </uib-tab-heading>
                 <uib-tabset>
                     <uib-tab>
@@ -282,97 +282,98 @@
                             </div>
                         </div>
                     </uib-tab>
+                    <uib-tab>
+                        <uib-tab-heading>
+                            <span>Known Packages ({{ struct.packages.length }})</span>
+                        </uib-tab-heading>
+
+                        <h3 ng-if="!struct.packages.length">
+                            <span>No know Packages! Start an AssetRun to populate this list</span>
+                        </h3>
+
+                        <table
+                            class="table table-condensed table-hover table-striped"
+                            style="width:auto;"
+                            ng-show="struct.packages.length > 0"
+                            st-table="packages_shown"
+                            st-safe-src="struct.packages"
+                            st-set-filter="strictFilter"
+                        >
+                            <thead>
+                                <tr>
+                                    <th st-sort="name">Name</th>
+                                    <th st-sort="package_type">Package Type</th>
+                                    <th><button type="button" ng-csv="filterPackageArrayForCsvExport(packages_shown)" csv-header="['Package Name', 'Package Type', 'Version', 'Release', 'Size']" filename="test.csv">Export to CSV</button></th>
+                                </tr>
+                                <tr>
+                                    <th colspan="1">
+                                        <input st-search="name" placeholder="filter by name" class="input-sm form-control" type="search"/>
+                                    </th>
+                                    <th colspan="1">
+                                        <input st-search="package_type" placeholder="filter by package type" class="input-sm form-control" type="search"/>
+                                    </th>
+                                </tr>
+                                <tr>
+                                    <td colspan="99">
+                                        <div
+                                            icsw-tools-pagination
+                                            st-items-by-page="10"
+                                            st-displayed-pages="11"
+                                            possible-items-by-page="10,20,50,100,500,1000,2000,5000,10000"
+                                        ></div>
+                                    </td>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr ng-repeat-start="package in packages_shown">
+                                    <td>{{ package.name }}</td>
+                                    <td>{{ resolve_package_type(package.package_type) }}</td>
+                                    <td>
+                                        <icsw-tools-button size="xs" type="show" is-show="package.expanded" ng-click="expand_package($event, package)"></icsw-tools-button>
+                                    </td>
+                                </tr>
+
+                                <tr ng-repeat-end ng-if="package.expanded">
+                                    <td colspan="99">
+                                        <table
+                                            class="table table-condensed table-hover table-bordered"
+                                            style="width:auto;"
+                                            st-safe-src="package.versions"
+                                            st-table="versions_shown"
+                                            ng-show="package.versions.length"
+                                        >
+                                            <tr>
+                                                <td colspan="99">
+                                                    <div
+                                                        icsw-tools-pagination
+                                                        st-items-by-page="10"
+                                                        st-displayed-pages="11"
+                                                        possible-items-by-page="10,20,50,100"
+                                                    ></div>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th>Version</th>
+                                                <th>Release</th>
+                                                <th>Size</th>
+                                                <th></th>
+                                            </tr>
+                                            <tr ng-repeat="obj in versions_shown">
+                                                <td>{{ obj[1] }}</td>
+                                                <td>{{ obj[2] }}</td>
+                                                <td>{{ obj[3] }}</td>
+                                                <td><icsw-tools-button type="reload" size="xs" ng-click="select_devices(obj)" value="Select Devices"/></td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </uib-tab>
                 </uib-tabset>
             </uib-tab>
 
-            <uib-tab>
-                <uib-tab-heading>
-                    <span>Known Packages ({{ struct.packages.length }})</span>
-                </uib-tab-heading>
 
-                <h3 ng-if="!struct.packages.length">
-                    <span>No know Packages! Start an AssetRun to populate this list</span>
-                </h3>
-
-                <table
-                    class="table table-condensed table-hover table-striped"
-                    style="width:auto;"
-                    ng-show="struct.packages.length > 0"
-                    st-table="packages_shown"
-                    st-safe-src="struct.packages"
-                    st-set-filter="strictFilter"
-                >
-                    <thead>
-                        <tr>
-                            <th st-sort="name">Name</th>
-                            <th st-sort="package_type">Package Type</th>
-                            <th><button type="button" ng-csv="filterPackageArrayForCsvExport(packages_shown)" csv-header="['Package Name', 'Package Type', 'Version', 'Release', 'Size']" filename="test.csv">Export to CSV</button></th>
-                        </tr>
-                        <tr>
-                            <th colspan="1">
-                                <input st-search="name" placeholder="filter by name" class="input-sm form-control" type="search"/>
-                            </th>
-                            <th colspan="1">
-                                <input st-search="package_type" placeholder="filter by package type" class="input-sm form-control" type="search"/>
-                            </th>
-                        </tr>
-                        <tr>
-                            <td colspan="99">
-                                <div
-                                    icsw-tools-pagination
-                                    st-items-by-page="10"
-                                    st-displayed-pages="11"
-                                    possible-items-by-page="10,20,50,100,500,1000,2000,5000,10000"
-                                ></div>
-                            </td>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr ng-repeat-start="package in packages_shown">
-                            <td>{{ package.name }}</td>
-                            <td>{{ resolve_package_type(package.package_type) }}</td>
-                            <td>
-                                <icsw-tools-button size="xs" type="show" is-show="package.expanded" ng-click="expand_package($event, package)"></icsw-tools-button>
-                            </td>
-                        </tr>
-
-                        <tr ng-repeat-end ng-if="package.expanded">
-                            <td colspan="99">
-                                <table
-                                    class="table table-condensed table-hover table-bordered"
-                                    style="width:auto;"
-                                    st-safe-src="package.versions"
-                                    st-table="versions_shown"
-                                    ng-show="package.versions.length"
-                                >
-                                    <tr>
-                                        <td colspan="99">
-                                            <div
-                                                icsw-tools-pagination
-                                                st-items-by-page="10"
-                                                st-displayed-pages="11"
-                                                possible-items-by-page="10,20,50,100"
-                                            ></div>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <th>Version</th>
-                                        <th>Release</th>
-                                        <th>Size</th>
-                                        <th></th>
-                                    </tr>
-                                    <tr ng-repeat="obj in versions_shown">
-                                        <td>{{ obj[1] }}</td>
-                                        <td>{{ obj[2] }}</td>
-                                        <td>{{ obj[3] }}</td>
-                                        <td><icsw-tools-button type="reload" size="xs" ng-click="select_devices(obj)" value="Select Devices"/></td>
-                                    </tr>
-                                </table>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </uib-tab>
             <uib-tab ng-repeat="dev in struct.devices">
                 <uib-tab-heading>
                     {{ dev.full_name }}
