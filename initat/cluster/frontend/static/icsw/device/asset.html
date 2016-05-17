@@ -20,7 +20,6 @@
                             <span>Scheduled Runs ({{ struct.schedule_items.length }})</span>
                         </uib-tab-heading>
 
-
                         <table
                             class="table table-condensed table-hover table-striped"
                             style="width:auto;"
@@ -158,7 +157,7 @@
                                             style="width:auto;"
                                             st-safe-src="assetrun.assets"
                                             st-table="assets_shown"
-                                            ng-show="assetrun.assets.length"
+                                            st-set-filter="assetRunFilter"
                                         >
                                             <tr>
                                                 <td colspan="99">
@@ -171,12 +170,12 @@
                                                 </td>
                                             </tr>
                                             <tr ng-if="resolve_asset_type(assetrun.run_type) == 'Package'">
-                                                <th>Name</th>
-                                                <th>Version</th>
-                                                <th>Release</th>
-                                                <th>Size</th>
-                                                <th>Install Date</th>
-                                                <th>Package Type</th>
+                                                <th st-sort="name">Name</th>
+                                                <th st-sort="version">Version</th>
+                                                <th st-sort="release">Release</th>
+                                                <th st-sort="size">Size</th>
+                                                <th st-sort="install_date">Install Date</th>
+                                                <th st-sort="package_type">Package Type</th>
                                             </tr>
                                             <tr ng-if="resolve_asset_type(assetrun.run_type) == 'Package'" ng-repeat="asset in assets_shown track by $index">
                                                 <td>{{ asset[0] }}</td>
@@ -297,7 +296,7 @@
                             ng-show="struct.packages.length > 0"
                             st-table="packages_shown"
                             st-safe-src="struct.packages"
-                            st-set-filter="strictFilter"
+                            st-set-filter="packageFilter"
                         >
                             <thead>
                                 <tr>

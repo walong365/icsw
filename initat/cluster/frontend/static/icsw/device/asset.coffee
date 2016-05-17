@@ -91,10 +91,17 @@ device_asset_module = angular.module(
         }[_t]
 
     resolve_package_type_reverse = (_t) ->
-        return {
-            "Windows": 1
-            "Linux": 2
-        }[_t]
+        items = ["windows", "linux"]
+
+        item_idx = {
+            "windows": 1
+            "linux": 2
+        }
+
+        for item in items
+            if item.indexOf(_t.toLowerCase()) > -1
+                return item_idx[item]
+        return -1
         
     return {
         resolve_asset_type: resolve_asset_type
@@ -152,6 +159,7 @@ device_asset_module = angular.module(
         else
             asset_run.run_start_day = ""
             asset_run.run_start_hour = ""
+            
         if obj[4]!= null && obj[4].length > 0
             _moment = moment(obj[4])
 
@@ -510,86 +518,6 @@ device_asset_module = angular.module(
                 )
 
         )
-]).filter('strictFilter'
-[
-    "$filter",
-(
-    $filter
-) ->
-    return (input, predicate) ->
-        console.log "input:", input
-        console.log "predicate:" , predicate
-
-        new_predicate = {}
-
-        strict = true
-        if (predicate.hasOwnProperty("name"))
-            new_predicate.name = predicate.name
-            strict = false
-        if (predicate.hasOwnProperty("package_type"))
-            package_type = undefined
-            if predicate.package_type == "Windows"
-                package_type = 1
-            else if predicate.package_type == "Linux"
-                package_type = 2
-            new_predicate.package_type = package_type
-        if (predicate.hasOwnProperty("run_index"))
-            new_predicate.run_index = parseInt(predicate.run_index)
-        if (predicate.hasOwnProperty("run_type"))
-            run_type = undefined
-            if predicate.run_type == "Package"
-                run_type = 1
-            else if predicate.run_type == "Hardware"
-                run_type = 2
-            else if predicate.run_type == "License"
-                run_type = 3
-            else if predicate.run_type == "Update"
-                run_type = 4
-            else if predicate.run_type == "Software version"
-                run_type = 5
-            else if predicate.run_type == "Process"
-                run_type = 6
-            else if predicate.run_type == "Pending update"
-                run_type = 7
-            new_predicate.run_type = run_type
-        if (predicate.hasOwnProperty("run_start_time"))
-            new_predicate.run_start_time = predicate.run_start_time
-            strict = false
-        if (predicate.hasOwnProperty("run_end_time"))
-            new_predicate.run_end_time = predicate.run_end_time
-            strict = false
-        if (predicate.hasOwnProperty("device_name"))
-            new_predicate.device_name = predicate.device_name
-            strict = false
-        if (predicate.hasOwnProperty("$"))
-            new_predicate = predicate
-            strict = false
-
-        return $filter('filter')(input, new_predicate, strict)
-
-]).filter('unique'
-[
-    "$filter",
-(
-    $filter
-) ->
-    return (arr, field) ->
-        console.log "* arr:", arr
-        console.log "* field:", field
-        o = {}
-        l = arr.length
-        r = []
-
-        for i in [0...l]
-            o[arr[i][field]] = arr[i]
-
-
-        for i in o
-            r.push(o[i])
-
-        console.log "*r: ", r
-
-        return r
 ]).filter('assetRunFilter'
 [
     "$filter", "icswAssetHelperFunctions"
@@ -625,4 +553,38 @@ device_asset_module = angular.module(
             strict = false
 
         return $filter('filter')(input, new_predicate, strict)
+]).filter('packageFilter'
+[
+    "$filter", "icswAssetHelperFunctions"
+(
+    $filter, icswAssetHelperFunctions
+) ->
+    return (input, predicate) ->
+        console.log "input:", input
+        console.log "predicate:" , predicate
+
+        new_predicate = {}
+        strict = false
+
+        if (predicate.hasOwnProperty("name"))
+            new_predicate.name = predicate.name
+
+        if (predicate.hasOwnProperty("package_type"))
+            package_type = icswAssetHelperFunctions.resolve_package_type_reverse(predicate.package_type)
+            console.log "package_type: ", package_type
+            new_predicate.package_type = package_type
+
+        return $filter('filter')(input, new_predicate, strict)
+]).filter('baseAssetFilter'
+[
+    "$filter", "icswAssetHelperFunctions"
+(
+    $filter, icswAssetHelperFunctions
+) ->
+    return (input, predicate) ->
+        console.log "input:", input
+        console.log "predicate:" , predicate
+
+
+        return $filter('filter')(input, predicate, false)
 ])

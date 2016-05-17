@@ -405,8 +405,6 @@ import datetime
 
 from initat.cluster.backbone.models.asset import AssetRun, RunStatus, AssetType, ScanType
 from initat.cluster.backbone.models.dispatch import DispatchSetting, DiscoverySource
-from initat.discovery_server.dispatcher import DiscoveryDispatcher
-
 
 PACKAGE_CMD = "package"
 LICENSE_CMD = "license"
@@ -542,7 +540,6 @@ def align_time_to_baseline(now, ds):
         now = align_second(now, ds.sched_start_second)
         now = align_minute(now, ds.sched_start_minute)
         now = align_hour(now, ds.sched_start_hour)
-        print now, ds.sched_start_day
         now = align_day(now, ds.sched_start_day)
 
     elif ds.run_schedule.baseline == DispatcherSettingScheduleEnum.month:
@@ -584,7 +581,6 @@ def get_time_inc_from_ds(ds):
 from Queue import Queue
 import threading
 
-
 class Dispatcher(object):
     def __init__(self, discovery_process):
         self.discovery_process = discovery_process
@@ -595,13 +591,19 @@ class Dispatcher(object):
         thread = threading.Thread(target=self.generate_assets_call, args=())
         thread.start()
 
+        self.schedule_items = []
+        self.schedule_items_lock = threading.Lock()
+
     def generate_assets_call(self):
         while True:
             ar = self.todo_asset_runs.get()
-            ar.generate_assets_new()
+            try:
+                ar.generate_assets_new()
+            except Exception as e:
+                self.log("Exception: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
             ar.save()
 
-    def dispatch_call(self):
+    def schedule_call(self):
         _now = datetime.datetime.now(tz=pytz.utc).replace(microsecond=0)
 
         links = DeviceDispatcherLink.objects.all()
@@ -649,8 +651,11 @@ class Dispatcher(object):
 
         # remove schedule items that are no longer linked to a device/dispatch_setting
         schedule_items = ScheduleItem.objects.all()
+        self.schedule_items_lock.acquire()
+        self.schedule_items = []
         for sched in schedule_items:
             if sched.run_now:
+                self.schedule_items.append(sched)
                 continue
 
             links = DeviceDispatcherLink.objects.all()
@@ -666,10 +671,19 @@ class Dispatcher(object):
             if not found:
                 print "removing %s %s" % (sched.device, sched.planned_date)
                 sched.delete()
+            else:
+                self.schedule_items.append(sched)
 
-        schedule_items = sorted(ScheduleItem.objects.all(), key=lambda x: x.planned_date)
-        while schedule_items:
-            schedule_item = schedule_items.pop(0)
+        self.schedule_items.sort(key=lambda x: x.planned_date)
+        self.schedule_items_lock.release()
+
+    def dispatch_call(self):
+        _now = datetime.datetime.now(tz=pytz.utc).replace(microsecond=0)
+        #schedule_items = sorted(ScheduleItem.objects.all(), key=lambda x: x.planned_date)
+
+        self.schedule_items_lock.acquire()
+        while self.schedule_items:
+            schedule_item = self.schedule_items.pop(0)
             if schedule_item.planned_date < _now:
                 print "need to run: %s" % schedule_item.__repr__()
 
@@ -688,6 +702,8 @@ class Dispatcher(object):
                 else:
                     print "Skipping non capable device"
                 schedule_item.delete()
+
+        self.schedule_items_lock.release()
 
         for _device in self.device_asset_run_ext_coms:
             if self.device_running_ext_coms[_device] == 0:
@@ -745,9 +761,7 @@ class Dispatcher(object):
                         asset_run.run_status = RunStatus.ENDED
                         asset_run.run_end_time = datetime.datetime.now()
                         asset_run.raw_result_str = _output[0]
-                        # asset_run.generate_assets_new()
                         self.todo_asset_runs.put(asset_run)
-                        # asset_run.save()
                         self.device_running_ext_coms[_device] = 0
                     elif status is not None:
                         self.device_asset_run_ext_coms[_device].pop(0)
@@ -766,9 +780,15 @@ class Dispatcher(object):
                         try:
                             s = None
                             if asset_run.run_type == AssetType.PACKAGE:
-                                s = res_list[0]["pkg_list"].text
+                                if "pkg_list" in res_list[0]:
+                                    s = res_list[0]["pkg_list"].text
+                                else:
+                                    asset_run.run_status = RunStatus.FAILED
                             elif asset_run.run_type == AssetType.HARDWARE:
-                                s = res_list[0]["lstopo_dump"].text
+                                if "lstopo_dump" in res_list[0]:
+                                    s = res_list[0]["lstopo_dump"].text
+                                else:
+                                    asset_run.run_status = RunStatus.FAILED
                             elif asset_run.run_type == AssetType.LICENSE:
                                 pass
                                 # todo implement me
@@ -776,17 +796,21 @@ class Dispatcher(object):
                                 pass
                                 # todo implement me
                             elif asset_run.run_type == AssetType.PROCESS:
-                                s = res_list[0]['process_tree'].text
+                                if "process_tree" in res_list[0]:
+                                    s = res_list[0]["process_tree"].text
+                                else:
+                                    asset_run.run_status = RunStatus.FAILED
                             elif asset_run.run_type == AssetType.PENDING_UPDATE:
-                                s = res_list[0]["update_list"].text
+                                if "update_list" in res_list[0]:
+                                    s = res_list[0]["update_list"].text
+                                else:
+                                    asset_run.run_status = RunStatus.FAILED
                         except KeyError:
                             self.log("KeyError: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                             s = None
 
                         asset_run.raw_result_str = s
-                        # asset_run.generate_assets_new()
                         self.todo_asset_runs.put(asset_run)
-                        # asset_run.save()
                         self.device_running_ext_coms[_device] = 0
 
     def __do_hm_scan(self, schedule_item):

@@ -252,7 +252,8 @@ class get_assetruns_for_devices(View):
                     ar.run_end_time.isoformat() if ar.run_end_time else "",
                     str((ar.run_end_time - ar.run_start_time).total_seconds()) if ar.run_end_time and ar.run_start_time else "0",
                     ar.device.name,
-                    ar.device.idx
+                    ar.device.idx,
+                    ar.run_status
                 ) for ar in dev.assetrun_set.all()
             ])
 
