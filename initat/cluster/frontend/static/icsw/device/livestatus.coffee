@@ -99,17 +99,31 @@ angular.module(
                     ordering: 20
         }
     ).state(
-        "main.livestatus.test1"
+        "main.livestatus.Everything"
         {
             url: "/livestatus/ad1"
-            templateUrl: "icsw.device.livestatus.layout1"
+            templateUrl: "icsw.device.livestatus.everything"
             icswData: {}
         }
     ).state(
-        "main.livestatus.testQX"
+        "main.livestatus.BurstTable"
         {
             url: "/livestatus/aq1"
-            templateUrl: "icsw.device.livestatus.layout2"
+            templateUrl: "icsw.device.livestatus.bursttable"
+            icswData: {}
+        }
+    ).state(
+        "main.livestatus.OnlyTable"
+        {
+            url: "/livestatus/aq1"
+            templateUrl: "icsw.device.livestatus.onlytable"
+            icswData: {}
+        }
+    ).state(
+        "main.livestatus.MapWithBurst"
+        {
+            url: "/livestatus/aq1"
+            templateUrl: "icsw.device.livestatus.mapwithburst"
             icswData: {}
         }
     )
@@ -1046,138 +1060,145 @@ angular.module(
         propTypes: {
             service: React.PropTypes.object
         }
+
         render: () ->
             _srvc = @props.service
             if _srvc
-                _ul_list = []
-                if _srvc.$$ct in ["system", "devicegroup"]
-                    if _srvc.$$ct == "system"
-                        _obj_name = "System"
-                    else
-                        _obj_name = _.capitalize(_srvc.$$ct) + " " + _srvc.display_name
-                    _ul_list.push(
-                        li(
-                            {key: "li.state", className: "list-group-item"}
-                            [
-                                "State"
-                                span(
-                                    {key: "state.span", className: "pull-right #{_srvc.$$icswStateTextClass}"}
-                                    _srvc.$$icswStateString
-                                )
-                            ]
-                        )
+                if _srvc.$$dummy
+                    _div_list = h3(
+                        {key: "header"}
+                        "Dummy segment"
                     )
-                if _srvc.$$ct in ["device", "service"]
-                    if _srvc.$$ct == "service"
-                        _host = _srvc.$$host_mon_result
-                        _obj_name = _.capitalize(_srvc.$$ct) + " " + _srvc.display_name
-                    else
-                        _host = _srvc
-                        _obj_name = _.capitalize(_srvc.$$ct) + " " + _host.$$icswDevice.full_name
-                    _path_span = [
-                        _host.$$icswDeviceGroup.name
-                        " "
-                        span(
-                            {key: "path.span2", className: "fa fa-arrow-right"}
-                        )
-                        " "
-                        _host.$$icswDevice.full_name
-                    ]
-                    if _srvc.$$ct == "service"
-                        _path_span = _path_span.concat(
-                            [
-                                " "
-                                span(
-                                    {key: "path.span3", className: "fa fa-arrow-right"}
-                                )
-                                " "
-                                _srvc.display_name
-                            ]
-                        )
-                    _ul_list.push(
-                        li(
-                            {key: "li.path", className: "list-group-item"}
-                            [
-                                "Path"
-                                span(
-                                    {key: "path.span", className: "pull-right"}
-                                    _path_span
-                                )
-                            ]
-                        )
-                    )
-                    # state li
-                    _ul_list.push(
-                        li(
-                            {key: "li.state2", className: "list-group-item"}
-                            [
-                                "State"
-                                span(
-                                    {key: "state.span", className: "pull-right"}
-                                    "#{_srvc.$$icswStateTypeString} #{_srvc.$$icswCheckTypeString}, "
-                                    span(
-                                        {key: "state.span2", className: _srvc.$$icswStateTextClass}
-                                        _srvc.$$icswStateString
-                                    )
-                                    ", "
-                                    span(
-                                        {key: "state.span3", className: "label #{_srvc.$$icswAttemptLabelClass}"}
-                                        _srvc.$$icswAttemptInfo
-                                    )
-                                )
-                            ]
-                        )
-                    )
-                    # last check / last change
-                    _ul_list.push(
-                        li(
-                            {key: "li.lclc", className: "list-group-item"}
-                            [
-                                "last check / last change"
-                                span(
-                                    {key: "lclc.span", className: "pull-right"}
-                                    "#{_srvc.$$icswLastCheckString } / #{_srvc.$$icswLastStateChangeString}"
-                                )
-                            ]
-                        )
-                    )
-                    if _srvc.$$ct == "service"
-                        # categories
+                else
+                    _ul_list = []
+                    if _srvc.$$ct in ["system", "devicegroup"]
+                        if _srvc.$$ct == "system"
+                            _obj_name = "System"
+                        else
+                            _obj_name = _.capitalize(_srvc.$$ct) + " " + _srvc.display_name
                         _ul_list.push(
                             li(
-                                {key: "li.cats", className: "list-group-item"}
+                                {key: "li.state", className: "list-group-item"}
                                 [
-                                    "Categories"
+                                    "State"
                                     span(
-                                        {key: "cats.span", className: "pull-right"}
-                                        "#{_srvc.$$icswCategories}"
+                                        {key: "state.span", className: "pull-right #{_srvc.$$icswStateTextClass}"}
+                                        _srvc.$$icswStateString
                                     )
                                 ]
                             )
                         )
-                    # output
-                    _ul_list.push(
-                        li(
-                            {key: "li.output", className: "list-group-item"}
-                            [
-                                "Output"
-                                span(
-                                    {key: "output.span", className: "pull-right"}
-                                    _srvc.plugin_output or "N/A"
-                                )
-                            ]
+                    if _srvc.$$ct in ["device", "service"]
+                        if _srvc.$$ct == "service"
+                            _host = _srvc.$$host_mon_result
+                            _obj_name = _.capitalize(_srvc.$$ct) + " " + _srvc.display_name
+                        else
+                            _host = _srvc
+                            _obj_name = _.capitalize(_srvc.$$ct) + " " + _host.$$icswDevice.full_name
+                        _path_span = [
+                            _host.$$icswDeviceGroup.name
+                            " "
+                            span(
+                                {key: "path.span2", className: "fa fa-arrow-right"}
+                            )
+                            " "
+                            _host.$$icswDevice.full_name
+                        ]
+                        if _srvc.$$ct == "service"
+                            _path_span = _path_span.concat(
+                                [
+                                    " "
+                                    span(
+                                        {key: "path.span3", className: "fa fa-arrow-right"}
+                                    )
+                                    " "
+                                    _srvc.display_name
+                                ]
+                            )
+                        _ul_list.push(
+                            li(
+                                {key: "li.path", className: "list-group-item"}
+                                [
+                                    "Path"
+                                    span(
+                                        {key: "path.span", className: "pull-right"}
+                                        _path_span
+                                    )
+                                ]
+                            )
                         )
-                    )
-                _div_list = [
-                    h3(
-                        {key: "header"}
-                        _obj_name
-                    )
-                    ul(
-                        {key: "ul", className: "list-group"}
-                        _ul_list
-                    )
-                ]
+                        # state li
+                        _ul_list.push(
+                            li(
+                                {key: "li.state2", className: "list-group-item"}
+                                [
+                                    "State"
+                                    span(
+                                        {key: "state.span", className: "pull-right"}
+                                        "#{_srvc.$$icswStateTypeString} #{_srvc.$$icswCheckTypeString}, "
+                                        span(
+                                            {key: "state.span2", className: _srvc.$$icswStateTextClass}
+                                            _srvc.$$icswStateString
+                                        )
+                                        ", "
+                                        span(
+                                            {key: "state.span3", className: "label #{_srvc.$$icswAttemptLabelClass}"}
+                                            _srvc.$$icswAttemptInfo
+                                        )
+                                    )
+                                ]
+                            )
+                        )
+                        # last check / last change
+                        _ul_list.push(
+                            li(
+                                {key: "li.lclc", className: "list-group-item"}
+                                [
+                                    "last check / last change"
+                                    span(
+                                        {key: "lclc.span", className: "pull-right"}
+                                        "#{_srvc.$$icswLastCheckString } / #{_srvc.$$icswLastStateChangeString}"
+                                    )
+                                ]
+                            )
+                        )
+                        if _srvc.$$ct == "service"
+                            # categories
+                            _ul_list.push(
+                                li(
+                                    {key: "li.cats", className: "list-group-item"}
+                                    [
+                                        "Categories"
+                                        span(
+                                            {key: "cats.span", className: "pull-right"}
+                                            "#{_srvc.$$icswCategories}"
+                                        )
+                                    ]
+                                )
+                            )
+                        # output
+                        _ul_list.push(
+                            li(
+                                {key: "li.output", className: "list-group-item"}
+                                [
+                                    "Output"
+                                    span(
+                                        {key: "output.span", className: "pull-right"}
+                                        _srvc.plugin_output or "N/A"
+                                    )
+                                ]
+                            )
+                        )
+                    _div_list = [
+                        h3(
+                            {key: "header"}
+                            _obj_name
+                        )
+                        ul(
+                            {key: "ul", className: "list-group"}
+                            _ul_list
+                        )
+                    ]
             else
                 _div_list = h3(
                     {key: "header"}
@@ -1226,7 +1247,6 @@ angular.module(
             # console.log "me"
             if @props.element.$$segment?
                 @props.set_focus(@props.element.$$segment)
-            # @setState({focus: true})
 
         on_mouse_leave: (event) ->
             # @props.clear_focus()
@@ -1250,7 +1270,7 @@ angular.module(
             _path_el = @props.element
 
             # add info
-            if _path_el.$$segment?
+            if _path_el.$$segment? and not _path_el.$$segment.placeholder
                 _g_list = []
                 {text_radius, text_width} = @props.draw_parameters
                 _sx = _path_el.$$mean_radius * Math.cos(_path_el.$$mean_arc)

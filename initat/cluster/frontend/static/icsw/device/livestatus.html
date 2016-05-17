@@ -16,69 +16,122 @@
         ></icsw-livestatus-filter-display>
         <span ng-show="struct.updating" class="text-warning">Updating data...</span>
     </h3>
-    <div ui-view></div>
-</script>
-
-<script type="text/ng-template" id="icsw.device.livestatus.layout1">
-    <div class="col-md-4 col-xs-12 col-lg-6">
-        <icsw-device-livestatus-maplist
-            icsw-livestatus-filter="struct.filter"
-            icsw-devices="struct.devices"
-            icsw-monitoring-data="struct.monitoring_data"
-        ></icsw-device-livestatus-maplist>
-    </div>
-    <div class="col-md-4 col-xs-12 col-lg-6">
-        <icsw-config-category-location-show
-            icsw-livestatus-filter="struct.filter"
-            icsw-monitoring-data="struct.monitoring_data"
-        ></icsw-config-category-location-show>
-    </div>
-    <div class="col-md-4 col-xs-12 col-lg-6">
-        <icsw-device-livestatus-fullburst
-            icsw-element-size="size"
-            icsw-livestatus-filter="struct.filter"
-            icsw-monitoring-data="struct.monitoring_data"
-        ></icsw-device-livestatus-fullburst>
-    </div>
-    <div class="col-md-4 col-xs-12 col-lg-2">
-        <icsw-category-tree-select
-            icsw-livestatus-filter="struct.filter"
-            icsw-monitoring-data="struct.monitoring_data"
-            mode="'mon'"
-        ></icsw-category-tree-select>
-    </div>
-    <div class="col-md-4 col-xs-12 col-lg-8">
-        <icsw-device-livestatus-table-view
-            icsw-livestatus-filter="struct.filter"
-            icsw-monitoring-data="struct.monitoring_data"
-        ></icsw-device-livestatus-table-view>
+    <div class="container-fluid">
+        <div ui-view></div>
     </div>
 </script>
 
-<script type="text/ng-template" id="icsw.device.livestatus.layout2">
-    <!--
-    <div class="col-md-4 col-xs-12 col-lg-6">
-        <div icsw-device-livestatus-maplist ls-devsel="ls_devsel" ls-filter="ls_filter"></div>
-    </div> -->
-    <div class="col-md-4 col-xs-12 col-lg-6">
-        <icsw-device-livestatus-fullburst
-            icsw-element-size="size"
-            icsw-livestatus-filter="struct.filter"
-            icsw-monitoring-data="struct.monitoring_data"
-        ></icsw-device-livestatus-fullburst>
+<script type="text/ng-template" id="icsw.device.livestatus.everything">
+    <div class="row">
+        <div class="col-md-6 col-xs-12 col-lg-4">
+            <icsw-device-livestatus-maplist
+                icsw-livestatus-filter="struct.filter"
+                icsw-devices="struct.devices"
+                icsw-monitoring-data="struct.monitoring_data"
+            ></icsw-device-livestatus-maplist>
+        </div>
+        <div class="col-md-6 col-xs-12 col-lg-4">
+            <icsw-config-category-location-show
+                icsw-livestatus-filter="struct.filter"
+                icsw-monitoring-data="struct.monitoring_data"
+            ></icsw-config-category-location-show>
+        </div>
+        <div class="col-md-6 col-xs-12 col-lg-4">
+            <icsw-device-livestatus-fullburst
+                icsw-element-size="size"
+                icsw-livestatus-filter="struct.filter"
+                icsw-monitoring-data="struct.monitoring_data"
+            ></icsw-device-livestatus-fullburst>
+        </div>
+        <div class="col-md-6 col-xs-12 col-lg-4">
+            <icsw-category-tree-select
+                icsw-livestatus-filter="struct.filter"
+                icsw-monitoring-data="struct.monitoring_data"
+                mode="'mon'"
+            ></icsw-category-tree-select>
+        </div>
+        <div class="col-md-8 col-xs-12 col-lg-6">
+            <icsw-device-livestatus-table-view
+                icsw-livestatus-filter="struct.filter"
+                icsw-monitoring-data="struct.monitoring_data"
+            ></icsw-device-livestatus-table-view>
+        </div>
     </div>
-    <div class="col-md-4 col-xs-12 col-lg-8">
-        <icsw-device-livestatus-table-view
-            icsw-livestatus-filter="struct.filter"
-            icsw-monitoring-data="struct.monitoring_data"
-        ></icsw-device-livestatus-table-view>
+</script>
+
+<script type="text/ng-template" id="icsw.device.livestatus.bursttable">
+    <div class="row">
+        <div class="col-md-12 col-xs-12 col-lg-12">
+            <icsw-device-livestatus-fullburst
+                icsw-element-size="size"
+                icsw-livestatus-filter="struct.filter"
+                icsw-monitoring-data="struct.monitoring_data"
+            ></icsw-device-livestatus-fullburst>
+        </div>
+        <div class="col-md-6 col-xs-12 col-lg-8">
+            <icsw-device-livestatus-table-view
+                icsw-livestatus-filter="struct.filter"
+                icsw-monitoring-data="struct.monitoring_data"
+            ></icsw-device-livestatus-table-view>
+        </div>
+        <div class="col-md-6 col-xs-12 col-lg-4">
+            <icsw-category-tree-select
+                icsw-livestatus-filter="struct.filter"
+                icsw-monitoring-data="struct.monitoring_data"
+                mode="'mon'"
+            ></icsw-category-tree-select>
+        </div>
     </div>
-    <div class="col-md-4 col-xs-12 col-lg-2">
-        <icsw-category-tree-select
-            icsw-livestatus-filter="struct.filter"
-            icsw-monitoring-data="struct.monitoring_data"
-            mode="'mon'"
-        ></icsw-category-tree-select>
+</script>
+
+<script type="text/ng-template" id="icsw.device.livestatus.onlytable">
+    <div class="row">
+        <div class="col-md-6 col-xs-12 col-lg-8">
+            <icsw-device-livestatus-table-view
+                icsw-livestatus-filter="struct.filter"
+                icsw-monitoring-data="struct.monitoring_data"
+            ></icsw-device-livestatus-table-view>
+        </div>
+        <div class="col-md-6 col-xs-12 col-lg-4">
+            <icsw-category-tree-select
+                icsw-livestatus-filter="struct.filter"
+                icsw-monitoring-data="struct.monitoring_data"
+                mode="'mon'"
+            ></icsw-category-tree-select>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.device.livestatus.mapwithburst">
+    <div class="row">
+        <div class="col-md-12 col-xs-12 col-lg-12">
+            <icsw-config-category-location-show
+                icsw-livestatus-filter="struct.filter"
+                icsw-monitoring-data="struct.monitoring_data"
+            ></icsw-config-category-location-show>
+        </div>
+        <div class="col-md-12 col-xs-12 col-lg-12">
+            <icsw-device-livestatus-fullburst
+                icsw-element-size="size"
+                icsw-livestatus-filter="struct.filter"
+                icsw-monitoring-data="struct.monitoring_data"
+            ></icsw-device-livestatus-fullburst>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-8 col-xs-12 col-lg-6">
+            <icsw-device-livestatus-table-view
+                icsw-livestatus-filter="struct.filter"
+                icsw-monitoring-data="struct.monitoring_data"
+            ></icsw-device-livestatus-table-view>
+        </div>
+        <div class="col-md-6 col-xs-12 col-lg-4">
+            <icsw-category-tree-select
+                icsw-livestatus-filter="struct.filter"
+                icsw-monitoring-data="struct.monitoring_data"
+                mode="'mon'"
+            ></icsw-category-tree-select>
+        </div>
     </div>
 </script>
 

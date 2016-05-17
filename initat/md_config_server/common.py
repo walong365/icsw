@@ -1,4 +1,4 @@
-# Copyright (C) 2015 Bernhard Mallinger, init.at
+# Copyright (C) 2015, 2016 Bernhard Mallinger, init.at
 #
 # this file is part of md-config-server
 #
@@ -17,10 +17,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-import csv
 
+import csv
 import os.path
 import socket
+
 from initat.md_config_server.config import global_config
 
 

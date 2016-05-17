@@ -200,9 +200,9 @@ angular.module(
         icswSimpleAjaxCall(
             url: ICSW_URLS.BASE_CHANGE_CATEGORY
             data:
-                "dev_pks": angular.toJson((_entry.idx for _entry in $scope.struct.devices))
-                "cat_pks": angular.toJson([cat.idx])
-                "set": if t_entry.selected then "1" else "0"
+                dev_pks: angular.toJson((_entry.idx for _entry in $scope.struct.devices))
+                cat_pks: angular.toJson([cat.idx])
+                set: if t_entry.selected then "1" else "0"
         ).then(
             (xml) ->
                 # see code in location.coffee

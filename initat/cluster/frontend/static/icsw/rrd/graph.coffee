@@ -647,11 +647,11 @@ angular.module(
                 entry.expand = ! entry.expand
             else if entry._node_type == "e"
                 @_jq_toggle_checkbox_node(entry)
-            @scope.$digest()
+            # @scope.$digest()
 
         selection_changed: () =>
             @scope.selection_changed()
-            @scope.$digest()
+            # @scope.$digest()
 
         get_pre_view_element: (entry) ->
             if entry._node_type == "e" and entry.num_sensors

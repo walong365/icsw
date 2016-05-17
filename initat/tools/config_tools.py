@@ -224,8 +224,8 @@ class TopologyObject(object):
         # ignore device-internal links
         self.ignore_self = kwargs.get("ignore_self", True)
         self.__graph_mode = graph_mode
-        # if self.__graph_mode.startswith("sel"):
-        #     self.__dev_pks = kwargs["dev_list"]
+        if self.__graph_mode.startswith("sel"):
+            self.__dev_pks = kwargs["dev_list"]
         self.__user = kwargs.get("user", None)
         if self.__user is not None:
             if self.__user.is_superuser:
@@ -252,10 +252,10 @@ class TopologyObject(object):
 
     def _update(self):
         s_time = time.time()
-        # dev_sel = device.all_real_enabled.select_related("domain_tree_node")
-        # if self.__graph_mode.startswith("sel"):
-        #    dev_sel = dev_sel.filter(Q(pk__in=self.__dev_pks))
-        _dev_pks = set(device.all_real_enabled.values_list("pk", flat=True))
+        dev_sel = device.all_real_enabled.select_related("domain_tree_node")
+        if self.__graph_mode.startswith("sel"):
+            dev_sel = dev_sel.filter(Q(pk__in=self.__dev_pks))
+        _dev_pks = set(dev_sel.values_list("pk", flat=True))
         if self.__graph_mode == "none":
             _dev_pks = set()
         else:

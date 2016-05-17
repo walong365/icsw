@@ -1028,13 +1028,15 @@ config_module = angular.module(
         link : (scope, el, attrs) ->
             scope.cat_tree = new icswCatSelectionTreeService(scope)
 
-            if scope.filter?
-                console.log "FILTER", scope.filter
+            #if scope.filter?
+            #    console.log "FILTER", scope.filter
 
             if scope.edit_obj?
                 scope.$$op_mode = "obj"
             else if scope.filter
                 scope.$$op_mode = "filter"
+                # available cats, used to automatically select new cats (from mon-data reload)
+                scope.$$available_cats = []
                 scope.filter.install_category_filter()
                 scope.filter.change_notifier.promise.then(
                     () ->
@@ -1075,6 +1077,13 @@ config_module = angular.module(
                 else
                     # icswLivestatusFilter set, only some categories selectable und those are preselected
                     if scope.$$previous_filter?
+                        if scope.mon_data?
+                            _new_cats = _.difference(scope.mon_data.used_cats, scope.$$available_cats)
+                            # store
+                            scope.$$available_cats = (entry for entry in scope.mon_data.used_cats)
+                            if _new_cats.length
+                                # autoselect new categories and send to filter
+                                send_selection_to_filter(_.uniq(_.union(scope.$$previous_filter, _new_cats)))
                         sel_cat = scope.$$previous_filter
                     else
                         if scope.mon_data?

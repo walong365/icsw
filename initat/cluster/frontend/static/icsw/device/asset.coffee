@@ -477,6 +477,7 @@ device_asset_module = angular.module(
                     dev.assetrun_set = []
                     $scope.struct.devices.push(dev)
 
+
 #                    icswSimpleAjaxCall({
 #                            url: ICSW_URLS.MON_GET_ASSETRUNS_FOR_DEVICE
 #                            data:

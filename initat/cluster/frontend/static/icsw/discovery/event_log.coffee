@@ -109,7 +109,10 @@ angular.module(
 
     $scope.new_devsel = (sel) ->
         $scope.struct.loading = true
-        $scope.struct.devices = sel
+        $scope.struct.devices.length = 0
+        for entry in sel
+            if not sel.is_meta_device
+                $scope.struct.devices.push(entry)
 
         # find data related to devices
         Restangular.one(ICSW_URLS.DISCOVERY_GET_EVENT_LOG_DEVICE_INFO.slice(1)).get(

@@ -258,7 +258,7 @@ create_task = (key) ->
                 )
             )
         ).pipe(
-            gulpif(_is_prod and _is_css, cssnano())
+            gulpif(_is_prod and _is_css, cssnano({zindex: false}))
         ).pipe(
             gulpif(
                 _is_prod and _is_html, htmlmin(

@@ -402,6 +402,9 @@ angular.module(
                     all_omitted = false
                     if _len == 1 and draw_params.collapse_one_element_rings
                         _path = ring_path(inner, outer)
+                    else if _len == node.width
+                        # full ring (no segment), to fix drawing issues
+                        _path = ring_path(inner, outer)
                     else
                         _path = ring_segment_path(inner, outer, start_arc, end_arc)
                     # _el is a path element, (nearly) ready to be rendered via SVG
@@ -570,10 +573,10 @@ angular.module(
                 @props.monitoring_data
                 @props.draw_parameters
             )
-            if root_node.element_list.length
-                console.log "EL=", node.id, root_node.element_list.length
-            else
-                console.log "empty", node.id
+            #if root_node.element_list.length
+            #    console.log "EL=", node.id, root_node.element_list.length
+            #else
+            #    console.log "empty", node.id
             # console.log "rn=", root_node, @props.monitoring_data
             # reset
             @props.draw_parameters.device_idx_filter = undefined
@@ -1131,9 +1134,11 @@ angular.module(
 [
     "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswNetworkTopologyReactSVGContainer",
     "icswLivestatusFilterService", "icswLivestatusFilterReactDisplay",
+    "icswActiveSelectionService",
 (
     $q, ICSW_URLS, icswSimpleAjaxCall, icswNetworkTopologyReactSVGContainer,
     icswLivestatusFilterService, icswLivestatusFilterReactDisplay,
+    icswActiveSelectionService,
 ) ->
     # Network topology container, including selection and redraw button
     react_dom = ReactDOM
@@ -1305,15 +1310,20 @@ angular.module(
             @setState({redraw_trigger: @state.redraw_trigger + 1})
 
         load_data: () ->
+            _dt = @state.draw_type
+            if _dt.match(/^sel/)
+                _pks = icswActiveSelectionService.current().get_devsel_list()[1]
+            else
+                _pks = []
             icswSimpleAjaxCall(
                 url: ICSW_URLS.NETWORK_JSON_NETWORK
                 data:
-                    graph_sel: @state.draw_type
-                    devices: angular.toJson([])
+                    graph_sel: _dt
+                    devices: angular.toJson(_pks)
                 dataType: "json"
             ).then(
                 (json) =>
-                    console.log json
+                    # console.log json
                     @setState(
                         {
                             loading: false
