@@ -1,0 +1,279 @@
+# Copyright (C) 2016 Gregor kaufmann
+#
+# Send feedback to: <g.kaufmann@init.at>
+#
+# This file is part of webfrontend
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+
+""" asset views """
+
+import pytz
+import datetime
+import json
+
+from initat.cluster.backbone.models.asset import AssetPackage, AssetRun, AssetPackageVersion, AssetType
+from initat.cluster.backbone.models.dispatch import ScheduleItem
+from initat.cluster.backbone.models import device
+
+from django.http import HttpResponse
+from django.views.generic import View
+
+from rest_framework.response import Response
+from rest_framework.generics import ListAPIView, RetrieveAPIView
+
+class get_asset_list(RetrieveAPIView):
+    def get(self, request, *args, **kwargs):
+        return Response(
+            {
+                'assets': [(package.pk, package.name, package.package_type) for package in AssetPackage.objects.all()],
+            }
+        )
+
+
+class run_assets_now(View):
+    def post(self, request):
+        _dev = device.objects.get(pk=int(request.POST['pk']))
+        ScheduleItem.objects.create(
+            device=_dev,
+            source=10,
+            planned_date=datetime.datetime.now(tz=pytz.utc),
+            run_now=True,
+            dispatch_setting=None
+        )
+        return HttpResponse()
+
+
+class get_devices_for_asset(View):
+    def post(self, request, *args, **kwargs):
+        apv = AssetPackageVersion.objects.get(pk=int(request.POST['pk']))
+
+        return HttpResponse(json.dumps({'devices': list(set([ar.device.pk for ar in apv.assetrun_set.all()]))}), content_type="application/json")
+
+
+class get_assetrun_diffs(View):
+    def post(self, request):
+        ar_pk1 = request.POST['pk1']
+        ar_pk2 = request.POST['pk2']
+
+        ar1 = AssetRun.objects.get(pk=int(ar_pk1))
+        ar2 = AssetRun.objects.get(pk=int(ar_pk2))
+
+        removed = ar1.get_asset_changeset(ar2)
+        added = ar2.get_asset_changeset(ar1)
+
+        return HttpResponse(
+            json.dumps(
+                {
+                    'added': [str(obj) for obj in added],
+                    'removed': [str(obj) for obj in removed]
+                }
+            ),
+            content_type="application/json"
+        )
+
+
+class get_versions_for_package(View):
+    def post(self, request):
+        pk = request.POST['pk']
+
+        ap = AssetPackage.objects.get(pk=int(pk))
+
+        return HttpResponse(
+            json.dumps(
+                {
+                    'versions': [(v.idx, v.version, v.release, v.size) for v in ap.assetpackageversion_set.all()]
+                }
+            ),
+            content_type="application/json"
+        )
+
+
+class get_assetruns(RetrieveAPIView):
+    def get(self, request, *args, **kwargs):
+        return Response(
+            {
+                'asset_runs': [
+                    (
+                        ar.idx,
+                        ar.run_index,
+                        ar.run_type,
+                        str(ar.run_start_time),
+                        str(ar.run_end_time),
+                        str((ar.run_end_time - ar.run_start_time).total_seconds()) if ar.run_end_time and ar.run_start_time else "0",
+                        ar.device.name,
+                        ar.device.idx
+                    ) for ar in AssetRun.objects.all()
+                ]
+            }
+        )
+
+
+class get_assets_for_asset_run(View):
+    def post(self, request, *args, **kwargs):
+        ar = AssetRun.objects.get(pk=int(request.POST['pk']))
+
+        if ar.run_type == AssetType.PACKAGE:
+            return HttpResponse(
+                json.dumps(
+                    {
+                        'assets': [
+                            (
+                                str(bap.name),
+                                str(bap.version),
+                                str(bap.release),
+                                str(bap.size),
+                                str(bap.install_date),
+                                str(bap.package_type)
+                            ) for bap in ar.generate_assets_no_save()
+                        ]
+                    }
+                )
+            )
+        elif ar.run_type == AssetType.HARDWARE:
+            return HttpResponse(
+                json.dumps(
+                    {
+                        'assets': [
+                            (
+                                str(bah.type),
+                                str(bah.info_dict)
+                            ) for bah in ar.generate_assets_no_save()
+                        ]
+                    }
+                )
+            )
+        elif ar.run_type == AssetType.LICENSE:
+            return HttpResponse(
+                json.dumps(
+                    {
+                        'assets': [
+                            (
+                                str(bal.name),
+                                str(bal.license_key)
+                            ) for bal in ar.generate_assets_no_save()
+                        ]
+                    }
+                )
+            )
+        elif ar.run_type == AssetType.UPDATE:
+            return HttpResponse(
+                json.dumps(
+                    {
+                        'assets': [
+                            (
+                                str(bau.name),
+                                str(bau.install_date),
+                                str(bau.status)
+                            ) for bau in ar.generate_assets_no_save()
+                        ]
+                    }
+                )
+            )
+        elif ar.run_type == AssetType.SOFTWARE_VERSION:
+            return HttpResponse(
+                json.dumps(
+                    {
+                        'assets': [str(basv) for basv in ar.generate_assets_no_save()]
+                    }
+                )
+            )
+        elif ar.run_type == AssetType.PROCESS:
+            return HttpResponse(
+                json.dumps(
+                    {
+                        'assets': [
+                            (
+                                str(bap.name),
+                                str(bap.pid)
+                            ) for bap in ar.generate_assets_no_save()
+                        ]
+                    }
+                )
+            )
+        elif ar.run_type == AssetType.PENDING_UPDATE:
+            return HttpResponse(
+                json.dumps(
+                    {
+                        'assets': [
+                            (
+                                str(bapu.name),
+                                str(bapu.version),
+                                str(bapu.optional)
+                            ) for bapu in ar.generate_assets_no_save()
+                        ]
+                    }
+                )
+            )
+        else:
+            return HttpResponse(
+                json.dumps(
+                    {
+                        'assets': [str(ba) for ba in ar.generate_assets_no_save]
+                    }
+                )
+            )
+
+
+class get_schedule_list(RetrieveAPIView):
+    def get(self, request, *args, **kwargs):
+        return Response(
+            {
+                'schedules': sorted(
+                    [
+                        (
+                            s.device.idx,
+                            s.device.name,
+                            s.planned_date,
+                            s.dispatch_setting.name
+                        ) for s in ScheduleItem.objects.all()
+                    ],
+                    key=lambda item: item[1]
+                )
+            }
+        )
+
+class get_assetruns_for_devices(View):
+    def post(self, request):
+        pks = request.POST['pks']
+        pk_list = [int(pk) for pk in pks.split(",") if len(pk) > 0]
+
+        assetruns = []
+        for pk in pk_list:
+            dev = device.objects.get(idx=pk)
+            assetruns.extend([
+                (
+                    ar.idx,
+                    ar.run_index,
+                    ar.run_type,
+                    str(ar.run_start_time),
+                    str(ar.run_end_time),
+                    str((
+                            ar.run_end_time - ar.run_start_time).total_seconds()) if ar.run_end_time and ar.run_start_time else "0",
+                    ar.device.name,
+                    ar.device.idx
+                ) for ar in dev.assetrun_set.all()
+            ])
+
+
+
+        return HttpResponse(
+            json.dumps(
+                {
+                    'asset_runs': assetruns
+                }
+            ),
+            content_type="application/json"
+        )

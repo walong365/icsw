@@ -67,15 +67,34 @@ device_asset_module = angular.module(
             7: "Pending update"
         }[_t]
 
+    resolve_asset_type_reverse = (_t) ->
+        return {
+            "Package": 1
+            "Hardware": 2
+            "License": 3
+            "Update": 4
+            "Software version": 5
+            "Process": 6
+            "Pending update": 7
+        }[_t]
+
     resolve_package_type = (_t) ->
         return {
             1: "Windows"
             2: "Linux"
         }[_t]
+
+    resolve_package_type_reverse = (_t) ->
+        return {
+            "Windows": 1
+            "Linux": 2
+        }[_t]
         
     return {
         resolve_asset_type: resolve_asset_type,
-        resolve_package_type: resolve_package_type
+        resolve_asset_type_reverse: resolve_asset_type_reverse,
+        resolve_package_type: resolve_package_type,
+        resolve_package_type_reverse: resolve_package_type_reverse
     }
 ]).controller("icswDeviceAssetCtrl",
 [
@@ -147,40 +166,6 @@ device_asset_module = angular.module(
 
         return asset_run
 
-    $scope.resolve_asset_type = (_t) ->
-        return {
-            1: "Package"
-            2: "Hardware"
-            3: "License"
-            4: "Update"
-            5: "Software version"
-            6: "Process"
-            7: "Pending update"
-        }[_t]
-        
-    $scope.resolve_asset_type_reverse = (_t) ->
-        return {
-            "Package": 1
-            "Hardware": 2
-            "License": 3
-            "Update": 4
-            "Software version": 5
-            "Process": 6
-            "Pending update": 7
-        }[_t]
-
-    $scope.resolve_package_type = (_t) ->
-        return {
-            1: "Windows"
-            2: "Linux"
-        }[_t]
-
-    $scope.resolve_package_type_reverse = (_t) ->
-        return {
-            "Windows": 1
-            "Linux": 2
-        }[_t]
-
     $scope.filterSchedArrayForCsvExport = (filteredSchedItems) ->
         moreFilteredSchedItems = []
         for obj in filteredSchedItems
@@ -198,7 +183,7 @@ device_asset_module = angular.module(
             if obj.assets.length > 0
                 for asset in obj.assets
                     asset_run = {}
-                    asset_run.run_type = $scope.resolve_asset_type(obj.run_type)
+                    asset_run.run_type = icswAssetHelperFunctions.resolve_asset_type(obj.run_type)
                     asset_run.run_start_time = obj.run_start_time
                     asset_run.run_end_time = obj.run_end_time
                     if obj.hasOwnProperty("device_name")
@@ -207,7 +192,7 @@ device_asset_module = angular.module(
                     moreFilteredARItems.push(asset_run)
             else
                 asset_run = {}
-                asset_run.run_type = $scope.resolve_asset_type(obj.run_type)
+                asset_run.run_type = icswAssetHelperFunctions.resolve_asset_type(obj.run_type)
                 asset_run.run_start_time = obj.run_start_time
                 asset_run.run_end_time = obj.run_end_time
                 if obj.hasOwnProperty("device_name")
@@ -224,7 +209,7 @@ device_asset_module = angular.module(
                 for version in obj.versions
                     _pack = {}
                     _pack.name = obj.name
-                    _pack.package_type = $scope.resolve_package_type(obj.package_type)
+                    _pack.package_type = icswAssetHelperFunctions.resolve_package_type(obj.package_type)
                     _pack.version = version[1]
                     _pack.release = version[2]
                     _pack.size = version[3]
@@ -232,7 +217,7 @@ device_asset_module = angular.module(
             else
                 _pack = {}
                 _pack.name = obj.name
-                _pack.package_type = $scope.resolve_package_type(obj.package_type)
+                _pack.package_type = icswAssetHelperFunctions.resolve_package_type(obj.package_type)
                 moreFilteredPackageItems.push(_pack)
 
         return moreFilteredPackageItems
@@ -253,7 +238,7 @@ device_asset_module = angular.module(
 
         if ar1 != undefined && ar2 != undefined
             icswSimpleAjaxCall({
-                url: ICSW_URLS.MON_GET_ASSETRUN_DIFFS
+                url: ICSW_URLS.ASSET_GET_ASSETRUN_DIFFS
                 data:
                     pk1: ar1.idx
                     pk2: ar2.idx
@@ -289,7 +274,7 @@ device_asset_module = angular.module(
         obj.$$asset_run = true
         icswSimpleAjaxCall(
             {
-                url: ICSW_URLS.MON_RUN_ASSETS_NOW
+                url: ICSW_URLS.ASSET_RUN_ASSETS_NOW
                 data:
                     pk: obj.idx
             }
@@ -337,7 +322,7 @@ device_asset_module = angular.module(
         console.log "ar2: ", ar2
         if ar1 != undefined && ar2 != undefined
             icswSimpleAjaxCall({
-                url: ICSW_URLS.MON_GET_ASSETRUN_DIFFS
+                url: ICSW_URLS.ASSET_GET_ASSETRUN_DIFFS
                 data:
                     pk1: ar1.idx
                     pk2: ar2.idx
@@ -355,7 +340,7 @@ device_asset_module = angular.module(
     $scope.expand_assetrun = ($event, assetrun) ->
         if !assetrun.expanded
             icswSimpleAjaxCall({
-                url: ICSW_URLS.MON_GET_ASSETS_FOR_ASSET_RUN
+                url: ICSW_URLS.ASSET_GET_ASSETS_FOR_ASSET_RUN
                 data:
                     pk: assetrun.idx
                 dataType: 'json'
@@ -374,7 +359,7 @@ device_asset_module = angular.module(
     $scope.expand_package = ($event, pack) ->
         if !pack.expanded
             icswSimpleAjaxCall({
-                url: ICSW_URLS.MON_GET_VERSIONS_FOR_PACKAGE
+                url: ICSW_URLS.ASSET_GET_VERSIONS_FOR_PACKAGE
                 data:
                     pk: pack.pk
                 dataType: 'json'
@@ -392,7 +377,7 @@ device_asset_module = angular.module(
 
     $scope.select_devices = (obj) ->
         icswSimpleAjaxCall({
-            url: ICSW_URLS.MON_GET_DEVICES_FOR_ASSET
+            url: ICSW_URLS.ASSET_GET_DEVICES_FOR_ASSET
             data:
                 pk: obj[0]
             dataType: 'json'
@@ -400,48 +385,41 @@ device_asset_module = angular.module(
         ).then(
             (result) ->
                 new_devs = []
+                pks_s = ''
+                devidx_dev_dict = {}
 
                 for dev in $scope.struct.device_tree.all_list
                     for pk in result.devices
                         if dev.idx == pk
                             dev.assetrun_set = []
-                            new_devs.push dev
+                            new_devs.push(dev)
+                            pks_s = pks_s.concat(dev.idx + ",")
+                            devidx_dev_dict[dev.idx] = dev
 
-                            icswSimpleAjaxCall({
-                                url: ICSW_URLS.MON_GET_ASSETRUNS_FOR_DEVICE
-                                data:
-                                    pk: dev.idx
-                                dataType: 'json'
-                            }).then(
-                                (result) ->
-                                    console.log "result: ", result
-                                    for obj in result.asset_runs
-                                        dev.assetrun_set.push($scope.createAssetRunFromObj(obj))
-
-                                (not_ok) ->
-                                    console.log not_ok
-                            )
+                icswSimpleAjaxCall({
+                    url: ICSW_URLS.ASSET_GET_ASSETRUNS_FOR_DEVICES
+                    data:
+                        pks: pks_s
+                    dataType: 'json'
+                }).then(
+                    (result) ->
+                        console.log "result: ", result
+                        for obj in result.asset_runs
+                            asset_run = $scope.createAssetRunFromObj(obj)
+                            devidx_dev_dict[asset_run.device_pk].assetrun_set.push(asset_run)
+                    (not_ok) ->
+                        console.log not_ok
+                )
 
                 $scope.struct.devices.length = 0
                 for dev in new_devs
                     $scope.struct.devices.push dev
-#              hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, $scope.struct.devices)
-#              $scope.struct.device_tree.enrich_devices(hs, ["asset_info"]).then(
-#                  (data) ->
-#                        for dev in $scope.struct.devices
-#                            dev.$$asset_run = false
-#                            #dev.assetrun_set_sf_src = []
-#                            #for ar in dev.assetrun_set
-#                            #    dev.assetrun_set_sf_src.push(ar)
-#                        $scope.struct.data_loaded = true
-#                )
             (not_ok) ->
                 console.log not_ok
         )
 
-
     icswSimpleAjaxCall({
-        url: ICSW_URLS.MON_GET_ASSET_LIST
+        url: ICSW_URLS.ASSET_GET_ASSET_LIST
         type: "GET"
         dataType: 'json'
     }
@@ -473,10 +451,15 @@ device_asset_module = angular.module(
                 $scope.struct.device_tree = data[0]
                 $scope.struct.devices.length = 0
                 $scope.struct.asset_runs.length = 0
+                pks_s = ''
+                devidx_dev_dict = {}
                 for dev in devs
                     dev.assetrun_set = []
+                    pks_s = pks_s.concat(dev.idx + ",")
+                    devidx_dev_dict[dev.idx] = dev
                     $scope.struct.devices.push(dev)
 
+<<<<<<< HEAD
 
 #                    icswSimpleAjaxCall({
 #                            url: ICSW_URLS.MON_GET_ASSETRUNS_FOR_DEVICE
@@ -509,27 +492,30 @@ device_asset_module = angular.module(
 #                        $scope.struct.data_loaded = true
 #                )
 
+=======
+>>>>>>> a563623bc5f925cd54b918c6cc14ada110933117
                 icswSimpleAjaxCall({
-                    url: ICSW_URLS.MON_GET_ASSETRUNS
-                    type: "GET"
-                    dataType: 'json'
+                        url: ICSW_URLS.ASSET_GET_ASSETRUNS_FOR_DEVICES
+                        data:
+                            pks: pks_s
+                        dataType: 'json'
                 }).then(
                     (result) ->
-                        console.log "get_assetruns: ", result
-                        $scope.struct.asset_runs.length = 0
-                        for obj in result.asset_runs
-                            found = false
-                            for dev in devs
-                                if dev.idx == obj[7]
-                                    found = true
-                                    dev.assetrun_set.push($scope.createAssetRunFromObj(obj))
+                        console.log "result: ", result
 
-                            if found
-                                $scope.struct.asset_runs.push($scope.createAssetRunFromObj(obj))
+                        for obj in result.asset_runs
+                            asset_run = $scope.createAssetRunFromObj(obj)
+                            devidx_dev_dict[asset_run.device_pk].assetrun_set.push(asset_run)
+                            $scope.struct.asset_runs.push($scope.createAssetRunFromObj(obj))
+
+                    (not_ok) ->
+                        console.log not_ok
                 )
+                
+                $scope.struct.data_loaded = true
 
                 icswSimpleAjaxCall({
-                    url: ICSW_URLS.MON_GET_SCHEDULE_LIST
+                    url: ICSW_URLS.ASSET_GET_SCHEDULE_LIST
                     type: "GET"
                     dataType: 'json'
                 }).then(
