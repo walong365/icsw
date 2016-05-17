@@ -29,9 +29,21 @@ from django.conf.urls.static import static
 from initat.cluster.frontend import rest_views, device_views, main_views, network_views, \
     monitoring_views, user_views, package_views, config_views, boot_views, session_views, rrd_views, \
     base_views, setup_views, doc_views, license_views, model_history_views, discovery_views, rms_views, \
-    lic_views, auth_views
+    lic_views, auth_views, asset_views
 
 # handler404 = main_views.index.as_view()
+
+asset_patterns = [
+    url("^get_asset_list$", asset_views.get_asset_list.as_view(), name="get_asset_list"),
+    url("^run_assets_now$", asset_views.run_assets_now.as_view(), name="run_assets_now"),
+    url("^get_devices_for_asset$", asset_views.get_devices_for_asset.as_view(), name="get_devices_for_asset"),
+    url("^get_assetrun_diffs$", asset_views.get_assetrun_diffs.as_view(), name="get_assetrun_diffs"),
+    url("^get_versions_for_package$", asset_views.get_versions_for_package.as_view(), name="get_versions_for_package"),
+    url("^get_assetruns$", asset_views.get_assetruns.as_view(), name="get_assetruns"),
+    url("^get_assets_for_asset_run$", asset_views.get_assets_for_asset_run.as_view(), name="get_assets_for_asset_run"),
+    url("^get_schedule_list$", asset_views.get_schedule_list.as_view(), name="get_schedule_list"),
+    url("^get_assetruns_for_devices$", asset_views.get_assetruns_for_devices.as_view(), name="get_assetruns_for_devices"),
+]
 
 session_patterns = [
     url(r"logout", session_views.session_logout.as_view(), name="logout"),
@@ -174,15 +186,6 @@ monitoring_patterns = [
         name="get_hist_service_line_graph_data"),
     url("^get_hist_device_line_graph_data$", monitoring_views.get_hist_device_line_graph_data.as_view(),
         name="get_hist_device_line_graph_data"),
-    url("^get_asset_list$", monitoring_views.get_asset_list.as_view(), name="get_asset_list"),
-    url("^run_assets_now$", monitoring_views.run_assets_now.as_view(), name="run_assets_now"),
-    url("^get_devices_for_asset$", monitoring_views.get_devices_for_asset.as_view(), name="get_devices_for_asset"),
-    url("^get_assetrun_diffs$", monitoring_views.get_assetrun_diffs.as_view(), name="get_assetrun_diffs"),
-    url("^get_versions_for_package$", monitoring_views.get_versions_for_package.as_view(), name="get_versions_for_package"),
-    url("^get_assetruns$", monitoring_views.get_assetruns.as_view(), name="get_assetruns"),
-    url("^get_assets_for_asset_run$", monitoring_views.get_assets_for_asset_run.as_view(), name="get_assets_for_asset_run"),
-    url("^get_schedule_list$", monitoring_views.get_schedule_list.as_view(), name="get_schedule_list"),
-    url("^get_assetruns_for_devices$", monitoring_views.get_assetruns_for_devices.as_view(), name="get_assetruns_for_devices"),
 ]
 
 user_patterns = [
@@ -330,6 +333,7 @@ my_url_patterns = [
     url(r"^rest/", include(rest_patterns, namespace="rest")),
     url(r"^system/", include(system_patterns, namespace="system")),
     url(r"^discovery/", include(discovery_patterns, namespace="discovery")),
+    url(r"^asset/", include(asset_patterns, namespace="asset")),
 ]
 
 urlpatterns = [

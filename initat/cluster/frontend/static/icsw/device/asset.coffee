@@ -238,7 +238,7 @@ device_asset_module = angular.module(
 
         if ar1 != undefined && ar2 != undefined
             icswSimpleAjaxCall({
-                url: ICSW_URLS.MON_GET_ASSETRUN_DIFFS
+                url: ICSW_URLS.ASSET_GET_ASSETRUN_DIFFS
                 data:
                     pk1: ar1.idx
                     pk2: ar2.idx
@@ -274,7 +274,7 @@ device_asset_module = angular.module(
         obj.$$asset_run = true
         icswSimpleAjaxCall(
             {
-                url: ICSW_URLS.MON_RUN_ASSETS_NOW
+                url: ICSW_URLS.ASSET_RUN_ASSETS_NOW
                 data:
                     pk: obj.idx
             }
@@ -322,7 +322,7 @@ device_asset_module = angular.module(
         console.log "ar2: ", ar2
         if ar1 != undefined && ar2 != undefined
             icswSimpleAjaxCall({
-                url: ICSW_URLS.MON_GET_ASSETRUN_DIFFS
+                url: ICSW_URLS.ASSET_GET_ASSETRUN_DIFFS
                 data:
                     pk1: ar1.idx
                     pk2: ar2.idx
@@ -340,7 +340,7 @@ device_asset_module = angular.module(
     $scope.expand_assetrun = ($event, assetrun) ->
         if !assetrun.expanded
             icswSimpleAjaxCall({
-                url: ICSW_URLS.MON_GET_ASSETS_FOR_ASSET_RUN
+                url: ICSW_URLS.ASSET_GET_ASSETS_FOR_ASSET_RUN
                 data:
                     pk: assetrun.idx
                 dataType: 'json'
@@ -359,7 +359,7 @@ device_asset_module = angular.module(
     $scope.expand_package = ($event, pack) ->
         if !pack.expanded
             icswSimpleAjaxCall({
-                url: ICSW_URLS.MON_GET_VERSIONS_FOR_PACKAGE
+                url: ICSW_URLS.ASSET_GET_VERSIONS_FOR_PACKAGE
                 data:
                     pk: pack.pk
                 dataType: 'json'
@@ -377,7 +377,7 @@ device_asset_module = angular.module(
 
     $scope.select_devices = (obj) ->
         icswSimpleAjaxCall({
-            url: ICSW_URLS.MON_GET_DEVICES_FOR_ASSET
+            url: ICSW_URLS.ASSET_GET_DEVICES_FOR_ASSET
             data:
                 pk: obj[0]
             dataType: 'json'
@@ -397,7 +397,7 @@ device_asset_module = angular.module(
                             devidx_dev_dict[dev.idx] = dev
 
                 icswSimpleAjaxCall({
-                    url: ICSW_URLS.MON_GET_ASSETRUNS_FOR_DEVICES
+                    url: ICSW_URLS.ASSET_GET_ASSETRUNS_FOR_DEVICES
                     data:
                         pks: pks_s
                     dataType: 'json'
@@ -419,7 +419,7 @@ device_asset_module = angular.module(
         )
 
     icswSimpleAjaxCall({
-        url: ICSW_URLS.MON_GET_ASSET_LIST
+        url: ICSW_URLS.ASSET_GET_ASSET_LIST
         type: "GET"
         dataType: 'json'
     }
@@ -460,7 +460,7 @@ device_asset_module = angular.module(
                     $scope.struct.devices.push(dev)
 
                 icswSimpleAjaxCall({
-                        url: ICSW_URLS.MON_GET_ASSETRUNS_FOR_DEVICES
+                        url: ICSW_URLS.ASSET_GET_ASSETRUNS_FOR_DEVICES
                         data:
                             pks: pks_s
                         dataType: 'json'
@@ -480,7 +480,7 @@ device_asset_module = angular.module(
                 $scope.struct.data_loaded = true
 
                 icswSimpleAjaxCall({
-                    url: ICSW_URLS.MON_GET_SCHEDULE_LIST
+                    url: ICSW_URLS.ASSET_GET_SCHEDULE_LIST
                     type: "GET"
                     dataType: 'json'
                 }).then(
