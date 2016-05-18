@@ -749,7 +749,7 @@ class Dispatcher(object):
                 print timeout
                 if timeout < 1:
                     self.device_asset_run_ext_coms[_device].pop(0)
-                    asset_run.run_status = RunStatus.ENDED
+                    asset_run.run_status = RunStatus.FAILED
                     asset_run.run_end_time = datetime.datetime.now()
                     asset_run.save()
                     self.device_running_ext_coms[_device] = 0
