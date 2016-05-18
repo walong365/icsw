@@ -39,8 +39,6 @@ from initat.tools import io_stream_helper, logging_tools, mail_tools, process_to
     uuid_tools, logging_functions
 from initat.tools.server_mixins import ICSWBasePool
 
-SEP_STR = "-" * 50
-
 
 class main_process(ICSWBasePool):
     def __init__(self, options):
@@ -528,13 +526,12 @@ class main_process(ICSWBasePool):
                             "cannot create directory {}: {}".format(
                                 act_dir,
                                 process_tools.get_except_info(),
-                            )
+                            ),
+                            logging_tools.LOG_LEVEL_ERROR
                         )
                     else:
                         self.log("created directory {}".format(act_dir))
-            # init logging config
-            # logging.config.fileConfig("logging.conf", {"file_name" : full_name})
-            # base_logger = logging.getLogger("init.at")
+            # get logger
             logger = logging_functions.get_logger(self.CC.CS, h_name, logger_name)
             self.__num_open += 1
             # save process_id to handle open / close
@@ -546,8 +543,6 @@ class main_process(ICSWBasePool):
             self.__handles[h_name] = logger
             self.__handle_usage[h_name] = set()
             self.__handle_usecount[h_name] = 0
-            logger.info(SEP_STR)
-            logger.info("opened {} (file {} in {}) by pid {}".format(full_name, base_name, base_dir, self.pid))
             self.log(
                 "added handle {} (file {} in dir {}), total open: {}".format(
                     h_name,

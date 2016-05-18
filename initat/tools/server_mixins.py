@@ -64,14 +64,15 @@ class ConfigCheckObject(object):
                     ]
                 )
             if self.__native_logging:
+                # build logger name
                 logger_name = "{}.{}".format(
                     process_tools.get_machine_name(),
                     global_config["LOG_NAME"]
                 )
-                full_name = os.path.join(self.__cs["log.logdir"], logger_name.replace(".", "/"))
+                # get logger
                 self.__process.log_template = logging_functions.get_logger(
                     self.__cs,
-                    full_name,
+                    logger_name.replace(".", "/"),
                     logger_name,
                 )
             else:

@@ -27,8 +27,15 @@ import os
 from initat.tools import logging_tools
 
 
+SEP_STR = "-" * 50
+
+
 def get_logger(cs, handle_name, logger_name):
     full_name = os.path.join(cs["log.logdir"], handle_name)
+    base_dir, base_name = (
+        os.path.dirname(full_name),
+        os.path.basename(full_name)
+    )
     logger = logging.getLogger(logger_name)
     # print "*", logger_name, h_name
     logger.propagate = 0
@@ -49,5 +56,13 @@ def get_logger(cs, handle_name, logger_name):
     form.set_max_line_length(cs["log.max.line.length"])
     new_h.setFormatter(form)
     logger.addHandler(new_h)
+    logger.info(SEP_STR)
+    logger.info(
+        "opened {} (file {} in {}) by pid {}".format(
+            full_name,
+            base_name,
+            base_dir,
+            os.getpid()
+        )
+    )
     return logger
-
