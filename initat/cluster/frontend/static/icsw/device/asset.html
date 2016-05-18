@@ -96,6 +96,7 @@
                                     <th st-sort="run_end_hour">Run End Hour</th>
                                     <th st-sort="total_run_time">Run Time</th>
                                     <th st-sort="device_name">Device</th>
+                                    <th st-sort="device_name">Run Status</th>
                                     <th colspan="2">Action</th>
                                     <th><button type="button" ng-csv="filterAssetRunArrayForCsvExport(assetruns_shown)" csv-header="['Run Type', 'Run Start', 'Run End', 'Device', 'Asset']" filename="test.csv">Export to CSV</button></th>
                                 </tr>
@@ -119,7 +120,10 @@
                                         <input st-search="total_run_time" placeholder="search by total_run_time" class="input-sm form-control" type="search"/>
                                     </th>
                                     <th colspan="1">
-                                        <input st-search="device_name" placeholder="filter by device name" class="input-sm form-control" type="search"/>
+                                        <input st-search="device_name" placeholder="filter by device_name" class="input-sm form-control" type="search"/>
+                                    </th>
+                                    <th colspan="1">
+                                        <input st-search="run_status" placeholder="filter by run_status" class="input-sm form-control" type="search"/>
                                     </th>
                                     <th colspan="3">&nbsp;</th>
                                 </tr>
@@ -143,6 +147,7 @@
                                     <td>{{ assetrun.run_end_hour }}</td>
                                     <td>{{ assetrun.total_run_time }}</td>
                                     <td>{{ assetrun.device_name }}</td>
+                                    <td>{{ resolve_run_status(assetrun.run_status) }}</td>
                                     <td>
                                         <icsw-tools-button size="xs" type="show" is-show="assetrun.expanded" ng-click="expand_assetrun($event, assetrun)"></icsw-tools-button>
                                     </td>
@@ -463,7 +468,6 @@
                                     style="width:auto;"
                                     st-safe-src="assetrun.assets"
                                     st-table="assets_shown"
-                                    ng-show="assetrun.assets.length"
                                 >
                                     <tr>
                                         <td colspan="99">

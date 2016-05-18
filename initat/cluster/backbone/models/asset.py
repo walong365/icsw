@@ -54,92 +54,95 @@ def get_base_assets_from_raw_result(blob, runtype, scantype):
     if not blob:
         return assets
 
-    if runtype == AssetType.PACKAGE:
-        if scantype == ScanType.NRPE:
-            l = json.loads(blob)
-            for (name, version, size, date) in l:
-                if size == "Unknown":
-                    size = 0
-                assets.append(
-                    BaseAssetPackage(
-                        name,
-                        version=version,
-                        size=size,
-                        install_date=date,
-                        package_type=PackageTypeEnum.WINDOWS
-                    )
-                )
-        elif scantype == ScanType.HM:
-            try:
-                package_dict = server_command.decompress(blob, pickle=True)
-            except:
-                raise
-            else:
-                for package_name in package_dict:
-                    for versions_dict in package_dict[package_name]:
-                        assets.append(
-                            BaseAssetPackage(
-                                package_name,
-                                version=versions_dict['version'],
-                                size=versions_dict['size'],
-                                release=versions_dict['release'],
-                                package_type=PackageTypeEnum.LINUX
-                            )
+    try:
+        if runtype == AssetType.PACKAGE:
+            if scantype == ScanType.NRPE:
+                l = json.loads(blob)
+                for (name, version, size, date) in l:
+                    if size == "Unknown":
+                        size = 0
+                    assets.append(
+                        BaseAssetPackage(
+                            name,
+                            version=version,
+                            size=size,
+                            install_date=date,
+                            package_type=PackageTypeEnum.WINDOWS
                         )
-    elif runtype == AssetType.HARDWARE:
-        s = blob
-        if scantype == ScanType.NRPE:
-            s = blob[2:-4].encode('ascii')
-        elif scantype == ScanType.HM:
-            s = bz2.decompress(base64.b64decode(blob))
+                    )
+            elif scantype == ScanType.HM:
+                try:
+                    package_dict = server_command.decompress(blob, pickle=True)
+                except:
+                    raise
+                else:
+                    for package_name in package_dict:
+                        for versions_dict in package_dict[package_name]:
+                            assets.append(
+                                BaseAssetPackage(
+                                    package_name,
+                                    version=versions_dict['version'],
+                                    size=versions_dict['size'],
+                                    release=versions_dict['release'],
+                                    package_type=PackageTypeEnum.LINUX
+                                )
+                            )
+        elif runtype == AssetType.HARDWARE:
+            s = blob
+            if scantype == ScanType.NRPE:
+                s = blob[2:-4].encode('ascii')
+            elif scantype == ScanType.HM:
+                s = bz2.decompress(base64.b64decode(blob))
 
-        root = etree.fromstring(s)
-        assert (root.tag == "topology")
+            root = etree.fromstring(s)
+            assert (root.tag == "topology")
 
-        for _child in root.iterchildren():
-            generate_bahs(_child, assets)
+            for _child in root.iterchildren():
+                generate_bahs(_child, assets)
 
-    elif runtype == AssetType.LICENSE:
-        if scantype == ScanType.NRPE:
-            l = json.loads(blob)
-            for (name, licensekey) in l:
-                assets.append(BaseAssetLicense(name, license_key=licensekey))
-        elif scantype == ScanType.HM:
-            # todo implement me (--> what do we want to gather/display here?)
+        elif runtype == AssetType.LICENSE:
+            if scantype == ScanType.NRPE:
+                l = json.loads(blob)
+                for (name, licensekey) in l:
+                    assets.append(BaseAssetLicense(name, license_key=licensekey))
+            elif scantype == ScanType.HM:
+                # todo implement me (--> what do we want to gather/display here?)
+                pass
+
+        elif runtype == AssetType.UPDATE:
+            if scantype == ScanType.NRPE:
+                l = json.loads(blob)
+                for (name, date, status) in l:
+                    assets.append(BaseAssetUpdate(name, install_date=date, status=status))
+            elif scantype == ScanType.HM:
+                # todo implement me (--> what do we want to gather/display here?)
+                pass
+
+        elif runtype == AssetType.SOFTWARE_VERSION:
+            # todo implement me
             pass
 
-    elif runtype == AssetType.UPDATE:
-        if scantype == ScanType.NRPE:
-            l = json.loads(blob)
-            for (name, date, status) in l:
-                assets.append(BaseAssetUpdate(name, install_date=date, status=status))
-        elif scantype == ScanType.HM:
-            # todo implement me (--> what do we want to gather/display here?)
-            pass
+        elif runtype == AssetType.PROCESS:
+            if scantype == ScanType.NRPE:
+                l = json.loads(blob)
+                for (name, pid) in l:
+                    assets.append(BaseAssetProcess(name, pid))
+            elif scantype == ScanType.HM:
+                process_dict = eval(bz2.decompress(base64.b64decode(blob)))
+                for pid in process_dict:
+                    assets.append(BaseAssetProcess(process_dict[pid]['name'], pid))
 
-    elif runtype == AssetType.SOFTWARE_VERSION:
-        # todo implement me
-        pass
-
-    elif runtype == AssetType.PROCESS:
-        if scantype == ScanType.NRPE:
-            l = json.loads(blob)
-            for (name, pid) in l:
-                assets.append(BaseAssetProcess(name, pid))
-        elif scantype == ScanType.HM:
-            process_dict = eval(bz2.decompress(base64.b64decode(blob)))
-            for pid in process_dict:
-                assets.append(BaseAssetProcess(process_dict[pid]['name'], pid))
-
-    elif runtype == AssetType.PENDING_UPDATE:
-        if scantype == ScanType.NRPE:
-            l = json.loads(blob)
-            for (name, optional) in l:
-                assets.append(BaseAssetPendingUpdate(name, optional=optional))
-        elif scantype == ScanType.HM:
-            l = pickle.loads(bz2.decompress(base64.b64decode(blob)))
-            for (name, version) in l:
-                assets.append(BaseAssetPendingUpdate(name, version=version))
+        elif runtype == AssetType.PENDING_UPDATE:
+            if scantype == ScanType.NRPE:
+                l = json.loads(blob)
+                for (name, optional) in l:
+                    assets.append(BaseAssetPendingUpdate(name, optional=optional))
+            elif scantype == ScanType.HM:
+                l = pickle.loads(bz2.decompress(base64.b64decode(blob)))
+                for (name, version) in l:
+                    assets.append(BaseAssetPendingUpdate(name, version=version))
+    except Exception as e:
+        assets = []
 
     return assets
 

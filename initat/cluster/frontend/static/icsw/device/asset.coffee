@@ -102,12 +102,36 @@ device_asset_module = angular.module(
             if item.indexOf(_t.toLowerCase()) > -1
                 return item_idx[item]
         return -1
+
+    resolve_run_status = (_t) ->
+        return {
+            1: "Pending"
+            2: "Running"
+            3: "Finished"
+            4: "Failed"
+        }[_t]
+
+    resolve_run_status_reverse = (_t) ->
+        items = ["pending", "running", "finished", "failed"]
+        item_idx = {
+            "pending": 1
+            "running": 2
+            "finished": 3
+            "failed": 4
+        }
+
+        for item in items
+            if item.indexOf(_t.toLowerCase()) > -1
+                return item_idx[item]
+        return -1
         
     return {
         resolve_asset_type: resolve_asset_type
         resolve_asset_type_reverse: resolve_asset_type_reverse
         resolve_package_type: resolve_package_type
         resolve_package_type_reverse: resolve_package_type_reverse
+        resolve_run_status: resolve_run_status
+        resolve_run_status_reverse: resolve_run_status_reverse
     }
 ]).controller("icswDeviceAssetCtrl",
 [
@@ -173,6 +197,7 @@ device_asset_module = angular.module(
         asset_run.total_run_time = parseFloat(obj[5]).toFixed(2)
         asset_run.device_name = obj[6]
         asset_run.device_pk = obj[7]
+        asset_run.run_status = obj[8]
         asset_run.assets = []
 
         return asset_run
@@ -302,6 +327,9 @@ device_asset_module = angular.module(
 
     $scope.resolve_package_type = (a_t) ->
         return icswAssetHelperFunctions.resolve_package_type(a_t)
+
+    $scope.resolve_run_status = (a_t) ->
+        return icswAssetHelperFunctions.resolve_run_status(a_t)
 
     $scope.select_asset = ($event, device, assetrun) ->
         assetrun.$$selected = !assetrun.$$selected
@@ -550,6 +578,10 @@ device_asset_module = angular.module(
             strict = false
         if (predicate.hasOwnProperty("device_name"))
             new_predicate.device_name = predicate.device_name
+            strict = false
+        if (predicate.hasOwnProperty("run_status"))
+            run_status = icswAssetHelperFunctions.resolve_run_status_reverse(predicate.run_status)
+            new_predicate.run_status = run_status
             strict = false
 
         return $filter('filter')(input, new_predicate, strict)
