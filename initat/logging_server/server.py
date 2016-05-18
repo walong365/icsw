@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2009-2015 Andreas Lang-Nevyjel (lang-nevyjel@init.at)
+# Copyright (C) 2009-2016 Andreas Lang-Nevyjel (lang-nevyjel@init.at)
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -497,6 +497,7 @@ class main_process(ICSWBasePool):
                 )
                 self.remove_handle(h_name)
         if h_name not in self.__handles:
+            # TODO, FIXME, unify with native_logging code in server_mixins.py
             self.log(
                 "logger '{}' (logger_type {}) requested".format(
                     logger_name,

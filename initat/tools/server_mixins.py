@@ -19,9 +19,11 @@
 #
 """ usefull server mixins """
 
+import os
 import re
 import sys
 import time
+import logging
 
 import zmq
 from enum import IntEnum
@@ -41,9 +43,10 @@ class ConfigCheckObject(object):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__process.log("[CC] {}".format(what), log_level)
 
-    def init(self, srv_type, global_config, add_config_store=True, init_logging=True):
+    def init(self, srv_type, global_config, add_config_store=True, init_logging=True, native_logging=False):
         self.srv_type = srv_type
         self.global_config = global_config
+        self.__native_logging = native_logging
         if add_config_store:
             self.__cs = config_store.ConfigStore("client", self.log)
         else:
@@ -60,11 +63,36 @@ class ConfigCheckObject(object):
                         ("LOG_NAME", configfile.str_c_var(self.srv_type, source="instance")),
                     ]
                 )
-            self.__process.log_template = logging_tools.get_logger(
-                global_config["LOG_NAME"],
-                global_config["LOG_DESTINATION"],
-                context=self.__process.zmq_context,
-            )
+            if native_logging:
+                # TODO, FIXME, duplicate code from logging_server/server.py
+                sub_name = "{}.{}".format(
+                    process_tools.get_machine_name(),
+                    global_config["LOG_NAME"]
+                )
+                logger = logging.getLogger(sub_name)
+                logger.propagate = 0
+                form = logging_tools.my_formatter(
+                    self.__cs["log.format.line"],
+                    self.__cs["log.format.date"],
+                )
+                full_name = os.path.join(self.__cs["log.logdir"], sub_name.replace(".", "/"))
+                logger.setLevel(logging.DEBUG)
+                full_name = full_name.encode("ascii", errors="replace")
+                new_h = logging_tools.logfile(
+                    full_name,
+                    max_bytes=self.__cs["log.max.size.logs"],
+                    max_age_days=self.__cs["log.max.age.logs"],
+                )
+                form.set_max_line_length(self.__cs["log.max.line.length"])
+                new_h.setFormatter(form)
+                logger.addHandler(new_h)
+                self.__process.log_template = logger
+            else:
+                self.__process.log_template = logging_tools.get_logger(
+                    global_config["LOG_NAME"],
+                    global_config["LOG_DESTINATION"],
+                    context=self.__process.zmq_context,
+                )
 
     @property
     def CS(self):
@@ -141,7 +169,8 @@ class ConfigCheckObject(object):
         self.global_config.add_config_entries(_opts)
 
     def close(self):
-        self.__process.log_template.close()
+        if not self.__native_logging:
+            self.__process.log_template.close()
 
     def log_config(self):
         _log = self.global_config.get_log(clear=True)

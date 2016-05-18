@@ -890,6 +890,14 @@ class logfile(logging.handlers.BaseRotatingHandler):
             self.stream = self._open()
 
 
+class logfile_native(logfile):
+    def __init__(self, *args, **kwargs):
+        logfile.__init__(self, *args, **kwargs)
+
+    def log(self, a, b):
+        print (a, b)
+
+
 def list_to_struct(in_list, **kwargs):
     # minimum size for matching prefixes
     pf_min_size = kwargs.get("prefix_min_size", 1)

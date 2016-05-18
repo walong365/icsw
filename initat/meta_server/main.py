@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001-2008,2010-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2008,2010-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -23,10 +23,10 @@
 
 import os
 
+from initat.client_version import VERSION_STRING
 from initat.meta_server.config import global_config
 from initat.meta_server.server import main_process
 from initat.tools import configfile
-from initat.client_version import VERSION_STRING
 
 
 def main():

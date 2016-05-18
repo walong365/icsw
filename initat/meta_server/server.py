@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001-2008,2010-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2008,2010-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -41,7 +41,7 @@ class main_process(ICSWBasePoolClient):
     def __init__(self):
         self.__debug = global_config["DEBUG"]
         threading_tools.process_pool.__init__(self, "main")
-        self.CC.init("meta-server", global_config)
+        self.CC.init("meta-server", global_config, native_logging=True)
         self.CC.check_config(client=True)
         self.CC.CS.copy_to_global_config(
             global_config, [

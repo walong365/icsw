@@ -395,13 +395,20 @@ angular.module(
     "$scope", "icswLayoutSelectionTreeService", "$timeout", "icswDeviceTreeService", "ICSW_SIGNALS",
     "icswSelection", "icswActiveSelectionService", "$q", "icswSavedSelectionService", "icswToolsSimpleModalService",
     "DeviceOverviewService", "ICSW_URLS", 'icswSimpleAjaxCall', "blockUI", "$rootScope", "icswUserService",
-    "DeviceOverviewSelection",
+    "DeviceOverviewSelection", "hotkeys",
 (
     $scope, icswLayoutSelectionTreeService, $timeout, icswDeviceTreeService, ICSW_SIGNALS,
     icswSelection, icswActiveSelectionService, $q, icswSavedSelectionService, icswToolsSimpleModalService,
     DeviceOverviewService, ICSW_URLS, icswSimpleAjaxCall, blockUI, $rootScope, icswUserService,
-    DeviceOverviewSelection,
+    DeviceOverviewSelection, hotkeys,
 ) ->
+    console.log "keys"
+    hotkeys.bindTo($scope).add(
+        combo: "g"
+        description: "Group selection"
+        callback: () ->
+            console.log "g pressed"
+    )
     # search settings
     $scope.search_ok = true
     $scope.is_loading = true
