@@ -36,7 +36,7 @@ import zmq
 from initat.icsw.service import clusterid
 from initat.logging_server.config import global_config
 from initat.tools import io_stream_helper, logging_tools, mail_tools, process_tools, threading_tools, \
-    uuid_tools
+    uuid_tools, logging_functions
 from initat.tools.server_mixins import ICSWBasePool
 
 SEP_STR = "-" * 50
@@ -535,27 +535,8 @@ class main_process(ICSWBasePool):
             # init logging config
             # logging.config.fileConfig("logging.conf", {"file_name" : full_name})
             # base_logger = logging.getLogger("init.at")
-            logger = logging.getLogger(logger_name)
-            # print "*", logger_name, h_name
-            logger.propagate = 0
-            # print logging.root.manager.loggerDict.keys()
-            # print dir(base_logger)
-            # print "***", logger_name, base_logger, logger
-            form = logging_tools.my_formatter(
-                self.CC.CS["log.format.line"],
-                self.CC.CS["log.format.date"],
-            )
-            logger.setLevel(logging.DEBUG)
-            full_name = full_name.encode("ascii", errors="replace")
-            new_h = logging_tools.logfile(
-                full_name,
-                max_bytes=self.CC.CS["log.max.size.logs"],
-                max_age_days=self.CC.CS["log.max.age.logs"],
-            )
-            form.set_max_line_length(self.CC.CS["log.max.line.length"])
-            new_h.setFormatter(form)
+            logger = logging_functions.get_logger(self.CC.CS, h_name, logger_name)
             self.__num_open += 1
-            logger.addHandler(new_h)
             # save process_id to handle open / close
             logger.process_id = record_process
             logger.parent_process_id = record_parent_process

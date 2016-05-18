@@ -339,7 +339,11 @@ class main_process(ICSWBasePoolClient):
             self.log(
                 "handling {}: {}".format(
                     logging_tools.get_plural("transition", len(trans_list)),
-                    ", ".join(["{} -> {}".format(_trans.name, _trans.action) for _trans in trans_list])
+                    ", ".join(
+                        [
+                            "{} -> {}".format(_trans.name, _trans.action) for _trans in trans_list
+                        ]
+                    )
                 )
             )
         else:

@@ -19,18 +19,18 @@
 #
 """ usefull server mixins """
 
+import logging
 import os
 import re
 import sys
 import time
-import logging
 
 import zmq
 from enum import IntEnum
 
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import logging_tools, process_tools, threading_tools, server_command, \
-    configfile, config_store, uuid_tools
+    configfile, config_store, uuid_tools, logging_functions
 
 MAX_RESEND_COUNTER = 5
 
@@ -63,30 +63,17 @@ class ConfigCheckObject(object):
                         ("LOG_NAME", configfile.str_c_var(self.srv_type, source="instance")),
                     ]
                 )
-            if native_logging:
-                # TODO, FIXME, duplicate code from logging_server/server.py
-                sub_name = "{}.{}".format(
+            if self.__native_logging:
+                logger_name = "{}.{}".format(
                     process_tools.get_machine_name(),
                     global_config["LOG_NAME"]
                 )
-                logger = logging.getLogger(sub_name)
-                logger.propagate = 0
-                form = logging_tools.my_formatter(
-                    self.__cs["log.format.line"],
-                    self.__cs["log.format.date"],
-                )
-                full_name = os.path.join(self.__cs["log.logdir"], sub_name.replace(".", "/"))
-                logger.setLevel(logging.DEBUG)
-                full_name = full_name.encode("ascii", errors="replace")
-                new_h = logging_tools.logfile(
+                full_name = os.path.join(self.__cs["log.logdir"], logger_name.replace(".", "/"))
+                self.__process.log_template = logging_functions.get_logger(
+                    self.__cs,
                     full_name,
-                    max_bytes=self.__cs["log.max.size.logs"],
-                    max_age_days=self.__cs["log.max.age.logs"],
+                    logger_name,
                 )
-                form.set_max_line_length(self.__cs["log.max.line.length"])
-                new_h.setFormatter(form)
-                logger.addHandler(new_h)
-                self.__process.log_template = logger
             else:
                 self.__process.log_template = logging_tools.get_logger(
                     global_config["LOG_NAME"],
