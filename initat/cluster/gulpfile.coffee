@@ -198,7 +198,6 @@ known_options = {
 }
 
 options = minimist(process.argv.slice(2), known_options)
-console.log options
 # start with gulp <target> --production to enable production mode
 
 COMPILE_DIR = options["compile-dir"]
