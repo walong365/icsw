@@ -112,8 +112,12 @@ build:
 	unzip memtest*zip
 
 install_webcontent:
-	# copy static webcontent
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${STATICWEBDIR}
+	# copy static debug webcontent
+	tar xzf ../webcontent-debug.tar.gz -C ${DESTDIR}/${STATICWEBDIR}
+	# move
+	mv ${DESTDIR}/${STATICWEBDIR} ${DESTDIR}/${STATICWEBDIR}-debug	
+	# copy static webcontent
 	tar xzf ../webcontent.tar.gz -C ${DESTDIR}/${STATICWEBDIR}
 
 install: install_webcontent
