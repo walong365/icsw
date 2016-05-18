@@ -116,7 +116,7 @@ install_webcontent:
 	# copy static debug webcontent
 	tar xzf ../webcontent-debug.tar.gz -C ${DESTDIR}/${STATICWEBDIR}
 	# move
-	mv ${DESTDIR}/${STATICWEBDIR} ${DESTDIR}/${STATICWEBDIR}-debug	
+	mv ${DESTDIR}/${STATICWEBDIR}/icsw ${DESTDIR}/${STATICWEBDIR}/icsw-debug	
 	# copy static webcontent
 	tar xzf ../webcontent.tar.gz -C ${DESTDIR}/${STATICWEBDIR}
 
