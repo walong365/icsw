@@ -187,18 +187,19 @@ known_options = {
     default: {
         "deploy-dir": "work/icsw"
         "compile-dir": "work/compile"
+        # start django server
         "django": false
-        "onlydev": false
+        # production (==minify) mode
+        "production": false
+        # include addons
+        "addons": false
     }
-    boolean: ["django", "onlydev"]
+    boolean: ["django", "production", "addons"]
 }
 
 options = minimist(process.argv.slice(2), known_options)
-
+console.log options
 # start with gulp <target> --production to enable production mode
-
-if not options.production
-    options.production = false
 
 COMPILE_DIR = options["compile-dir"]
 DEPLOY_DIR = options["deploy-dir"]
@@ -543,22 +544,21 @@ gulp.task("reload-main", (cb) ->
 )
 
 
-if options.production
-    gulp.task("modify-app-js", gulp.series("create-all-urls", "inject-urls-to-app"))
-    gulp.task("deploy-all", gulp.parallel("deploy-css", "deploy-js", "deploy-html"))
-    gulp.task("setup-main", gulp.series("modify-app-js", "transform-main", "fix-main-import-path"))
-    gulp.task("deploy-and-transform-all", gulp.series("deploy-all", "setup-main", "copy-main"))
-else
+if options.addons
     gulp.task("modify-app-js", gulp.series("create-all-urls", "inject-urls-to-app", "inject-addons-to-app"))
     gulp.task("deploy-all", gulp.parallel("deploy-css", "deploy-js", "deploy-html", "deploy-addons"))
     gulp.task("setup-main", gulp.series("modify-app-js", "transform-main", "fix-main-import-path"))
     gulp.task("deploy-and-transform-all", gulp.series("deploy-all", "setup-main", "inject-addons-to-main", "copy-main"))
+else
+    gulp.task("modify-app-js", gulp.series("create-all-urls", "inject-urls-to-app"))
+    gulp.task("deploy-all", gulp.parallel("deploy-css", "deploy-js", "deploy-html"))
+    gulp.task("setup-main", gulp.series("modify-app-js", "transform-main", "fix-main-import-path"))
+    gulp.task("deploy-and-transform-all", gulp.series("deploy-all", "setup-main", "copy-main"))
 
 
 # watcher tasks
 
 gulp.task("watch", (cb) ->
-    options.onlydev = true
     gulp.watch(
         [
             "frontend/static/icsw/*/*.coffee",
