@@ -40,11 +40,13 @@ def main():
             if _line.lower().startswith("release:") and _release is None:
                 _release = _line.strip().split()[1]
             if _version and _release:
-                if _line.lower().startswith("requires:") and _line.count("icsw-client"):
-                    _new_line = "Requires: icsw-client >= {}-{}".format(_version, _release)
-                    if _line != _new_line:
-                        _line = _new_line
-                        _modified += 1
+                if _line.lower().startswith("requires:"):
+                    for _sw in ["icsw-client", "icsw-server"]:
+                        if _line.count(_sw):
+                            _new_line = "Requires: {} >= {}-{}".format(_sw, _version, _release)
+                            if _line != _new_line:
+                                _line = _new_line
+                                _modified += 1
             _new_lines.append(_line)
         if _modified:
             print("Modified {:d} line(s), rewriting specfile".format(_modified))
