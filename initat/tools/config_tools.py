@@ -169,19 +169,23 @@ class router_object(object):
         """
         returns all pathes between s_list and d_list (:: net_device)
         """
+        only_ep = kwargs.get("only_endpoints", False)
         all_paths = []
         for s_ndev in s_list:
             for d_ndev in d_list:
                 try:
-                    all_paths.extend(networkx.all_shortest_paths(self.nx, s_ndev, d_ndev, weight="weight"))
+                    if only_ep:
+                        all_paths.append(networkx.shortest_path(self.nx, s_ndev, d_ndev, weight="weight"))
+                    else:
+                        all_paths.extend(networkx.all_shortest_paths(self.nx, s_ndev, d_ndev, weight="weight"))
                 except networkx.exception.NetworkXNoPath:
                     pass
         if kwargs.get("add_penalty", False):
-            if kwargs.get("only_endpoints", False):
+            if only_ep:
                 all_paths = [(self.get_penalty(cur_path), cur_path[0], cur_path[-1]) for cur_path in all_paths]
             else:
                 all_paths = [(self.get_penalty(cur_path), cur_path) for cur_path in all_paths]
-        elif kwargs.get("only_endpoints", False):
+        elif only_ep:
             all_paths = [(cur_path[0], cur_path[-1]) for cur_path in all_paths]
         return all_paths
 
@@ -676,6 +680,90 @@ class server_check(object):
                 self.short_host_name = cur_dev.name
                 self._set_srv_info("virtual", "IP address '{}'".format(list(match_ips)[0]))
                 break
+
+    def get_route_to_other_devices(self, router_obj, dev_list, **kwargs):
+        # check routing from this node to other devices
+        # dev_list
+        self._fetch_network_info()
+        ip_list = net_ip.objects.filter(
+            Q(netdevice__enabled=True) &
+            Q(netdevice__device__in=dev_list)
+        ).select_related(
+            "netdevice",
+            "network"
+        ).values_list(
+            "ip",
+            "netdevice__device__idx",
+            "network",
+            "netdevice__idx",
+            "network__network_type__identifier"
+        )
+        # print ip_list
+        dev_dict = {
+            dev.idx: {
+                "nd_list": set(),
+                "raw": [entry for entry in ip_list if entry[1] == dev.idx],
+            } for dev in dev_list
+        }
+        for _ip, _dev_idx, _nw_idx, _nd_idx, _nw_id in ip_list:
+            dev_dict[_dev_idx]["nd_list"].add(_nd_idx)
+        res_dict = {dev_idx: [] for dev_idx in dev_dict.iterkeys()}
+        for dev_idx, dev in dev_dict.iteritems():
+            if self.netdevice_idx_list and dev["nd_list"]:
+                all_pathes = router_obj.get_ndl_ndl_pathes(self.netdevice_idx_list, list(dev["nd_list"]), add_penalty=True, only_endpoints=True)
+                _raw = dev["raw"]
+                nd_ip_lut = {}
+                ip_id_lut = {}
+                for _entry in _raw:
+                    nd_ip_lut.setdefault(_entry[3], []).append(_entry[0])
+                    ip_id_lut[_entry[0]] = _entry[4]
+                # routing list, common network identifiers
+                c_ret_list = []
+                # routing list, non-common network identifier
+                nc_ret_list = []
+                for penalty, s_nd_pk, d_nd_pk in all_pathes:
+                    # dicts identifier -> ips
+                    source_ip_lut, dest_ip_lut = ({}, {})
+                    for s_ip in self.netdevice_ip_lut[s_nd_pk]:
+                        source_ip_lut.setdefault(self.ip_identifier_lut[unicode(s_ip)], []).append(unicode(s_ip))
+                    for d_ip in nd_ip_lut[d_nd_pk]:
+                        dest_ip_lut.setdefault(ip_id_lut[unicode(d_ip)], []).append(unicode(d_ip))
+                    # print source_ip_lut, dest_ip_lut
+                    # common identifiers, ignore localhost
+                    common_identifiers = (set(source_ip_lut.keys()) & set(dest_ip_lut.keys())) - set(["l"])
+                    if common_identifiers:
+                        for act_id in common_identifiers:
+                            add_actual = True
+                            if add_actual:
+                                c_ret_list.append(
+                                    (
+                                        penalty,
+                                        act_id,
+                                        (s_nd_pk, source_ip_lut[act_id]),
+                                        (d_nd_pk, dest_ip_lut[act_id])
+                                    )
+                                )
+                    else:
+                        if kwargs.get("allow_route_to_other_networks", False):
+                            for src_id in set(source_ip_lut.iterkeys()) & {"p", "o"}:
+                                for dst_id in set(dest_ip_lut.iterkeys()) & {"p", "o"}:
+                                    add_actual = True
+                                    if add_actual:
+                                        nc_ret_list.append(
+                                            (
+                                                penalty,
+                                                dst_id,
+                                                (s_nd_pk, source_ip_lut[src_id]),
+                                                (d_nd_pk, dest_ip_lut[dst_id])
+                                            )
+                                        )
+                r_list = sorted(c_ret_list) + sorted(nc_ret_list)
+                if kwargs.get("global_sort_results", False):
+                    r_list = sorted(r_list)
+                if kwargs.get("prefer_production_net", False):
+                    r_list = self.prefer_production_net(r_list)
+                res_dict[dev_idx] = r_list
+        return res_dict
 
     def get_route_to_other_device(self, router_obj, other, **kwargs):
         if "cache" in kwargs and self.device is not None and other.device is not None and (self.device.pk, other.device.pk) in kwargs["cache"]:

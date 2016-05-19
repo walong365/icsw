@@ -1,7 +1,7 @@
 #
 # this file is part of collectd-init
 #
-# Copyright (C) 2014-2015 Andreas Lang-Nevyjel init.at
+# Copyright (C) 2014-2016 Andreas Lang-Nevyjel init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -22,8 +22,8 @@
 """ background job definitions for collectd-init """
 
 import time
-from lxml import etree
 
+from lxml import etree
 from lxml.builder import E
 
 from initat.collectd.collectd_struct import ext_com
@@ -166,7 +166,7 @@ class snmp_job(object):
             self.counter += 1
             self.last_start = time.time()
             self.running = True
-            self.waiting_for = "{}_{:d}".format(self.uuid, self.counter)
+            self.waiting_for = self.id_str  # "{}:{:d}".format(self.id_str, self.counter)
             # see proc_data in snmp_relay_schemes
             fetch_list = sum([_handler.collect_fetch() for _handler in self.snmp_handlers], [])
             self.bg_proc.spc.start_batch(
@@ -503,7 +503,12 @@ class bg_job(object):
         _same = _cur & _new
         _to_create = _new - _cur
         if _to_remove:
-            bg_job.g_log("{} to remove: {}".format(logging_tools.get_plural("background job", len(_to_remove)), ", ".join(sorted(list(_to_remove)))))
+            bg_job.g_log(
+                "{} to remove: {}".format(
+                    logging_tools.get_plural("background job", len(_to_remove)),
+                    ", ".join(sorted(list(_to_remove)))
+                )
+            )
             for _rem in _to_remove:
                 bg_job.ref_dict[_rem].to_remove = True
         return _to_create, _to_remove, _same

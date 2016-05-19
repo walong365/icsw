@@ -565,6 +565,8 @@ class aggregate_process(threading_tools.process_obj, server_mixins.OperationalEr
         _uuid_list = sum([_v[2] for _v in build_list[:-1]], [])
         # print _uuid_list
         v_dict = {}
+        # error lists
+        _warn_c_list, _error_ce_list = ([], [])
         for _key in _uuid_list:
             _val = mc.get("cc_hc_{}".format(_key))
             if _val is not None:
@@ -572,12 +574,26 @@ class aggregate_process(threading_tools.process_obj, server_mixins.OperationalEr
                 self.__vector_filter_cache[_key] = v_dict[_key]
             else:
                 if _key in self.__vector_filter_cache:
-                    self.log("error fetching data for {}, using cache".format(_key), logging_tools.LOG_LEVEL_WARN)
+                    _warn_c_list.append(_key)
                     v_dict[_key] = self.__vector_filter_cache[_key]
                     del self.__vector_filter_cache[_key]
                 else:
-                    self.log("error fetching data for {}, and cache is empty".format(_key), logging_tools.LOG_LEVEL_ERROR)
+                    _error_ce_list.append(_key)
                     _uuid_list.remove(_key)
+        if _warn_c_list:
+            self.log(
+                "error fetching data for {}, using cache".format(
+                    logging_tools.get_plural("key", len(_warn_c_list))
+                ),
+                logging_tools.LOG_LEVEL_WARN
+            )
+        if _error_ce_list:
+            self.log(
+                "error fetching data for {} (cache is empty)".format(
+                    logging_tools.get_plural("key", len(_error_ce_list))
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
         return v_dict
 
     def _create_aggregates(self, src_uuids, v_dict):

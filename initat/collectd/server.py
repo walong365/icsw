@@ -1,7 +1,7 @@
 #
 # this file is part of collectd
 #
-# Copyright (C) 2013-2015 Andreas Lang-Nevyjel init.at
+# Copyright (C) 2013-2016 Andreas Lang-Nevyjel init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -334,18 +334,33 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin, server_mixins.SendT
                 self._handle_xml(_send_com)
 
     def _check_reachability(self, devs, var_cache, _router, _type):
-        _reachable, _unreachable = ([], [])
-        _sc = config_tools.server_check(server_type="rrd_server")
-        for dev in devs:
-            _path = _sc.get_route_to_other_device(
-                _router, config_tools.server_check(device=dev, config=None, server_type="node"), allow_route_to_other_networks=True
+        _srv_type = "rrd_server"
+        self.log(
+            "Start reachability check for {} (srv {}, type {})".format(
+                logging_tools.get_plural("device", len(devs)),
+                _srv_type,
+                _type,
             )
-            if not len(_path):
-                _unreachable.append(dev)
-            else:
-                _ip = _path[0][3][1][0]
-                # self.log("IPMI device {} is reachable via {}".format(unicode(ipmi_host), _ip))
+        )
+        s_time = time.time()
+        _sc = config_tools.server_check(server_type=_srv_type)
+        res_dict = _sc.get_route_to_other_devices(_router, devs, allow_route_to_other_networks=True)
+        _reachable, _unreachable = ([], [])
+        for dev in devs:
+            if res_dict[dev.idx]:
+                _ip = res_dict[dev.idx][0][3][1][0]
                 _reachable.append((dev, _ip, var_cache.get_vars(dev)[0]))
+            else:
+                _unreachable.append(dev)
+        e_time = time.time()
+        self.log(
+            "Reachability check for {} (srv {}, type {}) took {}".format(
+                logging_tools.get_plural("device", len(devs)),
+                _srv_type,
+                _type,
+                logging_tools.get_diff_time_str(e_time - s_time),
+            )
+        )
         if _unreachable:
             self.log(
                 "{}: {}".format(

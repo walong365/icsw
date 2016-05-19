@@ -744,6 +744,7 @@ class RemoteServerAddress(object):
         self._address, self._uuid, self._port = (None, None, None)
         self.log("init for {}".format(self.srv_type))
         self._connected = False
+        self.__latest_router_error = None
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.mixin.log("[RSA {}] {}".format(self.srv_type, what), log_level)
@@ -773,7 +774,13 @@ class RemoteServerAddress(object):
                 else:
                     self.log("got no valid addresses", logging_tools.LOG_LEVEL_ERROR)
             else:
-                self.log("not found in router".format(self.srv_type), logging_tools.LOG_LEVEL_ERROR)
+                cur_time = time.time()
+                # reduce log flooding
+                if self.__latest_router_error and abs(self.__latest_router_error - cur_time) < 5:
+                    pass
+                else:
+                    self.log("not found in router".format(self.srv_type), logging_tools.LOG_LEVEL_ERROR)
+                    self.__latest_router_error = cur_time
 
     @property
     def valid(self):

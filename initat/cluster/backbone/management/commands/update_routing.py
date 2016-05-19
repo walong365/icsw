@@ -38,7 +38,7 @@ class Command(BaseCommand):
         _rsd = _csr.resolv_dict
         print(
             "local device is {}".format(
-                unicode(_csr.local_device)
+                unicode(_csr.local_device),
             )
         )
         for _conf in sorted(_rsd):
