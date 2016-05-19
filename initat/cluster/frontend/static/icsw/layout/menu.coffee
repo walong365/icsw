@@ -117,6 +117,7 @@ menu_module = angular.module(
                 (json) ->
                     blockUI.stop()
                     $scope.CURRENT_USER = undefined
+                    $scope.show_navbar = false
             )
         else if not from_main and to_main
             $scope.CURRENT_USER = icswUserService.get()
@@ -259,9 +260,11 @@ menu_module = angular.module(
     }
 ]).factory("icswReactMenuFactory",
 [
-    "icswAcessLevelService", "ICSW_URLS", "icswSimpleAjaxCall", "blockUI", "icswMenuProgressService", "$state",
+    "icswAcessLevelService", "ICSW_URLS", "icswSimpleAjaxCall", "blockUI",
+    "icswMenuProgressService", "$state",
 (
-    icswAcessLevelService, ICSW_URLS, icswSimpleAjaxCall, blockUI, icswMenuProgressService, $state
+    icswAcessLevelService, ICSW_URLS, icswSimpleAjaxCall, blockUI,
+    icswMenuProgressService, $state
 ) ->
     # console.log icswAcessLevelService
     {input, ul, li, a, span, h4} = React.DOM
@@ -325,7 +328,10 @@ menu_module = angular.module(
                     _add = true
                     if entry.rights?
                         if angular.isFunction(entry.rights)
-                            _add = entry.rights(@props.user, @props.acls)
+                            if @props.user?
+                                _add = entry.rights(@props.user, @props.acls)
+                            else
+                                _add = false
                         else
                             _add = icswAcessLevelService.has_all_menu_permissions(entry.rights)
                     if entry.licenses? and _add
@@ -417,8 +423,19 @@ menu_module = angular.module(
     
     menu_comp = React.createClass(
         displayName: "menubar"
-        propTypes:
-            React.PropTypes.object.isRequired
+        propTypes: {
+            user: React.PropTypes.object
+            acls: React.PropTypes.object
+        }
+        getInitialState: () ->
+            return {
+                user: @props.user
+                acls: @props.acls
+            }
+
+        set_user: (user) ->
+            @setState({user: user})
+
         update_dimensions: () ->
             @setState(
                 {
@@ -485,23 +502,26 @@ menu_module = angular.module(
                 else
                     console.error("No menu with name #{_entry.menukey} found")
             # todo: check for service_type
-            user = @props.user
-            acls = @props.acls
-            extra_menus = (menu.get_react(user, acls) for menu in _.orderBy(menus, "ordering"))
-            # console.log icswAcessLevelService.has_menu_permission("user.modify_tree")
-            # console.log @props
-            _res = ul(
-                {key: "topmenu", className: "nav navbar-nav"}
-                extra_menus
-            )
+            user = @state.user
+            acls = @state.acls
+            if user?
+                extra_menus = (menu.get_react(user, acls) for menu in _.orderBy(menus, "ordering"))
+                _res = ul(
+                    {key: "topmenu", className: "nav navbar-nav"}
+                    extra_menus
+                )
+            else
+                _res = null
             return _res
     )
     return menu_comp
 ]).directive("icswMenuDirective",
 [
-    "icswReactMenuFactory", "icswAcessLevelService", "icswMenuProgressService", "$rootScope", "ICSW_SIGNALS",
+    "icswReactMenuFactory", "icswAcessLevelService", "icswMenuProgressService",
+    "$rootScope", "ICSW_SIGNALS",
 (
-    icswReactMenuFactory, icswAcessLevelService, icswMenuProgressService, $rootScope, ICSW_SIGNALS
+    icswReactMenuFactory, icswAcessLevelService, icswMenuProgressService,
+    $rootScope, ICSW_SIGNALS
 ) ->
     return {
         restrict: "EA"
@@ -511,12 +531,23 @@ menu_module = angular.module(
         link: (scope, el, attrs) ->
             _user = undefined
             _acls = undefined
+            _element = undefined
             _render = () ->
-                if _user and _acls
-                    ReactDOM.render(
-                        React.createElement(icswReactMenuFactory, {"user": _user, "acls": _acls})
-                        el[0]
-                    )
+                if _acls
+                    if not _element?
+                        _element = ReactDOM.render(
+                            React.createElement(
+                                icswReactMenuFactory
+                                {
+                                    user: _user
+                                    acls: _acls
+                                }
+                            )
+                            el[0]
+                        )
+                    else
+                        # console.log _element, "E"
+                        _element.set_user(_user)
             $rootScope.$on(ICSW_SIGNALS("ICSW_USER_CHANGED"), (event, user) ->
                 # console.log "uc", user
                 _user = user

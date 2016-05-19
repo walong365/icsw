@@ -442,6 +442,7 @@ angular.module(
     data = {}
     _changed = () ->
         $rootScope.$emit(ICSW_SIGNALS("ICSW_ACLS_CHANGED"), data)
+
     _reset = () ->
         data.global_permissions = {}
         # these are not permissions for single objects, but the merged permission set of all objects
@@ -451,6 +452,7 @@ angular.module(
         # routing info
         data.routing_info = {}
         data.acls_are_valid = false
+
     _last_load = 0
     _reload_pending = false
     _acls_loaded = false
@@ -535,18 +537,24 @@ angular.module(
 
     func_dict = {
         # functions to check permissions for single objects
-        "acl_delete" : (obj, ac_name) ->
+        acl_delete: (obj, ac_name) ->
             return check_level(obj, ac_name, 4, true)
-        "acl_create" : (obj, ac_name) ->
+
+        acl_create: (obj, ac_name) ->
             return check_level(obj, ac_name, 2, true)
-        "acl_modify" : (obj, ac_name) ->
+
+        acl_modify: (obj, ac_name) ->
             return check_level(obj, ac_name, 1, true)
-        "acl_read" : (obj, ac_name) ->
+
+        acl_read: (obj, ac_name) ->
             return check_level(obj, ac_name, 0, true)
-        "acl_any" : (obj, ac_name, mask) ->
+
+        acl_any: (obj, ac_name, mask) ->
             return check_level(obj, ac_name, mask, true)
-        "acl_all" : (obj, ac_name, mask) ->
+
+        acl_all: (obj, ac_name, mask) ->
             return check_level(obj, ac_name, mask, false)
+
         acl_valid: () ->
             return data.acls_are_valid
 

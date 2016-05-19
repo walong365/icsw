@@ -176,18 +176,23 @@ user_module = angular.module(
     set_user(undefined)
 
     return {
-        "load": (cache) ->
+        load: (cache) ->
             # loads from server
             return load_user(cache)
-        "logout": () ->
+
+        logout: () ->
             return logout_user()
-        "get": () ->
+
+        get: () ->
             return current_user
-        "update": () ->
+
+        update: () ->
             return update_user()
-        "user_present": () ->
+
+        user_present: () ->
             return if current_user then true else false
-        "force_logout": () ->
+
+        force_logout: () ->
             # force user logout, also when a (valid) load_user request is pending
             force_logout()
     }
