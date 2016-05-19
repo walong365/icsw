@@ -92,7 +92,7 @@ angular.module(
         # must not give direct response to the parse service
         response = "<document>" + response + "</document>"
         icswParseXMLResponseService(response)
-        icswUserLicenseDataService.reload_data()
+        icswUserLicenseDataService.reload()
         icswAcessLevelService.reload()
 
     $scope.uploader.onCompleteAll = () ->
@@ -344,10 +344,10 @@ angular.module(
 ]).service("icswUserLicenseDataService",
 [
     "Restangular", "ICSW_URLS", "gettextCatalog", "icswSimpleAjaxCall", "$q",
-    "icswUserLicenseDataTree", "icswCachingCall",
+    "icswUserLicenseDataTree", "icswCachingCall", "$rootScope", "ICSW_SIGNALS",
 (
     Restangular, ICSW_URLS, gettextCatalog, icswSimpleAjaxCall, $q,
-    icswUserLicenseDataTree, icswCachingCall,
+    icswUserLicenseDataTree, icswCachingCall, $rootScope, ICSW_SIGNALS,
 ) ->
     rest_map = [
         [
@@ -381,13 +381,17 @@ angular.module(
         $q.all(_wait_list).then(
             (data) ->
                 console.log "*** license tree loaded ***"
-                _result = new icswUserLicenseDataTree(data[0], data[1], data[2], data[3])
+                if _result?
+                    _result.update(data[0], data[1], data[2])
+                else
+                    _result = new icswUserLicenseDataTree(data[0], data[1], data[2], data[3])
                 _defer.resolve(_result)
                 for client of _fetch_dict
                     # resolve clients
                     _fetch_dict[client].resolve(_result)
                 # reset fetch_dict
                 _fetch_dict = {}
+                $rootScope.$emit(ICSW_SIGNALS("ICSW_LICENSE_DATA_LOADED"))
         )
         return _defer
 
@@ -416,6 +420,9 @@ angular.module(
                 return fetch_data(client).promise
             else
                 return load_data(client).promise
+
+        reload: (client) ->
+            return load_data(client).promise
 
         is_valid: () ->
             return if _result? then true else false

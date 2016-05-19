@@ -391,12 +391,14 @@ class LicenseUsage(object):
             else:
                 usage_by_lic[lic_enum][param_type_enum] = usage
 
-        for dev_usage in LicenseUsageDeviceService.objects.filter(service__isnull=True)\
-                .values('license').annotate(usage=Count('pk')):
+        for dev_usage in LicenseUsageDeviceService.objects.filter(
+            service__isnull=True
+        ).values('license').annotate(usage=Count('pk')):
             _add(dev_usage['license'], LicenseParameterTypeEnum.device, dev_usage['usage'])
 
-        for serv_usage in LicenseUsageDeviceService.objects.filter(service__isnull=False)\
-                .values('license').annotate(usage=Count('pk')):
+        for serv_usage in LicenseUsageDeviceService.objects.filter(
+            service__isnull=False
+        ).values('license').annotate(usage=Count('pk')):
             _add(serv_usage['license'], LicenseParameterTypeEnum.service, serv_usage['usage'])
 
         for user_usage in LicenseUsageUser.objects.values('license').annotate(usage=Count('pk')):

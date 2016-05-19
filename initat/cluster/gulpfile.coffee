@@ -548,11 +548,13 @@ if options.addons
     gulp.task("deploy-all", gulp.parallel("deploy-css", "deploy-js", "deploy-html", "deploy-addons"))
     gulp.task("setup-main", gulp.series("modify-app-js", "transform-main", "fix-main-import-path"))
     gulp.task("deploy-and-transform-all", gulp.series("deploy-all", "setup-main", "inject-addons-to-main", "copy-main"))
+    gulp.task("rebuild-after-watch", gulp.series("deploy-all", "transform-main", "fix-main-import-path", "inject-addons-to-main", "copy-main", "reload-main"))
 else
     gulp.task("modify-app-js", gulp.series("create-all-urls", "inject-urls-to-app"))
     gulp.task("deploy-all", gulp.parallel("deploy-css", "deploy-js", "deploy-html"))
     gulp.task("setup-main", gulp.series("modify-app-js", "transform-main", "fix-main-import-path"))
     gulp.task("deploy-and-transform-all", gulp.series("deploy-all", "setup-main", "copy-main"))
+    gulp.task("rebuild-after-watch", gulp.series("deploy-all", "transform-main", "fix-main-import-path", "copy-main", "reload-main"))
 
 
 # watcher tasks
@@ -566,7 +568,7 @@ gulp.task("watch", (cb) ->
             "addons/licadmin/initat/cluster/work/icsw/*.js",
             "addons/licadmin/initat/cluster/work/icsw/*.html",
         ]
-        gulp.series(gulp.parallel("icsw-cs", "icsw-html"), "deploy-all", "transform-main", "fix-main-import-path", "inject-addons-to-main", "copy-main", "reload-main")
+        gulp.series(gulp.parallel("icsw-cs", "icsw-html"), "rebuild-after-watch")
     )
     cb()
 )

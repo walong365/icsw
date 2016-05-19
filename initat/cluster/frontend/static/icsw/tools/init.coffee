@@ -258,7 +258,8 @@ angular.module(
         ICSW_USER_GROUP_TREE_LOADED: "icsw.user.group.tree.loaded"
         ICSW_USER_GROUP_TREE_CHANGED: "icsw.user.group.tree.changed"
         ICSW_PACKAGE_INSTALL_LIST_CHANGED: "icsw.package.install.list.changed"
-
+        # license tree loaded
+        ICSW_LICENSE_DATA_LOADED: "icsw.license.data.loaded"
         # local signals (for local $emit / $on)
 
         _ICSW_CLOSE_USER_GROUP: "_icsw.close.user.group"
