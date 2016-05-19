@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -177,7 +177,9 @@ class _general(hm_classes.hm_module):
             if len(self.cpu_list) > 1:
                 for cpu_idx in self.cpu_list:
                     for what in stat_list:
-                        mv.register_entry("vms.{}.p{}".format(what, cpu_idx), 0., "percentage of time spent for $2 on cpu {}".format(cpu_idx), "%")
+                        mv.register_entry("vms.{}.p{}".format(what, cpu_idx), 0., "percentage of time spent for $2 on core {}".format(cpu_idx), "%")
+                    mv.register_entry("cpu.speed.p{}".format(cpu_idx), 0., "Current speed of core {}".format(cpu_idx), "1/s")
+
         mv.register_entry("num.interrupts", 0, "number of interrupts per second", "1/s")
         mv.register_entry("num.context", 0, "number of context switches per second", "1/s")
         # mv.register_entry("blks.in"       , 0, "number of blocks read per second"     , "1/s")
@@ -321,6 +323,17 @@ class _general(hm_classes.hm_module):
         # use psutil
         stat_dict["cpu"] = psutil.cpu_times()
         if mvect.cs["detailed_cpu_statistics"]:
+            _proc_id = None
+            for _line in file("/proc/cpuinfo", "r").read().split("\n"):
+                _line = _line.strip()
+                if _line.lower().startswith("processor"):
+                    _proc_id = int(_line.strip().split()[-1])
+                elif _line.lower().startswith("cpu mhz") and _proc_id is not None:
+                    _key = "cpu.speed.p{:d}".format(_proc_id)
+                    try:
+                        mvect[_key] = float(_line.strip().split()[-1])
+                    except KeyError:
+                        pass
             for cpu_num, cpu_stat in enumerate(psutil.cpu_times(percpu=True)):
                 stat_dict["cpu{}".format(self.cpu_list[cpu_num])] = cpu_stat
         if os.path.isfile("/proc/vmstat"):
