@@ -313,6 +313,7 @@ angular.module(
         $scope.feed_rrd_json = (json) ->
             if "error" of json
                 toaster.pop("error", "", json["error"])
+                $scope.struct.error_string = "Error loading tree"
             else
                 if $scope.auto_select_keys.length
                     $scope.auto_select_re = new RegExp($scope.auto_select_keys.join("|"))

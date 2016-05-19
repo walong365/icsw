@@ -60,6 +60,7 @@ monitoring_basic_module = angular.module(
             url: "/monitorredirect"
             template: "<h2>Redirecting...</h2>"
             icswData:
+                redirect_to_from_on_error: true
                 menuEntry:
                     menukey: "mon"
                     name: "Icinga"
@@ -85,6 +86,7 @@ monitoring_basic_module = angular.module(
         "main.monitorb0", {
             url: "/monitorb0"
             icswData:
+                redirect_to_from_on_error: true
                 menuEntry:
                     menukey: "mon"
                     name: "rebuild config cached"
@@ -94,6 +96,7 @@ monitoring_basic_module = angular.module(
                     preSpacer: true
             resolve:
                 redirect: ["icswSimpleAjaxCall", "ICSW_URLS", "$q", "blockUI", (icswSimpleAjaxCall, ICSW_URLS, $q, blockUI) ->
+                    console.log "REDIR"
                     # todo: add icswMenuProgressService
                     _defer = $q.defer()
                     blockUI.start()
@@ -118,6 +121,7 @@ monitoring_basic_module = angular.module(
         "main.monitorb1", {
             url: "/monitorb1"
             icswData:
+                redirect_to_from_on_error: true
                 menuEntry:
                     menukey: "mon"
                     name: "rebuild config dynamic"

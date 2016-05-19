@@ -52,6 +52,7 @@ def get_empty_job_options(**kwargs):
     options.suppress_nodelist = False
     options.compress_nodelist = True
     options.only_valid_waiting = False
+    options.detailed_wait = False
     options.long_status = False
     options.show_stdoutstderr = True
     for key, value in kwargs.iteritems():
@@ -1060,7 +1061,7 @@ def get_running_headers(options):
                 E.left_time()
             ]
         )
-    cur_job.append(E.load()),
+    cur_job.append(E.load())
     if options.show_stdoutstderr:
         cur_job.extend(
             [
@@ -1270,6 +1271,10 @@ def get_waiting_headers(options):
                 E.exec_time(),
             ]
         )
+    if options.detailed_wait:
+        cur_job.ext(
+            E.wait_details()
+        )
     cur_job.extend(
         [
             E.prio(),
@@ -1353,6 +1358,25 @@ def build_waiting_list(s_info, options, **kwargs):
                 _exec_time = datetime.datetime.fromtimestamp(int(_exec_time.text))
                 cur_job.append(E.exec_time(logging_tools.get_relative_dt(_exec_time)))
         dep_list = sorted(act_job.xpath(".//predecessor_jobs_req/text()", smart_strings=False))
+        # print etree.tostring(act_job, pretty_print=True)
+        if options.detailed_wait:
+            # parse
+            _info_dict = {
+                # normalized values
+                "norm_pprio": float(act_job.findtext("JB_nppri")),
+                "norm_urg": float(act_job.findtext("JB_nurg")),
+                # resource requirements
+                "rr_contr": float(act_job.findtext("JB_rrcontr")),
+                # wait time
+                "wt_contr": float(act_job.findtext("JB_wtcontr")),
+                # deadline
+                "dl_contr": float(act_job.findtext("JB_dlcontr")),
+
+            }
+            # print _info_dict
+            cur_job.append(
+                E.detailed_wait("X")
+            )
         cur_job.extend(
             [
                 E.prio(act_job.findtext("JAT_prio")),
@@ -1752,11 +1776,25 @@ def build_node_list(s_info, options):
                     )
                 )
             if not options.suppress_status:
-                cur_node.append(E.state(m_queue.findtext("queuevalue[@name='{}state_string']".format(
-                    "long_" if options.long_status else "")) or "-"))
+                cur_node.append(
+                    E.state(
+                        m_queue.findtext(
+                            "queuevalue[@name='{}state_string']".format(
+                                "long_" if options.long_status else ""
+                            )
+                        ) or "-"
+                    )
+                )
             if options.show_type or options.show_long_type:
-                cur_node.append(E.type(m_queue.findtext("queuevalue[@name='{}qtype_string']".format(
-                    "long_" if options.show_long_type else ""))))
+                cur_node.append(
+                    E.type(
+                        m_queue.findtext(
+                            "queuevalue[@name='{}qtype_string']".format(
+                                "long_" if options.show_long_type else ""
+                            )
+                        )
+                    )
+                )
             if options.show_complexes:
                 cur_node.append(
                     E.complex(

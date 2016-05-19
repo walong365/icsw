@@ -166,7 +166,7 @@ class snmp_job(object):
             self.counter += 1
             self.last_start = time.time()
             self.running = True
-            self.waiting_for = self.id_str  # "{}:{:d}".format(self.id_str, self.counter)
+            self.waiting_for = "{}:{:d}".format(self.id_str, self.counter)
             # see proc_data in snmp_relay_schemes
             fetch_list = sum([_handler.collect_fetch() for _handler in self.snmp_handlers], [])
             self.bg_proc.spc.start_batch(
@@ -243,12 +243,22 @@ class snmp_job(object):
     def feed_result(recv_data):
         job_id = recv_data[0]
         _found = False
+        _w_ignore = set()
         for _job in snmp_job.ref_dict.itervalues():
             if _job.waiting_for == job_id:
                 _job.feed(*recv_data[1:])
                 _found = True
+            else:
+                _w_ignore.add(_job.waiting_for or "-")
         if not _found:
-            snmp_job.g_log("job_id {} unknown".format(job_id), logging_tools.LOG_LEVEL_ERROR)
+            snmp_job.g_log(
+                "job_id {} unknown, present {:d}: {}".format(
+                    job_id,
+                    len(_w_ignore),
+                    ", ".join(list(_w_ignore)),
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
 
     @staticmethod
     def setup(bg_proc):

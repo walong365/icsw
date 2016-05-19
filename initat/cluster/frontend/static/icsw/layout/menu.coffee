@@ -58,14 +58,17 @@ menu_module = angular.module(
             $scope.HANDBOOK_PDF_PRESENT = data[0].HANDBOOK_PDF_PRESENT
             $scope.HANDBOOK_CHUNKS_PRESENT = data[0].HANDBOOK_CHUNKS_PRESENT
     )
-    console.log
+
     $scope.get_progress_style = (obj) ->
         return {"width" : "#{obj.value}%"}
+
     $scope.redirect_to_init = () ->
         window.location = "http://www.initat.org"
         return false
+
     $scope.handbook_url = "/"
     $scope.handbook_url_valid = false
+
     $scope.$watch(
         "initProduct",
         (new_val) ->
@@ -74,6 +77,7 @@ menu_module = angular.module(
                 $scope.handbook_url = "/cluster/doc/#{new_val.name.toLowerCase()}_handbook.pdf"
         true
     )
+
     # not needed, now handled in menubar-component
     # $scope.$watch(
     #    "size",
@@ -126,9 +130,16 @@ menu_module = angular.module(
                 $window.location.reload()
 
     )
-    $scope.$on("$stateChangeError", (event, to_state, to_params) ->
-        console.log "error moving to #{to_state.name}"
-        $state.go("login")
+    $scope.$on("$stateChangeError", (event, to_state, to_params, from_state, from_params) ->
+        console.error "error moving to #{to_state.name}", to_state
+        _to_login = true
+        if to_state.icswData?
+            if to_state.icswData.redirect_to_from_on_error?
+                _to_login = false
+        if _to_login
+            $state.go("login")
+        else
+            $state.go(from_state, from_params)
     )
     # $scope.device_selection = () ->
     #    console.log "SHOW_DIALOG"
