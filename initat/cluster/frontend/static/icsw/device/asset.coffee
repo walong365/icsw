@@ -125,6 +125,22 @@ device_asset_module = angular.module(
                 return item_idx[item]
         return -1
         
+    SCHED_SOURCE_LUT = {
+        # see models/dispatch.py
+        1: "SNMP"
+        2: "ASU"
+        3: "IPMI"
+        4: "Package"
+        5: "Hardware"
+        6: "License"
+        7: "Update"
+        8: "Software Version"
+        9: "Process"
+        10: "Pending update"
+    }
+    resolve_schedule_source = (_s) ->
+        return SCHED_SOURCE_LUT[_s]
+        
     return {
         resolve_asset_type: resolve_asset_type
         resolve_asset_type_reverse: resolve_asset_type_reverse
@@ -132,6 +148,7 @@ device_asset_module = angular.module(
         resolve_package_type_reverse: resolve_package_type_reverse
         resolve_run_status: resolve_run_status
         resolve_run_status_reverse: resolve_run_status_reverse
+        resolve_schedule_source: resolve_schedule_source
     }
 ]).controller("icswDeviceAssetCtrl",
 [

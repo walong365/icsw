@@ -61,32 +61,37 @@ monitoring_device_module = angular.module(
     )
 ]).service("icswDispatcherSettingTree",
 [
-    "$q", "Restangular", "ICSW_URLS",
+    "$q", "Restangular", "ICSW_URLS", "icswAssetHelperFunctions",
 (
-    $q, Restangular, ICSW_URLS,
+    $q, Restangular, ICSW_URLS, icswAssetHelperFunctions,
 ) ->
     class icswDispatcherSettingTree
-        constructor: (list, schedule_list, @com_cap_tree) ->
+        constructor: (list, schedule_list, sched_item_list, @com_cap_tree) ->
             @list = []
             @schedule_list = []
-            @update(list, schedule_list)
+            @sched_item_list = []
+            @update(list, schedule_list, sched_item_list)
 
-        update: (list, schedule_list) =>
+        update: (list, schedule_list, sched_item_list) =>
             @list.length = 0
             for entry in list
                 @list.push(entry)
             @schedule_list.length = 0
             for entry in schedule_list
                 @schedule_list.push(entry)
-
+            @sched_item_list.length = 0
+            for entry in sched_item_list
+                @sched_item_list.push(entry)
             @build_luts()
 
         build_luts: () =>
             @lut = _.keyBy(@list, "idx")
             @schedule_lut = _.keyBy(@schedule_list, "idx")
+            @sched_item_lut = _.keyBy(@sched_item_list, "idx")
             @link()
 
         link: () =>
+            DT_FORM = "dd, D. MMM YYYY HH:mm:ss"
             _cf = ["year", "month", "week", "day", "hour", "minute", "second"]
             # create fields for schedule_setting form handling
             for entry in @schedule_list
@@ -98,8 +103,17 @@ monitoring_device_module = angular.module(
                         entry["$$filter_#{_se}"] = false
                     if entry.name == _se
                         _take = true
+
+            # beautify schedule_item planned
+            for entry in @sched_item_list
+                entry.$$planned_date = moment(entry.planned_date).format(DT_FORM)
+                entry.$$source = icswAssetHelperFunctions.resolve_schedule_source(entry.source)
+
             # create some simple links
             for entry in @list
+                # create reference for all sched_items
+                entry.$$sched_item_list = (_sched for _sched in @sched_item_list when _sched.dispatch_setting == entry.idx)
+                # link run_schedule
                 entry.$$run_schedule = @schedule_lut[entry.run_schedule]
                 offset = ""
                 _rs = entry.$$run_schedule
@@ -183,6 +197,11 @@ monitoring_device_module = angular.module(
             ICSW_URLS.REST_DISPATCHER_SETTING_SCHEDULE_LIST
             {}
         ]
+        [
+            # planned schedules
+            ICSW_URLS.REST_SCHEDULE_ITEM_LIST
+            {}
+        ]
     ]
     _fetch_dict = {}
     _result = undefined
@@ -198,9 +217,9 @@ monitoring_device_module = angular.module(
             (data) ->
                 console.log "*** dispatcher setting tree loaded ***"
                 if _result?
-                    _result.update(data[0], data[1])
+                    _result.update(data[0], data[1], data[2])
                 else
-                    _result = new icswDispatcherSettingTree(data[0], data[1], data[2])
+                    _result = new icswDispatcherSettingTree(data[0], data[1], data[2], data[3])
                 _defer.resolve(_result)
                 for client of _fetch_dict
                     # resolve clients
@@ -495,8 +514,11 @@ monitoring_device_module = angular.module(
         monitor_servers: []
         # user
         user: undefined
+        # reload timeout
+        _reload_timeout: null
     }
     $scope.new_devsel = (devs) ->
+        stop_timeout()
         $scope.struct.loading = true
         $q.all(
             [
@@ -525,8 +547,43 @@ monitoring_device_module = angular.module(
                     (done) ->
                         $scope.struct.device_tree.salt_dispatcher_infos($scope.struct.devices, $scope.struct.dispatcher_tree)
                         $scope.struct.loading = false
+                        start_timeout()
                 )
         )
+
+    reload = () ->
+        console.log "run"
+        stop_timeout()
+        $q.all(
+            [
+                icswDispatcherSettingTreeService.reload($scope.$id)
+            ]
+        ).then(
+            (data) ->
+                hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, $scope.struct.devices)
+                $scope.struct.device_tree.enrich_devices(hs, ["dispatcher_info"]).then(
+                    (done) ->
+                        $scope.struct.device_tree.salt_dispatcher_infos($scope.struct.devices, $scope.struct.dispatcher_tree)
+                        start_timeout()
+                )
+        )
+
+    start_timeout = () ->
+        stop_timeout()
+        $scope.struct._reload_timeout = $timeout(
+            () ->
+                reload()
+            5000
+        )
+
+    stop_timeout = () ->
+        if $scope.struct._reload_timeout?
+            $timeout.cancel($scope.struct._reload_timeout)
+            $scope.struct._reload_timeout = null
+
+    $scope.$on("$destroy", () ->
+        stop_timeout()
+    )
 
     $scope.run_now = ($event, obj) ->
         obj.loading = true
@@ -543,7 +600,7 @@ monitoring_device_module = angular.module(
         ), 10000
 
     $scope.edit = ($event, obj) ->
-
+        stop_timeout()
         if not obj?
             # selected
             _dev_list = (entry for entry in $scope.struct.devices when entry.isSelected)
@@ -602,7 +659,6 @@ monitoring_device_module = angular.module(
             (fin) ->
                 $scope.struct.device_tree.salt_dispatcher_infos($scope.struct.devices, $scope.struct.dispatcher_tree)
                 sub_scope.$destroy()
+                start_timeout()
         )
-
-
 ])
