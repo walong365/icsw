@@ -33,6 +33,7 @@ from .config import global_config
 from .ext_com_scan import BaseScanMixin, ScanBatch, WmiScanMixin, NRPEScanMixin, Dispatcher
 from .hm_functions import HostMonitoringMixin
 from .snmp_functions import SNMPBatch
+from .vmware_functions import Collector
 
 
 class DiscoveryProcess(threading_tools.process_obj, HostMonitoringMixin, BaseScanMixin, WmiScanMixin, NRPEScanMixin):
@@ -182,8 +183,10 @@ class DiscoveryProcess(threading_tools.process_obj, HostMonitoringMixin, BaseSca
         SNMPBatch.setup(self)
         ScanBatch.setup(self)
         dispatcher = Dispatcher(self)
+        collector = Collector()
         self.register_timer(dispatcher.dispatch_call, 1)
         self.register_timer(dispatcher.schedule_call, 10)
+        self.register_timer(collector.collect_call, 20)
 
     def _snmp_basic_scan(self, *args, **kwargs):
         SNMPBatch(server_command.srv_command(source=args[0]))
