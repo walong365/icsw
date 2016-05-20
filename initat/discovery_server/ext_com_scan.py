@@ -627,7 +627,7 @@ class Dispatcher(object):
 
             if ds not in last_sched:
                 next_run = _ScheduleItem(device, DiscoverySource.PACKAGE, align_time_to_baseline(_now, ds))
-                print "Next scheduled run: %s" % next_run
+                #print "Next scheduled run: %s" % next_run
                 # self.schedule_items.append(last_sched)
                 # self.schedule_items.sort(key=lambda s: s.planned_date)
                 ScheduleItem.objects.create(device=next_run.device,
@@ -641,7 +641,7 @@ class Dispatcher(object):
                 next_run = _ScheduleItem(device,
                                          DiscoverySource.PACKAGE,
                                          last_sched[ds].planned_date + get_time_inc_from_ds(ds))
-                print "Next scheduled run: %s" % next_run
+                #print "Next scheduled run: %s" % next_run
                 # self.schedule_items.append(next_run)
                 # self.schedule_items.sort(key=lambda s: s.planned_date)
                 ScheduleItem.objects.create(device=next_run.device,
@@ -669,7 +669,7 @@ class Dispatcher(object):
                     found = True
 
             if not found:
-                print "removing %s %s" % (sched.device, sched.planned_date)
+                #print "removing %s %s" % (sched.device, sched.planned_date)
                 sched.delete()
             else:
                 self.schedule_items.append(sched)
@@ -685,7 +685,7 @@ class Dispatcher(object):
         while self.schedule_items:
             schedule_item = self.schedule_items.pop(0)
             if schedule_item.planned_date < _now:
-                print "need to run: %s" % schedule_item.__repr__()
+                #print "need to run: %s" % schedule_item.__repr__()
 
                 hm_capable = False
                 nrpe_capable = False
@@ -700,7 +700,8 @@ class Dispatcher(object):
                 elif nrpe_capable:
                     self.__do_nrpe_scan(schedule_item)
                 else:
-                    print "Skipping non capable device"
+                    pass
+                    #print "Skipping non capable device"
                 schedule_item.delete()
 
         self.schedule_items_lock.release()
@@ -714,7 +715,7 @@ class Dispatcher(object):
                     asset_run.save()
 
                     if isinstance(com, ExtCom):
-                        print "Executing: %s" % com.command
+                        #print "Executing: %s" % com.command
                         com.run()
                     else:
                         hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
@@ -737,7 +738,8 @@ class Dispatcher(object):
                                 multi=True
                             )
                         else:
-                            print "no ip for %s" % _device
+                            pass
+                            #print "no ip for %s" % _device
 
                         # replace cmd_str in [AssetRun, com_type, timeout] list with zmq_con object
                         self.device_asset_run_ext_coms[_device][0][1] = zmq_con
@@ -746,7 +748,7 @@ class Dispatcher(object):
             if self.device_running_ext_coms[_device] == 1:
                 asset_run, com, timeout = self.device_asset_run_ext_coms[_device][0]
                 self.device_asset_run_ext_coms[_device][0][2] = timeout - 1
-                print timeout
+                #print timeout
                 if timeout < 1:
                     self.device_asset_run_ext_coms[_device].pop(0)
                     asset_run.run_status = RunStatus.FAILED
@@ -765,8 +767,8 @@ class Dispatcher(object):
                         self.device_running_ext_coms[_device] = 0
                     elif status is not None:
                         self.device_asset_run_ext_coms[_device].pop(0)
-                        _output = com.communicate()
-                        asset_run.run_status = RunStatus.ENDED
+                        #_output = com.communicate()
+                        asset_run.run_status = RunStatus.FAILED
                         asset_run.run_end_time = datetime.datetime.now()
                         asset_run.save()
                         self.device_running_ext_coms[_device] = 0
@@ -821,26 +823,14 @@ class Dispatcher(object):
             (AssetType.PENDING_UPDATE, "updatelist")
         ]
         for runtype, _command in cmd_tuples:
-            # runtype = None
-            # _command = None
-            # if schedule_item.source == DiscoverySource.PACKAGE:
-            #     runtype = AssetType.PACKAGE
-            #     _command = "rpmlist"
-            # elif schedule_item.source == DiscoverySource.HARDWARE:
-            #     runtype = AssetType.HARDWARE
-            #     _command = "lstopo"
-            # elif schedule_item.source == DiscoverySource.LICENSE:
-            #     runtype = AssetType.LICENSE
-            #     # todo implement me
-            # elif schedule_item.source == DiscoverySource.UPDATE:
-            #     runtype = AssetType.UPDATE
-            #     # todo implement me
-            # elif schedule_item.source == DiscoverySource.PROCESS:
-            #     runtype = AssetType.PROCESS
-            #     _command = "proclist"
-            # elif schedule_item.source == DiscoverySource.PENDING_UPDATE:
-            #     runtype = AssetType.PENDING_UPDATE
-            #     _command = "updatelist"
+            if runtype == AssetType.PACKAGE:
+                timeout = 30
+            if runtype == AssetType.HARDWARE:
+                timeout = 15
+            if runtype == AssetType.PROCESS:
+                timeout = 15
+            if runtype == AssetType.PENDING_UPDATE:
+                timeout = 60
 
             _device = schedule_item.device
             asset_run_len = len(_device.assetrun_set.all())
@@ -855,7 +845,7 @@ class Dispatcher(object):
                 self.device_running_ext_coms[_device] = 0
                 self.device_asset_run_ext_coms[_device] = []
 
-            self.device_asset_run_ext_coms[_device].append([new_asset_run, _command, 120])
+            self.device_asset_run_ext_coms[_device].append([new_asset_run, _command, timeout])
 
     def __do_nrpe_scan(self, schedule_item):
         cmd_tuples = [(AssetType.PACKAGE, LIST_SOFTWARE_CMD),
@@ -866,25 +856,6 @@ class Dispatcher(object):
                       (AssetType.LICENSE, LIST_KEYS_CMD)]
 
         for runtype, _command in cmd_tuples:
-            # if schedule_item.source == DiscoverySource.PACKAGE:
-            #     _command = LIST_SOFTWARE_CMD
-            #     runtype = AssetType.PACKAGE
-            # elif schedule_item.source == DiscoverySource.HARDWARE:
-            #     _command = LIST_HARDWARE_CMD
-            #     runtype = AssetType.HARDWARE
-            # elif schedule_item.source == DiscoverySource.LICENSE:
-            #     _command = LIST_KEYS_CMD
-            #     runtype = AssetType.LICENSE
-            # elif schedule_item.source == DiscoverySource.UPDATE:
-            #     _command = LIST_UPDATES_CMD
-            #     runtype = AssetType.UPDATE
-            # elif schedule_item.source == DiscoverySource.PROCESS:
-            #     _command = LIST_PROCESSES_CMD
-            #     runtype = AssetType.PROCESS
-            # elif schedule_item.source == DiscoverySource.PENDING_UPDATE:
-            #     _command = LIST_PENDING_UPDATES_CMD
-            #     runtype = AssetType.PENDING_UPDATE
-
             _com = "/opt/cluster/sbin/check_nrpe -H {} -n -c {} -t120".format(schedule_item.device.all_ips()[0],
                                                                               _command)
             ext_com = ExtCom(self.log, _com)

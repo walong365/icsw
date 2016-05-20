@@ -3,7 +3,7 @@
 #
 # this file is part of icsw-server
 #
-# Send feedback to: <kaufmann@init.at>
+# Send feedback to: <g.kaufmann@init.at>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
