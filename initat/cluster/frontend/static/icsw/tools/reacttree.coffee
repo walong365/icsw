@@ -244,6 +244,7 @@ angular.module(
                         onClick: (event) =>
                             _tc.handle_click(event, _tn)
                             @force_redraw()
+                            @props.parent_cb()
                         onDblClick: (event) =>
                             _tc.handle_dbl_click(event, _tn)
                     }
@@ -646,7 +647,7 @@ angular.module(
                         _defer.reject("not ok")
                 )
             else
-                _defer.reject("not enabedl")
+                _defer.reject("not enabled")
             return _defer.promise
 
         # change selection of subtrees

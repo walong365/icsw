@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2009,2011-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2009,2011-2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #
@@ -19,10 +19,6 @@
 #
 """ module for handling config files """
 
-from collections import OrderedDict
-from lxml import etree  # @UnresolvedImport @UnusedImport
-from multiprocessing import current_process, util, forking, managers
-from multiprocessing.managers import BaseManager, BaseProxy, Server
 import argparse
 import datetime
 import grp
@@ -31,8 +27,10 @@ import pwd
 import re
 import sys
 import threading
+from collections import OrderedDict
+from multiprocessing import current_process, util, forking, managers
+from multiprocessing.managers import BaseManager, BaseProxy, Server
 
-from lxml.builder import E  # @UnresolvedImport @UnusedImport
 from initat.tools import logging_tools, process_tools
 
 
@@ -142,12 +140,10 @@ class _conf_var(object):
         self._database_set = "database" in kwargs
         self._database = kwargs.get("database", False)
         self._only_commandline = kwargs.get("only_commandline", False)
-        kw_keys = set(kwargs) - set(
-            [
-                "only_commandline", "info", "source", "fixed", "action",
-                "help_string", "short_options", "choices", "nargs", "database",
-            ]
-        )
+        kw_keys = set(kwargs) - {
+            "only_commandline", "info", "source", "fixed", "action",
+            "help_string", "short_options", "choices", "nargs", "database",
+        }
         if kw_keys:
             print "*** {} for _conf_var('{}') left: {} ***".format(
                 logging_tools.get_plural("keyword argument", len(kw_keys)),
@@ -247,7 +243,11 @@ class _conf_var(object):
         except ValueError:
             raise ValueError("Value Error for value {}".format(str(val)))
         else:
-            if self._choices and set([r_val]) - set(self._choices):
+            if type(r_val) in {tuple, list}:
+                _c_val = set(r_val)
+            else:
+                _c_val = set([r_val])
+            if self._choices and _c_val - set(self._choices):
                 print(
                     "ignoring value {} for {} (not in choices: {})".format(
                         r_val,
