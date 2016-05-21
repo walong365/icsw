@@ -202,6 +202,11 @@ monitoring_device_module = angular.module(
             ICSW_URLS.REST_SCHEDULE_ITEM_LIST
             {}
         ]
+        #[
+        #    # past assetruns
+        #    ICSW_URLS.ASSET_GET_PAST_ASSETRUNS
+        #    {}
+        #]
     ]
     _fetch_dict = {}
     _result = undefined
@@ -215,10 +220,10 @@ monitoring_device_module = angular.module(
         _defer = $q.defer()
         $q.all(_wait_list).then(
             (data) ->
-                console.log "*** dispatcher setting tree loaded ***"
                 if _result?
                     _result.update(data[0], data[1], data[2])
                 else
+                    console.log "*** dispatcher setting tree loaded ***"
                     _result = new icswDispatcherSettingTree(data[0], data[1], data[2], data[3])
                 _defer.resolve(_result)
                 for client of _fetch_dict
@@ -492,12 +497,12 @@ monitoring_device_module = angular.module(
     "$scope", "icswDeviceTreeService", "$q", "icswMonitoringBasicTreeService", "icswComplexModalService",
     "$templateCache", "$compile", "toaster", "blockUI", "Restangular",
     "ICSW_URLS", "icswConfigTreeService", "icswDispatcherSettingTreeService", "icswDeviceTreeHelperService",
-    "icswUserService", "$http", "$timeout"
+    "icswUserService", "$http", "$timeout", "icswSimpleAjaxCall",
 (
     $scope, icswDeviceTreeService, $q, icswMonitoringBasicTreeService, icswComplexModalService,
     $templateCache, $compile, toaster, blockUI, Restangular,
     ICSW_URLS, icswConfigTreeService, icswDispatcherSettingTreeService, icswDeviceTreeHelperService,
-    icswUserService, $http, $timeout
+    icswUserService, $http, $timeout, icswSimpleAjaxCall,
 ) ->
     $scope.struct = {
         # loading
@@ -516,6 +521,7 @@ monitoring_device_module = angular.module(
         user: undefined
         # reload timeout
         _reload_timeout: null
+        # updating flag
     }
     $scope.new_devsel = (devs) ->
         stop_timeout()
@@ -543,7 +549,7 @@ monitoring_device_module = angular.module(
                             entry.isSelected = false
                         $scope.struct.devices.push(entry)
                 hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, $scope.struct.devices)
-                $scope.struct.device_tree.enrich_devices(hs, ["dispatcher_info"]).then(
+                $scope.struct.device_tree.enrich_devices(hs, ["dispatcher_info", "past_assetrun_info"]).then(
                     (done) ->
                         $scope.struct.device_tree.salt_dispatcher_infos($scope.struct.devices, $scope.struct.dispatcher_tree)
                         $scope.struct.loading = false
@@ -552,8 +558,8 @@ monitoring_device_module = angular.module(
         )
 
     reload = () ->
-        console.log "run"
         stop_timeout()
+        $scope.struct.updating = true
         $q.all(
             [
                 icswDispatcherSettingTreeService.reload($scope.$id)
@@ -561,9 +567,10 @@ monitoring_device_module = angular.module(
         ).then(
             (data) ->
                 hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, $scope.struct.devices)
-                $scope.struct.device_tree.enrich_devices(hs, ["dispatcher_info"]).then(
+                $scope.struct.device_tree.enrich_devices(hs, ["dispatcher_info", "past_assetrun_info"], true).then(
                     (done) ->
                         $scope.struct.device_tree.salt_dispatcher_infos($scope.struct.devices, $scope.struct.dispatcher_tree)
+                        $scope.struct.updating = false
                         start_timeout()
                 )
         )
@@ -573,7 +580,7 @@ monitoring_device_module = angular.module(
         $scope.struct._reload_timeout = $timeout(
             () ->
                 reload()
-            5000
+            10000
         )
 
     stop_timeout = () ->
@@ -586,18 +593,22 @@ monitoring_device_module = angular.module(
     )
 
     $scope.run_now = ($event, obj) ->
-        obj.loading = true
-        $http({
-            method: 'POST',
-            url: '/icsw/api/v2/mon/run_assets_now'
-            data: "pk=" + obj.idx,
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'}
-        })
-        $timeout (->
-          obj.loading = false
-          # stop loading
-          return
-        ), 10000
+        $event.preventDefault()
+        $event.stopPropagation()
+        blockUI.start("Init AssetRun")
+        icswSimpleAjaxCall(
+            {
+                url: ICSW_URLS.ASSET_RUN_ASSETRUN_FOR_DEVICE_NOW
+                data:
+                    pk: obj.idx
+                dataType: "json"
+            }
+        ).then(
+            (done) ->
+                blockUI.stop()
+            (error) ->
+                blockUI.stop()
+        )
 
     $scope.edit = ($event, obj) ->
         stop_timeout()

@@ -25,6 +25,7 @@
 import json
 import logging
 import re
+import datetime
 
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
@@ -38,16 +39,16 @@ from initat.cluster.backbone.models import device_group, device, \
     cd_connection, domain_tree_node, category, netdevice, ComCapability, \
     partition_table, monitoring_hint, DeviceSNMPInfo, snmp_scheme, \
     domain_name_tree, net_ip, peer_information, mon_ext_host, device_variable, \
-    SensorThreshold, package_device_connection, DeviceDispatcherLink
+    SensorThreshold, package_device_connection, DeviceDispatcherLink, AssetRun
 from initat.cluster.backbone.models.functions import can_delete_obj
 from initat.cluster.backbone.render import permission_required_mixin
 from initat.cluster.backbone.serializers import netdevice_serializer, ComCapabilitySerializer, \
     partition_table_serializer, monitoring_hint_serializer, DeviceSNMPInfoSerializer, \
     snmp_scheme_serializer, device_variable_serializer, cd_connection_serializer, \
-    SensorThresholdSerializer, package_device_connection_serializer, DeviceDispatcherLinkSerializer
+    SensorThresholdSerializer, package_device_connection_serializer, DeviceDispatcherLinkSerializer, \
+    AssetRunSerializer, ShallowPastAssetRunSerializer
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from initat.tools import logging_tools, server_command, process_tools
-from initat.cluster.backbone.models.asset import AssetRun, AssetRunSerializer
 
 logger = logging.getLogger("cluster.device")
 
@@ -444,6 +445,20 @@ class AssetEnrichment(object):
         return _data
 
 
+class PastAssetrunEnrichment(object):
+    def fetch(self, pk_list):
+        _now = datetime.datetime.now()
+        _result = AssetRun.objects.filter(
+            Q(device__in=pk_list) &
+            Q(run_start_time__gt=_now - datetime.timedelta(days=1))
+        )
+        # manually unroll n2m relations
+        _data = [
+            ShallowPastAssetRunSerializer(_ar).data for _ar in _result
+        ]
+        return _data
+
+
 class DeviceConnectionEnrichment(object):
     def fetch(self, pk_list):
         _ref_list = cd_connection.objects.filter(
@@ -505,6 +520,7 @@ class EnrichmentHelper(object):
         self._all["package_info"] = EnrichmentObject(package_device_connection, package_device_connection_serializer)
         self._all["dispatcher_info"] = EnrichmentObject(DeviceDispatcherLink, DeviceDispatcherLinkSerializer)
         self._all["asset_info"] = AssetEnrichment()
+        self._all["past_assetrun_info"] = PastAssetrunEnrichment()
 
     def create(self, key, pk_list):
         if key not in self._all:

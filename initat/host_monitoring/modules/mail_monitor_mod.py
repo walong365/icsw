@@ -238,9 +238,9 @@ class MailLogObject(file_object):
                         act_event = event(self.__act_year, act_month, act_day, act_hms_str, "received.net")
                 elif act_text.count("blocked using"):
                     act_event = event(self.__act_year, act_month, act_day, act_hms_str, "blocked")
-                elif act_text.clount("disconnect"):
+                elif act_text.count("disconnect"):
                     act_event = event(self.__act_year, act_month, act_day, act_hms_str, "connections.stop")
-                elif act_text.clount("connect"):
+                elif act_text.count("connect"):
                     act_event = event(self.__act_year, act_month, act_day, act_hms_str, "connections.start")
             elif sub_prog == "error":
                 if act_text.count("status=bounced"):

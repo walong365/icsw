@@ -23,7 +23,6 @@ import datetime
 import threading
 import time
 import traceback
-from Queue import Queue
 
 import pytz
 from django.core.exceptions import ValidationError
@@ -578,33 +577,119 @@ def get_time_inc_from_ds(ds):
     return time_inc
 
 
+class PlannedRunState(object):
+    def __init__(self, pdrf, run_db_obj, ext_com, timeout):
+        self.__pdrf = pdrf
+        self.run_db_obj = run_db_obj
+        self.ext_com = ext_com
+        self.timeout = timeout
+        self.started = False
+        self.zmq_con_idx = 0
+
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.__pdrf.disp.log("[PRS] {}".format(what), log_level)
+
+    def start(self):
+        self.started = True
+        _db_obj = self.run_db_obj
+        _db_obj.run_tatus = RunStatus.RUNNING
+        _db_obj.run_start_time = datetime.datetime.now()
+        _db_obj.save()
+        self.started = True
+        self.__pdrf.num_running += 1
+
+    def store_zmq_result(self, result):
+        _db_obj = self.run_db_obj
+        _db_obj.run_tatus = RunStatus.ENDED
+        _db_obj.run_end_time = datetime.datetime.now()
+        _db_obj.run_duration = int((_db_obj.run_end_time - _db_obj.run_start_time).seconds)
+        s = None
+        if result is not None:
+            try:
+                if _db_obj.run_type == AssetType.PACKAGE:
+                    if "pkg_list" in result:
+                        s = result["pkg_list"].text
+                    else:
+                        _db_obj.run_status = RunStatus.FAILED
+                elif _db_obj.run_type == AssetType.HARDWARE:
+                    if "lstopo_dump" in result:
+                        s = result["lstopo_dump"].text
+                    else:
+                        _db_obj.run_status = RunStatus.FAILED
+                elif _db_obj.run_type == AssetType.LICENSE:
+                    pass
+                    # todo implement me
+                elif _db_obj.run_type == AssetType.UPDATE:
+                    pass
+                    # todo implement me
+                elif _db_obj.run_type == AssetType.PROCESS:
+                    if "process_tree" in result:
+                        s = result["process_tree"].text
+                    else:
+                        _db_obj.run_status = RunStatus.FAILED
+                elif _db_obj.run_type == AssetType.PENDING_UPDATE:
+                    if "update_list" in result:
+                        s = result["update_list"].text
+                    else:
+                        _db_obj.run_status = RunStatus.FAILED
+            except KeyError:
+                self.log(
+                    "KeyError: {}".format(
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
+                s = None
+        if s is None:
+            _db_obj.run_tatus = RunStatus.FAILED
+        else:
+            _db_obj.run_tatus = RunStatus.ENDED
+        _db_obj.raw_result_str = s
+        self.__pdrf.num_running -= 1
+        try:
+            _db_obj.generate_assets_new()
+        except Exception as e:
+            self.log(
+                "Exception: {}".format(process_tools.get_except_info()),
+                logging_tools.LOG_LEVEL_ERROR
+            )
+        _db_obj.save()
+        self.__pdrf.remove_planned_run(self)
+
+
+class PlannedRunsForDevice(object):
+    def __init__(self, disp, device, ip):
+        self.disp = disp
+        self.device = device
+        self.planned_runs = []
+        self.ip = ip
+        self.num_running = 0
+
+    def add_planned_run(self, run_db_obj, ext_com, timeout):
+        self.planned_runs.append(
+            PlannedRunState(self, run_db_obj, ext_com, timeout)
+        )
+
+    def remove_planned_run(self, pdrf):
+        self.planned_runs = [entry for entry in self.planned_runs if entry.run_db_obj.idx != pdrf.run_db_obj.idx]
+
+
 class Dispatcher(object):
     def __init__(self, discovery_process):
         self.discovery_process = discovery_process
-        self.device_asset_run_ext_coms = {}
-        self.device_running_ext_coms = {}
-        self.todo_asset_runs = Queue()
+        # self.device_asset_run_ext_coms = {}
+        # self.device_running_ext_coms = {}
+        self.__device_planned_runs = {}
+        self.log("init Dispatcher")
         # quasi-static constants
         self.__hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
 
-        thread = threading.Thread(target=self.generate_assets_call, args=())
-        thread.start()
-
         self.schedule_items = []
+        # not really needed because always called from same process
         self.schedule_items_lock = threading.Lock()
 
-    def generate_assets_call(self):
-        while True:
-            ar = self.todo_asset_runs.get()
-            print "*", ar
-            try:
-                ar.generate_assets_new()
-            except Exception as e:
-                self.log(
-                    "Exception: {}".format(process_tools.get_except_info()),
-                    logging_tools.LOG_LEVEL_ERROR
-                )
-            ar.save()
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.discovery_process.log("[Disp] {}".format(what), log_level)
 
     def schedule_call(self):
         # called every 10 seconds
@@ -652,10 +737,11 @@ class Dispatcher(object):
                 )
                 last_scheds[ds] = 1
                 last_sched[ds] = next_run
-            import pprint
-            pprint.pprint(last_sched)
-            pprint.pprint(last_scheds)
-            # plan next schdule when counter is below 2
+            # import pprint
+            # pprint.pprint(last_sched)
+            # pprint.pprint(last_scheds)
+
+            # plan next schedule when counter is below 2
             if last_scheds[ds] < 2:
                 next_run = _ScheduleItem(
                     device,
@@ -669,105 +755,135 @@ class Dispatcher(object):
                     device=next_run.device,
                     source=next_run.source,
                     planned_date=next_run.planned_date,
-                    dispatch_setting=ds
+                    dispatch_setting=ds,
                 )
 
         # remove schedule items that are no longer linked to a device/dispatch_setting
         schedule_items = ScheduleItem.objects.all()
-        self.schedule_items_lock.acquire()
-        self.schedule_items = []
+        # valid link list
+        link_items = DeviceDispatcherLink.objects.all().values_list("device", "dispatcher_setting")
         for sched in schedule_items:
             if sched.run_now:
-                self.schedule_items.append(sched)
+                # keep in list
                 continue
 
-            links = DeviceDispatcherLink.objects.all()
-
-            found = False
-            for link in links:
-                device = link.device
-                ds = link.dispatcher_setting
-
-                if sched.device == device and sched.dispatch_setting == ds:
-                    found = True
+            found = any(sched.device_id == v[0] and sched.dispatch_setting_id == v[1] for v in link_items)
 
             if not found:
-                # print "removing %s %s" % (sched.device, sched.planned_date)
+                self.log(
+                    "Remove orphaned ScheduleItem {:d}".format(
+                        sched.pk
+                    ),
+                    logging_tools.LOG_LEVEL_WARN
+                )
                 sched.delete()
-            else:
-                self.schedule_items.append(sched)
-
-        self.schedule_items.sort(key=lambda x: x.planned_date)
-        self.schedule_items_lock.release()
 
     def dispatch_call(self):
+        # called every second, way too often...
+        # print ".", os.getpid()
         _now = datetime.datetime.now(tz=pytz.utc).replace(microsecond=0)
         # schedule_items = sorted(ScheduleItem.objects.all(), key=lambda x: x.planned_date)
 
-        self.schedule_items_lock.acquire()
-        while self.schedule_items:
-            schedule_item = self.schedule_items.pop(0)
+        for schedule_item in ScheduleItem.objects.all().select_related(
+            "device"
+        ).prefetch_related(
+            "device__com_capability_list"
+        ):
             if schedule_item.planned_date < _now:
                 # print "need to run: %s" % schedule_item.__repr__()
 
-                hm_capable = False
-                nrpe_capable = False
-                for _com in schedule_item.device.com_capability_list.all():
-                    if _com.matchcode == "hm":
-                        hm_capable = True
-                    elif _com.matchcode == "nrpe":
-                        nrpe_capable = True
+                cap_dict = {
+                    _com.matchcode: True for _com in schedule_item.device.com_capability_list.all()
+                }
 
-                if hm_capable:
+                _dev = schedule_item.device
+                if _dev.idx not in self.__device_planned_runs:
+                    self.discovery_process.get_route_to_devices([_dev])
+                    ip = _dev.target_ip
+                    self.log("Address of device {} is {}".format(unicode(_dev), ip))
+                    self.__device_planned_runs[_dev.idx] = PlannedRunsForDevice(self, _dev, ip)
+
+                if cap_dict.get("hm", False):
                     self._do_hm_scan(schedule_item)
-                elif nrpe_capable:
+                elif cap_dict.get("nrpe", False):
                     self._do_nrpe_scan(schedule_item)
                 else:
-                    pass
-                    # print "Skipping non capable device"
+                    self.log(
+                        "Skipping non-capable device {}".format(
+                            unicode(schedule_item.device)
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
                 schedule_item.delete()
 
-        self.schedule_items_lock.release()
+        zmq_con = net_tools.zmq_connection(
+            "server:{}".format(process_tools.get_machine_name()),
+            context=self.discovery_process.zmq_context,
+            # todo: generate best value
+            timeout=120,
+        )
 
-        for _device in self.device_asset_run_ext_coms:
-            if self.device_running_ext_coms[_device] == 0:
-                if self.device_asset_run_ext_coms[_device]:
-                    asset_run, com, timeout = self.device_asset_run_ext_coms[_device][0]
-                    asset_run.run_status = RunStatus.RUNNING
-                    asset_run.run_start_time = datetime.datetime.now()
-                    asset_run.save()
+        # step 1: start commands
 
-                    if isinstance(com, ExtCom):
-                        # print "Executing: %s" % com.command
-                        com.run()
+        for _dev_idx, prfd in self.__device_planned_runs.iteritems():
+            for prs in prfd.planned_runs:
+                if not prs.started:
+                    prs.start()
+                    if isinstance(prs.ext_com, ExtCom):
+                        prs.ext_com.run()
                     else:
-                        self.discovery_process.get_route_to_devices([_device])
-                        zmq_con = net_tools.zmq_connection(
-                            "server:{}".format(process_tools.get_machine_name()),
-                            context=self.discovery_process.zmq_context
-                        )
-
-                        ip = _device.all_ips()[0]
-                        if ip:
+                        if prfd.ip:
                             conn_str = "tcp://{}:{:d}".format(
-                                ip,
+                                prfd.ip,
                                 self.__hm_port,
                             )
-                            self.log(u"connection_str for {} is {}".format(unicode(_device), conn_str))
-                            zmq_con.add_connection(
+                            self.log(
+                                u"connection_str for {} is {} ({})".format(
+                                    unicode(prfd.device),
+                                    conn_str,
+                                    prs.ext_com,
+                                )
+                            )
+                            # store zmq connection idx
+                            prs.zmq_con_idx = zmq_con.add_connection(
                                 conn_str,
-                                server_command.srv_command(command=com),
+                                server_command.srv_command(command=prs.ext_com),
                                 multi=True
                             )
                         else:
-                            pass
-                            # print "no ip for %s" % _device
+                            self.log("no IP for device {}".format(prfd.device), logging_tools.LOG_LEVEL_ERROR)
 
-                        # replace cmd_str in [AssetRun, com_type, timeout] list with zmq_con object
-                        self.device_asset_run_ext_coms[_device][0][1] = zmq_con
+        # step 2: check commands
+        # build list of running prfds
+        run_prfds = [
+            prfd for prfd in self.__device_planned_runs.itervalues() if prfd.num_running
+        ]
+        # start time of communication
+        s_time = time.time()
+        if zmq_con.num_connections:
+            #  print "SL"
+            zmq_res = zmq_con.loop()
+            e_time = time.time()
+            self.log(
+                "0MQ loop ({}) took {}".format(
+                    logging_tools.get_plural("connection", zmq_con.num_connections),
+                    logging_tools.get_diff_time_str(e_time - s_time),
+                )
+            )
+            # store result from 0MQ runs
+            for _idx, _result in enumerate(zmq_res):
+                for prfd in run_prfds:
+                    for prd in prfd.planned_runs:
+                        if prd.started and prd.zmq_con_idx == _idx:
+                            prd.store_zmq_result(_result)
+            #  print "RES=", zmq_res
 
-                    self.device_running_ext_coms[_device] = 1
-            if self.device_running_ext_coms[_device] == 1:
+        # while run_prfds:
+        #    time.sleep(1)
+
+        for _dev_idx, prfd in []:  #  self.__device_planned_runs.iteritems():
+            if prfd.num_running:
+
                 asset_run, com, timeout = self.device_asset_run_ext_coms[_device][0]
                 self.device_asset_run_ext_coms[_device][0][2] = timeout - 1
                 # print timeout
@@ -796,43 +912,6 @@ class Dispatcher(object):
                         self.device_running_ext_coms[_device] = 0
                 else:
                     if com.poller.poll(1):
-                        res_list = com.loop()
-                        self.device_asset_run_ext_coms[_device].pop(0)
-                        asset_run.run_status = RunStatus.ENDED
-                        asset_run.run_end_time = datetime.datetime.now()
-
-                        try:
-                            s = None
-                            if asset_run.run_type == AssetType.PACKAGE:
-                                if "pkg_list" in res_list[0]:
-                                    s = res_list[0]["pkg_list"].text
-                                else:
-                                    asset_run.run_status = RunStatus.FAILED
-                            elif asset_run.run_type == AssetType.HARDWARE:
-                                if "lstopo_dump" in res_list[0]:
-                                    s = res_list[0]["lstopo_dump"].text
-                                else:
-                                    asset_run.run_status = RunStatus.FAILED
-                            elif asset_run.run_type == AssetType.LICENSE:
-                                pass
-                                # todo implement me
-                            elif asset_run.run_type == AssetType.UPDATE:
-                                pass
-                                # todo implement me
-                            elif asset_run.run_type == AssetType.PROCESS:
-                                if "process_tree" in res_list[0]:
-                                    s = res_list[0]["process_tree"].text
-                                else:
-                                    asset_run.run_status = RunStatus.FAILED
-                            elif asset_run.run_type == AssetType.PENDING_UPDATE:
-                                if "update_list" in res_list[0]:
-                                    s = res_list[0]["update_list"].text
-                                else:
-                                    asset_run.run_status = RunStatus.FAILED
-                        except KeyError:
-                            self.log("KeyError: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-                            s = None
-
                         asset_run.raw_result_str = s
                         self.todo_asset_runs.put(asset_run)
                         self.device_running_ext_coms[_device] = 0
@@ -856,18 +935,20 @@ class Dispatcher(object):
 
             _device = schedule_item.device
             asset_run_len = len(_device.assetrun_set.all())
-            new_asset_run = AssetRun(run_index=asset_run_len,
-                                     run_type=runtype,
-                                     run_status=RunStatus.PLANNED,
-                                     scan_type=ScanType.HM)
+            new_asset_run = AssetRun(
+                run_index=asset_run_len,
+                run_type=runtype,
+                run_status=RunStatus.PLANNED,
+                scan_type=ScanType.HM
+            )
             new_asset_run.save()
             _device.assetrun_set.add(new_asset_run)
 
-            if _device not in self.device_running_ext_coms:
-                self.device_running_ext_coms[_device] = 0
-                self.device_asset_run_ext_coms[_device] = []
-
-            self.device_asset_run_ext_coms[_device].append([new_asset_run, _command, timeout])
+            self.__device_planned_runs[_device.idx].add_planned_run(
+                new_asset_run,
+                _command,
+                timeout,
+            )
 
     def _do_nrpe_scan(self, schedule_item):
         cmd_tuples = [
@@ -899,16 +980,11 @@ class Dispatcher(object):
             new_asset_run.save()
             _device.assetrun_set.add(new_asset_run)
 
-            if _device not in self.device_running_ext_coms:
-                self.device_running_ext_coms[_device] = 0
-                self.device_asset_run_ext_coms[_device] = []
-
-            self.device_asset_run_ext_coms[_device].append(
-                [new_asset_run, ext_com, 120]
+            self.__device_planned_runs[_device.idx].add_planned_run(
+                new_asset_run,
+                ext_com,
+                120,
             )
-
-    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        print what
 
 
 class _ScheduleItem(object):

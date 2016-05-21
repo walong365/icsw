@@ -268,6 +268,8 @@ angular.module(
                 package_info: "package_set"
                 asset_info: "assetrun_set"
                 dispatcher_info: "dispatcher_set"
+                # shallow version for info
+                past_assetrun_info: "past_assetrun_set"
             }
             if req of _lut
                 return _lut[req]
@@ -757,7 +759,7 @@ angular.module(
                 _fetch.resolve({})
             else
                 #console.log "*** enrichment:", en_list, "for", dth, "resulted in non-empty", en_req
-                console.log "*** enrichment: ", en_req
+                console.log "*** enrichment_request: ", en_req
 
                 # non-empty request, fetch from server
                 icswSimpleAjaxCall(
@@ -970,6 +972,7 @@ angular.module(
         # dispatcher functions
         salt_dispatcher_infos: (device_list, disp_tree) =>
             for dev in device_list
+                # console.log dev.past_assetrun_set
                 dev.$$sched_item_list = []
                 dev.$$dispatcher_list = []
                 if dev.dispatcher_set.length

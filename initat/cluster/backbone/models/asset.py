@@ -28,7 +28,6 @@ import django.utils.timezone
 from django.db import models
 from enum import IntEnum
 from lxml import etree
-from rest_framework import serializers
 
 from initat.tools import server_command
 
@@ -324,6 +323,7 @@ class RunStatus(IntEnum):
     ENDED = 3
     FAILED = 4
 
+
 class PackageTypeEnum(IntEnum):
     WINDOWS = 1
     LINUX = 2
@@ -359,8 +359,8 @@ class AssetPackage(models.Model):
 
     def __eq__(self, other):
         return isinstance(other, self.__class__) \
-               and self.name == other.name \
-               and self.package_type == other.package_type
+            and self.name == other.name \
+            and self.package_type == other.package_type
 
     def __hash__(self):
         return hash((self.name, self.package_type))
@@ -389,17 +389,13 @@ class AssetRun(models.Model):
     idx = models.AutoField(primary_key=True)
 
     run_index = models.IntegerField(default=1)
-
     run_status = models.IntegerField(choices=[(status.value, status.name) for status in RunStatus], null=True)
-
     run_type = models.IntegerField(choices=[(_type.value, _type.name) for _type in AssetType], null=True)
-
     run_start_time = models.DateTimeField(null=True, blank=True)
-
     run_end_time = models.DateTimeField(null=True, blank=True)
-
+    # runtime in seconds
+    run_duration = models.IntegerField(default=0)
     asset_batch = models.ForeignKey("AssetBatch", null=True)
-
     device = models.ForeignKey("backbone.device", null=True)
 
     raw_result_str = models.TextField(null=True)
@@ -526,56 +522,6 @@ class AssetBatch(models.Model):
             if not assetrun.run_status == RunStatus.ENDED:
                 return False
         return True
-
-########################################################################################################################
-# Serializers
-########################################################################################################################
-
-
-class AssetSerializer(serializers.ModelSerializer):
-    assetstr = serializers.SerializerMethodField()
-
-    def get_assetstr(self, obj):
-        return str(obj.getAssetInstance())
-
-    class Meta:
-        model = Asset
-
-
-class AssetPackageVersionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = AssetPackageVersion
-        fields = ("idx", "size", "version", "release")
-
-
-class AssetPackageSerializer(serializers.ModelSerializer):
-    versions = AssetPackageVersionSerializer(many=True)
-
-    class Meta:
-        model = AssetPackage
-        fields = ("idx", "name")
-
-
-class AssetRunSerializer(serializers.ModelSerializer):
-    device = serializers.SerializerMethodField()
-    # asset_set = AssetSerializer(many=True)
-    assets = serializers.SerializerMethodField()
-    packages = AssetPackageVersionSerializer(many=True)
-
-    def get_assets(self, obj):
-        return [str(pkg) for pkg in obj.generate_assets_no_save()]
-
-    def get_device(self, obj):
-        if self.context and "device" in self.context:
-            return self.context["device"]
-        else:
-            return 0
-
-    class Meta:
-        model = AssetRun
-        fields = ("idx", "device", "run_index", "run_type", "assets",
-                  "run_start_time", "run_end_time", "packages")
-
 
 class DeviceInventory(models.Model):
     idx = models.AutoField(primary_key=True)

@@ -1,8 +1,8 @@
-# Copyright (C) 2016 Gregor kaufmann
+# Copyright (C) 2016 Gregor Kaufmann, Andreas Lang-Nevyjel
 #
-# Send feedback to: <g.kaufmann@init.at>
+# Send feedback to: <g.kaufmann@init.at>, <lang-nevyjel@init.at>
 #
-# This file is part of webfrontend
+# This file is part of icsw-server
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -20,22 +20,32 @@
 
 """ asset views """
 
-import pytz
 import datetime
 import json
 
-from django.utils.decorators import method_decorator
+import pytz
 from django.contrib.auth.decorators import login_required
-
-from initat.cluster.backbone.models.asset import AssetPackage, AssetRun, AssetPackageVersion, AssetType
-from initat.cluster.backbone.models.dispatch import ScheduleItem
-from initat.cluster.backbone.models import device
-
 from django.http import HttpResponse
+from django.utils.decorators import method_decorator
 from django.views.generic import View
-
+from rest_framework.generics import RetrieveAPIView, ListAPIView
 from rest_framework.response import Response
-from rest_framework.generics import ListAPIView, RetrieveAPIView
+
+from initat.cluster.backbone.models import device
+from initat.cluster.backbone.models.asset import AssetPackage, AssetRun, AssetPackageVersion, \
+    AssetType
+from initat.cluster.backbone.models.dispatch import ScheduleItem
+from initat.cluster.backbone.serializers import AssetRunSerializer
+from initat.cluster.frontend.rest_views import rest_logging
+
+
+class get_past_assetruns(ListAPIView):
+    @method_decorator(login_required)
+    @rest_logging
+    def list(self, request, *args, **kwargs):
+        print args, kwargs
+        return
+
 
 class get_asset_list(RetrieveAPIView):
     @method_decorator(login_required)
@@ -58,7 +68,10 @@ class run_assetrun_for_device_now(View):
             run_now=True,
             dispatch_setting=None
         )
-        return HttpResponse()
+        return HttpResponse(
+            json.dumps({"state": "started run"}),
+            content_type="application/json"
+        )
 
 
 class get_devices_for_asset(View):
@@ -102,11 +115,14 @@ class get_versions_for_package(View):
         return HttpResponse(
             json.dumps(
                 {
-                    'versions': [(v.idx, v.version, v.release, v.size) for v in ap.assetpackageversion_set.all()]
+                    'versions': [
+                        (v.idx, v.version, v.release, v.size) for v in ap.assetpackageversion_set.all()
+                    ]
                 }
             ),
             content_type="application/json"
         )
+
 
 class get_assets_for_asset_run(View):
     @method_decorator(login_required)
@@ -234,6 +250,7 @@ class get_schedule_list(RetrieveAPIView):
             }
         )
 
+
 class get_assetruns_for_devices(View):
     @method_decorator(login_required)
     def post(self, request):
@@ -256,9 +273,6 @@ class get_assetruns_for_devices(View):
                     ar.run_status
                 ) for ar in dev.assetrun_set.all()
             ])
-
-
-
         return HttpResponse(
             json.dumps(
                 {

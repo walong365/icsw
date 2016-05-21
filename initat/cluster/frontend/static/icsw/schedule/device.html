@@ -183,6 +183,7 @@
     <h3>
         Device schedules ({{ struct.devices.length }} entries)
         <icsw-tools-button type="modify" size="xs" ng-click="edit($event, null)" value="modify selected"></icsw-tools-button>
+        <span class="text-warning" ng-show="struct.updating">Updating...</span>
     </h3>
     <table
         st-table="entries_displayed"
@@ -207,6 +208,7 @@
                 <th>Selected</th>
                 <th>Dispatchers</th>
                 <th colspan="2">Planned Schedules</th>
+                <th>Runs</th>
                 <th colspan="1" class="text-center">Action</th>
             </tr>
         </thead>
@@ -234,6 +236,9 @@
                     <span ng-repeat="si in obj.$$sched_item_list">
                         {{ si.$$planned_date }} ({{ si.$$source }}),
                     </span>
+                </td>
+                <td class="text-center" title="in the past 7 days">
+                    {{ obj.past_assetrun_set.length }}
                 </td>
                 <td>
                     <icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)" value="modify"/>
