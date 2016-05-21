@@ -26,16 +26,17 @@ import json
 import pytz
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
+from django.db.models import Q
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from rest_framework.generics import RetrieveAPIView, ListAPIView
 from rest_framework.response import Response
-
+from rest_framework import viewsets
 from initat.cluster.backbone.models import device
 from initat.cluster.backbone.models.asset import AssetPackage, AssetRun, AssetPackageVersion, \
     AssetType
 from initat.cluster.backbone.models.dispatch import ScheduleItem
-from initat.cluster.backbone.serializers import AssetRunSerializer
+from initat.cluster.backbone.serializers import AssetRunSerializer, ScheduleItemSerializer
 from initat.cluster.frontend.rest_views import rest_logging
 
 
@@ -223,24 +224,29 @@ class get_assets_for_asset_run(View):
             )
 
 
-class get_schedule_list(RetrieveAPIView):
-    @method_decorator(login_required)
-    def get(self, request, *args, **kwargs):
-        return Response(
-            {
-                'schedules': sorted(
-                    [
-                        (
-                            s.device.idx,
-                            s.device.name,
-                            s.planned_date.isoformat(),
-                            s.dispatch_setting.name
-                        ) for s in ScheduleItem.objects.all()
-                    ],
-                    key=lambda item: item[1]
-                )
-            }
-        )
+class ScheduledRunViewSet(viewsets.ViewSet):
+    def list(self, request):
+        if "pks" in request.query_params:
+            queryset = ScheduleItem.objects.filter(
+                Q(device__in=json.loads(request.query_params.getlist("pks")[0]))
+            )
+        else:
+            queryset = ScheduleItem.objects.all()
+        serializer = ScheduleItemSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+
+class AssetRunsViewSet(viewsets.ViewSet):
+    def list(self, request):
+        if "pks" in request.query_params:
+            queryset = AssetRun.objects.filter(
+                Q(device__in=json.loads(request.query_params.getlist("pks")[0]))
+            )
+        else:
+            queryset = AssetRun.objects.all()
+        queryset = queryset.order_by("-run_start_time")
+        serializer = AssetRunSerializer(queryset, many=True)
+        return Response(serializer.data)
 
 
 class get_assetruns_for_devices(View):

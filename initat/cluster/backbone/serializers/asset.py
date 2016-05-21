@@ -87,7 +87,6 @@ class AssetPackageSerializer(serializers.ModelSerializer):
 
 
 class AssetRunSerializer(serializers.ModelSerializer):
-    device = serializers.SerializerMethodField()
     # asset_set = AssetSerializer(many=True)
     assets = serializers.SerializerMethodField()
     # packages = AssetPackageVersionSerializer(many=True)
@@ -95,13 +94,10 @@ class AssetRunSerializer(serializers.ModelSerializer):
     def get_assets(self, obj):
         return [str(pkg) for pkg in obj.generate_assets_no_save()]
 
-    def get_device(self, obj):
-        if self.context and "device" in self.context:
-            return self.context["device"]
-        else:
-            return 0
-
     class Meta:
         model = AssetRun
-        fields = ("idx", "device", "run_index", "run_type", "assets",
-                  "run_start_time", "run_end_time", "packages")
+        fields = (
+            "idx", "device", "run_index", "run_type", "assets",
+            "run_start_time", "run_end_time", "packages", "run_duration",
+            "asset_batch", "run_status", "run_result",
+        )

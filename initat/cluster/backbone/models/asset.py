@@ -323,7 +323,6 @@ class RunStatus(IntEnum):
     PLANNED = 1
     RUNNING = 2
     ENDED = 3
-    FAILED = 4
 
 
 class RunResult(IntEnum):

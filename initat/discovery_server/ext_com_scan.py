@@ -33,8 +33,8 @@ from django.utils import timezone
 from initat.cluster.backbone.models import ComCapability, netdevice, netdevice_speed, net_ip, network
 from initat.cluster.backbone.models.asset import AssetRun, RunStatus, AssetType, ScanType, \
     AssetBatch, RunResult
-from initat.cluster.backbone.models.dispatch import DeviceDispatcherLink, DispatcherSettingScheduleEnum, ScheduleItem
-from initat.cluster.backbone.models.dispatch import DispatchSetting, DiscoverySource
+from initat.cluster.backbone.models.dispatch import DeviceDispatcherLink, DispatcherSettingScheduleEnum, \
+    ScheduleItem, DispatchSetting, DiscoverySource
 from initat.discovery_server.wmi_struct import WmiUtils
 from initat.icsw.service.instance import InstanceXML
 from initat.snmp.snmp_struct import ResultNode
@@ -642,7 +642,7 @@ class PlannedRunState(object):
         if s is None:
             _db_obj.run_result = RunResult.FAILED
         else:
-            _db_obj.run_tatus = RunResult.SUCCESS
+            _db_obj.run_result = RunResult.SUCCESS
         _db_obj.raw_result_str = s
         _db_obj.asset_batch.run_done(_db_obj)
         self.__pdrf.num_running -= 1
@@ -723,6 +723,7 @@ class Dispatcher(object):
                 # not scheduled
                 next_run = _ScheduleItem(
                     device,
+                    # this makes absolutely no sense, FIXME, TODO
                     DiscoverySource.PACKAGE,
                     align_time_to_baseline(_now, ds)
                 )
@@ -948,6 +949,7 @@ class Dispatcher(object):
                 scan_type=ScanType.HM,
                 batch_index=_idx,
                 asset_batch=new_asset_batch,
+                device=_device,
             )
             new_asset_run.save()
             _device.assetrun_set.add(new_asset_run)
@@ -992,6 +994,7 @@ class Dispatcher(object):
                 scan_type=ScanType.NRPE,
                 batch_index=_idx,
                 asset_batch=new_asset_batch,
+                device=_device,
             )
             new_asset_run.save()
             _device.assetrun_set.add(new_asset_run)
