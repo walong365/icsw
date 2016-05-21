@@ -31,6 +31,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.db.models import Q, Max
 from django.http import HttpResponse
+from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from rest_framework import serializers
@@ -447,7 +448,7 @@ class AssetEnrichment(object):
 
 class PastAssetrunEnrichment(object):
     def fetch(self, pk_list):
-        _now = datetime.datetime.now()
+        _now = timezone.now()
         _result = AssetRun.objects.filter(
             Q(device__in=pk_list) &
             Q(run_start_time__gt=_now - datetime.timedelta(days=1))

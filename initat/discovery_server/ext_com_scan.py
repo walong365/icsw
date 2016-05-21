@@ -28,6 +28,7 @@ import pytz
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 from lxml import etree
+from django.utils import timezone
 
 from initat.cluster.backbone.models import ComCapability, netdevice, netdevice_speed, net_ip, network
 from initat.cluster.backbone.models.asset import AssetRun, RunStatus, AssetType, ScanType
@@ -593,7 +594,7 @@ class PlannedRunState(object):
         self.started = True
         _db_obj = self.run_db_obj
         _db_obj.run_tatus = RunStatus.RUNNING
-        _db_obj.run_start_time = datetime.datetime.now()
+        _db_obj.run_start_time = timezone.now()
         _db_obj.save()
         self.started = True
         self.__pdrf.num_running += 1
@@ -601,7 +602,7 @@ class PlannedRunState(object):
     def store_zmq_result(self, result):
         _db_obj = self.run_db_obj
         _db_obj.run_tatus = RunStatus.ENDED
-        _db_obj.run_end_time = datetime.datetime.now()
+        _db_obj.run_end_time = timezone.now()
         _db_obj.run_duration = int((_db_obj.run_end_time - _db_obj.run_start_time).seconds)
         s = None
         if result is not None:
@@ -693,7 +694,7 @@ class Dispatcher(object):
 
     def schedule_call(self):
         # called every 10 seconds
-        _now = datetime.datetime.now(tz=pytz.utc).replace(microsecond=0)
+        _now = timezone.now().replace(microsecond=0)
 
         links = DeviceDispatcherLink.objects.all().select_related(
             "device",
@@ -781,7 +782,7 @@ class Dispatcher(object):
     def dispatch_call(self):
         # called every second, way too often...
         # print ".", os.getpid()
-        _now = datetime.datetime.now(tz=pytz.utc).replace(microsecond=0)
+        _now = timezone. now().replace(microsecond=0)
         # schedule_items = sorted(ScheduleItem.objects.all(), key=lambda x: x.planned_date)
 
         for schedule_item in ScheduleItem.objects.all().select_related(
