@@ -31,7 +31,8 @@ from lxml import etree
 from django.utils import timezone
 
 from initat.cluster.backbone.models import ComCapability, netdevice, netdevice_speed, net_ip, network
-from initat.cluster.backbone.models.asset import AssetRun, RunStatus, AssetType, ScanType
+from initat.cluster.backbone.models.asset import AssetRun, RunStatus, AssetType, ScanType, \
+    AssetBatch, RunResult
 from initat.cluster.backbone.models.dispatch import DeviceDispatcherLink, DispatcherSettingScheduleEnum, ScheduleItem
 from initat.cluster.backbone.models.dispatch import DispatchSetting, DiscoverySource
 from initat.discovery_server.wmi_struct import WmiUtils
@@ -260,8 +261,13 @@ class WmiScanBatch(ScanBatch):
                     self.log("Stderr: {}".format(outputs[ext_com_key][1]), logging_tools.LOG_LEVEL_ERROR)
 
                 if outputs[ext_com_key][1]:
-                    self.log("Query for {} wrote to stderr: {}".format(ext_com_key, outputs[ext_com_key][1]),
-                             logging_tools.LOG_LEVEL_WARN)
+                    self.log(
+                        "Query for {} wrote to stderr: {}".format(
+                            ext_com_key,
+                            outputs[ext_com_key][1]
+                        ),
+                        logging_tools.LOG_LEVEL_WARN
+                    )
 
             if not any_err:
                 network_adapter_data = WmiUtils.parse_wmic_output(outputs[self.NETWORK_ADAPTER_MODEL][0])
@@ -593,7 +599,7 @@ class PlannedRunState(object):
     def start(self):
         self.started = True
         _db_obj = self.run_db_obj
-        _db_obj.run_tatus = RunStatus.RUNNING
+        _db_obj.run_status = RunStatus.RUNNING
         _db_obj.run_start_time = timezone.now()
         _db_obj.save()
         self.started = True
@@ -601,7 +607,7 @@ class PlannedRunState(object):
 
     def store_zmq_result(self, result):
         _db_obj = self.run_db_obj
-        _db_obj.run_tatus = RunStatus.ENDED
+        _db_obj.run_status = RunStatus.ENDED
         _db_obj.run_end_time = timezone.now()
         _db_obj.run_duration = int((_db_obj.run_end_time - _db_obj.run_start_time).seconds)
         s = None
@@ -610,13 +616,9 @@ class PlannedRunState(object):
                 if _db_obj.run_type == AssetType.PACKAGE:
                     if "pkg_list" in result:
                         s = result["pkg_list"].text
-                    else:
-                        _db_obj.run_status = RunStatus.FAILED
                 elif _db_obj.run_type == AssetType.HARDWARE:
                     if "lstopo_dump" in result:
                         s = result["lstopo_dump"].text
-                    else:
-                        _db_obj.run_status = RunStatus.FAILED
                 elif _db_obj.run_type == AssetType.LICENSE:
                     pass
                     # todo implement me
@@ -626,13 +628,9 @@ class PlannedRunState(object):
                 elif _db_obj.run_type == AssetType.PROCESS:
                     if "process_tree" in result:
                         s = result["process_tree"].text
-                    else:
-                        _db_obj.run_status = RunStatus.FAILED
                 elif _db_obj.run_type == AssetType.PENDING_UPDATE:
                     if "update_list" in result:
                         s = result["update_list"].text
-                    else:
-                        _db_obj.run_status = RunStatus.FAILED
             except KeyError:
                 self.log(
                     "KeyError: {}".format(
@@ -642,10 +640,11 @@ class PlannedRunState(object):
                 )
                 s = None
         if s is None:
-            _db_obj.run_tatus = RunStatus.FAILED
+            _db_obj.run_result = RunResult.FAILED
         else:
-            _db_obj.run_tatus = RunStatus.ENDED
+            _db_obj.run_tatus = RunResult.SUCCESS
         _db_obj.raw_result_str = s
+        _db_obj.asset_batch.run_done(_db_obj)
         self.__pdrf.num_running -= 1
         try:
             _db_obj.generate_assets_new()
@@ -924,7 +923,13 @@ class Dispatcher(object):
             (AssetType.PROCESS, "proclist"),
             (AssetType.PENDING_UPDATE, "updatelist")
         ]
-        for runtype, _command in cmd_tuples:
+        new_asset_batch = AssetBatch(
+            device=schedule_item.device,
+            run_start_time=timezone.now(),
+            num_runs=len(cmd_tuples),
+        )
+        new_asset_batch.save()
+        for _idx, (runtype, _command) in enumerate(cmd_tuples):
             if runtype == AssetType.PACKAGE:
                 timeout = 30
             if runtype == AssetType.HARDWARE:
@@ -940,7 +945,9 @@ class Dispatcher(object):
                 run_index=asset_run_len,
                 run_type=runtype,
                 run_status=RunStatus.PLANNED,
-                scan_type=ScanType.HM
+                scan_type=ScanType.HM,
+                batch_index=_idx,
+                asset_batch=new_asset_batch,
             )
             new_asset_run.save()
             _device.assetrun_set.add(new_asset_run)
@@ -961,7 +968,13 @@ class Dispatcher(object):
             (AssetType.LICENSE, LIST_KEYS_CMD)
         ]
 
-        for runtype, _command in cmd_tuples:
+        new_asset_batch = AssetBatch(
+            device=schedule_item.device,
+            run_start_time=timezone.now(),
+            num_runs=len(cmd_tuples),
+        )
+        new_asset_batch.save()
+        for _idx, (runtype, _command) in enumerate(cmd_tuples):
             _com = "/opt/cluster/sbin/check_nrpe -H {} -n -c {} -t120".format(
                 schedule_item.device.all_ips()[0],
                 _command
@@ -976,7 +989,9 @@ class Dispatcher(object):
                 run_index=asset_run_len,
                 run_type=runtype,
                 run_status=RunStatus.PLANNED,
-                scan_type=ScanType.NRPE
+                scan_type=ScanType.NRPE,
+                batch_index=_idx,
+                asset_batch=new_asset_batch,
             )
             new_asset_run.save()
             _device.assetrun_set.add(new_asset_run)

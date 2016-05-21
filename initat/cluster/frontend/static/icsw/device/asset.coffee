@@ -513,10 +513,12 @@ device_asset_module = angular.module(
                 pks_s = ''
                 devidx_dev_dict = {}
                 for dev in devs
-                    dev.assetrun_set = []
-                    pks_s = pks_s.concat(dev.idx + ",")
-                    devidx_dev_dict[dev.idx] = dev
-                    $scope.struct.devices.push(dev)
+                    # filter out metadevices
+                    if not dev.is_meta_device
+                        dev.assetrun_set = []
+                        pks_s = pks_s.concat(dev.idx + ",")
+                        devidx_dev_dict[dev.idx] = dev
+                        $scope.struct.devices.push(dev)
 
                 $scope.struct.data_loaded = true
                 icswSimpleAjaxCall({

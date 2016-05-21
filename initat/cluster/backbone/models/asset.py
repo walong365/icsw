@@ -20,10 +20,12 @@
 
 import base64
 import bz2
+import datetime
 import json
 import pickle
 import uuid
 
+from django.utils import timezone
 import django.utils.timezone
 from django.db import models
 from enum import IntEnum
@@ -324,6 +326,13 @@ class RunStatus(IntEnum):
     FAILED = 4
 
 
+class RunResult(IntEnum):
+    UNKNOWN = 1
+    SUCCESS = 2
+    WARNING = 3
+    FAILED = 4
+
+
 class PackageTypeEnum(IntEnum):
     WINDOWS = 1
     LINUX = 2
@@ -389,14 +398,26 @@ class AssetRun(models.Model):
     idx = models.AutoField(primary_key=True)
 
     run_index = models.IntegerField(default=1)
-    run_status = models.IntegerField(choices=[(status.value, status.name) for status in RunStatus], null=True)
-    run_type = models.IntegerField(choices=[(_type.value, _type.name) for _type in AssetType], null=True)
+    run_status = models.IntegerField(
+        choices=[(status.value, status.name) for status in RunStatus],
+        default=RunStatus.PLANNED.value,
+    )
+    run_result = models.IntegerField(
+        choices=[(status.value, status.name) for status in RunResult],
+        default=RunResult.UNKNOWN.value,
+    )
+    run_type = models.IntegerField(
+        choices=[(_type.value, _type.name) for _type in AssetType],
+        default=AssetType.PACKAGE.value,
+    )
     run_start_time = models.DateTimeField(null=True, blank=True)
     run_end_time = models.DateTimeField(null=True, blank=True)
     # runtime in seconds
     run_duration = models.IntegerField(default=0)
     asset_batch = models.ForeignKey("AssetBatch", null=True)
     device = models.ForeignKey("backbone.device", null=True)
+    # run index in current batch
+    batch_index = models.IntegerField(default=0)
 
     raw_result_str = models.TextField(null=True)
 
@@ -516,6 +537,19 @@ class AssetRun(models.Model):
 
 class AssetBatch(models.Model):
     idx = models.AutoField(primary_key=True)
+    run_start_time = models.DateTimeField(null=True, blank=True)
+    run_end_time = models.DateTimeField(null=True, blank=True)
+    # total number of runs
+    num_runs = models.IntegerField(default=0)
+    # number of runs completed
+    num_completed = models.IntegerField(default=0)
+    # number of runs ok / error
+    num_runs_ok = models.IntegerField(default=0)
+    num_runs_error = models.IntegerField(default=0)
+    # total run time in seconds
+    run_time = models.IntegerField(default=0)
+    device = models.ForeignKey("backbone.device")
+    date = models.DateTimeField(auto_now_add=True)
 
     def completed(self):
         for assetrun in self.assetrun_set.all():
@@ -523,7 +557,29 @@ class AssetBatch(models.Model):
                 return False
         return True
 
+    def run_done(self, asset_run):
+        self.num_completed += 1
+        if asset_run.run_result == RunResult.SUCCESS:
+            self.num_runs_ok += 1
+        else:
+            self.num_runs_error += 1
+        if self.num_completed == self.num_runs:
+            # finished
+            self.run_end_time = timezone.now()
+            self.run_time = int((self.run_end_time - self.run_start_time).seconds)
+        self.save()
+
+    def __repr__(self):
+        return unicode(self)
+
+    def __unicode__(self):
+        return "AssetBatch for device '{}'".format(
+            unicode(self.device)
+        )
+
+
 class DeviceInventory(models.Model):
+    # to be removed
     idx = models.AutoField(primary_key=True)
     device = models.ForeignKey("backbone.device")
     inventory_type = models.CharField(
@@ -579,7 +635,7 @@ class StaticAssetTemplateField(models.Model):
     # default value
     default_value_str = models.CharField(default="", blank=True, max_length=255)
     default_value_int = models.IntegerField(default=0)
-    default_value_date = models.DateField(default=django.utils.timezone.now)
+    default_value_date = models.DateField(default=timezone.now)
     # bounds, for input checking
     has_bounds = models.BooleanField(default=False)
     value_int_lower_bound = models.IntegerField(default=0)

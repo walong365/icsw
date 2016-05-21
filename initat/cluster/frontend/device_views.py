@@ -40,14 +40,15 @@ from initat.cluster.backbone.models import device_group, device, \
     cd_connection, domain_tree_node, category, netdevice, ComCapability, \
     partition_table, monitoring_hint, DeviceSNMPInfo, snmp_scheme, \
     domain_name_tree, net_ip, peer_information, mon_ext_host, device_variable, \
-    SensorThreshold, package_device_connection, DeviceDispatcherLink, AssetRun
+    SensorThreshold, package_device_connection, DeviceDispatcherLink, AssetRun, \
+    AssetBatch
 from initat.cluster.backbone.models.functions import can_delete_obj
 from initat.cluster.backbone.render import permission_required_mixin
 from initat.cluster.backbone.serializers import netdevice_serializer, ComCapabilitySerializer, \
     partition_table_serializer, monitoring_hint_serializer, DeviceSNMPInfoSerializer, \
     snmp_scheme_serializer, device_variable_serializer, cd_connection_serializer, \
     SensorThresholdSerializer, package_device_connection_serializer, DeviceDispatcherLinkSerializer, \
-    AssetRunSerializer, ShallowPastAssetRunSerializer
+    AssetRunSerializer, ShallowPastAssetRunSerializer, ShallowPastAssetBatchSerializer
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from initat.tools import logging_tools, server_command, process_tools
 
@@ -449,13 +450,13 @@ class AssetEnrichment(object):
 class PastAssetrunEnrichment(object):
     def fetch(self, pk_list):
         _now = timezone.now()
-        _result = AssetRun.objects.filter(
+        _result = AssetBatch.objects.filter(
             Q(device__in=pk_list) &
             Q(run_start_time__gt=_now - datetime.timedelta(days=1))
         )
         # manually unroll n2m relations
         _data = [
-            ShallowPastAssetRunSerializer(_ar).data for _ar in _result
+            ShallowPastAssetBatchSerializer(_ab).data for _ab in _result
         ]
         return _data
 

@@ -42,7 +42,6 @@ asset_patterns = [
     url("^get_assets_for_asset_run$", asset_views.get_assets_for_asset_run.as_view(), name="get_assets_for_asset_run"),
     url("^get_schedule_list$", asset_views.get_schedule_list.as_view(), name="get_schedule_list"),
     url("^get_assetruns_for_devices$", asset_views.get_assetruns_for_devices.as_view(), name="get_assetruns_for_devices"),
-    url("^get_past_assetruns", asset_views.get_past_assetruns.as_view(), name="get_past_assetruns"),
 ]
 
 session_patterns = [

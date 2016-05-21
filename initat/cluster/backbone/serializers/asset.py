@@ -24,17 +24,20 @@
 from rest_framework import serializers
 
 from initat.cluster.backbone.models import AssetRun, Asset, AssetPackage, \
-    AssetPackageVersion
+    AssetPackageVersion, AssetBatch
 
 __all__ = [
     "AssetRunSerializer",
+    "AssetBatchSerializer",
     "AssetSerializer",
     "AssetPackageSerializer",
     "AssetPackageVersionSerializer",
     "ShallowPastAssetRunSerializer",
+    "ShallowPastAssetBatchSerializer",
 ]
 
 
+# for simple overview on frontend
 class ShallowPastAssetRunSerializer(serializers.ModelSerializer):
     class Meta:
         model = AssetRun
@@ -42,6 +45,21 @@ class ShallowPastAssetRunSerializer(serializers.ModelSerializer):
             "idx", "device", "run_start_time", "run_duration",
             "scan_type", "run_type", "run_status",
         )
+
+
+class ShallowPastAssetBatchSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AssetBatch
+        fields = (
+            "idx", "device", "run_start_time", "run_time",
+            "num_runs_ok", "num_runs_error", "num_completed",
+        )
+
+
+class AssetBatchSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = AssetBatch
 
 
 class AssetSerializer(serializers.ModelSerializer):
@@ -87,5 +105,3 @@ class AssetRunSerializer(serializers.ModelSerializer):
         model = AssetRun
         fields = ("idx", "device", "run_index", "run_type", "assets",
                   "run_start_time", "run_end_time", "packages")
-
-

@@ -39,14 +39,6 @@ from initat.cluster.backbone.serializers import AssetRunSerializer
 from initat.cluster.frontend.rest_views import rest_logging
 
 
-class get_past_assetruns(ListAPIView):
-    @method_decorator(login_required)
-    @rest_logging
-    def list(self, request, *args, **kwargs):
-        print args, kwargs
-        return
-
-
 class get_asset_list(RetrieveAPIView):
     @method_decorator(login_required)
     def get(self, request, *args, **kwargs):

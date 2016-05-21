@@ -7,13 +7,14 @@
     <uib-alert type="warning" ng-show="!struct.data_loaded">Fetching data from server ...</uib-alert>
 
     <div ng-if="struct.data_loaded">
-        <h3>Asset Overview</h3>
+        <h1>Asset System Overview</h1>
 
         <uib-tabset>
             <uib-tab>
                 <uib-tab-heading>
                     <span>Overview</span>
                 </uib-tab-heading>
+                <h2>Overview of Runs and Packages</h2>
                 <uib-tabset>
                     <uib-tab>
                         <uib-tab-heading>
@@ -32,7 +33,9 @@
                                     <th st-sort="dev_name">Device</th>
                                     <th st-sort="planned_time">Planned Time</th>
                                     <th st-sort="ds_name">Dispatch Setting Name</th>
-                                    <th><button type="button" ng-csv="filterSchedArrayForCsvExport(scheduleitems_shown)" csv-header="['Device', 'Planned Time', 'Dispatch Setting Name']" filename="test.csv">Export to CSV</button></th>
+                                    <th>
+                                        <button type="button" ng-csv="filterSchedArrayForCsvExport(scheduleitems_shown)" csv-header="['Device', 'Planned Time', 'Dispatch Setting Name']" filename="test.csv">Export to CSV</button>
+                                    </th>
                                 </tr>
                                 <tr>
                                     <th colspan="1">
