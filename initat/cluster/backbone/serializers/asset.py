@@ -75,29 +75,29 @@ class AssetSerializer(serializers.ModelSerializer):
 class AssetPackageVersionSerializer(serializers.ModelSerializer):
     class Meta:
         model = AssetPackageVersion
-        fields = ("idx", "size", "version", "release")
+        fields = ("idx", "size", "version", "release", "info", "created")
 
 
 class AssetPackageSerializer(serializers.ModelSerializer):
-    versions = AssetPackageVersionSerializer(many=True)
+    assetpackageversion_set = AssetPackageVersionSerializer(many=True)
 
     class Meta:
         model = AssetPackage
-        fields = ("idx", "name")
+        fields = ("idx", "name", "package_type", "assetpackageversion_set")
 
 
 class AssetRunSerializer(serializers.ModelSerializer):
     # asset_set = AssetSerializer(many=True)
-    assets = serializers.SerializerMethodField()
+    # assets = serializers.SerializerMethodField()
     # packages = AssetPackageVersionSerializer(many=True)
 
-    def get_assets(self, obj):
-        return [str(pkg) for pkg in obj.generate_assets_no_save()]
+    # def get_assets(self, obj):
+    #    return [str(pkg) for pkg in obj.generate_assets_no_save()]
 
     class Meta:
         model = AssetRun
         fields = (
-            "idx", "device", "run_index", "run_type", "assets",
+            "idx", "device", "run_index", "run_type", "run_result",
             "run_start_time", "run_end_time", "packages", "run_duration",
-            "asset_batch", "run_status", "run_result",
+            "asset_batch", "run_status",
         )

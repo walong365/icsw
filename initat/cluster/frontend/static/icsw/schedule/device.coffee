@@ -107,7 +107,7 @@ monitoring_device_module = angular.module(
             # beautify schedule_item planned
             for entry in @sched_item_list
                 entry.$$planned_date = moment(entry.planned_date).format(DT_FORM)
-                entry.$$source = icswAssetHelperFunctions.resolve_schedule_source(entry.source)
+                entry.$$source = icswAssetHelperFunctions.resolve("schedule_source", entry.source)
 
             # create some simple links
             for entry in @list

@@ -89,11 +89,12 @@ def get_base_assets_from_raw_result(blob, runtype, scantype):
                                 )
                             )
         elif runtype == AssetType.HARDWARE:
-            s = blob
             if scantype == ScanType.NRPE:
                 s = blob[2:-4].encode('ascii')
             elif scantype == ScanType.HM:
                 s = bz2.decompress(base64.b64decode(blob))
+            else:
+                s = blob
 
             root = etree.fromstring(s)
             assert (root.tag == "topology")
@@ -343,13 +344,9 @@ class PackageTypeEnum(IntEnum):
 
 class Asset(models.Model):
     idx = models.AutoField(primary_key=True)
-
     type = models.IntegerField(choices=[(_type.value, _type.name) for _type in AssetType])
-
     value = models.TextField()
-
     name = models.UUIDField(default=uuid.uuid4)
-
     asset_run = models.ForeignKey("AssetRun")
 
     def getAssetInstance(self):
@@ -378,6 +375,8 @@ class AssetPackageVersion(models.Model):
     idx = models.AutoField(primary_key=True)
     asset_package = models.ForeignKey("backbone.AssetPackage")
     size = models.IntegerField(default=0)
+    # for comment and / or info
+    info = models.TextField(default="")
     version = models.TextField(default="", blank=True)
     release = models.TextField(default="", blank=True)
     created = models.DateTimeField(auto_now_add=True)
@@ -424,6 +423,7 @@ class AssetRun(models.Model):
 
     scan_type = models.IntegerField(choices=[(_type.value, _type.name) for _type in ScanType], null=True)
 
+    # link to packageversions
     packages = models.ManyToManyField(AssetPackageVersion)
 
     def generate_assets(self):

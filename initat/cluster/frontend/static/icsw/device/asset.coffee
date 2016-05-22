@@ -50,125 +50,190 @@ device_asset_module = angular.module(
         controller: "icswDeviceAssetCtrl"
         scope: true
     }
+]).service("icswAssetPackageTree",
+[
+    "$q", "Restangular", "ICSW_URLS", "icswAssetHelperFunctions", "icswTools",
+(
+    $q, Restangular, ICSW_URLS, icswAssetHelperFunctions, icswTools,
+) ->
+    class icswAssetPackageTree
+        constructor: (list) ->
+            @list = []
+            @version_list = []
+            @update(list)
+
+        update: (list) =>
+            @list.length = 0
+            @version_list.length = 0
+            for entry in list
+                @list.push(entry)
+                for vers in entry.assetpackageversion_set
+                    @version_list.push(vers)
+            @build_luts()
+
+        build_luts: () =>
+            @lut = _.keyBy(@list, "idx")
+            @version_lut = _.keyBy(@version_list, "idx")
+            @link()
+
+        link: () =>
+            # DT_FORM = "dd, D. MMM YYYY HH:mm:ss"
+            # _cf = ["year", "month", "week", "day", "hour", "minute", "second"]
+            # create fields for schedule_setting form handling
+            for entry in @list
+                entry.$$num_versions = entry.assetpackageversion_set.length
+                entry.$$package_type = icswAssetHelperFunctions.resolve("package_type", entry.package_type)
+                entry.$$expanded = false
+                entry.$$created = moment(entry.created).format("YYYY-MM-DD HH:mm:ss")
+                for vers in entry.assetpackageversion_set
+                    vers.$$package = entry
+                    vers.$$created = moment(vers.created).format("YYYY-MM-DD HH:mm:ss")
+                    vers.$$size = icswTools.get_size_str(vers.size, 1024, "Byte")
+                    
+
+]).service("icswAssetPackageTreeService",
+[
+    "$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall", "icswTools",
+    "icswAssetPackageTree", "$rootScope", "ICSW_SIGNALS",
+(
+    $q, Restangular, ICSW_URLS, $window, icswCachingCall, icswTools,
+    icswAssetPackageTree, $rootScope, ICSW_SIGNALS,
+) ->
+    rest_map = [
+        [
+            # asset packages
+            ICSW_URLS.ASSET_GET_ALL_ASSET_PACKAGES
+            {}
+        ]
+    ]
+    _fetch_dict = {}
+    _result = undefined
+    # load called
+    load_called = false
+
+    load_data = (client) ->
+        load_called = true
+        _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in rest_map)
+        _defer = $q.defer()
+        $q.all(_wait_list).then(
+            (data) ->
+                if _result?
+                    _result.update(data[0])
+                else
+                    console.log "*** AssetPackageTree loaded ***"
+                    _result = new icswAssetPackageTree(data[0])
+                _defer.resolve(_result)
+                for client of _fetch_dict
+                    # resolve clients
+                    _fetch_dict[client].resolve(_result)
+                # reset fetch_dict
+                _fetch_dict = {}
+        )
+        return _defer
+
+    fetch_data = (client) ->
+        if client not of _fetch_dict
+            # register client
+            _defer = $q.defer()
+            _fetch_dict[client] = _defer
+        if _result
+            # resolve immediately
+            _fetch_dict[client].resolve(_result)
+        return _fetch_dict[client]
+
+    return {
+        "load": (client) ->
+            # loads from server
+            if load_called
+                # fetch when data is present (after sidebar)
+                return fetch_data(client).promise
+            else
+                return load_data(client).promise
+        "reload": (client) ->
+            return load_data(client).promise
+    }
 ]).service("icswAssetHelperFunctions",
 [
     "$q",
 (
     $q,
 ) ->
-    resolve_asset_type = (_t) ->
-        return {
-            1: "Package"
-            2: "Hardware"
-            3: "License"
-            4: "Update"
-            5: "Software version"
-            6: "Process"
-            7: "Pending update"
-        }[_t]
-
-    resolve_asset_type_reverse = (_t) ->
-        items = ["package", "hardware", "license", "update", "software version", "process", "pending update"]
-        item_idx = {
-            "package": 1
-            "hardware": 2
-            "license": 3
-            "update": 4
-            "software version": 5
-            "process": 6
-            "pending update": 7
-        }
-
-        for item in items
-            if item.indexOf(_t.toLowerCase()) > -1
-                return item_idx[item]
-        return -1
-
-    resolve_package_type = (_t) ->
-        return {
-            1: "Windows"
-            2: "Linux"
-        }[_t]
-
-    resolve_package_type_reverse = (_t) ->
-        items = ["windows", "linux"]
-
-        item_idx = {
-            "windows": 1
-            "linux": 2
-        }
-
-        for item in items
-            if item.indexOf(_t.toLowerCase()) > -1
-                return item_idx[item]
-        return -1
-
-    resolve_run_status = (_t) ->
-        return {
-            1: "Pending"
-            2: "Running"
-            3: "Finished"
-        }[_t]
-
-    resolve_run_result = (_t) ->
-        return {
-            1: "Unknown"
-            2: "Success"
-            3: "Warning"
-            4: "Failed"
-        }[_t]
-
-    resolve_run_status_reverse = (_t) ->
-        items = ["pending", "running", "finished", "failed"]
-        item_idx = {
-            "pending": 1
-            "running": 2
-            "finished": 3
-            "failed": 4
-        }
-
-        for item in items
-            if item.indexOf(_t.toLowerCase()) > -1
-                return item_idx[item]
-        return -1
-        
-    SCHED_SOURCE_LUT = {
-        # see models/dispatch.py
-        1: "SNMP"
-        2: "ASU"
-        3: "IPMI"
-        4: "Package"
-        5: "Hardware"
-        6: "License"
-        7: "Update"
-        8: "Software Version"
-        9: "Process"
-        10: "Pending update"
+    info_dict = {
+        asset_type: [
+            [1, "Package"]
+            [2, "Hardware"]
+            [3, "License"]
+            [4, "Update"]
+            [5, "Software version"]
+            [6, "Process"]
+            [7, "Pending update"]
+        ]
+        package_type: [
+            [1, "Windows"]
+            [2, "Linux"]
+        ]
+        run_status: [
+            [1, "Planned"]
+            [2, "Running"]
+            [3, "Ended"]
+        ]
+        run_result: [
+            [1, "Unknown"]
+            [2, "Success"]
+            [3, "Success"]
+            [4, "Failed"]
+        ]
+        schedule_source: [
+            [1, "SNMP"]
+            [2, "ASU"]
+            [3, "IPMI"]
+            [4, "Package"]
+            [5, "Hardware"]
+            [6, "License"]
+            [7, "Update"]
+            [8, "Software Version"]
+            [9, "Process"]
+            [10, "Pending update"]
+        ]
     }
-    resolve_schedule_source = (_s) ->
-        return SCHED_SOURCE_LUT[_s]
-        
+
+    # create forward and backward resolves
+
+    res_dict = {}
+    for name, _list of info_dict
+        res_dict[name] = {}
+        for [_idx, _str] in _list
+            # forward resolve
+            res_dict[name][_idx] = _str
+            # backward resolve
+            res_dict[name][_str] = _idx
+            res_dict[name][_.lowerCase(_str)] = _idx
+
+    resolve = (name, key) ->
+        if name of res_dict
+            if key of res_dict[name]
+                return res_dict[name][key]
+            else
+                console.error "unknown key #{key} for name #{name} in resolve"
+                return "???"
+        else
+            console.error "unknown name #{name} in resolve"
+            return "????"
+
     return {
-        resolve_asset_type: resolve_asset_type
-        resolve_asset_type_reverse: resolve_asset_type_reverse
-        resolve_package_type: resolve_package_type
-        resolve_package_type_reverse: resolve_package_type_reverse
-        resolve_run_status: resolve_run_status
-        resolve_run_result: resolve_run_result
-        resolve_run_status_reverse: resolve_run_status_reverse
-        resolve_schedule_source: resolve_schedule_source
+        resolve: resolve
     }
 ]).controller("icswDeviceAssetCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "blockUI",
     "icswTools", "icswSimpleAjaxCall", "ICSW_URLS", "icswAssetHelperFunctions",
     "icswDeviceTreeService", "icswDeviceTreeHelperService",
-    "icswDispatcherSettingTreeService", "Restangular",
+    "icswDispatcherSettingTreeService", "Restangular", "icswAssetPackageTreeService",
 (
     $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI,
     icswTools, icswSimpleAjaxCall, ICSW_URLS, icswAssetHelperFunctions,
     icswDeviceTreeService, icswDeviceTreeHelperService,
-    icswDispatcherSettingTreeService, Restangular,
+    icswDispatcherSettingTreeService, Restangular, icswAssetPackageTreeService,
 ) ->
     # struct to hand over to VarCtrl
     $scope.struct = {
@@ -180,6 +245,8 @@ device_asset_module = angular.module(
         data_loaded: false
         # dispatcher setting tree
         disp_setting_tree: undefined
+        # package tree
+        package_tree: undefined
         # num_selected
         num_selected: 0
 
@@ -193,8 +260,6 @@ device_asset_module = angular.module(
         #Scheduled Runs tab properties
         schedule_items: []
         
-        #Known packages tab properties
-        packages: []
     }
 
     $scope.new_devsel = (devs) ->
@@ -202,21 +267,20 @@ device_asset_module = angular.module(
             [
                 icswDeviceTreeService.load($scope.$id)
                 icswDispatcherSettingTreeService.load($scope.$id)
+                icswAssetPackageTreeService.load($scope.$id)
             ]
         ).then(
             (data) ->
                 $scope.struct.device_tree = data[0]
                 $scope.struct.disp_setting_tree = data[1]
+                $scope.struct.package_tree = data[2]
                 $scope.struct.devices.length = 0
-                $scope.struct.asset_runs.length = 0
                 for dev in devs
                     # filter out metadevices
                     if not dev.is_meta_device
                         if not dev.assetrun_set?
                             dev.assetrun_set = []
                         $scope.struct.devices.push(dev)
-
-                $scope.struct.data_loaded = true
 
                 $q.all(
                     [
@@ -251,10 +315,21 @@ device_asset_module = angular.module(
                             $scope.struct.asset_runs.push(_salted)
                             _dev = $scope.struct.device_tree.all_lut[_salted.device]
                             _dev.assetrun_set.push(_salted)
+                        $scope.struct.data_loaded = true
+
                 )
 
         )
 
+    # resolve functions
+    resolve_package_assets = (vers_list) ->
+        _res = _.orderBy(
+            ($scope.struct.package_tree.version_lut[idx] for idx in vers_list)
+            ["$$package.name"]
+            ["asc"]
+        )
+        return _res
+        
     # salt functions
     salt_schedule_item = (obj) ->
         obj.$$planned_time = moment(obj.planned_date).format("YYYY-MM-DD HH:mm:ss")
@@ -265,9 +340,16 @@ device_asset_module = angular.module(
 
     salt_asset_run = (obj) ->
         obj.$$device = $scope.struct.device_tree.all_lut[obj.device]
-        obj.$$run_type = icswAssetHelperFunctions.resolve_asset_type(obj.run_type)
-        obj.$$run_status = icswAssetHelperFunctions.resolve_run_status(obj.run_status)
-        obj.$$run_result = icswAssetHelperFunctions.resolve_run_result(obj.run_result)
+        obj.$$full_name = obj.$$device.full_name
+        obj.$$run_type = icswAssetHelperFunctions.resolve("asset_type", obj.run_type)
+        obj.$$run_status = icswAssetHelperFunctions.resolve("run_status", obj.run_status)
+        obj.$$run_result = icswAssetHelperFunctions.resolve("run_result", obj.run_result)
+        # link assets
+        if obj.run_type == 1
+            obj.$$assets = resolve_package_assets(obj.packages)
+        else
+            obj.$$assets = []
+        obj.$$num_results = obj.$$assets.length
         if obj.run_start_time
             _moment = moment(obj.run_start_time)
             obj.$$run_start_day = _moment.format("YYYY-MM-DD")
@@ -320,7 +402,7 @@ device_asset_module = angular.module(
             if obj.assets.length > 0
                 for asset in obj.assets
                     asset_run = {}
-                    asset_run.run_type = icswAssetHelperFunctions.resolve_asset_type(obj.run_type)
+                    asset_run.run_type = icswAssetHelperFunctions.resolve("run_type", obj.run_type)
                     asset_run.run_start_time = obj.run_start_time
                     asset_run.run_end_time = obj.run_end_time
                     if obj.hasOwnProperty("device_name")
@@ -329,7 +411,7 @@ device_asset_module = angular.module(
                     moreFilteredARItems.push(asset_run)
             else
                 asset_run = {}
-                asset_run.run_type = icswAssetHelperFunctions.resolve_asset_type(obj.run_type)
+                asset_run.run_type = icswAssetHelperFunctions.resolve("run_type", obj.run_type)
                 asset_run.run_start_time = obj.run_start_time
                 asset_run.run_end_time = obj.run_end_time
                 if obj.hasOwnProperty("device_name")
@@ -346,7 +428,7 @@ device_asset_module = angular.module(
                 for version in obj.versions
                     _pack = {}
                     _pack.name = obj.name
-                    _pack.package_type = icswAssetHelperFunctions.resolve_package_type(obj.package_type)
+                    _pack.package_type = icswAssetHelperFunctions.resolve("package_type", obj.package_type)
                     _pack.version = version[1]
                     _pack.release = version[2]
                     _pack.size = version[3]
@@ -354,7 +436,7 @@ device_asset_module = angular.module(
             else
                 _pack = {}
                 _pack.name = obj.name
-                _pack.package_type = icswAssetHelperFunctions.resolve_package_type(obj.package_type)
+                _pack.package_type = icswAssetHelperFunctions.resolve("package_type", obj.package_type)
                 moreFilteredPackageItems.push(_pack)
 
         return moreFilteredPackageItems
@@ -390,15 +472,6 @@ device_asset_module = angular.module(
                     console.log not_ok
             )
 
-    $scope.select_assetrun = ($event, assetrun) ->
-        assetrun.$$selected = !assetrun.$$selected
-        if assetrun.$$selected
-            # ensure only assetrun with same type are selected
-            _type = assetrun.run_type
-            for _run in $scope.struct.asset_runs
-                if _run.run_type !=_type and _run.$$selected
-                    _run.$$selected = false
-
         $scope.struct.num_selected_ar = (_run for _run in $scope.struct.asset_runs when _run.$$selected).length
         if $scope.struct.num_selected_ar > 2
             for _run in $scope.struct.asset_runs
@@ -429,15 +502,6 @@ device_asset_module = angular.module(
                 obj.$$asset_run = false
         )
 
-
-    $scope.resolve_asset_type = (a_t) ->
-        return icswAssetHelperFunctions.resolve_asset_type(a_t)
-
-    $scope.resolve_package_type = (a_t) ->
-        return icswAssetHelperFunctions.resolve_package_type(a_t)
-
-    $scope.resolve_run_status = (a_t) ->
-        return icswAssetHelperFunctions.resolve_run_status(a_t)
 
     $scope.select_asset = ($event, device, assetrun) ->
         assetrun.$$selected = !assetrun.$$selected
@@ -487,44 +551,6 @@ device_asset_module = angular.module(
                     console.log not_ok
             )
 
-    $scope.expand_assetrun = ($event, assetrun) ->
-        if !assetrun.expanded
-            icswSimpleAjaxCall({
-                url: ICSW_URLS.ASSET_GET_ASSETS_FOR_ASSET_RUN
-                data:
-                    pk: assetrun.idx
-                dataType: 'json'
-            }
-            ).then(
-                (result) ->
-                    assetrun.assets = result.assets
-                    assetrun.expanded = !assetrun.expanded
-                (not_ok) ->
-                    console.log not_ok
-            )
-        else
-            assetrun.assets = []
-            assetrun.expanded = !assetrun.expanded
-
-    $scope.expand_package = ($event, pack) ->
-        if !pack.expanded
-            icswSimpleAjaxCall({
-                url: ICSW_URLS.ASSET_GET_VERSIONS_FOR_PACKAGE
-                data:
-                    pk: pack.pk
-                dataType: 'json'
-            }
-            ).then(
-                (result) ->
-                    pack.versions = result.versions
-                    pack.expanded = !pack.expanded
-                (not_ok) ->
-                    console.log not_ok
-            )
-        else
-            pack.versions = []
-            pack.expanded = !pack.expanded
-
     $scope.select_devices = (obj) ->
         icswSimpleAjaxCall({
             url: ICSW_URLS.ASSET_GET_DEVICES_FOR_ASSET
@@ -568,102 +594,24 @@ device_asset_module = angular.module(
                 console.log not_ok
         )
 
-    icswSimpleAjaxCall({
-        url: ICSW_URLS.ASSET_GET_ASSET_LIST
-        type: "GET"
-        dataType: 'json'
-    }
-    ).then(
-        (result) ->
-            $scope.struct.packages.length = 0
-
-            for item in result.assets
-                _pack = {
-                    name: undefined
-                    versions: undefined
-                }
-                _pack.pk = item[0]
-                _pack.name = item[1]
-                _pack.package_type = item[2]
-                _pack.versions = []
-                $scope.struct.packages.push(_pack)
-        (not_ok) ->
-            console.log not_ok
-    )
-
 ]).filter('assetRunFilter'
 [
-    "$filter", "icswAssetHelperFunctions"
+    "$filter",
 (
-    $filter, icswAssetHelperFunctions
+    $filter,
 ) ->
     return (input, predicate) ->
-        console.log "input:", input
-        console.log "predicate:" , predicate
-
-        new_predicate = {}
-        strict = true
-
-        if (predicate.hasOwnProperty("run_type"))
-            run_type = icswAssetHelperFunctions.resolve_asset_type_reverse(predicate.run_type)
-            console.log "run_type: ", run_type
-            new_predicate.run_type = run_type
-            strict = false
-        if (predicate.hasOwnProperty("run_start_day"))
-            new_predicate.run_start_day = predicate.run_start_day
-            strict = false
-        if (predicate.hasOwnProperty("run_start_hour"))
-            new_predicate.run_start_hour = predicate.run_start_hour
-            strict = false
-        if (predicate.hasOwnProperty("run_end_day"))
-            new_predicate.run_end_day = predicate.run_end_day
-            strict = false
-        if (predicate.hasOwnProperty("run_end_hour"))
-            new_predicate.run_end_hour = predicate.run_end_hour
-            strict = false
-        if (predicate.hasOwnProperty("device_name"))
-            new_predicate.device_name = predicate.device_name
-            strict = false
-        if (predicate.hasOwnProperty("run_status"))
-            run_status = icswAssetHelperFunctions.resolve_run_status_reverse(predicate.run_status)
-            new_predicate.run_status = run_status
-            strict = false
-
-        return $filter('filter')(input, new_predicate, strict)
+        strict = false
+        return $filter('filter')(input, predicate, strict)
 ]).filter('packageFilter'
 [
-    "$filter", "icswAssetHelperFunctions"
+    "$filter",
 (
-    $filter, icswAssetHelperFunctions
+    $filter,
 ) ->
     return (input, predicate) ->
-        console.log "input:", input
-        console.log "predicate:" , predicate
-
-        new_predicate = {}
         strict = false
-
-        if (predicate.hasOwnProperty("name"))
-            new_predicate.name = predicate.name
-
-        if (predicate.hasOwnProperty("package_type"))
-            package_type = icswAssetHelperFunctions.resolve_package_type_reverse(predicate.package_type)
-            console.log "package_type: ", package_type
-            new_predicate.package_type = package_type
-
-        return $filter('filter')(input, new_predicate, strict)
-]).filter('baseAssetFilter'
-[
-    "$filter", "icswAssetHelperFunctions"
-(
-    $filter, icswAssetHelperFunctions
-) ->
-    return (input, predicate) ->
-        console.log "input:", input
-        console.log "predicate:" , predicate
-
-
-        return $filter('filter')(input, predicate, false)
+        return $filter('filter')(input, predicate, strict)
 ]).directive("icswAssetScheduledRunsTable",
 [
     "$q", "$templateCache",
@@ -694,5 +642,82 @@ device_asset_module = angular.module(
 (
     $scope, $q,
 ) ->
-    console.log $scope.asset_run_list
+    $scope.select_assetrun = ($event, assetrun) ->
+        assetrun.$$selected = !assetrun.$$selected
+        if assetrun.$$selected
+            # ensure only assetrun with same type are selected
+            _type = assetrun.run_type
+            for _run in $scope.asset_run_list
+                if _run.run_type !=_type and _run.$$selected
+                    _run.$$selected = false
+
+    $scope.expand_assetrun = ($event, assetrun) ->
+        assetrun.$$expanded = !assetrun.$$expanded
+        # console.log assetrun.$$assets
+        return false
+        if !assetrun.expanded
+            icswSimpleAjaxCall({
+                url: ICSW_URLS.ASSET_GET_ASSETS_FOR_ASSET_RUN
+                data:
+                    pk: assetrun.idx
+                dataType: 'json'
+            }
+            ).then(
+                (result) ->
+                    assetrun.assets = result.assets
+                    assetrun.expanded = !assetrun.expanded
+                (not_ok) ->
+                    console.log not_ok
+            )
+        else
+            assetrun.assets = []
+            assetrun.expanded = !assetrun.expanded
+
+
+    # console.log $scope.asset_run_list
+]).directive("icswAssetKnownPackages",
+[
+    "$q", "$templateCache",
+(
+    $q, $templateCache,
+) ->
+    return {
+        restrict: "E"
+        template: $templateCache.get("icsw.asset.known.packages")
+        scope: {
+            package_tree: "=icswAssetPackageTree"
+        }
+        controller: "icswAssetKnownPackagesCtrl"
+    }
+]).controller("icswAssetKnownPackagesCtrl",
+[
+    "$scope", "$q",
+(
+    $scope, $q,
+) ->
+    $scope.expand_package = ($event, pack) ->
+        pack.$$expanded = !pack.$$expanded
+]).directive("icswAssetRunDetails",
+[
+    "$q", "$templateCache", "$compile",
+(
+    $q, $templateCache, $compile,
+) ->
+    return {
+        restrict: "E"
+        scope: {
+            asset_run: "=icswAssetRun"
+
+        }
+        link: (scope, element, attrs) ->
+            element.children().remove()
+            if scope.asset_run.run_type == 1
+                # console.log scope.asset_run
+                _not_av_el = $compile($templateCache.get("icsw.asset.details.package"))(scope)
+                # resolve packages
+
+            else
+                _not_av_el = $compile($templateCache.get("icsw.asset.details.na"))(scope)
+            element.append(_not_av_el)
+    }
 ])

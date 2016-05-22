@@ -20,7 +20,6 @@
                         <uib-tab-heading>
                             <span>Scheduled Runs ({{ struct.schedule_items.length }})</span>
                         </uib-tab-heading>
-                        {{ struct.asset_runs.length }}
                         <icsw-asset-scheduled-runs-table>
                         </icsw-asset-scheduled-runs-table>
                     </uib-tab>
@@ -73,91 +72,12 @@
                     </uib-tab>
                     <uib-tab>
                         <uib-tab-heading>
-                            <span>Known Packages ({{ struct.packages.length }})</span>
+                            <span>Known Packages ({{ struct.package_tree.list.length }})</span>
                         </uib-tab-heading>
 
-                        <h3 ng-if="!struct.packages.length">
-                            <span>No know Packages! Start an AssetRun to populate this list</span>
-                        </h3>
-
-                        <table
-                            class="table table-condensed table-hover table-striped"
-                            style="width:auto;"
-                            ng-show="struct.packages.length > 0"
-                            st-table="packages_shown"
-                            st-safe-src="struct.packages"
-                            st-set-filter="packageFilter"
-                        >
-                            <thead>
-                                <tr>
-                                    <th st-sort="name">Name</th>
-                                    <th st-sort="package_type">Package Type</th>
-                                    <th><button type="button" ng-csv="filterPackageArrayForCsvExport(packages_shown)" csv-header="['Package Name', 'Package Type', 'Version', 'Release', 'Size']" filename="test.csv">Export to CSV</button></th>
-                                </tr>
-                                <tr>
-                                    <th colspan="1">
-                                        <input st-search="name" placeholder="filter by name" class="input-sm form-control" type="search"/>
-                                    </th>
-                                    <th colspan="1">
-                                        <input st-search="package_type" placeholder="filter by package type" class="input-sm form-control" type="search"/>
-                                    </th>
-                                </tr>
-                                <tr>
-                                    <td colspan="99">
-                                        <div
-                                            icsw-tools-pagination
-                                            st-items-by-page="10"
-                                            st-displayed-pages="11"
-                                            possible-items-by-page="10,20,50,100,500,1000,2000,5000,10000"
-                                        ></div>
-                                    </td>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr ng-repeat-start="package in packages_shown">
-                                    <td>{{ package.name }}</td>
-                                    <td>{{ resolve_package_type(package.package_type) }}</td>
-                                    <td>
-                                        <icsw-tools-button size="xs" type="show" is-show="package.expanded" ng-click="expand_package($event, package)"></icsw-tools-button>
-                                    </td>
-                                </tr>
-
-                                <tr ng-repeat-end ng-if="package.expanded">
-                                    <td colspan="99">
-                                        <table
-                                            class="table table-condensed table-hover table-bordered"
-                                            style="width:auto;"
-                                            st-safe-src="package.versions"
-                                            st-table="versions_shown"
-                                            ng-show="package.versions.length"
-                                        >
-                                            <tr>
-                                                <td colspan="99">
-                                                    <div
-                                                        icsw-tools-pagination
-                                                        st-items-by-page="10"
-                                                        st-displayed-pages="11"
-                                                        possible-items-by-page="10,20,50,100"
-                                                    ></div>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <th>Version</th>
-                                                <th>Release</th>
-                                                <th>Size</th>
-                                                <th></th>
-                                            </tr>
-                                            <tr ng-repeat="obj in versions_shown">
-                                                <td>{{ obj[1] }}</td>
-                                                <td>{{ obj[2] }}</td>
-                                                <td>{{ obj[3] }}</td>
-                                                <td><icsw-tools-button type="reload" size="xs" ng-click="select_devices(obj)" value="Select Devices"/></td>
-                                            </tr>
-                                        </table>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                        <icsw-asset-known-packages
+                            icsw-asset-package-tree="struct.package_tree"
+                        ></icsw-asset-known-packages>
                     </uib-tab>
                 </uib-tabset>
             </uib-tab>
@@ -299,6 +219,7 @@
                 <th st-sort="device.$$full_name">Device</th>
                 <th st-sort="$$run_status">Status</th>
                 <th st-sort="$$run_result">Result</th>
+                <th>#Assets</th>
                 <th colspan="2">Action</th>
                 <th><button type="button" ng-csv="filterAssetRunArrayForCsvExport(assetruns_shown)" csv-header="['Run Type', 'Run Start', 'Run End', 'Device', 'Asset']" filename="test.csv">Export to CSV</button></th>
             </tr>
@@ -331,7 +252,7 @@
                 <th colspan="1">
                     <input st-search="$$run_result" placeholder="filter by run result" class="input-sm form-control" type="search"/>
                 </th>
-                <th colspan="3">&nbsp;</th>
+                <th colspan="4">&nbsp;</th>
             </tr>
             <tr>
                 <td colspan="99">
@@ -348,23 +269,28 @@
             <tr ng-class="{'success': assetrun.$$selected}" ng-repeat-start="assetrun in assetruns_shown track by $index">
                 <td>{{ assetrun.$$run_type }}</td>
                 <td>{{ assetrun.asset_batch }}</td>
-                <td>{{ assetrun.$$run_start_day }}</td>
+                <td class="text-center">{{ assetrun.$$run_start_day }}</td>
                 <td>{{ assetrun.$$run_start_hour }}</td>
-                <td>{{ assetrun.$$run_end_day }}</td>
+                <td class="text-center">{{ assetrun.$$run_end_day }}</td>
                 <td>{{ assetrun.$$run_end_hour }}</td>
                 <td class="text-right">{{ assetrun.run_duration }}</td>
                 <td>{{ assetrun.$$device.full_name }}</td>
                 <td>{{ assetrun.$$run_status }}</td>
                 <td>{{ assetrun.$$run_result }}</td>
+                <td class="text-right">{{ assetrun.$$num_results }}</td>
                 <td>
-                    <icsw-tools-button size="xs" type="show" is-show="assetrun.expanded" ng-click="expand_assetrun($event, assetrun)"></icsw-tools-button>
+                    <icsw-tools-button ng-if="assetrun.$$num_results" size="xs" type="show" is-show="assetrun.expanded" ng-click="expand_assetrun($event, assetrun)"></icsw-tools-button>
                 </td>
                 <td>
                     <icsw-tools-button type="modify" size="xs" value="select" ng-click="select_assetrun($event, assetrun)"></icsw-tools-button>
                 </td>
             </tr>
-            <tr ng-repeat-end ng-if="assetrun.expanded">
+            <tr ng-repeat-end ng-if="assetrun.$$expanded">
                 <td colspan="99">
+                    <icsw-asset-run-details
+                        icsw-asset-run="assetrun"
+                    ></icsw-asset-run-details>
+                    <!--
                     <table
                         class="table table-condensed table-hover table-bordered"
                         style="width:auto;"
@@ -448,8 +374,148 @@
                             <td>{{ asset[1] }}</td>
                             <td>{{ asset[2] }}</td>
                         </tr>
+                    </table> -->
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</script>
+
+<script type="text/ng-template" id="icsw.asset.known.packages">
+    <h3 ng-if="!package_tree.list.length">
+        <span>No know Packages! Start an AssetRun to populate this list</span>
+    </h3>
+
+    <table
+        class="table table-condensed table-hover table-striped"
+        style="width:auto;"
+        ng-if="package_tree.list.length > 0"
+        st-table="packages_shown"
+        st-safe-src="package_tree.list"
+        st-set-filter="packageFilter"
+    >
+        <thead>
+            <tr>
+                <th st-sort="name">Name</th>
+                <th st-sort="$$package_type">Package Type</th>
+                <th>#Versions</th>
+                <th st-sort="$$created">Created</th>
+                <th><button type="button" ng-csv="filterPackageArrayForCsvExport(packages_shown)" csv-header="['Package Name', 'Package Type', 'Version', 'Release', 'Size']" filename="test.csv">Export to CSV</button></th>
+            </tr>
+            <tr>
+                <th colspan="1">
+                    <input st-search="name" placeholder="filter by name" class="input-sm form-control" type="search"/>
+                </th>
+                <th colspan="1">
+                    <input st-search="$$package_type" placeholder="filter by package type" class="input-sm form-control" type="search"/>
+                </th>
+                <th colspan="2"></th>
+            </tr>
+            <tr>
+                <td colspan="99">
+                    <div
+                        icsw-tools-pagination
+                        st-items-by-page="40"
+                        st-displayed-pages="11"
+                        possible-items-by-page="10,20,50,100,500,1000,2000,5000,10000"
+                    ></div>
+                </td>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat-start="package in packages_shown">
+                <td>{{ package.name }}</td>
+                <td>{{ package.$$package_type }}</td>
+                <td class="text-center">{{ package.$$num_versions }}</td>
+                <td>{{ package.$$created }}</td>
+                <td>
+                    <icsw-tools-button size="xs" type="show" is-show="package.$$expanded" ng-click="expand_package($event, package)"></icsw-tools-button>
+                </td>
+            </tr>
+
+            <tr ng-repeat-end ng-if="package.$$expanded">
+                <td colspan="99">
+                    <table
+                        class="table table-condensed table-hover table-bordered"
+                        style="width:auto;"
+                        st-safe-src="package.assetpackageversion_set"
+                        st-table="package.$$versions_shown"
+                    >
+                        <tr>
+                            <td colspan="99">
+                                <div
+                                    icsw-tools-pagination
+                                    st-items-by-page="10"
+                                    st-displayed-pages="11"
+                                    possible-items-by-page="10,20,50,100"
+                                ></div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Version</th>
+                            <th>Release</th>
+                            <th>Comment</th>
+                            <th>Size</th>
+                            <th>Created</th>
+                            <th></th>
+                        </tr>
+                        <tr ng-repeat="obj in package.$$versions_shown">
+                            <td>{{ obj.version }}</td>
+                            <td>{{ obj.release }}</td>
+                            <td>{{ obj.info }}</td>
+                            <td class="text-right">{{ obj.$$size }}</td>
+                            <td class="text-center">{{ obj.$$created }}</td>
+                            <td>
+                                <icsw-tools-button ng-if="false" type="reload" size="xs" ng-click="select_devices($event, obj)" value="Select Devices"/>
+                            </td>
+                        </tr>
                     </table>
                 </td>
+            </tr>
+        </tbody>
+    </table>
+</script>
+
+<script type="text/ng-template" id="icsw.asset.details.na">
+    <uib-alert type="warning">Not Implemented (AssetType is {{ asset_run.$$run_type }})</uib-alert>
+</script>
+
+<script type="text/ng-template" id="icsw.asset.details.package">
+    <table
+        class="table table-condensed table-hover table-striped"
+        style="width:auto;"
+        st-safe-src="asset_run.$$assets"
+        st-table="assets_shown"
+        st-set-filter="assetRunFilter"
+    >
+        <thead>
+            <tr>
+                <td colspan="99">
+                    <div
+                        icsw-tools-pagination
+                        st-items-by-page="10"
+                        st-displayed-pages="11"
+                        possible-items-by-page="10,20,50,100,200,500"
+                    ></div>
+                </td>
+            </tr>
+            <tr>
+                <th st-sort="$$package.name">Name</th>
+                <th st-sort="version">Version</th>
+                <th st-sort="release">Release</th>
+                <th st-sort="size">Size</th>
+                <th st-sort="$$created">Install Date</th>
+                <th st-sort="$$package.$$package_type">Package Type</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="vers in assets_shown track by $index">
+                <td>{{ vers.$$package.name }}</td>
+                <td class="text-right">{{ vers.version }}</td>
+                <td>{{ vers.release }}</td>
+                <td class="text-right">{{ vers.$$size }}</td>
+                <td>{{ vers.$$created }}</td>
+                <td class="text-right">{{ vers.$$package.$$package_type }}</td>
             </tr>
         </tbody>
     </table>

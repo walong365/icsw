@@ -36,18 +36,9 @@ from initat.cluster.backbone.models import device
 from initat.cluster.backbone.models.asset import AssetPackage, AssetRun, AssetPackageVersion, \
     AssetType
 from initat.cluster.backbone.models.dispatch import ScheduleItem
-from initat.cluster.backbone.serializers import AssetRunSerializer, ScheduleItemSerializer
+from initat.cluster.backbone.serializers import AssetRunSerializer, ScheduleItemSerializer, \
+    AssetPackageSerializer
 from initat.cluster.frontend.rest_views import rest_logging
-
-
-class get_asset_list(RetrieveAPIView):
-    @method_decorator(login_required)
-    def get(self, request, *args, **kwargs):
-        return Response(
-            {
-                'assets': [(package.pk, package.name, package.package_type) for package in AssetPackage.objects.all()],
-            }
-        )
 
 
 class run_assetrun_for_device_now(View):
@@ -244,38 +235,20 @@ class AssetRunsViewSet(viewsets.ViewSet):
             )
         else:
             queryset = AssetRun.objects.all()
-        queryset = queryset.order_by("-run_start_time")
+        queryset = queryset.order_by("-run_start_time").prefetch_related(
+            "packages",
+        )
         serializer = AssetRunSerializer(queryset, many=True)
         return Response(serializer.data)
 
 
-class get_assetruns_for_devices(View):
-    @method_decorator(login_required)
-    def post(self, request):
-        pks = request.POST['pks']
-        pk_list = [int(pk) for pk in pks.split(",") if len(pk) > 0]
-
-        assetruns = []
-        for pk in pk_list:
-            dev = device.objects.get(idx=pk)
-            assetruns.extend([
-                (
-                    ar.idx,
-                    ar.run_index,
-                    ar.run_type,
-                    ar.run_start_time.isoformat() if ar.run_start_time else "",
-                    ar.run_end_time.isoformat() if ar.run_end_time else "",
-                    str((ar.run_end_time - ar.run_start_time).total_seconds()) if ar.run_end_time and ar.run_start_time else "0",
-                    ar.device.name,
-                    ar.device.idx,
-                    ar.run_status
-                ) for ar in dev.assetrun_set.all()
-            ])
-        return HttpResponse(
-            json.dumps(
-                {
-                    'asset_runs': assetruns
-                }
-            ),
-            content_type="application/json"
+class AssetPackageViewSet(viewsets.ViewSet):
+    def get_all(self, request):
+        queryset = AssetPackage.objects.all().prefetch_related(
+            "assetpackageversion_set"
+        ).order_by(
+            "name",
+            "package_type",
         )
+        serializer = AssetPackageSerializer(queryset, many=True)
+        return Response(serializer.data)
