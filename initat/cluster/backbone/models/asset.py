@@ -147,12 +147,16 @@ def get_base_assets_from_raw_result(asset_run, blob, runtype, scantype):
     elif runtype == AssetType.PROCESS:
         if scantype == ScanType.NRPE:
             l = json.loads(blob)
-            for (name, pid) in l:
-                assets.append(BaseAssetProcess(name, pid))
+            process_dict = {int(pid): {"name": name} for name, pid in l}
         elif scantype == ScanType.HM:
             process_dict = eval(bz2.decompress(base64.b64decode(blob)))
-            for pid in process_dict:
-                assets.append(BaseAssetProcess(process_dict[pid]['name'], pid))
+        for pid, stuff in process_dict.iteritems():
+            new_proc = AssetProcessEntry(
+                pid=pid,
+                name=stuff["name"],
+                asset_run=asset_run,
+            )
+            new_proc.save()
 
     elif runtype == AssetType.PENDING_UPDATE:
         if scantype == ScanType.NRPE:
@@ -168,24 +172,6 @@ def get_base_assets_from_raw_result(asset_run, blob, runtype, scantype):
 ########################################################################################################################
 # Base Asset Classes
 ########################################################################################################################
-
-
-class BaseAssetProcess(object):
-    def __init__(self, name, pid):
-        self.name = name
-        self.pid = pid
-
-    def __repr__(self):
-        s = "Name: {} Pid: {}".format(self.name, self.pid)
-        return s
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) \
-            and self.name == other.name \
-            and self.pid == other.pid
-
-    def __hash__(self):
-        return hash((self.name, self.pid))
 
 
 class BaseAssetPackage(object):
@@ -421,6 +407,23 @@ class AssetHardwareEntry(models.Model):
 
     class Meta:
         ordering = ("idx",)
+
+
+class AssetProcessEntry(models.Model):
+    idx = models.AutoField(primary_key=True)
+    # assetrun
+    asset_run = models.ForeignKey("backbone.AssetRun")
+    # Process ID
+    pid = models.IntegerField(default=0)
+    # Name
+    name = models.CharField(default="", max_length=255)
+    created = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return "AssetProcess pid={:d}".format(self.pid)
+
+    class Meta:
+        ordering = ("pid",)
 
 
 class AssetRun(models.Model):

@@ -24,7 +24,7 @@
 from rest_framework import serializers
 
 from initat.cluster.backbone.models import AssetRun, AssetPackage, \
-    AssetPackageVersion, AssetBatch, AssetHardwareEntry
+    AssetPackageVersion, AssetBatch, AssetHardwareEntry, AssetProcessEntry
 
 __all__ = [
     "AssetRunSimpleSerializer",
@@ -36,6 +36,7 @@ __all__ = [
     "ShallowPastAssetRunSerializer",
     "ShallowPastAssetBatchSerializer",
     "AssetHardwareEntrySerializer",
+    "AssetProcessEntrySerializer",
 ]
 
 
@@ -98,6 +99,7 @@ class AssetRunSimpleSerializer(serializers.ModelSerializer):
 class AssetRunOverviewSerializer(serializers.ModelSerializer):
     num_packages = serializers.IntegerField()
     num_hardware = serializers.IntegerField()
+    num_processes = serializers.IntegerField()
 
     class Meta:
         model = AssetRun
@@ -106,15 +108,24 @@ class AssetRunOverviewSerializer(serializers.ModelSerializer):
             "run_start_time", "run_end_time", "run_duration",
             "asset_batch", "run_status",
             # many to many count fields
-            "num_packages", "num_hardware",
+            "num_packages", "num_hardware", "num_processes",
         )
+
+
+class AssetProcessEntrySerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = AssetProcessEntry
 
 
 class AssetRunDetailSerializer(serializers.ModelSerializer):
     assethardwareentry_set = AssetHardwareEntrySerializer(many=True)
+    assetprocessentry_set = AssetProcessEntrySerializer(many=True)
 
     class Meta:
         model = AssetRun
         fields = (
-            "idx", "packages", "assethardwareentry_set",
+            "idx",
+            "packages", "assethardwareentry_set",
+            "assetprocessentry_set",
         )
