@@ -657,7 +657,7 @@ class StaticAssetType(IntEnum):
     HARDWARE = 3
 
 
-class AssetTemplateFieldType(IntEnum):
+class StaticAssetTemplateFieldType(IntEnum):
     INTEGER = 1
     STRING = 2
     DATE = 3
@@ -671,8 +671,11 @@ class StaticAssetTemplate(models.Model):
     type = models.IntegerField(choices=[(_type.value, _type.name) for _type in StaticAssetType])
     # name of Template
     name = models.CharField(max_length=128, unique=True)
-    # is consumable
-    consumable = models.BooleanField(default=False)
+    # system template (not deleteable)
+    system_template = models.BooleanField(default=False)
+    # link to creation user
+    user = models.ForeignKey("backbone.user", null=True)
+    # created
     date = models.DateTimeField(auto_now_add=True)
 
 
@@ -680,9 +683,15 @@ class StaticAssetTemplateField(models.Model):
     idx = models.AutoField(primary_key=True)
     # template
     static_asset_template = models.ForeignKey("backbone.StaticAssetTemplate")
-    field_type = models.IntegerField(choices=[(_type.value, _type.name) for _type in AssetTemplateFieldType])
+    # name
+    name = models.CharField(max_length=64, default="")
+    # description
+    field_description = models.TextField(default="")
+    field_type = models.IntegerField(choices=[(_type.value, _type.name) for _type in StaticAssetTemplateFieldType])
     # is optional
-    optional = models.BooleanField(default=False)
+    optional = models.BooleanField(default=True)
+    # is consumable (for integer fields)
+    consumable = models.BooleanField(default=False)
     # default value
     default_value_str = models.CharField(default="", blank=True, max_length=255)
     default_value_int = models.IntegerField(default=0)
@@ -693,7 +702,13 @@ class StaticAssetTemplateField(models.Model):
     value_int_upper_bound = models.IntegerField(default=0)
     # monitor flag, only for datefiles
     monitor = models.BooleanField(default=False)
+    # created
     date = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [
+            ("static_asset_template", "name")
+        ]
 
 
 class StaticAsset(models.Model):
