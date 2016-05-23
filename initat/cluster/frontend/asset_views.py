@@ -1,8 +1,8 @@
-# Copyright (C) 2016 Gregor kaufmann
+# Copyright (C) 2016 Gregor Kaufmann, Andreas Lang-Nevyjel
 #
-# Send feedback to: <g.kaufmann@init.at>
+# Send feedback to: <g.kaufmann@init.at>, <lang-nevyjel@init.at>
 #
-# This file is part of webfrontend
+# This file is part of icsw-server
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -20,31 +20,27 @@
 
 """ asset views """
 
-import pytz
 import datetime
 import json
 
-from django.utils.decorators import method_decorator
+import pytz
 from django.contrib.auth.decorators import login_required
-
-from initat.cluster.backbone.models.asset import AssetPackage, AssetRun, AssetPackageVersion, AssetType
-from initat.cluster.backbone.models.dispatch import ScheduleItem
-from initat.cluster.backbone.models import device
-
 from django.http import HttpResponse
+from django.db.models import Q, Count
+from django.utils import timezone
+
+from django.utils.decorators import method_decorator
 from django.views.generic import View
-
+from rest_framework.generics import RetrieveAPIView, ListAPIView
 from rest_framework.response import Response
-from rest_framework.generics import ListAPIView, RetrieveAPIView
-
-class get_asset_list(RetrieveAPIView):
-    @method_decorator(login_required)
-    def get(self, request, *args, **kwargs):
-        return Response(
-            {
-                'assets': [(package.pk, package.name, package.package_type) for package in AssetPackage.objects.all()],
-            }
-        )
+from rest_framework import viewsets
+from initat.cluster.backbone.models import device
+from initat.cluster.backbone.models.asset import AssetPackage, AssetRun, AssetPackageVersion, \
+    AssetType
+from initat.cluster.backbone.models.dispatch import ScheduleItem
+from initat.cluster.backbone.serializers import AssetRunDetailSerializer, ScheduleItemSerializer, \
+    AssetPackageSerializer, AssetRunOverviewSerializer
+from initat.cluster.frontend.rest_views import rest_logging
 
 
 class run_assetrun_for_device_now(View):
@@ -58,7 +54,10 @@ class run_assetrun_for_device_now(View):
             run_now=True,
             dispatch_setting=None
         )
-        return HttpResponse()
+        return HttpResponse(
+            json.dumps({"state": "started run"}),
+            content_type="application/json"
+        )
 
 
 class get_devices_for_asset(View):
@@ -102,11 +101,14 @@ class get_versions_for_package(View):
         return HttpResponse(
             json.dumps(
                 {
-                    'versions': [(v.idx, v.version, v.release, v.size) for v in ap.assetpackageversion_set.all()]
+                    'versions': [
+                        (v.idx, v.version, v.release, v.size) for v in ap.assetpackageversion_set.all()
+                    ]
                 }
             ),
             content_type="application/json"
         )
+
 
 class get_assets_for_asset_run(View):
     @method_decorator(login_required)
@@ -215,55 +217,56 @@ class get_assets_for_asset_run(View):
             )
 
 
-class get_schedule_list(RetrieveAPIView):
-    @method_decorator(login_required)
-    def get(self, request, *args, **kwargs):
-        return Response(
-            {
-                'schedules': sorted(
-                    [
-                        (
-                            s.device.idx,
-                            s.device.name,
-                            s.planned_date.isoformat(),
-                            s.dispatch_setting.name
-                        ) for s in ScheduleItem.objects.all()
-                    ],
-                    key=lambda item: item[1]
-                )
-            }
+class ScheduledRunViewSet(viewsets.ViewSet):
+    def list(self, request):
+        if "pks" in request.query_params:
+            queryset = ScheduleItem.objects.filter(
+                Q(device__in=json.loads(request.query_params.getlist("pks")[0]))
+            )
+        else:
+            queryset = ScheduleItem.objects.all()
+        serializer = ScheduleItemSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+
+class AssetRunsViewSet(viewsets.ViewSet):
+    def list_all(self, request):
+        if "pks" in request.query_params:
+            queryset = AssetRun.objects.filter(
+                Q(device__in=json.loads(request.query_params.getlist("pks")[0]))
+            )
+        else:
+            queryset = AssetRun.objects.all()
+        queryset = queryset.filter(Q(created__gt=timezone.now() - datetime.timedelta(days=2)))
+        queryset = queryset.order_by(
+            # should be created, FIXME later
+            "-idx",
+            "-run_start_time",
+        ).annotate(
+            num_packages=Count("packages"),
+            num_hardware=Count("assethardwareentry"),
         )
+        serializer = AssetRunOverviewSerializer(queryset, many=True)
+        return Response(serializer.data)
 
-class get_assetruns_for_devices(View):
-    @method_decorator(login_required)
-    def post(self, request):
-        pks = request.POST['pks']
-        pk_list = [int(pk) for pk in pks.split(",") if len(pk) > 0]
-
-        assetruns = []
-        for pk in pk_list:
-            dev = device.objects.get(idx=pk)
-            assetruns.extend([
-                (
-                    ar.idx,
-                    ar.run_index,
-                    ar.run_type,
-                    ar.run_start_time.isoformat() if ar.run_start_time else "",
-                    ar.run_end_time.isoformat() if ar.run_end_time else "",
-                    str((ar.run_end_time - ar.run_start_time).total_seconds()) if ar.run_end_time and ar.run_start_time else "0",
-                    ar.device.name,
-                    ar.device.idx,
-                    ar.run_status
-                ) for ar in dev.assetrun_set.all()
-            ])
-
-
-
-        return HttpResponse(
-            json.dumps(
-                {
-                    'asset_runs': assetruns
-                }
-            ),
-            content_type="application/json"
+    def get_details(self, request):
+        queryset = AssetRun.objects.prefetch_related(
+            "packages",
+            "assethardwareentry_set",
+        ).filter(
+            Q(pk=request.query_params["pk"])
         )
+        serializer = AssetRunDetailSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+
+class AssetPackageViewSet(viewsets.ViewSet):
+    def get_all(self, request):
+        queryset = AssetPackage.objects.all().prefetch_related(
+            "assetpackageversion_set"
+        ).order_by(
+            "name",
+            "package_type",
+        )
+        serializer = AssetPackageSerializer(queryset, many=True)
+        return Response(serializer.data)

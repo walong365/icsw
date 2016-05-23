@@ -48,8 +48,10 @@ class zmq_connection(object):
         self.__pending = set()
         self.__add_list = []
         self.__socket_dict = {}
+        self.num_connections = 0
         self.__registered = set()
         self.__dummy_fd = -1
+        self.__mult_dict = {}
 
     def register_poller(self, zmq_socket, sock_fd, poll_type, callback):
         self.poller_handler.setdefault(zmq_socket, {})[poll_type] = callback
@@ -66,11 +68,21 @@ class zmq_connection(object):
         self.poller.unregister(zmq_socket)
 
     def add_connection(self, conn_str, command, **kwargs):
+        if conn_str not in self.__mult_dict:
+            self.__mult_dict[conn_str] = 0
+        else:
+            self.__mult_dict[conn_str] += 1
+        # handle connection to same conn_str during one run
+        id_str = "{}{}".format(
+            self.identity,
+            "{:d}".format(self.__mult_dict[conn_str]) if self.__mult_dict[conn_str] else ""
+        )
+        self.num_connections += 1
         new_sock = process_tools.get_socket(
             self.context,
             "DEALER",
             linger=self.__linger_time,
-            identity=self.identity,
+            identity=id_str,
             immediate=kwargs.get("immediate", False),
         )
         if isinstance(command, server_command.srv_command):
@@ -116,6 +128,8 @@ class zmq_connection(object):
                 self.__pending.add(sock_fd)
         if not kwargs.get("multi", False):
             return self.loop()[0]
+        else:
+            return self.num_connections - 1
 
     def loop(self):
         start_time = time.time()

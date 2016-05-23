@@ -183,6 +183,7 @@
     <h3>
         Device schedules ({{ struct.devices.length }} entries)
         <icsw-tools-button type="modify" size="xs" ng-click="edit($event, null)" value="modify selected"></icsw-tools-button>
+        <span class="text-warning" ng-show="struct.updating">Updating...</span>
     </h3>
     <table
         st-table="entries_displayed"
@@ -194,8 +195,11 @@
         <thead>
             <tr>
                 <td colspan="99" class="form-inline">
-                    <icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
-                         possible-items-by-page="10,20,50,100,200,500,1000"></icsw-tools-pagination>
+                    <icsw-tools-pagination
+                        st-items-by-page="10"
+                        st-displayed-pages="11"
+                        possible-items-by-page="10,20,50,100,200,500,1000"
+                    ></icsw-tools-pagination>
                     <input st-search="" class="form-control" placeholder="filter ..." type="text"/>
                 </td>
             </tr>
@@ -203,11 +207,18 @@
                 <th st-sort="full_name" st-sort-default="true">Name</th>
                 <th>Selected</th>
                 <th>Dispatchers</th>
+                <th colspan="2">Planned Schedules</th>
+                <th>Runs</th>
                 <th colspan="1" class="text-center">Action</th>
             </tr>
         </thead>
         <tbody>
-            <tr st-select-row="obj" st-select-mode="multiple" ng-repeat="obj in entries_displayed">
+            <tr
+                st-select-row="obj"
+                st-select-mode="multiple"
+                ng-repeat="obj in entries_displayed"
+                ng-class="{'success': obj.isSelected}"
+            >
                 <td>{{ obj.full_name }}</td>
                 <td>
                     <span ng-class="{'label label-success': obj.isSelected, 'label label-default':!obj.isSelected}">sel</span>
@@ -217,6 +228,17 @@
                     <span ng-show="obj.$$dispatcher_list.length">
                         <span ng-repeat="disp in obj.$$dispatcher_list" class="label label-primary">{{ disp.name }}</span>
                     </span>
+                </td>
+                <td class="text-center" ng-class="{'warning': obj.$$sched_item_list.length == 0}">
+                    {{ obj.$$sched_item_list.length }}
+                </td>
+                <td>
+                    <span ng-repeat="si in obj.$$sched_item_list">
+                        {{ si.$$planned_date }} ({{ si.$$source }}),
+                    </span>
+                </td>
+                <td class="text-center" title="in the past 7 days">
+                    {{ obj.past_assetrun_set.length }}
                 </td>
                 <td>
                     <icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)" value="modify"/>

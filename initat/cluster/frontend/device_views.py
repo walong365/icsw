@@ -25,11 +25,13 @@
 import json
 import logging
 import re
+import datetime
 
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.db.models import Q, Max
 from django.http import HttpResponse
+from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from rest_framework import serializers
@@ -38,16 +40,17 @@ from initat.cluster.backbone.models import device_group, device, \
     cd_connection, domain_tree_node, category, netdevice, ComCapability, \
     partition_table, monitoring_hint, DeviceSNMPInfo, snmp_scheme, \
     domain_name_tree, net_ip, peer_information, mon_ext_host, device_variable, \
-    SensorThreshold, package_device_connection, DeviceDispatcherLink
+    SensorThreshold, package_device_connection, DeviceDispatcherLink, AssetRun, \
+    AssetBatch
 from initat.cluster.backbone.models.functions import can_delete_obj
 from initat.cluster.backbone.render import permission_required_mixin
 from initat.cluster.backbone.serializers import netdevice_serializer, ComCapabilitySerializer, \
     partition_table_serializer, monitoring_hint_serializer, DeviceSNMPInfoSerializer, \
     snmp_scheme_serializer, device_variable_serializer, cd_connection_serializer, \
-    SensorThresholdSerializer, package_device_connection_serializer, DeviceDispatcherLinkSerializer
+    SensorThresholdSerializer, package_device_connection_serializer, DeviceDispatcherLinkSerializer, \
+    AssetRunSimpleSerializer, ShallowPastAssetRunSerializer, ShallowPastAssetBatchSerializer
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from initat.tools import logging_tools, server_command, process_tools
-from initat.cluster.backbone.models.asset import AssetRun, AssetRunSerializer
 
 logger = logging.getLogger("cluster.device")
 
@@ -436,10 +439,24 @@ class AssetEnrichment(object):
         }
         # manually unroll n2m relations
         _data = [
-            AssetRunSerializer(
+            AssetRunSimpleSerializer(
                 _result[_ref["pk"]],
                 context={"device": _ref["device__pk"]}
             ).data for _ref in _ref_list
+        ]
+        return _data
+
+
+class PastAssetrunEnrichment(object):
+    def fetch(self, pk_list):
+        _now = timezone.now()
+        _result = AssetBatch.objects.filter(
+            Q(device__in=pk_list) &
+            Q(run_start_time__gt=_now - datetime.timedelta(days=1))
+        )
+        # manually unroll n2m relations
+        _data = [
+            ShallowPastAssetBatchSerializer(_ab).data for _ab in _result
         ]
         return _data
 
@@ -505,6 +522,7 @@ class EnrichmentHelper(object):
         self._all["package_info"] = EnrichmentObject(package_device_connection, package_device_connection_serializer)
         self._all["dispatcher_info"] = EnrichmentObject(DeviceDispatcherLink, DeviceDispatcherLinkSerializer)
         self._all["asset_info"] = AssetEnrichment()
+        self._all["past_assetrun_info"] = PastAssetrunEnrichment()
 
     def create(self, key, pk_list):
         if key not in self._all:

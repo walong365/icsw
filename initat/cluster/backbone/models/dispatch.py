@@ -47,6 +47,7 @@ __all__ = [
 
 
 class DiscoverySource(IntEnum):
+    # seed SCHED_SOURCE_LUT in coffee
     SNMP = 1
     ASU = 2
     IPMI = 3
@@ -91,6 +92,7 @@ class DispatcherSettingSchedule(models.Model):
 
 
 class DispatcherSetting(models.Model):
+    # Dispatcher Settings
     idx = models.AutoField(primary_key=True)
     # name
     name = models.CharField(unique=True, default="", max_length=64)
@@ -219,7 +221,9 @@ class ScanHistory(models.Model):
     date = models.DateTimeField(default=django.utils.timezone.now)  # auto_add_now breaks factory boy
 
     device = models.ForeignKey("backbone.device")
-    source = models.IntegerField(choices=[(src.value, src.name) for src in DiscoverySource])
+    source = models.IntegerField(
+        choices=[(src.value, src.name) for src in DiscoverySource]
+    )
 
     duration = models.IntegerField()  # seconds
 
@@ -237,5 +241,8 @@ class ScheduleItem(models.Model):
 
     def __repr__(self):
         return "ScheduleItem(dev={}, src={}, planned={}, run_now={})".format(
-            self.device, self.source, self.planned_date, self.run_now
+            self.device,
+            self.source,
+            self.planned_date,
+            self.run_now,
         )

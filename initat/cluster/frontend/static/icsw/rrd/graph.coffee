@@ -494,14 +494,14 @@ angular.module(
                     cur_re = new RegExp("^$", "gi")
             else
                 cur_re = new RegExp("^$", "gi")
-            $scope.g_tree.toggle_tree_state(undefined, -1, false)
-            $scope.g_tree.iter(
+            $scope.struct.g_tree.toggle_tree_state(undefined, -1, false)
+            $scope.struct.g_tree.iter(
                 (entry, cur_re) ->
                     if entry._node_type in ["e"]
                         entry.set_selected(if (entry._display_name.match(cur_re) or entry._g_key.match(cur_re)) then true else false)
                 cur_re
             )
-            $scope.g_tree.show_selected(false)
+            $scope.struct.g_tree.show_selected(false)
             $scope.selection_changed()
 
         $scope.selection_changed = () =>
@@ -626,6 +626,17 @@ angular.module(
     class icswRRDGraphTree extends icswReactTreeConfig
         constructor: (@scope, args) ->
             super(args)
+            @$$digest = false
+
+        do_digest: () =>
+            if !@$$digest
+                @$$digest = true
+                # oh my ...
+                try
+                    @scope.$digest()
+                catch e
+                    true
+                @$$digest = false
 
         get_name : (t_entry) ->
             if t_entry._node_type == "h"
@@ -643,16 +654,19 @@ angular.module(
             else
                 return ""
 
-        handle_click: (entry, event) =>
+        handle_click: ($event, entry) =>
+            console.log entry._node_type, entry.expand
             if entry._node_type == "s"
-                entry.expand = ! entry.expand
+                entry.set_expand(!entry.expand)
             else if entry._node_type == "e"
-                @_jq_toggle_checkbox_node(entry)
-            # @scope.$digest()
+                @toggle_checkbox_node(entry).then(
+                    (ok) =>
+                )
+            @do_digest()
 
         selection_changed: () =>
             @scope.selection_changed()
-            # @scope.$digest()
+            @do_digest()
 
         get_pre_view_element: (entry) ->
             if entry._node_type == "e" and entry.num_sensors

@@ -20,15 +20,16 @@
 
 import base64
 import bz2
+import datetime
 import json
 import pickle
 import uuid
 
+from django.utils import timezone
 import django.utils.timezone
 from django.db import models
 from enum import IntEnum
 from lxml import etree
-from rest_framework import serializers
 
 from initat.tools import server_command
 
@@ -38,112 +39,130 @@ from initat.tools import server_command
 ########################################################################################################################
 
 
-# flatten xml into bahlist
-def generate_bahs(root, bahlist):
-    bah = BaseAssetHardware(root.get("type"))
-    bahlist.append(bah)
-    for elem in root.iterchildren("info"):
-        bah.info_dict[elem.get("name")] = elem.get("value")
-    for elem in root.iterchildren("object"):
-        generate_bahs(elem, bahlist)
-
-
-def get_base_assets_from_raw_result(blob, runtype, scantype):
+def get_base_assets_from_raw_result(asset_run, blob, runtype, scantype):
     assets = []
 
     if not blob:
         return assets
 
-    try:
-        if runtype == AssetType.PACKAGE:
-            if scantype == ScanType.NRPE:
-                l = json.loads(blob)
-                for (name, version, size, date) in l:
-                    if size == "Unknown":
-                        size = 0
-                    assets.append(
-                        BaseAssetPackage(
-                            name,
-                            version=version,
-                            size=size,
-                            install_date=date,
-                            package_type=PackageTypeEnum.WINDOWS
-                        )
+    if runtype == AssetType.PACKAGE:
+        if scantype == ScanType.NRPE:
+            l = json.loads(blob)
+            for (name, version, size, date) in l:
+                if size == "Unknown":
+                    size = 0
+                assets.append(
+                    BaseAssetPackage(
+                        name,
+                        version=version,
+                        size=size,
+                        install_date=date,
+                        package_type=PackageTypeEnum.WINDOWS
                     )
-            elif scantype == ScanType.HM:
-                try:
-                    package_dict = server_command.decompress(blob, pickle=True)
-                except:
-                    raise
-                else:
-                    for package_name in package_dict:
-                        for versions_dict in package_dict[package_name]:
-                            assets.append(
-                                BaseAssetPackage(
-                                    package_name,
-                                    version=versions_dict['version'],
-                                    size=versions_dict['size'],
-                                    release=versions_dict['release'],
-                                    package_type=PackageTypeEnum.LINUX
-                                )
+                )
+        elif scantype == ScanType.HM:
+            try:
+                package_dict = server_command.decompress(blob, pickle=True)
+            except:
+                raise
+            else:
+                for package_name in package_dict:
+                    for versions_dict in package_dict[package_name]:
+                        assets.append(
+                            BaseAssetPackage(
+                                package_name,
+                                version=versions_dict['version'],
+                                size=versions_dict['size'],
+                                release=versions_dict['release'],
+                                package_type=PackageTypeEnum.LINUX
                             )
-        elif runtype == AssetType.HARDWARE:
+                        )
+    elif runtype == AssetType.HARDWARE:
+        if scantype == ScanType.NRPE:
+            s = blob[2:-4].encode('ascii')
+        elif scantype == ScanType.HM:
+            s = bz2.decompress(base64.b64decode(blob))
+        else:
             s = blob
-            if scantype == ScanType.NRPE:
-                s = blob[2:-4].encode('ascii')
-            elif scantype == ScanType.HM:
-                s = bz2.decompress(base64.b64decode(blob))
 
-            root = etree.fromstring(s)
-            assert (root.tag == "topology")
+        root = etree.fromstring(s)
+        assert (root.tag == "topology")
 
-            for _child in root.iterchildren():
-                generate_bahs(_child, assets)
+        # lookup for structural entries
+        _struct_lut = {}
+        _root_tree = root.getroottree()
+        struct_el = None
+        for element in root.iter():
+            if element.tag in ["topology", "object"]:
+                # structural entry
+                struct_el = AssetHardwareEntry(
+                    type=element.tag,
+                    attributes=json.dumps({key: value for key, value in element.attrib.iteritems()}),
+                    asset_run=asset_run,
+                )
+                # get local path
+                _path = _root_tree.getpath(element)
+                _struct_lut[_path] = struct_el
+                struct_el._info_dict = {}
+                if element.getparent() is not None:
+                    # parent_path
+                    _parent = _struct_lut[_root_tree.getpath(element.getparent())]
+                    struct_el.parent = _parent
+                    struct_el.depth = _parent.depth + 1
 
-        elif runtype == AssetType.LICENSE:
-            if scantype == ScanType.NRPE:
-                l = json.loads(blob)
-                for (name, licensekey) in l:
-                    assets.append(BaseAssetLicense(name, license_key=licensekey))
-            elif scantype == ScanType.HM:
-                # todo implement me (--> what do we want to gather/display here?)
-                pass
+                struct_el.save()
+            else:
+                _struct_el = _struct_lut[_root_tree.getpath(element.getparent())]
+                _struct_el._info_dict.setdefault(element.tag, []).append(
+                    json.dumps(
+                        {key: value for key, value in element.attrib.iteritems()}
+                    )
+                )
+        for _path, _el in _struct_lut.iteritems():
+            _el.info_list = json.dumps(_el._info_dict)
+            _el.save()
 
-        elif runtype == AssetType.UPDATE:
-            if scantype == ScanType.NRPE:
-                l = json.loads(blob)
-                for (name, date, status) in l:
-                    assets.append(BaseAssetUpdate(name, install_date=date, status=status))
-            elif scantype == ScanType.HM:
-                # todo implement me (--> what do we want to gather/display here?)
-                pass
-
-        elif runtype == AssetType.SOFTWARE_VERSION:
-            # todo implement me
+    elif runtype == AssetType.LICENSE:
+        if scantype == ScanType.NRPE:
+            l = json.loads(blob)
+            for (name, licensekey) in l:
+                assets.append(BaseAssetLicense(name, license_key=licensekey))
+        elif scantype == ScanType.HM:
+            # todo implement me (--> what do we want to gather/display here?)
             pass
 
-        elif runtype == AssetType.PROCESS:
-            if scantype == ScanType.NRPE:
-                l = json.loads(blob)
-                for (name, pid) in l:
-                    assets.append(BaseAssetProcess(name, pid))
-            elif scantype == ScanType.HM:
-                process_dict = eval(bz2.decompress(base64.b64decode(blob)))
-                for pid in process_dict:
-                    assets.append(BaseAssetProcess(process_dict[pid]['name'], pid))
+    elif runtype == AssetType.UPDATE:
+        if scantype == ScanType.NRPE:
+            l = json.loads(blob)
+            for (name, date, status) in l:
+                assets.append(BaseAssetUpdate(name, install_date=date, status=status))
+        elif scantype == ScanType.HM:
+            # todo implement me (--> what do we want to gather/display here?)
+            pass
 
-        elif runtype == AssetType.PENDING_UPDATE:
-            if scantype == ScanType.NRPE:
-                l = json.loads(blob)
-                for (name, optional) in l:
-                    assets.append(BaseAssetPendingUpdate(name, optional=optional))
-            elif scantype == ScanType.HM:
-                l = pickle.loads(bz2.decompress(base64.b64decode(blob)))
-                for (name, version) in l:
-                    assets.append(BaseAssetPendingUpdate(name, version=version))
-    except Exception as e:
-        assets = []
+    elif runtype == AssetType.SOFTWARE_VERSION:
+        # todo implement me
+        pass
 
+    elif runtype == AssetType.PROCESS:
+        if scantype == ScanType.NRPE:
+            l = json.loads(blob)
+            for (name, pid) in l:
+                assets.append(BaseAssetProcess(name, pid))
+        elif scantype == ScanType.HM:
+            process_dict = eval(bz2.decompress(base64.b64decode(blob)))
+            for pid in process_dict:
+                assets.append(BaseAssetProcess(process_dict[pid]['name'], pid))
+
+    elif runtype == AssetType.PENDING_UPDATE:
+        if scantype == ScanType.NRPE:
+            l = json.loads(blob)
+            for (name, optional) in l:
+                assets.append(BaseAssetPendingUpdate(name, optional=optional))
+        elif scantype == ScanType.HM:
+            l = pickle.loads(bz2.decompress(base64.b64decode(blob)))
+            for (name, version) in l:
+                assets.append(BaseAssetPendingUpdate(name, version=version))
     return assets
 
 ########################################################################################################################
@@ -207,23 +226,6 @@ class BaseAssetPackage(object):
 
     def __hash__(self):
         return hash((self.name, self.version, self.release, self.size, self.install_date, self.package_type))
-
-
-class BaseAssetHardware(object):
-    def __init__(self, type):
-        self.type = type
-        self.info_dict = {}
-
-    def __repr__(self):
-        s = "Type: %s" % self.type
-        return s
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) \
-            and self.type == other.type
-
-    def __hash__(self):
-        return hash((self.type))
 
 
 class BaseAssetLicense(object):
@@ -322,7 +324,16 @@ class RunStatus(IntEnum):
     PLANNED = 1
     RUNNING = 2
     ENDED = 3
+
+
+class RunResult(IntEnum):
+    UNKNOWN = 1
+    SUCCESS = 2
+    WARNING = 3
     FAILED = 4
+    # canceled (no IP)
+    CANCELED = 5
+
 
 class PackageTypeEnum(IntEnum):
     WINDOWS = 1
@@ -331,21 +342,6 @@ class PackageTypeEnum(IntEnum):
 ########################################################################################################################
 # (Django Database) Classes
 ########################################################################################################################
-
-
-class Asset(models.Model):
-    idx = models.AutoField(primary_key=True)
-
-    type = models.IntegerField(choices=[(_type.value, _type.name) for _type in AssetType])
-
-    value = models.TextField()
-
-    name = models.UUIDField(default=uuid.uuid4)
-
-    asset_run = models.ForeignKey("AssetRun")
-
-    def getAssetInstance(self):
-        return pickle.loads(self.value)
 
 
 class AssetPackage(models.Model):
@@ -359,8 +355,8 @@ class AssetPackage(models.Model):
 
     def __eq__(self, other):
         return isinstance(other, self.__class__) \
-               and self.name == other.name \
-               and self.package_type == other.package_type
+            and self.name == other.name \
+            and self.package_type == other.package_type
 
     def __hash__(self):
         return hash((self.name, self.package_type))
@@ -370,6 +366,8 @@ class AssetPackageVersion(models.Model):
     idx = models.AutoField(primary_key=True)
     asset_package = models.ForeignKey("backbone.AssetPackage")
     size = models.IntegerField(default=0)
+    # for comment and / or info
+    info = models.TextField(default="")
     version = models.TextField(default="", blank=True)
     release = models.TextField(default="", blank=True)
     created = models.DateTimeField(auto_now_add=True)
@@ -385,22 +383,70 @@ class AssetPackageVersion(models.Model):
         return hash((self.version, self.release, self.size))
 
 
+class AssetHardwareEntry(models.Model):
+    idx = models.AutoField(primary_key=True)
+    # type (from XML)
+    type = models.TextField(default="")
+    # json-serializes attribute dict
+    attributes = models.TextField(default="")
+    # assetrun
+    asset_run = models.ForeignKey("backbone.AssetRun")
+    # depth
+    depth = models.IntegerField(default=0)
+    # json-serialized dict of all non-structural subentries
+    """
+    <page_type size="4096" count="4092876"/>
+    <page_type size="2097152" count="0"/>
+    <info name="DMIProductName" value="System Product Name"/>
+    <info name="DMIProductVersion" value="System Version"/>
+    <info name="DMIProductSerial" value="System Serial Number"/>
+    <info name="DMIProductUUID" value="00A5001E-8C00-005E-A775-3085A99A7CAF"/>
+    <info name="DMIBoardVendor" value="ASUSTeK COMPUTER INC."/>
+    <info name="DMIBoardName" value="P9X79"/>
+    <info name="DMIBoardVersion" value="Rev 1.xx"/>
+
+    becomes
+    {
+        page_type: [{size: ..., count: ...}, {size: ..., count:....}]
+        info: [{name: ..., value: ....}, {name: ..., value: ....}]
+    }
+    """
+    info_list = models.TextField(default="")
+    # link to parent
+    parent = models.ForeignKey("backbone.AssetHardwareEntry", null=True)
+    created = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return "AssetHardwareEntry {}".format(self.type)
+
+    class Meta:
+        ordering = ("idx",)
+
+
 class AssetRun(models.Model):
     idx = models.AutoField(primary_key=True)
 
     run_index = models.IntegerField(default=1)
-
-    run_status = models.IntegerField(choices=[(status.value, status.name) for status in RunStatus], null=True)
-
-    run_type = models.IntegerField(choices=[(_type.value, _type.name) for _type in AssetType], null=True)
-
+    run_status = models.IntegerField(
+        choices=[(status.value, status.name) for status in RunStatus],
+        default=RunStatus.PLANNED.value,
+    )
+    run_result = models.IntegerField(
+        choices=[(status.value, status.name) for status in RunResult],
+        default=RunResult.UNKNOWN.value,
+    )
+    run_type = models.IntegerField(
+        choices=[(_type.value, _type.name) for _type in AssetType],
+        default=AssetType.PACKAGE.value,
+    )
     run_start_time = models.DateTimeField(null=True, blank=True)
-
     run_end_time = models.DateTimeField(null=True, blank=True)
-
+    # runtime in seconds
+    run_duration = models.IntegerField(default=0)
     asset_batch = models.ForeignKey("AssetBatch", null=True)
-
     device = models.ForeignKey("backbone.device", null=True)
+    # run index in current batch
+    batch_index = models.IntegerField(default=0)
 
     raw_result_str = models.TextField(null=True)
 
@@ -408,14 +454,16 @@ class AssetRun(models.Model):
 
     scan_type = models.IntegerField(choices=[(_type.value, _type.name) for _type in ScanType], null=True)
 
+    # link to packageversions
     packages = models.ManyToManyField(AssetPackageVersion)
+    created = models.DateTimeField(auto_now_add=True)
 
     def generate_assets(self):
         if self.raw_result_interpreted or not self.raw_result_str:
-            return get_base_assets_from_raw_result(self.raw_result_str, self.run_type, self.scan_type)
+            return get_base_assets_from_raw_result(self, self.raw_result_str, self.run_type, self.scan_type)
         self.raw_result_interpreted = True
 
-        base_assets = get_base_assets_from_raw_result(self.raw_result_str, self.run_type, self.scan_type)
+        base_assets = get_base_assets_from_raw_result(self, self.raw_result_str, self.run_type, self.scan_type)
         for _base_asset in base_assets:
             _package_dump = pickle.dumps(_base_asset)
             self.asset_set.create(type=self.run_type, value=_package_dump)
@@ -424,12 +472,14 @@ class AssetRun(models.Model):
         return base_assets
 
     def generate_assets_no_save(self):
-        l = get_base_assets_from_raw_result(self.raw_result_str, self.run_type, self.scan_type)
+        print "ASSETS_NO_SAVE no longer supported"
+        return []
+        l = get_base_assets_from_raw_result(self, self.raw_result_str, self.run_type, self.scan_type)
         l.sort()
         return l
 
     def generate_assets_new(self):
-        base_assets = get_base_assets_from_raw_result(self.raw_result_str, self.run_type, self.scan_type)
+        base_assets = get_base_assets_from_raw_result(self, self.raw_result_str, self.run_type, self.scan_type)
         for ba in base_assets:
             kwfilterdict = {}
             if self.run_type == AssetType.PACKAGE:
@@ -520,6 +570,32 @@ class AssetRun(models.Model):
 
 class AssetBatch(models.Model):
     idx = models.AutoField(primary_key=True)
+    run_start_time = models.DateTimeField(null=True, blank=True)
+    run_end_time = models.DateTimeField(null=True, blank=True)
+    # total number of runs
+    num_runs = models.IntegerField(default=0)
+    # number of runs completed
+    num_completed = models.IntegerField(default=0)
+    # number of runs ok / error
+    num_runs_ok = models.IntegerField(default=0)
+    num_runs_error = models.IntegerField(default=0)
+    # status
+    run_status = models.IntegerField(
+        choices=[(status.value, status.name) for status in RunStatus],
+        default=RunStatus.PLANNED.value,
+    )
+    # result
+    run_result = models.IntegerField(
+        choices=[(status.value, status.name) for status in RunResult],
+        default=RunResult.UNKNOWN.value,
+    )
+    # error string
+    error_string = models.TextField(default="")
+    # total run time in seconds
+    run_time = models.IntegerField(default=0)
+    device = models.ForeignKey("backbone.device")
+    date = models.DateTimeField(auto_now_add=True)
+    created = models.DateTimeField(auto_now_add=True)
 
     def completed(self):
         for assetrun in self.assetrun_set.all():
@@ -527,57 +603,31 @@ class AssetBatch(models.Model):
                 return False
         return True
 
-########################################################################################################################
-# Serializers
-########################################################################################################################
-
-
-class AssetSerializer(serializers.ModelSerializer):
-    assetstr = serializers.SerializerMethodField()
-
-    def get_assetstr(self, obj):
-        return str(obj.getAssetInstance())
-
-    class Meta:
-        model = Asset
-
-
-class AssetPackageVersionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = AssetPackageVersion
-        fields = ("idx", "size", "version", "release")
-
-
-class AssetPackageSerializer(serializers.ModelSerializer):
-    versions = AssetPackageVersionSerializer(many=True)
-
-    class Meta:
-        model = AssetPackage
-        fields = ("idx", "name")
-
-
-class AssetRunSerializer(serializers.ModelSerializer):
-    device = serializers.SerializerMethodField()
-    # asset_set = AssetSerializer(many=True)
-    assets = serializers.SerializerMethodField()
-    packages = AssetPackageVersionSerializer(many=True)
-
-    def get_assets(self, obj):
-        return [str(pkg) for pkg in obj.generate_assets_no_save()]
-
-    def get_device(self, obj):
-        if self.context and "device" in self.context:
-            return self.context["device"]
+    def run_done(self, asset_run):
+        self.num_completed += 1
+        if asset_run.run_result == RunResult.SUCCESS:
+            self.num_runs_ok += 1
         else:
-            return 0
+            self.num_runs_error += 1
+        if self.num_completed == self.num_runs:
+            # finished
+            self.run_end_time = timezone.now()
+            self.run_time = int((self.run_end_time - self.run_start_time).seconds)
+            self.run_status = RunStatus.ENDED
+            self.run_result = max([_res.run_result for _res in self.assetrun_set.all()])
+        self.save()
 
-    class Meta:
-        model = AssetRun
-        fields = ("idx", "device", "run_index", "run_type", "assets",
-                  "run_start_time", "run_end_time", "packages")
+    def __repr__(self):
+        return unicode(self)
+
+    def __unicode__(self):
+        return "AssetBatch for device '{}'".format(
+            unicode(self.device)
+        )
 
 
 class DeviceInventory(models.Model):
+    # to be removed
     idx = models.AutoField(primary_key=True)
     device = models.ForeignKey("backbone.device")
     inventory_type = models.CharField(
@@ -633,7 +683,7 @@ class StaticAssetTemplateField(models.Model):
     # default value
     default_value_str = models.CharField(default="", blank=True, max_length=255)
     default_value_int = models.IntegerField(default=0)
-    default_value_date = models.DateField(default=django.utils.timezone.now)
+    default_value_date = models.DateField(default=timezone.now)
     # bounds, for input checking
     has_bounds = models.BooleanField(default=False)
     value_int_lower_bound = models.IntegerField(default=0)

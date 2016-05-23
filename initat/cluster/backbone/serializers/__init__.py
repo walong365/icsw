@@ -28,6 +28,7 @@ from initat.cluster.backbone.models import device, device_selection, device_conf
     LogSource, LogLevel, device_group, mac_ignore, \
     macbootlog, status, WrittenConfigFile, mon_dist_slave, mon_dist_master, cd_connection, \
     quota_capable_blockdevice, DeviceSNMPInfo
+from initat.cluster.backbone.serializers.asset import *  # @UnusedWildImport
 from initat.cluster.backbone.serializers.background import *  # @UnusedWildImport
 from initat.cluster.backbone.serializers.capability import *  # @UnusedWildImport
 from initat.cluster.backbone.serializers.config import *  # @UnusedWildImport
