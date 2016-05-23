@@ -160,40 +160,41 @@ device_asset_module = angular.module(
 ) ->
     info_dict = {
         asset_type: [
-            [1, "Package"]
-            [2, "Hardware"]
-            [3, "License"]
-            [4, "Update"]
-            [5, "Software version"]
-            [6, "Process"]
-            [7, "Pending update"]
+            [1, "Package", ""]
+            [2, "Hardware", ""]
+            [3, "License", ""]
+            [4, "Update", ""]
+            [5, "Software version", ""]
+            [6, "Process", ""]
+            [7, "Pending update", ""]
         ]
         package_type: [
-            [1, "Windows"]
-            [2, "Linux"]
+            [1, "Windows", ""]
+            [2, "Linux", ""]
         ]
         run_status: [
-            [1, "Planned"]
-            [2, "Running"]
-            [3, "Ended"]
+            [1, "Planned", ""]
+            [2, "Running", "success"]
+            [3, "Ended", ""]
         ]
         run_result: [
-            [1, "Unknown"]
-            [2, "Success"]
-            [3, "Success"]
-            [4, "Failed"]
+            [1, "Unknown", "warning"]
+            [2, "Success", "success"]
+            [3, "Success", "success"]
+            [4, "Failed", "danger"]
+            [5, "Canceled", "warning"]
         ]
         schedule_source: [
-            [1, "SNMP"]
-            [2, "ASU"]
-            [3, "IPMI"]
-            [4, "Package"]
-            [5, "Hardware"]
-            [6, "License"]
-            [7, "Update"]
-            [8, "Software Version"]
-            [9, "Process"]
-            [10, "Pending update"]
+            [1, "SNMP", ""]
+            [2, "ASU", ""]
+            [3, "IPMI", ""]
+            [4, "Package", ""]
+            [5, "Hardware", ""]
+            [6, "License", ""]
+            [7, "Update", ""]
+            [8, "Software Version", ""]
+            [9, "Process", ""]
+            [10, "Pending update", ""]
         ]
     }
 
@@ -202,17 +203,17 @@ device_asset_module = angular.module(
     res_dict = {}
     for name, _list of info_dict
         res_dict[name] = {}
-        for [_idx, _str] in _list
+        for [_idx, _str, _class] in _list
             # forward resolve
-            res_dict[name][_idx] = _str
+            res_dict[name][_idx] = [_str, _class]
             # backward resolve
-            res_dict[name][_str] = _idx
-            res_dict[name][_.lowerCase(_str)] = _idx
+            res_dict[name][_str] = [_idx, _class]
+            res_dict[name][_.lowerCase(_str)] = [_idx, _class]
 
-    resolve = (name, key) ->
+    _resolve = (name, key, idx) ->
         if name of res_dict
             if key of res_dict[name]
-                return res_dict[name][key]
+                return res_dict[name][key][idx]
             else
                 console.error "unknown key #{key} for name #{name} in resolve"
                 return "???"
@@ -221,7 +222,11 @@ device_asset_module = angular.module(
             return "????"
 
     return {
-        resolve: resolve
+        resolve: (name, key) ->
+            return _resolve(name, key, 0)
+
+        get_class: (name, key) ->
+            return _resolve(name, key, 1)
     }
 ]).controller("icswDeviceAssetCtrl",
 [
@@ -321,15 +326,6 @@ device_asset_module = angular.module(
 
         )
 
-    # resolve functions
-    resolve_package_assets = (vers_list) ->
-        _res = _.orderBy(
-            ($scope.struct.package_tree.version_lut[idx] for idx in vers_list)
-            ["$$package.name"]
-            ["asc"]
-        )
-        return _res
-        
     # salt functions
     salt_schedule_item = (obj) ->
         obj.$$planned_time = moment(obj.planned_date).format("YYYY-MM-DD HH:mm:ss")
@@ -343,13 +339,19 @@ device_asset_module = angular.module(
         obj.$$full_name = obj.$$device.full_name
         obj.$$run_type = icswAssetHelperFunctions.resolve("asset_type", obj.run_type)
         obj.$$run_status = icswAssetHelperFunctions.resolve("run_status", obj.run_status)
+        obj.$$run_status_class = icswAssetHelperFunctions.get_class("run_status", obj.run_status)
         obj.$$run_result = icswAssetHelperFunctions.resolve("run_result", obj.run_result)
+        obj.$$run_result_class = icswAssetHelperFunctions.get_class("run_result", obj.run_result)
+        obj.$$assets_loaded = false
         # link assets
         if obj.run_type == 1
-            obj.$$assets = resolve_package_assets(obj.packages)
+            # package
+            obj.$$num_results = obj.num_packages
+        else if obj.run_type == 2
+            # hardware
+            obj.$$num_results = obj.num_hardware
         else
-            obj.$$assets = []
-        obj.$$num_results = obj.$$assets.length
+            obj.$$num_results = 0
         if obj.run_start_time
             _moment = moment(obj.run_start_time)
             obj.$$run_start_day = _moment.format("YYYY-MM-DD")
@@ -638,9 +640,9 @@ device_asset_module = angular.module(
     }
 ]).controller("icswAssetAssetRunsTableCtrl",
 [
-    "$scope", "$q",
+    "$scope", "$q", "ICSW_URLS", "blockUI", "Restangular", "icswAssetPackageTreeService",
 (
-    $scope, $q,
+    $scope, $q, ICSW_URLS, blockUI, Restangular, icswAssetPackageTreeService,
 ) ->
     $scope.select_assetrun = ($event, assetrun) ->
         assetrun.$$selected = !assetrun.$$selected
@@ -651,30 +653,56 @@ device_asset_module = angular.module(
                 if _run.run_type !=_type and _run.$$selected
                     _run.$$selected = false
 
+    # resolve functions
+    resolve_package_assets = (tree, vers_list) ->
+        _res = _.orderBy(
+            (tree.version_lut[idx] for idx in vers_list)
+            ["$$package.name"]
+            ["asc"]
+        )
+        return _res
+
+    resolve_hardware_assets = (in_list) ->
+        # todo: create structured tree
+        for entry in in_list
+            entry.$$attributes = angular.fromJson(entry.attributes)
+            entry.$$info_list = angular.fromJson(entry.info_list)
+            entry.$$attribute_info = ("#{key}=#{value}" for key, value of entry.$$attributes).join(", ")
+            entry.$$info_info = ("#{key} (#{value.length})" for key, value of entry.$$info_list).join(", ")
+            # console.log entry
+        return in_list
+
     $scope.expand_assetrun = ($event, assetrun) ->
-        assetrun.$$expanded = !assetrun.$$expanded
-        # console.log assetrun.$$assets
-        return false
-        if !assetrun.expanded
-            icswSimpleAjaxCall({
-                url: ICSW_URLS.ASSET_GET_ASSETS_FOR_ASSET_RUN
-                data:
+        if !assetrun.$$expanded and not assetrun.$$assets_loaded
+            blockUI.start("Fetching data from server...")
+            Restangular.all(ICSW_URLS.ASSET_GET_ASSETS_FOR_ASSET_RUN.slice(1)).getList(
+                {
                     pk: assetrun.idx
-                dataType: 'json'
-            }
+                }
             ).then(
-                (result) ->
-                    assetrun.assets = result.assets
-                    assetrun.expanded = !assetrun.expanded
-                (not_ok) ->
-                    console.log not_ok
+                (data) ->
+                    _done = $q.defer()
+                    if assetrun.run_type == 1
+                        icswAssetPackageTreeService.load($scope.$id).then(
+                            (tree) ->
+                                _done.resolve(resolve_package_assets(tree, data[0].packages))
+
+                        )
+                    else if assetrun.run_type == 2
+                        _done.resolve(resolve_hardware_assets(data[0].assethardwareentry_set))
+                    else
+                        _done.resolve([])
+                    _done.promise.then(
+                        (results) ->
+                            assetrun.$$assets = results
+                            assetrun.$$expanded = !assetrun.$$expanded
+                            assetrun.$$assets_loaded = true
+                            blockUI.stop()
+                    )
             )
         else
-            assetrun.assets = []
-            assetrun.expanded = !assetrun.expanded
+            assetrun.$$expanded = !assetrun.$$expanded
 
-
-    # console.log $scope.asset_run_list
 ]).directive("icswAssetKnownPackages",
 [
     "$q", "$templateCache",
@@ -712,10 +740,9 @@ device_asset_module = angular.module(
         link: (scope, element, attrs) ->
             element.children().remove()
             if scope.asset_run.run_type == 1
-                # console.log scope.asset_run
                 _not_av_el = $compile($templateCache.get("icsw.asset.details.package"))(scope)
-                # resolve packages
-
+            else if scope.asset_run.run_type == 2
+                _not_av_el = $compile($templateCache.get("icsw.asset.details.hardware"))(scope)
             else
                 _not_av_el = $compile($templateCache.get("icsw.asset.details.na"))(scope)
             element.append(_not_av_el)

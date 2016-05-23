@@ -26,7 +26,9 @@ import json
 import pytz
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
-from django.db.models import Q
+from django.db.models import Q, Count
+from django.utils import timezone
+
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from rest_framework.generics import RetrieveAPIView, ListAPIView
@@ -36,8 +38,8 @@ from initat.cluster.backbone.models import device
 from initat.cluster.backbone.models.asset import AssetPackage, AssetRun, AssetPackageVersion, \
     AssetType
 from initat.cluster.backbone.models.dispatch import ScheduleItem
-from initat.cluster.backbone.serializers import AssetRunSerializer, ScheduleItemSerializer, \
-    AssetPackageSerializer
+from initat.cluster.backbone.serializers import AssetRunDetailSerializer, ScheduleItemSerializer, \
+    AssetPackageSerializer, AssetRunOverviewSerializer
 from initat.cluster.frontend.rest_views import rest_logging
 
 
@@ -228,17 +230,33 @@ class ScheduledRunViewSet(viewsets.ViewSet):
 
 
 class AssetRunsViewSet(viewsets.ViewSet):
-    def list(self, request):
+    def list_all(self, request):
         if "pks" in request.query_params:
             queryset = AssetRun.objects.filter(
                 Q(device__in=json.loads(request.query_params.getlist("pks")[0]))
             )
         else:
             queryset = AssetRun.objects.all()
-        queryset = queryset.order_by("-run_start_time").prefetch_related(
-            "packages",
+        queryset = queryset.filter(Q(created__gt=timezone.now() - datetime.timedelta(days=2)))
+        queryset = queryset.order_by(
+            # should be created, FIXME later
+            "-idx",
+            "-run_start_time",
+        ).annotate(
+            num_packages=Count("packages"),
+            num_hardware=Count("assethardwareentry"),
         )
-        serializer = AssetRunSerializer(queryset, many=True)
+        serializer = AssetRunOverviewSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+    def get_details(self, request):
+        queryset = AssetRun.objects.prefetch_related(
+            "packages",
+            "assethardwareentry_set",
+        ).filter(
+            Q(pk=request.query_params["pk"])
+        )
+        serializer = AssetRunDetailSerializer(queryset, many=True)
         return Response(serializer.data)
 
 

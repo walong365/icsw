@@ -586,6 +586,7 @@ def get_time_inc_from_ds(ds):
 
 class PlannedRunState(object):
     def __init__(self, pdrf, run_db_obj, ext_com, timeout):
+        # mirrors AssetRuns
         self.__pdrf = pdrf
         self.run_db_obj = run_db_obj
         self.ext_com = ext_com
@@ -594,7 +595,10 @@ class PlannedRunState(object):
         self.zmq_con_idx = 0
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__pdrf.disp.log("[PRS] {}".format(what), log_level)
+        self.__pdrf.log(
+            "[{:d}] {}".format(self.run_db_obj.batch_index, what),
+            log_level
+        )
 
     def start(self):
         self.started = True
@@ -602,14 +606,28 @@ class PlannedRunState(object):
         _db_obj.run_status = RunStatus.RUNNING
         _db_obj.run_start_time = timezone.now()
         _db_obj.save()
+        if _db_obj.asset_batch.run_status != RunStatus.RUNNING:
+            _db_obj.asset_batch.run_status = RunStatus.RUNNING
+            _db_obj.asset_batch.save()
         self.started = True
         self.__pdrf.num_running += 1
 
+    def stop(self, result, status):
+        _db_obj = self.run_db_obj
+        if _db_obj.run_start_time:
+            _db_obj.run_end_time = timezone.now()
+            _db_obj.run_duration = int((_db_obj.run_end_time - _db_obj.run_start_time).seconds)
+        else:
+            # no start time hence no end time
+            _db_obj.run_duration = 0
+        _db_obj.run_status = status
+        _db_obj.run_result = result
+        _db_obj.save()
+        _db_obj.asset_batch.run_done(_db_obj)
+        self.__pdrf.remove_planned_run(self)
+
     def store_zmq_result(self, result):
         _db_obj = self.run_db_obj
-        _db_obj.run_status = RunStatus.ENDED
-        _db_obj.run_end_time = timezone.now()
-        _db_obj.run_duration = int((_db_obj.run_end_time - _db_obj.run_start_time).seconds)
         s = None
         if result is not None:
             try:
@@ -640,30 +658,57 @@ class PlannedRunState(object):
                 )
                 s = None
         if s is None:
-            _db_obj.run_result = RunResult.FAILED
+            _res = RunResult.FAILED
         else:
-            _db_obj.run_result = RunResult.SUCCESS
+            _res = RunResult.SUCCESS
         _db_obj.raw_result_str = s
-        _db_obj.asset_batch.run_done(_db_obj)
-        self.__pdrf.num_running -= 1
+        self.stop(_res, RunStatus.ENDED)
         try:
             _db_obj.generate_assets_new()
-        except Exception as e:
+        except:
             self.log(
                 "Exception: {}".format(process_tools.get_except_info()),
                 logging_tools.LOG_LEVEL_ERROR
             )
-        _db_obj.save()
-        self.__pdrf.remove_planned_run(self)
 
 
 class PlannedRunsForDevice(object):
     def __init__(self, disp, device, ip):
+        # mirrors AssetBatch
         self.disp = disp
         self.device = device
         self.planned_runs = []
         self.ip = ip
         self.num_running = 0
+        self.to_delete = False
+        self.asset_batch = AssetBatch(
+            device=self.device,
+            run_start_time=timezone.now(),
+            run_status=RunStatus.PLANNED,
+        )
+
+    def start_feed(self, cmd_tuples):
+        self.asset_batch.num_runs = len(cmd_tuples)
+        self.asset_batch.save()
+
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.disp.log(
+            "[PR] [{}] {}".format(
+                unicode(self.device),
+                what
+            ),
+            log_level
+        )
+
+    def cancel(self, err_cause):
+        self.log("canceling because auf '{}'".format(err_cause), logging_tools.LOG_LEVEL_ERROR)
+        # make copy of list
+        for _run in [_x for _x in self.planned_runs]:
+            _run.stop(RunResult.CANCELED, RunStatus.ENDED)
+        self.asset_batch.error_string = err_cause
+        self.asset_batch.save()
+        # canceled, delete
+        self.to_delete = True
 
     def add_planned_run(self, run_db_obj, ext_com, timeout):
         self.planned_runs.append(
@@ -671,7 +716,11 @@ class PlannedRunsForDevice(object):
         )
 
     def remove_planned_run(self, pdrf):
+        self.num_running -= 1
         self.planned_runs = [entry for entry in self.planned_runs if entry.run_db_obj.idx != pdrf.run_db_obj.idx]
+        if not self.num_running:
+            # no more running, delete
+            self.to_delete = True
 
 
 class Dispatcher(object):
@@ -799,15 +848,18 @@ class Dispatcher(object):
 
                 _dev = schedule_item.device
                 if _dev.idx not in self.__device_planned_runs:
-                    self.discovery_process.get_route_to_devices([_dev])
-                    ip = _dev.target_ip
-                    self.log("Address of device {} is {}".format(unicode(_dev), ip))
-                    self.__device_planned_runs[_dev.idx] = PlannedRunsForDevice(self, _dev, ip)
+                    self.__device_planned_runs[_dev.idx] = []
+
+                self.discovery_process.get_route_to_devices([_dev])
+                self.log("Address of device {} is {}".format(unicode(_dev), _dev.target_ip))
+                new_pr = PlannedRunsForDevice(self, _dev, _dev.target_ip)
+
+                self.__device_planned_runs[_dev.idx].append(new_pr)
 
                 if cap_dict.get("hm", False):
-                    self._do_hm_scan(schedule_item)
+                    self._do_hm_scan(schedule_item, new_pr)
                 elif cap_dict.get("nrpe", False):
-                    self._do_nrpe_scan(schedule_item)
+                    self._do_nrpe_scan(schedule_item, new_pr)
                 else:
                     self.log(
                         "Skipping non-capable device {}".format(
@@ -826,39 +878,43 @@ class Dispatcher(object):
 
         # step 1: start commands
 
-        for _dev_idx, prfd in self.__device_planned_runs.iteritems():
-            for prs in prfd.planned_runs:
-                if not prs.started:
-                    prs.start()
-                    if isinstance(prs.ext_com, ExtCom):
-                        prs.ext_com.run()
-                    else:
-                        if prfd.ip:
-                            conn_str = "tcp://{}:{:d}".format(
-                                prfd.ip,
-                                self.__hm_port,
-                            )
-                            self.log(
-                                u"connection_str for {} is {} ({})".format(
-                                    unicode(prfd.device),
-                                    conn_str,
-                                    prs.ext_com,
+        for _dev_idx, prfd_list in self.__device_planned_runs.iteritems():
+            for prfd in prfd_list:
+                if prfd.ip:
+                    for prs in prfd.planned_runs:
+                        if not prs.started:
+                            prs.start()
+                            if isinstance(prs.ext_com, ExtCom):
+                                prs.ext_com.run()
+                            else:
+                                conn_str = "tcp://{}:{:d}".format(
+                                    prfd.ip,
+                                    self.__hm_port,
                                 )
-                            )
-                            # store zmq connection idx
-                            prs.zmq_con_idx = zmq_con.add_connection(
-                                conn_str,
-                                server_command.srv_command(command=prs.ext_com),
-                                multi=True
-                            )
-                        else:
-                            self.log("no IP for device {}".format(prfd.device), logging_tools.LOG_LEVEL_ERROR)
+                                self.log(
+                                    u"connection_str for {} is {} ({})".format(
+                                        unicode(prfd.device),
+                                        conn_str,
+                                        prs.ext_com,
+                                    )
+                                )
+                                # store zmq connection idx
+                                prs.zmq_con_idx = zmq_con.add_connection(
+                                    conn_str,
+                                    server_command.srv_command(command=prs.ext_com),
+                                    multi=True
+                                )
+                else:
+                    prfd.cancel("no IP")
 
         # step 2: check commands
         # build list of running prfds
-        run_prfds = [
-            prfd for prfd in self.__device_planned_runs.itervalues() if prfd.num_running
-        ]
+        run_prfds = sum(
+            [
+                [_entry for _entry in prfd_list if _entry.num_running] for prfd_list in self.__device_planned_runs.itervalues()
+            ],
+            []
+        )
         # start time of communication
         s_time = time.time()
         if zmq_con.num_connections:
@@ -917,19 +973,23 @@ class Dispatcher(object):
                         self.todo_asset_runs.put(asset_run)
                         self.device_running_ext_coms[_device] = 0
 
-    def _do_hm_scan(self, schedule_item):
+        # remove PlannedRuns which should be deleted
+        _removed = 0
+        for _dev_idx, pdrf_list in self.__device_planned_runs.iteritems():
+            _keep = [entry for entry in pdrf_list if not entry.to_delete]
+            _removed += len(pdrf_list) - len(_keep)
+            self.__device_planned_runs[_dev_idx] = _keep
+        if _removed:
+            self.log("Removed {}".format(logging_tools.get_plural("PlannedRunsForDevice", _removed)))
+
+    def _do_hm_scan(self, schedule_item, planned_run):
         cmd_tuples = [
             (AssetType.PACKAGE, "rpmlist"),
             (AssetType.HARDWARE, "lstopo"),
             (AssetType.PROCESS, "proclist"),
             (AssetType.PENDING_UPDATE, "updatelist")
         ]
-        new_asset_batch = AssetBatch(
-            device=schedule_item.device,
-            run_start_time=timezone.now(),
-            num_runs=len(cmd_tuples),
-        )
-        new_asset_batch.save()
+        planned_run.start_feed(cmd_tuples)
         for _idx, (runtype, _command) in enumerate(cmd_tuples):
             if runtype == AssetType.PACKAGE:
                 timeout = 30
@@ -948,19 +1008,19 @@ class Dispatcher(object):
                 run_status=RunStatus.PLANNED,
                 scan_type=ScanType.HM,
                 batch_index=_idx,
-                asset_batch=new_asset_batch,
+                asset_batch=planned_run.asset_batch,
                 device=_device,
             )
             new_asset_run.save()
             _device.assetrun_set.add(new_asset_run)
 
-            self.__device_planned_runs[_device.idx].add_planned_run(
+            planned_run.add_planned_run(
                 new_asset_run,
                 _command,
                 timeout,
             )
 
-    def _do_nrpe_scan(self, schedule_item):
+    def _do_nrpe_scan(self, schedule_item, planned_run):
         cmd_tuples = [
             (AssetType.PACKAGE, LIST_SOFTWARE_CMD),
             (AssetType.HARDWARE, LIST_HARDWARE_CMD),
@@ -969,13 +1029,7 @@ class Dispatcher(object):
             (AssetType.UPDATE, LIST_UPDATES_CMD),
             (AssetType.LICENSE, LIST_KEYS_CMD)
         ]
-
-        new_asset_batch = AssetBatch(
-            device=schedule_item.device,
-            run_start_time=timezone.now(),
-            num_runs=len(cmd_tuples),
-        )
-        new_asset_batch.save()
+        planned_run.start_feed(cmd_tuples)
         for _idx, (runtype, _command) in enumerate(cmd_tuples):
             _com = "/opt/cluster/sbin/check_nrpe -H {} -n -c {} -t120".format(
                 schedule_item.device.all_ips()[0],
@@ -993,13 +1047,13 @@ class Dispatcher(object):
                 run_status=RunStatus.PLANNED,
                 scan_type=ScanType.NRPE,
                 batch_index=_idx,
-                asset_batch=new_asset_batch,
+                asset_batch=planned_run.asset_batch,
                 device=_device,
             )
             new_asset_run.save()
             _device.assetrun_set.add(new_asset_run)
 
-            self.__device_planned_runs[_device.idx].add_planned_run(
+            planned_run.add_planned_run(
                 new_asset_run,
                 ext_com,
                 120,

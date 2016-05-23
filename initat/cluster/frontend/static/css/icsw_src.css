@@ -183,3 +183,11 @@ del {
     position: relative;
 }
 
+.icsw-input-100px {
+    width: 100px;
+}
+
+.icsw-input-50px {
+    width: 50px;
+}
+

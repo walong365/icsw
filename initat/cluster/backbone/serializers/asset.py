@@ -23,17 +23,19 @@
 
 from rest_framework import serializers
 
-from initat.cluster.backbone.models import AssetRun, Asset, AssetPackage, \
-    AssetPackageVersion, AssetBatch
+from initat.cluster.backbone.models import AssetRun, AssetPackage, \
+    AssetPackageVersion, AssetBatch, AssetHardwareEntry
 
 __all__ = [
-    "AssetRunSerializer",
+    "AssetRunSimpleSerializer",
+    "AssetRunOverviewSerializer",
+    "AssetRunDetailSerializer",
     "AssetBatchSerializer",
-    "AssetSerializer",
     "AssetPackageSerializer",
     "AssetPackageVersionSerializer",
     "ShallowPastAssetRunSerializer",
     "ShallowPastAssetBatchSerializer",
+    "AssetHardwareEntrySerializer",
 ]
 
 
@@ -56,20 +58,16 @@ class ShallowPastAssetBatchSerializer(serializers.ModelSerializer):
         )
 
 
+class AssetHardwareEntrySerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = AssetHardwareEntry
+
+
 class AssetBatchSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AssetBatch
-
-
-class AssetSerializer(serializers.ModelSerializer):
-    assetstr = serializers.SerializerMethodField()
-
-    def get_assetstr(self, obj):
-        return str(obj.getAssetInstance())
-
-    class Meta:
-        model = Asset
 
 
 class AssetPackageVersionSerializer(serializers.ModelSerializer):
@@ -86,18 +84,37 @@ class AssetPackageSerializer(serializers.ModelSerializer):
         fields = ("idx", "name", "package_type", "assetpackageversion_set")
 
 
-class AssetRunSerializer(serializers.ModelSerializer):
-    # asset_set = AssetSerializer(many=True)
-    # assets = serializers.SerializerMethodField()
-    # packages = AssetPackageVersionSerializer(many=True)
-
-    # def get_assets(self, obj):
-    #    return [str(pkg) for pkg in obj.generate_assets_no_save()]
+class AssetRunSimpleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AssetRun
         fields = (
             "idx", "device", "run_index", "run_type", "run_result",
-            "run_start_time", "run_end_time", "packages", "run_duration",
+            "run_start_time", "run_end_time", "run_duration",
             "asset_batch", "run_status",
+        )
+
+
+class AssetRunOverviewSerializer(serializers.ModelSerializer):
+    num_packages = serializers.IntegerField()
+    num_hardware = serializers.IntegerField()
+
+    class Meta:
+        model = AssetRun
+        fields = (
+            "idx", "device", "run_index", "run_type", "run_result",
+            "run_start_time", "run_end_time", "run_duration",
+            "asset_batch", "run_status",
+            # many to many count fields
+            "num_packages", "num_hardware",
+        )
+
+
+class AssetRunDetailSerializer(serializers.ModelSerializer):
+    assethardwareentry_set = AssetHardwareEntrySerializer(many=True)
+
+    class Meta:
+        model = AssetRun
+        fields = (
+            "idx", "packages", "assethardwareentry_set",
         )
