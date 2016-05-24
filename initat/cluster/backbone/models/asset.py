@@ -147,12 +147,16 @@ def get_base_assets_from_raw_result(asset_run, blob, runtype, scantype):
     elif runtype == AssetType.PROCESS:
         if scantype == ScanType.NRPE:
             l = json.loads(blob)
-            for (name, pid) in l:
-                assets.append(BaseAssetProcess(name, pid))
+            process_dict = {int(pid): {"name": name} for name, pid in l}
         elif scantype == ScanType.HM:
             process_dict = eval(bz2.decompress(base64.b64decode(blob)))
-            for pid in process_dict:
-                assets.append(BaseAssetProcess(process_dict[pid]['name'], pid))
+        for pid, stuff in process_dict.iteritems():
+            new_proc = AssetProcessEntry(
+                pid=pid,
+                name=stuff["name"],
+                asset_run=asset_run,
+            )
+            new_proc.save()
 
     elif runtype == AssetType.PENDING_UPDATE:
         if scantype == ScanType.NRPE:
@@ -168,24 +172,6 @@ def get_base_assets_from_raw_result(asset_run, blob, runtype, scantype):
 ########################################################################################################################
 # Base Asset Classes
 ########################################################################################################################
-
-
-class BaseAssetProcess(object):
-    def __init__(self, name, pid):
-        self.name = name
-        self.pid = pid
-
-    def __repr__(self):
-        s = "Name: {} Pid: {}".format(self.name, self.pid)
-        return s
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) \
-            and self.name == other.name \
-            and self.pid == other.pid
-
-    def __hash__(self):
-        return hash((self.name, self.pid))
 
 
 class BaseAssetPackage(object):
@@ -423,6 +409,23 @@ class AssetHardwareEntry(models.Model):
         ordering = ("idx",)
 
 
+class AssetProcessEntry(models.Model):
+    idx = models.AutoField(primary_key=True)
+    # assetrun
+    asset_run = models.ForeignKey("backbone.AssetRun")
+    # Process ID
+    pid = models.IntegerField(default=0)
+    # Name
+    name = models.CharField(default="", max_length=255)
+    created = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return "AssetProcess pid={:d}".format(self.pid)
+
+    class Meta:
+        ordering = ("pid",)
+
+
 class AssetRun(models.Model):
     idx = models.AutoField(primary_key=True)
 
@@ -654,7 +657,7 @@ class StaticAssetType(IntEnum):
     HARDWARE = 3
 
 
-class AssetTemplateFieldType(IntEnum):
+class StaticAssetTemplateFieldType(IntEnum):
     INTEGER = 1
     STRING = 2
     DATE = 3
@@ -668,8 +671,11 @@ class StaticAssetTemplate(models.Model):
     type = models.IntegerField(choices=[(_type.value, _type.name) for _type in StaticAssetType])
     # name of Template
     name = models.CharField(max_length=128, unique=True)
-    # is consumable
-    consumable = models.BooleanField(default=False)
+    # system template (not deleteable)
+    system_template = models.BooleanField(default=False)
+    # link to creation user
+    user = models.ForeignKey("backbone.user", null=True)
+    # created
     date = models.DateTimeField(auto_now_add=True)
 
 
@@ -677,9 +683,15 @@ class StaticAssetTemplateField(models.Model):
     idx = models.AutoField(primary_key=True)
     # template
     static_asset_template = models.ForeignKey("backbone.StaticAssetTemplate")
-    field_type = models.IntegerField(choices=[(_type.value, _type.name) for _type in AssetTemplateFieldType])
+    # name
+    name = models.CharField(max_length=64, default="")
+    # description
+    field_description = models.TextField(default="")
+    field_type = models.IntegerField(choices=[(_type.value, _type.name) for _type in StaticAssetTemplateFieldType])
     # is optional
-    optional = models.BooleanField(default=False)
+    optional = models.BooleanField(default=True)
+    # is consumable (for integer fields)
+    consumable = models.BooleanField(default=False)
     # default value
     default_value_str = models.CharField(default="", blank=True, max_length=255)
     default_value_int = models.IntegerField(default=0)
@@ -690,7 +702,13 @@ class StaticAssetTemplateField(models.Model):
     value_int_upper_bound = models.IntegerField(default=0)
     # monitor flag, only for datefiles
     monitor = models.BooleanField(default=False)
+    # created
     date = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [
+            ("static_asset_template", "name")
+        ]
 
 
 class StaticAsset(models.Model):

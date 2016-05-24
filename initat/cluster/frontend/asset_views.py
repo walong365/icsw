@@ -39,7 +39,7 @@ from initat.cluster.backbone.models.asset import AssetPackage, AssetRun, AssetPa
     AssetType
 from initat.cluster.backbone.models.dispatch import ScheduleItem
 from initat.cluster.backbone.serializers import AssetRunDetailSerializer, ScheduleItemSerializer, \
-    AssetPackageSerializer, AssetRunOverviewSerializer
+    AssetPackageSerializer, AssetRunOverviewSerializer, AssetProcessEntrySerializer
 from initat.cluster.frontend.rest_views import rest_logging
 
 
@@ -245,6 +245,7 @@ class AssetRunsViewSet(viewsets.ViewSet):
         ).annotate(
             num_packages=Count("packages"),
             num_hardware=Count("assethardwareentry"),
+            num_processes=Count("assetprocessentry"),
         )
         serializer = AssetRunOverviewSerializer(queryset, many=True)
         return Response(serializer.data)
@@ -253,6 +254,7 @@ class AssetRunsViewSet(viewsets.ViewSet):
         queryset = AssetRun.objects.prefetch_related(
             "packages",
             "assethardwareentry_set",
+            "assetprocessentry_set",
         ).filter(
             Q(pk=request.query_params["pk"])
         )

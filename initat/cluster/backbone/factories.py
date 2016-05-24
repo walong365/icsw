@@ -31,7 +31,8 @@ from initat.cluster.backbone.models import netdevice_speed, LogLevel, \
     config_hint, config_var_hint, config_script_hint, device_variable, virtual_desktop_protocol, \
     window_manager, snmp_network_type, snmp_scheme, snmp_scheme_vendor, snmp_scheme_tl_oid, \
     ComCapability, SensorAction, config_catalog, GraphSettingSize, GraphSettingTimeshift, \
-    GraphSettingForecast, GraphTimeFrame, DispatcherSettingSchedule, DispatcherSetting
+    GraphSettingForecast, GraphTimeFrame, DispatcherSettingSchedule, DispatcherSetting, \
+    StaticAssetTemplate, StaticAssetTemplateField
 
 
 class Device(factory.django.DjangoModelFactory):
@@ -546,3 +547,15 @@ class DispatcherSettingFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = DispatcherSetting
         django_get_or_create = ("name",)
+
+
+class StaticAssetTemplateFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = StaticAssetTemplate
+        django_get_or_create = ("name", "system_template")
+
+
+class StaticAssetTemplateFieldFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = StaticAssetTemplateField
+        django_get_or_create = ("name", "static_asset_template")

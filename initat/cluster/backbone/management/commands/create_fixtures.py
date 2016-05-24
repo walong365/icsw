@@ -19,7 +19,6 @@
 #
 """ creates the cluster fixtures """
 
-# from lxml.builder import E # @UnresolvedImport
 from django.core.management.base import BaseCommand
 from django.db.models import Q
 

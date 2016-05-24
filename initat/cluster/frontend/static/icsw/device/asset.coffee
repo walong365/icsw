@@ -350,6 +350,9 @@ device_asset_module = angular.module(
         else if obj.run_type == 2
             # hardware
             obj.$$num_results = obj.num_hardware
+        else if obj.run_type == 6
+            # processes
+            obj.$$num_results = obj.num_processes
         else
             obj.$$num_results = 0
         if obj.run_start_time
@@ -690,6 +693,8 @@ device_asset_module = angular.module(
                         )
                     else if assetrun.run_type == 2
                         _done.resolve(resolve_hardware_assets(data[0].assethardwareentry_set))
+                    else if assetrun.run_type == 6
+                        _done.resolve(data[0].assetprocessentry_set)
                     else
                         _done.resolve([])
                     _done.promise.then(
@@ -743,6 +748,8 @@ device_asset_module = angular.module(
                 _not_av_el = $compile($templateCache.get("icsw.asset.details.package"))(scope)
             else if scope.asset_run.run_type == 2
                 _not_av_el = $compile($templateCache.get("icsw.asset.details.hardware"))(scope)
+            else if scope.asset_run.run_type == 6
+                _not_av_el = $compile($templateCache.get("icsw.asset.details.process"))(scope)
             else
                 _not_av_el = $compile($templateCache.get("icsw.asset.details.na"))(scope)
             element.append(_not_av_el)
