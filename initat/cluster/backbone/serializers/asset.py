@@ -113,7 +113,7 @@ class AssetRunOverviewSerializer(serializers.ModelSerializer):
         fields = (
             "idx", "device", "run_index", "run_type", "run_result",
             "run_start_time", "run_end_time", "run_duration",
-            "asset_batch", "run_status",
+            "asset_batch", "run_status", "error_string",
             # many to many count fields
             "num_packages", "num_hardware", "num_processes",
             "num_updates", "num_pending_updates", "num_licenses",

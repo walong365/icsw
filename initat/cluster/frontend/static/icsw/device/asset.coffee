@@ -142,14 +142,15 @@ device_asset_module = angular.module(
         return _fetch_dict[client]
 
     return {
-        "load": (client) ->
+        load: (client) ->
             # loads from server
             if load_called
                 # fetch when data is present (after sidebar)
                 return fetch_data(client).promise
             else
                 return load_data(client).promise
-        "reload": (client) ->
+
+        reload: (client) ->
             return load_data(client).promise
     }
 ]).service("icswAssetHelperFunctions",
@@ -232,12 +233,12 @@ device_asset_module = angular.module(
 [
     "$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "blockUI",
     "icswTools", "icswSimpleAjaxCall", "ICSW_URLS", "icswAssetHelperFunctions",
-    "icswDeviceTreeService", "icswDeviceTreeHelperService",
+    "icswDeviceTreeService", "icswDeviceTreeHelperService", "$timeout",
     "icswDispatcherSettingTreeService", "Restangular", "icswAssetPackageTreeService",
 (
     $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI,
     icswTools, icswSimpleAjaxCall, ICSW_URLS, icswAssetHelperFunctions,
-    icswDeviceTreeService, icswDeviceTreeHelperService,
+    icswDeviceTreeService, icswDeviceTreeHelperService, $timeout,
     icswDispatcherSettingTreeService, Restangular, icswAssetPackageTreeService,
 ) ->
     # struct to hand over to VarCtrl
@@ -262,10 +263,80 @@ device_asset_module = angular.module(
         added_changeset: []
         removed_changeset: []
 
-        #Scheduled Runs tab properties
+        # Scheduled Runs tab properties
         schedule_items: []
-        
+        # reload timer
+        reload_timer: undefined
+        # reload flag
+        reloading: false
     }
+
+    reload_data = () ->
+        $scope.struct.reloading = true
+        $q.all(
+            [
+                Restangular.all(ICSW_URLS.ASSET_GET_SCHEDULE_LIST.slice(1)).getList(
+                    {
+                        pks: angular.toJson((dev.idx for dev in $scope.struct.devices))
+                    }
+                )
+                Restangular.all(ICSW_URLS.ASSET_GET_ASSETRUNS_FOR_DEVICES.slice(1)).getList(
+                    {
+                        pks: angular.toJson((dev.idx for dev in $scope.struct.devices))
+                    }
+                )
+                # todo, make faster
+                # icswAssetPackageTreeService.reload($scope.$id)
+            ]
+        ).then(
+            (result) ->
+                set_schedule_items(result[0])
+                set_asset_runs(result[1])
+                start_timer()
+                $scope.struct.reloading = false
+        )
+
+    start_timer = () ->
+        stop_timer()
+        $scope.struct.reload_timer = $timeout(
+            () ->
+                reload_data()
+            10000
+        )
+
+    stop_timer = () ->
+        # check if present and stop timer
+        if $scope.struct.reload_timer?
+            $timeout.cancel($scope.struct.reload_timer)
+            $scope.struct.reload_timer = undefined
+
+    set_schedule_items = (sched_list) ->
+        $scope.struct.schedule_items.length = 0
+        for obj in sched_list
+            $scope.struct.schedule_items.push(salt_schedule_item(obj))
+
+    set_asset_runs = (run_list) ->
+        for dev in $scope.struct.devices
+            # reset assetrun_set list
+            dev.assetrun_set.length = 0
+        _prev_lut = _.keyBy($scope.struct.asset_runs, "idx")
+        $scope.struct.asset_runs.length = 0
+        for obj in run_list
+            _salted = salt_asset_run(obj)
+            if _salted.idx of _prev_lut
+                _prev = _prev_lut[_salted.idx]
+                # copy values from previous run
+                _salted.$$assets_loaded = _prev.$$assets_loaded
+                _salted.$$expanded = _prev.$$expanded
+                if _salted.$$assets_loaded
+                    _salted.$$assets = _prev.$$assets
+            $scope.struct.asset_runs.push(_salted)
+            _dev = $scope.struct.device_tree.all_lut[_salted.device]
+            _dev.assetrun_set.push(_salted)
+
+    $scope.$on("$destroy", () ->
+        stop_timer()
+    )
 
     $scope.new_devsel = (devs) ->
         $q.all(
@@ -305,22 +376,11 @@ device_asset_module = angular.module(
                     (result) ->
                         # console.log "r", result
                         # schedule list
-                        sched_list = result[0]
-                        $scope.struct.schedule_items.length = 0
-                        for obj in sched_list
-                            $scope.struct.schedule_items.push(salt_schedule_item(obj))
+                        set_schedule_items(result[0])
                         # assetrun list
-                        run_list = result[1]
-                        for dev in $scope.struct.devices
-                            # reset assetrun_set list
-                            dev.assetrun_set.length = 0
-                        $scope.struct.asset_runs.length = 0
-                        for obj in run_list
-                            _salted = salt_asset_run(obj)
-                            $scope.struct.asset_runs.push(_salted)
-                            _dev = $scope.struct.device_tree.all_lut[_salted.device]
-                            _dev.assetrun_set.push(_salted)
+                        set_asset_runs(result[1])
                         $scope.struct.data_loaded = true
+                        start_timer()
 
                 )
 
@@ -342,7 +402,9 @@ device_asset_module = angular.module(
         obj.$$run_status_class = icswAssetHelperFunctions.get_class("run_status", obj.run_status)
         obj.$$run_result = icswAssetHelperFunctions.resolve("run_result", obj.run_result)
         obj.$$run_result_class = icswAssetHelperFunctions.get_class("run_result", obj.run_result)
+        obj.$$error_class = if obj.error_string then "error" else ""
         obj.$$assets_loaded = false
+        obj.$$expanded = false
         # link assets
         if obj.run_type == 1
             # package
@@ -381,23 +443,6 @@ device_asset_module = angular.module(
             obj.$$run_end_hour = "N/A"
 
         return obj
-
-    $scope.createAssetRunFromObj = (obj) ->
-        asset_run = {}
-        asset_run.idx = obj[0]
-        asset_run.pk = obj[0]
-        asset_run.run_index = obj[1]
-        asset_run.run_type = obj[2]
-        asset_run.run_start_time = obj[3]
-
-        asset_run.run_end_time = obj[4]
-        asset_run.total_run_time = parseFloat(obj[5]).toFixed(2)
-        asset_run.device_name = obj[6]
-        asset_run.device_pk = obj[7]
-        asset_run.run_status = obj[8]
-        asset_run.assets = []
-
-        return asset_run
 
     $scope.filterSchedArrayForCsvExport = (filteredSchedItems) ->
         moreFilteredSchedItems = []

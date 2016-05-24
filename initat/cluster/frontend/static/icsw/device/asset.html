@@ -7,7 +7,10 @@
     <uib-alert type="warning" ng-show="!struct.data_loaded">Fetching data from server ...</uib-alert>
 
     <div ng-if="struct.data_loaded">
-        <h1>Asset System Overview</h1>
+        <h1>
+            Asset System Overview
+            <span ng-show="struct.reloading" class="text-warning">Updating data from server...</span>
+        </h1>
 
         <uib-tabset>
             <uib-tab>
@@ -90,7 +93,7 @@
 
                 <h3>
                     <span ng-show="dev.assetrun_set.length">
-                        AssetRun Overview for {{ dev.full_name }}
+                        AssetRun Overview for device '{{ dev.full_name }}' (group {{ dev.device_group_name }})
                     </span>
                     <span ng-show="!dev.assetrun_set.length">
                         No AssetRuns for this device.
@@ -219,6 +222,7 @@
                 <th st-sort="device.$$full_name">Device</th>
                 <th st-sort="$$run_status">Status</th>
                 <th st-sort="$$run_result">Result</th>
+                <th>Error</th>
                 <th>#Assets</th>
                 <th colspan="2">Action</th>
                 <th><button type="button" ng-csv="filterAssetRunArrayForCsvExport(assetruns_shown)" csv-header="['Run Type', 'Run Start', 'Run End', 'Device', 'Asset']" filename="test.csv">Export to CSV</button></th>
@@ -252,13 +256,16 @@
                 <th colspan="1">
                     <input st-search="$$run_result" placeholder="filter by run result" class="input-sm form-control" type="search"/>
                 </th>
+                <th>
+                    &nbsp;
+                </th>
                 <th colspan="4">&nbsp;</th>
             </tr>
             <tr>
                 <td colspan="99">
                     <div
                         icsw-tools-pagination
-                        st-items-by-page="10"
+                        st-items-by-page="20"
                         st-displayed-pages="11"
                         possible-items-by-page="10,20,50,100"
                     ></div>
@@ -279,6 +286,7 @@
                 <td class="text-center">{{ assetrun.$$device.full_name }}</td>
                 <td class="text-center" ng-class="assetrun.$$run_status_class">{{ assetrun.$$run_status }}</td>
                 <td class="text-center" ng-class="assetrun.$$run_result_class">{{ assetrun.$$run_result }}</td>
+                <td ng-class="assetrun.$$error_class">{{ assetrun.error_string }}</td>
                 <td class="text-right">{{ assetrun.$$num_results }}</td>
                 <td>
                     <icsw-tools-button ng-if="assetrun.$$num_results" size="xs" type="show" is-show="assetrun.$$expanded" ng-click="expand_assetrun($event, assetrun)"></icsw-tools-button>
@@ -292,65 +300,6 @@
                     <icsw-asset-run-details
                         icsw-asset-run="assetrun"
                     ></icsw-asset-run-details>
-                    <!--
-                    <table
-                        class="table table-condensed table-hover table-bordered"
-                        style="width:auto;"
-                        st-safe-src="assetrun.assets"
-                        st-table="assets_shown"
-                        st-set-filter="assetRunFilter"
-                    >
-                        <tr ng-if="resolve_asset_type(assetrun.run_type) == 'Hardware'">
-                            <th>Type</th>
-                            <th>Info Dict</th>
-                        </tr>
-                        <tr ng-if="resolve_asset_type(assetrun.run_type) == 'Hardware'" ng-repeat="asset in assets_shown track by $index">
-                            <td>{{ asset[0] }}</td>
-                            <td>{{ asset[1] }}</td>
-                        </tr>
-                        <tr ng-if="resolve_asset_type(assetrun.run_type) == 'License'">
-                            <th>Name</th>
-                            <th>License Key</th>
-                        </tr>
-                        <tr ng-if="resolve_asset_type(assetrun.run_type) == 'License'" ng-repeat="asset in assets_shown track by $index">
-                            <td>{{ asset[0] }}</td>
-                            <td>{{ asset[1] }}</td>
-                        </tr>
-                        <tr ng-if="resolve_asset_type(assetrun.run_type) == 'Update'">
-                            <th>Name</th>
-                            <th>Install Date</th>
-                            <th>Install Status</th>
-                        </tr>
-                        <tr ng-if="resolve_asset_type(assetrun.run_type) == 'Update'" ng-repeat="asset in assets_shown track by $index">
-                            <td>{{ asset[0] }}</td>
-                            <td>{{ asset[1] }}</td>
-                            <td>{{ asset[2] }}</td>
-                        </tr>
-                        <tr ng-if="resolve_asset_type(assetrun.run_type) == 'Software version'">
-                            <th>Name</th>
-                        </tr>
-                        <tr ng-if="resolve_asset_type(assetrun.run_type) == 'Software version'" ng-repeat="asset in assets_shown track by $index">
-                            <td>{{ asset }}</td>
-                        </tr>
-                        <tr ng-if="resolve_asset_type(assetrun.run_type) == 'Process'">
-                            <th>Name</th>
-                            <th>Pid</th>
-                        </tr>
-                        <tr ng-if="resolve_asset_type(assetrun.run_type) == 'Process'" ng-repeat="asset in assets_shown track by $index">
-                            <td>{{ asset[0] }}</td>
-                            <td>{{ asset[1] }}</td>
-                        </tr>
-                        <tr ng-if="resolve_asset_type(assetrun.run_type) == 'Pending update'">
-                            <th>Name</th>
-                            <th>Version</th>
-                            <th>Optional</th>
-                        </tr>
-                        <tr ng-if="resolve_asset_type(assetrun.run_type) == 'Pending update'" ng-repeat="asset in assets_shown track by $index">
-                            <td>{{ asset[0] }}</td>
-                            <td>{{ asset[1] }}</td>
-                            <td>{{ asset[2] }}</td>
-                        </tr>
-                    </table> -->
                 </td>
             </tr>
         </tbody>

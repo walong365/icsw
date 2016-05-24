@@ -443,6 +443,8 @@ class AssetRun(models.Model):
     run_end_time = models.DateTimeField(null=True, blank=True)
     # runtime in seconds
     run_duration = models.IntegerField(default=0)
+    # error string
+    error_string = models.TextField(default="")
     asset_batch = models.ForeignKey("AssetBatch", null=True)
     device = models.ForeignKey("backbone.device", null=True)
     # run index in current batch
@@ -457,6 +459,19 @@ class AssetRun(models.Model):
     # link to packageversions
     packages = models.ManyToManyField(AssetPackageVersion)
     created = models.DateTimeField(auto_now_add=True)
+
+    def stop(self, result, error_string=""):
+        self.run_result = result
+        self.run_status = RunStatus.ENDED
+        self.error_string = error_string
+        if self.run_start_time:
+            self.run_end_time = timezone.now()
+            self.run_duration = int((self.run_end_time - self.run_start_time).seconds)
+        else:
+            # no start time hence no end time
+            self.run_duration = 0
+        self.save()
+        self.asset_batch.run_done(self)
 
     def generate_assets(self):
         if self.raw_result_interpreted or not self.raw_result_str:

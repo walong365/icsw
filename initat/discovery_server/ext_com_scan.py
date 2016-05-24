@@ -613,23 +613,12 @@ class PlannedRunState(object):
         self.started = True
         self.__pdrf.num_running += 1
 
-    def stop(self, result, status):
-        _db_obj = self.run_db_obj
-        if _db_obj.run_start_time:
-            _db_obj.run_end_time = timezone.now()
-            _db_obj.run_duration = int((_db_obj.run_end_time - _db_obj.run_start_time).seconds)
-        else:
-            # no start time hence no end time
-            _db_obj.run_duration = 0
-        _db_obj.run_status = status
-        _db_obj.run_result = result
-        _db_obj.save()
-        _db_obj.asset_batch.run_done(_db_obj)
+    def stop(self, result, error_string=""):
+        self.run_db_obj.stop(result, error_string=error_string)
         self.__pdrf.remove_planned_run(self)
 
-    def cancel(self):
-        _db_obj = self.run_db_obj
-        self.stop(RunResult.FAILED, RunStatus.ENDED)
+    def cancel(self, error_string="run canceled"):
+        self.stop(RunResult.FAILED, error_string=error_string)
         self.generate_assets()
 
     def store_nrpe_result(self, result):
@@ -642,7 +631,7 @@ class PlannedRunState(object):
         else:
             _res = RunResult.SUCCESS
         _db_obj.raw_result_str = s
-        self.stop(_res, RunStatus.ENDED)
+        self.stop(_res)
         self.generate_assets()
 
     def store_zmq_result(self, result):
@@ -681,7 +670,7 @@ class PlannedRunState(object):
         else:
             _res = RunResult.SUCCESS
         _db_obj.raw_result_str = s
-        self.stop(_res, RunStatus.ENDED)
+        self.stop(_res)
         self.generate_assets()
 
     def generate_assets(self):
@@ -726,7 +715,7 @@ class PlannedRunsForDevice(object):
         self.log("canceling because auf '{}'".format(err_cause), logging_tools.LOG_LEVEL_ERROR)
         # make copy of list
         for _run in [_x for _x in self.planned_runs]:
-            _run.stop(RunResult.CANCELED, RunStatus.ENDED)
+            _run.stop(RunResult.CANCELED, error_string="run canceled")
         self.asset_batch.error_string = err_cause
         self.asset_batch.save()
         # canceled, delete
@@ -856,6 +845,14 @@ class Dispatcher(object):
         _now = timezone. now().replace(microsecond=0)
         # schedule_items = sorted(ScheduleItem.objects.all(), key=lambda x: x.planned_date)
 
+        # prestep: close all pending AssetRuns
+        _pending = 0
+        for pending_run in AssetRun.objects.filter(Q(run_status=RunStatus.RUNNING)).select_related("asset_batch"):
+            pending_run.stop(RunResult.FAILED, "runaway run")
+            _pending += 1
+        if _pending:
+            self.log("Closed {}".format(logging_tools.get_plural("pending AssetRun", _pending)), logging_tools.LOG_LEVEL_ERROR)
+
         for schedule_item in ScheduleItem.objects.all().select_related(
             "device"
         ).prefetch_related(
@@ -973,49 +970,17 @@ class Dispatcher(object):
                         else:
                             diff_time = abs((cur_time - prd.run_db_obj.run_start_time).seconds)
                             if diff_time > prd.timeout:
-                                prd.ext_com.terminate()
-                                prd.cancel()
+                                try:
+                                    prd.ext_com.terminate()
+                                except:
+                                    self.log("error terminating external process: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                                else:
+                                    self.log("external command terminated due to timeout")
+                                prd.cancel("timeout")
+                                num_ext_coms -= 1
             if num_ext_coms:
-                time.sleep(1)
+                time.sleep(2)
             #  print "RES=", zmq_res
-
-        # while run_prfds:
-        #    time.sleep(1)
-
-        for _dev_idx, prfd in []:  #  self.__device_planned_runs.iteritems():
-            if prfd.num_running:
-
-                asset_run, com, timeout = self.device_asset_run_ext_coms[_device][0]
-                self.device_asset_run_ext_coms[_device][0][2] = timeout - 1
-                # print timeout
-                if timeout < 1:
-                    self.device_asset_run_ext_coms[_device].pop(0)
-                    asset_run.run_status = RunStatus.FAILED
-                    asset_run.run_end_time = datetime.datetime.now()
-                    asset_run.save()
-                    self.device_running_ext_coms[_device] = 0
-                elif isinstance(com, ExtCom):
-                    status = com.finished()
-                    if status == 0:
-                        self.device_asset_run_ext_coms[_device].pop(0)
-                        _output = com.communicate()
-                        asset_run.run_status = RunStatus.ENDED
-                        asset_run.run_end_time = datetime.datetime.now()
-                        asset_run.raw_result_str = _output[0]
-                        self.todo_asset_runs.put(asset_run)
-                        self.device_running_ext_coms[_device] = 0
-                    elif status is not None:
-                        self.device_asset_run_ext_coms[_device].pop(0)
-                        # _output = com.communicate()
-                        asset_run.run_status = RunStatus.FAILED
-                        asset_run.run_end_time = datetime.datetime.now()
-                        asset_run.save()
-                        self.device_running_ext_coms[_device] = 0
-                else:
-                    if com.poller.poll(1):
-                        asset_run.raw_result_str = s
-                        self.todo_asset_runs.put(asset_run)
-                        self.device_running_ext_coms[_device] = 0
 
         # remove PlannedRuns which should be deleted
         _removed = 0
