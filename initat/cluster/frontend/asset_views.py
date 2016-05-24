@@ -26,7 +26,7 @@ import json
 import pytz
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
-from django.db.models import Q, Count
+from django.db.models import Q, Count, Case, When, IntegerField, Sum
 from django.utils import timezone
 from rest_framework.parsers import JSONParser
 from django.utils.decorators import method_decorator
@@ -247,6 +247,9 @@ class AssetRunsViewSet(viewsets.ViewSet):
             num_packages=Count("packages"),
             num_hardware=Count("assethardwareentry"),
             num_processes=Count("assetprocessentry"),
+            num_licenses=Count("assetlicenseentry"),
+            num_updates=Sum(Case(When(assetupdateentry__installed=True, then=1), output_field=IntegerField(), default=0)),
+            num_pending_updates=Sum(Case(When(assetupdateentry__installed=False, then=1), output_field=IntegerField(), default=0)),
         )
         serializer = AssetRunOverviewSerializer(queryset, many=True)
         return Response(serializer.data)
@@ -256,6 +259,8 @@ class AssetRunsViewSet(viewsets.ViewSet):
             "packages",
             "assethardwareentry_set",
             "assetprocessentry_set",
+            "assetupdateentry_set",
+            "assetlicenseentry_set",
         ).filter(
             Q(pk=request.query_params["pk"])
         )

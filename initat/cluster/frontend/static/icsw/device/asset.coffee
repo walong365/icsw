@@ -353,6 +353,15 @@ device_asset_module = angular.module(
         else if obj.run_type == 6
             # processes
             obj.$$num_results = obj.num_processes
+        else if obj.run_type == 4
+            # update
+            obj.$$num_results = obj.num_updates
+        else if obj.run_type == 7
+            # pending update
+            obj.$$num_results = obj.num_pending_updates
+        else if obj.run_type == 3
+            # pending update
+            obj.$$num_results = obj.num_licenses
         else
             obj.$$num_results = 0
         if obj.run_start_time
@@ -675,6 +684,14 @@ device_asset_module = angular.module(
             # console.log entry
         return in_list
 
+    resolve_pending_updates = (in_list) ->
+        return (entry for entry in in_list when not entry.installed)
+        
+        
+    resolve_installed_updates = (in_list) ->
+        return (entry for entry in in_list when entry.installed)
+        
+        
     $scope.expand_assetrun = ($event, assetrun) ->
         if !assetrun.$$expanded and not assetrun.$$assets_loaded
             blockUI.start("Fetching data from server...")
@@ -693,6 +710,12 @@ device_asset_module = angular.module(
                         )
                     else if assetrun.run_type == 2
                         _done.resolve(resolve_hardware_assets(data[0].assethardwareentry_set))
+                    else if assetrun.run_type == 3
+                        _done.resolve(data[0].assetlicenseentry_set)
+                    else if assetrun.run_type == 4
+                        _done.resolve(resolve_installed_updates(data[0].assetupdateentry_set))
+                    else if assetrun.run_type == 7
+                        _done.resolve(resolve_pending_updates(data[0].assetupdateentry_set))
                     else if assetrun.run_type == 6
                         _done.resolve(data[0].assetprocessentry_set)
                     else
@@ -748,8 +771,14 @@ device_asset_module = angular.module(
                 _not_av_el = $compile($templateCache.get("icsw.asset.details.package"))(scope)
             else if scope.asset_run.run_type == 2
                 _not_av_el = $compile($templateCache.get("icsw.asset.details.hardware"))(scope)
+            else if scope.asset_run.run_type == 3
+                _not_av_el = $compile($templateCache.get("icsw.asset.details.licenses"))(scope)
+            else if scope.asset_run.run_type == 4
+                _not_av_el = $compile($templateCache.get("icsw.asset.details.installed.updates"))(scope)
             else if scope.asset_run.run_type == 6
                 _not_av_el = $compile($templateCache.get("icsw.asset.details.process"))(scope)
+            else if scope.asset_run.run_type == 7
+                _not_av_el = $compile($templateCache.get("icsw.asset.details.pending.updates"))(scope)
             else
                 _not_av_el = $compile($templateCache.get("icsw.asset.details.na"))(scope)
             element.append(_not_av_el)

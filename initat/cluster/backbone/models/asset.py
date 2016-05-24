@@ -25,7 +25,7 @@ import json
 import pickle
 import uuid
 
-from django.utils import timezone
+from django.utils import timezone, dateparse
 import django.utils.timezone
 from django.db import models
 from enum import IntEnum
@@ -77,6 +77,7 @@ def get_base_assets_from_raw_result(asset_run, blob, runtype, scantype):
                                 package_type=PackageTypeEnum.LINUX
                             )
                         )
+
     elif runtype == AssetType.HARDWARE:
         if scantype == ScanType.NRPE:
             s = blob[2:-4].encode('ascii')
@@ -126,16 +127,47 @@ def get_base_assets_from_raw_result(asset_run, blob, runtype, scantype):
         if scantype == ScanType.NRPE:
             l = json.loads(blob)
             for (name, licensekey) in l:
-                assets.append(BaseAssetLicense(name, license_key=licensekey))
+                new_lic = AssetLicenseEntry(
+                    name=name,
+                    license_key=licensekey,
+                    asset_run=asset_run,
+                )
+                new_lic.save()
         elif scantype == ScanType.HM:
             # todo implement me (--> what do we want to gather/display here?)
             pass
 
+    elif runtype == AssetType.PENDING_UPDATE:
+        if scantype == ScanType.NRPE:
+            l = json.loads(blob)
+            for (name, optional) in l:
+                new_pup = AssetUpdateEntry(
+                    name=name,
+                    installed=False,
+                    asset_run=asset_run,
+                    optional=optional,
+                )
+                new_pup.save()
+
+        elif scantype == ScanType.HM:
+            l = pickle.loads(bz2.decompress(base64.b64decode(blob)))
+            print "PU for hm"
+            for (name, version) in l:
+                assets.append(BaseAssetPendingUpdate(name, version=version))
+
     elif runtype == AssetType.UPDATE:
         if scantype == ScanType.NRPE:
             l = json.loads(blob)
-            for (name, date, status) in l:
-                assets.append(BaseAssetUpdate(name, install_date=date, status=status))
+            for (name, up_date, status) in l:
+                new_up = AssetUpdateEntry(
+                    name=name,
+                    install_date=dateparse.parse_datetime(up_date),
+                    status=status,
+                    installed=True,
+                    asset_run=asset_run,
+                    optional=False,
+                )
+                new_up.save()
         elif scantype == ScanType.HM:
             # todo implement me (--> what do we want to gather/display here?)
             pass
@@ -158,15 +190,6 @@ def get_base_assets_from_raw_result(asset_run, blob, runtype, scantype):
             )
             new_proc.save()
 
-    elif runtype == AssetType.PENDING_UPDATE:
-        if scantype == ScanType.NRPE:
-            l = json.loads(blob)
-            for (name, optional) in l:
-                assets.append(BaseAssetPendingUpdate(name, optional=optional))
-        elif scantype == ScanType.HM:
-            l = pickle.loads(bz2.decompress(base64.b64decode(blob)))
-            for (name, version) in l:
-                assets.append(BaseAssetPendingUpdate(name, version=version))
     return assets
 
 ########################################################################################################################
@@ -214,79 +237,6 @@ class BaseAssetPackage(object):
         return hash((self.name, self.version, self.release, self.size, self.install_date, self.package_type))
 
 
-class BaseAssetLicense(object):
-    def __init__(self, name, license_key):
-        self.name = name
-        self.license_key = license_key
-
-    def __repr__(self):
-        s = "Name: %s Key: %s" % (self.name, self.license_key)
-
-        return s
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) \
-            and self.name == other.name \
-            and self.license_key == other.license_key
-
-    def __hash__(self):
-        return hash((self.type, self.license_key))
-
-
-class BaseAssetUpdate(object):
-    def __init__(self, name, install_date=None, status=None):
-        self.name = name
-        self.install_date = install_date
-        self.status = status
-
-    def __repr__(self):
-        s = "Name: %s" % self.name
-        if self.install_date:
-            s += " InstallDate: %s" % self.install_date
-        if self.status:
-            s += " InstallStatus: %s" % self.status
-
-        return s
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) \
-            and self.name == other.name \
-            and self.install_date == other.install_date \
-            and self.status == other.status
-
-    def __hash__(self):
-        return hash((self.name, self.install_date, self.status))
-
-
-class BaseAssetSoftwareVersion(object):
-    pass
-
-
-class BaseAssetPendingUpdate(object):
-    def __init__(self, name, version=None, optional=None):
-        self.name = name
-        self.version = version
-        self.optional = optional
-
-    def __repr__(self):
-        s = "Name: %s" % self.name
-        if self.version:
-            s += " Version: %s" % self.version
-        if self.optional:
-            s += " Optional: %s" % self.optional
-
-        return s
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) \
-            and self.name == other.name \
-            and self.version == other.version \
-            and self.optional == other.optional
-
-    def __hash__(self):
-        return hash((self.name, self.version, self.optional))
-
-########################################################################################################################
 # Enums
 ########################################################################################################################
 
@@ -407,6 +357,53 @@ class AssetHardwareEntry(models.Model):
 
     class Meta:
         ordering = ("idx",)
+
+
+class AssetLicenseEntry(models.Model):
+    idx = models.AutoField(primary_key=True)
+    # name
+    name = models.CharField(default="", max_length=255)
+    # license key
+    license_key = models.CharField(default="", max_length=255)
+    # assetrun
+    asset_run = models.ForeignKey("backbone.AssetRun")
+    created = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return "AssetLicense name={}".format(self.name)
+
+    class Meta:
+        ordering = ("name",)
+
+
+class AssetUpdateEntry(models.Model):
+    # also for pendingUpdates
+    idx = models.AutoField(primary_key=True)
+    # name
+    name = models.CharField(default="", max_length=255)
+    # version / release
+    version = models.CharField(default="", max_length=255)
+    release = models.CharField(default="", max_length=255)
+    # vendor ?
+    # KnowledgeBase idx
+    kb_idx = models.IntegerField(default=0)
+    # install date
+    install_date = models.DateTimeField(null=True)
+    # status, now as string
+    status = models.CharField(default="", max_length=128)
+    # assetrun
+    asset_run = models.ForeignKey("backbone.AssetRun")
+    # optional
+    optional = models.BooleanField(default=True)
+    # installed
+    installed = models.BooleanField(default=False)
+    created = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return "AssetUpdate name={}".format(self.name)
+
+    class Meta:
+        ordering = ("name",)
 
 
 class AssetProcessEntry(models.Model):

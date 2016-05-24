@@ -826,8 +826,11 @@ monitoring_device_module = angular.module(
 
         sub_scope = $scope.$new(false)
         sub_scope.edit_obj = obj
+        sub_scope.create = create
         # copy references
         sub_scope.asset_type_list = icswStaticAssetFunctions.get_form_dict("asset_type")
+        sub_scope.create_new_field = ($event) ->
+            console.log "new field"
 
         icswComplexModalService(
             {

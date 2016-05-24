@@ -378,8 +378,15 @@
                 </div>
             </div>
         </fieldset>
-        <fieldset>
-            <legend>Fields</legend>
+        <fieldset ng-if="!create">
+            <legend>
+                Fields
+            </legend>
+            <div class="form-group row">
+                <div class="controls col-xs-12">
+                    <icsw-tools-button type="create" size="xs" ng-click="create_new_field($event)"></icsw-tools-button>
+                </div>
+            </div>
         </fieldset>
     </form>
 </script>

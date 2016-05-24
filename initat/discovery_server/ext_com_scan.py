@@ -593,6 +593,7 @@ class PlannedRunState(object):
         self.timeout = timeout
         self.started = False
         self.zmq_con_idx = 0
+        self.is_zmq_connection = not isinstance(self.ext_com, ExtCom)
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__pdrf.log(
@@ -625,6 +626,24 @@ class PlannedRunState(object):
         _db_obj.save()
         _db_obj.asset_batch.run_done(_db_obj)
         self.__pdrf.remove_planned_run(self)
+
+    def cancel(self):
+        _db_obj = self.run_db_obj
+        self.stop(RunResult.FAILED, RunStatus.ENDED)
+        self.generate_assets()
+
+    def store_nrpe_result(self, result):
+        _db_obj = self.run_db_obj
+        _stdout, _stderr = result
+        self.log("stdout has {:d} Bytes, stderr {:d} Bytes".format(len(_stdout), len(_stderr)))
+        s = _stdout
+        if s is None:
+            _res = RunResult.FAILED
+        else:
+            _res = RunResult.SUCCESS
+        _db_obj.raw_result_str = s
+        self.stop(_res, RunStatus.ENDED)
+        self.generate_assets()
 
     def store_zmq_result(self, result):
         _db_obj = self.run_db_obj
@@ -663,8 +682,11 @@ class PlannedRunState(object):
             _res = RunResult.SUCCESS
         _db_obj.raw_result_str = s
         self.stop(_res, RunStatus.ENDED)
+        self.generate_assets()
+
+    def generate_assets(self):
         try:
-            _db_obj.generate_assets_new()
+            self.run_db_obj.generate_assets_new()
         except:
             self.log(
                 "Exception: {}".format(process_tools.get_except_info()),
@@ -878,15 +900,16 @@ class Dispatcher(object):
 
         # step 1: start commands
 
+        # number of ext_coms
+        num_ext_coms = 0
+
         for _dev_idx, prfd_list in self.__device_planned_runs.iteritems():
             for prfd in prfd_list:
                 if prfd.ip:
                     for prs in prfd.planned_runs:
                         if not prs.started:
                             prs.start()
-                            if isinstance(prs.ext_com, ExtCom):
-                                prs.ext_com.run()
-                            else:
+                            if prs.is_zmq_connection:
                                 conn_str = "tcp://{}:{:d}".format(
                                     prfd.ip,
                                     self.__hm_port,
@@ -904,6 +927,9 @@ class Dispatcher(object):
                                     server_command.srv_command(command=prs.ext_com),
                                     multi=True
                                 )
+                            else:
+                                prs.ext_com.run()
+                                num_ext_coms += 1
                 else:
                     prfd.cancel("no IP")
 
@@ -933,6 +959,24 @@ class Dispatcher(object):
                     for prd in prfd.planned_runs:
                         if prd.started and prd.zmq_con_idx == _idx:
                             prd.store_zmq_result(_result)
+
+        while num_ext_coms:
+            self.log("pending external commands: {:d}".format(num_ext_coms))
+            cur_time = timezone.now()
+            for prfd in run_prfds:
+                for prd in prfd.planned_runs:
+                    if prd.started and not prd.is_zmq_connection:
+                        if prd.ext_com.finished() is 0:
+                            _output = prd.ext_com.communicate()
+                            prd.store_nrpe_result(_output)
+                            num_ext_coms -= 1
+                        else:
+                            diff_time = abs((cur_time - prd.run_db_obj.run_start_time).seconds)
+                            if diff_time > prd.timeout:
+                                prd.ext_com.terminate()
+                                prd.cancel()
+            if num_ext_coms:
+                time.sleep(1)
             #  print "RES=", zmq_res
 
         # while run_prfds:
@@ -1032,7 +1076,7 @@ class Dispatcher(object):
         planned_run.start_feed(cmd_tuples)
         for _idx, (runtype, _command) in enumerate(cmd_tuples):
             _com = "/opt/cluster/sbin/check_nrpe -H {} -n -c {} -t120".format(
-                schedule_item.device.all_ips()[0],
+                planned_run.ip,
                 _command
             )
             ext_com = ExtCom(self.log, _com)

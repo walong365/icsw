@@ -25,7 +25,7 @@ from rest_framework import serializers
 
 from initat.cluster.backbone.models import AssetRun, AssetPackage, \
     AssetPackageVersion, AssetBatch, AssetHardwareEntry, AssetProcessEntry, \
-    StaticAssetTemplate, StaticAssetTemplateField
+    StaticAssetTemplate, StaticAssetTemplateField, AssetLicenseEntry, AssetUpdateEntry
 
 __all__ = [
     "AssetRunSimpleSerializer",
@@ -39,6 +39,8 @@ __all__ = [
     "AssetHardwareEntrySerializer",
     "AssetProcessEntrySerializer",
     "StaticAssetTemplateSerializer",
+    "AssetLicenseEntrySerializer",
+    "AssetUpdateEntrySerializer",
 ]
 
 
@@ -102,6 +104,9 @@ class AssetRunOverviewSerializer(serializers.ModelSerializer):
     num_packages = serializers.IntegerField()
     num_hardware = serializers.IntegerField()
     num_processes = serializers.IntegerField()
+    num_licenses = serializers.IntegerField()
+    num_updates = serializers.IntegerField()
+    num_pending_updates = serializers.IntegerField()
 
     class Meta:
         model = AssetRun
@@ -111,6 +116,7 @@ class AssetRunOverviewSerializer(serializers.ModelSerializer):
             "asset_batch", "run_status",
             # many to many count fields
             "num_packages", "num_hardware", "num_processes",
+            "num_updates", "num_pending_updates", "num_licenses",
         )
 
 
@@ -120,16 +126,31 @@ class AssetProcessEntrySerializer(serializers.ModelSerializer):
         model = AssetProcessEntry
 
 
+class AssetLicenseEntrySerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = AssetLicenseEntry
+
+
+class AssetUpdateEntrySerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = AssetUpdateEntry
+
+
 class AssetRunDetailSerializer(serializers.ModelSerializer):
     assethardwareentry_set = AssetHardwareEntrySerializer(many=True)
     assetprocessentry_set = AssetProcessEntrySerializer(many=True)
+    assetlicenseentry_set = AssetLicenseEntrySerializer(many=True)
+    assetupdateentry_set = AssetUpdateEntrySerializer(many=True)
 
     class Meta:
         model = AssetRun
         fields = (
             "idx",
             "packages", "assethardwareentry_set",
-            "assetprocessentry_set",
+            "assetprocessentry_set", "assetlicenseentry_set",
+            "assetupdateentry_set",
         )
 
 
