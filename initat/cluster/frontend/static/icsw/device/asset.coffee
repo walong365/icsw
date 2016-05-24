@@ -701,13 +701,41 @@ device_asset_module = angular.module(
     }
 ]).controller("icswAssetAssetRunsTableCtrl",
 [
-    "$scope", "$q", "ICSW_URLS", "blockUI", "Restangular", "icswAssetPackageTreeService",
+    "$scope", "$q", "ICSW_URLS", "blockUI", "Restangular", "icswAssetPackageTreeService", "icswSimpleAjaxCall", "$window"
 (
-    $scope, $q, ICSW_URLS, blockUI, Restangular, icswAssetPackageTreeService,
+    $scope, $q, ICSW_URLS, blockUI, Restangular, icswAssetPackageTreeService, icswSimpleAjaxCall, $window
 ) ->
+    $scope.struct = {
+        selected_assetrun: undefined
+    }
+
+    $scope.downloadCsv = ->
+        console.log($scope.struct.selected_assetrun)
+        if $scope.struct.selected_assetrun != undefined
+            icswSimpleAjaxCall({
+                url: ICSW_URLS.ASSET_EXPORT_ASSETRUNS_TO_CSV
+                data:
+                    pk: $scope.struct.selected_assetrun.idx
+                dataType: 'json'
+            }
+            ).then(
+                (result) ->
+                    uri = 'data:text/csv;charset=utf-8,' + result.csv
+                    downloadLink = document.createElement("a")
+                    downloadLink.href = uri
+                    downloadLink.download = "assetrun" + $scope.struct.selected_assetrun.idx + ".csv"
+
+                    document.body.appendChild(downloadLink)
+                    downloadLink.click()
+                    document.body.removeChild(downloadLink)
+                (not_ok) ->
+                    console.log not_ok
+            )
+
     $scope.select_assetrun = ($event, assetrun) ->
         assetrun.$$selected = !assetrun.$$selected
         if assetrun.$$selected
+            $scope.struct.selected_assetrun = assetrun
             # ensure only assetrun with same type are selected
             _type = assetrun.run_type
             for _run in $scope.asset_run_list
