@@ -716,8 +716,14 @@ device_asset_module = angular.module(
             }
             ).then(
                 (result) ->
-                    console.log result
-                    $window.open("data:attachment/csv;charset=utf-8," + encodeURI(result.csv))
+                    uri = 'data:text/csv;charset=utf-8,' + result.csv
+                    downloadLink = document.createElement("a")
+                    downloadLink.href = uri
+                    downloadLink.download = "assetrun" + $scope.struct.selected_assetrun.idx + ".csv"
+
+                    document.body.appendChild(downloadLink)
+                    downloadLink.click()
+                    document.body.removeChild(downloadLink)
                 (not_ok) ->
                     console.log not_ok
             )
