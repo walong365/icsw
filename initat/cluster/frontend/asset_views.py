@@ -25,6 +25,7 @@ import json
 import csv
 
 import pytz
+import tempfile
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.db.models import Q, Count, Case, When, IntegerField, Sum
@@ -315,9 +316,12 @@ class copy_static_template(View):
 class export_assetruns_to_csv(View):
     @method_decorator(login_required)
     def post(self, request):
-        response = HttpResponse(content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename="somefilename.csv"'
-        writer = csv.writer(response)
+        #response = HttpResponse(content_type='application/json')
+        #response['Content-Disposition'] = 'attachment; filename="assetrun_.csv"'# % 2643
+
+        tmpfile = tempfile.SpooledTemporaryFile()
+
+        writer = csv.writer(tmpfile)
 
         ar = AssetRun.objects.get(idx=int(request.POST["pk"]))
 
@@ -330,34 +334,14 @@ class export_assetruns_to_csv(View):
                          'status',
                          'result']
 
-        if ar.run_type == AssetType.PACKAGE:
-            base_header.extend([
-                'package_name',
-                'package_version',
-                'package_release',
-                'package_size',
-                'package_install_date',
-                'package_type'])
-
-            writer.writerow(base_header)
-
-
-            for package_version in ar.packages.all():
-                row = [AssetType(ar.run_type).name,
-                       str(ar.asset_batch.idx),
-                       str(ar.run_start_time),
-                       str(ar.run_end_time),
-                       str((ar.run_end_time - ar.run_start_time).total_seconds()),
-                       str(ar.device.full_name),
-                       RunStatus(ar.run_status).name,
-                       RunResult(ar.run_result).name]
-                row.append(package_version.asset_package.name)
-                row.append(package_version.version)
-                row.append(package_version.release)
-                row.append(package_version.size)
-                row.append(package_version.created)
-                row.append(PackageTypeEnum(package_version.asset_package.package_type).name)
-                writer.writerow(row)
+        base_row = [AssetType(ar.run_type).name,
+                    str(ar.asset_batch.idx),
+                    str(ar.run_start_time),
+                    str(ar.run_end_time),
+                    str((ar.run_end_time - ar.run_start_time).total_seconds()),
+                    str(ar.device.full_name),
+                    RunStatus(ar.run_status).name,
+                    RunResult(ar.run_result).name]
 
         if ar.run_type == AssetType.PACKAGE:
             base_header.extend([
@@ -370,16 +354,8 @@ class export_assetruns_to_csv(View):
 
             writer.writerow(base_header)
 
-
             for package_version in ar.packages.all():
-                row = [AssetType(ar.run_type).name,
-                       str(ar.asset_batch.idx),
-                       str(ar.run_start_time),
-                       str(ar.run_end_time),
-                       str((ar.run_end_time - ar.run_start_time).total_seconds()),
-                       str(ar.device.full_name),
-                       RunStatus(ar.run_status).name,
-                       RunResult(ar.run_result).name]
+                row = base_row[:]
                 row.append(package_version.asset_package.name)
                 row.append(package_version.version)
                 row.append(package_version.release)
@@ -397,17 +373,10 @@ class export_assetruns_to_csv(View):
                 'license_name',
                 'license_key'])
 
-            for license in []: #TODO need location/table for licenses
-                row = [AssetType(ar.run_type).name,
-                       str(ar.asset_batch.idx),
-                       str(ar.run_start_time),
-                       str(ar.run_end_time),
-                       str((ar.run_end_time - ar.run_start_time).total_seconds()),
-                       str(ar.device.full_name),
-                       RunStatus(ar.run_status).name,
-                       RunResult(ar.run_result).name]
+            for license in ar.assetlicenseentry_set.all():
+                row = base_row[:]
                 row.append(license.name)
-                row.append(license.key)
+                row.append(license.license_key)
 
         elif ar.run_type == AssetType.UPDATE:
             base_header.extend([
@@ -418,15 +387,8 @@ class export_assetruns_to_csv(View):
                 'update_status',
             ])
 
-            for update in []:  # TODO need location/table for licenses
-                row = [AssetType(ar.run_type).name,
-                       str(ar.asset_batch.idx),
-                       str(ar.run_start_time),
-                       str(ar.run_end_time),
-                       str((ar.run_end_time - ar.run_start_time).total_seconds()),
-                       str(ar.device.full_name),
-                       RunStatus(ar.run_status).name,
-                       RunResult(ar.run_result).name]
+            for update in ar.assetupdateentry_set.all():
+                row = base_row[:]
 
                 row.append(update.name)
                 row.append(update.version)
@@ -440,20 +402,27 @@ class export_assetruns_to_csv(View):
                 'process_key'
             ])
 
-            for process in []: #TODO need location/table for processes
-                row = [AssetType(ar.run_type).name,
-                       str(ar.asset_batch.idx),
-                       str(ar.run_start_time),
-                       str(ar.run_end_time),
-                       str((ar.run_end_time - ar.run_start_time).total_seconds()),
-                       str(ar.device.full_name),
-                       RunStatus(ar.run_status).name,
-                       RunResult(ar.run_result).name]
-                row.append(process.name)
-                row.append(process.pid)
+            for process in ar.assetprocessentry_set.all():
+                row = base_row[:]
+                row.append(str(process.name))
+                row.append(str(process.pid))
 
         elif ar.run_type == AssetType.PENDING_UPDATE:
             pass
             # TODO implement me
 
-        return response
+
+        tmpfile.seek(0)
+        return HttpResponse(
+            json.dumps(
+                {
+                    'csv': tmpfile.read()
+                }
+            )
+        )
+
+class export_assetbatch_to_xlsx(View):
+    @method_decorator(login_required)
+    def get(self, request):
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename="assetrun_%s.xlsx"' % 2643

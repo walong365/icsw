@@ -225,7 +225,7 @@
                 <th>Error</th>
                 <th>#Assets</th>
                 <th colspan="2">Action</th>
-                <th><button type="button" ng-csv="filterAssetRunArrayForCsvExport(assetruns_shown)" csv-header="['Run Type', 'Run Start', 'Run End', 'Device', 'Asset']" filename="test.csv">Export to CSV</button></th>
+                <th><button type="button" ng-click="downloadCsv()" csv-header="['Run Type', 'Run Start', 'Run End', 'Device', 'Asset']" filename="test.csv">Export to CSV</button></th>
             </tr>
             <tr>
                 <th colspan="1">
