@@ -76,7 +76,7 @@ class auth_user(View):
 class do_login(View):
 
     def get(self, request):
-        #print csrf.get_token()
+        # print csrf.get_token()
         _req = RequestContext(request)
         # pprint.pprint([(k, v) for k, v in request.META.iteritems() if k.count("HTTP")])
         # pprint.pprint(request.META)

@@ -28,6 +28,7 @@ import uuid
 from django.utils import timezone, dateparse
 import django.utils.timezone
 from django.db import models
+from django.db.models import Q
 from enum import IntEnum
 from lxml import etree
 
@@ -77,6 +78,44 @@ def get_base_assets_from_raw_result(asset_run, blob, runtype, scantype):
                                 package_type=PackageTypeEnum.LINUX
                             )
                         )
+        # lookup cache
+        lu_cache = {}
+        for idx, ba in enumerate(assets):
+            if idx % 100 == 0:
+                lu_cache = {
+                    _p.name: _p for _p in AssetPackage.objects.filter(
+                        Q(name__in=[_x.name for _x in assets[idx:idx + 100]]) &
+                        Q(package_type=ba.package_type)
+                    ).prefetch_related(
+                        "assetpackageversion_set"
+                    )
+                }
+            name = ba.name
+            version = ba.version if ba.version else ""
+            release = ba.release if ba.release else ""
+            size = ba.size if ba.size else 0
+            package_type = ba.package_type
+
+            # kwfilterdict['name'] = ba.name
+            # kwfilterdict['version'] = ba.version
+            # kwfilterdict['release'] = ba.release
+            if name in lu_cache:
+                ap = lu_cache[ba.name]
+
+                versions = ap.assetpackageversion_set.filter(version=version, release=release, size=size)
+                assert (len(versions) < 2)
+
+                if versions:
+                    apv = versions[0]
+                else:
+                    apv = AssetPackageVersion(asset_package=ap, version=version, release=release, size=size)
+                    apv.save()
+            else:
+                ap = AssetPackage(name=name, package_type=package_type)
+                ap.save()
+                apv = AssetPackageVersion(asset_package=ap, version=version, release=release, size=size)
+                apv.save()
+            asset_run.packages.add(apv)
 
     elif runtype == AssetType.HARDWARE:
         if scantype == ScanType.NRPE:
@@ -150,10 +189,17 @@ def get_base_assets_from_raw_result(asset_run, blob, runtype, scantype):
                 new_pup.save()
 
         elif scantype == ScanType.HM:
-            l = pickle.loads(bz2.decompress(base64.b64decode(blob)))
-            print "PU for hm"
+            l = server_command.decompress(blob, pickle=True)
             for (name, version) in l:
-                assets.append(BaseAssetPendingUpdate(name, version=version))
+                new_pup = AssetUpdateEntry(
+                    name=name,
+                    installed=False,
+                    asset_run=asset_run,
+                    # by definition linux updates are optional
+                    optional=True,
+                    new_version=version,
+                )
+                new_pup.save()
 
     elif runtype == AssetType.UPDATE:
         if scantype == ScanType.NRPE:
@@ -397,6 +443,8 @@ class AssetUpdateEntry(models.Model):
     optional = models.BooleanField(default=True)
     # installed
     installed = models.BooleanField(default=False)
+    # new version (for RPMs)
+    new_version = models.CharField(default="", max_length=64)
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
@@ -445,6 +493,8 @@ class AssetRun(models.Model):
     run_duration = models.IntegerField(default=0)
     # error string
     error_string = models.TextField(default="")
+    # interpret error
+    interpret_error_string = models.TextField(default="")
     asset_batch = models.ForeignKey("AssetBatch", null=True)
     device = models.ForeignKey("backbone.device", null=True)
     # run index in current batch
@@ -460,6 +510,11 @@ class AssetRun(models.Model):
     packages = models.ManyToManyField(AssetPackageVersion)
     created = models.DateTimeField(auto_now_add=True)
 
+    def start(self):
+        self.run_status = RunStatus.RUNNING
+        self.run_start_time = timezone.now()
+        self.save()
+
     def stop(self, result, error_string=""):
         self.run_result = result
         self.run_status = RunStatus.ENDED
@@ -474,97 +529,10 @@ class AssetRun(models.Model):
         self.asset_batch.run_done(self)
 
     def generate_assets(self):
-        if self.raw_result_interpreted or not self.raw_result_str:
-            return get_base_assets_from_raw_result(self, self.raw_result_str, self.run_type, self.scan_type)
-        self.raw_result_interpreted = True
-
-        base_assets = get_base_assets_from_raw_result(self, self.raw_result_str, self.run_type, self.scan_type)
-        for _base_asset in base_assets:
-            _package_dump = pickle.dumps(_base_asset)
-            self.asset_set.create(type=self.run_type, value=_package_dump)
-
-        self.save()
-        return base_assets
-
-    def generate_assets_no_save(self):
-        print "ASSETS_NO_SAVE no longer supported"
-        return []
-        l = get_base_assets_from_raw_result(self, self.raw_result_str, self.run_type, self.scan_type)
-        l.sort()
-        return l
-
-    def generate_assets_new(self):
-        base_assets = get_base_assets_from_raw_result(self, self.raw_result_str, self.run_type, self.scan_type)
-        for ba in base_assets:
-            kwfilterdict = {}
-            if self.run_type == AssetType.PACKAGE:
-                name = ba.name
-                version = ba.version if ba.version else ""
-                release = ba.release if ba.release else ""
-                size = ba.size if ba.size else 0
-                package_type = ba.package_type
-
-                # kwfilterdict['name'] = ba.name
-                # kwfilterdict['version'] = ba.version
-                # kwfilterdict['release'] = ba.release
-                aps = AssetPackage.objects.filter(name=name, package_type=package_type)
-                assert (len(aps) < 2)
-
-                if aps:
-                    ap = aps[0]
-
-                    versions = ap.assetpackageversion_set.filter(version=version, release=release, size=size)
-                    assert (len(versions) < 2)
-
-                    if versions:
-                        apv = versions[0]
-                    else:
-                        apv = AssetPackageVersion(asset_package=ap, version=version, release=release, size=size)
-                        apv.save()
-
-                    self.packages.add(apv)
-                else:
-                    ap = AssetPackage(name=name, package_type=package_type)
-                    ap.save()
-                    apv = AssetPackageVersion(asset_package=ap, version=version, release=release, size=size)
-                    apv.save()
-                    self.packages.add(apv)
-
-            # elif self.run_type == AssetType.HARDWARE:
-            #     # todo implement me
-            #     break
-            # elif self.run_type == AssetType.LICENSE:
-            #     # todo implement me
-            #     break
-            # elif self.run_type == AssetType.UPDATE:
-            #     # todo implement me
-            #     break
-            # elif self.run_type == AssetType.SOFTWARE_VERSION:
-            #     # todo implement me
-            #     break
-            # elif self.run_type == AssetType.PROCESS:
-            #     # todo implement me
-            #     break
-            # elif self.run_type == AssetType.PENDING_UPDATE:
-            #     # todo implement me
-            #     break
-            # else:
-            #     break
-            #
-            # assets = AssetPackage.objects.filter(**kwfilterdict)
-            # assert(len(assets) < 2)
-            #
-            # if assets:
-            #     asset = assets[0]
-            #     if self.packages.filter(**kwfilterdict):
-            #         continue
-            # else:
-            #     asset = AssetPackage(**kwfilterdict)
-            #     asset.save()
-            #
-            # self.packages.add(asset)
-
-        self.save()
+        if not self.raw_result_interpreted:
+            get_base_assets_from_raw_result(self, self.raw_result_str, self.run_type, self.scan_type)
+            self.raw_result_interpreted = True
+            self.save()
 
     def get_asset_changeset(self, other_asset_run):
         # self.generate_assets()

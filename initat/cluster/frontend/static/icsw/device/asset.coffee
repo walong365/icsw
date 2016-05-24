@@ -402,7 +402,11 @@ device_asset_module = angular.module(
         obj.$$run_status_class = icswAssetHelperFunctions.get_class("run_status", obj.run_status)
         obj.$$run_result = icswAssetHelperFunctions.resolve("run_result", obj.run_result)
         obj.$$run_result_class = icswAssetHelperFunctions.get_class("run_result", obj.run_result)
-        obj.$$error_class = if obj.error_string then "error" else ""
+        if obj.error_string or obj.interpret_error_string
+            console.log "E"
+            obj.$$error_class = "error"
+        else
+            obj.$$error_class = ""
         obj.$$assets_loaded = false
         obj.$$expanded = false
         # link assets

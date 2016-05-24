@@ -604,9 +604,7 @@ class PlannedRunState(object):
     def start(self):
         self.started = True
         _db_obj = self.run_db_obj
-        _db_obj.run_status = RunStatus.RUNNING
-        _db_obj.run_start_time = timezone.now()
-        _db_obj.save()
+        _db_obj.start()
         if _db_obj.asset_batch.run_status != RunStatus.RUNNING:
             _db_obj.asset_batch.run_status = RunStatus.RUNNING
             _db_obj.asset_batch.save()
@@ -674,13 +672,20 @@ class PlannedRunState(object):
         self.generate_assets()
 
     def generate_assets(self):
+        s_time = time.time()
         try:
-            self.run_db_obj.generate_assets_new()
+            self.run_db_obj.generate_assets()
         except:
+            _err = process_tools.get_except_info()
             self.log(
-                "Exception: {}".format(process_tools.get_except_info()),
+                "error in generate_assets: {}".format(_err),
                 logging_tools.LOG_LEVEL_ERROR
             )
+            self.run_db_obj.interpret_error_string = _err
+            self.run_db_obj.save()
+        finally:
+            e_time = time.time()
+            self.log("generate_asset_run took {}".format(logging_tools.get_diff_time_str(e_time - s_time)))
 
 
 class PlannedRunsForDevice(object):
