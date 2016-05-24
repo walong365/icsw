@@ -28,18 +28,19 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.db.models import Q, Count
 from django.utils import timezone
-
+from rest_framework.parsers import JSONParser
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from rest_framework.generics import RetrieveAPIView, ListAPIView
 from rest_framework.response import Response
+from django.core.exceptions import ValidationError
 from rest_framework import viewsets
-from initat.cluster.backbone.models import device
-from initat.cluster.backbone.models.asset import AssetPackage, AssetRun, AssetPackageVersion, \
-    AssetType
+from initat.cluster.backbone.models import device, AssetPackage, AssetRun, \
+    AssetPackageVersion, AssetType, StaticAssetTemplate, user
 from initat.cluster.backbone.models.dispatch import ScheduleItem
 from initat.cluster.backbone.serializers import AssetRunDetailSerializer, ScheduleItemSerializer, \
-    AssetPackageSerializer, AssetRunOverviewSerializer, AssetProcessEntrySerializer
+    AssetPackageSerializer, AssetRunOverviewSerializer, AssetProcessEntrySerializer, \
+    StaticAssetTemplateSerializer
 from initat.cluster.frontend.rest_views import rest_logging
 
 
@@ -272,3 +273,35 @@ class AssetPackageViewSet(viewsets.ViewSet):
         )
         serializer = AssetPackageSerializer(queryset, many=True)
         return Response(serializer.data)
+
+
+class StaticAssetTemplateViewSet(viewsets.ViewSet):
+    def get_all(self, request):
+        queryset = StaticAssetTemplate.objects.all().prefetch_related(
+            "staticassettemplatefield_set"
+        )
+        serializer = StaticAssetTemplateSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @method_decorator(login_required)
+    def create_template(self, request):
+        new_obj = StaticAssetTemplateSerializer(data=request.data)
+        if new_obj.is_valid():
+            new_obj.save()
+        else:
+            raise ValidationError("New Template is not valid")
+        return Response(new_obj.data)
+
+
+class copy_static_template(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        src_obj = StaticAssetTemplate.objects.get(Q(pk=request.POST["src_idx"]))
+        create_user = user.objects.get(Q(pk=request.POST["user_idx"]))
+        new_obj = json.loads(request.POST["new_obj"])
+        new_template = src_obj.copy(new_obj, create_user)
+        serializer = StaticAssetTemplateSerializer(new_template)
+        return HttpResponse(
+            json.dumps(serializer.data),
+            content_type="application/json"
+        )

@@ -24,7 +24,8 @@
 from rest_framework import serializers
 
 from initat.cluster.backbone.models import AssetRun, AssetPackage, \
-    AssetPackageVersion, AssetBatch, AssetHardwareEntry, AssetProcessEntry
+    AssetPackageVersion, AssetBatch, AssetHardwareEntry, AssetProcessEntry, \
+    StaticAssetTemplate, StaticAssetTemplateField
 
 __all__ = [
     "AssetRunSimpleSerializer",
@@ -37,6 +38,7 @@ __all__ = [
     "ShallowPastAssetBatchSerializer",
     "AssetHardwareEntrySerializer",
     "AssetProcessEntrySerializer",
+    "StaticAssetTemplateSerializer",
 ]
 
 
@@ -129,3 +131,15 @@ class AssetRunDetailSerializer(serializers.ModelSerializer):
             "packages", "assethardwareentry_set",
             "assetprocessentry_set",
         )
+
+
+class StaticAssetTemplateFieldSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StaticAssetTemplateField
+
+
+class StaticAssetTemplateSerializer(serializers.ModelSerializer):
+    staticassettemplatefield_set = StaticAssetTemplateFieldSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = StaticAssetTemplate

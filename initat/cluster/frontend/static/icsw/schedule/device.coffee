@@ -21,7 +21,9 @@
 monitoring_device_module = angular.module(
     "icsw.schedule.device",
     [
-        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "icsw.tools.table", "icsw.tools.button", "angular-ladda"
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters",
+        "restangular", "ui.select", "icsw.tools.table", "icsw.tools.button", "angular-ladda",
+        "icsw.device.asset",
     ]
 ).config(["$stateProvider",
 (
@@ -43,7 +45,7 @@ monitoring_device_module = angular.module(
                     menukey: "sched"
                     name: "Device settings"
                     icon: "fa-laptop"
-                    ordering: 10
+                    ordering: 20
         }
     ).state(
         "main.schedoverview", {
@@ -55,8 +57,21 @@ monitoring_device_module = angular.module(
                 menuEntry:
                     menukey: "sched"
                     name: "Settings"
-                    icon: "fa-laptop"
+                    icon: "fa-gears"
                     ordering: 10
+        }
+    ).state(
+        "main.statictemplates", {
+            url: "/sched/stattemp"
+            template: "<icsw-static-asset-template-overview></icsw-static-asset-template-overview>"
+            icswData:
+                pageTitle: "Static Asset templates"
+                # rights: ["mon_check_command.setup_monitoring", "device.change_monitoring"]
+                menuEntry:
+                    menukey: "sched"
+                    name: "Static Asset templates"
+                    icon: "fa-reorder"
+                    ordering: 30
         }
     )
 ]).service("icswDispatcherSettingTree",
@@ -406,7 +421,7 @@ monitoring_device_module = angular.module(
                         blockUI.stop()
                 )
         )
-        
+
     $scope.create_or_edit = ($event, obj, create) ->
         if create
             obj = {
@@ -672,4 +687,250 @@ monitoring_device_module = angular.module(
                 sub_scope.$destroy()
                 start_timeout()
         )
+]).directive("icswStaticAssetTemplateOverview",
+[
+    "ICSW_URLS", "Restangular",
+(
+    ICSW_URLS, Restangular
+) ->
+    return {
+        restrict: "EA"
+        templateUrl: "icsw.static.asset.template.overview"
+        controller: "icswStaticAssetTemplateOverviewCtrl"
+    }
+]).service("icswStaticAssetFunctions", 
+[
+    "$q",
+(
+    $q,
+) ->
+    info_dict = {
+        asset_type: [
+            [1, "License", ""]
+            [2, "Contract", ""]
+            [3, "Hardware", ""]
+        ]
+        field_type: [
+            [1, "Integer", ""]
+            [2, "String", ""]
+            [3, "Date", ""]
+        ]
+    }
+    # list of dicts for forms
+    form_dict = {}
+    # create forward and backward resolves
+    res_dict = {}
+    for name, _list of info_dict
+        res_dict[name] = {}
+        form_dict[name] = []
+        for [_idx, _str, _class] in _list
+            # forward resolve
+            res_dict[name][_idx] = [_str, _class]
+            # backward resolve
+            res_dict[name][_str] = [_idx, _class]
+            res_dict[name][_.lowerCase(_str)] = [_idx, _class]
+            # form dict
+            form_dict[name].push({idx: _idx, name: _str})
+            
+    _resolve = (name, key, idx) ->
+        if name of res_dict
+            if key of res_dict[name]
+                return res_dict[name][key][idx]
+            else
+                console.error "unknown key #{key} for name #{name} in resolve"
+                return "???"
+        else
+            console.error "unknown name #{name} in resolve"
+            return "????"
+
+    return {
+        resolve: (name, key) ->
+            return _resolve(name, key, 0)
+
+        get_class: (name, key) ->
+            return _resolve(name, key, 1)
+        
+        get_form_dict: (name) ->
+            return form_dict[name]
+    }
+    
+]).controller("icswStaticAssetTemplateOverviewCtrl",
+[
+    "$scope", "icswDeviceTreeService", "$q", "icswMonitoringBasicTreeService", "icswComplexModalService",
+    "$templateCache", "$compile", "icswStaticAssetTemplateBackup", "toaster", "blockUI", "Restangular",
+    "ICSW_URLS", "icswStaticAssetTemplateTreeService", "icswDispatcherSettingTreeService", "icswComCapabilityTreeService",
+    "icswToolsSimpleModalService", "icswUserService", "icswUserGroupTreeService", "icswStaticAssetFunctions",
+(
+    $scope, icswDeviceTreeService, $q, icswMonitoringBasicTreeService, icswComplexModalService,
+    $templateCache, $compile, icswStaticAssetTemplateBackup, toaster, blockUI, Restangular,
+    ICSW_URLS, icswStaticAssetTemplateTreeService, icswDispatcherSettingTreeService, icswComCapabilityTreeService,
+    icswToolsSimpleModalService, icswUserService, icswUserGroupTreeService, icswStaticAssetFunctions,
+) ->
+    $scope.struct = {
+        # loading
+        loading: false
+        # dispatch tree
+        template_tree: undefined
+        # user
+        user: undefined
+        # user and group tree
+        user_group_tree: undefined
+    }
+    _load = () ->
+        $scope.struct.loading = true
+        $q.all(
+            [
+                icswStaticAssetTemplateTreeService.load($scope.$id)
+                icswUserService.load($scope.id)
+                icswUserGroupTreeService.load($scope.$id)
+            ]
+        ).then(
+            (data) ->
+                $scope.struct.template_tree = data[0]
+                $scope.struct.user = data[1]
+                $scope.struct.user_group_tree = data[2]
+                # get monitoring masters and slaves
+                $scope.struct.loading = false
+        )
+    _load()
+
+    $scope.delete = ($event, obj) ->
+        icswToolsSimpleModalService("Really delete Schedule '#{obj.name}' ?").then(
+            () =>
+                blockUI.start("deleting...")
+                $scope.struct.dispatch_tree.delete_dispatcher_setting(obj).then(
+                    (ok) ->
+                        console.log "schedule deleted"
+                        blockUI.stop()
+                    (notok) ->
+                        blockUI.stop()
+                )
+        )
+
+    $scope.create_or_edit = ($event, obj, create) ->
+        if create
+            obj = {
+                name: "new Template"
+                description: "New SaticAssetTemplate"
+                user: $scope.struct.user.idx
+                system_template: false
+                parent_template: null
+                staticassettemplatefield_set: []
+                type: icswStaticAssetFunctions.resolve("asset_type", "hardware")
+            }
+            _ok_label = "Create"
+        else
+            dbu = new icswStaticAssetTemplateBackup()
+            dbu.create_backup(obj)
+            _ok_label = "Modify"
+
+        sub_scope = $scope.$new(false)
+        sub_scope.edit_obj = obj
+        # copy references
+        sub_scope.asset_type_list = icswStaticAssetFunctions.get_form_dict("asset_type")
+
+        icswComplexModalService(
+            {
+                message: $compile($templateCache.get("icsw.static.asset.template.form"))(sub_scope)
+                title: "Static AssetTemplate #{sub_scope.edit_obj.name}"
+                ok_label: _ok_label
+                ok_callback: (modal) ->
+                    d = $q.defer()
+                    if sub_scope.form_data.invalid
+                        toaster.pop("warning", "form validation problem", "", 0)
+                        d.reject("form not valid")
+                    else
+                        if create
+                            blockUI.start("creating new Template ...")
+                            $scope.struct.template_tree.create_template(sub_scope.edit_obj).then(
+                                (new_obj) ->
+                                    blockUI.stop()
+                                    d.resolve("created")
+                                (notok) ->
+                                    blockUI.stop()
+                                    d.reject("not created")
+                            )
+                        else
+                            blockUI.start("saving Template ...")
+                            Restangular.restangularizeElement(null, sub_scope.edit_obj, ICSW_URLS.REST_STATIC_ASSET_TEMPLATE_DETAIL.slice(1).slice(0, -2))
+                            sub_scope.edit_obj.put().then(
+                                (ok) ->
+                                    blockUI.stop()
+                                    d.resolve("saved")
+                                (not_ok) ->
+                                    blockUI.stop()
+                                    d.reject("not saved")
+                            )
+                    return d.promise
+                cancel_callback: (modal) ->
+                    if not create
+                        dbu.restore_backup(obj)
+                    d = $q.defer()
+                    d.resolve("cancel")
+                    return d.promise
+            }
+        ).then(
+            (fin) ->
+                $scope.struct.template_tree.link()
+                sub_scope.$destroy()
+        )
+
+    $scope.copy = ($event, obj) ->
+        sub_scope = $scope.$new(false)
+        sub_scope.src_obj = obj
+        sub_scope.new_obj = {
+            name: "Copy of #{obj.name}"
+            description: obj.description
+        }
+
+        icswComplexModalService(
+            {
+                message: $compile($templateCache.get("icsw.static.asset.template.copy.form"))(sub_scope)
+                title: "Copy Template #{sub_scope.src_obj.name}"
+                ok_label: "Copy"
+                ok_callback: (modal) ->
+                    d = $q.defer()
+                    if sub_scope.form_data.invalid
+                        toaster.pop("warning", "form validation problem", "", 0)
+                        d.reject("form not valid")
+                    else
+                        blockUI.start("Copying Template ...")
+                        $scope.struct.template_tree.copy_template(
+                            sub_scope.src_obj
+                            sub_scope.new_obj
+                            $scope.struct.user
+                        ).then(
+                            (new_obj) ->
+                                blockUI.stop()
+                                d.resolve("created")
+                            (notok) ->
+                                blockUI.stop()
+                                d.reject("not created")
+                        )
+                    return d.promise
+                cancel_callback: (modal) ->
+                    d = $q.defer()
+                    d.resolve("cancel")
+                    return d.promise
+            }
+        ).then(
+            (fin) ->
+                $scope.struct.template_tree.link()
+                sub_scope.$destroy()
+        )
+
+    $scope.delete = ($event, obj) ->
+        icswToolsSimpleModalService("Really delete StaticAssetTemplate '#{obj.name}' ?").then(
+            () =>
+                blockUI.start("deleting...")
+                $scope.struct.template_tree.delete_template(obj).then(
+                    (ok) ->
+                        console.log "schedule deleted"
+                        blockUI.stop()
+                    (notok) ->
+                        blockUI.stop()
+                )
+        )
+
+
 ])

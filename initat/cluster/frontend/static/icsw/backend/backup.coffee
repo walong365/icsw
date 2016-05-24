@@ -681,4 +681,13 @@ angular.module(
             @list_attributes = [
                 "com_capabilities",
             ]
+]).service("icswStaticAssetTemplateBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswStaticAssetTemplateBackupDefinition extends icswBackupDefinition
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "type", "name", "description", "system_template", "parent_template", "user",
+            ]
 ])
+

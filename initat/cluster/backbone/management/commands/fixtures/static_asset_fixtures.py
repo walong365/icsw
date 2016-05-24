@@ -28,23 +28,24 @@ def add_fixtures(**kwargs):
     _dummy_hardware = factories.StaticAssetTemplateFactory(
         type=StaticAssetType.HARDWARE,
         name="sysHardware",
+        description="Generic Hardware",
         system_template=True,
     )
-    factories.StaticAssetTemplateField(
+    factories.StaticAssetTemplateFieldFactory(
         static_asset_template=_dummy_hardware,
         name="Type",
         field_description="Type of Hardware",
         field_type=StaticAssetTemplateFieldType.STRING,
         optional=False,
     )
-    factories.StaticAssetTemplateField(
+    factories.StaticAssetTemplateFieldFactory(
         static_asset_template=_dummy_hardware,
         name="Name",
         field_description="Name of Hardware",
         field_type=StaticAssetTemplateFieldType.STRING,
         optional=False,
     )
-    factories.StaticAssetTemplateField(
+    factories.StaticAssetTemplateFieldFactory(
         static_asset_template=_dummy_hardware,
         name="Vendor",
         field_description="Vendor Name",
@@ -53,6 +54,7 @@ def add_fixtures(**kwargs):
     )
     _dummy_contract = factories.StaticAssetTemplateFactory(
         type=StaticAssetType.CONTRACT,
+        description="Generic Contract",
         name="sysContract",
         system_template=True,
     )
@@ -63,21 +65,21 @@ def add_fixtures(**kwargs):
         field_type=StaticAssetTemplateFieldType.STRING,
         optional=False,
     )
-    factories.StaticAssetTemplateField(
+    factories.StaticAssetTemplateFieldFactory(
         static_asset_template=_dummy_contract,
         name="Vendor",
         field_description="Vendor Name",
         field_type=StaticAssetTemplateFieldType.STRING,
         optional=True,
     )
-    factories.StaticAssetTemplateField(
+    factories.StaticAssetTemplateFieldFactory(
         static_asset_template=_dummy_contract,
         name="StartDate",
         field_description="Start of Contract",
         field_type=StaticAssetTemplateFieldType.DATE,
         optional=False,
     )
-    factories.StaticAssetTemplateField(
+    factories.StaticAssetTemplateFieldFactory(
         static_asset_template=_dummy_contract,
         name="EndDate",
         field_description="End of Contract",

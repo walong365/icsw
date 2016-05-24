@@ -554,6 +554,13 @@ class StaticAssetTemplateFactory(factory.django.DjangoModelFactory):
         model = StaticAssetTemplate
         django_get_or_create = ("name", "system_template")
 
+    @factory.post_generation
+    def description(self, create, extracted, **kwargs):
+        extracted = extracted or ""
+        if self.description != extracted:
+            self.description = extracted
+            self.save()
+
 
 class StaticAssetTemplateFieldFactory(factory.django.DjangoModelFactory):
     class Meta:

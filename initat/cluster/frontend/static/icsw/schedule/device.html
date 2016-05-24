@@ -271,3 +271,139 @@
         </fieldset>
     </form>
 </script>
+
+<script type="text/ng-template" id="icsw.static.asset.template.overview">
+    <uib-alert type="warning" ng-show="struct.loading">Fetching data from server...</uib-alert>
+    <h3>
+        StaticAsset Templates ({{ struct.template_tree.list.length }} entries)
+        <icsw-tools-button type="create" size="xs" ng-click="create_or_edit($event, null, true)"></icsw-tools-button>
+    </h3>
+    <table
+        st-table="entries_displayed"
+        st-safe-src="struct.template_tree.list"
+        class="table table-condensed table-hover"
+        style="width:auto;"
+        ng-if="struct.template_tree.list.length"
+    >
+        <thead>
+            <tr>
+                <td colspan="99" class="form-inline">
+                    <icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                         possible-items-by-page="10,20,50,100,200,500,1000"></icsw-tools-pagination>
+                    <input st-search="" class="form-control" placeholder="filter ..." type="text"/>
+                </td>
+            </tr>
+            <tr>
+                <th st-sort="name" st-sort-default="true">Name</th>
+                <th>Parent</th>
+                <th st-sort="description">Description</th>
+                <th>Type</th>
+                <th>User</th>
+                <th>#Fields</th>
+                <th>Created</th>
+                <th colspan="3" class="text-center">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="obj in entries_displayed">
+                <td>{{ obj.name }}</td>
+                <td>
+                    <span ng-show="obj.parent_template">
+                        {{ struct.template_tree.lut[obj.parent_template].name }}
+                    </span>
+                </td>
+                <td>{{ obj.description }}</td>
+                <td class="text-center">
+                    {{ obj.$$asset_type }}
+                </td>
+                <td class="text-center">
+                    <span ng-show="obj.system_template" class="label label-success">system</span>
+                    <span ng-show="!obj.system_template">{{ struct.user_group_tree.user_lut[obj.user].login }}</span>
+                </td>
+                <td class="text-center">
+                    {{ obj.$$num_fields }}
+                </td>
+                <td class="text-center">
+                    {{ obj.$$created }}
+                </td>
+                <td>
+                    <icsw-tools-button ng-if="!obj.system_template" type="modify" size="xs" ng-click="create_or_edit($event, obj, false)"></icsw-tools-button>
+                </td><td>
+                    <icsw-tools-button ng-if="!obj.system_template" type="delete" size="xs" ng-click="delete($event, obj)"></icsw-tools-button>
+                </td><td>
+                    <icsw-tools-button type="copy" size="xs" ng-click="copy($event, obj)"></icsw-tools-button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+</script>
+
+<script type="text/ng-template" id="icsw.static.asset.template.form">
+    <form class="form-horizontal" name="form_data">
+        <fieldset>
+            <legend>Base settings</legend>
+            <div class="form-group">
+                <label class="control-label col-xs-3 requiredField">
+                    Name<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-xs-7">
+                    <input class="form-control" ng-model="edit_obj.name"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-xs-3 requiredField">
+                    Description
+                </label>
+                <div class="controls col-xs-7">
+                    <input class="form-control" ng-model="edit_obj.description"/>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Type</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Type<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <ui-select ng-model="edit_obj.type" style="max-width:400px; min-width:240px;" ng-disabled="edit_obj.$$num_fields">
+                        <ui-select-match class="ui-select-match" placeholder="please select a Type">
+                            {{ $select.selected.name }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in asset_type_list">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Fields</legend>
+        </fieldset>
+    </form>
+</script>
+
+<script type="text/ng-template" id="icsw.static.asset.template.copy.form">
+    <form class="form-horizontal" name="form_data">
+        <fieldset>
+            <legend>Base settings</legend>
+            <div class="form-group">
+                <label class="control-label col-xs-3 requiredField">
+                    Name<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-xs-7">
+                    <input class="form-control" ng-model="new_obj.name">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-xs-3 requiredField">
+                    Description
+                </label>
+                <div class="controls col-xs-7">
+                    <input class="form-control" ng-model="new_obj.description"/>
+                </div>
+            </div>
+        </fieldset>
+    </form>
+</script>

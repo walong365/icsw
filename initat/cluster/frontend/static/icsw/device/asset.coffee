@@ -89,7 +89,7 @@ device_asset_module = angular.module(
                     vers.$$package = entry
                     vers.$$created = moment(vers.created).format("YYYY-MM-DD HH:mm:ss")
                     vers.$$size = icswTools.get_size_str(vers.size, 1024, "Byte")
-                    
+
 
 ]).service("icswAssetPackageTreeService",
 [
@@ -753,5 +753,143 @@ device_asset_module = angular.module(
             else
                 _not_av_el = $compile($templateCache.get("icsw.asset.details.na"))(scope)
             element.append(_not_av_el)
+    }
+]).service("icswStaticAssetTemplateTree",
+[
+    "$q", "Restangular", "ICSW_URLS", "icswTools", "icswSimpleAjaxCall", "icswStaticAssetFunctions",
+(
+    $q, Restangular, ICSW_URLS, icswTools, icswSimpleAjaxCall, icswStaticAssetFunctions,
+) ->
+    class icswStaticAssetTemplateTree
+        constructor: (list) ->
+            @list = []
+            @update(list)
+
+        update: (list) =>
+            @list.length = 0
+            for entry in list
+                @list.push(entry)
+            @build_luts()
+
+        build_luts: () =>
+            @lut = _.keyBy(@list, "idx")
+            @link()
+
+        link: () =>
+            # DT_FORM = "dd, D. MMM YYYY HH:mm:ss"
+            # _cf = ["year", "month", "week", "day", "hour", "minute", "second"]
+            # create fields for schedule_setting form handling
+            for entry in @list
+                entry.$$num_fields = entry.staticassettemplatefield_set.length
+                entry.$$asset_type = icswStaticAssetFunctions.resolve("asset_type", entry.type)
+                entry.$$created = moment(entry.date).format("YYYY-MM-DD HH:mm:ss")
+                
+        copy_template: (src_obj, new_obj, create_user) =>
+            defer = $q.defer()
+            icswSimpleAjaxCall(
+                {
+                    url: ICSW_URLS.ASSET_COPY_STATIC_TEMPLATE
+                    data:
+                        new_obj: angular.toJson(new_obj)
+                        src_idx: src_obj.idx
+                        user_idx: create_user.idx
+                    dataType: "json"
+                }
+            ).then(
+                (result) =>
+                    console.log "Result", result
+                    @list.push(result)
+                    @build_luts()
+                    defer.resolve("created")
+                (error) ->
+                    defer.reject("not created")
+            )
+            return defer.promise
+
+        create_template: (new_obj) =>
+            d = $q.defer()
+            Restangular.all(ICSW_URLS.ASSET_CREATE_STATIC_ASSET_TEMPLATE.slice(1)).post(new_obj).then(
+                (created) =>
+                    @list.push(created)
+                    @build_luts()
+                    d.resolve(created)
+                (not_cr) =>
+                    d.reject("not created")
+            )
+            return d.promise
+
+        delete_template: (del_obj) =>
+            d = $q.defer()
+            Restangular.restangularizeElement(null, del_obj, ICSW_URLS.REST_STATIC_ASSET_TEMPLATE_DETAIL.slice(1).slice(0, -2))
+            del_obj.remove().then(
+                (removed) =>
+                    _.remove(@list, (entry) -> return entry.idx == del_obj.idx)
+                    @build_luts()
+                    d.resolve("deleted")
+                (not_removed) ->
+                    d.resolve("not deleted")
+            )
+            return d.promise
+
+]).service("icswStaticAssetTemplateTreeService",
+[
+    "$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall", "icswTools",
+    "icswStaticAssetTemplateTree", "$rootScope", "ICSW_SIGNALS",
+(
+    $q, Restangular, ICSW_URLS, $window, icswCachingCall, icswTools,
+    icswStaticAssetTemplateTree, $rootScope, ICSW_SIGNALS,
+) ->
+    rest_map = [
+        [
+            # asset packages
+            ICSW_URLS.ASSET_GET_STATIC_TEMPLATES
+            {}
+        ]
+    ]
+    _fetch_dict = {}
+    _result = undefined
+    # load called
+    load_called = false
+
+    load_data = (client) ->
+        load_called = true
+        _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in rest_map)
+        _defer = $q.defer()
+        $q.all(_wait_list).then(
+            (data) ->
+                if _result?
+                    _result.update(data[0])
+                else
+                    console.log "*** AssetTemplatesTree loaded ***"
+                    _result = new icswStaticAssetTemplateTree(data[0])
+                _defer.resolve(_result)
+                for client of _fetch_dict
+                    # resolve clients
+                    _fetch_dict[client].resolve(_result)
+                # reset fetch_dict
+                _fetch_dict = {}
+        )
+        return _defer
+
+    fetch_data = (client) ->
+        if client not of _fetch_dict
+            # register client
+            _defer = $q.defer()
+            _fetch_dict[client] = _defer
+        if _result
+            # resolve immediately
+            _fetch_dict[client].resolve(_result)
+        return _fetch_dict[client]
+
+    return {
+        "load": (client) ->
+            # loads from server
+            if load_called
+                # fetch when data is present (after sidebar)
+                return fetch_data(client).promise
+            else
+                return load_data(client).promise
+        "reload": (client) ->
+            return load_data(client).promise
     }
 ])

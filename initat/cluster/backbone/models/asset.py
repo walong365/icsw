@@ -671,12 +671,28 @@ class StaticAssetTemplate(models.Model):
     type = models.IntegerField(choices=[(_type.value, _type.name) for _type in StaticAssetType])
     # name of Template
     name = models.CharField(max_length=128, unique=True)
+    # description
+    description = models.TextField(default="")
     # system template (not deleteable)
     system_template = models.BooleanField(default=False)
+    # parent template (for copy operations)
+    parent_template = models.ForeignKey("backbone.StaticAssetTemplate", null=True)
     # link to creation user
     user = models.ForeignKey("backbone.user", null=True)
     # created
     date = models.DateTimeField(auto_now_add=True)
+
+    def copy(self, new_obj, create_user):
+        nt = StaticAssetTemplate(
+            type=self.type,
+            name=new_obj["name"],
+            description=new_obj["description"],
+            system_template=False,
+            parent_template=self,
+            user=create_user,
+        )
+        nt.save()
+        return nt
 
 
 class StaticAssetTemplateField(models.Model):

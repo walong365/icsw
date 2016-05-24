@@ -46,6 +46,10 @@ angular.module(
             ret_obj.css_class = "btn-warning"
             ret_obj.button_value = gettextCatalog.getString("reload")
             ret_obj.icon_class = "fa fa-refresh"
+        else if type == "copy"
+            ret_obj.css_class = "btn-success"
+            ret_obj.button_value = "copy"
+            ret_obj.icon_class = "fa fa-copy"
         else if type == "stop"
             ret_obj.css_class = "btn-warning"
             ret_obj.button_value = gettextCatalog.getString("stop")
