@@ -22,6 +22,7 @@
 
 import datetime
 import json
+import csv
 
 import pytz
 from django.contrib.auth.decorators import login_required
@@ -36,7 +37,7 @@ from rest_framework.response import Response
 from django.core.exceptions import ValidationError
 from rest_framework import viewsets
 from initat.cluster.backbone.models import device, AssetPackage, AssetRun, \
-    AssetPackageVersion, AssetType, StaticAssetTemplate, user
+    AssetPackageVersion, AssetType, StaticAssetTemplate, user, RunStatus, RunResult, PackageTypeEnum
 from initat.cluster.backbone.models.dispatch import ScheduleItem
 from initat.cluster.backbone.serializers import AssetRunDetailSerializer, ScheduleItemSerializer, \
     AssetPackageSerializer, AssetRunOverviewSerializer, AssetProcessEntrySerializer, \
@@ -310,3 +311,149 @@ class copy_static_template(View):
             json.dumps(serializer.data),
             content_type="application/json"
         )
+
+class export_assetruns_to_csv(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="somefilename.csv"'
+        writer = csv.writer(response)
+
+        ar = AssetRun.objects.get(idx=int(request.POST["pk"]))
+
+        base_header = ['Asset Type',
+                         'Batch Id',
+                         'Start Time',
+                         'End Time',
+                         'Total Run Time',
+                         'device',
+                         'status',
+                         'result']
+
+        if ar.run_type == AssetType.PACKAGE:
+            base_header.extend([
+                'package_name',
+                'package_version',
+                'package_release',
+                'package_size',
+                'package_install_date',
+                'package_type'])
+
+            writer.writerow(base_header)
+
+
+            for package_version in ar.packages.all():
+                row = [AssetType(ar.run_type).name,
+                       str(ar.asset_batch.idx),
+                       str(ar.run_start_time),
+                       str(ar.run_end_time),
+                       str((ar.run_end_time - ar.run_start_time).total_seconds()),
+                       str(ar.device.full_name),
+                       RunStatus(ar.run_status).name,
+                       RunResult(ar.run_result).name]
+                row.append(package_version.asset_package.name)
+                row.append(package_version.version)
+                row.append(package_version.release)
+                row.append(package_version.size)
+                row.append(package_version.created)
+                row.append(PackageTypeEnum(package_version.asset_package.package_type).name)
+                writer.writerow(row)
+
+        if ar.run_type == AssetType.PACKAGE:
+            base_header.extend([
+                'package_name',
+                'package_version',
+                'package_release',
+                'package_size',
+                'package_install_date',
+                'package_type'])
+
+            writer.writerow(base_header)
+
+
+            for package_version in ar.packages.all():
+                row = [AssetType(ar.run_type).name,
+                       str(ar.asset_batch.idx),
+                       str(ar.run_start_time),
+                       str(ar.run_end_time),
+                       str((ar.run_end_time - ar.run_start_time).total_seconds()),
+                       str(ar.device.full_name),
+                       RunStatus(ar.run_status).name,
+                       RunResult(ar.run_result).name]
+                row.append(package_version.asset_package.name)
+                row.append(package_version.version)
+                row.append(package_version.release)
+                row.append(package_version.size)
+                row.append(package_version.created)
+                row.append(PackageTypeEnum(package_version.asset_package.package_type).name)
+                writer.writerow(row)
+
+        elif ar.run_type == AssetType.HARDWARE:
+            pass
+            #TODO implement me
+
+        elif ar.run_type == AssetType.LICENSE:
+            base_header.extend([
+                'license_name',
+                'license_key'])
+
+            for license in []: #TODO need location/table for licenses
+                row = [AssetType(ar.run_type).name,
+                       str(ar.asset_batch.idx),
+                       str(ar.run_start_time),
+                       str(ar.run_end_time),
+                       str((ar.run_end_time - ar.run_start_time).total_seconds()),
+                       str(ar.device.full_name),
+                       RunStatus(ar.run_status).name,
+                       RunResult(ar.run_result).name]
+                row.append(license.name)
+                row.append(license.key)
+
+        elif ar.run_type == AssetType.UPDATE:
+            base_header.extend([
+                'update_name',
+                'update_version',
+                'update_release',
+                'update_kb_idx',
+                'update_status',
+            ])
+
+            for update in []:  # TODO need location/table for licenses
+                row = [AssetType(ar.run_type).name,
+                       str(ar.asset_batch.idx),
+                       str(ar.run_start_time),
+                       str(ar.run_end_time),
+                       str((ar.run_end_time - ar.run_start_time).total_seconds()),
+                       str(ar.device.full_name),
+                       RunStatus(ar.run_status).name,
+                       RunResult(ar.run_result).name]
+
+                row.append(update.name)
+                row.append(update.version)
+                row.append(update.release)
+                row.append(update.kb_idx)
+                row.append(update.status)
+
+        elif ar.run_type == AssetType.PROCESS:
+            base_header.extend([
+                'process_name',
+                'process_key'
+            ])
+
+            for process in []: #TODO need location/table for processes
+                row = [AssetType(ar.run_type).name,
+                       str(ar.asset_batch.idx),
+                       str(ar.run_start_time),
+                       str(ar.run_end_time),
+                       str((ar.run_end_time - ar.run_start_time).total_seconds()),
+                       str(ar.device.full_name),
+                       RunStatus(ar.run_status).name,
+                       RunResult(ar.run_result).name]
+                row.append(process.name)
+                row.append(process.pid)
+
+        elif ar.run_type == AssetType.PENDING_UPDATE:
+            pass
+            # TODO implement me
+
+        return response
