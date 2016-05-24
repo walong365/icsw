@@ -1075,7 +1075,7 @@ class monitoring_hint(models.Model):
     )
     # current value
     value_float = models.FloatField(default=0.0)
-    value_int = models.IntegerField(default=0)
+    value_int = models.BigIntegerField(default=0)
     value_string = models.CharField(default="", max_length=256, blank=True)
     value_blob = models.TextField(default="", blank=True)
     # limits

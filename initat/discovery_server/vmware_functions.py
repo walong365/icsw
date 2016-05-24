@@ -26,6 +26,10 @@ from initat.cluster.backbone.models import device
 
 import traceback
 
+
+from initat.cluster.backbone.models import monitoring_hint
+
+
 class VmMachine:
     def __init__(self, name):
         self.name = name
@@ -119,6 +123,9 @@ class Collector:
                 objview.Destroy()
 
                 self.__genenerate_counter_name_rollup_key_dict(content.perfManager.perfCounter)
+
+                monitoring_hint_list = []
+
                 for host_system in host_systems:
                     ## DYNAMIC/ALL counters
                     for counter_name in self.counter_name_rollup_key_dict.keys():
@@ -132,8 +139,6 @@ class Collector:
                                                                      metricId=[metricId])
                             q = perfManager.QueryPerf(querySpec=[query])
 
-
-
                             if q:
                                 try:
                                     print "counter_name: %s | rollup: %s" % (counter_name, rollup_type)
@@ -141,7 +146,19 @@ class Collector:
                                         instance = value.id.instance
                                         if not instance:
                                             instance = ""
-                                        print "\tinstance: %s | value: %s" % (instance, value.value[0])
+                                        #print "\tinstance: %s | value: %s" % (instance, value.value[0])
+
+                                        identifier = "counter_name: %s | rollup: %s | instance: %s | id: %s" % (counter_name, rollup_type, instance, counter_id)
+                                        hints = _device.monitoring_hint_set.filter(info=identifier)
+                                        assert(len(hints) < 2)
+                                        if not hints:
+                                            mh = monitoring_hint(device=_device, m_type="vmomi", value_int=int(value.value[0]), v_type="i", info=identifier)
+                                            monitoring_hint_list.append(mh)
+                                            #_device.monitoring_hint_set.create(m_type="vmomi", value_int=int(value.value[0]), v_type="i", info=identifier)
+                                        else:
+                                            hint = hints[0]
+                                            hint.value_string = value.value[0]
+                                            hint.save()
                                 except Exception as e:
                                     traceback.print_exc()
 
@@ -306,6 +323,8 @@ class Collector:
                     print "\tAttached VMS:"
                     for vm in datastore.vm:
                         print "\t\t%s" % vm
+
+                monitoring_hint.objects.bulk_create(monitoring_hint_list)
         # return
         #
         #

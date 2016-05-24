@@ -186,7 +186,7 @@ class DiscoveryProcess(threading_tools.process_obj, HostMonitoringMixin, BaseSca
         collector = Collector()
         self.register_timer(dispatcher.dispatch_call, 1)
         self.register_timer(dispatcher.schedule_call, 10)
-        self.register_timer(collector.collect_call, 10)
+        self.register_timer(collector.collect_call, 60)
 
     def _snmp_basic_scan(self, *args, **kwargs):
         SNMPBatch(server_command.srv_command(source=args[0]))

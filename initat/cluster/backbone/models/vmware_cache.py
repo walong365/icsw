@@ -18,28 +18,28 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from django.db import models
-
-class VmHost(models.Model):
-    idx = models.AutoField(primary_key=True)
-    device = models.ForeignKey("backbone.device", null=True)
-    name = models.TextField(null=True)
-
-class VmSubDevice(models.Model):
-    idx = models.AutoField(primary_key=True)
-    vm_host= models.ForeignKey("backbone.VmHost")
-    name = models.TextField(null=True)
-
-class VMDataStore(models.Model):
-    idx = models.AutoField(primary_key=True)
-
-    collection = models.ForeignKey("backbone.VMCollection")
-
-    result = models.TextField(null=True)
-
-    vm_sub_device = models.ForeignKey("backbone.VmSubDevice")
-
-
-class VMCollection(models.Model):
-    idx = models.AutoField(primary_key=True)
-    timestamp = models.DateTimeField(auto_now_add=True)
+# from django.db import models
+#
+# class VmHost(models.Model):
+#     idx = models.AutoField(primary_key=True)
+#     device = models.ForeignKey("backbone.device", null=True)
+#     name = models.TextField(null=True)
+#
+# class VmSubDevice(models.Model):
+#     idx = models.AutoField(primary_key=True)
+#     vm_host= models.ForeignKey("backbone.VmHost")
+#     name = models.TextField(null=True)
+#
+# class VMDataStore(models.Model):
+#     idx = models.AutoField(primary_key=True)
+#
+#     collection = models.ForeignKey("backbone.VMCollection")
+#
+#     result = models.TextField(null=True)
+#
+#     vm_sub_device = models.ForeignKey("backbone.VmSubDevice")
+#
+#
+# class VMCollection(models.Model):
+#     idx = models.AutoField(primary_key=True)
+#     timestamp = models.DateTimeField(auto_now_add=True)
