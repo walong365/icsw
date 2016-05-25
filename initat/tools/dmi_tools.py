@@ -19,10 +19,12 @@
 """ parse dmidecode output """
 
 import re
+import tempfile
+import commands
 
 from lxml.builder import E
 
-from initat.tools import process_tools
+from initat.tools import process_tools, server_command
 
 DMI_TYPES = {
     0: "BIOS",
@@ -183,3 +185,17 @@ def dmi_struct_to_xml(dmi_dict):
                     )
         _handles.append(_xml)
     return _main
+
+
+def decompress_dmi_info(in_str):
+    _dmi_bin = process_tools.find_file("dmidecode")
+    with tempfile.NamedTemporaryFile() as tmp_file:
+        file(tmp_file.name, "w").write(server_command.decompress(in_str))
+        _dmi_stat, dmi_result = commands.getstatusoutput(
+            "{} --from-dump {}".format(
+                _dmi_bin,
+                tmp_file.name
+            )
+        )
+        _xml = dmi_struct_to_xml(parse_dmi_output(dmi_result.split("\n")))
+    return _xml

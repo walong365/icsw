@@ -38,8 +38,8 @@ from initat.cluster.backbone.models.dispatch import DeviceDispatcherLink, Dispat
 from initat.discovery_server.wmi_struct import WmiUtils
 from initat.icsw.service.instance import InstanceXML
 from initat.snmp.snmp_struct import ResultNode
-from initat.tools import ipvx_tools
-from initat.tools import logging_tools, process_tools, server_command, net_tools
+from initat.tools import logging_tools, process_tools, server_command, net_tools, \
+    ipvx_tools, pci_database, dmi_tools
 from .discovery_struct import ExtCom
 
 
@@ -634,7 +634,7 @@ class PlannedRunState(object):
 
     def store_zmq_result(self, result):
         _db_obj = self.run_db_obj
-        s = None
+        s, _error_string = (None, "")
         if result is not None:
             try:
                 if _db_obj.run_type == AssetType.PACKAGE:
@@ -655,11 +655,27 @@ class PlannedRunState(object):
                 elif _db_obj.run_type == AssetType.PENDING_UPDATE:
                     if "update_list" in result:
                         s = result["update_list"].text
-            except KeyError:
+                elif _db_obj.run_type == AssetType.DMI:
+                    if "dmi_dump" in result:
+                        s = dmi_tools.decompress_dmi_info(result["dmi_dump"].text)
+                        s = etree.tostring(s)
+                        # print "d", s, etree.tostring(s, pretty_print=True)
+                elif _db_obj.run_type == AssetType.PCI:
+                    if "pci_dump" in result:
+                        s = pci_database.pci_struct_to_xml(
+                            pci_database.decompress_pci_info(result["pci_dump"].text)
+                        )
+                        s = etree.tostring(s)
+                        # print "p", s, etree.tostring(s, pretty_print=True)
+                else:
+                    print result.pretty_print()
+                    raise ValueError("Unknown ScanType {}".format(_db_obj.run_type))
+            except:
+                _error_string = "ParseProblem: {}".format(
+                    process_tools.get_except_info()
+                )
                 self.log(
-                    "KeyError: {}".format(
-                        process_tools.get_except_info()
-                    ),
+                    _error_string,
                     logging_tools.LOG_LEVEL_ERROR
                 )
                 s = None
@@ -668,7 +684,7 @@ class PlannedRunState(object):
         else:
             _res = RunResult.SUCCESS
         _db_obj.raw_result_str = s
-        self.stop(_res)
+        self.stop(_res, _error_string)
         self.generate_assets()
 
     def generate_assets(self):
@@ -1002,18 +1018,21 @@ class Dispatcher(object):
             (AssetType.HARDWARE, "lstopo"),
             (AssetType.PROCESS, "proclist"),
             (AssetType.PENDING_UPDATE, "updatelist"),
-            (AssetType.DMI, "dmi_dump"),
-            (AssetType.PCI, "pci_dump"),
+            (AssetType.DMI, "dmiinfo"),
+            (AssetType.PCI, "pciinfo"),
         ]
         planned_run.start_feed(cmd_tuples)
         for _idx, (runtype, _command) in enumerate(cmd_tuples):
             if runtype == AssetType.PACKAGE:
                 timeout = 30
-            if runtype == AssetType.HARDWARE:
+            elif runtype == AssetType.HARDWARE:
                 timeout = 15
-            if runtype == AssetType.PROCESS:
+            elif runtype == AssetType.PROCESS:
                 timeout = 15
-            if runtype == AssetType.PENDING_UPDATE:
+            elif runtype == AssetType.PENDING_UPDATE:
+                timeout = 60
+            else:
+                # default
                 timeout = 60
 
             _device = schedule_item.device

@@ -22,6 +22,8 @@ import os
 import re
 import struct
 
+from initat.tools import server_command
+
 from lxml.builder import E
 
 
@@ -132,6 +134,15 @@ def get_actual_pci_struct(vdict=None, cdict=None):
                         actd["subclassname"] = cdict[pclass][subclass]
                 pdict.setdefault(pcdomain, {}).setdefault(bus, {}).setdefault(bdev0, {})[bdev1] = actd
     return pdict
+
+
+# helper functions
+def compress_pci_info(in_struct):
+    return server_command.compress(in_struct, marshal=True)
+
+
+def decompress_pci_info(in_struct):
+    return server_command.decompress(in_struct, marshal=True)
 
 
 def pci_struct_to_xml(pci_dict):

@@ -36,8 +36,8 @@ from lxml import etree
 from initat.client_version import VERSION_STRING
 from initat.host_monitoring import hm_classes, limits
 from initat.host_monitoring.constants import ZMQ_ID_MAP_STORE
-from initat.tools import cpu_database, logging_tools, partition_tools, pci_database, process_tools, \
-    server_command, uuid_tools, config_store
+from initat.tools import cpu_database, logging_tools, partition_tools, pci_database, \
+    process_tools, server_command, uuid_tools, config_store, dmi_tools
 
 nw_classes = ["ethernet", "network", "infiniband"]
 
@@ -66,9 +66,8 @@ class _general(hm_classes.hm_module):
         return self.stat_list
 
     def _pciinfo_int(self):
-        return server_command.compress(
+        return pci_database.compress_pci_info(
             pci_database.get_actual_pci_struct(*pci_database.get_pci_dicts()),
-            marshal=True,
         )
 
     def _lstopo_int(self):
@@ -76,9 +75,14 @@ class _general(hm_classes.hm_module):
         return server_command.compress(_lstopo_result)
 
     def _dmiinfo_int(self):
-        _dmi_stat, _dmi_result = commands.getstatusoutput(self.dmi_bin)
+        # _dmi_stat, _dmi_result = commands.getstatusoutput(self.dmi_bin)
         with tempfile.NamedTemporaryFile() as tmp_file:
-            _dmi_stat, _dmi_result = commands.getstatusoutput("{} --dump-bin {}".format(self.dmi_bin, tmp_file.name))
+            _dmi_stat, _dmi_result = commands.getstatusoutput(
+                "{} --dump-bin {}".format(
+                    self.dmi_bin,
+                    tmp_file.name
+                )
+            )
             _res = server_command.compress(file(tmp_file.name, "r").read())
         return _res
 
@@ -1961,28 +1965,24 @@ class pciinfo_command(hm_classes.hm_command):
                                 out_str = u"{} (rev {})".format(out_str, s_dict["revision"])
                             cmr_b.append(out_str)
         elif "pci_dump" in srv_com:
-            _dump = server_command.decompress(srv_com["*pci_dump"], marshal=True)
+            _dump = pci_database.pci_struct_to_xml(pci_database.decompress_pci_info(srv_com["*pci_dump"]))
             cmr_b = []
-            for domain_id in sorted(_dump.iterkeys()):
-                domain = _dump[domain_id]
-                for bus_id in sorted(domain.iterkeys()):
-                    bus = domain[bus_id]
-                    for slot_id in sorted(bus.iterkeys()):
-                        slot = bus[slot_id]
-                        for func_id in sorted(slot.iterkeys()):
-                            func = slot[func_id]
-                            out_str = "{:04x}:{:02x}:{:02x}.{:x} {}: {} {}".format(
-                                domain_id,
-                                bus_id,
-                                slot_id,
-                                func_id,
-                                func["subclassname"],
-                                func["vendorname"],
-                                func["devicename"],
-                            )
-                            if func["revision"] != "00":
-                                out_str = u"{} (rev {})".format(out_str, func["revision"])
-                            cmr_b.append(out_str)
+            for func in _dump.findall(".//func"):
+                _slot = func.getparent()
+                _bus = _slot.getparent()
+                _domain = _bus.getparent()
+                out_str = "{:04x}:{:02x}:{:02x}.{:x} {}: {} {}".format(
+                    int(_domain.get("id")),
+                    int(_bus.get("id")),
+                    int(_slot.get("id")),
+                    int(func.get("id")),
+                    func.get("subclassname", ""),
+                    func.get("vendorname", ""),
+                    func.get("devicename", ""),
+                )
+                if func.get("revision", "") != "00":
+                    out_str = u"{} (rev {})".format(out_str, func.get("revision"))
+                cmr_b.append(out_str)
         else:
             _dump = None
         if _dump is not None:
@@ -2428,88 +2428,126 @@ class dmiinfo_command(hm_classes.hm_command):
         with tempfile.NamedTemporaryFile() as tmp_file:
             file(tmp_file.name, "w").write(server_command.decompress(srv_com["dmi_dump"].text))
             _dmi_stat, dmi_result = commands.getstatusoutput("{} --from-dump {}".format(self.module.dmi_bin, tmp_file.name))
+            _xml = dmi_tools.dmi_struct_to_xml(dmi_tools.parse_dmi_output(dmi_result.split("\n")))
+            # sys.exit(0)
+            # print dmi_result
             # decode dmi-info
-            dec_lines = []
-            for line in dmi_result.split("\n"):
-                n_level = 0
-                while line.startswith("\t"):
-                    n_level += 1
-                    line = line[1:]
-                line = line.strip()
-                dec_lines.append((n_level, line))
-            dmi_struct = {
-                "info": [],
-                "handles": []
-            }
-            # info
-            while True:
-                if dec_lines[0][1].lower().startswith("handle"):
-                    break
-                n_level, line = dec_lines.pop(0)
-                if not line:
-                    break
-                else:
-                    dmi_struct["info"].append(line)
-            # handles
-            while True:
-                n_level, h_info = dec_lines.pop(0)
-                if h_info.lower().startswith("invalid"):
-                    break
-                if len(h_info.split(",")) < 3:
-                    h_info = "{}, {}".format(h_info, dec_lines.pop(0)[1])
-                top_level, info_str = dec_lines.pop(0)
-                h_info_spl = [part.strip().split() for part in h_info.split(",")]
-                handle_dict = {
-                    "info": info_str,
-                    "handle": int(h_info_spl[0][1], 16),
-                    "dmi_type": int(h_info_spl[1][2]),
-                    "length": int(h_info_spl[2][0]),
-                    "content": {}
-                }
-                while True:
-                    n_level, line = dec_lines.pop(0)
-                    if n_level == top_level + 1:
-                        try:
-                            key, value = line.split(":", 1)
-                        except:
-                            self.log(
-                                "error decoding dmi-line {}: {}".format(
-                                    line,
-                                    process_tools.get_except_info()
-                                ),
-                                logging_tools.LOG_LEVEL_ERROR
-                            )
-                        else:
-                            handle_dict["content"][key.strip()] = value.strip()
-                    elif n_level == top_level + 2:
-                        if key and type(handle_dict["content"][key]) != list:
-                            handle_dict["content"][key] = []
-                        handle_dict["content"][key].append(line)
-                    else:
-                        while line.strip():
-                            n_level, line = dec_lines.pop(0)
-                        break
-                dmi_struct["handles"].append(handle_dict)
-                if handle_dict["dmi_type"] == 127:
-                    break
-            # pprint.pprint(dmi_struct)
-            out_f = dmi_struct["info"]
-            for handle in dmi_struct["handles"]:
-                out_f.extend(
+            # return 0, "OK"
+            _out_f = [
+                "Version {}, size is {:d} bytes, {:d} handles".format(
+                    _xml.get("version"),
+                    int(_xml.get("size")),
+                    len(_xml.findall(".//handle")),
+                )
+            ]
+            for _handle in _xml.findall(".//handle"):
+                print etree.tostring(_handle, pretty_print=True)
+                _out_f.extend(
                     [
-                        "",
-                        handle["info"]
+                        "Handle 0x{:04x}, DMI Type {}, {:d} bytes".format(
+                            int(_handle.get("handle")),
+                            _handle.get("dmi_type"),
+                            int(_handle.get("length")),
+                        ),
+                        _handle.get("header"),
                     ]
                 )
-                for c_key in sorted(handle["content"].keys()):
-                    c_value = handle["content"][c_key]
-                    if type(c_value) == list:
-                        out_f.append("    {}:".format(c_key))
-                        for sub_value in c_value:
-                            out_f.append("        {}".format(sub_value))
+                for _val in _handle.findall(".//value"):
+                    if len(_val):
+                        _out_f.append("    {}".format(_val.get("key")))
+                        for _line in _val:
+                            _out_f.append("        {}".format(_line.text))
                     else:
-                        out_f.append("    {}: {}".format(c_key, c_value))
-            return limits.nag_STATE_OK, "ok {}".format("\n".join(out_f))
+                        _out_f.append(
+                            "    {}: {}".format(
+                                _val.get("key"),
+                                _val.text,
+                            )
+                        )
+                _out_f.append("")
+            return limits.nag_STATE_OK, "\n".join(_out_f)
+            if False:
+                # old parser code
+                dec_lines = []
+                for line in dmi_result.split("\n"):
+                    n_level = 0
+                    while line.startswith("\t"):
+                        n_level += 1
+                        line = line[1:]
+                    line = line.strip()
+                    dec_lines.append((n_level, line))
+                dmi_struct = {
+                    "info": [],
+                    "handles": []
+                }
+                # info
+                while True:
+                    if dec_lines[0][1].lower().startswith("handle"):
+                        break
+                    n_level, line = dec_lines.pop(0)
+                    if not line:
+                        break
+                    else:
+                        dmi_struct["info"].append(line)
+                # handles
+                while True:
+                    n_level, h_info = dec_lines.pop(0)
+                    if h_info.lower().startswith("invalid"):
+                        break
+                    if len(h_info.split(",")) < 3:
+                        h_info = "{}, {}".format(h_info, dec_lines.pop(0)[1])
+                    top_level, info_str = dec_lines.pop(0)
+                    h_info_spl = [part.strip().split() for part in h_info.split(",")]
+                    handle_dict = {
+                        "info": info_str,
+                        "handle": int(h_info_spl[0][1], 16),
+                        "dmi_type": int(h_info_spl[1][2]),
+                        "length": int(h_info_spl[2][0]),
+                        "content": {}
+                    }
+                    while True:
+                        n_level, line = dec_lines.pop(0)
+                        if n_level == top_level + 1:
+                            try:
+                                key, value = line.split(":", 1)
+                            except:
+                                self.log(
+                                    "error decoding dmi-line {}: {}".format(
+                                        line,
+                                        process_tools.get_except_info()
+                                    ),
+                                    logging_tools.LOG_LEVEL_ERROR
+                                )
+                            else:
+                                handle_dict["content"][key.strip()] = value.strip()
+                        elif n_level == top_level + 2:
+                            if key and type(handle_dict["content"][key]) != list:
+                                handle_dict["content"][key] = []
+                            handle_dict["content"][key].append(line)
+                        else:
+                            while line.strip():
+                                n_level, line = dec_lines.pop(0)
+                            break
+                    dmi_struct["handles"].append(handle_dict)
+                    if handle_dict["dmi_type"] == 127:
+                        break
+                # pprint.pprint(dmi_struct)
+                out_f = dmi_struct["info"]
+                for handle in dmi_struct["handles"]:
+                    out_f.extend(
+                        [
+                            "",
+                            handle["info"]
+                        ]
+                    )
+                    for c_key in sorted(handle["content"].keys()):
+                        c_value = handle["content"][c_key]
+                        if type(c_value) == list:
+                            out_f.append("    {}:".format(c_key))
+                            for sub_value in c_value:
+                                out_f.append("        {}".format(sub_value))
+                        else:
+                            out_f.append("    {}: {}".format(c_key, c_value))
 
 
 # helper routines

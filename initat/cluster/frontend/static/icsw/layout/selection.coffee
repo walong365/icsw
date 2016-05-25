@@ -39,7 +39,7 @@ angular.module(
     # cur_selection = new icswSelection([], [], [3, 5], [3, 5])
     # cur_selection = new icswSelection([], [], [3], [3])
     # windowstest
-    cur_selection = new icswSelection([], [], [13], [13])
+    # cur_selection = new icswSelection([], [], [13], [13])
     # cur_selection = new icswSelection([], [], [16], [16]) # only firewall
     # cur_selection = new icswSelection([], [], [], [])
 
