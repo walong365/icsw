@@ -38,12 +38,15 @@ from rest_framework.response import Response
 from django.core.exceptions import ValidationError
 from rest_framework import viewsets
 from initat.cluster.backbone.models import device, AssetPackage, AssetRun, \
-    AssetPackageVersion, AssetType, StaticAssetTemplate, user, RunStatus, RunResult, PackageTypeEnum
+    AssetPackageVersion, AssetType, StaticAssetTemplate, user, RunStatus, RunResult, PackageTypeEnum, AssetBatch
 from initat.cluster.backbone.models.dispatch import ScheduleItem
 from initat.cluster.backbone.serializers import AssetRunDetailSerializer, ScheduleItemSerializer, \
     AssetPackageSerializer, AssetRunOverviewSerializer, AssetProcessEntrySerializer, \
     StaticAssetTemplateSerializer
 from initat.cluster.frontend.rest_views import rest_logging
+from openpyxl import Workbook
+from openpyxl.writer.excel import save_virtual_workbook
+import base64
 
 
 class run_assetrun_for_device_now(View):
@@ -316,9 +319,6 @@ class copy_static_template(View):
 class export_assetruns_to_csv(View):
     @method_decorator(login_required)
     def post(self, request):
-        #response = HttpResponse(content_type='application/json')
-        #response['Content-Disposition'] = 'attachment; filename="assetrun_.csv"'# % 2643
-
         tmpfile = tempfile.SpooledTemporaryFile()
 
         writer = csv.writer(tmpfile)
@@ -354,14 +354,16 @@ class export_assetruns_to_csv(View):
 
             writer.writerow(base_header)
 
-            for package_version in ar.packages.all():
+            for package_version in ar.packages.select_related("asset_package").all():
                 row = base_row[:]
+
                 row.append(package_version.asset_package.name)
                 row.append(package_version.version)
                 row.append(package_version.release)
                 row.append(package_version.size)
                 row.append(package_version.created)
                 row.append(PackageTypeEnum(package_version.asset_package.package_type).name)
+
                 writer.writerow(row)
 
         elif ar.run_type == AssetType.HARDWARE:
@@ -373,10 +375,15 @@ class export_assetruns_to_csv(View):
                 'license_name',
                 'license_key'])
 
+            writer.writerow(base_header)
+
             for license in ar.assetlicenseentry_set.all():
                 row = base_row[:]
+
                 row.append(license.name)
                 row.append(license.license_key)
+
+                writer.writerow(row)
 
         elif ar.run_type == AssetType.UPDATE:
             base_header.extend([
@@ -384,8 +391,13 @@ class export_assetruns_to_csv(View):
                 'update_version',
                 'update_release',
                 'update_kb_idx',
+                'update_install_date'
                 'update_status',
+                'update_optional'
+                'update_installed'
             ])
+
+            writer.writerow(base_header)
 
             for update in ar.assetupdateentry_set.all():
                 row = base_row[:]
@@ -394,35 +406,296 @@ class export_assetruns_to_csv(View):
                 row.append(update.version)
                 row.append(update.release)
                 row.append(update.kb_idx)
+                row.append(update.install_date)
                 row.append(update.status)
+                row.append(update.optional)
+                row.append(update.installed)
+
+                writer.writerow(row)
 
         elif ar.run_type == AssetType.PROCESS:
             base_header.extend([
                 'process_name',
-                'process_key'
+                'process_id'
             ])
+
+            writer.writerow(base_header)
 
             for process in ar.assetprocessentry_set.all():
                 row = base_row[:]
+
                 row.append(str(process.name))
                 row.append(str(process.pid))
 
-        elif ar.run_type == AssetType.PENDING_UPDATE:
-            pass
-            # TODO implement me
+                writer.writerow(row)
 
+        elif ar.run_type == AssetType.PENDING_UPDATE:
+            base_header.extend([
+                'update_name',
+                'update_version',
+                'update_release',
+                'update_kb_idx',
+                'update_install_date'
+                'update_status',
+                'update_optional'
+                'update_installed'
+            ])
+
+            writer.writerow(base_header)
+
+            for update in ar.assetupdateentry_set.all():
+                row = base_row[:]
+
+                row.append(update.name)
+                row.append(update.version)
+                row.append(update.release)
+                row.append(update.kb_idx)
+                row.append(update.install_date)
+                row.append(update.status)
+                row.append(update.optional)
+                row.append(update.installed)
+
+                writer.writerow(row)
 
         tmpfile.seek(0)
+        s = tmpfile.read()
+
         return HttpResponse(
             json.dumps(
                 {
-                    'csv': tmpfile.read()
+                    'csv': s
+                }
+            )
+        )
+
+class export_packages_to_csv(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        tmpfile = tempfile.SpooledTemporaryFile()
+
+        writer = csv.writer(tmpfile)
+
+        apv = AssetPackageVersion.objects.select_related("asset_package").all()
+
+        base_header = ['Name',
+                       'Package Type',
+                       'Version',
+                       'Release',
+                       'Size']
+
+        writer.writerow(base_header)
+
+        for version in apv:
+            row = []
+
+            row.append(version.asset_package.name)
+            row.append(PackageTypeEnum(version.asset_package.package_type).name)
+            row.append(version.version)
+            row.append(version.release)
+            row.append(version.size)
+
+            writer.writerow(row)
+
+        tmpfile.seek(0)
+        s = tmpfile.read()
+
+        return HttpResponse(
+            json.dumps(
+                {
+                    'csv': s
+                }
+            )
+        )
+
+class export_scheduled_runs_to_csv(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        tmpfile = tempfile.SpooledTemporaryFile()
+
+        writer = csv.writer(tmpfile)
+
+        schedule_items = ScheduleItem.objects.select_related("device", "dispatch_setting").all()
+
+        base_header = ['Device Name',
+                       'Planned Time',
+                       'Dispatch Setting Name']
+
+        writer.writerow(base_header)
+
+        for schedule_item in schedule_items:
+            row = []
+
+            row.append(schedule_item.device.full_name)
+            row.append(schedule_item.planned_date)
+            row.append(schedule_item.dispatch_setting.name)
+
+            writer.writerow(row)
+
+        tmpfile.seek(0)
+        s = tmpfile.read()
+
+        return HttpResponse(
+            json.dumps(
+                {
+                    'csv': s
                 }
             )
         )
 
 class export_assetbatch_to_xlsx(View):
     @method_decorator(login_required)
-    def get(self, request):
-        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        response['Content-Disposition'] = 'attachment; filename="assetrun_%s.xlsx"' % 2643
+    def post(self, request):
+        ab = AssetBatch.objects.get(idx=int(request.POST["pk"]))
+
+        assetruns = ab.assetrun_set.all()
+
+        workbook = Workbook()
+        workbook.remove_sheet(workbook.active)
+
+        for ar in assetruns:
+            base_header = ['Asset Type',
+                           'Batch Id',
+                           'Start Time',
+                           'End Time',
+                           'Total Run Time',
+                           'device',
+                           'status',
+                           'result']
+
+            base_row = [AssetType(ar.run_type).name,
+                        str(ar.asset_batch.idx),
+                        str(ar.run_start_time),
+                        str(ar.run_end_time),
+                        str((ar.run_end_time - ar.run_start_time).total_seconds()),
+                        str(ar.device.full_name),
+                        RunStatus(ar.run_status).name,
+                        RunResult(ar.run_result).name]
+
+            sheet = workbook.create_sheet()
+            sheet.title = AssetType(ar.run_type).name
+
+            if ar.run_type == AssetType.PACKAGE:
+                base_header.extend([
+                    'package_name',
+                    'package_version',
+                    'package_release',
+                    'package_size',
+                    'package_install_date',
+                    'package_type'])
+
+                sheet.append(base_header)
+
+                for package_version in ar.packages.select_related("asset_package").all():
+                    row = base_row[:]
+
+                    row.append(package_version.asset_package.name)
+                    row.append(package_version.version)
+                    row.append(package_version.release)
+                    row.append(package_version.size)
+                    row.append(package_version.created)
+                    row.append(PackageTypeEnum(package_version.asset_package.package_type).name)
+
+                    sheet.append(row)
+
+            elif ar.run_type == AssetType.HARDWARE:
+                pass
+                # TODO implement me
+
+            elif ar.run_type == AssetType.LICENSE:
+                base_header.extend([
+                    'license_name',
+                    'license_key'])
+
+                sheet.append(base_header)
+
+                for license in ar.assetlicenseentry_set.all():
+                    row = base_row[:]
+
+                    row.append(license.name)
+                    row.append(license.license_key)
+
+                    sheet.append(row)
+
+            elif ar.run_type == AssetType.UPDATE:
+                base_header.extend([
+                    'update_name',
+                    'update_version',
+                    'update_release',
+                    'update_kb_idx',
+                    'update_install_date'
+                    'update_status',
+                    'update_optional'
+                    'update_installed'
+                ])
+
+                sheet.append(base_header)
+
+                for update in ar.assetupdateentry_set.all():
+                    row = base_row[:]
+
+                    row.append(update.name)
+                    row.append(update.version)
+                    row.append(update.release)
+                    row.append(update.kb_idx)
+                    row.append(update.install_date)
+                    row.append(update.status)
+                    row.append(update.optional)
+                    row.append(update.installed)
+
+                    sheet.append(row)
+
+            elif ar.run_type == AssetType.PROCESS:
+                base_header.extend([
+                    'process_name',
+                    'process_id'
+                ])
+
+                sheet.append(base_header)
+
+                for process in ar.assetprocessentry_set.all():
+                    row = base_row[:]
+
+                    row.append(str(process.name))
+                    row.append(str(process.pid))
+
+                    sheet.append(row)
+
+            elif ar.run_type == AssetType.PENDING_UPDATE:
+                base_header.extend([
+                    'update_name',
+                    'update_version',
+                    'update_release',
+                    'update_kb_idx',
+                    'update_install_date'
+                    'update_status',
+                    'update_optional'
+                    'update_installed'
+                ])
+
+                sheet.append(base_header)
+
+                for update in ar.assetupdateentry_set.all():
+                    row = base_row[:]
+
+                    row.append(update.name)
+                    row.append(update.version)
+                    row.append(update.release)
+                    row.append(update.kb_idx)
+                    row.append(update.install_date)
+                    row.append(update.status)
+                    row.append(update.optional)
+                    row.append(update.installed)
+
+                    sheet.append(row)
+
+        s = save_virtual_workbook(workbook)
+
+        new_s = base64.b64encode(s)
+
+        return HttpResponse(
+            json.dumps(
+                {
+                    'xlsx': new_s
+                }
+            )
+        )

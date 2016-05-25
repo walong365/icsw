@@ -686,7 +686,33 @@ device_asset_module = angular.module(
     return {
         restrict: "E"
         template: $templateCache.get("icsw.asset.scheduled.runs.table")
+        controller: "icswScheduledRunsTableCtrl"
     }
+]).controller("icswScheduledRunsTableCtrl",
+[
+    "$scope", "$q", "ICSW_URLS", "icswSimpleAjaxCall"
+(
+    $scope, $q, ICSW_URLS, icswSimpleAjaxCall
+) ->
+    $scope.downloadCsv = ->
+        icswSimpleAjaxCall({
+            url: ICSW_URLS.ASSET_EXPORT_SCHEDULED_RUNS_TO_CSV
+            dataType: 'json'
+        }
+        ).then(
+            (result) ->
+                    uri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(result.csv)
+                    downloadLink = document.createElement("a")
+                    downloadLink.href = uri
+                    downloadLink.download = "scheduled_runs.csv"
+
+                    document.body.appendChild(downloadLink)
+                    downloadLink.click()
+                    document.body.removeChild(downloadLink)
+            (not_ok) ->
+                console.log not_ok
+        )
+
 ]).directive("icswAssetAssetRunsTable",
 [
     "$q", "$templateCache",
@@ -703,13 +729,38 @@ device_asset_module = angular.module(
     }
 ]).controller("icswAssetAssetRunsTableCtrl",
 [
-    "$scope", "$q", "ICSW_URLS", "blockUI", "Restangular", "icswAssetPackageTreeService", "icswSimpleAjaxCall", "$window"
+    "$scope", "$q", "ICSW_URLS", "blockUI", "Restangular", "icswAssetPackageTreeService", "icswSimpleAjaxCall"
 (
-    $scope, $q, ICSW_URLS, blockUI, Restangular, icswAssetPackageTreeService, icswSimpleAjaxCall, $window
+    $scope, $q, ICSW_URLS, blockUI, Restangular, icswAssetPackageTreeService, icswSimpleAjaxCall
 ) ->
     $scope.struct = {
         selected_assetrun: undefined
     }
+
+    $scope.downloadXlsx = ->
+        console.log($scope.struct.selected_assetrun)
+        if $scope.struct.selected_assetrun != undefined
+            icswSimpleAjaxCall({
+                url: ICSW_URLS.ASSET_EXPORT_ASSETBATCH_TO_XLSX
+                data:
+                    pk: $scope.struct.selected_assetrun.asset_batch
+                dataType: 'json'
+            }
+            ).then(
+                (result) ->
+                    console.log "result: ", result
+                    
+                    uri = 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,' + result.xlsx
+                    downloadLink = document.createElement("a")
+                    downloadLink.href = uri
+                    downloadLink.download = "assetbatch" + $scope.struct.selected_assetrun.asset_batch + ".xlsx"
+
+                    document.body.appendChild(downloadLink)
+                    downloadLink.click()
+                    document.body.removeChild(downloadLink)
+                (not_ok) ->
+                    console.log not_ok
+            )
 
     $scope.downloadCsv = ->
         console.log($scope.struct.selected_assetrun)
@@ -722,7 +773,7 @@ device_asset_module = angular.module(
             }
             ).then(
                 (result) ->
-                    uri = 'data:text/csv;charset=utf-8,' + result.csv
+                    uri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(result.csv)
                     downloadLink = document.createElement("a")
                     downloadLink.href = uri
                     downloadLink.download = "assetrun" + $scope.struct.selected_assetrun.idx + ".csv"
@@ -826,12 +877,32 @@ device_asset_module = angular.module(
     }
 ]).controller("icswAssetKnownPackagesCtrl",
 [
-    "$scope", "$q",
+    "$scope", "$q", "ICSW_URLS", "icswSimpleAjaxCall"
 (
-    $scope, $q,
+    $scope, $q, ICSW_URLS, icswSimpleAjaxCall
 ) ->
     $scope.expand_package = ($event, pack) ->
         pack.$$expanded = !pack.$$expanded
+
+    $scope.downloadCsv = ->
+        icswSimpleAjaxCall({
+            url: ICSW_URLS.ASSET_EXPORT_PACKAGES_TO_CSV
+            dataType: 'json'
+        }
+        ).then(
+            (result) ->
+                    uri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(result.csv)
+                    downloadLink = document.createElement("a")
+                    downloadLink.href = uri
+                    downloadLink.download = "packages.csv"
+
+                    document.body.appendChild(downloadLink)
+                    downloadLink.click()
+                    document.body.removeChild(downloadLink)
+            (not_ok) ->
+                console.log not_ok
+        )
+
 ]).directive("icswAssetRunDetails",
 [
     "$q", "$templateCache", "$compile",

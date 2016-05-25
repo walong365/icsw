@@ -155,7 +155,7 @@
                 <th st-sort="planned_time">Planned Time</th>
                 <th st-sort="ds_name">Dispatch Setting Name</th>
                 <th>
-                    <button type="button" ng-csv="filterSchedArrayForCsvExport(scheduleitems_shown)" csv-header="['Device', 'Planned Time', 'Dispatch Setting Name']" filename="test.csv">Export to CSV</button>
+                    <icsw-tools-button  type="modify" value="Download CSV" ng-click="downloadCsv()" size="xs">Export to CSV</icsw-tools-button>
                 </th>
             </tr>
             <tr>
@@ -225,7 +225,8 @@
                 <th>Error</th>
                 <th>#Assets</th>
                 <th colspan="2">Action</th>
-                <th><button type="button" ng-click="downloadCsv()" csv-header="['Run Type', 'Run Start', 'Run End', 'Device', 'Asset']" filename="test.csv">Export to CSV</button></th>
+                <th><icsw-tools-button  type="modify" value="Download CSV" ng-click="downloadCsv()" size="xs">Export to CSV</icsw-tools-button></th>
+                <th><icsw-tools-button  type="modify" value="Download .xlsx" ng-click="downloadXlsx()" size="xs">Export to CSV</icsw-tools-button></th>
             </tr>
             <tr>
                 <th colspan="1">
@@ -325,7 +326,7 @@
                 <th st-sort="$$package_type">Package Type</th>
                 <th st-sort="$$num_versions">#Versions</th>
                 <th st-sort="$$created">Created</th>
-                <th><button type="button" ng-csv="filterPackageArrayForCsvExport(packages_shown)" csv-header="['Package Name', 'Package Type', 'Version', 'Release', 'Size']" filename="test.csv">Export to CSV</button></th>
+                <th><icsw-tools-button  type="modify" value="Download CSV" ng-click="downloadCsv()" size="xs">Export to CSV</icsw-tools-button></th>
             </tr>
             <tr>
                 <th colspan="1">
