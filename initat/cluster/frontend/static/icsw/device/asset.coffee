@@ -697,9 +697,9 @@ device_asset_module = angular.module(
     }
 ]).controller("icswAssetAssetRunsTableCtrl",
 [
-    "$scope", "$q", "ICSW_URLS", "blockUI", "Restangular", "icswAssetPackageTreeService", "icswSimpleAjaxCall", "$window"
+    "$scope", "$q", "ICSW_URLS", "blockUI", "Restangular", "icswAssetPackageTreeService", "icswSimpleAjaxCall"
 (
-    $scope, $q, ICSW_URLS, blockUI, Restangular, icswAssetPackageTreeService, icswSimpleAjaxCall, $window
+    $scope, $q, ICSW_URLS, blockUI, Restangular, icswAssetPackageTreeService, icswSimpleAjaxCall
 ) ->
     $scope.struct = {
         selected_assetrun: undefined
@@ -716,7 +716,7 @@ device_asset_module = angular.module(
             }
             ).then(
                 (result) ->
-                    uri = 'data:text/csv;charset=utf-8,' + result.csv
+                    uri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(result.csv)
                     downloadLink = document.createElement("a")
                     downloadLink.href = uri
                     downloadLink.download = "assetrun" + $scope.struct.selected_assetrun.idx + ".csv"

@@ -354,14 +354,16 @@ class export_assetruns_to_csv(View):
 
             writer.writerow(base_header)
 
-            for package_version in ar.packages.all():
+            for package_version in ar.packages.select_related("asset_package").all():
                 row = base_row[:]
+
                 row.append(package_version.asset_package.name)
                 row.append(package_version.version)
                 row.append(package_version.release)
                 row.append(package_version.size)
                 row.append(package_version.created)
                 row.append(PackageTypeEnum(package_version.asset_package.package_type).name)
+
                 writer.writerow(row)
 
         elif ar.run_type == AssetType.HARDWARE:
@@ -373,10 +375,15 @@ class export_assetruns_to_csv(View):
                 'license_name',
                 'license_key'])
 
+            writer.writerow(base_header)
+
             for license in ar.assetlicenseentry_set.all():
                 row = base_row[:]
+
                 row.append(license.name)
                 row.append(license.license_key)
+
+                writer.writerow(row)
 
         elif ar.run_type == AssetType.UPDATE:
             base_header.extend([
@@ -384,8 +391,13 @@ class export_assetruns_to_csv(View):
                 'update_version',
                 'update_release',
                 'update_kb_idx',
+                'update_install_date'
                 'update_status',
+                'update_optional'
+                'update_installed'
             ])
+
+            writer.writerow(base_header)
 
             for update in ar.assetupdateentry_set.all():
                 row = base_row[:]
@@ -394,7 +406,12 @@ class export_assetruns_to_csv(View):
                 row.append(update.version)
                 row.append(update.release)
                 row.append(update.kb_idx)
+                row.append(update.install_date)
                 row.append(update.status)
+                row.append(update.optional)
+                row.append(update.installed)
+
+                writer.writerow(row)
 
         elif ar.run_type == AssetType.PROCESS:
             base_header.extend([
@@ -402,21 +419,51 @@ class export_assetruns_to_csv(View):
                 'process_key'
             ])
 
+            writer.writerow(base_header)
+
             for process in ar.assetprocessentry_set.all():
                 row = base_row[:]
+
                 row.append(str(process.name))
                 row.append(str(process.pid))
 
-        elif ar.run_type == AssetType.PENDING_UPDATE:
-            pass
-            # TODO implement me
+                writer.writerow(row)
 
+        elif ar.run_type == AssetType.PENDING_UPDATE:
+            base_header.extend([
+                'update_name',
+                'update_version',
+                'update_release',
+                'update_kb_idx',
+                'update_install_date'
+                'update_status',
+                'update_optional'
+                'update_installed'
+            ])
+
+            writer.writerow(base_header)
+
+            for update in ar.assetupdateentry_set.all():
+                row = base_row[:]
+
+                row.append(update.name)
+                row.append(update.version)
+                row.append(update.release)
+                row.append(update.kb_idx)
+                row.append(update.install_date)
+                row.append(update.status)
+                row.append(update.optional)
+                row.append(update.installed)
+
+                writer.writerow(row)
 
         tmpfile.seek(0)
+        s = tmpfile.read()
+
         return HttpResponse(
             json.dumps(
                 {
-                    'csv': tmpfile.read()
+                    'csv': s
                 }
             )
         )
