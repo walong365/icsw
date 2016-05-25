@@ -34,6 +34,8 @@ from initat.cluster.frontend import rest_views, device_views, main_views, networ
 # handler404 = main_views.index.as_view()
 
 asset_patterns = [
+    url("^export_scheduled_runs_to_csv$", asset_views.export_scheduled_runs_to_csv.as_view(), name="export_scheduled_runs_to_csv"),
+    url("^export_packages_to_csv$", asset_views.export_packages_to_csv.as_view(), name="export_packages_to_csv"),
     url("^export_assetruns_to_csv$", asset_views.export_assetruns_to_csv.as_view(), name="export_assetruns_to_csv"),
     url("^run_assetrun_for_device_now$", asset_views.run_assetrun_for_device_now.as_view(), name="run_assetrun_for_device_now"),
     url("^get_devices_for_asset$", asset_views.get_devices_for_asset.as_view(), name="get_devices_for_asset"),

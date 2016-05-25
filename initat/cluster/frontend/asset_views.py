@@ -316,9 +316,6 @@ class copy_static_template(View):
 class export_assetruns_to_csv(View):
     @method_decorator(login_required)
     def post(self, request):
-        #response = HttpResponse(content_type='application/json')
-        #response['Content-Disposition'] = 'attachment; filename="assetrun_.csv"'# % 2643
-
         tmpfile = tempfile.SpooledTemporaryFile()
 
         writer = csv.writer(tmpfile)
@@ -456,6 +453,80 @@ class export_assetruns_to_csv(View):
                 row.append(update.installed)
 
                 writer.writerow(row)
+
+        tmpfile.seek(0)
+        s = tmpfile.read()
+
+        return HttpResponse(
+            json.dumps(
+                {
+                    'csv': s
+                }
+            )
+        )
+
+class export_packages_to_csv(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        tmpfile = tempfile.SpooledTemporaryFile()
+
+        writer = csv.writer(tmpfile)
+
+        apv = AssetPackageVersion.objects.select_related("asset_package").all()
+
+        base_header = ['Name',
+                       'Package Type',
+                       'Version',
+                       'Release',
+                       'Size']
+
+        writer.writerow(base_header)
+
+        for version in apv:
+            row = []
+
+            row.append(version.asset_package.name)
+            row.append(PackageTypeEnum(version.asset_package.package_type).name)
+            row.append(version.version)
+            row.append(version.release)
+            row.append(version.size)
+
+            writer.writerow(row)
+
+        tmpfile.seek(0)
+        s = tmpfile.read()
+
+        return HttpResponse(
+            json.dumps(
+                {
+                    'csv': s
+                }
+            )
+        )
+
+class export_scheduled_runs_to_csv(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        tmpfile = tempfile.SpooledTemporaryFile()
+
+        writer = csv.writer(tmpfile)
+
+        schedule_items = ScheduleItem.objects.select_related("device", "dispatch_setting").all()
+
+        base_header = ['Device Name',
+                       'Planned Time',
+                       'Dispatch Setting Name']
+
+        writer.writerow(base_header)
+
+        for schedule_item in schedule_items:
+            row = []
+
+            row.append(schedule_item.device.full_name)
+            row.append(schedule_item.planned_date)
+            row.append(schedule_item.dispatch_setting.name)
+
+            writer.writerow(row)
 
         tmpfile.seek(0)
         s = tmpfile.read()
