@@ -731,6 +731,31 @@ device_asset_module = angular.module(
         selected_assetrun: undefined
     }
 
+    $scope.downloadXlsx = ->
+        console.log($scope.struct.selected_assetrun)
+        if $scope.struct.selected_assetrun != undefined
+            icswSimpleAjaxCall({
+                url: ICSW_URLS.ASSET_EXPORT_ASSETBATCH_TO_XLSX
+                data:
+                    pk: $scope.struct.selected_assetrun.asset_batch
+                dataType: 'json'
+            }
+            ).then(
+                (result) ->
+                    console.log "result: ", result
+                    
+                    uri = 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,' + result.xlsx
+                    downloadLink = document.createElement("a")
+                    downloadLink.href = uri
+                    downloadLink.download = "assetbatch" + $scope.struct.selected_assetrun.asset_batch + ".xlsx"
+
+                    document.body.appendChild(downloadLink)
+                    downloadLink.click()
+                    document.body.removeChild(downloadLink)
+                (not_ok) ->
+                    console.log not_ok
+            )
+
     $scope.downloadCsv = ->
         console.log($scope.struct.selected_assetrun)
         if $scope.struct.selected_assetrun != undefined
