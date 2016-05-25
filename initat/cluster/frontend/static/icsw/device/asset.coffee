@@ -168,6 +168,8 @@ device_asset_module = angular.module(
             [5, "Software version", ""]
             [6, "Process", ""]
             [7, "Pending update", ""]
+            [8, "DMI", ""],
+            [9, "PCI", ""]
         ]
         package_type: [
             [1, "Windows", ""]

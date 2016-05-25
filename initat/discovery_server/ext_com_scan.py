@@ -1001,7 +1001,9 @@ class Dispatcher(object):
             (AssetType.PACKAGE, "rpmlist"),
             (AssetType.HARDWARE, "lstopo"),
             (AssetType.PROCESS, "proclist"),
-            (AssetType.PENDING_UPDATE, "updatelist")
+            (AssetType.PENDING_UPDATE, "updatelist"),
+            (AssetType.DMI, "dmi_dump"),
+            (AssetType.PCI, "pci_dump"),
         ]
         planned_run.start_feed(cmd_tuples)
         for _idx, (runtype, _command) in enumerate(cmd_tuples):

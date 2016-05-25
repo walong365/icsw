@@ -289,12 +289,14 @@ class BaseAssetPackage(object):
 
 class AssetType(IntEnum):
     PACKAGE = 1
-    HARDWARE = 2
+    HARDWARE = 2  # lstopo
     LICENSE = 3
     UPDATE = 4
     SOFTWARE_VERSION = 5
     PROCESS = 6
     PENDING_UPDATE = 7
+    DMI = 8
+    PCI = 9
 
 
 class ScanType(IntEnum):

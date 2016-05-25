@@ -39,8 +39,6 @@ from django.template import RequestContext
 
 logger = logging.getLogger("cluster.auth")
 
-# hack for next
-
 
 class MyCookie(dict):
     def __init__(self, src=None):
@@ -54,6 +52,8 @@ class MyCookie(dict):
 
 class auth_user(View):
     def get(self, request):
+        # print "*" * 50, request
+        # print request.path
         _ok = False
         if "AUTH_COOKIE" in request.COOKIES:
             try:
@@ -65,11 +65,18 @@ class auth_user(View):
             else:
                 if abs(_init_time - time.time()) < 3:
                     _ok = True
+        # print "*", _ok
+        # _ok = True
         if _ok:
-            return HttpResponse("Ok", status=200)
+            return HttpResponse("Ok", status=201)
+
         else:
             # pprint.pprint([(k, v) for k, v in request.META.iteritems() if k.count("HTTP")])
             _resp = HttpResponse("Unauthorized", status=401)
+            # resp["X-ACCEL-REDIRECT"] = request.META["HTTP_X_ORIGINAL_URI"]
+            # _resp["X_REDIRECT"] = request.META["HTTP_X_ORIGINAL_URI"]
+            # print request.META["HTTP_X_ORIGINAL_URI"]
+            # print _resp["HTTP_OEKOTEX_URL"]
             return _resp
 
 
@@ -78,7 +85,8 @@ class do_login(View):
     def get(self, request):
         # print csrf.get_token()
         _req = RequestContext(request)
-        # pprint.pprint([(k, v) for k, v in request.META.iteritems() if k.count("HTTP")])
+        print request.GET
+        # pprint.pprint([(k, v) for k, v in request.META.iteritems() if k.upper().count("HTTP")])
         # pprint.pprint(request.META)
         _temp = Template(
             '<!DOCTYPE html><html lang="en"><head></head>' +
@@ -86,7 +94,7 @@ class do_login(View):
             '{% csrf_token %}' +
             'Name: <input type="text" name="user" value="test"/><br/>' +
             'Password <input type="password" name="password" value="pwd"/><br/>' +
-            '<input type="hidden" name="next" value="{}" />'.format(request.META["HTTP_X_ORIGINAL_URI"]) +
+            '<input type="hidden" name="next" value="{}" />'.format(request.GET["uri"]) +
             '<input type="submit" value="Submit"/>' +
             '</form></body></html>'
         )
@@ -97,8 +105,9 @@ class do_login(View):
     def post(self, request):
         # print request.GET, request.POST["name"]
         _user, _passwd = (request.POST["user"], request.POST["password"])
+        print request.POST["next"]
 
-        response = HttpResponseRedirect("/atest")
+        response = HttpResponseRedirect(request.POST["next"])  # Redirect("/atest")
         _cookie = MyCookie()
         _cookie["user"] = "abc"
         _cookie["init"] = int(time.time())

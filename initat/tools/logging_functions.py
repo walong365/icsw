@@ -48,6 +48,10 @@ def get_logger(cs, handle_name, logger_name):
     )
     logger.setLevel(logging.DEBUG)
     full_name = full_name.encode("ascii", errors="replace")
+    # create dirs
+    _dir, _fname = os.path.split(full_name)
+    if not os.path.isdir(_dir):
+        os.makedirs(_dir)
     new_h = logging_tools.logfile(
         full_name,
         max_bytes=cs["log.max.size.logs"],
