@@ -2441,7 +2441,7 @@ class dmiinfo_command(hm_classes.hm_command):
                 )
             ]
             for _handle in _xml.findall(".//handle"):
-                print etree.tostring(_handle, pretty_print=True)
+                # print etree.tostring(_handle, pretty_print=True)
                 _out_f.extend(
                     [
                         "Handle 0x{:04x}, DMI Type {}, {:d} bytes".format(

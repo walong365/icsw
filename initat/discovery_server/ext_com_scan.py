@@ -657,18 +657,11 @@ class PlannedRunState(object):
                         s = result["update_list"].text
                 elif _db_obj.run_type == AssetType.DMI:
                     if "dmi_dump" in result:
-                        s = dmi_tools.decompress_dmi_info(result["dmi_dump"].text)
-                        s = etree.tostring(s)
-                        # print "d", s, etree.tostring(s, pretty_print=True)
+                        s = result["dmi_dump"].text
                 elif _db_obj.run_type == AssetType.PCI:
                     if "pci_dump" in result:
-                        s = pci_database.pci_struct_to_xml(
-                            pci_database.decompress_pci_info(result["pci_dump"].text)
-                        )
-                        s = etree.tostring(s)
-                        # print "p", s, etree.tostring(s, pretty_print=True)
+                        s = result["pci_dump"].text
                 else:
-                    print result.pretty_print()
                     raise ValueError("Unknown ScanType {}".format(_db_obj.run_type))
             except:
                 _error_string = "ParseProblem: {}".format(

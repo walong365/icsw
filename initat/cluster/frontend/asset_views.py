@@ -255,6 +255,8 @@ class AssetRunsViewSet(viewsets.ViewSet):
             num_licenses=Count("assetlicenseentry"),
             num_updates=Sum(Case(When(assetupdateentry__installed=True, then=1), output_field=IntegerField(), default=0)),
             num_pending_updates=Sum(Case(When(assetupdateentry__installed=False, then=1), output_field=IntegerField(), default=0)),
+            num_pci_entries=Count("assetpcientry"),
+            num_asset_handles=Count("assetdmihead__assetdmihandle"),
         )
         serializer = AssetRunOverviewSerializer(queryset, many=True)
         return Response(serializer.data)
@@ -266,6 +268,8 @@ class AssetRunsViewSet(viewsets.ViewSet):
             "assetprocessentry_set",
             "assetupdateentry_set",
             "assetlicenseentry_set",
+            "assetpcientry_set",
+            "assetdmihead_set__assetdmihandle_set__assetdmivalue_set",
         ).filter(
             Q(pk=request.query_params["pk"])
         )
@@ -316,6 +320,7 @@ class copy_static_template(View):
             content_type="application/json"
         )
 
+
 class export_assetruns_to_csv(View):
     @method_decorator(login_required)
     def post(self, request):
@@ -325,14 +330,16 @@ class export_assetruns_to_csv(View):
 
         ar = AssetRun.objects.get(idx=int(request.POST["pk"]))
 
-        base_header = ['Asset Type',
-                         'Batch Id',
-                         'Start Time',
-                         'End Time',
-                         'Total Run Time',
-                         'device',
-                         'status',
-                         'result']
+        base_header = [
+            'Asset Type',
+            'Batch Id',
+            'Start Time',
+            'End Time',
+            'Total Run Time',
+            'device',
+            'status',
+            'result'
+        ]
 
         base_row = [AssetType(ar.run_type).name,
                     str(ar.asset_batch.idx),
@@ -468,6 +475,7 @@ class export_assetruns_to_csv(View):
             )
         )
 
+
 class export_packages_to_csv(View):
     @method_decorator(login_required)
     def post(self, request):
@@ -541,6 +549,7 @@ class export_scheduled_runs_to_csv(View):
                 }
             )
         )
+
 
 class export_assetbatch_to_xlsx(View):
     @method_decorator(login_required)

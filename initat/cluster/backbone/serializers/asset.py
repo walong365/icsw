@@ -25,7 +25,8 @@ from rest_framework import serializers
 
 from initat.cluster.backbone.models import AssetRun, AssetPackage, \
     AssetPackageVersion, AssetBatch, AssetHardwareEntry, AssetProcessEntry, \
-    StaticAssetTemplate, StaticAssetTemplateField, AssetLicenseEntry, AssetUpdateEntry
+    StaticAssetTemplate, StaticAssetTemplateField, AssetLicenseEntry, AssetUpdateEntry, \
+    AssetPCIEntry, AssetDMIHead, AssetDMIHandle, AssetDMIValue
 
 __all__ = [
     "AssetRunSimpleSerializer",
@@ -41,6 +42,10 @@ __all__ = [
     "StaticAssetTemplateSerializer",
     "AssetLicenseEntrySerializer",
     "AssetUpdateEntrySerializer",
+    "AssetPCIEntrySerializer",
+    "AssetDMIHeadSerializer",
+    "AssetDMIHandleSerializer",
+    "AssetDMIValueSerializer",
 ]
 
 
@@ -107,6 +112,8 @@ class AssetRunOverviewSerializer(serializers.ModelSerializer):
     num_licenses = serializers.IntegerField()
     num_updates = serializers.IntegerField()
     num_pending_updates = serializers.IntegerField()
+    num_pci_entries = serializers.IntegerField()
+    num_asset_handles = serializers.IntegerField()
 
     class Meta:
         model = AssetRun
@@ -118,6 +125,7 @@ class AssetRunOverviewSerializer(serializers.ModelSerializer):
             # many to many count fields
             "num_packages", "num_hardware", "num_processes",
             "num_updates", "num_pending_updates", "num_licenses",
+            "num_pci_entries", "num_asset_handles",
         )
 
 
@@ -139,11 +147,39 @@ class AssetUpdateEntrySerializer(serializers.ModelSerializer):
         model = AssetUpdateEntry
 
 
+class AssetPCIEntrySerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = AssetPCIEntry
+
+
+class AssetDMIValueSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = AssetDMIValue
+
+
+class AssetDMIHandleSerializer(serializers.ModelSerializer):
+    assetdmivalue_set = AssetDMIValueSerializer(many=True)
+
+    class Meta:
+        model = AssetDMIHandle
+
+
+class AssetDMIHeadSerializer(serializers.ModelSerializer):
+    assetdmihandle_set = AssetDMIHandleSerializer(many=True)
+
+    class Meta:
+        model = AssetDMIHead
+
+
 class AssetRunDetailSerializer(serializers.ModelSerializer):
     assethardwareentry_set = AssetHardwareEntrySerializer(many=True)
     assetprocessentry_set = AssetProcessEntrySerializer(many=True)
     assetlicenseentry_set = AssetLicenseEntrySerializer(many=True)
     assetupdateentry_set = AssetUpdateEntrySerializer(many=True)
+    assetpcientry_set = AssetPCIEntrySerializer(many=True)
+    assetdmihead_set = AssetDMIHeadSerializer(many=True)
 
     class Meta:
         model = AssetRun
@@ -151,7 +187,7 @@ class AssetRunDetailSerializer(serializers.ModelSerializer):
             "idx",
             "packages", "assethardwareentry_set",
             "assetprocessentry_set", "assetlicenseentry_set",
-            "assetupdateentry_set",
+            "assetupdateentry_set", "assetpcientry_set", "assetdmihead_set",
         )
 
 

@@ -405,7 +405,7 @@ device_asset_module = angular.module(
         obj.$$run_result = icswAssetHelperFunctions.resolve("run_result", obj.run_result)
         obj.$$run_result_class = icswAssetHelperFunctions.get_class("run_result", obj.run_result)
         if obj.error_string or obj.interpret_error_string
-            console.log "E"
+            # console.log "E"
             obj.$$error_class = "error"
         else
             obj.$$error_class = ""
@@ -430,6 +430,12 @@ device_asset_module = angular.module(
         else if obj.run_type == 3
             # pending update
             obj.$$num_results = obj.num_licenses
+        else if obj.run_type == 8
+            # DMI handles
+            obj.$$num_results = obj.num_asset_handles
+        else if obj.run_type == 9
+            # PCI map
+            obj.$$num_results = obj.num_pci_entries
         else
             obj.$$num_results = 0
         if obj.run_start_time
@@ -821,6 +827,18 @@ device_asset_module = angular.module(
     resolve_installed_updates = (in_list) ->
         return (entry for entry in in_list when entry.installed)
         
+    resolve_pci_entries = (in_list) ->
+        r_list = []
+        for entry in in_list
+            entry.$$position = "#{entry.domain}:#{entry.bus}:#{entry.slot}.#{entry.func}"
+            r_list.push(entry)
+        return r_list
+
+    resolve_dmi_entries = (head) ->
+        if head.length
+            return head[0]
+        else
+            return null
         
     $scope.expand_assetrun = ($event, assetrun) ->
         if !assetrun.$$expanded and not assetrun.$$assets_loaded
@@ -848,6 +866,10 @@ device_asset_module = angular.module(
                         _done.resolve(resolve_pending_updates(data[0].assetupdateentry_set))
                     else if assetrun.run_type == 6
                         _done.resolve(data[0].assetprocessentry_set)
+                    else if assetrun.run_type == 8
+                        _done.resolve(resolve_dmi_entries(data[0].assetdmihead_set))
+                    else if assetrun.run_type == 9
+                        _done.resolve(resolve_pci_entries(data[0].assetpcientry_set))
                     else
                         _done.resolve([])
                     _done.promise.then(
@@ -929,6 +951,10 @@ device_asset_module = angular.module(
                 _not_av_el = $compile($templateCache.get("icsw.asset.details.process"))(scope)
             else if scope.asset_run.run_type == 7
                 _not_av_el = $compile($templateCache.get("icsw.asset.details.pending.updates"))(scope)
+            else if scope.asset_run.run_type == 8
+                _not_av_el = $compile($templateCache.get("icsw.asset.details.dmihandles"))(scope)
+            else if scope.asset_run.run_type == 9
+                _not_av_el = $compile($templateCache.get("icsw.asset.details.pcientries"))(scope)
             else
                 _not_av_el = $compile($templateCache.get("icsw.asset.details.na"))(scope)
             element.append(_not_av_el)
