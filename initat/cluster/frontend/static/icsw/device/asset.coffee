@@ -831,7 +831,7 @@ device_asset_module = angular.module(
     resolve_pci_entries = (in_list) ->
         r_list = []
         for entry in in_list
-            entry.$$position = "#{entry.domain}:#{entry.bus}:#{entry.slot}.#{entry.func}"
+            entry.$$position = sprintf("%04x:%02x:%02x.%02x", entry.domain, entry.bus, entry.slot, entry.func)
             r_list.push(entry)
         return r_list
 

@@ -511,8 +511,7 @@ menu_module = angular.module(
     return {
         restrict: "EA"
         replace: true
-        scope:
-            user: "="
+        scope: true
         link: (scope, el, attrs) ->
             _user = undefined
             _acls = undefined
@@ -533,13 +532,9 @@ menu_module = angular.module(
                 _element.setState({acls: acls})
             )
             $rootScope.$on(ICSW_SIGNALS("ICSW_MENU_PROGRESS_BAR_CHANGED"), (event, settings) ->
-                # console.log "mps", settings
-                _render()
+                console.log "mps", settings
+                # _render()
             )
-            # $rootScope.$on(ICSW_SIGNALS("ICSW_RENDER_MENUBAR"), (event, settings) ->
-            #     # console.log "mps", settings
-            #     _render()
-            # )
 
     }
 ])

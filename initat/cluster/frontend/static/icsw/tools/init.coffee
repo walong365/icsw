@@ -264,9 +264,6 @@ angular.module(
 
         _ICSW_CLOSE_USER_GROUP: "_icsw.close.user.group"
         _ICSW_RMS_UPDATE_DATA: "_icsw.rms.update.data"
-        # not needed up to now
-        # "ICSW_RENDER_MENUBAR": "icsw.render.menubar",
-        # "ICSW_READY_TO_RECEIVE_SELECTION": "icsw.ready.to.receive.selection"
     }
     return (name) ->
         if name not of _dict
@@ -648,6 +645,7 @@ angular.module(
                 toaster.pop("success", "", entry)
         return data
     )
+
     Restangular.setErrorInterceptor((resp) ->
         error_list = []
         if typeof(resp.data) == "string"
@@ -1076,13 +1074,6 @@ angular.module(
             return _defer.promise
     }
 
-#]).directive("icswLogDomCreation", [() ->
-#    return {
-#        restrict: 'A'
-#        link : (scope, el, attrs) ->
-#            mom = moment()
-#            console.log("creating element: ", attrs.icswLogDomCreation, scope.$index, mom.format(), mom.milliseconds())
-#    }
 ]).filter('capitalize', () ->
     return (input, all) ->
         if (!!input)
