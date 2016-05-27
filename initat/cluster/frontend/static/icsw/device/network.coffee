@@ -26,12 +26,12 @@ angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select",
         "angular-ladda",
     ]
-).config(["$stateProvider", ($stateProvider) ->
+).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
     $stateProvider.state(
         "main.devicenetwork", {
             url: "/network"
             template: '<icsw-device-network-total></icsw-device-network-total>'
-            icswData:
+            icswData: icswRouteExtensionProvider.create
                 pageTitle: "Network"
                 rights: ["device.change_network"]
                 menuEntry:

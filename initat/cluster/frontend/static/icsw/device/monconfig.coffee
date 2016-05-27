@@ -23,12 +23,12 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
-).config(["$stateProvider", ($stateProvider) ->
+).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
     $stateProvider.state(
         "main.monitorhint", {
             url: "/monitorhint"
             template: '<icsw-device-mon-config icsw-sel-man="0" icsw-sel-man-sel-mode="d"></icsw-device-mon-config>'
-            icswData:
+            icswData: icswRouteExtensionProvider.create
                 pageTitle: "Monitoring hints"
                 rights: ["mon_check_command.setup_monitoring"]
                 menuEntry:

@@ -84,12 +84,12 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.router",
     ]
-).config(["$stateProvider", ($stateProvider) ->
+).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
     $stateProvider.state(
         "main.livestatus", {
             url: "/livestatus"
             template: '<icsw-device-livestatus icsw-sel-man="0" icsw-sel-man-mode="d"></icsw-device-livestatus>'
-            icswData:
+            icswData: icswRouteExtensionProvider.create
                 pageTitle: "Monitoring dashboard"
                 licenses: ["monitoring_dashboard"]
                 rights: ["mon_check_command.show_monitoring_dashboard"]
@@ -103,28 +103,28 @@ angular.module(
         {
             url: "/livestatus/lo1"
             templateUrl: "icsw.device.livestatus.everything"
-            icswData: {}
+            icswData: icswRouteExtensionProvider.create()
         }
     ).state(
         "main.livestatus.BurstTable"
         {
             url: "/livestatus/lo2"
             templateUrl: "icsw.device.livestatus.bursttable"
-            icswData: {}
+            icswData: icswRouteExtensionProvider.create()
         }
     ).state(
         "main.livestatus.OnlyTable"
         {
             url: "/livestatus/lo3"
             templateUrl: "icsw.device.livestatus.onlytable"
-            icswData: {}
+            icswData: icswRouteExtensionProvider.create()
         }
     ).state(
         "main.livestatus.MapWithBurst"
         {
             url: "/livestatus/lo4"
             templateUrl: "icsw.device.livestatus.mapwithburst"
-            icswData: {}
+            icswData: icswRouteExtensionProvider.create()
         }
     )
 ]).service("icswLivestatusFilterService",

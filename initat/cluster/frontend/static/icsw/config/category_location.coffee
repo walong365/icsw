@@ -23,12 +23,12 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "ui.select", "restangular", "uiGmapgoogle-maps", "angularFileUpload"
     ]
-).config(["$stateProvider", ($stateProvider) ->
+).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
     $stateProvider.state(
         "main.devlocation", {
             url: "/devlocation"
             templateUrl: "icsw/main/device/location.html"
-            icswData:
+            icswData: icswRouteExtensionProvider.create
                 pageTitle: "Device location"
                 rights: ["user.modify_category_tree"]
                 menuEntry:

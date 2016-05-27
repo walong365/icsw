@@ -23,51 +23,54 @@ menu_module = angular.module(
     [
         "ui.router",
     ]
-).config(["$stateProvider", "$urlRouterProvider",
-    ($stateProvider, $urlRouterProvider) ->
-        $urlRouterProvider.otherwise("/login")
-        $stateProvider.state(
-            "login"
-            {
-                url: "/login",
-                templateUrl: "icsw/login.html"
-                icswData:
-                    pageTitle: "ICSW Login"
-            }
-        ).state(
-            "logout"
-            {
-                url: "/logout",
-                templateUrl: "icsw/login.html"
-                icswData:
-                    pageTitle: "ICSW Logout"
-            }
-        ).state(
-            "main",
-            {
-                url: "/main"
-                abstract: true
-                templateUrl: "icsw/main.html"
-                icswData:
-                    pageTitle: "ICSW Main page"
-                resolve:
-                    user: ["$q", "icswUserService", ($q, icswUserService) ->
-                        _defer = $q.defer()
-                        icswUserService.load().then(
-                            (user) ->
-                                if user.idx
-                                    _defer.resolve(user)
-                                else
-                                    _defer.reject(user)
-                        )
-                        return _defer.promise
-                    ]
-                # hotkeys: [
-                #     ["s", "Show device selection", "show devsel"]
-                # ]
-                controller: "icswMainCtrl"
-            }
-        )
+).config([
+    "$stateProvider", "$urlRouterProvider", "icswRouteExtensionProvider",
+(
+    $stateProvider, $urlRouterProvider, icswRouteExtensionProvider,
+) ->
+    $urlRouterProvider.otherwise("/login")
+    $stateProvider.state(
+        "login"
+        {
+            url: "/login",
+            templateUrl: "icsw/login.html"
+            icswData: icswRouteExtensionProvider.create
+                pageTitle: "ICSW Login"
+        }
+    ).state(
+        "logout"
+        {
+            url: "/logout",
+            templateUrl: "icsw/login.html"
+            icswData: icswRouteExtensionProvider.create
+                pageTitle: "ICSW Logout"
+        }
+    ).state(
+        "main",
+        {
+            url: "/main"
+            abstract: true
+            templateUrl: "icsw/main.html"
+            icswData: icswRouteExtensionProvider.create
+                pageTitle: "ICSW Main page"
+            resolve:
+                user: ["$q", "icswUserService", ($q, icswUserService) ->
+                    _defer = $q.defer()
+                    icswUserService.load().then(
+                        (user) ->
+                            if user.idx
+                                _defer.resolve(user)
+                            else
+                                _defer.reject(user)
+                    )
+                    return _defer.promise
+                ]
+            # hotkeys: [
+            #     ["s", "Show device selection", "show devsel"]
+            # ]
+            controller: "icswMainCtrl"
+        }
+    )
 ]).controller("icswMainCtrl", [
     "$scope", "hotkeys", "icswLayoutSelectionDialogService",
 (

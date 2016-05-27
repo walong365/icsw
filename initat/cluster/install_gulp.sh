@@ -19,4 +19,4 @@
     gulp-webserver connect-modrewrite http-proxy-middleware gulp-run \
     gulp-changed gulp-remember gulp-cache gulp-bg gulp-rename gulp-clean-dest del \
     gulp-wait gulp-strip-debug gulp-cached gulp-remember gulp-memory-cache \
-    gulp-plumber
+    gulp-plumber gulp-connect

@@ -36,32 +36,16 @@ angular.module(
     $scope.initProduct = initProduct
     $scope.license_tree = undefined
     $scope.django_version = "---"
-    $scope.CLUSTER_NAME = ""
-    $scope.CLUSTER_ID = ""
-    $scope.LOGIN_SCREEN_TYPE = "big"
-    $scope.DATABASE_VERSION = ""
     $scope.login_hints = []
     $scope.disabled = true
-    style_dict = {
-        medium: {
-            gfx_class: "col-xs-4"
-            gfx_style: {}
-            login_class: "col-xs-6"
-        }
-        big: {
-            gfx_class: "col-md-offset-4 col-md-4"
-            gfx_style: {
-                marginTop: "60px"
-            }
-            login_class: "col-md-offset-4 col-md-4"
-        }
-    }
     first_call = true
     $scope.struct = {
         # fx mode
         fx_mode: false
         # data valid
         data_valid: false
+        # cluster data
+        cluster_data: undefined
     }
     $scope.init_login = () ->
         $q.all(
@@ -84,13 +68,8 @@ angular.module(
                 xml = data[0]
                 $scope.login_hints = angular.fromJson($(xml).find("value[name='login_hints']").text())
                 $scope.django_version = $(xml).find("value[name='django_version']").text()
-                $scope.LOGIN_SCREEN_TYPE = $(xml).find("value[name='login_screen_type']").text()
                 $scope.disabled = false
-                $scope.CLUSTER_NAME = data[1].CLUSTER_NAME
-                $scope.CLUSTER_ID = data[1].CLUSTER_ID
-                $scope.DATABASE_VERSION = data[1].DATABASE_VERSION
-                $scope.SOFTWARE_VERSION = data[1].SOFTWARE_VERSION
-                $scope.MODELS_VERSION = data[1].MODELS_VERSION
+                $scope.struct.cluster_data = data[1]
                 $scope.license_tree = data[2]
                 $scope.struct.fx_mode = icswUserLicenseDataService.fx_mode()
                 $scope.struct.data_valid = true
@@ -135,15 +114,6 @@ angular.module(
                 blockUI.stop()
                 $scope.init_login()
         )
-
-    $scope.gfx_class = () ->
-        return style_dict[$scope.LOGIN_SCREEN_TYPE]["gfx_class"]
-
-    $scope.gfx_style = () ->
-        return style_dict[$scope.LOGIN_SCREEN_TYPE]["gfx_style"]
-
-    $scope.login_class = () ->
-        return style_dict[$scope.LOGIN_SCREEN_TYPE]["login_class"]
 
     $scope.init_login()
 ]).directive("icswLoginForm",

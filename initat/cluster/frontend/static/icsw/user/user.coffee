@@ -46,12 +46,12 @@ user_module = angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular",
         "noVNC", "ui.select", "icsw.tools", "icsw.user.password",
     ]
-).config(["$stateProvider", ($stateProvider) ->
+).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
     $stateProvider.state(
         "main.useraccount", {
             url: "/useraccount"
             templateUrl: "icsw/main/user/account.html"
-            icswData:
+            icswData: icswRouteExtensionProvider.create
                 pageTitle: "Account info"
         }
     )
@@ -59,7 +59,7 @@ user_module = angular.module(
         "main.usertree", {
             url: "/usertree"
             templateUrl: "icsw/main/user/tree.html"
-            icswData:
+            icswData: icswRouteExtensionProvider.create
                 pageTitle: "User and Group tree"
                 menuHeader:
                     key: "sys"

@@ -23,12 +23,12 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "ui.bootstrap.datetimepicker", "icsw.tools.status_history_utils"
     ]
-).config(["$stateProvider", ($stateProvider) ->
+).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
     $stateProvider.state(
         "main.statushistory", {
             url: "/statushistory"
             templateUrl: "icsw/main/status_history.html"
-            icswData:
+            icswData: icswRouteExtensionProvider.create
                 pageTitle: "Status History"
                 licenses: ["reporting"]
                 rights: ["backbone.device.show_status_history"]

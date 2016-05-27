@@ -270,11 +270,12 @@ menu_module = angular.module(
     menu_line = React.createClass(
         displayName: "menuline"
         render: () ->
-            if @props.href?
-                a_attrs = {href: @props.href, key: "a"}
+            entry = @props.entry
+            if entry.href?
+                a_attrs = {href: entry.href, key: "a"}
             else
-                a_attrs = {href: @props.sref, key: "a"}
-            if @props.labelClass
+                a_attrs = {href: entry.sref, key: "a"}
+            if entry.labelClass
                 return li(
                     {key: "li"}
                     [
@@ -282,14 +283,14 @@ menu_module = angular.module(
                             a_attrs
                             [
                                 span(
-                                    {className: "label #{@props.labelClass}", key: "spanl"}
+                                    {className: "label #{entry.labelClass}", key: "spanl"}
                                     [
                                         span(
-                                            {className: "fa #{@props.icon} fa_icsw", key: "span"}
+                                            {className: "fa #{entry.icon} fa_icsw", key: "span"}
                                         )
                                     ]
                                 )
-                                " #{@props.name}"
+                                " #{entry.name}"
                             ]
                         )
                     ]
@@ -302,9 +303,9 @@ menu_module = angular.module(
                             a_attrs
                             [
                                 span(
-                                    {className: "fa #{@props.icon} fa_icsw", key: "span"}
+                                    {className: "fa #{entry.icon} fa_icsw", key: "span"}
                                 )
-                                " #{@props.name}"
+                                " #{entry.name}"
                             ]
                         )
                     ]
@@ -331,7 +332,9 @@ menu_module = angular.module(
                             else
                                 _add = false
                         else
+                            # console.log entry.rights
                             _add = icswAcessLevelService.has_all_menu_permissions(entry.rights)
+                    # console.log _add, entry.name
                     if entry.licenses? and _add
                         _add = icswAcessLevelService.has_all_valid_licenses(entry.licenses)
                         if not _add
@@ -346,14 +349,13 @@ menu_module = angular.module(
                             _items.push(
                                 li({className: "divider", key: _key + "_pre"})
                             )
-    
                         if angular.isFunction(entry.name)
                             _items.push(
                                 React.createElement(entry.name, {key: _key})
                             )
                         else
                             _items.push(
-                                React.createElement(menu_line, entry, {key: _key})
+                                React.createElement(menu_line, {key: _key, entry: entry})
                             )
                         valid_entry = true
                         if entry.postSpacer and valid_entry
@@ -362,20 +364,41 @@ menu_module = angular.module(
                             )
                             valid_entry = false
             if _items.length
-    
                 _res = li(
-                    {key: "menu"}
-                    a(
-                        {className: "dropdown-toggle", "data-toggle": "dropdown",key: "menu.head"}
-                        [
-                            span({className: "fa #{@props.icon} fa-lg fa_top", key: "span"})
-                            span({key: "text#{_idx}"}, @props.name)
-                        ]
-                    )
-                    ul(
-                        {className: "dropdown-menu", key: "ul"}
-                        _items
-                    )
+                    {
+                        key: "menu_" + @props.name
+                    }
+                    [
+                        a(
+                            {
+                                className: "dropdown-toggle"
+                                # dataToggle is not working
+                                "data-toggle": "dropdown"
+                                key: "menu.head_" + @props.name
+                            }
+                            [
+                                span(
+                                    {
+                                        className: "fa #{@props.icon} fa-lg fa_top"
+                                        key: "span_" + @props.name
+                                    }
+                                )
+                                span(
+                                    {
+                                        key: "text_" + @props.name
+                                    }
+                                    @props.name
+                                )
+                            ]
+                        )
+                        ul(
+                            {
+                                className: "dropdown-menu"
+                                key: "ul_" + @props.name
+                            }
+                            _items
+                        )
+                    ]
                 )
             else
                 _res = null
@@ -451,18 +474,21 @@ menu_module = angular.module(
             valid_state_names = []
             for state in $state.get()
                 if state.icswData?
-                    if state.icswData.menuEntry?
-                        valid_state_names.push(state.name)
-                    if state.icswData.menuHeader?
-                        _hdr = state.icswData.menuHeader
-                        menus.push(
-                            new MenuHeader(
-                                _hdr.key
-                                _hdr.name
-                                _hdr.icon
-                                _hdr.ordering
+                    if not state.icswData._extension
+                        console.error "old menu entry, please fix", state.icswData
+                    else
+                        if state.icswData.menuEntry? and state.icswData.menuEntry.menukey
+                            valid_state_names.push(state.name)
+                        if state.icswData.menuHeader? and state.icswData.menuHeader.key
+                            _hdr = state.icswData.menuHeader
+                            menus.push(
+                                new MenuHeader(
+                                    _hdr.key
+                                    _hdr.name
+                                    _hdr.icon
+                                    _hdr.ordering
+                                )
                             )
-                        )
 
             for state in ($state.get(_name) for _name in valid_state_names)
                 # find menu

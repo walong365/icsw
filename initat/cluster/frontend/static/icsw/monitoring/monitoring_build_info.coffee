@@ -26,15 +26,15 @@ monitoring_build_info_module = angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
 ).config([
-    "$stateProvider",
+    "$stateProvider", "icswRouteExtensionProvider",
 (
-    $stateProvider
+    $stateProvider, icswRouteExtensionProvider,
 ) ->
     $stateProvider.state(
         "main.monitobuildinfo", {
             url: "/monitorbuildinfo"
             template: "<icsw-monitoring-build-info></icsw-monitoring-build-info>"
-            icswData:
+            icswData: icswRouteExtensionProvider.create
                 pageTitle: "Monitoring build info"
                 rights: ["mon_check_command.setup_monitoring"]
                 menuEntry:

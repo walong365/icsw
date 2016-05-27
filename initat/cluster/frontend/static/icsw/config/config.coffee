@@ -23,14 +23,14 @@ config_module = angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.codemirror", "angularFileUpload", "ui.select", "icsw.tools.button",
     ]
-).config(["$stateProvider", ($stateProvider) ->
+).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
     $stateProvider.state(
         "main.configoverview",
             {
                 url: "/configoverview"
                 # templateUrl: "icsw/main/device/config.html"
                 templateUrl: "icsw/main/config/overview.html"
-                icswData:
+                icswData: icswRouteExtensionProvider.create
                     pageTitle: "Configuration Overview"
                     rights: ["device.change_config"]
                     menuEntry:

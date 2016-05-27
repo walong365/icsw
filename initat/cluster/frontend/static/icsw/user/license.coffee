@@ -23,12 +23,12 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "angularFileUpload", "gettext",
     ]
-).config(["$stateProvider", ($stateProvider) ->
+).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
     $stateProvider.state(
         "main.licenseoverview", {
             url: "/licenseoverview"
             templateUrl: "icsw/main/license/overview.html"
-            icswData:
+            icswData: icswRouteExtensionProvider.create
                 pageTitle: "License information"
                 rights: (user, acls) ->
                     if user.is_superuser

@@ -138,7 +138,38 @@ angular.module(
             if xml != null
                 toaster.pop("error", "A critical error occured", "error parsing response", 0)
         return success
-]).directive("icswSelMan",
+]).provider("icswRouteExtension", () ->
+    class icswRouteExtension
+        constructor: (args) ->
+            @_extension = true
+            # list of needed rights
+            @rights = []
+            # list of needed licenses
+            @licenses = []
+            # list of needed service_types (== routes)
+            @service_types = []
+            # pageTitle:
+            @pageTitle = ""
+            # menuHeader
+            @menuHeader = {}
+            # menuEntry
+            @menuEntry = {}
+            # redirect to originating when error
+            @redirect_to_from_on_error = false
+            for key, value of args
+                if not @[key]?
+                    console.error "unknown icswRouteExtension #{key}=#{value}", @
+                else
+                    @[key] = value
+    return {
+        $get: () ->
+            # needed for Angular
+            return {}
+        create: (args) ->
+            return new icswRouteExtension(args)
+    }
+
+).directive("icswSelMan",
 [
     "$rootScope", "ICSW_SIGNALS", "DeviceOverviewSelection", "DeviceOverviewSettings",
     "icswActiveSelectionService", "icswDeviceTreeService",

@@ -23,13 +23,13 @@ angular.module(
     [
         "ngSanitize", "ui.bootstrap", "restangular"
     ]
-).config(["$stateProvider", ($stateProvider) ->
+).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
     $stateProvider.state(
         "main.devicecreate"
         {
             url: "/devicecreate"
             templateUrl: "icsw/main/device/create.html"
-            icswData:
+            icswData: icswRouteExtensionProvider.create
                 pageTitle: "Create new Device"
                 menuHeader:
                     key: "dev"

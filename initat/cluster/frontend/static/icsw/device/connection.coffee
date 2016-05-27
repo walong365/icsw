@@ -22,13 +22,13 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
-).config(["$stateProvider", ($stateProvider) ->
+).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
     $stateProvider.state(
         "main.deviceconnection"
             {
                 url: "/deviceconnection"
                 templateUrl: "icsw/main/device/connection.html"
-                icswData:
+                icswData: icswRouteExtensionProvider.create
                     pageTitle: "Device Connections"
                     rights: ["device.change_connection"]
                     menuEntry:

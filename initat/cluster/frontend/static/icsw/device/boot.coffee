@@ -24,12 +24,12 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "restangular", "ui.select"
     ]
-).config(["$stateProvider", ($stateProvider) ->
+).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
     $stateProvider.state(
         "main.deployboot", {
             url: "/deployboot"
             templateUrl: "icsw/main/deploy/boot.html"
-            icswData:
+            icswData: icswRouteExtensionProvider.create
                 pageTitle: "Boot nodes"
                 rights: ["device.change_boot"]
                 licenses: ["netboot"]

@@ -22,12 +22,12 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "icsw.d3", "icsw.tools.button"
     ]
-).config(["$stateProvider", ($stateProvider) ->
+).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
     $stateProvider.state(
         "main.partition", {
             url: "/partition"
             templateUrl: "icsw/main/partition.html"
-            icswData:
+            icswData: icswRouteExtensionProvider.create
                 pageTitle: "Partition overview"
                 rights: ["partition_fs.modify_partitions"]
                 licenses: ["netboot"]
@@ -40,7 +40,7 @@ angular.module(
         "main.monitordisk", {
             url: "/monitordisk"
             template: '<icsw-device-partition-overview icsw-sel-man="0" icsw-sel-man-sel-mode="d"></icsw-device-partition-overview>'
-            icswData:
+            icswData: icswRouteExtensionProvider.create
                 pageTitle: "Disk"
                 rights: ["mon_check_command.setup_monitoring"]
                 menuEntry:

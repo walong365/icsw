@@ -25,12 +25,12 @@ device_asset_module = angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "ngCsv"
     ]
-).config(["$stateProvider", ($stateProvider) ->
+).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
     $stateProvider.state(
         "main.devasset", {
             url: "/asset"
             templateUrl: 'icsw/device/asset/overview'
-            icswData:
+            icswData: icswRouteExtensionProvider.create
                 pageTitle: "Device Assets"
                 rights: ["device.assets"]
                 menuEntry:

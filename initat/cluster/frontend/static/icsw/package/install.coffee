@@ -24,12 +24,12 @@ package_module = angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap",
         "init.csw.filters", "restangular", "ui.select", "icsw.tools.table",
     ]
-).config(["$stateProvider", ($stateProvider) ->
+).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
     $stateProvider.state(
         "main.packageinstall", {
             url: "/packageinstall"
             template: "<icsw-package-install-overview ng-cloak/>"
-            icswData:
+            icswData: icswRouteExtensionProvider.create
                 pageTitle: "Package install"
                 rights: ["package.package_install"]
                 licenses: ["package_install"]

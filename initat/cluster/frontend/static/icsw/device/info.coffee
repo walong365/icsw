@@ -23,12 +23,12 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "noVNC", "ui.select", "icsw.tools", "icsw.device.variables"
     ]
-).config(["$stateProvider", ($stateProvider) ->
+).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
     $stateProvider.state(
         "main.deviceinfo", {
             url: "/deviceinfo"
             template: '<icsw-simple-device-info icsw-sel-man="0"></icsw-simple-device-info>'
-            icswData:
+            icswData: icswRouteExtensionProvider.create
                 pageTitle: "Device info"
                 rights: ["user.modify_tree"]
                 menuEntry:

@@ -23,13 +23,13 @@ background_job_info_module = angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
-).config(["$stateProvider", ($stateProvider) ->
+).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
     $stateProvider.state(
         "main.backgroundinfo",
           {
               url: "/backgroundinfo"
               templateUrl: "icsw/main/backgroundinfo.html"
-              icswData:
+              icswData: icswRouteExtensionProvider.create
                   pageTitle: "Background Job Information"
           }
     )

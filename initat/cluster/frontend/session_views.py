@@ -130,7 +130,6 @@ class login_addons(View):
         cache.delete(_ckey)
         _cs = config_store.ConfigStore(GEN_CS_NAME, quiet=True)
         request.xml_response["login_hints"] = json.dumps(_get_login_hints())
-        request.xml_response["login_screen_type"] = _cs["login.screen.type"]
         request.xml_response["django_version"] = ".".join(_vers)
         request.xml_response["next_url"] = _next_url or ""
         request.xml_response["password_character_count"] = "{:d}".format(_cs["password.character.count"])

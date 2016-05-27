@@ -29,12 +29,12 @@ rms_module = angular.module(
         lineNumbers: true
         matchBrackets: true
     }
-}).config(["$stateProvider", ($stateProvider) ->
+}).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
     $stateProvider.state(
         "main.rmsoverview", {
             url: "/rmsoverview"
             templateUrl: "icsw/main/rms/overview.html"
-            icswData:
+            icswData: icswRouteExtensionProvider.create
                 pageTitle: "RMS Overview"
                 licenses: ["rms"]
                 service_types: ["rms-server"]

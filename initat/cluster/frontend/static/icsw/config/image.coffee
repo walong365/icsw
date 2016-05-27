@@ -23,12 +23,12 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
-).config(["$stateProvider", ($stateProvider) ->
+).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
     $stateProvider.state(
         "main.imagekernel", {
             url: "/imagekernel"
             templateUrl: "icsw/main/imagekernel.html"
-            icswData:
+            icswData: icswRouteExtensionProvider.create
                 pageTitle: "Images and Kernels"
                 rights: ["image.modify_images", "kernel.modify_kernels"]
                 licenses: ["netboot"]

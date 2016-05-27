@@ -3,55 +3,77 @@
 </script>
 
 <script type="text/ng-template" id="icsw.user.login.page">
-    <div class="row">
-        <div ng-class="gfx_class()" ng-style="gfx_style()">
-            <img width="100%;" ng-attr-src="{{ initProduct.menu_gfx_big_url }}" alt="{{ initProduct.name }} logo"/>
-        </div>
-        <div ng-class="login_class()">
-            <div class="well"  style="margin-top:60px;">
-                <icsw-login-form></icsw-login-form>
-                <p class="text-right">{{ initProduct.family }} ({{ initProduct.version }}) on Django {{ django_version }}</p>
-                <p class="text-right" ng-show="CLUSTER_ID">ClusterID is {{ CLUSTER_ID }}</p>
-                <p class="text-right" ng-show="DATABASE_VERSION">Version info is {{ DATABASE_VERSION }}[D] {{ SOFTWARE_VERSION }}[S] {{ MODELS_VERSION }}[M]</p>
-                <uib-alert type="warning" ng-show="!struct.fx_mode && struct.data_valid">
-                    <p class="text-right">
-                        FX-Mode is not licensed
-                        <span class="fa-stack fa-2x">
-                            <i class="fa fa-bolt fa-stack-2x"></i>
-                            <i class="fa fa-ban fa-stack-2x text-danger"></i>
-                        </span>
-                    </p>
-                </uib-alert>
-                <uib-alert type="success" ng-show="struct.fx_mode && struct.data_valid">
-                    <p class="text-right">
-                        FX-Mode activated
-                        <span class="fa fa-bolt fa-border fa-2x"></span>
-                    </p>
-                </uib-alert>
-                <uib-alert ng-show="license_tree.pack_list.length == 0" style="font-size: larger">
-                    You are running an <strong>unlicensed version</strong>.<br />
-                    Please contact <strong>support@init.at</strong> in order to obtain a license.
-                </uib-alert>
-                <uib-alert ng-show="disabled" style="font-size: larger">
-                    Awaiting license information ...
-                </uib-alert>
+    <div class="container-fluid">
+        <div class="row" >
+            <div class="col-md-3 hidden-xs">
+                <img width="100%;" ng-attr-src="{{ initProduct.menu_gfx_big_url }}" alt="{{ initProduct.name }} logo"/>
+            </div>
+            <div class="col-xs-12 col-md-6">
+                <h2 ng-show="struct.cluster_data">
+                    Welcome to {{ struct.cluster_data.CLUSTER_NAME }}
+                </h2>
+                <div class="well">
+                    <icsw-login-form></icsw-login-form>
+                    <fieldset>
+                        <legend>
+                            Version Information
+                        </legend>
+                        <p class="text-right">{{ initProduct.family }} ({{ initProduct.version }}) on Django {{ django_version }}</p>
+                        <p class="text-right" ng-show="struct.cluster_data.CLUSTER_ID">
+                            ClusterID is {{ struct.cluster_data.CLUSTER_ID }}
+                        </p>
+                        <p class="text-right" ng-show="struct.cluster_data.DATABASE_VERSION">
+                            Version info is {{ struct.cluster_data.DATABASE_VERSION }}[D] {{ struct.cluster_data.SOFTWARE_VERSION }}[S] {{ struct.cluster_data.MODELS_VERSION }}[M]
+                        </p>
+                    </fieldset>
+                    <fieldset>
+                        <legend>
+                            License Information
+                        </legend>
+                    <uib-alert type="warning" ng-show="!struct.fx_mode && struct.data_valid">
+                        <p class="text-right">
+                            FX-Mode is not licensed
+                            <span class="fa-stack fa-2x">
+                                <i class="fa fa-bolt fa-stack-2x"></i>
+                                <i class="fa fa-ban fa-stack-2x text-danger"></i>
+                            </span>
+                        </p>
+                    </uib-alert>
+                    <uib-alert type="success" ng-show="struct.fx_mode && struct.data_valid">
+                        <p class="text-right">
+                            FX-Mode activated
+                            <span class="fa fa-bolt fa-border fa-2x"></span>
+                        </p>
+                    </uib-alert>
+                    <uib-alert ng-show="license_tree.pack_list.length == 0" style="font-size: larger">
+                        You are running an <strong>unlicensed version</strong>.<br />
+                        Please contact <strong>support@init.at</strong> in order to obtain a license.
+                    </uib-alert>
+                    <uib-alert ng-show="disabled" style="font-size: larger">
+                        Awaiting license information ...
+                    </uib-alert>
+                    </fieldset>
+                </div>
+            </div>
+            <div class="col-md-3 hidden-xs">
+                <img width="100%;" ng-attr-src="{{ initProduct.menu_gfx_big_url }}" alt="{{ initProduct.name }} logo"/>
             </div>
         </div>
-    </div>
-    <div ng-show="login_hints.length" class="row">
-        <div class="col-md-offset-2 col-md-8">
-            <div class="panel panel-default">
-                <div class="panel-heading">
-                    <h3>Login hints</h3>
-                </div>
-                <div class="panel-body">
-                    <ul class="list-group">
-                        <li class="list-group-item" ng-repeat="entry in login_hints">
-                            <span ng-show="entry[2]">superuser </span>
-                            <span ng-show="!entry[2]">user </span>
-                            <code><b>{{ entry[0] }}</b></code> has password <code>'{{ entry[1] }}'</code>
-                        </li>
-                    </ul>
+        <div ng-show="login_hints.length" class="row">
+            <div class="col-md-offset-2 col-md-8">
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <h3>Login hints</h3>
+                    </div>
+                    <div class="panel-body">
+                        <ul class="list-group">
+                            <li class="list-group-item" ng-repeat="entry in login_hints">
+                                <span ng-show="entry[2]">superuser </span>
+                                <span ng-show="!entry[2]">user </span>
+                                <code><b>{{ entry[0] }}</b></code> has password <code>'{{ entry[1] }}'</code>
+                            </li>
+                        </ul>
+                    </div>
                 </div>
             </div>
         </div>
@@ -59,34 +81,31 @@
 </script>
 
 <script type="text/ng-template" id="icsw.authentication.form">
-    <form class="form-horizontal" ng-submit="do_login()">
-        <div class="form-horizontal">
-            <fieldset>
-                <legend>
-                    Please enter your login credentials
-                    <span ng-show="CLUSTER_NAME">
-                        for {{ CLUSTER_NAME }}
-                    </span>
-                </legend>
-                <div class="form-group">
-                    <label class="control-label col-sm-2 requiredField">
-                        Username<span class="asteriskField">*</span>
-                    </label>
-                    <div class="controls col-sm-8">
-                        <input ng-disabled="disabled" autofocus="1" class="textinput textInput form-control" maxlength="30" name="username" ng-model="login_data.username" placeholder="user name" required="True" type="text"/>
-                    </div>
+    <form>
+        <fieldset>
+            <legend>
+                Please enter your login credentials
+            </legend>
+            <div class="form-group row">
+                <label class="control-label col-sm-3 requiredField">
+                    Username<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-9">
+                    <input ng-disabled="disabled" autofocus="1" class="textinput textInput form-control" maxlength="30" name="username" ng-model="login_data.username" placeholder="user name" required="True" type="text"/>
                 </div>
-                <div class="form-group">
-                    <label class="control-label col-sm-2 requiredField">
-                        Password<span class="asteriskField">*</span>
-                    </label>
-                    <div class="controls col-sm-8">
-                        <input ng-disabled="disabled" class="textinput textInput form-control" name="password" ng-model="login_data.password" placeholder="password" required="True" type="password"/>
-                    </div>
+            </div>
+           <div class="form-group row">
+                <label class="control-label col-sm-3 requiredField">
+                    Password<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-9">
+                    <input ng-disabled="disabled" class="textinput textInput form-control" name="password" ng-model="login_data.password" placeholder="password" required="True" type="password"/>
                 </div>
-            </fieldset>
-            <div class="form-actions">
-                <icsw-tools-button ng-disabled="disabled" button-type="submit" type="submit" value="Login" ng-click="do_login()"></icsw-tools-button>
+            </div>
+        </fieldset>
+        <div class="form-group row">
+            <div class="control col-sm-12">
+                <icsw-tools-button ng-disabled="disabled" class="pull-right" button-type="submit" type="submit" value="Login" ng-click="do_login()"></icsw-tools-button>
             </div>
         </div>
     </form>

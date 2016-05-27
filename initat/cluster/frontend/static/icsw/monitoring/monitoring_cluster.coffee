@@ -34,12 +34,12 @@ monitoring_cluster_module = angular.module(
         template: $templateCache.get("icsw.monitoring.cluster")
         controller: "icswMonitoringClusterCtrl"
     }
-]).config(["$stateProvider", ($stateProvider) ->
+]).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
     $stateProvider.state(
         "main.monitorcluster", {
             url: "/monitorcluster"
             template: "<icsw-monitoring-cluster></icsw-monitoring-cluster>"
-            icswData:
+            icswData: icswRouteExtensionProvider.create
                 pageTitle: "Monitoring Cluster / Dependency setup"
                 rights: ["mon_check_command.setup_monitoring"]
                 menuEntry:

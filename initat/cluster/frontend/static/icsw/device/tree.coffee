@@ -24,12 +24,12 @@ angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "smart-table",
         "icsw.tools.table", "icsw.tools", "icsw.tools.button", "icsw.tools.dialog",
     ]
-).config(["$stateProvider", ($stateProvider) ->
+).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
     $stateProvider.state(
         "main.devtree", {
             url: "/devtree"
             templateUrl: "icsw/main/device/tree.html"
-            icswData:
+            icswData: icswRouteExtensionProvider.create
                 pageTitle: "Device tree"
                 rights: ["user.modify_tree"]
                 menuEntry:

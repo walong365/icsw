@@ -35,12 +35,12 @@ monitoring_basic_module = angular.module(
         template: $templateCache.get("icsw.monitoring.basic")
         controller: "icswMonitoringBasicCtrl"
     }
-]).config(["$stateProvider", ($stateProvider) ->
+]).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
     $stateProvider.state(
         "main.monitorbasics", {
             url: "/monitorbasics"
             template: "<icsw-monitoring-basic></icsw-monitoring-basic>"
-            icswData:
+            icswData: icswRouteExtensionProvider.create
                 pageTitle: "Monitoring Basic setup"
                 menuHeader:
                     key: "mon"
@@ -58,14 +58,14 @@ monitoring_basic_module = angular.module(
         "main.monitorredirect", {
             url: "/monitorredirect"
             template: "<h2>Redirecting...</h2>"
-            icswData:
-                redirect_to_from_on_error: true
-                menuEntry:
-                    menukey: "mon"
-                    name: "Icinga"
-                    icon: "fa-share-alt"
-                    ordering: 120
-                rights: ["mon_check_command.redirect_to_icinga"]
+            icswData: icswRouteExtensionProvider.create
+                    redirect_to_from_on_error: true
+                    menuEntry:
+                        menukey: "mon"
+                        name: "Icinga"
+                        icon: "fa-share-alt"
+                        ordering: 120
+                    rights: ["mon_check_command.redirect_to_icinga"]
             resolve:
                 redirect: ["$window", "icswSimpleAjaxCall", "ICSW_URLS", "$q", ($window, icswSimpleAjaxCall, ICSW_URLS, $q) ->
                     _defer = $q.defer()
@@ -84,7 +84,7 @@ monitoring_basic_module = angular.module(
     ).state(
         "main.monitorb0", {
             url: "/monitorb0"
-            icswData:
+            icswData: icswRouteExtensionProvider.create
                 redirect_to_from_on_error: true
                 menuEntry:
                     menukey: "mon"
@@ -119,7 +119,7 @@ monitoring_basic_module = angular.module(
     ).state(
         "main.monitorb1", {
             url: "/monitorb1"
-            icswData:
+            icswData: icswRouteExtensionProvider.create
                 redirect_to_from_on_error: true
                 menuEntry:
                     menukey: "mon"
@@ -151,7 +151,7 @@ monitoring_basic_module = angular.module(
     ).state(
         "main.monitorb2", {
             url: "/monitorb2"
-            icswData:
+            icswData: icswRouteExtensionProvider.create
                 menuEntry:
                     menukey: "mon"
                     name: "rebuild config refresh"

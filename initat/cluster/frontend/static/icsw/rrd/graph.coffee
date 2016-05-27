@@ -26,12 +26,12 @@ angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters",
         "restangular", "icsw.rrd.graphsetting",
     ]
-).config(["$stateProvider", ($stateProvider) ->
+).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
     $stateProvider.state(
         "main.graph", {
             url: "/graph"
             templateUrl: "icsw.rrd.graph"
-            icswData:
+            icswData: icswRouteExtensionProvider.create
                 pageTitle: "Graph"
                 licenses: ["graphing"]
                 rights: ["backbone.device.show_graphs"]

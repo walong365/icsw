@@ -25,15 +25,16 @@ monitoring_device_module = angular.module(
         "restangular", "ui.select", "icsw.tools.table", "icsw.tools.button", "angular-ladda",
         "icsw.device.asset",
     ]
-).config(["$stateProvider",
+).config([
+    "$stateProvider", "icswRouteExtensionProvider",
 (
-    $stateProvider
+    $stateProvider, icswRouteExtensionProvider,
 ) ->
     $stateProvider.state(
         "main.scheddevice", {
             url: "/sched/device"
             template: "<icsw-schedule-device icsw-sel-man='0'></icsw-schedule-device>"
-            icswData:
+            icswData: icswRouteExtensionProvider.create
                 pageTitle: "Set Device Schedules"
                 # rights: ["mon_check_command.setup_monitoring", "device.change_monitoring"]
                 menuHeader:
@@ -52,7 +53,7 @@ monitoring_device_module = angular.module(
         "main.schedoverview", {
             url: "/sched/overview"
             template: "<icsw-schedule-overview></icsw-schedule-overview>"
-            icswData:
+            icswData: icswRouteExtensionProvider.create
                 pageTitle: "Schedule settings"
                 # rights: ["mon_check_command.setup_monitoring", "device.change_monitoring"]
                 menuEntry:
@@ -66,7 +67,7 @@ monitoring_device_module = angular.module(
         "main.statictemplates", {
             url: "/sched/stattemp"
             template: "<icsw-static-asset-template-overview></icsw-static-asset-template-overview>"
-            icswData:
+            icswData: icswRouteExtensionProvider.create
                 pageTitle: "Static Asset templates"
                 # rights: ["mon_check_command.setup_monitoring", "device.change_monitoring"]
                 menuEntry:

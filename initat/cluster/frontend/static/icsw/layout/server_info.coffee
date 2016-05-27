@@ -22,15 +22,15 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "init.csw.filters", "ui.bootstrap", "restangular"
     ]
-).config(["$stateProvider", ($stateProvider) ->
+).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
     $stateProvider.state(
         "main.serverinfo",
-          {
-              url: "/serverinfo",
-              templateUrl: "icsw/main/serverinfo.html"
-              icswData:
-                  pageTitle: "Server info"
-          }
+        {
+            url: "/serverinfo",
+            templateUrl: "icsw/main/serverinfo.html"
+            icswData: icswRouteExtensionProvider.create
+                pageTitle: "Server info"
+        }
     )
 ]).controller("icswServerInfoOverviewCtrl",
 [
