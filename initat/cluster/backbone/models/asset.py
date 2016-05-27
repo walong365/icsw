@@ -237,30 +237,53 @@ def get_base_assets_from_raw_result(asset_run,):
                 new_proc.save()
 
         elif runtype == AssetType.PCI:
-            s = pci_database.pci_struct_to_xml(
-                pci_database.decompress_pci_info(blob)
-            )
-            for func in s.findall(".//func"):
-                _slot = func.getparent()
-                _bus = _slot.getparent()
-                _domain = _bus.getparent()
-                new_pci = AssetPCIEntry(
-                    asset_run=asset_run,
-                    domain=int(_domain.get("id")),
-                    bus=int(_domain.get("id")),
-                    slot=int(_slot.get("id")),
-                    func=int(func.get("id")),
-                    pci_class=int(func.get("class"), 16),
-                    subclass=int(func.get("subclass"), 16),
-                    device=int(func.get("device"), 16),
-                    vendor=int(func.get("vendor"), 16),
-                    revision=int(func.get("revision"), 16),
-                    pci_classname=func.get("classname"),
-                    subclassname=func.get("subclassname"),
-                    devicename=func.get("devicename"),
-                    vendorname=func.get("vendorname"),
+            if scantype == ScanType.NRPE:
+                l = json.loads(blob)
+
+                for info_dict in l:
+                    new_pci = AssetPCIEntry(
+                        asset_run=asset_run,
+                        domain=0,
+                        bus=int(info_dict['bus']),
+                        slot=int(info_dict['slot']),
+                        func=int(info_dict['func']),
+                        pci_class=0,
+                        subclass=0,
+                        device=0,
+                        vendor=0,
+                        revision=int(info_dict['rev']),
+                        pci_classname=info_dict['class'],
+                        subclassname=info_dict['class'],
+                        devicename=info_dict['device'],
+                        vendorname=info_dict['vedor'],
+                    )
+                    new_pci.save()
+
+            elif scantype == ScanType.HM:
+                s = pci_database.pci_struct_to_xml(
+                    pci_database.decompress_pci_info(blob)
                 )
-                new_pci.save()
+                for func in s.findall(".//func"):
+                    _slot = func.getparent()
+                    _bus = _slot.getparent()
+                    _domain = _bus.getparent()
+                    new_pci = AssetPCIEntry(
+                        asset_run=asset_run,
+                        domain=int(_domain.get("id")),
+                        bus=int(_domain.get("id")),
+                        slot=int(_slot.get("id")),
+                        func=int(func.get("id")),
+                        pci_class=int(func.get("class"), 16),
+                        subclass=int(func.get("subclass"), 16),
+                        device=int(func.get("device"), 16),
+                        vendor=int(func.get("vendor"), 16),
+                        revision=int(func.get("revision"), 16),
+                        pci_classname=func.get("classname"),
+                        subclassname=func.get("subclassname"),
+                        devicename=func.get("devicename"),
+                        vendorname=func.get("vendorname"),
+                    )
+                    new_pci.save()
 
         elif runtype == AssetType.DMI:
             if scantype == ScanType.NRPE:
