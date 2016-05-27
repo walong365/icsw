@@ -7,14 +7,8 @@ if __name__=="__main__":
         
         lines = []
         
-        sh_first_line = True
-        
-        for line in str(output).split("\\r\\n"):
-            if sh_first_line:
-                lines.append(line[2:])
-                sh_first_line = False
-            else:
-                lines.append(line)
+        for line in output.decode().split("\r\n"):
+            lines.append(line)
             if line == "End Of Table":
                 break
         
