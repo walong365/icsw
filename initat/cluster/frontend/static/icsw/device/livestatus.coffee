@@ -936,6 +936,7 @@ angular.module(
                     data: {
                         pk_list: angular.toJson(watched_devs)
                     }
+                    show_error: false
                 )
             ]
             if not device_tree?
@@ -948,50 +949,57 @@ angular.module(
                 )
             else
                 _load_device_tree = false
-            $q.all(
+            $q.allSettled(
                 _waiters
             ).then(
                 (result) ->
-                    xml = result[0]
                     if _load_device_tree
                         # DeviceTreeService was requested
-                        device_tree = result[1]
-                        category_tree = result[2]
-                    dev_tree_lut = device_tree.enabled_lut
+                        device_tree = result[1].value
+                        category_tree = result[2].value
                     service_entries = []
-                    $(xml).find("value[name='service_result']").each (idx, node) =>
-                        service_entries = service_entries.concat(angular.fromJson($(node).text()))
                     host_entries = []
-                    $(xml).find("value[name='host_result']").each (idx, node) =>
-                        host_entries = host_entries.concat(angular.fromJson($(node).text()))
                     used_cats = []
-                    for entry in host_entries
-                        icswSaltMonitoringResultService.salt_host(entry, device_tree)
-                    srv_id = 0
-                    for entry in service_entries
-                        srv_id++
-                        entry.$$idx = srv_id
-                        icswSaltMonitoringResultService.salt_service(entry, category_tree)
-                        # host mon result
-                        h_m_result = device_tree.all_lut[entry.custom_variables.device_pk].$$host_mon_result
-                        # link
-                        h_m_result.$$service_list.push(entry)
-                        entry.$$host_mon_result = h_m_result  
-                        if entry.custom_variables and entry.custom_variables.cat_pks?
-                            used_cats = _.union(used_cats, entry.custom_variables.cat_pks)
-
+                    if result[0].state == "fulfilled"
+                        # fill service and host_entries, used cats
+                        xml = result[0].value
+                        $(xml).find("value[name='service_result']").each (idx, node) =>
+                            service_entries = service_entries.concat(angular.fromJson($(node).text()))
+                        $(xml).find("value[name='host_result']").each (idx, node) =>
+                            host_entries = host_entries.concat(angular.fromJson($(node).text()))
+                        for entry in host_entries
+                            icswSaltMonitoringResultService.salt_host(entry, device_tree)
+                        srv_id = 0
+                        for entry in service_entries
+                            srv_id++
+                            entry.$$idx = srv_id
+                            icswSaltMonitoringResultService.salt_service(entry, category_tree)
+                            # host mon result
+                            h_m_result = device_tree.all_lut[entry.custom_variables.device_pk].$$host_mon_result
+                            # link
+                            h_m_result.$$service_list.push(entry)
+                            entry.$$host_mon_result = h_m_result
+                            if entry.custom_variables and entry.custom_variables.cat_pks?
+                                used_cats = _.union(used_cats, entry.custom_variables.cat_pks)
+                    else
+                        # invalidate results
+                        for dev_idx, watchers of watch_dict
+                            if dev_idx of device_tree.all_lut
+                                device_tree.all_lut[dev_idx].$$host_mon_result = undefined
                     for client, _result of result_dict
+                        # signal clients even when no results were received
                         hosts_client = []
                         services_client = []
                         # host_lut_client = {}
                         for dev_idx, watchers of watch_dict
-                            if client in watchers and dev_idx of device_tree.all_lut  # host_lut  # sometimes we don't get data for a device
+                            if client in watchers and dev_idx of device_tree.all_lut
                                 dev = device_tree.all_lut[dev_idx]
                                 if dev.$$host_mon_result?
                                     entry = dev.$$host_mon_result
                                     hosts_client.push(entry)
                                     for check in entry.$$service_list
                                         services_client.push(check)
+                        console.log "up", hosts_client.length, services_client.length, used_cats.length
                         _result.update(hosts_client, services_client, used_cats)
             )
 
