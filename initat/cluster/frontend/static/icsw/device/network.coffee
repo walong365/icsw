@@ -1185,9 +1185,11 @@ angular.module(
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "icswAcessLevelService", "ICSW_URLS", "icswSimpleAjaxCall",
     "blockUI", "ICSW_SIGNALS", "$rootScope", "icswComplexModalService",
+    "icswDeviceTreeService",
 (
     $scope, $compile, $filter, $templateCache, Restangular, $q, icswAcessLevelService, ICSW_URLS, icswSimpleAjaxCall,
-    blockUI, ICSW_SIGNALS, $rootScope, icswComplexModalService
+    blockUI, ICSW_SIGNALS, $rootScope, icswComplexModalService,
+    icswDeviceTreeService,
 ) ->
     icswAcessLevelService.install($scope)
     $scope.clusters = []
@@ -1212,11 +1214,11 @@ angular.module(
         return if _sel.length then "yes (#{_sel.length})" else "no"
 
     $scope.show_cluster = (cluster) ->
-        Restangular.all(ICSW_URLS.REST_DEVICE_TREE_LIST.slice(1)).getList({pks: angular.toJson(cluster.device_pks), ignore_meta_devices: true}).then(
-            (data) ->
+        icswDeviceTreeService.load($scope.$id).then(
+            (device_tree) ->
                 child_scope = $scope.$new(false)
                 child_scope.cluster = cluster
-                child_scope.devices = data
+                child_scope.devices = (device_tree.all_lut[pk] for pk in cluster.device_pks)
                 icswComplexModalService(
                     {
                         message: $compile($templateCache.get("icsw.device.network.cluster.info"))(child_scope)

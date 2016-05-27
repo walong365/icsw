@@ -74,7 +74,7 @@ menu_module = angular.module(
         (new_val) ->
             if new_val.name?
                 $scope.handbook_url_valid = true
-                $scope.handbook_url = "/cluster/doc/#{new_val.name.toLowerCase()}_handbook.pdf"
+                $scope.handbook_url = "/icsw/docu/handbook/#{new_val.name.toLowerCase()}_handbook.pdf"
         true
     )
 

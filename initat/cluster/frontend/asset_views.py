@@ -20,33 +20,34 @@
 
 """ asset views """
 
+import base64
+import csv
 import datetime
 import json
-import csv
+import tempfile
 
 import pytz
-import tempfile
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse
+from django.core.exceptions import ValidationError
 from django.db.models import Q, Count, Case, When, IntegerField, Sum
+from django.http import HttpResponse
 from django.utils import timezone
-from rest_framework.parsers import JSONParser
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from rest_framework.generics import RetrieveAPIView, ListAPIView
-from rest_framework.response import Response
-from django.core.exceptions import ValidationError
 from rest_framework import viewsets
+from rest_framework.response import Response
+
 from initat.cluster.backbone.models import device, AssetPackage, AssetRun, \
     AssetPackageVersion, AssetType, StaticAssetTemplate, user, RunStatus, RunResult, PackageTypeEnum, AssetBatch
 from initat.cluster.backbone.models.dispatch import ScheduleItem
 from initat.cluster.backbone.serializers import AssetRunDetailSerializer, ScheduleItemSerializer, \
-    AssetPackageSerializer, AssetRunOverviewSerializer, AssetProcessEntrySerializer, \
-    StaticAssetTemplateSerializer
-from initat.cluster.frontend.rest_views import rest_logging
-from openpyxl import Workbook
-from openpyxl.writer.excel import save_virtual_workbook
-import base64
+    AssetPackageSerializer, AssetRunOverviewSerializer, StaticAssetTemplateSerializer
+
+try:
+    from openpyxl import Workbook
+    from openpyxl.writer.excel import save_virtual_workbook
+except ImportError:
+    Workbook = None
 
 
 class run_assetrun_for_device_now(View):
@@ -375,7 +376,7 @@ class export_assetruns_to_csv(View):
 
         elif ar.run_type == AssetType.HARDWARE:
             pass
-            #TODO implement me
+            # TODO implement me
 
         elif ar.run_type == AssetType.LICENSE:
             base_header.extend([
@@ -514,6 +515,7 @@ class export_packages_to_csv(View):
                 }
             )
         )
+
 
 class export_scheduled_runs_to_csv(View):
     @method_decorator(login_required)

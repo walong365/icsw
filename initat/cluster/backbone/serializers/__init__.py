@@ -149,42 +149,12 @@ class device_serializer(serializers.ModelSerializer):
     is_meta_device = serializers.BooleanField(read_only=True, required=False)
     is_cluster_device_group = serializers.BooleanField(read_only=True)
     device_group_name = serializers.CharField(read_only=True)
-    # access_level = serializers.SerializerMethodField()
     access_levels = serializers.SerializerMethodField()
     root_passwd_set = serializers.BooleanField(read_only=True)
-    act_partition_table = partition_table_serializer(read_only=True)
-    partition_table = partition_table_serializer()
-    netdevice_set = netdevice_serializer(many=True)
-    monitoring_hint_set = monitoring_hint_serializer(many=True)
-    device_variable_set = device_variable_serializer(many=True)
-    device_mon_location_set = device_mon_location_serializer(many=True)
-    device_config_set = device_config_serializer(many=True)
-    package_device_connection_set = package_device_connection_serializer(many=True)
     latest_contact = serializers.CharField(read_only=True)
     client_version = serializers.CharField(read_only=True)
     monitor_type = serializers.CharField(source="get_monitor_type")
-    snmp_schemes = snmp_scheme_serializer(many=True, read_only=True)
-    DeviceSNMPInfo = DeviceSNMPInfoSerializer(read_only=True)
     is_cd_device = serializers.SerializerMethodField()
-
-    def __init__(self, *args, **kwargs):
-        fields = kwargs.get("context", {}).pop("fields", [])
-        super(device_serializer, self).__init__(*args, **kwargs)
-        _optional_fields = {
-            "act_partition_table", "partition_table", "netdevice_set", "categories", "device_variable_set", "device_config_set",
-            "package_device_connection_set", "latest_contact", "client_version", "monitor_type", "monitoring_hint_set", "device_mon_location_set",
-            "DeviceSNMPInfo", "snmp_schemes", "com_capability_list",
-        }
-        for _to_remove in _optional_fields - set(fields):
-            # in case we have been subclassed
-            if _to_remove in self.fields:
-                self.fields.pop(_to_remove)
-
-    # no longer used / supported
-    # def get_access_level(self, obj):
-    #    if "olp" in self.context:
-    #        return self.context["request"].user.get_object_perm_level(self.context["olp"], obj)
-    #    return -1
 
     def get_access_levels(self, obj):
         return self.context["request"].user.get_object_access_levels(obj)
@@ -213,36 +183,20 @@ class device_serializer(serializers.ModelSerializer):
             "mon_resolve_name", "access_levels", "store_rrd_data",
             # dhcp error
             "dhcp_error",
-            # disk info
-            "partition_table", "act_partition_table",
             # for network view
-            "new_state", "prod_link", "dhcp_mac", "dhcp_write", "netdevice_set",
+            "new_state", "prod_link", "dhcp_mac", "dhcp_write",
             # for categories
             "categories",
-            # variables
-            "device_variable_set",
-            # config
-            "device_config_set",
             # package info
-            "package_device_connection_set", "latest_contact", "client_version",
+            "latest_contact", "client_version",
             # monitor type
             "monitor_type",
-            # monitoring hint
-            "monitoring_hint_set",
-            # device monitoring location
-            "device_mon_location_set",
-            # snmp schemes
-            "snmp_schemes",
-            # snmp info
-            "DeviceSNMPInfo",
             # uuid
             "uuid",
             # active_scan
             "active_scan",
             # cd_device mark
             "is_cd_device",
-            # com capability list
-            "com_capability_list",
         )
         read_only_fields = ("uuid",)
 
@@ -250,36 +204,6 @@ class device_serializer(serializers.ModelSerializer):
 class cd_connection_serializer(serializers.ModelSerializer):
     class Meta:
         model = cd_connection
-
-
-class device_serializer_package_state(device_serializer):
-    class Meta:
-        model = device
-        fields = (
-            "idx", "name", "device_group", "is_meta_device",
-            "comment", "full_name", "domain_tree_node", "enabled",
-            "package_device_connection_set", "latest_contact",
-            "access_levels", "client_version",
-        )
-
-
-class device_serializer_only_boot(serializers.ModelSerializer):
-    class Meta:
-        model = device
-        fields = ("idx", "dhcp_mac", "dhcp_write",)
-
-
-class device_serializer_monitoring(device_serializer):
-    # only used for updating (no read)
-    class Meta:
-        model = device
-        fields = (
-            "monitor_checks", "mon_device_templ", "mon_device_esc_templ", "md_cache_mode",
-            "act_partition_table", "enable_perfdata", "flap_detection_enabled",
-            "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
-            "mon_resolve_name", "access_levels", "store_rrd_data",
-        )
-        read_only_fields = ("act_partition_table",)
 
 
 class cd_connection_serializer_boot(serializers.ModelSerializer):

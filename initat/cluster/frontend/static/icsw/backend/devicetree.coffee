@@ -598,10 +598,10 @@ angular.module(
         _fetch_device: (pk, defer, msg) =>
             Restangular.all(ICSW_URLS.REST_DEVICE_TREE_LIST.slice(1)).getList(
                 {
-                    ignore_cdg: false
-                    tree_mode: true
-                    with_categories: true
-                    ignore_disabled: true
+                    # ignore_cdg: false
+                    # tree_mode: true
+                    # with_categories: true
+                    # ignore_disabled: true
                     pks: angular.toJson([pk])
                 }
             ).then(
@@ -1051,11 +1051,11 @@ angular.module(
         [
             ICSW_URLS.REST_DEVICE_TREE_LIST
             {
-                ignore_cdg: false
-                tree_mode: true
-                all_devices: true
-                with_categories: true
-                ignore_disabled: true
+                # ignore_cdg: false
+                # tree_mode: true
+                # all_devices: true
+                # with_categories: true
+                # ignore_disabled: true
             }
         ]
         [

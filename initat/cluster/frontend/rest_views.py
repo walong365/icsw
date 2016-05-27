@@ -35,7 +35,7 @@ from initat.cluster.backbone.models import get_related_models, get_change_reset_
     ext_license_usage_coarse, peer_information
 from initat.cluster.backbone.serializers import device_serializer, \
     device_selection_serializer, partition_table_serializer_save, partition_disc_serializer_save, \
-    partition_disc_serializer_create, device_config_help_serializer, device_serializer_only_boot, \
+    partition_disc_serializer_create, device_config_help_serializer, \
     network_with_ip_serializer, ComCapabilitySerializer, peer_information_serializer
 from rest_framework import mixins, generics, status, viewsets, serializers
 import rest_framework
@@ -588,7 +588,15 @@ class csw_object_list(viewsets.ViewSet):
         return Response(_ser.data)
 
 
-class device_tree_mixin(object):
+class device_tree_list(
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin,
+    generics.GenericAPIView,
+):
+    authentication_classes = (SessionAuthentication,)
+    permission_classes = (IsAuthenticated,)
+    model = device
+
     def _get_post_boolean(self, name, default):
         if name in self.request.query_params:
             p_val = self.request.query_params[name]
@@ -600,52 +608,10 @@ class device_tree_mixin(object):
             return default
 
     @rest_logging
-    def _get_serializer_context(self):
-        ctx = {"request": self.request}
-        if self.request.query_params.get("olp", ""):
-            ctx["olp"] = self.request.query_params["olp"]
-        _fields = []
-        if self._get_post_boolean("with_network", False):
-            _fields.append("netdevice_set")
-        if self._get_post_boolean("with_categories", False):
-            _fields.append("categories")
-        if self._get_post_boolean("monitor_server_type", False):
-            _fields.append("monitor_type")
-        if _fields:
-            ctx["fields"] = _fields
-        return ctx
-
-
-class device_tree_detail(detail_view, device_tree_mixin):
-    model = device
-
-    @rest_logging
     def get_serializer_context(self):
-        return self._get_serializer_context()
-
-    @rest_logging
-    def get_serializer_class(self):
-        if self._get_post_boolean("tree_mode", False):
-            return device_serializer
-        if self._get_post_boolean("only_boot", False):
-            return device_serializer_only_boot
-        else:
-            return device_serializer
-
-
-class device_tree_list(
-    mixins.ListModelMixin,
-    mixins.CreateModelMixin,
-    generics.GenericAPIView,
-    device_tree_mixin,
-):
-    authentication_classes = (SessionAuthentication,)
-    permission_classes = (IsAuthenticated,)
-    model = device
-
-    @rest_logging
-    def get_serializer_context(self):
-        return self._get_serializer_context()
+        return {
+            "request": self.request,
+        }
 
     @rest_logging
     def get_serializer_class(self):
@@ -696,81 +662,24 @@ class device_tree_list(
             _q = _q.filter(meta_list | device_list)
             if not self.request.user.has_perm("backbone.device.all_devices"):
                 _q = _q.filter(Q(device_group__in=self.request.user.allowed_device_groups.all()))
-        if self._get_post_boolean("monitor_server_type", False):
-            _q = _q.filter(Q(device_config__config__name__in=["monitor_server", "monitor_slave"]))
-        elif self._get_post_boolean("all_mother_servers", False):
-            _q = _q.filter(Q(device_config__config__name__in=["mother_server", "mother"]))
-        elif self._get_post_boolean("all_devices", False):
-            pass
+        if "pks" in self.request.query_params:
+            dev_keys = json.loads(self.request.query_params["pks"])
         else:
-            # flags
-            # ignore meta devices (== device groups)
-            ignore_md = self._get_post_boolean("ignore_meta_devices", False)
-            # ignore the cluster device group
-            ignore_cdg = self._get_post_boolean("ignore_cdg", True)
-            # always add the meta_devices
-            with_md = self._get_post_boolean("with_meta_devices", False)
-            if with_md:
-                ignore_md = False
-            if "pks" in self.request.query_params:
-                dev_keys = json.loads(self.request.query_params["pks"])
-                if self._get_post_boolean("cd_connections", False):
-                    cd_con_pks = set(
-                        sum(
-                            [
-                                [
-                                    _v[0], _v[1]
-                                ] for _v in cd_connection.objects.all().values_list("parent", "child")
-                            ],
-                            []
-                        )
-                    )
-                    dev_keys = list(set(dev_keys) | cd_con_pks)
-            else:
-                # only selected ones
-                # normally (frontend in-sync with backend) meta-devices have the same selection state
-                # as their device_groups, devg_keys are in fact redundant ...
-                if self._get_post_boolean("ignore_selection", False):
-                    # take all devices the user is allowed to access
-                    dev_keys = device.objects.all().values_list("pk", flat=True)
-                else:
-                    dev_keys = [key.split("__")[1] for key in self.request.session.get("sel_list", []) if key.startswith("dev_")]
-            if ignore_cdg:
-                # ignore cluster device group
-                _q = _q.exclude(Q(device_group__cluster_device_group=True))
-            if ignore_md:
-                # ignore all meta-devices
-                _q = _q.exclude(Q(is_meta_device=True))
-            if with_md:
-                md_pks = set(device.objects.filter(Q(pk__in=dev_keys)).values_list("device_group__device", flat=True))
-                dev_keys.extend(md_pks)
-                if not ignore_cdg:
-                    dev_keys.extend(device.objects.filter(Q(device_group__cluster_device_group=True)).values_list("pk", flat=True))
-            _q = _q.filter(Q(pk__in=dev_keys))
-        if not self._get_post_boolean("ignore_disabled", False):
-            _q = _q.filter(Q(enabled=True) & Q(device_group__enabled=True))
-        _q = _q.select_related(
+            # all devices
+            dev_keys = device.objects.all().values_list("pk", flat=True)
+        _q = _q.filter(
+            Q(pk__in=dev_keys)
+        ).select_related(
             "domain_tree_node",
             "device_group",
         ).prefetch_related(
-            "snmp_schemes__snmp_scheme_vendor",
-            "com_capability_list",
-            "DeviceSNMPInfo",
-            "snmp_schemes__snmp_scheme_tl_oid_set",
+            "categories"
+        ).order_by(
+            "-device_group__cluster_device_group",
+            "device_group__name",
+            "-is_meta_device",
+            "name"
         )
-        if self._get_post_boolean("with_categories", False):
-            _q = _q.prefetch_related("categories")
-        if self._get_post_boolean("mark_cd_devices", False):
-            _q = _q.prefetch_related(
-                "snmp_schemes",
-            )
-        if self._get_post_boolean("with_network", False):
-            _q = _q.prefetch_related(
-                "netdevice_set__net_ip_set__network__network_type",
-                "netdevice_set__net_ip_set__network__network_device_type",
-            )
-        # ordering: at first cluster device group, then by group / is_meta_device / name
-        _q = _q.order_by("-device_group__cluster_device_group", "device_group__name", "-is_meta_device", "name")
         logger.info("device_tree_list has {}".format(logging_tools.get_plural("entry", _q.count())))
         # print _q.count(), self.request.query_params, self.request.session.get("sel_list", [])
         return _q
