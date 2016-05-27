@@ -999,7 +999,6 @@ angular.module(
                                     hosts_client.push(entry)
                                     for check in entry.$$service_list
                                         services_client.push(check)
-                        console.log "up", hosts_client.length, services_client.length, used_cats.length
                         _result.update(hosts_client, services_client, used_cats)
             )
 
