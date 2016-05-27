@@ -50,4 +50,14 @@ SET nscp_path=nscp
 "%WIX_BIN_PATH%candle.exe" Components.wxs
 "%WIX_BIN_PATH%candle.exe" HostEditingDlg.wxs
 "%WIX_BIN_PATH%light.exe" -ext WixUIExtension ICSW_Windows_Client.wixobj Components.wixobj HostEditingDlg.wixobj -o ICSW_Windows_Client.msi
+
+:: Cleanup temporary files
+RMDIR /s /q .\tmp
+RMDIR /s /q .\nscp
+DEL .\Components.wixobj
+DEL .\Components.wxs
+DEL .\ICSW_Windows_Client.wixobj
+DEL .\ICSW_Windows_Client.wixpdb
+DEL .\HostEditingDlg.wixobj
+
 @pause
