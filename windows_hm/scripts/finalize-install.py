@@ -74,6 +74,8 @@ list-software-py3=python\python.exe scripts\python\list-software-py3.py
 list-hardware-py3=python\python.exe scripts\python\list-hardware-py3.py
 ;
 list-hardware-lstopo-py3=python\python.exe scripts\python\list-hardware-lstopo-py3.py
+;
+dmiinfo=python\python.exe scripts\python\list-dmiinfo-py3.py
 
 [NRPE]
 timeout=6000
