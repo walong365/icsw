@@ -263,7 +263,11 @@ def get_base_assets_from_raw_result(asset_run,):
                 new_pci.save()
 
         elif runtype == AssetType.DMI:
-            _xml = dmi_tools.decompress_dmi_info(blob)
+            if scantype == ScanType.NRPE:
+                lines = json.loads(blob)
+                _xml = dmi_tools.dmi_struct_to_xml(dmi_tools.parse_dmi_output(lines))
+            elif scantype == ScanType.HM:
+                _xml = dmi_tools.decompress_dmi_info(blob)
             head = AssetDMIHead(
                 asset_run=asset_run,
                 version=_xml.get("version"),
