@@ -41,8 +41,7 @@ COPY .\nscp\python\pywintypes3%WINPYTH_MAJOR%.dll .\nscp\
 COPY .\scripts\* .\nscp\scripts\python\
 COPY .\scripts\finalize-install.py .\nscp\
 
-RENAME .\tmp\pciutils-%PCIUTILS_VERSION%-win32 .\tmp\pciutils
-MOVE .\tmp\pciutils .\nscp\scripts\python\
+MOVE .\tmp\pciutils-%PCIUTILS_VERSION%-win32 .\nscp\scripts\python\pciutils
 
 SET nscp_path=nscp
 "%WIX_BIN_PATH%heat.exe" dir nscp -cg NscpFiles -dr INSTALLDIR -gg -scom -sreg -sfrag -srd -var env.nscp_path -out "Components.wxs"
