@@ -16,6 +16,17 @@ if __name__=="__main__":
                     info_dict = {}
             if line.startswith("Slot:"):
                 info_dict['slot'] = line.split("\t", 1)[1]
+                
+                comps = info_dict['slot'].split(":")
+                bus = comps[0]
+                
+                comps = comps[1].split(".")
+                slot = comps[0]
+                func = comps[1]
+                
+                info_dict['bus'] = bus
+                info_dict['slot'] = slot
+                info_dict['func'] = func               
             elif line.startswith("Class:"):
                 info_dict['class'] = line.split("\t", 1)[1]
             elif line.startswith("Vendor:"):
