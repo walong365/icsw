@@ -36,9 +36,10 @@ menu_module = angular.module(
     # init service types
     $scope.ICSW_URLS = ICSW_URLS
     $scope.initProduct = initProduct
-    # flag: show navbar
-    $scope.show_navbar = false
-    $scope.CURRENT_USER = undefined
+    $scope.struct = {
+        # current user
+        current_user: undefined
+    }
     $scope.HANDBOOK_PDF_PRESENT = false
     $scope.HANDBOOK_CHUNKS_PRESENT = false
     $scope.HANDBOOK_PAGE = "---"
@@ -97,8 +98,7 @@ menu_module = angular.module(
             if icswUserService.user_present()
                 icswUserService.logout()
             icswUserService.force_logout()
-            $scope.CURRENT_USER = undefined
-            $scope.show_navbar = false
+            $scope.struct.current_user = undefined
     )
     route_counter = 0
     # load license tree
@@ -116,12 +116,10 @@ menu_module = angular.module(
             icswUserService.logout().then(
                 (json) ->
                     blockUI.stop()
-                    $scope.CURRENT_USER = undefined
-                    $scope.show_navbar = false
+                    $scope.struct.current_user = undefined
             )
         else if not from_main and to_main
-            $scope.CURRENT_USER = icswUserService.get()
-            $scope.show_navbar = true
+            $scope.struct.current_user = icswUserService.get()
             # console.log to_params, $scope
         else
             # we allow one gentle transfer
@@ -267,7 +265,7 @@ menu_module = angular.module(
     icswMenuProgressService, $state
 ) ->
     # console.log icswAcessLevelService
-    {input, ul, li, a, span, h4} = React.DOM
+    {input, ul, li, a, span, h4, div} = React.DOM
     react_dom = ReactDOM
     menu_line = React.createClass(
         displayName: "menuline"
@@ -433,9 +431,6 @@ menu_module = angular.module(
                 acls: @props.acls
             }
 
-        set_user: (user) ->
-            @setState({user: user})
-
         update_dimensions: () ->
             @setState(
                 {
@@ -451,16 +446,6 @@ menu_module = angular.module(
             # remove eventhandler
             $(window).off("resize", @update_dimensions)
     
-        componentDidMount: () ->
-            mb_height = $(react_dom.findDOMNode(@)).parents("nav").height()
-            # console.log "fMENUBAR_HEIGHT=", mb_height
-            $("body").css("padding-top", mb_height + 1)
-
-        componentDidUpdate: () ->
-            mb_height = $(react_dom.findDOMNode(@)).parents("nav").height()
-            # console.log "uMENUBAR_HEIGHT=", mb_height
-            $("body").css("padding-top", mb_height + 1)
-
         render: () ->
             menus = []
             valid_state_names = []
@@ -504,7 +489,7 @@ menu_module = angular.module(
             # todo: check for service_type
             user = @state.user
             acls = @state.acls
-            if user?
+            if user? and acls?
                 extra_menus = (menu.get_react(user, acls) for menu in _.orderBy(menus, "ordering"))
                 _res = ul(
                     {key: "topmenu", className: "nav navbar-nav"}
@@ -531,34 +516,21 @@ menu_module = angular.module(
         link: (scope, el, attrs) ->
             _user = undefined
             _acls = undefined
-            _element = undefined
-            _render = () ->
-                if _acls
-                    if not _element?
-                        _element = ReactDOM.render(
-                            React.createElement(
-                                icswReactMenuFactory
-                                {
-                                    user: _user
-                                    acls: _acls
-                                }
-                            )
-                            el[0]
-                        )
-                    else
-                        # console.log _element, "E"
-                        _element.set_user(_user)
+            _element = ReactDOM.render(
+                React.createElement(
+                    icswReactMenuFactory
+                    {
+                        user: _user
+                        acls: _acls
+                    }
+                )
+                el[0]
+            )
             $rootScope.$on(ICSW_SIGNALS("ICSW_USER_CHANGED"), (event, user) ->
-                # console.log "uc", user
-                _user = user
-                # console.log "user_render"
-                _render()
+                _element.setState({user: user})
             )
             $rootScope.$on(ICSW_SIGNALS("ICSW_ACLS_CHANGED"), (event, acls) ->
-                # console.log "ac", acls
-                _acls = acls
-                # console.log "acls_render"
-                _render()
+                _element.setState({acls: acls})
             )
             $rootScope.$on(ICSW_SIGNALS("ICSW_MENU_PROGRESS_BAR_CHANGED"), (event, settings) ->
                 # console.log "mps", settings

@@ -679,7 +679,8 @@ class device(models.Model):
     def __unicode__(self):
         return u"{}{}".format(
             self.name,
-            u" ({})".format(self.comment) if self.comment else "")
+            u" ({})".format(self.comment) if self.comment else ""
+        )
 
     class CSW_Meta:
         permissions = (
@@ -696,7 +697,9 @@ class device(models.Model):
             ("change_location", "Change device location", True),
             ("change_category", "Change device category", True),
             ("show_status_history", "Access to status history", True),
-            ("discovery_server", "Access to discovery server", False)
+            ("discovery_server", "Access to discovery server", False),
+            ("assets", "Access Asset Information", True),
+            ("dispatch_settings", "Changed dispatch settings", True),
         )
         fk_ignore_list = [
             "mon_trace", "netdevice", "device_variable", "device_config", "quota_capable_blockdevice", "DeviceSNMPInfo", "DeviceLogEntry",

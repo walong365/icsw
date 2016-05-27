@@ -54,8 +54,7 @@ monitoring_basic_module = angular.module(
                     icon: "fa-bars"
                     ordering: 0
         }
-    )
-    $stateProvider.state(
+    ).state(
         "main.monitorredirect", {
             url: "/monitorredirect"
             template: "<h2>Redirecting...</h2>"
@@ -66,6 +65,7 @@ monitoring_basic_module = angular.module(
                     name: "Icinga"
                     icon: "fa-share-alt"
                     ordering: 120
+                rights: ["mon_check_command.redirect_to_icinga"]
             resolve:
                 redirect: ["$window", "icswSimpleAjaxCall", "ICSW_URLS", "$q", ($window, icswSimpleAjaxCall, ICSW_URLS, $q) ->
                     _defer = $q.defer()
@@ -81,8 +81,7 @@ monitoring_basic_module = angular.module(
                     return _defer.promise
                 ]
         }
-    )
-    $stateProvider.state(
+    ).state(
         "main.monitorb0", {
             url: "/monitorb0"
             icswData:
@@ -94,6 +93,7 @@ monitoring_basic_module = angular.module(
                     labelClass: "label-success"
                     ordering: 101
                     preSpacer: true
+                rights: ["mon_check_command.create_config"]
             resolve:
                 redirect: ["icswSimpleAjaxCall", "ICSW_URLS", "$q", "blockUI", (icswSimpleAjaxCall, ICSW_URLS, $q, blockUI) ->
                     console.log "REDIR"
@@ -116,8 +116,7 @@ monitoring_basic_module = angular.module(
                     return _defer.promise
                 ]
         }
-    )
-    $stateProvider.state(
+    ).state(
         "main.monitorb1", {
             url: "/monitorb1"
             icswData:
@@ -128,6 +127,7 @@ monitoring_basic_module = angular.module(
                     icon: "fa-share-alt"
                     labelClass: "label-warning"
                     ordering: 102
+                rights: ["mon_check_command.create_config"]
             resolve:
                 redirect: ["icswSimpleAjaxCall", "ICSW_URLS", "$q", "blockUI", (icswSimpleAjaxCall, ICSW_URLS, $q, blockUI) ->
                     _defer = $q.defer()
@@ -148,8 +148,7 @@ monitoring_basic_module = angular.module(
                     return _defer.promise
                 ]
         }
-    )
-    $stateProvider.state(
+    ).state(
         "main.monitorb2", {
             url: "/monitorb2"
             icswData:
@@ -160,6 +159,7 @@ monitoring_basic_module = angular.module(
                     labelClass: "label-danger"
                     ordering: 103
                     postSpacer: true
+                rights: ["mon_check_command.create_config"]
             resolve:
                 redirect: ["icswSimpleAjaxCall", "ICSW_URLS", "$q", "blockUI", (icswSimpleAjaxCall, ICSW_URLS, $q, blockUI) ->
                     _defer = $q.defer()

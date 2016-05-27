@@ -32,6 +32,7 @@ device_asset_module = angular.module(
             templateUrl: 'icsw/device/asset/overview'
             icswData:
                 pageTitle: "Device Assets"
+                rights: ["device.assets"]
                 menuEntry:
                     menukey: "dev"
                     icon: "fa-code"

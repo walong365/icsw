@@ -38,6 +38,7 @@ rms_module = angular.module(
                 pageTitle: "RMS Overview"
                 licenses: ["rms"]
                 service_types: ["rms-server"]
+                rights: ["user.rms_show"]
                 menuHeader:
                     key: "rms"
                     name: "RMS"

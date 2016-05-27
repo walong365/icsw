@@ -19,18 +19,16 @@
 #
 """ inject addons in already compiled main.html """
 
-from optparse import make_option
-
-from django.core.management.base import BaseCommand
-from django.conf import settings
-from initat.tools import logging_tools
-import sys
 import os
 import re
+import sys
+from optparse import make_option
+
+from django.conf import settings
+from django.core.management.base import BaseCommand
 from lxml import etree
-from django.db.models import Q
-from initat.cluster.backbone import factories
-from initat.cluster.backbone.models import device_group
+
+from initat.tools import logging_tools
 
 
 class FileModify(object):

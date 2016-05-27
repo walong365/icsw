@@ -423,6 +423,8 @@ class mon_check_command(models.Model):
         permissions = (
             ("setup_monitoring", "Change monitoring settings", False),
             ("show_monitoring_dashboard", "Show monitoring dashboard", False),
+            ("create_config", "Create monitoring config", False),
+            ("redirect_to_icinga", "Redirect to Icinga backend", False),
         )
         fk_ignore_list = [
             "mon_icinga_log_raw_service_alert_data",

@@ -299,6 +299,7 @@ class csw_permission(models.Model):
     content_type = models.ForeignKey(ContentType)
     # true if this right can be used for object-level permissions
     valid_for_object_level = models.BooleanField(default=True)
+    created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         unique_together = (("content_type", "codename"),)
@@ -314,12 +315,16 @@ class csw_permission(models.Model):
             object_pk=cur_pk,
         )
 
+    @staticmethod
+    def scope(self):
+        return "G/O" if self.valid_for_object_level else "G"
+
     def __unicode__(self):
         return u"{} | {} | {} | {}".format(
             self.content_type.app_label or "backbone",
             self.content_type.model,
             self.name,
-            "G/O" if self.valid_for_object_level else "G",
+            self.scope,
         )
 
 
@@ -867,6 +872,8 @@ class user(models.Model):
             ("modify_category_tree", "modify category tree", False),
             ("rms_operator", "change RMS settings", True),
             ("snapshots", "Show database history (snapshots)", False),
+            ("rms_show", "Show RMS info", False),
+            ("license_liveview", "Show LiveView of Licenses", False),
         )
         # foreign keys to ignore
         fk_ignore_list = [

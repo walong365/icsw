@@ -46,6 +46,7 @@ monitoring_device_module = angular.module(
                     name: "Device settings"
                     icon: "fa-laptop"
                     ordering: 20
+                rights: ["device.dispatch_settings"]
         }
     ).state(
         "main.schedoverview", {
@@ -59,6 +60,7 @@ monitoring_device_module = angular.module(
                     name: "Settings"
                     icon: "fa-gears"
                     ordering: 10
+                rights: ["dispatcher_setting.setup"]
         }
     ).state(
         "main.statictemplates", {
@@ -72,6 +74,7 @@ monitoring_device_module = angular.module(
                     name: "Static Asset templates"
                     icon: "fa-reorder"
                     ordering: 30
+                rights: ["staticassettemplate.setup"]
         }
     )
 ]).service("icswDispatcherSettingTree",

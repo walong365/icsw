@@ -124,6 +124,11 @@ class DispatcherSetting(models.Model):
     # creation date
     date = models.DateTimeField(auto_now_add=True)
 
+    class CSW_Meta:
+        permissions = (
+            ("setup", "Change Dispatch settings", False),
+        )
+
 
 @receiver(signals.pre_save, sender=DispatcherSetting)
 def DispatcherSettingPreSave(sender, **kwargs):

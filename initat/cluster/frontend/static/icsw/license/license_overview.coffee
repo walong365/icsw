@@ -91,6 +91,7 @@ lic_module = angular.module("icsw.license.overview",
                 pageTitle: "License Liveview"
                 licenses: ["ext_license"]
                 service_types: ["rms-server"]
+                rights: ["user.license_liveview"]
                 menuEntry:
                     menukey: "rms"
                     name: "License liveview"

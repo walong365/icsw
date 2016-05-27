@@ -5,39 +5,49 @@
         icsw-element-size="size"
         ng-controller="icswMenuBaseCtrl"
         ng-cloak
-        ng-show="show_navbar"
-        ng-cloak
     >
-        <icsw-menu-progress-bars user="CURRENT_USER"></icsw-menu-progress-bars>
+        <icsw-menu-progress-bars user="struct.current_user"></icsw-menu-progress-bars>
 
-        <ul class="nav navbar-nav">
+        <ul class="nav navbar-nav" ng-if="struct.current_user">
             <li>
                 <a ui-sref="main.dashboard"><span class="fa fa-home fa-lg" title="Dashboard"></span></a>
             </li>
         </ul>
 
-        <icsw-menu-directive user="CURRENT_USER"></icsw-menu-directive>
+        <icsw-menu-directive user="struct.current_user"></icsw-menu-directive>
 
         <ul class="nav navbar-nav navbar-right">
             <li>
                 <a class="dropdown-toggle" data-toggle="dropdown">
-                    <span class="fa fa-user fa-lg fa_top"></span>
-                    <span title="{{ CURRENT_USER.full_name }}">{{ CURRENT_USER.login }}</span>
-                    <span ng-show="CURRENT_USER.login != CURRENT_USER.login_name"> (via alias {{ CURRENT_USER.login_name }})</span>
-                    &nbsp;&nbsp;<icsw-background-job-info></icsw-background-job-info>
+                    <span ng-if="struct.current_user">
+                        <span class="fa fa-user fa-lg fa_top"></span>
+                        <span title="{{ struct.current_user.full_name }}">{{ struct.current_user.login }}</span>
+                        <span ng-show="struct.current_user.login != struct.current_user.login_name"> (via alias {{ struct.current_user.login_name }})</span>
+                        &nbsp;&nbsp;<icsw-background-job-info></icsw-background-job-info>
+                    </span>
                     <span class="fa fa-sort-down pull-right"></span>&nbsp;&nbsp;
                 </a>
                 <ul class="dropdown-menu">
-                    <li>
+                    <li ng-if="struct.current_user">
                         <a ui-sref="main.useraccount">
                             <span class="fa fa-info-circle fa_icsw"></span>
                             Account Info
                         </a>
                     </li>
-                    <li ng-show="has_menu_permission('backbone.user.admin')"><a href="{{ ICSW_URLS.ADMIN_INDEX }}"><span class="fa fa-wrench fa_icsw"></span>Admin</a></li>
-                    <li><a ui-sref="logout"><span class="fa fa-sign-out fa_icsw"></span>Logout</a></li>
-                    <li class="divider"></li>
-                    <li>
+                    <li ng-show="has_menu_permission('backbone.user.admin')">
+                        <a href="{{ ICSW_URLS.ADMIN_INDEX }}">
+                            <span class="fa fa-wrench fa_icsw"></span>
+                            Admin
+                        </a>
+                    </li>
+                    <li ng-if="struct.current_user">
+                        <a ui-sref="logout">
+                            <span class="fa fa-sign-out fa_icsw"></span>
+                            Logout
+                        </a>
+                    </li>
+                    <li class="divider" ng-if="struct.current_user"></li>
+                    <li ng-if="struct.current_user">
                         <a ui-sref="main.serverinfo">
                             <span class="fa fa-info fa_icsw"></span>
                             Server information
@@ -71,5 +81,4 @@
             <img height="42px" ng-attr-src="{{ initProduct.menu_gfx_url }}" ng-click="redirect_to_init()" style="cursor: pointer" title="{{ initProduct.name }}" alt="{{ initProduct.name }}"/>
         </li>
     </ul>
-
 </script>

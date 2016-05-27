@@ -448,6 +448,7 @@ class form_entry(object):
     def __init__(self, content, **kwargs):
         self.content = content
         self.left = True
+        self.center = False
         self.min_width = 0
         self.pre_str = ""
         self.post_str = ""
@@ -495,8 +496,14 @@ class form_entry(object):
         if max_len is None:
             form_str = u"{{:{}}}".format(form_str)
         else:
+            if self.left:
+                _f = "<"
+            elif self.center:
+                _f = "^"
+            else:
+                _f = ">"
             form_str = u"{{:{}{:d}{}}}".format(
-                "<" if self.left else ">",
+                _f,
                 max_len,
                 form_str,
             )
@@ -509,6 +516,11 @@ class form_entry(object):
 class form_entry_right(form_entry):
     def __init__(self, content, **kwargs):
         form_entry.__init__(self, content, left=False, **kwargs)
+
+
+class form_entry_center(form_entry):
+    def __init__(self, content, **kwargs):
+        form_entry.__init__(self, content, left=False, center=True, **kwargs)
 
 
 class new_form_list(object):

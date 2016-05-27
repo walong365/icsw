@@ -825,6 +825,11 @@ class StaticAssetTemplate(models.Model):
         nt.save()
         return nt
 
+    class CSW_Meta:
+        permissions = (
+            ("setup", "Change StaticAsset templates", False),
+        )
+
 
 class StaticAssetTemplateField(models.Model):
     idx = models.AutoField(primary_key=True)
