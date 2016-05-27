@@ -101,28 +101,28 @@ angular.module(
     ).state(
         "main.livestatus.Everything"
         {
-            url: "/livestatus/ad1"
+            url: "/livestatus/lo1"
             templateUrl: "icsw.device.livestatus.everything"
             icswData: {}
         }
     ).state(
         "main.livestatus.BurstTable"
         {
-            url: "/livestatus/aq1"
+            url: "/livestatus/lo2"
             templateUrl: "icsw.device.livestatus.bursttable"
             icswData: {}
         }
     ).state(
         "main.livestatus.OnlyTable"
         {
-            url: "/livestatus/aq1"
+            url: "/livestatus/lo3"
             templateUrl: "icsw.device.livestatus.onlytable"
             icswData: {}
         }
     ).state(
         "main.livestatus.MapWithBurst"
         {
-            url: "/livestatus/aq1"
+            url: "/livestatus/lo4"
             templateUrl: "icsw.device.livestatus.mapwithburst"
             icswData: {}
         }
@@ -703,11 +703,17 @@ angular.module(
 
     check_layouts = () ->
         $scope.struct.layouts.length = 0
+        $scope.struct.current_layout = $state.current
+        _change_state = true
         for state in $state.get()
             if state.name.match(LS_KEY) and state.name != LS_KEY
                 state.icswData.short_name = state.name.slice(LS_KEY.length + 1)
                 $scope.struct.layouts.push(state)
-        $scope.activate_layout($scope.struct.layouts[0])
+                if state.url == $scope.struct.current_layout.url
+                    # url is in local states, no change
+                    _change_state = false
+        if _change_state
+            $scope.activate_layout($scope.struct.layouts[0])
 
     check_layouts()
 
