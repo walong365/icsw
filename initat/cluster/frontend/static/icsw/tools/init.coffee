@@ -196,34 +196,40 @@ angular.module(
     _acls = undefined
     _struct = {
         allowed_states: []
+        quicklink_states: [] 
     }
 
     _check_rights = () ->
         _struct.allowed_states.length = 0
+        _struct.quicklink_states.length = 0
         if _init
             for state in _struct.menu_states
-                entry = state.icswData
+                data = state.icswData
                 _add = true
-                if entry.rights?
-                    if angular.isFunction(entry.rights)
+                if data.rights?
+                    if angular.isFunction(data.rights)
                         if _user?
-                            _add = entry.rights(_user, _acls)
+                            _add = data.rights(_user, _acls)
                         else
                             _add = false
                     else
-                        # console.log entry.rights
-                        _add = icswAcessLevelService.has_all_menu_permissions(entry.rights)
-                    if entry.licenses? and _add
-                        _add = icswAcessLevelService.has_all_valid_licenses(entry.licenses)
+                        # console.log data.rights
+                        _add = icswAcessLevelService.has_all_menu_permissions(data.rights)
+                    if data.licenses? and _add
+                        _add = icswAcessLevelService.has_all_valid_licenses(data.licenses)
                         if not _add
-                            console.warn "license(s) #{entry.licenses} missing"
-                    if entry.service_types? and _add
-                        _add = icswAcessLevelService.has_all_service_types(entry.service_types)
+                            console.warn "license(s) #{data.licenses} missing"
+                    if data.service_types? and _add
+                        _add = icswAcessLevelService.has_all_service_types(data.service_types)
                         if not _add
-                            console.warn "service_type(s) #{entry.service_types} missing"
-                entry.$$allowed = _add
-                if entry.$$allowed
-                    _struct.allowed_states.push(entry)
+                            console.warn "service_type(s) #{data.service_types} missing"
+                data.$$allowed = _add
+                if data.$$allowed
+                    _struct.allowed_states.push(state)
+                    if data.valid_for_quicklink
+                        _struct.quicklink_states.push(state)
+            $rootScope.$emit(ICSW_SIGNALS("ICSW_ROUTE_RIGHTS_CHANGED"))
+                    
 
     init_struct = () ->
         menu_list = []
@@ -243,7 +249,7 @@ angular.module(
                         quicklink_states.push(state)
         _struct.menu_header_states = menu_list
         _struct.menu_states = menu_states
-        _struct.quicklink_states = quicklink_states
+        _struct._quicklink_states = quicklink_states
         _init = true
         _check_rights()
 
@@ -385,6 +391,8 @@ angular.module(
         ICSW_PACKAGE_INSTALL_LIST_CHANGED: "icsw.package.install.list.changed"
         # license tree loaded
         ICSW_LICENSE_DATA_LOADED: "icsw.license.data.loaded"
+        # route rights updatred
+        ICSW_ROUTE_RIGHTS_CHANGED: "icsw.route.rights.changed"
         # local signals (for local $emit / $on)
 
         _ICSW_CLOSE_USER_GROUP: "_icsw.close.user.group"

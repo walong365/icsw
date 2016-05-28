@@ -349,9 +349,10 @@ menu_module = angular.module(
             if _items.length
                 state = @props.state
                 header = state.icswData.menuHeader
+                key= "mh_#{state.icswData.key}"
                 _res = li(
                     {
-                        key: "menu_" + header.name
+                        key: "menu_" + key
                     }
                     [
                         a(
@@ -359,18 +360,18 @@ menu_module = angular.module(
                                 className: "dropdown-toggle"
                                 # dataToggle is not working
                                 "data-toggle": "dropdown"
-                                key: "menu.head_" + header.name
+                                key: "menu.head_" + key
                             }
                             [
                                 span(
                                     {
                                         className: "fa #{header.icon} fa-lg fa_top"
-                                        key: "span_" + header.name
+                                        key: "span_" + key
                                     }
                                 )
                                 span(
                                     {
-                                        key: "text_" + header.name
+                                        key: "text_" + key
                                     }
                                     header.name
                                 )
@@ -379,9 +380,9 @@ menu_module = angular.module(
                         ul(
                             {
                                 className: "dropdown-menu"
-                                key: "ul_" + header.name
+                                key: "ul_" + key
                             }
-                            _items
+                            # _items
                         )
                     ]
                 )
@@ -402,6 +403,7 @@ menu_module = angular.module(
             return React.createElement(
                 menu_header
                 {
+                    key: @state.icswData.key + "_top"
                     state: @state
                     entries: _.orderBy(@entries, "icswData.menuEntry.ordering")
                 }
@@ -409,15 +411,6 @@ menu_module = angular.module(
     
     menu_comp = React.createClass(
         displayName: "menubar"
-        propTypes: {
-            user: React.PropTypes.object
-            acls: React.PropTypes.object
-        }
-        getInitialState: () ->
-            return {
-                user: @props.user
-                acls: @props.acls
-            }
 
         update_dimensions: () ->
             @setState(
@@ -426,6 +419,14 @@ menu_module = angular.module(
                     height: $(window).height()
                 }
             )
+        getInitialState: () ->
+            return {
+                counter: 0
+            }
+
+        force_redraw: () ->
+            @setState({counter: @state.counter + 1})
+
         componentWillMount: () ->
             # register eventhandler
             $(window).on("resize", @update_dimensions)
@@ -447,16 +448,18 @@ menu_module = angular.module(
                     console.error("No menu with name #{_entry.menukey} found")
 
             # todo: check for service_type
-            # user = @state.user
-            # acls = @state.acls
-            # if user? and acls?
-            #    # extra_menus = (menu.get_react(user, acls) for menu in _.orderBy(menus, "ordering"))
-            _res = ul(
-                {key: "topmenu", className: "nav navbar-nav"}
-                (menu.get_react() for menu in _.orderBy(menus, "state.icswData.menuHeader.ordering"))
-            )
-            # else
-            #     _res = null
+            if menus.length
+                _res = ul(
+                    {
+                        key: "topmenu"
+                        className: "nav navbar-nav"
+                    }
+                    (
+                        menu.get_react() for menu in _.orderBy(menus, "state.icswData.menuHeader.ordering")
+                    )
+                )
+            else
+                _res = null
             return _res
     )
     return menu_comp
@@ -473,23 +476,14 @@ menu_module = angular.module(
         replace: true
         scope: true
         link: (scope, el, attrs) ->
-            _user = undefined
-            _acls = undefined
             _element = ReactDOM.render(
                 React.createElement(
                     icswReactMenuFactory
-                    {
-                        user: _user
-                        acls: _acls
-                    }
                 )
                 el[0]
             )
-            $rootScope.$on(ICSW_SIGNALS("ICSW_USER_CHANGED"), (event, user) ->
-                _element.setState({user: user})
-            )
-            $rootScope.$on(ICSW_SIGNALS("ICSW_ACLS_CHANGED"), (event, acls) ->
-                _element.setState({acls: acls})
+            $rootScope.$on(ICSW_SIGNALS("ICSW_ROUTE_RIGHTS_CHANGED"), (event) ->
+                _element.force_redraw()
             )
             $rootScope.$on(ICSW_SIGNALS("ICSW_MENU_PROGRESS_BAR_CHANGED"), (event, settings) ->
                 console.log "mps", settings
