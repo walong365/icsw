@@ -139,8 +139,10 @@ angular.module(
                 toaster.pop("error", "A critical error occured", "error parsing response", 0)
         return success
 ]).provider("icswRouteExtension", () ->
+    _key_idx = 0
     class icswRouteExtension
         constructor: (args) ->
+            _key_idx++
             @_extension = true
             # list of needed rights
             @rights = []
@@ -156,20 +158,112 @@ angular.module(
             @menuEntry = {}
             # redirect to originating when error
             @redirect_to_from_on_error = false
+            # flag: valid for quicklink
+            @valid_for_quicklink = false
             for key, value of args
                 if not @[key]?
                     console.error "unknown icswRouteExtension #{key}=#{value}", @
                 else
                     @[key] = value
-    return {
-        $get: () ->
-            # needed for Angular
-            return {}
-        create: (args) ->
-            return new icswRouteExtension(args)
+            # flags: rights ok
+            @$$allowed = false
+            # unique key
+            @key = "ire_#{_key_idx}"
+            # fix menuEntry name
+            if @menuEntry and not @menuEntry.name?
+                @menuEntry.name = @pageTitle
+    _struct = {
+        entries: []
     }
 
-).directive("icswSelMan",
+    return {
+        $get: () ->
+            # needed for access from services / factories
+            return _struct
+        create: (args) ->
+            _ext = new icswRouteExtension(args)
+            _struct.entries.push(_ext)
+            return _ext
+    }
+).service("icswRouteHelper",
+[
+    "icswRouteExtension", "$state", "$rootScope", "ICSW_SIGNALS", "icswAcessLevelService",
+(
+    icswRouteExtension, $state, $rootScope, ICSW_SIGNALS, icswAcessLevelService,
+) ->
+    _init = false
+    _user = undefined
+    _acls = undefined
+    _struct = {
+        allowed_states: []
+    }
+
+    _check_rights = () ->
+        _struct.allowed_states.length = 0
+        if _init
+            for state in _struct.menu_states
+                entry = state.icswData
+                _add = true
+                if entry.rights?
+                    if angular.isFunction(entry.rights)
+                        if _user?
+                            _add = entry.rights(_user, _acls)
+                        else
+                            _add = false
+                    else
+                        # console.log entry.rights
+                        _add = icswAcessLevelService.has_all_menu_permissions(entry.rights)
+                    if entry.licenses? and _add
+                        _add = icswAcessLevelService.has_all_valid_licenses(entry.licenses)
+                        if not _add
+                            console.warn "license(s) #{entry.licenses} missing"
+                    if entry.service_types? and _add
+                        _add = icswAcessLevelService.has_all_service_types(entry.service_types)
+                        if not _add
+                            console.warn "service_type(s) #{entry.service_types} missing"
+                entry.$$allowed = _add
+                if entry.$$allowed
+                    _struct.allowed_states.push(entry)
+
+    init_struct = () ->
+        menu_list = []
+        menu_states = []
+        quicklink_states = []
+        for state in $state.get()
+            if state.icswData?
+                _data = state.icswData
+                if not _data._extension
+                    console.error "old menu entry, please fix", _data
+                else
+                    if _data.menuEntry? and _data.menuEntry.menukey
+                        menu_states.push(state)
+                    if _data.menuHeader? and _data.menuHeader.key
+                        menu_list.push(state)
+                    if _data.valid_for_quicklink
+                        quicklink_states.push(state)
+        _struct.menu_header_states = menu_list
+        _struct.menu_states = menu_states
+        _struct.quicklink_states = quicklink_states
+        _init = true
+        _check_rights()
+
+    $rootScope.$on(ICSW_SIGNALS("ICSW_USER_CHANGED"), (event, user) ->
+        _user = user
+        _check_rights()
+    )
+
+    $rootScope.$on(ICSW_SIGNALS("ICSW_ACLS_CHANGED"), (event, acls) ->
+        _acls = acls
+        _check_rights()
+    )
+
+    return {
+        get_struct: () ->
+            if not _init
+                init_struct()
+            return _struct
+    }
+]).directive("icswSelMan",
 [
     "$rootScope", "ICSW_SIGNALS", "DeviceOverviewSelection", "DeviceOverviewSettings",
     "icswActiveSelectionService", "icswDeviceTreeService",

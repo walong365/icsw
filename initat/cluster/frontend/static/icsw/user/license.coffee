@@ -30,6 +30,7 @@ angular.module(
             templateUrl: "icsw/main/license/overview.html"
             icswData: icswRouteExtensionProvider.create
                 pageTitle: "License information"
+                valid_for_quicklink: true
                 rights: (user, acls) ->
                     if user.is_superuser
                         return true

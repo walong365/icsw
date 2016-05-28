@@ -259,10 +259,10 @@ menu_module = angular.module(
 ]).factory("icswReactMenuFactory",
 [
     "icswAcessLevelService", "ICSW_URLS", "icswSimpleAjaxCall", "blockUI",
-    "icswMenuProgressService", "$state",
+    "icswMenuProgressService", "$state", "icswRouteHelper",
 (
     icswAcessLevelService, ICSW_URLS, icswSimpleAjaxCall, blockUI,
-    icswMenuProgressService, $state
+    icswMenuProgressService, $state, icswRouteHelper,
 ) ->
     # console.log icswAcessLevelService
     {input, ul, li, a, span, h4, div} = React.DOM
@@ -270,12 +270,14 @@ menu_module = angular.module(
     menu_line = React.createClass(
         displayName: "menuline"
         render: () ->
-            entry = @props.entry
-            if entry.href?
-                a_attrs = {href: entry.href, key: "a"}
+            state = @props
+            data = state.icswData
+            # console.log "D=", data
+            if data.menuEntry.href?
+                a_attrs = {href: data.menuEntry.href, key: "a"}
             else
-                a_attrs = {href: entry.sref, key: "a"}
-            if entry.labelClass
+                a_attrs = {href: data.menuEntry.sref, key: "a"}
+            if data.menuEntry.labelClass
                 return li(
                     {key: "li"}
                     [
@@ -283,14 +285,14 @@ menu_module = angular.module(
                             a_attrs
                             [
                                 span(
-                                    {className: "label #{entry.labelClass}", key: "spanl"}
+                                    {className: "label #{data.menuEntry.labelClass}", key: "spanl"}
                                     [
                                         span(
-                                            {className: "fa #{entry.icon} fa_icsw", key: "span"}
+                                            {className: "fa #{data.menuEntry.icon} fa_icsw", key: "span"}
                                         )
                                     ]
                                 )
-                                " #{entry.name}"
+                                " #{data.menuEntry.name}"
                             ]
                         )
                     ]
@@ -303,9 +305,9 @@ menu_module = angular.module(
                             a_attrs
                             [
                                 span(
-                                    {className: "fa #{entry.icon} fa_icsw", key: "span"}
+                                    {className: "fa #{data.menuEntry.icon} fa_icsw", key: "span"}
                                 )
-                                " #{entry.name}"
+                                " #{data.menuEntry.name}"
                             ]
                         )
                     ]
@@ -320,53 +322,36 @@ menu_module = angular.module(
             # _idx = 0
             # flag for last entry was a valid one
             valid_entry = false
-            for entry in @props.entries
+            for state in @props.entries
                 _idx++
-                _key = "item#{_idx}"
-                if entry.name? and not entry.disable?
-                    _add = true
-                    if entry.rights?
-                        if angular.isFunction(entry.rights)
-                            if @props.user?
-                                _add = entry.rights(@props.user, @props.acls)
-                            else
-                                _add = false
-                        else
-                            # console.log entry.rights
-                            _add = icswAcessLevelService.has_all_menu_permissions(entry.rights)
-                    # console.log _add, entry.name
-                    if entry.licenses? and _add
-                        _add = icswAcessLevelService.has_all_valid_licenses(entry.licenses)
-                        if not _add
-                            console.warn "license(s) #{entry.licenses} missing"
-                    if entry.service_types? and _add
-                        _add = icswAcessLevelService.has_all_service_types(entry.service_types)
-                        if not _add
-                            console.warn "service_type(s) #{entry.service_types} missing"
-                    if _add
-                        # console.log _key
-                        if entry.preSpacer and valid_entry
-                            _items.push(
-                                li({className: "divider", key: _key + "_pre"})
-                            )
-                        if angular.isFunction(entry.name)
-                            _items.push(
-                                React.createElement(entry.name, {key: _key})
-                            )
-                        else
-                            _items.push(
-                                React.createElement(menu_line, {key: _key, entry: entry})
-                            )
-                        valid_entry = true
-                        if entry.postSpacer and valid_entry
-                            _items.push(
-                                li({className: "divider", key: _key +  "_post"})
-                            )
-                            valid_entry = false
+                data = state.icswData
+                _key = data.key
+                if data.$$allowed
+                    # console.log _key
+                    if data.menuEntry.preSpacer? and valid_entry
+                        _items.push(
+                            li({className: "divider", key: _key + "_pre"})
+                        )
+                    if angular.isFunction(state.name)
+                        _items.push(
+                            React.createElement(state.name, {key: _key})
+                        )
+                    else
+                        _items.push(
+                            React.createElement(menu_line, state)
+                        )
+                    valid_entry = true
+                    if data.menuEntry.postSpacer? and valid_entry
+                        _items.push(
+                            li({className: "divider", key: _key +  "_post"})
+                        )
+                        valid_entry = false
             if _items.length
+                state = @props.state
+                header = state.icswData.menuHeader
                 _res = li(
                     {
-                        key: "menu_" + @props.name
+                        key: "menu_" + header.name
                     }
                     [
                         a(
@@ -374,27 +359,27 @@ menu_module = angular.module(
                                 className: "dropdown-toggle"
                                 # dataToggle is not working
                                 "data-toggle": "dropdown"
-                                key: "menu.head_" + @props.name
+                                key: "menu.head_" + header.name
                             }
                             [
                                 span(
                                     {
-                                        className: "fa #{@props.icon} fa-lg fa_top"
-                                        key: "span_" + @props.name
+                                        className: "fa #{header.icon} fa-lg fa_top"
+                                        key: "span_" + header.name
                                     }
                                 )
                                 span(
                                     {
-                                        key: "text_" + @props.name
+                                        key: "text_" + header.name
                                     }
-                                    @props.name
+                                    header.name
                                 )
                             ]
                         )
                         ul(
                             {
                                 className: "dropdown-menu"
-                                key: "ul_" + @props.name
+                                key: "ul_" + header.name
                             }
                             _items
                         )
@@ -406,41 +391,21 @@ menu_module = angular.module(
     )
     
     class MenuHeader
-        constructor: (@key, @name, @icon, @ordering) ->
+        constructor: (@state) ->
             @entries = []
 
         add_entry: (entry) =>
             @entries.push(entry)
 
-        get_react: (user, acls) =>
+        get_react: () =>
             # order entries
             return React.createElement(
                 menu_header
                 {
-                    key: @key
-                    name: @name
-                    icon: @icon
-                    entries: (_entry.get_react() for _entry in _.orderBy(@entries, "ordering"))
-                    user: user
-                    acls: acls
+                    state: @state
+                    entries: _.orderBy(@entries, "icswData.menuEntry.ordering")
                 }
             )
-    
-    class MenuEntry
-        constructor: (@name, @rights, @licenses, @service_types, @icon, @ordering, @sref, @preSpacer, @postSpacer, @labelClass) ->
-
-        get_react: () =>
-            return {
-                name: @name
-                rights: @rights
-                icon: @icon
-                sref: @sref
-                licenses: @licenses
-                service_types: @service_types
-                preSpacer: @preSpacer
-                postSpacer: @postSpacer
-                labelClass: @labelClass
-            }
     
     menu_comp = React.createClass(
         displayName: "menubar"
@@ -470,59 +435,28 @@ menu_module = angular.module(
             $(window).off("resize", @update_dimensions)
     
         render: () ->
-            menus = []
-            valid_state_names = []
-            for state in $state.get()
-                if state.icswData?
-                    if not state.icswData._extension
-                        console.error "old menu entry, please fix", state.icswData
-                    else
-                        if state.icswData.menuEntry? and state.icswData.menuEntry.menukey
-                            valid_state_names.push(state.name)
-                        if state.icswData.menuHeader? and state.icswData.menuHeader.key
-                            _hdr = state.icswData.menuHeader
-                            menus.push(
-                                new MenuHeader(
-                                    _hdr.key
-                                    _hdr.name
-                                    _hdr.icon
-                                    _hdr.ordering
-                                )
-                            )
+            _menu_struct = icswRouteHelper.get_struct() 
+            menus = (new MenuHeader(state) for state in _menu_struct.menu_header_states)
 
-            for state in ($state.get(_name) for _name in valid_state_names)
+            for state in _menu_struct.menu_states
                 # find menu
-                _entry = state.icswData.menuEntry
-                menu = (entry for entry in menus when entry.key == _entry.menukey)
+                menu = (entry for entry in menus when entry.state.icswData.menuHeader.key == state.icswData.menuEntry.menukey)
                 if menu.length
-
-                    menu[0].add_entry(
-                        new MenuEntry(
-                            _entry.name or state.icswData.pageTitle
-                            state.icswData.rights
-                            state.icswData.licenses
-                            state.icswData.service_types
-                            _entry.icon
-                            _entry.ordering
-                            $state.href(state)
-                            _entry.preSpacer?
-                            _entry.postSpacer?
-                            if _entry.labelClass? then _entry.labelClass else ""
-                        )
-                    )
+                    menu[0].add_entry(state)
                 else
                     console.error("No menu with name #{_entry.menukey} found")
+
             # todo: check for service_type
-            user = @state.user
-            acls = @state.acls
-            if user? and acls?
-                extra_menus = (menu.get_react(user, acls) for menu in _.orderBy(menus, "ordering"))
-                _res = ul(
-                    {key: "topmenu", className: "nav navbar-nav"}
-                    extra_menus
-                )
-            else
-                _res = null
+            # user = @state.user
+            # acls = @state.acls
+            # if user? and acls?
+            #    # extra_menus = (menu.get_react(user, acls) for menu in _.orderBy(menus, "ordering"))
+            _res = ul(
+                {key: "topmenu", className: "nav navbar-nav"}
+                (menu.get_react() for menu in _.orderBy(menus, "state.icswData.menuHeader.ordering"))
+            )
+            # else
+            #     _res = null
             return _res
     )
     return menu_comp

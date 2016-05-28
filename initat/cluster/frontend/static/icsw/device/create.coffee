@@ -30,6 +30,7 @@ angular.module(
             url: "/devicecreate"
             templateUrl: "icsw/main/device/create.html"
             icswData: icswRouteExtensionProvider.create
+                valid_for_quicklink: true
                 pageTitle: "Create new Device"
                 menuHeader:
                     key: "dev"

@@ -8,38 +8,41 @@
 </script>
 
 <script type="text/ng-template" id="icsw.dashboard.quicklinks">
-    <ul class="list-group">
-        <li class="list-group-item">
-            <div class="row">
-                <div class="col-md-6">
-                    Change account settings (password, contact data)
+    <div ng-controller="icswDashboardQuicklinksCtrl">
+        <h3>{{ quicklink_states.length }} Quicklinks</h3>
+        <ul class="list-group">
+            <li class="list-group-item" ng-repeat="state in quicklink_states">
+                <div class="row">
+                    <div class="col-md-6">
+                        {{ state.icswData.pageTitle }}
+                    </div>
+                    <div class="col-md-6">
+                        <a href="#" ui-sref="{{ state.name }}">{{ state.icswData.pageTitle }}</a>
+                    </div>
                 </div>
-                <div class="col-md-6">
-                    <a href="{{ ICSW_URLS.USER_ACCOUNT_INFO }}">Account Info</a>
+            </li>
+            <!-- <li class="list-group-item" ng-show="has_menu_permission('backbone.user.modify_tree')">
+                <div class="row">
+                    <div class="col-md-6">
+                        Add a new device
+                    </div>
+                    <div class="col-md-6">
+                        <a href="{{ ICSW_URLS.MON_CREATE_DEVICE }}">Create device</a>
+                    </div>
                 </div>
-            </div>
-        </li>
-        <li class="list-group-item" ng-show="has_menu_permission('backbone.user.modify_tree')">
-            <div class="row">
-                <div class="col-md-6">
-                    Add a new device
+            </li>
+            <li class="list-group-item">
+                <div class="row">
+                    <div class="col-md-6">
+                        Add a new license
+                    </div>
+                    <div class="col-md-6">
+                        <a href="{{ ICSW_URLS.USER_GLOBAL_LICENSE }}">Add license</a>
+                    </div>
                 </div>
-                <div class="col-md-6">
-                    <a href="{{ ICSW_URLS.MON_CREATE_DEVICE }}">Create device</a>
-                </div>
-            </div>
-        </li>
-        <li class="list-group-item">
-            <div class="row">
-                <div class="col-md-6">
-                    Add a new license
-                </div>
-                <div class="col-md-6">
-                    <a href="{{ ICSW_URLS.USER_GLOBAL_LICENSE }}">Add license</a>
-                </div>
-            </div>
-        </li>
-    </ul>
+            </li> -->
+        </ul>
+    </div>
 </script>
 
 <script type="text/ng-template" id="icsw.dashboard.externallinks">

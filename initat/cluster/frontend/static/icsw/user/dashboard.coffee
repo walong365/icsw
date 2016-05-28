@@ -448,6 +448,13 @@ dashboard_module = angular.module(
         link: (scope, element, attrs) ->
             scope.db_element.link(scope, element)
     }
+]).controller("icswDashboardQuicklinksCtrl", [
+    "$scope", "icswRouteHelper",
+(
+    $scope, icswRouteHelper,
+) ->
+    $scope.quicklink_states = icswRouteHelper.get_struct().quicklink_states
+    # console.log route_struct
 ])
 
 virtual_desktop_utils = {
