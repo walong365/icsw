@@ -138,10 +138,19 @@ user_module = angular.module(
         has_var: (name) =>
             return name of @var_lut
             
-        get_var: (name) =>
-            return @var_lut[name]
+        get_var: (name, def_val=null) =>
+            if @has_var(name)
+                return @var_lut[name]
+            else
+                return def_val
 
         set_string_var: (name, value) =>
+            return @set_var(name, value, "s")
+            
+        set_json_var: (name, value) =>
+            return @set_var(name, value, "j")
+            
+        set_var: (name, value, var_type) =>
             # modify var (if exists) otherwise create new
             _wait = $q.defer()
             _result = $q.defer()
@@ -151,11 +160,16 @@ user_module = angular.module(
             else
                 new_var = {
                     user: @user.idx
-                    var_type: "s"
-                    value: value
+                    name: name
+                    var_type: var_type
                     hidden: false
                     editable: true
                 }
+                if var_type == "j"
+                    new_var.json_value = value
+                else
+                    new_var.value = value
+                    
                 Restangular.all(
                     ICSW_URLS.REST_USER_VARIABLE_LIST.slice(1)
                 ).post(
@@ -166,16 +180,24 @@ user_module = angular.module(
                         _wait.resolve(nv)
                 )
             _wait.promise.then(
-                (_var) ->
-                    if _var.var_type != "s"
-                        console.log "trying to change var_type from #{_var.var_type} to 's'"
+                (_var) =>
+                    if _var.var_type != var_type
+                        console.log "trying to change var_type for '#{_var.name}'' from '#{_var.var_type}' to '#{var_type}'"
                         _result.reject("wrong type")
                     else
-                        _var.value = value
+                        if var_type == "j"
+                            _var.json_value = value
+                            _var.value = ""
+                        else
+                            _var.value = value
+                            _var.json_value = ""
                         Restangular.restangularizeElement(null, _var, ICSW_URLS.REST_USER_VARIABLE_DETAIL.slice(1).slice(0, -2))
-                        _var.put().then(
-                            (ok) ->
-                                _result.resolve(_var)
+                        _var.put({"silent": 1}).then(
+                            (new_var) =>
+                                if new_var.name not of @var_lut
+                                    @user.user_variable_set.push(new_var)
+                                    @build_luts()
+                                _result.resolve(new_var)
                             (not_ok) ->
                                 _result.reject("not modifed")
                         )

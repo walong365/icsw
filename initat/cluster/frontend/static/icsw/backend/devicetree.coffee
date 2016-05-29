@@ -705,7 +705,7 @@ angular.module(
             )
 
         # for device Variables
-
+        
         create_device_variable: (new_var) =>
             # create new netIP
             defer = $q.defer()

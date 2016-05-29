@@ -1148,18 +1148,21 @@ class user_variable(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     def to_db_format(self):
-        cur_val = self.value
-        if isinstance(cur_val, basestring):
-            self.var_type = "s"
-        elif type(cur_val) in [int, long]:
-            self.var_type = "i"
-            self.value = "{:d}".format(self.value)
-        elif type(cur_val) in [bool]:
-            self.var_type = "b"
-            self.value = "1" if cur_val else "0"
-        elif cur_val is None:
-            self.var_type = "n"
-            self.value = "None"
+        if self.json_value:
+            self.var_type = "j"
+        else:
+            cur_val = self.value
+            if isinstance(cur_val, basestring):
+                self.var_type = "s"
+            elif type(cur_val) in [int, long]:
+                self.var_type = "i"
+                self.value = "{:d}".format(self.value)
+            elif type(cur_val) in [bool]:
+                self.var_type = "b"
+                self.value = "1" if cur_val else "0"
+            elif cur_val is None:
+                self.var_type = "n"
+                self.value = "None"
 
     def from_db_format(self):
         if self.var_type == "b":

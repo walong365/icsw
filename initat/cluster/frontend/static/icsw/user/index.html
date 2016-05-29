@@ -95,7 +95,10 @@
         <div gridster="gridsterOpts" class="panel-body container-fluid">
             <ul>
                 <li gridster-item="item" ng-repeat="item in struct.container.open_elements track by item.element_id">
-                    <icsw-dashboard-element-display style="position:absolute;top:0;left:0;bottom:0;right:0;margin:0px;padding:0px;overflow:auto;" icsw-dashboard-element="item"></icsw-dashboard-element-display>
+                    <icsw-dashboard-element-display
+                        style="position:absolute; overflow:auto;"
+                        icsw-dashboard-element="item"
+                    ></icsw-dashboard-element-display>
                 </li>
             </ul>
         </div>

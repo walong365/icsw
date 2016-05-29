@@ -308,8 +308,8 @@ dashboard_module = angular.module(
         ).then(
             (data) ->
                 $scope.struct.user = data[0]
-                $scope.struct.container = icswDashboardContainerService.get_container()
-                $scope.struct.container.populate($scope.struct.user).then(
+                $scope.struct.container = icswDashboardContainerService.get_container($scope.struct.user)
+                $scope.struct.container.populate().then(
                     (done) ->
                         $scope.struct.data_loaded = true
                 )
@@ -325,8 +325,8 @@ dashboard_module = angular.module(
     )
     $scope.$on(
         "gridster-resized"
-        (item) ->
-            # console.log "git-R", item
+        ($event, item) ->
+            $scope.struct.container.save_positions()
     )
     $scope.$on(
         "gridster-resizable-changed"
@@ -340,14 +340,8 @@ dashboard_module = angular.module(
     )
     $scope.$on(
         "gridster-item-transition-end"
-        (sizes, gridster) ->
-            # console.log "tchanged", sizes, gridster
-    )
-    $scope.$watch(
-        "elements"
-        (els) ->
-            # console.log "c", els
-        true
+        ($event, sizes, gridster) ->
+            # console.log "tchanged", $event, sizes, gridster
     )
     $scope.lds = icswUserLicenseDataService
     $scope.has_menu_permission = icswAcessLevelService.has_menu_permission
@@ -357,18 +351,26 @@ dashboard_module = angular.module(
     $templateCache, $q, $compile, $state,
 ) ->
     class icswDashboardElement
-        constructor: (@state) ->
+        constructor: (@state, pos_dict) ->
             # console.log @state
             # dashboardEntry
             _e = @state.icswData.dashboardEntry
             @dbe = _e
-            @sizeX = _e.size_x
-            @sizeY = _e.size_y
+            if @state.name of pos_dict
+                _pd = pos_dict[@state.name]
+                for _attr_name in ["sizeX", "sizeY", "row", "col"]
+                    @[_attr_name] = _pd[_attr_name]
+                console.log _pd
+                @$$open = _pd["open"]
+            else
+                @sizeX = _e.size_x
+                @sizeY = _e.size_y
+                # default settings
+                @$$open = true
             @cls = _e.header_class
             @title = @state.icswData.pageTitle
             # camelcase is important here
             @$$panel_class = "panel-#{@cls}"
-            @state = $state.get(@state.name)
             @template_name = @state.templateUrl
 
         close: ($event) ->
@@ -378,7 +380,8 @@ dashboard_module = angular.module(
             console.log "destroy", @sizeX, @sizeY
 
         ps_changed: () =>
-            console.log "psc", @sizeX, @sizeY, @col, @row
+            @container.save_positions()
+            # console.log "psc", @sizeX, @sizeY, @col, @row
 
 ]).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
     $stateProvider.state(
@@ -409,12 +412,17 @@ dashboard_module = angular.module(
 (
     $q, $rootScope, ICSW_SIGNALS, icswRouteHelper, icswDashboardElement,
 ) ->
+    POS_VAR_NAME = "_dashboard_positions"
+
     class icswDashboardContainer
-        constructor: () ->
+        constructor: (@user) ->
             @elements = []
             @populated = false
+            # flags for rights handling
             @_rights_are_valid = icswRouteHelper.get_struct().valid
             @_wait_for_rights = false
+            # current position str
+            @_pos_str = ""
             $rootScope.$on(ICSW_SIGNALS("ICSW_ROUTE_RIGHTS_VALID"), () =>
                 @_rights_are_valid = true
                 if @_wait_for_rights
@@ -425,9 +433,8 @@ dashboard_module = angular.module(
             )
             @reset()
         
-        populate: (user) =>
+        populate: () =>
             @reset()
-            @_user = user
             @_populate_defer = $q.defer()
             if @_rights_are_valid
                 @_populate()
@@ -437,9 +444,14 @@ dashboard_module = angular.module(
             return @_populate_defer.promise
 
         _populate: () =>
+            if @user.has_var(POS_VAR_NAME)
+                @_pos_str = @user.get_var(POS_VAR_NAME).json_value
+                _pos_dict = angular.fromJson(@_pos_str)
+            else
+                _pos_dict = {}
             for state in icswRouteHelper.get_struct().dashboard_states
-                el = new icswDashboardElement(state)
-                @add_element(el, @_user)
+                el = new icswDashboardElement(state, _pos_dict)
+                @add_element(el, @user)
             @elements_lut = _.keyBy(@elements, "element_id")
             @open_elements = (el for el in @elements when el.$$open)
             @populated = true
@@ -457,8 +469,6 @@ dashboard_module = angular.module(
             element.container = @
             element.element_id = @element_id
             element.user = user
-            # default settings
-            element.$$open = true
             @elements.push(element)
             @num_total++
             if element.$$open
@@ -473,6 +483,7 @@ dashboard_module = angular.module(
                 @num_open--
                 element.$$open = false
                 _.remove(@open_elements, (el) -> return el.element_id == element.element_id)
+                @save_positions()
 
         open_element: (element) =>
             if not element.$$open
@@ -484,16 +495,33 @@ dashboard_module = angular.module(
         reopen_closed_elements: () =>
             (@open_element(el) for el in @elements when not el.$$open)
 
+        save_positions: () =>
+            cur_pos = @_get_positions()
+            _cur_str = angular.toJson(cur_pos)
+            if _cur_str != @_pos_str
+                @_pos_str = _cur_str
+                @user.set_json_var(POS_VAR_NAME, @_pos_str)
+
+        _get_positions: () =>
+            p_dict = {}
+            for el in @elements
+                p_dict[el.state.name] = {
+                    row: el.row
+                    col: el.col
+                    sizeX: el.sizeX
+                    sizeY: el.sizeY
+                    open: el.$$open
+                }
+            return p_dict
+
 ]).service("icswDashboardContainerService", [
     "$q", "icswDashboardContainer",
 (
     $q, icswDashboardContainer,
 ) ->
-    _elements = new icswDashboardContainer()
-
     return {
-        get_container: () ->
-            return _elements
+        get_container: (user) ->
+            return new icswDashboardContainer(user)
 
     }
 ]).directive("icswDashboardElementDisplay",
@@ -512,6 +540,9 @@ dashboard_module = angular.module(
             _content = $templateCache.get(scope.db_element.template_name)
             _template_content = _outer + _content + "</div></div>"
             element.append($compile(_template_content)(scope))
+            #scope.$on('gridster-item-initialized', ($event, element) ->
+            #    console.log "init", element, element.row, element.col
+            #)
 
     }
 ]).controller("icswDashboardElementCtrl", [

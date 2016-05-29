@@ -324,6 +324,9 @@ class detail_view(mixins.RetrieveModelMixin,
     def put(self, request, *args, **kwargs):
         model_name = self.model._meta.model_name
         prev_model = self.model.objects.get(Q(pk=kwargs["pk"]))
+        # for user_var put for instance...
+        silent = True if int(request.GET.get('silent', 0)) else False
+        # print "silent=", silent
         req_changes = getattr(self, "_{}_put".format(model_name), lambda changed, prev: changed)(request.data, prev_model)
         # try:
         resp = self.update(request, *args, **kwargs)
@@ -336,10 +339,11 @@ class detail_view(mixins.RetrieveModelMixin,
             if root_pwd:
                 new_model.root_passwd = root_pwd
                 new_model.save()
-        c_list, r_list = get_change_reset_list(prev_model, new_model, req_changes)
-        # print c_list, r_list
-        resp.data["_change_list"] = c_list
-        resp.data["_reset_list"] = r_list
+        if not silent:
+            c_list, r_list = get_change_reset_list(prev_model, new_model, req_changes)
+            # print c_list, r_list
+            resp.data["_change_list"] = c_list
+            resp.data["_reset_list"] = r_list
         return resp
 
     @rest_logging
