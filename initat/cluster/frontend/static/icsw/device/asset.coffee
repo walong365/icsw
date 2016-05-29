@@ -40,6 +40,7 @@ device_asset_module = angular.module(
                 dashboardEntry:
                     size_x: 3
                     size_y: 3
+                    allow_state: true
         }
     )
 ]).directive("icswDeviceAssetOverview",

@@ -107,7 +107,8 @@
         <div class="panel-heading">
             {{ db_element.title }}
             <span class="pull-right">
-                <icsw-tools-button size="xs" type="display" value="" ng-click="show()"></icsw-tools-button>
+                <icsw-tools-button size="xs" type="create" value="" ng-if="db_element.dbe.allow_state" ng-click="state()"></icsw-tools-button>
+                <icsw-tools-button size="xs" type="display" value="" ng-if="db_element.dbe.allow_show" ng-click="show()"></icsw-tools-button>
                 <icsw-tools-button size="xs" type="close" value="" ng-click="close()"></icsw-tools-button>
             </span>
         </div>

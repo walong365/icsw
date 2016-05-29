@@ -42,6 +42,7 @@ angular.module(
                 dashboardEntry:
                     size_x: 3
                     size_y: 3
+                    allow_state: true
         }
     )
 ]).service("icswRRDSensor", [()->

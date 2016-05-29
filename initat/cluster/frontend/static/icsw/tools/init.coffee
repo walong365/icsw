@@ -189,6 +189,8 @@ angular.module(
                     ["header_class", "default", false]
                     ["size_x", 2, true]
                     ["size_y", 2, true]
+                    ["allow_show", true, false]
+                    ["allow_state", false, false]
                 ]
                     if not @dashboardEntry[_name]?
                         @dashboardEntry[_name] = _default

@@ -357,6 +357,7 @@ dashboard_module = angular.module(
             console.log @state
             # dashboardEntry
             _e = @state.icswData.dashboardEntry
+            @dbe = _e
             @sizeX = _e.size_x
             @sizeY = _e.size_y
             @cls = _e.header_class
@@ -498,8 +499,10 @@ dashboard_module = angular.module(
     }
 ]).controller("icswDashboardElementCtrl", [
     "$scope", "icswRouteHelper", "$templateCache", "$compile", "$q",
+    "$state",
 (
     $scope, icswRouteHelper, $templateCache, $compile, $q,
+    $state,
 ) ->
     $scope.close = () ->
         $scope.db_element.close()
@@ -509,6 +512,7 @@ dashboard_module = angular.module(
 
         sub_scope = $scope.$new(true)
         d = $q.defer()
+        # to be improved, use icswComplexModalService
         BootstrapDialog.show
             message: $compile($templateCache.get($scope.db_element.template_name))(sub_scope)
             title: $scope.db_element.title
@@ -545,6 +549,9 @@ dashboard_module = angular.module(
             (ok) ->
                 sub_scope.$destroy()
         )
+
+    $scope.state = () ->
+        $state.go($scope.db_element.state)
 
     $scope.$on("$destroy", () =>
         console.log "DESTROY", $scope
