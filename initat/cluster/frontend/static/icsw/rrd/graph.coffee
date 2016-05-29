@@ -257,7 +257,7 @@ angular.module(
                 ]
             ).then(
                 (data) ->
-                    $scope.struct.user = data[0]
+                    $scope.struct.user = data[0].user
                     $scope.struct.device_tree = data[1]
                     $scope.struct.user_group_tree = data[2]
                     $scope.struct.selection_list = data[3]
@@ -856,11 +856,11 @@ angular.module(
 ]).service("icswRRDSensorDialogService",
 [
     "$q", "$compile", "$templateCache", "Restangular", "ICSW_URLS",
-    "icswToolsSimpleModalService", "$timeout", "icswUserService", "icswSimpleAjaxCall",
+    "icswToolsSimpleModalService", "$timeout", "icswSimpleAjaxCall",
     "icswComplexModalService", "icswRRDThresholdDialogService",
 (
     $q, $compile, $templateCache, Restangular, ICSW_URLS,
-    icswToolsSimpleModalService, $timeout, icswUserService, icswSimpleAjaxCall,
+    icswToolsSimpleModalService, $timeout, icswSimpleAjaxCall,
     icswComplexModalService, icswRRDThresholdDialogService,
 ) ->
     return (scope, graph) ->
@@ -923,11 +923,11 @@ angular.module(
 ]).service("icswRRDThresholdDialogService",
 [
     "$q", "$compile", "$templateCache", "Restangular", "ICSW_URLS",
-    "icswToolsSimpleModalService", "$timeout", "icswUserService", "icswSimpleAjaxCall",
+    "icswToolsSimpleModalService", "$timeout", "icswSimpleAjaxCall",
     "icswComplexModalService",
 (
     $q, $compile, $templateCache, Restangular, ICSW_URLS,
-    icswToolsSimpleModalService, $timeout, icswUserService, icswSimpleAjaxCall,
+    icswToolsSimpleModalService, $timeout, icswSimpleAjaxCall,
     icswComplexModalService,
 ) ->
     return (create, scope, sensor, threshold) ->

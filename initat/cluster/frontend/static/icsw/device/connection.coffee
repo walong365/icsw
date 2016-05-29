@@ -96,7 +96,7 @@ angular.module(
         ).then(
             (data) ->
                 $scope.struct.device_tree = data[0]
-                $scope.struct.user = data[1]
+                $scope.struct.user = data[1].user
                 hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, devs)
                 $scope.struct.device_tree.enrich_devices(hs, ["device_connection_info", "snmp_schemes_info", "com_info"]).then(
                     (done) ->

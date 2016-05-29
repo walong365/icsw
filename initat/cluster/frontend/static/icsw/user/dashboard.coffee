@@ -280,13 +280,15 @@ dashboard_module = angular.module(
            enabled: true,
            handles: ["n", 'w', 'ne', 'se', 'sw', 'nw']
            stop: (event, element, options) ->
-               console.log "size stop", event, element, options
+               options.ps_changed()
+               # console.log "size stop", event, element, options
         }
         draggable: {
            enabled: true
            handle: '.my-class'
            stop: (event, element, options) ->
-               console.log "drag stop", event, element, options
+               options.ps_changed()
+               # console.log "drag stop", event, element, options
         }
     }
     $scope.struct = {
@@ -307,9 +309,11 @@ dashboard_module = angular.module(
             (data) ->
                 $scope.struct.user = data[0]
                 $scope.struct.container = icswDashboardContainerService.get_container()
-                $scope.struct.container.populate($scope.struct.user)
-                $scope.struct.data_loaded = true
-                console.log $scope.struct.elements
+                $scope.struct.container.populate($scope.struct.user).then(
+                    (done) ->
+                        $scope.struct.data_loaded = true
+                )
+                # console.log $scope.struct.elements
         )
 
     load()
@@ -354,7 +358,7 @@ dashboard_module = angular.module(
 ) ->
     class icswDashboardElement
         constructor: (@state) ->
-            console.log @state
+            # console.log @state
             # dashboardEntry
             _e = @state.icswData.dashboardEntry
             @dbe = _e
@@ -372,6 +376,9 @@ dashboard_module = angular.module(
 
         destroy: () ->
             console.log "destroy", @sizeX, @sizeY
+
+        ps_changed: () =>
+            console.log "psc", @sizeX, @sizeY, @col, @row
 
 ]).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
     $stateProvider.state(
@@ -397,37 +404,47 @@ dashboard_module = angular.module(
                     size_y: 1
         }
     )
-]).service("icswDashboardStaticList", [
-    "icswDashboardElement", "$state", "icswRouteHelper",
-(
-    icswDashboardElement, $state, icswRouteHelper,
-) ->
-    _struct = icswRouteHelper.get_struct()
-    return (
-        new icswDashboardElement(state) for state in _struct.dashboard_states
-    )
-    return [
-        # Disk usage and Quota info from <ng-pluralize count="NUM_QUOTA_SERVERS" when="{'0' : 'no quota servers', 'one' : 'one quota server', 'other' : '{} quota servers'}"></ng-pluralize>
-    ]
 ]).service("icswDashboardContainer", [
-    "$q", "icswDashboardStaticList",
+    "$q", "$rootScope", "ICSW_SIGNALS", "icswRouteHelper", "icswDashboardElement",
 (
-    $q, icswDashboardStaticList,
+    $q, $rootScope, ICSW_SIGNALS, icswRouteHelper, icswDashboardElement,
 ) ->
     class icswDashboardContainer
         constructor: () ->
             @elements = []
             @populated = false
+            @_rights_are_valid = icswRouteHelper.get_struct().valid
+            @_wait_for_rights = false
+            $rootScope.$on(ICSW_SIGNALS("ICSW_ROUTE_RIGHTS_VALID"), () =>
+                @_rights_are_valid = true
+                if @_wait_for_rights
+                    @_populate()
+            )
+            $rootScope.$on(ICSW_SIGNALS("ICSW_ROUTE_RIGHTS_INVALID"), () =>
+                @_rights_are_valid = false
+            )
             @reset()
         
         populate: (user) =>
             @reset()
-            for el in icswDashboardStaticList
-                @add_element(el, user)
+            @_user = user
+            @_populate_defer = $q.defer()
+            if @_rights_are_valid
+                @_populate()
+                @_wait_for_rights = false
+            else
+                @_wait_for_rights = true
+            return @_populate_defer.promise
+
+        _populate: () =>
+            for state in icswRouteHelper.get_struct().dashboard_states
+                el = new icswDashboardElement(state)
+                @add_element(el, @_user)
             @elements_lut = _.keyBy(@elements, "element_id")
             @open_elements = (el for el in @elements when el.$$open)
             @populated = true
-            
+            @_populate_defer.resolve("done")
+
         reset: () =>
             @element_id = 0
             @num_total = 0

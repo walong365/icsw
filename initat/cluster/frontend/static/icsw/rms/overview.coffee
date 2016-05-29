@@ -997,7 +997,7 @@ rms_module = angular.module(
                         _dt_name_lut[entry.name] = entry
                         _dt_name_lut[entry.full_name] = entry
                     $scope.struct.name_lut = _dt_name_lut
-                    $scope.struct.user = data[1]
+                    $scope.struct.user = data[1].user
                     $scope.struct.rms_operator = $scope.acl_modify(null, "backbone.user.rms_operator")
                     $scope.struct.loading = false
                     $scope.struct.rms = {
@@ -1259,11 +1259,11 @@ rms_module = angular.module(
     }
 ]).directive("icswRmsJobAction",
 [
-    "$compile", "$templateCache", "$uibModal", "icswUserService", "ICSW_URLS", "$q",
+    "$compile", "$templateCache", "$uibModal", "ICSW_URLS", "$q",
     "icswSimpleAjaxCall", "icswComplexModalService", "blockUI", "icswToolsSimpleModalService",
     "ICSW_SIGNALS",
 (
-    $compile, $templateCache, $uibModal, icswUserService, ICSW_URLS, $q,
+    $compile, $templateCache, $uibModal, ICSW_URLS, $q,
     icswSimpleAjaxCall, icswComplexModalService, blockUI, icswToolsSimpleModalService,
     ICSW_SIGNALS,
 ) ->

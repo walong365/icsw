@@ -97,105 +97,89 @@ user_module = angular.module(
                 return false
 
     }
+]).service("icswUser", 
+[
+    "$q", "Restangular", "ICSW_URLS",
+(
+    $q, Restangular, ICSW_URLS,
+) ->
+    class icswUser
+        constructor: (user) ->
+            @user = undefined
+            @update(user)
+
+        update: (user) =>
+            @user = user
+
+        update_user: () =>
+            _defer = $q.defer()
+            if @user
+                _update_url = ICSW_URLS.REST_USER_DETAIL.slice(1).slice(0, -2)
+                Restangular.restangularizeElement(null, @user, _update_url)
+                @user.put().then(
+                    (ok) ->
+                        _defer.resolve("updated")
+                    (not_ok) ->
+                        _defer.reject("error updating")
+                )
+            else
+                _defer.reject("no user")
+            return _defer.promise
+
+
 ]).service("icswUserService",
 [
     "$q", "ICSW_URLS", "icswSimpleAjaxCall", "$rootScope", "ICSW_SIGNALS",
-    "Restangular",
+    "Restangular", "icswUser", "icswTreeBase",
 (
     $q, ICSW_URLS, icswSimpleAjaxCall, $rootScope, ICSW_SIGNALS,
-    Restangular,
+    Restangular, icswUser, icswTreeBase,
 ) ->
-    _last_load = 0
-    _fetch_pending = false
-    _force_logout = false
-    current_user = undefined
+    class icswUserService extends icswTreeBase
+        extra_calls: () =>
+            return [
+                icswSimpleAjaxCall(
+                    {
+                        url: ICSW_URLS.SESSION_GET_AUTHENTICATED_USER
+                        dataType: "json"
+                    }
+                )
+            ]
 
-    set_user = (user) ->
-        current_user = user
-        $rootScope.$emit(ICSW_SIGNALS("ICSW_USER_CHANGED"), current_user)
+        get: () =>
+            return @get_result()
 
-    update_user = () ->
-        _defer = $q.defer()
-        if current_user
-            _update_url = ICSW_URLS.REST_USER_DETAIL.slice(1).slice(0, -2)
-            Restangular.restangularizeElement(null, current_user, _update_url)
-            current_user.put().then(
-                (ok) ->
-                    _defer.resolve("updated")
-                (not_ok) ->
-                    _defer.reject("error updating")
-            )
-        else
-            _defer.reject("no user")
-        return _defer.promise
+        user_present: () =>
+            console.log "UP called"
+            return @is_valid()
 
-    load_user = (cache) ->
-        cur_time = moment().unix()
-        _diff_time = Math.abs(cur_time - _last_load)
-        _defer = $q.defer()
-        if _diff_time > 5 or not cache
-            _fetch_pending = true
+        logout: () =>
+            q = $q.defer()
+            @clear_result()
             icswSimpleAjaxCall(
-                url: ICSW_URLS.SESSION_GET_AUTHENTICATED_USER,
-                dataType: "json"
+                {
+                    url: ICSW_URLS.SESSION_LOGOUT
+                    dataType: "json"
+                }
             ).then(
-                (data) ->
-                    _fetch_pending = false
-                    if _force_logout
-                        _force_logout = false
-                        logout_user()
-                    else
-                        _last_load = moment().unix()
-                        set_user(data)
-                    _defer.resolve(current_user)
-                (error) ->
-                    _fetch_pending = false
+                (json) ->
+                    q.resolve(json)
             )
-        else
-            _defer.resolve(current_user)
-        return _defer.promise
+            return q.promise
 
-    force_logout = () ->
-        if _fetch_pending
-            _force_logout = true
+        force_logout: () =>
+            @cancel_pending_load()
+            return @logout()
 
-    logout_user = () ->
-        _defer = $q.defer()
-        set_user(undefined)
-        icswSimpleAjaxCall(
-            {
-                url: ICSW_URLS.SESSION_LOGOUT
-                dataType: "json"
-            }
-        ).then(
-            (json) ->
-                _defer.resolve(json)
-        )
-        return _defer.promise
+        update: () =>
+            return @get_result().update_user()
 
-    set_user(undefined)
-
-    return {
-        load: (cache) ->
-            # loads from server
-            return load_user(cache)
-
-        logout: () ->
-            return logout_user()
-
-        get: () ->
-            return current_user
-
-        update: () ->
-            return update_user()
-
-        user_present: () ->
-            return if current_user then true else false
-
-        force_logout: () ->
-            # force user logout, also when a (valid) load_user request is pending
-            force_logout()
-    }
+    return new icswUserService(
+        "User"
+        icswUser
+        []
+        "ICSW_USER_CHANGED"
+    )
 ]).service("icswUserGroupPermissionTree",
 [
     "$q",
@@ -1064,7 +1048,7 @@ user_module = angular.module(
         ).then(
             (data) ->
                 $scope.struct.data_valid = true
-                $scope.struct.user = data[0]
+                $scope.struct.user = data[0].user
                 $scope.struct.settings_tree = data[1]
                 $scope.perm_tree = data[2]
                 # hack, to be improved, FIXME, ToDo

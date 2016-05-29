@@ -405,7 +405,7 @@ monitoring_device_module = angular.module(
         ).then(
             (data) ->
                 $scope.struct.dispatch_tree = data[0]
-                $scope.struct.user = data[1]
+                $scope.struct.user = data[1].user
                 $scope.struct.user_group_tree = data[2]
                 $scope.struct.com_cap_tree = data[3]
                 # get monitoring masters and slaves
@@ -559,7 +559,7 @@ monitoring_device_module = angular.module(
                 $scope.struct.base_tree = data[1]
                 $scope.struct.dispatcher_tree = data[3]
                 config_tree = data[2]
-                $scope.struct.user = data[4]
+                $scope.struct.user = data[4].user
                 # get monitoring masters and slaves
                 $scope.struct.devices.length = 0
                 for entry in devs
@@ -791,7 +791,7 @@ monitoring_device_module = angular.module(
         ).then(
             (data) ->
                 $scope.struct.template_tree = data[0]
-                $scope.struct.user = data[1]
+                $scope.struct.user = data[1].user
                 $scope.struct.user_group_tree = data[2]
                 # get monitoring masters and slaves
                 $scope.struct.loading = false

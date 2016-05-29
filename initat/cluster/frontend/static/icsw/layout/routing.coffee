@@ -56,9 +56,9 @@ menu_module = angular.module(
             resolve:
                 user: ["$q", "icswUserService", ($q, icswUserService) ->
                     _defer = $q.defer()
-                    icswUserService.load().then(
+                    icswUserService.load("router").then(
                         (user) ->
-                            if user.idx
+                            if user.user.idx
                                 _defer.resolve(user)
                             else
                                 _defer.reject(user)

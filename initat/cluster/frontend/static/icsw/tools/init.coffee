@@ -219,6 +219,7 @@ angular.module(
     _user = undefined
     _acls = undefined
     _struct = {
+        valid: false
         icsw_states: []
         allowed_states: []
         quicklink_states: [] 
@@ -246,7 +247,7 @@ angular.module(
                     if _user and _acls
                         if angular.isFunction(data.rights)
                             if _user?
-                                _add = data.rights(_user, _acls)
+                                _add = data.rights(_user.user, _acls)
                             else
                                 _add = false
                         else
@@ -273,8 +274,15 @@ angular.module(
                         _struct.quicklink_states.push(state)
                     if data.$$dashboardEntry
                         _struct.dashboard_states.push(state)
-            # console.log "rights checked"
+            # signal: we have changed the rights
             $rootScope.$emit(ICSW_SIGNALS("ICSW_ROUTE_RIGHTS_CHANGED"))
+        if _init and _user and _acls
+            _struct.valid = true
+            # signal: we have changed the rights with valid user and acls
+            $rootScope.$emit(ICSW_SIGNALS("ICSW_ROUTE_RIGHTS_VALID"))
+        else
+            _struct.valid = false
+            $rootScope.$emit(ICSW_SIGNALS("ICSW_ROUTE_RIGHTS_INVALID"))
                     
 
     init_struct = () ->
@@ -440,8 +448,12 @@ angular.module(
         ICSW_PACKAGE_INSTALL_LIST_CHANGED: "icsw.package.install.list.changed"
         # license tree loaded
         ICSW_LICENSE_DATA_LOADED: "icsw.license.data.loaded"
-        # route rights updatred
+        # route rights updated
         ICSW_ROUTE_RIGHTS_CHANGED: "icsw.route.rights.changed"
+        # route rights updated, user and acls are invalid
+        ICSW_ROUTE_RIGHTS_VALID: "icsw.route.rights.valid"
+        # route rights updated, user and acls are valid
+        ICSW_ROUTE_RIGHTS_INVALID: "icsw.route.rights.invalid"
         # local signals (for local $emit / $on)
 
         _ICSW_CLOSE_USER_GROUP: "_icsw.close.user.group"
@@ -1285,6 +1297,7 @@ angular.module(
         constructor: (@name, @tree_class, @rest_map, @signal) ->
             @_result = undefined
             @_load_called = false
+            @_cancel_load = false
             @_fetch_dict = {}
             @_call_dict = {
                 load: 0
@@ -1319,7 +1332,18 @@ angular.module(
         # accessor functions
         get_result: () =>
             return @_result
+        
+        # clear_result
+        clear_result: () =>
+            @_result = undefined
+            @_load_called = false
+            if @signal
+                $rootScope.$emit(ICSW_SIGNALS(@signal), @_result)
             
+        cancel_pending_load: () =>
+            if @_load_called
+                @_cancel_load = true
+                
         # private functions
         load_data: (client) =>
             @_load_called = true
@@ -1349,14 +1373,18 @@ angular.module(
                     # runtime in milliseconds
                     _run_time = icswTools.get_diff_time_ms(_end - _start)
                     console.log " -> #{@name} loaded in #{_run_time} (#{_map_len} + #{_extra_len})"
-                    if @_result?
-                        @update_result(data...)
+                    if @_cancel_load
+                        # load should be canceled, for forced logout for instance
+                        @_cancel_load = false
                     else
-                        @init_result(data...)
-                    @send_results()
-                    # signal if required
-                    if @signal
-                        $rootScope.$emit(ICSW_SIGNALS(@signal))
+                        if @_result?
+                            @update_result(data...)
+                        else
+                            @init_result(data...)
+                        @send_results()
+                        # signal if required
+                        if @signal
+                            $rootScope.$emit(ICSW_SIGNALS(@signal), @_result)
             )
             return @_load_defer
 

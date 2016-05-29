@@ -52,7 +52,7 @@ menu_module = angular.module(
                     dataType: "json"
                 }
             ),
-            icswUserService.load(),
+            icswUserService.load($scope.$id),
         ]
     ).then(
         (data) ->
@@ -87,6 +87,12 @@ menu_module = angular.module(
     #        $rootScope.$emit(ICSW_SIGNALS("ICSW_RENDER_MENUBAR"))
     # )
 
+    route_counter = 0
+    # load license tree
+    icswUserLicenseDataService.load($scope.$id).then(
+        (data) ->
+    )
+
     $scope.$on("$stateChangeStart", (event, to_state, to_params, from_state, from_params) ->
         to_main = if to_state.name.match(/^main/) then true else false
         from_main = if from_state.name.match(/^main/) then true else false
@@ -99,11 +105,6 @@ menu_module = angular.module(
                 icswUserService.logout()
             icswUserService.force_logout()
             $scope.struct.current_user = undefined
-    )
-    route_counter = 0
-    # load license tree
-    icswUserLicenseDataService.load($scope.$id).then(
-        (data) ->
     )
 
     $scope.$on("$stateChangeSuccess", (event, to_state, to_params, from_state, from_params) ->
@@ -119,7 +120,7 @@ menu_module = angular.module(
                     $scope.struct.current_user = undefined
             )
         else if not from_main and to_main
-            $scope.struct.current_user = icswUserService.get()
+            $scope.struct.current_user = icswUserService.get().user
             # console.log to_params, $scope
         else
             # we allow one gentle transfer
@@ -127,10 +128,9 @@ menu_module = angular.module(
                 # reduce flicker
                 $(document.body).hide()
                 $window.location.reload()
-
     )
-    $scope.$on("$stateChangeError", (event, to_state, to_params, from_state, from_params) ->
-        console.error "error moving to #{to_state.name}", to_state
+    $scope.$on("$stateChangeError", (event, to_state, to_params, from_state, from_params, error) ->
+        console.error "error moving to state #{to_state.name} (#{to_state}), error is #{error}"
         _to_login = true
         if to_state.icswData?
             if to_state.icswData.redirect_to_from_on_error?

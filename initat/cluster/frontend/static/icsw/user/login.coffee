@@ -106,7 +106,7 @@ angular.module(
                     ).then(
                         (data) ->
                             csrf_token = data[0]
-                            _user = data[1]
+                            _user = data[1].user
                             blockUI.stop()
                             $state.go(_val)
                     )

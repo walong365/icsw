@@ -96,7 +96,7 @@ config_module = angular.module(
                 obj_or_parent = {
                     name: "new catalog"
                     url: "http://localhost"
-                    author: icswUserService.get().login
+                    author: icswUserService.get().user.login
                 }
             else
                 dbu = new icswConfigCatalogBackup()

@@ -286,7 +286,7 @@ angular.module(
             defer = $q.defer()
             _sel = {
                 "name": @db_obj.name
-                "user": user.idx
+                "user": user.user.idx
                 "devices": @dev_sel
                 "categories": @cat_sel
                 "device_groups": @devg_sel
@@ -351,7 +351,7 @@ angular.module(
             (user) ->
                 Restangular.all(ICSW_URLS.REST_DEVICE_SELECTION_LIST.slice(1)).getList(
                     {
-                        user: user.idx
+                        user: user.user.idx
                     }
                 ).then(
                     (data) ->
@@ -774,7 +774,7 @@ angular.module(
                     _idx++
             $scope.selection.name = _name
         icswSavedSelectionService.save_selection(
-            icswUserService.get(),
+            icswUserService.get()
             $scope.selection
         ).then(
             (new_sel) ->

@@ -25,9 +25,9 @@ angular.module(
     ]
 ).service("icswRRDGraphBaseSetting",
 [
-    "$q", "icswCachingCall", "ICSW_URLS", "icswUserService", "Restangular",
+    "$q", "icswCachingCall", "ICSW_URLS", "Restangular",
 (
-    $q, icswCachingCall, ICSW_URLS, icswUserService, Restangular
+    $q, icswCachingCall, ICSW_URLS, Restangular
 ) ->
     class icswRRDGraphBaseSetting
         constructor: (size_list, timeshift_list, forecast_list, timeframe_list, sensor_action_list) ->
@@ -85,10 +85,10 @@ angular.module(
 
 ]).service("icswRRDGraphBaseSettingService",
 [
-    "$q", "icswCachingCall", "ICSW_URLS", "icswUserService", "Restangular",
+    "$q", "icswCachingCall", "ICSW_URLS", "Restangular",
     "icswRRDGraphBaseSetting",
 (
-    $q, icswCachingCall, ICSW_URLS, icswUserService, Restangular,
+    $q, icswCachingCall, ICSW_URLS, Restangular,
     icswRRDGraphBaseSetting,
 ) ->
     rest_map = [
@@ -141,9 +141,9 @@ angular.module(
 
 ]).service("icswRRDGraphUserSetting",
 [
-    "$q", "icswCachingCall", "ICSW_URLS", "icswUserService", "Restangular",
+    "$q", "icswCachingCall", "ICSW_URLS", "Restangular",
 (
-    $q, icswCachingCall, ICSW_URLS, icswUserService, Restangular
+    $q, icswCachingCall, ICSW_URLS, Restangular
 ) ->
     class icswRRDGraphUserSetting
         constructor: (s_list, th_list, @base, @user) ->
@@ -311,7 +311,7 @@ angular.module(
         $q.all(_wait_list).then(
             (data) ->
                 console.log "*** graphusersetting loaded ***"
-                _result = new icswRRDGraphUserSetting((entry for entry in data[0] when entry.user == data[3].idx), data[1], data[2], data[3])
+                _result = new icswRRDGraphUserSetting((entry for entry in data[0] when entry.user == data[3].user.idx), data[1], data[2], data[3].user)
                 _result.ensure_active().then(
                     (_act) =>
                         _defer.resolve(_result)

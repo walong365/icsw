@@ -496,7 +496,7 @@ package_module = angular.module(
             (data) ->
                 $scope.struct.repo_info_str = ""
                 $scope.struct.tree_loaded = true
-                $scope.struct.user = data[0]
+                $scope.struct.user = data[0].user
                 $scope.struct.repo_tree = data[1]
         )
 
@@ -700,7 +700,7 @@ package_module = angular.module(
             _w_list.push(icswPackageInstallSearchTreeService.load($scope.$id))
         $q.all(_w_list).then(
             (data) ->
-                $scope.struct.user = data[0]
+                $scope.struct.user = data[0].user
                 $scope.struct.user_group_tree = data[1]
                 $scope.struct.search_tree = data[2]
                 $scope.struct.tree_valid = true
@@ -1142,7 +1142,7 @@ package_module = angular.module(
         $q.all(w_list).then(
             (data) ->
                 $scope.struct.package_info_str = ""
-                $scope.struct.user = data[0]
+                $scope.struct.user = data[0].user
                 $scope.struct.repo_tree = data[1]
                 $scope.struct.package_tree = data[2]
                 $scope.struct.package_tree_loaded = true
