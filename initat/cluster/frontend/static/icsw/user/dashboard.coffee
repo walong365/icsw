@@ -356,28 +356,30 @@ dashboard_module = angular.module(
             # dashboardEntry
             _e = @state.icswData.dashboardEntry
             @dbe = _e
-            if @state.name of pos_dict
-                _pd = pos_dict[@state.name]
-                for _attr_name in ["sizeX", "sizeY", "row", "col"]
-                    @[_attr_name] = _pd[_attr_name]
-                console.log _pd
-                @$$open = _pd["open"]
-            else
-                @sizeX = _e.size_x
-                @sizeY = _e.size_y
-                # default settings
-                @$$open = true
             @cls = _e.header_class
             @title = @state.icswData.pageTitle
             # camelcase is important here
             @$$panel_class = "panel-#{@cls}"
             @template_name = @state.templateUrl
 
+        set_layout: (pos_dict) =>
+            if @state.name of pos_dict
+                _pd = pos_dict[@state.name]
+                for _attr_name in ["sizeX", "sizeY", "row", "col"]
+                    @[_attr_name] = _pd[_attr_name]
+                @$$open = _pd["open"]
+            else
+                @sizeX = @dbe.size_x
+                @sizeY = @dbe.size_y
+                # default settings
+                @$$open = true
+
         close: ($event) ->
             @container.close_element(@)
 
         destroy: () ->
-            console.log "destroy", @sizeX, @sizeY
+            # console.log "destroy", @sizeX, @sizeY
+            true
 
         ps_changed: () =>
             @container.save_positions()
@@ -408,23 +410,30 @@ dashboard_module = angular.module(
         }
     )
 ]).service("icswDashboardContainer", [
-    "$q", "$rootScope", "ICSW_SIGNALS", "icswRouteHelper", "icswDashboardElement",
-    "$compile", "$templateCache", "icswComplexModalService",
+    "$q", "$rootScope", "ICSW_SIGNALS", "icswRouteHelper", "icswDashboardElement", "blockUI",
+    "$compile", "$templateCache", "icswComplexModalService", "toaster", "icswToolsSimpleModalService",
 (
-    $q, $rootScope, ICSW_SIGNALS, icswRouteHelper, icswDashboardElement,
-    $compile, $templateCache, icswComplexModalService,
+    $q, $rootScope, ICSW_SIGNALS, icswRouteHelper, icswDashboardElement, blockUI,
+    $compile, $templateCache, icswComplexModalService, toaster, icswToolsSimpleModalService,
 ) ->
-    POS_VAR_NAME = "_dashboard_positions"
+    POS_VAR_NAME = "_dashboard_position_"
 
     class icswDashboardContainer
         constructor: (@user) ->
             @elements = []
             @populated = false
+            # get list of valid layouts
+            _layout_names = @user.get_var_names(new RegExp(POS_VAR_NAME))
+            if not _layout_names.length
+                @layout_names = ["default"]
+            else
+                @layout_names = (entry.substr(POS_VAR_NAME.length) for entry in _layout_names)
+            @layout_names = @layout_names.sort()
+            @current_layout_name = @layout_names[0]
+            @save_positions()
             # flags for rights handling
             @_rights_are_valid = icswRouteHelper.get_struct().valid
             @_wait_for_rights = false
-            # current position str
-            @_pos_str = ""
             $rootScope.$on(ICSW_SIGNALS("ICSW_ROUTE_RIGHTS_VALID"), () =>
                 @_rights_are_valid = true
                 if @_wait_for_rights
@@ -446,25 +455,72 @@ dashboard_module = angular.module(
             return @_populate_defer.promise
 
         _populate: () =>
-            if @user.has_var(POS_VAR_NAME)
-                @_pos_str = @user.get_var(POS_VAR_NAME).json_value
+            # current position str
+            for state in icswRouteHelper.get_struct().dashboard_states
+                el = new icswDashboardElement(state)
+                @add_element(el, @user)
+            @elements_lut = _.keyBy(@elements, "element_id")
+            @populated = true
+            @activate_layout()
+            @_populate_defer.resolve("done")
+
+        activate_layout: () =>
+            # activates current layout
+            @reset_layout()
+            _var_name = @_get_var_name()
+            if @user.has_var(_var_name)
+                @_pos_str = @user.get_var(_var_name).json_value
                 _pos_dict = angular.fromJson(@_pos_str)
             else
                 _pos_dict = {}
-            for state in icswRouteHelper.get_struct().dashboard_states
-                el = new icswDashboardElement(state, _pos_dict)
-                @add_element(el, @user)
-            @elements_lut = _.keyBy(@elements, "element_id")
+            console.log "p=", _pos_dict
+            for el in @elements
+                el.set_layout(_pos_dict)
             @open_elements = (el for el in @elements when el.$$open)
-            @populated = true
-            @_populate_defer.resolve("done")
+            @num_open = @open_elements.length
+            @num_close = @num_total - @num_open
+
+        _get_var_name: () =>
+            return "#{POS_VAR_NAME}#{@current_layout_name}"
+
+        save_positions: () =>
+            cur_pos = @_get_positions()
+            _cur_str = angular.toJson(cur_pos)
+            _d = $q.defer()
+            if _cur_str != @_pos_str
+                @_pos_str = _cur_str
+                @user.set_json_var(@_get_var_name(), @_pos_str).then(
+                    (ok) ->
+                        _d.resolve("saved")
+                    (error) ->
+                        _d.reject("not saved")
+                )
+            else
+                _d.resolve("not needed")
+            return _d.promise
+
+        _get_positions: () =>
+            p_dict = {}
+            for el in @elements
+                p_dict[el.state.name] = {
+                    row: el.row
+                    col: el.col
+                    sizeX: el.sizeX
+                    sizeY: el.sizeY
+                    open: el.$$open
+                }
+            return p_dict
 
         reset: () =>
             @element_id = 0
             @num_total = 0
+            @elements.length = 0
+            @reset_layout()
+
+        reset_layout: () =>
+            @_pos_str = ""
             @num_open = 0
             @num_close = 0
-            @elements.length = 0
 
         add_element: (element, user) =>
             @element_id++
@@ -473,19 +529,16 @@ dashboard_module = angular.module(
             element.user = user
             @elements.push(element)
             @num_total++
-            if element.$$open
-                @num_open++
-            else
-                @num_close++
             return element
             
-        close_element: (element) =>
+        close_element: (element, save=true) =>
             if element.$$open
                 @num_close++
                 @num_open--
                 element.$$open = false
                 _.remove(@open_elements, (el) -> return el.element_id == element.element_id)
-                @save_positions()
+                if save
+                    @save_positions()
 
         open_element: (element) =>
             if not element.$$open
@@ -498,7 +551,11 @@ dashboard_module = angular.module(
         #    (@open_element(el) for el in @elements when not el.$$open)
         add_widget: ($event) =>
             sub_scope = $rootScope.$new(true)
-            sub_scope.widgets = (entry for entry in @elements when not entry.$$open)
+            sub_scope.widgets = _.sortBy(
+                (entry for entry in @elements when not entry.$$open)
+                (entry) ->
+                    return entry.state.icswData.pageTitle
+            )
             sub_scope.struct = {
                 new_widget: sub_scope.widgets[0]
                 pos: "bottom"
@@ -515,7 +572,6 @@ dashboard_module = angular.module(
                     closeable: true
                     ok_callback: (modal) =>
                         d = $q.defer()
-                        d.resolve("ok")
                         _w = sub_scope.struct.new_widget
                         console.log @num_open, sub_scope.struct
                         if sub_scope.struct.pos == "bottom" and @num_open
@@ -525,7 +581,12 @@ dashboard_module = angular.module(
                             _w.col = 0
                             _w.row = 0
                         @open_element(_w)
-                        @save_positions()
+                        @save_positions().then(
+                            (done) ->
+                                d.resolve("ok")
+                            (error) ->
+                                d.resolve("not ok")
+                        )
                         return d.promise
                     cancel_callback: (modal) ->
                         d = $q.defer()
@@ -537,24 +598,77 @@ dashboard_module = angular.module(
                     sub_scope.$destroy()
             )
 
-        save_positions: () =>
-            cur_pos = @_get_positions()
-            _cur_str = angular.toJson(cur_pos)
-            if _cur_str != @_pos_str
-                @_pos_str = _cur_str
-                @user.set_json_var(POS_VAR_NAME, @_pos_str)
+        _new_layout: (name) =>
+            @current_layout_name = name
+            @layout_names.push(@current_layout_name)
+            @layout_names = @layout_names.sort()
+            # to force save
+            @_pos_str = ""
 
-        _get_positions: () =>
-            p_dict = {}
-            for el in @elements
-                p_dict[el.state.name] = {
-                    row: el.row
-                    col: el.col
-                    sizeX: el.sizeX
-                    sizeY: el.sizeY
-                    open: el.$$open
+        change_layout: () =>
+            console.log "activate", @current_layout_name
+            # activate new layout, current_layout_name is already set
+            @activate_layout()
+
+        delete_layout: ($event) =>
+            _del_name = @current_layout_name
+            icswToolsSimpleModalService("Really delete Layout '#{_del_name}' ?").then(
+                (doit) =>
+                    blockUI.start("Removing layout...")
+                    @user.delete_var(@_get_var_name()).then(
+                        (ok) =>
+                            _.remove(@layout_names, (entry) -> return entry == _del_name)
+                            @current_layout_name = @layout_names[0]
+                            @change_layout()
+                            blockUI.stop()
+                        (notok) ->
+                            # not successfull, hm...
+                            blockUI.stop()
+                    )
+            )
+
+        add_layout: ($event) =>
+            sub_scope = $rootScope.$new(true)
+            sub_scope.struct = {
+                layout_name: "new layout"
+                start_empty: false
+            }
+            icswComplexModalService(
+                {
+                    message: $compile($templateCache.get("icsw.dashboard.add.layout"))(sub_scope)
+                    ok_label: "Add"
+                    title: "Create new layout"
+                    closeable: true
+                    ok_callback: (modal) =>
+                        d = $q.defer()
+                        if not sub_scope.struct.layout_name or sub_scope.struct.layout_name in @layout_names
+                            toaster.pop("warning", "wrong layout name", "", 0)
+                            d.reject("form not valid")
+                        else
+                            # save current position
+                            @save_positions()
+                            # current layout
+                            @_new_layout(sub_scope.struct.layout_name)
+                            # new position
+                            if sub_scope.struct.start_empty
+                                (@close_element(el, save=false) for el in @elements)
+                            @save_positions().then(
+                                (done) ->
+                                    d.resolve("ok")
+                                (error) ->
+                                    d.resolve("not ok")
+                            )
+                            d.resolve("ok")
+                        return d.promise
+                    cancel_callback: (modal) ->
+                        d = $q.defer()
+                        d.resolve("ok")
+                        return d.promise
                 }
-            return p_dict
+            ).then(
+                (fin) =>
+                    sub_scope.$destroy()
+            )
 
 ]).service("icswDashboardContainerService", [
     "$q", "icswDashboardContainer",
@@ -644,7 +758,7 @@ dashboard_module = angular.module(
         $state.go($scope.db_element.state)
 
     $scope.$on("$destroy", () =>
-        console.log "DESTROY", $scope
+        # console.log "DESTROY", $scope
         $scope.db_element.destroy()
     )
 

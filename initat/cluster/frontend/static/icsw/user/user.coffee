@@ -144,11 +144,32 @@ user_module = angular.module(
             else
                 return def_val
 
+        delete_var: (name) =>
+            _del = $q.defer()
+            if @has_var(name)
+                _var = @get_var(name)
+                Restangular.restangularizeElement(null, _var, ICSW_URLS.REST_USER_VARIABLE_DETAIL.slice(1).slice(0, -2))
+                _var.remove().then(
+                    (ok) =>
+                        _.remove(@user.user_variable_set, (entry) -> return entry.idx == _var.idx)
+                        @build_luts()
+                        _del.resolve("removed")
+                    (error) =>
+                        _del.reject("not removed")
+                )
+            else
+                _del.reject("var does not exist")
+            return _del.promise
+
         set_string_var: (name, value) =>
             return @set_var(name, value, "s")
             
         set_json_var: (name, value) =>
             return @set_var(name, value, "j")
+
+        get_var_names: (cur_re) =>
+            console.log cur_re
+            return (key for key of @var_lut when key.match(cur_re))
             
         set_var: (name, value, var_type) =>
             # modify var (if exists) otherwise create new
