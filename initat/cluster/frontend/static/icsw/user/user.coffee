@@ -112,6 +112,7 @@ user_module = angular.module(
             # user is in fact a list with only one element
             # (to simplify the framework layers)
             @user = user[0]
+            @build_luts()
 
         update_user: () =>
             _defer = $q.defer()
@@ -120,6 +121,7 @@ user_module = angular.module(
                 Restangular.restangularizeElement(null, @user, _update_url)
                 @user.put().then(
                     (ok) ->
+                        @build_luts()
                         _defer.resolve("updated")
                     (not_ok) ->
                         _defer.reject("error updating")
@@ -128,6 +130,56 @@ user_module = angular.module(
                 _defer.reject("no user")
             return _defer.promise
 
+        build_luts: () =>
+            # create luts (for vars)
+            @var_lut = _.keyBy(@user.user_variable_set, "name")
+            # console.log @var_lut
+        
+        has_var: (name) =>
+            return name of @var_lut
+            
+        get_var: (name) =>
+            return @var_lut[name]
+
+        set_string_var: (name, value) =>
+            # modify var (if exists) otherwise create new
+            _wait = $q.defer()
+            _result = $q.defer()
+            if name of @var_lut
+                _var= @get_var(name)
+                _wait.resolve(_var)
+            else
+                new_var = {
+                    user: @user.idx
+                    var_type: "s"
+                    value: value
+                    hidden: false
+                    editable: true
+                }
+                Restangular.all(
+                    ICSW_URLS.REST_USER_VARIABLE_LIST.slice(1)
+                ).post(
+                    new_var
+                ).then(
+                    (nv) ->
+                        console.log "new var=", nv
+                        _wait.resolve(nv)
+                )
+            _wait.promise.then(
+                (_var) ->
+                    if _var.var_type != "s"
+                        console.log "trying to change var_type from #{_var.var_type} to 's'"
+                        _result.reject("wrong type")
+                    else
+                        _var.value = value
+                        Restangular.restangularizeElement(null, _var, ICSW_URLS.REST_USER_VARIABLE_DETAIL.slice(1).slice(0, -2))
+                        _var.put().then(
+                            (ok) ->
+                                _result.resolve(_var)
+                            (not_ok) ->
+                                _result.reject("not modifed")
+                        )
+            )
 
 ]).service("icswUserService",
 [

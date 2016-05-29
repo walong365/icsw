@@ -1127,6 +1127,7 @@ class user_device_login(models.Model):
 class user_variable(models.Model):
     idx = models.AutoField(primary_key=True)
     user = models.ForeignKey("backbone.user")
+    description = models.CharField(default="", blank=True, max_length=255)
     var_type = models.CharField(
         max_length=2,
         choices=[
@@ -1138,8 +1139,8 @@ class user_variable(models.Model):
         ]
     )
     name = models.CharField(max_length=189)
-    value = models.CharField(max_length=512, default="")
-    json_value = models.TextField(default="")
+    value = models.CharField(max_length=512, default="", blank=True)
+    json_value = models.TextField(default="", blank=True)
     # can be edited
     editable = models.BooleanField(default=False)
     # is hidden

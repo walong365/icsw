@@ -151,24 +151,11 @@ class device_serializer(serializers.ModelSerializer):
     device_group_name = serializers.CharField(read_only=True)
     access_levels = serializers.SerializerMethodField()
     root_passwd_set = serializers.BooleanField(read_only=True)
-    latest_contact = serializers.CharField(read_only=True)
-    client_version = serializers.CharField(read_only=True)
-    monitor_type = serializers.CharField(source="get_monitor_type")
-    is_cd_device = serializers.SerializerMethodField()
+    # monitor_type = serializers.CharField(source="get_monitor_type")
+    # is_cd_device = serializers.SerializerMethodField()
 
     def get_access_levels(self, obj):
         return self.context["request"].user.get_object_access_levels(obj)
-
-    def get_is_cd_device(self, obj):
-        return True if (
-            "ipmi" in [
-                _cc.matchcode for _cc in obj.com_capability_list.all()
-            ] or len(
-                [
-                    _scheme.power_control for _scheme in obj.snmp_schemes.all() if _scheme.power_control
-                ]
-            )
-        ) else False
 
     class Meta:
         model = device
@@ -187,16 +174,12 @@ class device_serializer(serializers.ModelSerializer):
             "new_state", "prod_link", "dhcp_mac", "dhcp_write",
             # for categories
             "categories",
-            # package info
-            "latest_contact", "client_version",
             # monitor type
-            "monitor_type",
+            # "monitor_type",
             # uuid
             "uuid",
             # active_scan
             "active_scan",
-            # cd_device mark
-            "is_cd_device",
         )
         read_only_fields = ("uuid",)
 

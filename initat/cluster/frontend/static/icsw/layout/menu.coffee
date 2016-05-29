@@ -133,7 +133,7 @@ menu_module = angular.module(
         console.error "error moving to state #{to_state.name} (#{to_state}), error is #{error}"
         _to_login = true
         if to_state.icswData?
-            if to_state.icswData.redirect_to_from_on_error?
+            if to_state.icswData.redirect_to_from_on_error
                 _to_login = false
         if _to_login
             $state.go("login")
@@ -446,7 +446,7 @@ menu_module = angular.module(
                     menu[0].add_entry(state)
                 else
                     console.error("No menu with name #{state.icswData.menuEntry.menukey} found (#{state.icswData.pageTitle})")
-                    console.log "Menus known:", (entry.icswData.menuHeader.key for entry in menus).join(", ")
+                    console.log "Menus known:", (entry.state.icswData.menuHeader.key for entry in menus).join(", ")
 
             # todo: check for service_type
             if menus.length

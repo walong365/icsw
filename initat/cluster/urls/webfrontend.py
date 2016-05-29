@@ -71,8 +71,6 @@ rms_patterns = [
     url(r"control_job", rms_views.control_job.as_view(), name="control_job"),
     url(r"control_queue", rms_views.control_queue.as_view(), name="control_queue"),
     url(r"get_file_content", rms_views.get_file_content.as_view(), name="get_file_content"),
-    url(r"set_user_setting", rms_views.set_user_setting.as_view(), name="set_user_setting"),
-    url(r"get_user_setting", rms_views.get_user_setting.as_view(), name="get_user_setting"),
     url(r"change_job_pri$", rms_views.change_job_priority.as_view(), name="change_job_priority"),
 ]
 

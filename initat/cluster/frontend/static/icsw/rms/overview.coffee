@@ -407,19 +407,11 @@ rms_module = angular.module(
 
         change_entry : (entry) =>
             @toggle[entry] = ! @toggle[entry]
-            icswSimpleAjaxCall(
-                url: ICSW_URLS.RMS_SET_USER_SETTING
-                dataType: "json"
-                data:
-                    data: angular.toJson(
-                        {
-                            table: @name
-                            row: entry
-                            enabled: @toggle[entry]
-                        }
-                    )
-            ).then(
-                (json) ->
+            _str = (key for key, value of @toggle when not value).join(",")
+            console.log @toggle, _str
+            _var_name = "_rms_wf_#{@name}"
+            @struct.icsw_user.set_string_var(_var_name, _str).then(
+                (ok) ->
                     # done
             )
             @build_cache()
@@ -938,8 +930,10 @@ rms_module = angular.module(
             device_tree: undefined
             # is rms operator
             rms_operator: false
-            # current user
+            # current user (db entry)
             user: undefined
+            # current user (icsUser entry)
+            icsw_user: undefined
             # initial data present
             initial_data_present: false
             # search fields
@@ -982,10 +976,6 @@ rms_module = angular.module(
                         url: ICSW_URLS.RMS_GET_HEADER_DICT
                         dataType: "json"
                     )
-                    icswSimpleAjaxCall(
-                        url: ICSW_URLS.RMS_GET_USER_SETTING
-                        dataType: "json"
-                    )
                 ]
             ).then(
                 (data) ->
@@ -997,6 +987,8 @@ rms_module = angular.module(
                         _dt_name_lut[entry.name] = entry
                         _dt_name_lut[entry.full_name] = entry
                     $scope.struct.name_lut = _dt_name_lut
+                    $scope.struct.icsw_user = data[1]
+                    console.log $scope.struct.icsw_user.user.user_variable_set
                     $scope.struct.user = data[1].user
                     $scope.struct.rms_operator = $scope.acl_modify(null, "backbone.user.rms_operator")
                     $scope.struct.loading = false
@@ -1007,8 +999,13 @@ rms_module = angular.module(
                         node: new icswRMSNodeStruct(data[2].node_headers, $scope.struct)
                     }
                     # apply user settings
-                    for key, value of data[3]
-                        $scope.struct.rms[key].set_user_disabled(value)
+                    _u = $scope.struct.icsw_user
+                    for key of $scope.struct.rms
+                        _var_name = "_rms_wf_#{key}"
+                        console.log key, _var_name
+                        if _u.has_var(_var_name)
+                            _value = _u.get_var(_var_name).value.split(",")
+                            $scope.struct.rms[key].set_user_disabled(_value)
                     # initial data is now present
                     $scope.struct.initial_data_present = true
                     # start reload cycle

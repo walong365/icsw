@@ -39,7 +39,7 @@ from django.utils.decorators import method_decorator
 from django.views.generic import View
 from lxml.builder import E
 
-from initat.cluster.backbone.models import user_variable, rms_job_run
+from initat.cluster.backbone.models import rms_job_run
 from initat.cluster.backbone.routing import SrvTypeRouting
 from initat.cluster.backbone.serializers import rms_job_run_serializer
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
@@ -433,58 +433,6 @@ class get_file_content(View):
                 ),
                 logger
             )
-
-
-class set_user_setting(View):
-    @method_decorator(login_required)
-    def post(self, request):
-        if "user_vars" not in request.session:
-            request.session["user_vars"] = {}
-        user_vars = request.session["user_vars"]
-        _post = request.POST
-        data = json.loads(_post["data"])
-        var_name = "_rms_wf_{}".format(data["table"])
-        if var_name in user_vars:
-            cur_dis = user_vars[var_name].value.split(",")
-        else:
-            cur_dis = []
-        row = data["row"]
-        _save = False
-        if data["enabled"] and row in cur_dis:
-            cur_dis.remove(row)
-            _save = True
-        elif not data["enabled"] and row not in cur_dis:
-            cur_dis.append(row)
-            _save = True
-        if _save:
-            try:
-                user_vars[var_name] = user_variable.objects.get(Q(name=var_name) & Q(user=request.user))
-            except user_variable.DoesNotExist:
-                user_vars[var_name] = user_variable.objects.create(
-                    user=request.user,
-                    name=var_name,
-                    value=",".join(cur_dis)
-                )
-            else:
-                user_vars[var_name].value = ",".join(cur_dis)
-                user_vars[var_name].save()
-            request.session.save()
-        json_resp = {}
-        return HttpResponse(json.dumps(json_resp), content_type="application/json")
-
-
-class get_user_setting(View):
-    @method_decorator(login_required)
-    def post(self, request):
-        user_vars = request.session.get("user_vars", {})
-        json_resp = {}
-        for t_name in ["running", "waiting", "node"]:
-            var_name = "_rms_wf_%s" % (t_name)
-            if var_name in user_vars:
-                json_resp[t_name] = user_vars[var_name].value.split(",")
-            else:
-                json_resp[t_name] = []
-        return HttpResponse(json.dumps(json_resp), content_type="application/json")
 
 
 class change_job_priority(View):
