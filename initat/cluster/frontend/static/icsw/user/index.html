@@ -83,20 +83,59 @@
     <icsw-user-job-info></icsw-user-job-info>
 </script>
 
+<script type="text/ng-template" id="icsw.dashboard.add.widget">
+    <form class="form-horizontal" name="form_data">
+        <fieldset>
+            <legend>Settings</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-2">
+                    New Widget
+                </label>
+                <div class="controls col-sm-8">
+                    <ui-select ng-model="struct.new_widget" style="max-width:400px; min-width:240px;">
+                        <ui-select-match class="ui-select-match" placeholder="Select a widget">
+                            {{ $select.selected.state.icswData.pageTitle }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value as value in widgets">
+                            <div ng-bind-html="value.state.icswData.pageTitle | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-2">
+                    Position
+                </label>
+                <div class="controls col-sm-8">
+                    <ui-select ng-model="struct.pos" style="max-width:400px; min-width:240px;">
+                        <ui-select-match class="ui-select-match" placeholder="Select position">
+                            {{ $select.selected.long }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.short as value in locations">
+                            <div ng-bind-html="value.long | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+        </fieldset>
+        <div class="form-group" style="height:100px;"></div>
+    </form>
+</script>
+
 <script type="text/ng-template" id="icsw.dashboard.overview">
     <uib-alert ng-if="!struct.data_loaded" class="warning">Loading initial data...</uib-alert>
     <div class="panel panel-success" ng-if="struct.data_loaded">
         <div class="panel-heading">
             Main Dashboard ({{ struct.container.num_open }} of {{ struct.container.num_total }} shown)
             <span ng-show="struct.container.num_close">
-                <icsw-tools-button type="create" size="sm" value="ReOpen" ng-click="struct.container.reopen_closed_elements()"></icsw-tools-button>
+                <icsw-tools-button type="create" size="sm" value="add Widget" ng-click="struct.container.add_widget($event)"></icsw-tools-button>
             </span>
         </div>
         <div gridster="gridsterOpts" class="panel-body container-fluid">
             <ul>
                 <li gridster-item="item" ng-repeat="item in struct.container.open_elements track by item.element_id">
                     <icsw-dashboard-element-display
-                        style="position:absolute; overflow:auto;"
+                        style="position:absolute; top:0px; left:0px; bottom:0px; right:0px; overflow:auto;"
                         icsw-dashboard-element="item"
                     ></icsw-dashboard-element-display>
                 </li>

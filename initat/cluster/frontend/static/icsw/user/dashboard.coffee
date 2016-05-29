@@ -262,7 +262,7 @@ dashboard_module = angular.module(
         width: 'auto'
         colWidth: 'auto'
         rowHeight: '200'
-        margins: [10, 10]
+        margins: [4, 4]
         outerMargin: true
         isMobile: true
         mobileBreakPoint: 600
@@ -409,8 +409,10 @@ dashboard_module = angular.module(
     )
 ]).service("icswDashboardContainer", [
     "$q", "$rootScope", "ICSW_SIGNALS", "icswRouteHelper", "icswDashboardElement",
+    "$compile", "$templateCache", "icswComplexModalService",
 (
     $q, $rootScope, ICSW_SIGNALS, icswRouteHelper, icswDashboardElement,
+    $compile, $templateCache, icswComplexModalService,
 ) ->
     POS_VAR_NAME = "_dashboard_positions"
 
@@ -492,8 +494,48 @@ dashboard_module = angular.module(
                 element.$$open = true
                 @open_elements.push(element)
 
-        reopen_closed_elements: () =>
-            (@open_element(el) for el in @elements when not el.$$open)
+        # reopen_closed_elements: () =>
+        #    (@open_element(el) for el in @elements when not el.$$open)
+        add_widget: ($event) =>
+            sub_scope = $rootScope.$new(true)
+            sub_scope.widgets = (entry for entry in @elements when not entry.$$open)
+            sub_scope.struct = {
+                new_widget: sub_scope.widgets[0]
+                pos: "bottom"
+            }
+            sub_scope.locations = [
+                {short: "top", long: "At the top"}
+                {short: "bottom", long: "At the bottom"}
+            ]
+            icswComplexModalService(
+                {
+                    message: $compile($templateCache.get("icsw.dashboard.add.widget"))(sub_scope)
+                    ok_label: "Add"
+                    title: "Add widget"
+                    closeable: true
+                    ok_callback: (modal) =>
+                        d = $q.defer()
+                        d.resolve("ok")
+                        _w = sub_scope.struct.new_widget
+                        console.log @num_open, sub_scope.struct
+                        if sub_scope.struct.pos == "bottom" and @num_open
+                            _w.col = 0
+                            _w.row = _.max((entry.row + entry.sizeY for entry in @open_elements))
+                        else
+                            _w.col = 0
+                            _w.row = 0
+                        @open_element(_w)
+                        @save_positions()
+                        return d.promise
+                    cancel_callback: (modal) ->
+                        d = $q.defer()
+                        d.resolve("ok")
+                        return d.promise
+                }
+            ).then(
+                (fin) =>
+                    sub_scope.$destroy()
+            )
 
         save_positions: () =>
             cur_pos = @_get_positions()
