@@ -284,47 +284,49 @@
 </script>
 
 <script type="text/ng-template" id="icsw.user.job.info">
-    <table class="table table-hover table-bordered table-condensed" style="width:100%;" ng-show="jobinfo_valid">
-        <thead>
-            <tr>
-                <th></th>
-                <th>Number of jobs</th>
-                <th>Job ids</th>
-            </tr>
-        </thead>
+    <div class="container-fluid">
+        <h4 ng-show="!jobinfo_valid">waiting for jobinfo ...</h4>
+        <table class="table table-hover table-bordered table-condensed" style="width:100%;" ng-if="jobinfo_valid">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>Number of jobs</th>
+                    <th>Job ids</th>
+                </tr>
+            </thead>
 
-        <tbody>
-            <tr>
-                <td> Jobs waiting </td>
-                <td> {{ jobs_waiting.length }} </td>
-                <td> {{ longListToString(jobs_waiting) }} </td>
-            </tr>
-            <tr>
-                <td> Jobs running </td>
-                <td> {{ jobs_running.length }} </td>
-                <td> {{ longListToString(jobs_running) }} </td>
-            </tr>
-            <tr>
-                <td>
-                    Jobs finished in
-                    <div class="btn-group">
-                        <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
-                            <span class="glyphicon glyphicon-dashboard"></span>
-                            {{ last_jobinfo_timedelta.name }} <span class="caret"></span>
-                        </button>
-                        <ul class="dropdown-menu">
-                            <li ng-repeat="ts in all_timedeltas" ng-click="set_jobinfo_timedelta(ts)">
-                                <a>{{ ts.name }}</a>
-                            </li>
-                        </ul>
-                     </div>
-                </td>
-                <td>{{ jobs_finished.length }}</td>
-                <td>{{ longListToString(jobs_finished) }}</td>
-            </tr>
-        </tbody>
-    </table>
-    <h4 ng-show="!jobinfo_valid">waiting for jobinfo ...</h4>
+            <tbody>
+                <tr>
+                    <td> Jobs waiting </td>
+                    <td> {{ jobs_waiting.length }} </td>
+                    <td> {{ longListToString(jobs_waiting) }} </td>
+                </tr>
+                <tr>
+                    <td> Jobs running </td>
+                    <td> {{ jobs_running.length }} </td>
+                    <td> {{ longListToString(jobs_running) }} </td>
+                </tr>
+                <tr>
+                    <td>
+                        Jobs finished in
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
+                                <span class="glyphicon glyphicon-dashboard"></span>
+                                {{ last_jobinfo_timedelta.name }} <span class="caret"></span>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li ng-repeat="ts in all_timedeltas" ng-click="set_jobinfo_timedelta(ts)">
+                                    <a>{{ ts.name }}</a>
+                                </li>
+                            </ul>
+                         </div>
+                    </td>
+                    <td>{{ jobs_finished.length }}</td>
+                    <td>{{ longListToString(jobs_finished) }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
 </script>
 
 <script type="text/ng-template" id="icsw.user.disk.usage">

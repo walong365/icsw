@@ -26,7 +26,7 @@ angular.module(
     $stateProvider.state(
         "main.eventlog", {
             url: "/eventlog"
-            template: '<icsw-discovery-event-log icsw-sel-man="0" icsw-sel-man-mode="d"></icsw-discovery-event-log>'
+            template: '<icsw-discovery-event-log icsw-sel-man="0"></icsw-discovery-event-log>'
             icswData: icswRouteExtensionProvider.create
                 pageTitle: "Syslog, WMI- und IPMI-Event logs"
                 licenses: ["discovery_server"]

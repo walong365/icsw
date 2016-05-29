@@ -52,7 +52,6 @@ angular.module(
         _receivers += 1
         # console.log "registered receiver"
         $rootScope.$emit(ICSW_SIGNALS("ICSW_DSR_REGISTERED"))
-        send_selection()
 
     sync_selection = (new_sel) ->
         cur_selection.update(new_sel.categories, new_sel.device_groups, new_sel.devices, [])
@@ -80,7 +79,9 @@ angular.module(
             unsync_selection()
         "send_selection": () ->
             send_selection()
-        "register_receiver": () ->
+
+        register_receiver: () ->
+            # register devsel receiver
             register_receiver()
     }
 ]).service("icswSelection",

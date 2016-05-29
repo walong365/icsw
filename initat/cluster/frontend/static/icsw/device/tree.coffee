@@ -123,7 +123,8 @@ angular.module(
         $scope.struct.trigger_redraw++
         console.log "length / filtered length: #{$scope.struct.device_tree.all_list.length} / #{$scope.entries_filtered.length}"
 
-    icswActiveSelectionService.register_receiver()
+    # hm, not needed ?
+    # icswActiveSelectionService.register_receiver()
 
     $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"), (event) ->
         # console.log "icsw_overview_emit_selection received"

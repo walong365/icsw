@@ -142,6 +142,7 @@ angular.module(
     _key_idx = 0
     class icswRouteExtension
         constructor: (args) ->
+            # console.log _key_idx, args
             _key_idx++
             @_extension = true
             # list of needed rights
@@ -156,6 +157,8 @@ angular.module(
             @menuHeader = {}
             # menuEntry
             @menuEntry = {}
+            # dashboardEntry
+            @dashboardEntry = {}
             # redirect to originating when error
             @redirect_to_from_on_error = false
             # flag: valid for quicklink
@@ -165,13 +168,32 @@ angular.module(
                     console.error "unknown icswRouteExtension #{key}=#{value}", @
                 else
                     @[key] = value
+            for _check in ["menuEntry", "menuHeader", "dashboardEntry"]
+                _attr = "$$#{_check}"
+                if args and _check of args
+                    @[_attr] = true
+                else
+                    @[_attr] = false
             # flags: rights ok
             @$$allowed = false
             # unique key
             @key = "ire_#{_key_idx}"
             # fix menuEntry name
-            if @menuEntry and not @menuEntry.name?
-                @menuEntry.name = @pageTitle
+            if @$$menuEntry
+                # set defaults for menuEntry
+                if not @menuEntry.name?
+                    @menuEntry.name = @pageTitle
+            if @$$dashboardEntry
+                # set defaults for dashboard
+                for [_name, _default, _log] in [
+                    ["header_class", "default", false]
+                    ["size_x", 2, true]
+                    ["size_y", 2, true]
+                ]
+                    if not @dashboardEntry[_name]?
+                        @dashboardEntry[_name] = _default
+                        if _log
+                            console.error "missing attribute #{_name} in dashboardEntry for", @
     _struct = {
         entries: []
     }
@@ -195,62 +217,80 @@ angular.module(
     _user = undefined
     _acls = undefined
     _struct = {
+        icsw_states: []
         allowed_states: []
         quicklink_states: [] 
+        dashboard_states: []
+        menu_states: []
+        menu_header_states: []
     }
 
     _check_rights = () ->
+        # states for menus entries
+        _struct.menu_states.length = 0
+        # states for menu_headers
+        _struct.menu_header_states.length = 0
+        # allowed states
         _struct.allowed_states.length = 0
+        # states for quicklknk
         _struct.quicklink_states.length = 0
+        # dashboard states
+        _struct.dashboard_states.length = 0
         if _init
-            for state in _struct.menu_states
+            for state in _struct.icsw_states
                 data = state.icswData
                 _add = true
                 if data.rights?
-                    if angular.isFunction(data.rights)
-                        if _user?
-                            _add = data.rights(_user, _acls)
+                    if _user and _acls
+                        if angular.isFunction(data.rights)
+                            if _user?
+                                _add = data.rights(_user, _acls)
+                            else
+                                _add = false
                         else
-                            _add = false
+                            # console.log data.rights
+                            _add = icswAcessLevelService.has_all_menu_permissions(data.rights)
+                        if data.licenses? and _add
+                            _add = icswAcessLevelService.has_all_valid_licenses(data.licenses)
+                            if not _add
+                                console.warn "license(s) #{data.licenses} missing"
+                        if data.service_types? and _add
+                            _add = icswAcessLevelService.has_all_service_types(data.service_types)
+                            if not _add
+                                console.warn "service_type(s) #{data.service_types} missing"
                     else
-                        # console.log data.rights
-                        _add = icswAcessLevelService.has_all_menu_permissions(data.rights)
-                    if data.licenses? and _add
-                        _add = icswAcessLevelService.has_all_valid_licenses(data.licenses)
-                        if not _add
-                            console.warn "license(s) #{data.licenses} missing"
-                    if data.service_types? and _add
-                        _add = icswAcessLevelService.has_all_service_types(data.service_types)
-                        if not _add
-                            console.warn "service_type(s) #{data.service_types} missing"
+                        _add = false
                 data.$$allowed = _add
                 if data.$$allowed
                     _struct.allowed_states.push(state)
+                    if data.$$menuHeader
+                        _struct.menu_header_states.push(state)
+                    if data.$$menuEntry
+                        _struct.menu_states.push(state)
                     if data.valid_for_quicklink
                         _struct.quicklink_states.push(state)
+                    if data.$$dashboardEntry
+                        _struct.dashboard_states.push(state)
+            # console.log "rights checked"
             $rootScope.$emit(ICSW_SIGNALS("ICSW_ROUTE_RIGHTS_CHANGED"))
                     
 
     init_struct = () ->
-        menu_list = []
-        menu_states = []
-        quicklink_states = []
+        # all states (regardles of license and rights)
+        icsw_states = []
         for state in $state.get()
             if state.icswData?
                 _data = state.icswData
                 if not _data._extension
                     console.error "old menu entry, please fix", _data
                 else
+                    icsw_states.push(state)
                     if _data.menuEntry? and _data.menuEntry.menukey
-                        menu_states.push(state)
-                    if _data.menuHeader? and _data.menuHeader.key
-                        menu_list.push(state)
-                    if _data.valid_for_quicklink
-                        quicklink_states.push(state)
-        _struct.menu_header_states = menu_list
-        _struct.menu_states = menu_states
-        _struct._quicklink_states = quicklink_states
+                        # set sref for menu
+                        _data.menuEntry.sref = $state.href(state)
+        _struct.icsw_states = icsw_states
         _init = true
+        # console.log "init states, count:", _struct.icsw_states.length
         _check_rights()
 
     $rootScope.$on(ICSW_SIGNALS("ICSW_USER_CHANGED"), (event, user) ->
@@ -294,15 +334,32 @@ angular.module(
                     scope.$icsw_selman_list  = []
 
                     _new_sel = (sel) ->
-                        selman_mode = attrs["icswSelManSelMode"] || "d"
-                        # console.log "SelMan new selection (mode #{selman_mode})", sel
                         if scope.new_devsel?
                             scope.$icsw_selman_list.length = 0
                             for entry in sel
                                 scope.$icsw_selman_list.push(entry)
+                            # console.log "called new_devsel for", scope.$id
                             scope.new_devsel(scope.$icsw_selman_list)
                         else
                             console.warn "no new_devsel() function defined in scope", scope
+
+                    _get_selection = () ->
+                        # console.log "emit", scope.$id
+                        # console.log "icsw_overview_emit_selection received"
+                        if DeviceOverviewSettings.is_active()
+                            console.log "ov is active"
+                        else
+                            _tree = icswDeviceTreeService.current()
+                            if _tree?
+                                # filter illegal selection elements
+                                _new_sel(
+                                    (_tree.all_lut[pk] for pk in icswActiveSelectionService.current().tot_dev_sel when _tree.all_lut[pk]?)
+                                )
+                            else
+                                console.log "tree not valid, ignoring, triggering load"
+                                icswDeviceTreeService.load(scope.$id).then(
+                                    (tree) ->
+                                )
 
                     if parseInt(attrs.icswSelMan)
                         # popup mode, watch for changes (i.e. tab activation)
@@ -311,27 +368,17 @@ angular.module(
                                 _new_sel(new_val)
                         )
                     else
+                        # register get_selection when selection changes
                         dereg = $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"), (event) ->
-                            # console.log "emit", scope.$id
-                            # console.log "icsw_overview_emit_selection received"
-                            if DeviceOverviewSettings.is_active()
-                                console.log "ov is active"
-                            else
-                                _tree = icswDeviceTreeService.current()
-                                if _tree?
-                                    # filter illegal selection elements
-                                    _new_sel((_tree.all_lut[pk] for pk in icswActiveSelectionService.current().tot_dev_sel when _tree.all_lut[pk]?))
-                                else
-                                    console.log "tree not valid, ignoring, triggering load"
-                                    icswDeviceTreeService.load(scope.$id).then(
-                                        (tree) ->
-                                    )
+                            _get_selection()
                         )
                         # very important: unregister $on
                         scope.$on("$destroy", () ->
                             dereg()
                         )
                         icswActiveSelectionService.register_receiver()
+                        # get selection on the first run
+                        _get_selection()
                 # post: (scope, el, attrs) ->
                 #    console.log "post selman"
             }
@@ -443,6 +490,12 @@ angular.module(
                     in_array.length = if c_idx < 0 then in_array.length + c_idx else c_idx
                     in_array.push.apply(in_array, rest)
                     break
+
+        get_diff_time_ms: (diff_ms) ->
+            if diff_ms < 1000
+                return "#{diff_ms}ms"
+            else
+                return "#{diff_ms / 1000}s"
     }
 ]).service("icswAjaxInfoService",
 [
@@ -750,7 +803,11 @@ angular.module(
     )
     return product
 
-]).run(["Restangular", "toaster", (Restangular, toaster) ->
+]).run([
+    "Restangular", "toaster",
+(
+    Restangular, toaster
+) ->
     Restangular.setRestangularFields(
         {
             id: "idx"
@@ -1172,23 +1229,31 @@ angular.module(
     start_timeout = {}
     load_info = {}
 
-    schedule_load = (key) ->
+    schedule_load = (key, schedule_wait_timeout) ->
         # called when new listeners register
         # don't update immediately, wait until more controllers have registered
         if start_timeout[key]?
             $timeout.cancel(start_timeout[key])
             delete start_timeout[key]
-        if not start_timeout[key]?
-            start_timeout[key] = $timeout(
-                () ->
-                    load_info[key].load()
-                1
-            )
+        if schedule_wait_timeout
+            # schedule_wait_timeout given, delay by given timespan
+            if not start_timeout[key]?
+                start_timeout[key] = $timeout(
+                    () ->
+                        load_info[key].load()
+                    schedule_wait_timeout
+                )
+        else
+            # no delay given, load immediately
+            load_info[key].load()
 
     add_client = (client, url, options, pk_list) ->
+        # create unique key
         url_key = _key(url, options, pk_list)
         if url_key not of load_info
+            # init load info if not already present
             load_info[url_key] = new LoadInfo(url_key, url, options)
+        # add pk list to current LoadInfo
         return load_info[url_key].add_pk_list(client, pk_list)
 
     _key = (url, options, pk_list) ->
@@ -1201,11 +1266,121 @@ angular.module(
         return url_key
 
     return {
-        fetch: (client, url, options, pk_list) ->
+        fetch: (client, url, options, pk_list, schedule_wait_timeout=0) ->
             _defer = add_client(client, url, options, pk_list)
-            schedule_load(_key(url, options, pk_list))
+            schedule_load(_key(url, options, pk_list), schedule_wait_timeout)
             return _defer.promise
     }
+]).service("icswTreeBase",
+[
+    "Restangular", "ICSW_URLS", "gettextCatalog", "icswSimpleAjaxCall", "$q",
+    "icswCachingCall", "$rootScope", "ICSW_SIGNALS", "icswTools",
+(
+    Restangular, ICSW_URLS, gettextCatalog, icswSimpleAjaxCall, $q,
+    icswCachingCall, $rootScope, ICSW_SIGNALS, icswTools,
+) ->
+    class icswTreeBase
+        constructor: (@name, @tree_class, @rest_map, @signal) ->
+            @_result = undefined
+            @_load_called = false
+            @_fetch_dict = {}
+            @_call_dict = {
+                load: 0
+                fetch: 0
+                reload: 0
+            }
+
+        # public fnuctions
+        reload: (client) =>
+            @_call_dict.reload++
+            return @load_data(client).promise
+
+        load: (client) =>
+            if @_load_called
+                @_call_dict.fetch++
+                return @fetch_data(client).promise
+            else
+                @_call_dict.load++
+                return @load_data(client).promise
+
+        is_valid: () =>
+            # returns true if the result is already set
+            if @_result?
+                return true
+            else
+                return false
+
+        # to be overridden
+        extra_calls: () =>
+            return []
+            
+        # accessor functions
+        get_result: () =>
+            return @_result
+            
+        # private functions
+        load_data: (client) =>
+            @_load_called = true
+            console.log 
+            if angular.isArray(@rest_map[0])
+                # full map
+                _rest_calls = (
+                    icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in @rest_map
+                )
+            else
+                # simple map, no options
+                _rest_calls = (
+                    icswCachingCall.fetch(client, _entry, {}, []) for _entry in @rest_map
+                )
+            _wait_list = _.concat(
+                _rest_calls
+                @extra_calls()
+            )
+            _start = new Date().getTime()
+            @_load_defer = $q.defer()
+            $q.all(_wait_list).then(
+                (data) =>
+                    _map_len = @rest_map.length
+                    _tot_len = _wait_list.length
+                    _extra_len = _tot_len - _map_len
+                    _end = new Date().getTime()
+                    # runtime in milliseconds
+                    _run_time = icswTools.get_diff_time_ms(_end - _start)
+                    console.log " -> #{@name} loaded in #{_run_time} (#{_map_len} + #{_extra_len})"
+                    if @_result?
+                        @update_result(data...)
+                    else
+                        @init_result(data...)
+                    @send_results()
+                    # signal if required
+                    if @signal
+                        $rootScope.$emit(ICSW_SIGNALS(@signal))
+            )
+            return @_load_defer
+
+        init_result: (args...) =>
+            @_result = new @tree_class(args...)
+
+        update_result: (args...) =>
+            @_result.update(args...)
+
+        send_results: () =>
+            @_load_defer.resolve(@_result)
+            for client of @_fetch_dict
+                # resolve clients
+                @_fetch_dict[client].resolve(@_result)
+            # reset fetch_dict
+            @_fetch_dict = {}
+
+        fetch_data: (client) =>
+            if client not of @_fetch_dict
+                # register client
+                _defer = $q.defer()
+                @_fetch_dict[client] = _defer
+            if @_result
+                # resolve immediately
+                @_fetch_dict[client].resolve(@_result)
+            return @_fetch_dict[client]
 
 ]).filter('capitalize', () ->
     return (input, all) ->

@@ -270,7 +270,7 @@ menu_module = angular.module(
     menu_line = React.createClass(
         displayName: "menuline"
         render: () ->
-            state = @props
+            state = @props.state
             data = state.icswData
             # console.log "D=", data
             if data.menuEntry.href?
@@ -338,7 +338,7 @@ menu_module = angular.module(
                         )
                     else
                         _items.push(
-                            React.createElement(menu_line, state)
+                            React.createElement(menu_line, {key: _key, state: state})
                         )
                     valid_entry = true
                     if data.menuEntry.postSpacer? and valid_entry
@@ -382,7 +382,7 @@ menu_module = angular.module(
                                 className: "dropdown-menu"
                                 key: "ul_" + key
                             }
-                            # _items
+                            _items
                         )
                     ]
                 )
@@ -445,7 +445,8 @@ menu_module = angular.module(
                 if menu.length
                     menu[0].add_entry(state)
                 else
-                    console.error("No menu with name #{_entry.menukey} found")
+                    console.error("No menu with name #{state.icswData.menuEntry.menukey} found (#{state.icswData.pageTitle})")
+                    console.log "Menus known:", (entry.icswData.menuHeader.key for entry in menus).join(", ")
 
             # todo: check for service_type
             if menus.length

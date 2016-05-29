@@ -1,7 +1,7 @@
 <script type="text/ng-template" id="icsw/main/category/tree.html">
     <uib-tabset>
         <uib-tab heading="Device categories">
-            <icsw-device-category-overview icsw-sel-man="0" icsw-sel-man-sel-mode="d">
+            <icsw-device-category-overview icsw-sel-man="0">
             </icsw-device-category-overview>
         </uib-tab>
         <uib-tab heading="Available categories">
@@ -13,7 +13,7 @@
 <script type="text/ng-template" id="icsw/main/device/location.html">
     <uib-tabset icsw-config-location-tab-helper icsw-config-location-gfx-enhance-helper>
         <uib-tab heading="Device location" select="set_active_tab('loc')">
-            <icsw-device-location-overview icsw-sel-man="0" icsw-sel-man-sel-mode="d">
+            <icsw-device-location-overview icsw-sel-man="0">
             </icsw-device-location-overview>
         </uib-tab>
         <uib-tab heading="Location configuration" select="set_active_tab('conf')">

@@ -1232,7 +1232,8 @@ package_module = angular.module(
             )
     )
 
-    icswActiveSelectionService.register_receiver()
+    # hm, not needed ?
+    # icswActiveSelectionService.register_receiver()
 
     $scope.new_devsel = () ->
         devs = ($scope.struct.device_tree.all_lut[pk] for pk in icswActiveSelectionService.current().tot_dev_sel when $scope.struct.device_tree.all_lut[pk]?)

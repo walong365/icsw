@@ -36,6 +36,41 @@ dashboard_module = angular.module(
                   pageTitle: "Dashboard"
           }
     )
+]).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
+    $stateProvider.state(
+        "main.userjobinfo", {
+            url: "/userjobinfo"
+            templateUrl: 'icsw.dashboard.jobinfo'
+            icswData: icswRouteExtensionProvider.create
+                pageTitle: "RMS Information"
+                licenses: ["rms"]
+                service_types: ["rms-server"]
+                rights: ["user.rms_show"]
+                dashboardEntry:
+                    size_x: 3
+                    size_y: 2
+        }
+    ).state(
+        "main.userquotainfo", {
+            url: "/userquotainfo"
+            templateUrl: 'icsw.dashboard.diskquota'
+            icswData: icswRouteExtensionProvider.create
+                pageTitle: "User Disk and Quota info"
+                dashboardEntry:
+                    size_x: 3
+                    size_y: 2
+        }
+    ).state(
+        "main.virtualdesktopinfo", {
+            url: "/vduinfo"
+            templateUrl: "icsw.dashboard.virtualdesktops"
+            icswData: icswRouteExtensionProvider.create
+                pageTitle: "Virtual Desktops"
+                dashboardEntry:
+                    size_x: 3
+                    size_y: 2
+        }
+    )
 ]).directive("icswUserJobInfo",
 [
     "$templateCache",
@@ -209,13 +244,6 @@ dashboard_module = angular.module(
 ) ->
     icswAcessLevelService.install($scope)
     $scope.ICSW_URLS = ICSW_URLS
-    $scope.show_index = true
-    $scope.quick_open = true
-    $scope.ext_open = false
-    $scope.diskusage_open = true
-    $scope.vdesktop_open = true
-    $scope.jobinfo_open = true
-    $scope.show_devices = false
     $scope.NUM_QUOTA_SERVERS = 0
     icswSimpleAjaxCall(
         {
@@ -320,50 +348,65 @@ dashboard_module = angular.module(
     $scope.lds = icswUserLicenseDataService
     $scope.has_menu_permission = icswAcessLevelService.has_menu_permission
 ]).service("icswDashboardElement", [
-    "$templateCache", "$q", "$compile",
+    "$templateCache", "$q", "$compile", "$state",
 (
-    $templateCache, $q, $compile,
+    $templateCache, $q, $compile, $state,
 ) ->
     class icswDashboardElement
-        constructor: (@sizeX, @sizeY, @cls, @title, @template) ->
+        constructor: (@state) ->
+            console.log @state
+            # dashboardEntry
+            _e = @state.icswData.dashboardEntry
+            @sizeX = _e.size_x
+            @sizeY = _e.size_y
+            @cls = _e.header_class
+            @title = @state.icswData.pageTitle
             # camelcase is important here
             @$$panel_class = "panel-#{@cls}"
-            @user = undefined
+            @state = $state.get(@state.name)
+            @template_name = @state.templateUrl
 
         close: ($event) ->
             @container.close_element(@)
-            
-        link: (scope, element) =>
-            sub_scope = scope.$new(true)
-            sub_scope.$$dashboard_element = @
-            _header = $templateCache.get("icsw.dashboard.element.title")
-            _content = $templateCache.get(@template)
-            _content = "
-<div class='panel #{@$$panel_class}' style='height: 100%;'>
-#{_header}
-#{_content}
-</div>
-"
-            element.append($compile(_content)(sub_scope))
-            sub_scope.$on("$destroy", () =>
-                console.log "DESTROY"
-                console.log @sizeX, @sizeY
-            )
 
+        destroy: () ->
+            console.log "destroy", @sizeX, @sizeY
+
+]).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
+    $stateProvider.state(
+        "main.quicklinks", {
+            url: "/quicklinks"
+            templateUrl: 'icsw.dashboard.quicklinks'
+            icswData: icswRouteExtensionProvider.create
+                pageTitle: "Quicklinks"
+                dashboardEntry:
+                    size_x: 2
+                    size_y: 1
+        }
+    )
+]).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
+    $stateProvider.state(
+        "main.externallinks", {
+            url: "/externallinks"
+            templateUrl: 'icsw.dashboard.externallinks'
+            icswData: icswRouteExtensionProvider.create
+                pageTitle: "External links"
+                dashboardEntry:
+                    size_x: 2
+                    size_y: 1
+        }
+    )
 ]).service("icswDashboardStaticList", [
-    "icswDashboardElement",
+    "icswDashboardElement", "$state", "icswRouteHelper",
 (
-    icswDashboardElement,
+    icswDashboardElement, $state, icswRouteHelper,
 ) ->
+    _struct = icswRouteHelper.get_struct()
+    return (
+        new icswDashboardElement(state) for state in _struct.dashboard_states
+    )
     return [
-        new icswDashboardElement(2, 1, "warning", "Quick links", "icsw.dashboard.quicklinks")
-        new icswDashboardElement(2, 2, "success", "External links", "icsw.dashboard.externallinks")
         # Disk usage and Quota info from <ng-pluralize count="NUM_QUOTA_SERVERS" when="{'0' : 'no quota servers', 'one' : 'one quota server', 'other' : '{} quota servers'}"></ng-pluralize>
-        new icswDashboardElement(1, 1, "success", "Disk usage and Quota info ???", "icsw.dashboard.diskquota")
-        new icswDashboardElement(1, 1, "primary", "Virtual desktops", "icsw.dashboard.virtualdesktops")
-        new icswDashboardElement(2, 1, "success", "Job info", "icsw.dashboard.jobinfo")
-        new icswDashboardElement(3, 3, "success", "Graphing", "icsw.rrd.graph")
-        new icswDashboardElement(2, 2, "danger", "Assets", "icsw/device/asset/overview")
     ]
 ]).service("icswDashboardContainer", [
     "$q", "icswDashboardStaticList",
@@ -445,9 +488,69 @@ dashboard_module = angular.module(
         restrict: "E"
         scope:
             db_element: "=icswDashboardElement"
+        controller: "icswDashboardElementCtrl"
         link: (scope, element, attrs) ->
-            scope.db_element.link(scope, element)
+            _outer = $templateCache.get("icsw.dashboard.element")
+            _content = $templateCache.get(scope.db_element.template_name)
+            _template_content = _outer + _content + "</div></div>"
+            element.append($compile(_template_content)(scope))
+
     }
+]).controller("icswDashboardElementCtrl", [
+    "$scope", "icswRouteHelper", "$templateCache", "$compile", "$q",
+(
+    $scope, icswRouteHelper, $templateCache, $compile, $q,
+) ->
+    $scope.close = () ->
+        $scope.db_element.close()
+
+    $scope.show = () ->
+        # open quick dialog
+
+        sub_scope = $scope.$new(true)
+        d = $q.defer()
+        BootstrapDialog.show
+            message: $compile($templateCache.get($scope.db_element.template_name))(sub_scope)
+            title: $scope.db_element.title
+            size: BootstrapDialog.SIZE_WIDE
+            cssClass: "modal-tall modal-wide"
+            draggable: true
+            animate: false
+            closable: true
+            onshown: (ref) ->
+                # hack to position to the left
+                _tw = ref.getModal().width()
+                _diag = ref.getModalDialog()
+                if prev_left?
+                    $(_diag[0]).css("left", prev_left)
+                    $(_diag[0]).css("top", prev_top)
+                else
+                    $(_diag[0]).css("left", - (_tw - 600)/2)
+                sub_scope.modal = ref
+            onhidden: (ref) ->
+                _diag = ref.getModalDialog()
+                prev_left = $(_diag[0]).css("left")
+                prev_top = $(_diag[0]).css("top")
+                d.resolve("closed")
+            buttons: [
+                {
+                    icon: "glyphicon glyphicon-ok"
+                    cssClass: "btn-warning"
+                    label: "close"
+                    action: (ref) ->
+                        ref.close()
+                }
+            ]
+        d.promise.then(
+            (ok) ->
+                sub_scope.$destroy()
+        )
+
+    $scope.$on("$destroy", () =>
+        console.log "DESTROY", $scope
+        $scope.db_element.destroy()
+    )
+
 ]).controller("icswDashboardQuicklinksCtrl", [
     "$scope", "icswRouteHelper",
 (

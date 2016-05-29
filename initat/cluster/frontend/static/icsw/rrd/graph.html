@@ -1,59 +1,61 @@
 <script type="text/ng-template" id="icsw.rrd.graph">
-    <icsw-rrd-graph icsw-sel-man="0" icsw-sel-man-sel-mode="D"></icsw-rrd-graph>
+    <icsw-rrd-graph icsw-sel-man="0"></icsw-rrd-graph>
 </script>
 
 <script type="text/ng-template" id="icsw.rrd.graph.overview">
-    <div ng-if="struct.error_string">
-        <uib-alert type="warning">{{ struct.error_string }}</uib-alert>
-    </div>
-    <h4 ng-show="struct.vector_valid">
-        <div class="input-group form-inline">
-            <icsw-rrd-vector-info vector-info="struct.vectordata"></icsw-rrd-vector-info>,
-            <div class="form-group">
-                <div class="input-group-btn">
-                    <button type="button" ng-class="struct.show_tree && 'btn btn-xs btn-primary' || 'btn btn-xs'" ng-click="struct.show_tree=!struct.show_tree" title="show/hide RRD tree">
-                        <span class="glyphicon glyphicon-align-left"></span>
-                        tree
-                    </button>
-                </div>
-            </div>&nbsp;
-            <icsw-rrd-graph-setting></icsw-rrd-graph-setting>
-            <icsw-rrd-graph-time-frame timeframe="timeframe" detail="1"></icsw-rrd-graph-time-frame>
-            <div class="form-group">
-                <div class="btn-group">
-                    <button type="button" class="btn btn-xs btn-success dropdown-toggle" data-toggle="dropdown" title="which jobs to show">
-                        <span class="glyphicon glyphicon-tasks"></span>
-                        {{ get_job_mode(job_mode) }}<span class="caret"></span>
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li ng-repeat="_jm in job_modes" ng-show="job_mode_allowed(_jm)" ng-click="set_job_mode(_jm)">
-                            <a href="#">{{ get_job_mode(_jm) }}</a>
-                        </li>
-                    </ul>
+    <div class="container-fluid">
+        <div ng-if="struct.error_string">
+            <uib-alert type="warning">{{ struct.error_string }}</uib-alert>
+        </div>
+        <h4 ng-show="struct.vector_valid">
+            <div class="input-group form-inline">
+                <icsw-rrd-vector-info vector-info="struct.vectordata"></icsw-rrd-vector-info>,
+                <div class="form-group">
+                    <div class="input-group-btn">
+                        <button type="button" ng-class="struct.show_tree && 'btn btn-xs btn-primary' || 'btn btn-xs'" ng-click="struct.show_tree=!struct.show_tree" title="show/hide RRD tree">
+                            <span class="glyphicon glyphicon-align-left"></span>
+                            tree
+                        </button>
+                    </div>
+                </div>&nbsp;
+                <icsw-rrd-graph-setting></icsw-rrd-graph-setting>
+                <icsw-rrd-graph-time-frame timeframe="timeframe" detail="1"></icsw-rrd-graph-time-frame>
+                <div class="form-group">
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-xs btn-success dropdown-toggle" data-toggle="dropdown" title="which jobs to show">
+                            <span class="glyphicon glyphicon-tasks"></span>
+                            {{ get_job_mode(job_mode) }}<span class="caret"></span>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li ng-repeat="_jm in job_modes" ng-show="job_mode_allowed(_jm)" ng-click="set_job_mode(_jm)">
+                                <a href="#">{{ get_job_mode(_jm) }}</a>
+                            </li>
+                        </ul>
+                    </div>
                 </div>
             </div>
-        </div>
-    </h4>
-    <div class="row" ng-if="struct.vector_valid">
-        <div class="col-md-3" ng-show="struct.show_tree">
-            <div class="input-group">
-                <input type="text" class="form-control" ng-disabled="struct.error_string.length" ng-model="struct.searchstr" placeholder="search ..." ng-change="update_search()"/>
-                <span class="input-group-btn">
-                    <button class="btn btn-success" ng-show="cur_selected.length && timeframe.valid" type="button" ladda="struct.is_drawing" ng-click="draw_graph()">
-                        <span title="draw graph(s)" class="glyphicon glyphicon-pencil"></span>
-                    </button>
-                    <button class="btn btn-warning" ng-show="cur_selected.length && timeframe.valid" type="button" ladda="struct.is_drawing" ng-click="clear_selection()">
-                        <span title="clear selection" class="fa fa-remove"></span>
-                    </button>
-                    <button class="btn btn-warning" type="button" ladda="struct.is_drawing" ng-click="select_with_sensor()">
-                        <span title="select all with sensors" class="fa fa-wrench"></span>
-                    </button>
-                </span>
+        </h4>
+        <div class="row" ng-if="struct.vector_valid">
+            <div class="col-md-3" ng-show="struct.show_tree">
+                <div class="input-group">
+                    <input type="text" class="form-control" ng-disabled="struct.error_string.length" ng-model="struct.searchstr" placeholder="search ..." ng-change="update_search()"/>
+                    <span class="input-group-btn">
+                        <button class="btn btn-success" ng-show="cur_selected.length && timeframe.valid" type="button" ladda="struct.is_drawing" ng-click="draw_graph()">
+                            <span title="draw graph(s)" class="glyphicon glyphicon-pencil"></span>
+                        </button>
+                        <button class="btn btn-warning" ng-show="cur_selected.length && timeframe.valid" type="button" ladda="struct.is_drawing" ng-click="clear_selection()">
+                            <span title="clear selection" class="fa fa-remove"></span>
+                        </button>
+                        <button class="btn btn-warning" type="button" ladda="struct.is_drawing" ng-click="select_with_sensor()">
+                            <span title="select all with sensors" class="fa fa-wrench"></span>
+                        </button>
+                    </span>
+                </div>
+                <icsw-react-tree icsw-tree-config="struct.g_tree"></icsw-react-tree>
             </div>
-            <icsw-react-tree icsw-tree-config="struct.g_tree"></icsw-react-tree>
-        </div>
-        <div ng-class="struct.show_tree && 'col-md-9' || 'col-md-12'" ng-show="graph_list.length">
-            <icsw-rrd-graph-list graph-list="graph_list" graph-matrix="graph_mat"></icsw-rrd-graph-list>
+            <div ng-class="struct.show_tree && 'col-md-9' || 'col-md-12'" ng-show="graph_list.length">
+                <icsw-rrd-graph-list graph-list="graph_list" graph-matrix="graph_mat"></icsw-rrd-graph-list>
+            </div>
         </div>
     </div>
 </script>

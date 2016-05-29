@@ -39,6 +39,9 @@ angular.module(
                     menukey: "stat"
                     icon: "fa-line-chart"
                     ordering: 40
+                dashboardEntry:
+                    size_x: 3
+                    size_y: 3
         }
     )
 ]).service("icswRRDSensor", [()->

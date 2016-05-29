@@ -39,7 +39,7 @@ angular.module(
     ).state(
         "main.monitordisk", {
             url: "/monitordisk"
-            template: '<icsw-device-partition-overview icsw-sel-man="0" icsw-sel-man-sel-mode="d"></icsw-device-partition-overview>'
+            template: '<icsw-device-partition-overview icsw-sel-man="0"></icsw-device-partition-overview>'
             icswData: icswRouteExtensionProvider.create
                 pageTitle: "Disk"
                 rights: ["mon_check_command.setup_monitoring"]

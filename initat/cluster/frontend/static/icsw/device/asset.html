@@ -4,140 +4,142 @@
 
 
 <script type="text/ng-template" id="icsw.device.asset.overview">
-    <uib-alert type="warning" ng-show="!struct.data_loaded">Fetching data from server ...</uib-alert>
+    <div class="container-fluid">
+        <uib-alert type="warning" ng-show="!struct.data_loaded">Fetching data from server ...</uib-alert>
 
-    <div ng-if="struct.data_loaded">
-        <h1>
-            Asset System Overview
-            <span ng-show="struct.reloading" class="text-warning">Updating data from server...</span>
-        </h1>
+        <div ng-if="struct.data_loaded">
+            <h1>
+                Asset System Overview
+                <span ng-show="struct.reloading" class="text-warning">Updating data from server...</span>
+            </h1>
 
-        <uib-tabset>
-            <uib-tab>
-                <uib-tab-heading>
-                    <span>Overview</span>
-                </uib-tab-heading>
-                <h2>Overview of Runs and Packages</h2>
-                <uib-tabset>
-                    <uib-tab>
-                        <uib-tab-heading>
-                            <span>Scheduled Runs ({{ struct.schedule_items.length }})</span>
-                        </uib-tab-heading>
-                        <icsw-asset-scheduled-runs-table>
-                        </icsw-asset-scheduled-runs-table>
-                    </uib-tab>
-                    <uib-tab>
-                        <uib-tab-heading>
-                            <span>AssetRuns ({{ struct.asset_runs.length }})</span>
-                        </uib-tab-heading>
-                        <icsw-asset-asset-runs-table
-                            icsw-asset-run-list="struct.asset_runs"
-                        ></icsw-asset-asset-runs-table>
-                        <div ng-if="struct.show_changeset">
-                            <h2>
-                                <span>
-                                    Asset Changes
-                                </span>
-                            </h2>
+            <uib-tabset>
+                <uib-tab>
+                    <uib-tab-heading>
+                        <span>Overview</span>
+                    </uib-tab-heading>
+                    <h2>Overview of Runs and Packages</h2>
+                    <uib-tabset>
+                        <uib-tab>
+                            <uib-tab-heading>
+                                <span>Scheduled Runs ({{ struct.schedule_items.length }})</span>
+                            </uib-tab-heading>
+                            <icsw-asset-scheduled-runs-table>
+                            </icsw-asset-scheduled-runs-table>
+                        </uib-tab>
+                        <uib-tab>
+                            <uib-tab-heading>
+                                <span>AssetRuns ({{ struct.asset_runs.length }})</span>
+                            </uib-tab-heading>
+                            <icsw-asset-asset-runs-table
+                                icsw-asset-run-list="struct.asset_runs"
+                            ></icsw-asset-asset-runs-table>
+                            <div ng-if="struct.show_changeset">
+                                <h2>
+                                    <span>
+                                        Asset Changes
+                                    </span>
+                                </h2>
 
-                            <div ng-if="struct.added_changeset.length > 0">
-                                <span>
-                                    Added:
-                                </span>
-                                <ul>
-                                    <li ng-repeat="obj in struct.added_changeset track by $index">
-                                       {{ obj }}
-                                    </li>
-                                </ul>
+                                <div ng-if="struct.added_changeset.length > 0">
+                                    <span>
+                                        Added:
+                                    </span>
+                                    <ul>
+                                        <li ng-repeat="obj in struct.added_changeset track by $index">
+                                           {{ obj }}
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div ng-if="struct.added_changeset.length == 0">
+                                    <span>
+                                        Added: nothing
+                                    </span>
+                                </div>
+
+                                <div ng-if="struct.removed_changeset.length > 0">
+                                    <span>
+                                        Removed:
+                                    </span>
+                                    <ul>
+                                        <li ng-repeat="obj in struct.removed_changeset track by $index">
+                                            {{ obj }}
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div ng-if="struct.removed_changeset.length == 0">
+                                    <span>
+                                        Removed: nothing
+                                    </span>
+                                </div>
                             </div>
-                            <div ng-if="struct.added_changeset.length == 0">
-                                <span>
-                                    Added: nothing
-                                </span>
-                            </div>
+                        </uib-tab>
+                        <uib-tab>
+                            <uib-tab-heading>
+                                <span>Known Packages ({{ struct.package_tree.list.length }})</span>
+                            </uib-tab-heading>
 
-                            <div ng-if="struct.removed_changeset.length > 0">
-                                <span>
-                                    Removed:
-                                </span>
-                                <ul>
-                                    <li ng-repeat="obj in struct.removed_changeset track by $index">
-                                        {{ obj }}
-                                    </li>
-                                </ul>
-                            </div>
-                            <div ng-if="struct.removed_changeset.length == 0">
-                                <span>
-                                    Removed: nothing
-                                </span>
-                            </div>
-                        </div>
-                    </uib-tab>
-                    <uib-tab>
-                        <uib-tab-heading>
-                            <span>Known Packages ({{ struct.package_tree.list.length }})</span>
-                        </uib-tab-heading>
-
-                        <icsw-asset-known-packages
-                            icsw-asset-package-tree="struct.package_tree"
-                        ></icsw-asset-known-packages>
-                    </uib-tab>
-                </uib-tabset>
-            </uib-tab>
+                            <icsw-asset-known-packages
+                                icsw-asset-package-tree="struct.package_tree"
+                            ></icsw-asset-known-packages>
+                        </uib-tab>
+                    </uib-tabset>
+                </uib-tab>
 
 
-            <uib-tab ng-repeat="dev in struct.devices">
-                <uib-tab-heading>
-                    {{ dev.full_name }}
-                </uib-tab-heading>
+                <uib-tab ng-repeat="dev in struct.devices">
+                    <uib-tab-heading>
+                        {{ dev.full_name }}
+                    </uib-tab-heading>
 
-                <h3>
-                    <span ng-show="dev.assetrun_set.length">
-                        AssetRun Overview for device '{{ dev.full_name }}' (group {{ dev.device_group_name }})
-                    </span>
-                    <span ng-show="!dev.assetrun_set.length">
-                        No AssetRuns for this device.
-                    </span>
-                    <span ng-show="struct.num_selected">
-                        , diff ({{ struct.num_selected }} selected)
-                        <icsw-tools-button ng-if="struct.num_selected == 2" type="reload" size="xs" ng-click="assetchangeset(dev)" value="Asset Changeset"/>
-                    </span>
-                </h3>
-
-
-                <button type="button" class="btn btn-xs btn-warning" data-style="slide-left" ladda="dev.$$asset_run" ng-click="run_now($event, dev)">Run now</button>
-
-                <icsw-asset-asset-runs-table
-                    icsw-asset-run-list="dev.assetrun_set"
-                ></icsw-asset-asset-runs-table>
-                <div ng-if="dev.show_changeset">
-                    <h2>
-                        <span>
-                            Asset Changes
+                    <h3>
+                        <span ng-show="dev.assetrun_set.length">
+                            AssetRun Overview for device '{{ dev.full_name }}' (group {{ dev.device_group_name }})
                         </span>
-                    </h2>
+                        <span ng-show="!dev.assetrun_set.length">
+                            No AssetRuns for this device.
+                        </span>
+                        <span ng-show="struct.num_selected">
+                            , diff ({{ struct.num_selected }} selected)
+                            <icsw-tools-button ng-if="struct.num_selected == 2" type="reload" size="xs" ng-click="assetchangeset(dev)" value="Asset Changeset"/>
+                        </span>
+                    </h3>
 
-                    <span>
-                        Added:
-                    </span>
-                   <ul>
-                       <li ng-repeat="obj in dev.added_changeset">
-                           {{ obj }}
-                       </li>
-                   </ul>
 
-                    <span>
-                        Removed:
-                    </span>
-                    <ul>
-                        <li ng-repeat="obj in dev.removed_changeset">
-                            {{ obj }}
-                        </li>
-                    </ul>
-                </div>
+                    <button type="button" class="btn btn-xs btn-warning" data-style="slide-left" ladda="dev.$$asset_run" ng-click="run_now($event, dev)">Run now</button>
 
-            </uib-tab>
-        </uib-tabset>
+                    <icsw-asset-asset-runs-table
+                        icsw-asset-run-list="dev.assetrun_set"
+                    ></icsw-asset-asset-runs-table>
+                    <div ng-if="dev.show_changeset">
+                        <h2>
+                            <span>
+                                Asset Changes
+                            </span>
+                        </h2>
+
+                        <span>
+                            Added:
+                        </span>
+                       <ul>
+                           <li ng-repeat="obj in dev.added_changeset">
+                               {{ obj }}
+                           </li>
+                       </ul>
+
+                        <span>
+                            Removed:
+                        </span>
+                        <ul>
+                            <li ng-repeat="obj in dev.removed_changeset">
+                                {{ obj }}
+                            </li>
+                        </ul>
+                    </div>
+
+                </uib-tab>
+            </uib-tabset>
+        </div>
     </div>
 </script>
 

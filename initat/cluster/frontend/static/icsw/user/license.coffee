@@ -222,7 +222,7 @@ angular.module(
             @build_luts()
         
         build_luts: () =>
-            @lut = _.keyBy(@list, "idx")
+            # @lut = _.keyBy(@list, "idx")
             @lut_by_id = _.keyBy(@list, "id")
             @pack_lut = _.keyBy(@pack_list, "idx")
             @link()
@@ -346,97 +346,42 @@ angular.module(
 [
     "Restangular", "ICSW_URLS", "gettextCatalog", "icswSimpleAjaxCall", "$q",
     "icswUserLicenseDataTree", "icswCachingCall", "$rootScope", "ICSW_SIGNALS",
+    "icswTreeBase",
 (
     Restangular, ICSW_URLS, gettextCatalog, icswSimpleAjaxCall, $q,
     icswUserLicenseDataTree, icswCachingCall, $rootScope, ICSW_SIGNALS,
+    icswTreeBase,
 ) ->
     rest_map = [
-        [
-            ICSW_URLS.ICSW_LIC_GET_ALL_LICENSES, {}
-        ]
-        [
-            ICSW_URLS.ICSW_LIC_GET_LICENSE_PACKAGES, {}
-        ]
-        [
-            ICSW_URLS.ICSW_LIC_GET_LICENSE_VIOLATIONS, {}
-        ]
+        ICSW_URLS.ICSW_LIC_GET_ALL_LICENSES
+        ICSW_URLS.ICSW_LIC_GET_LICENSE_PACKAGES
+        ICSW_URLS.ICSW_LIC_GET_LICENSE_VIOLATIONS
     ]
+    class icswUserLicenseTree extends icswTreeBase
+        extra_calls: () =>
+            return [
+                icswSimpleAjaxCall(
+                    {
+                        url: ICSW_URLS.MAIN_GET_CLUSTER_INFO
+                        dataType: "json"
+                    }
+                )
+            ]
 
-    _fetch_dict = {}
-    _result = undefined
-    # load called
-    load_called = false
-
-    load_data = (client) ->
-        load_called = true
-        _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in rest_map)
-        _wait_list.push(
-            icswSimpleAjaxCall(
-                {
-                    url: ICSW_URLS.MAIN_GET_CLUSTER_INFO
-                    dataType: "json"
-                }
-            )
-        )
-        _defer = $q.defer()
-        $q.all(_wait_list).then(
-            (data) ->
-                console.log "*** license tree loaded ***"
-                if _result?
-                    _result.update(data[0], data[1], data[2])
-                else
-                    _result = new icswUserLicenseDataTree(data[0], data[1], data[2], data[3])
-                _defer.resolve(_result)
-                for client of _fetch_dict
-                    # resolve clients
-                    _fetch_dict[client].resolve(_result)
-                # reset fetch_dict
-                _fetch_dict = {}
-                $rootScope.$emit(ICSW_SIGNALS("ICSW_LICENSE_DATA_LOADED"))
-        )
-        return _defer
-
-    fetch_data = (client) ->
-        if client not of _fetch_dict
-            # register client
-            _defer = $q.defer()
-            _fetch_dict[client] = _defer
-        if _result
-            # resolve immediately
-            _fetch_dict[client].resolve(_result)
-        return _fetch_dict[client]
-
-    # data.get_license_by_id = (id) ->
-    #     return _.find(data.all_licenses, (elem) -> return elem.id == id)
-
-    # NOTE: code below here is just utils, but we can't have it in a proper service since that would create a circular dependency
-    # get_license_state = (issued_lic) ->
-    #     state =  _get_license_state_internal(issued_lic)
-    #     return if state? then state[3] else undefined
-
-    return {
-        load: (client) ->
-            if load_called
-                # fetch when data is present (after sidebar)
-                return fetch_data(client).promise
-            else
-                return load_data(client).promise
-
-        reload: (client) ->
-            return load_data(client).promise
-
-        is_valid: () ->
-            return if _result? then true else false
-
-        fx_mode: () ->
+        fx_mode: () =>
             # return true if fx_mode (== fast frontend) is enabled
-            if _result?
-                _fx_mode = _result.fx_mode()
+            if @is_valid()
+                _fx_mode = @get_result().fx_mode()
             else
                 _fx_mode = false
             return _fx_mode
-                
-    }
+
+    return new icswUserLicenseTree(
+        "LicenseTree"
+        icswUserLicenseDataTree
+        rest_map
+        "ICSW_LICENSE_DATA_LOADED"
+    )
 ]).service("icswUserLicenseFunctions", [
     "$q", "gettextCatalog",
 (

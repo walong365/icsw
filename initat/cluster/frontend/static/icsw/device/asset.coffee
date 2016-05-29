@@ -37,6 +37,9 @@ device_asset_module = angular.module(
                     menukey: "dev"
                     icon: "fa-code"
                     ordering: 30
+                dashboardEntry:
+                    size_x: 3
+                    size_y: 3
         }
     )
 ]).directive("icswDeviceAssetOverview",

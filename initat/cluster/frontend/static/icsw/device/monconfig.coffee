@@ -27,7 +27,7 @@ angular.module(
     $stateProvider.state(
         "main.monitorhint", {
             url: "/monitorhint"
-            template: '<icsw-device-mon-config icsw-sel-man="0" icsw-sel-man-sel-mode="d"></icsw-device-mon-config>'
+            template: '<icsw-device-mon-config icsw-sel-man="0"></icsw-device-mon-config>'
             icswData: icswRouteExtensionProvider.create
                 pageTitle: "Monitoring hints"
                 rights: ["mon_check_command.setup_monitoring"]

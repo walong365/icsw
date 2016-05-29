@@ -88,7 +88,7 @@ angular.module(
     $stateProvider.state(
         "main.livestatus", {
             url: "/livestatus"
-            template: '<icsw-device-livestatus icsw-sel-man="0" icsw-sel-man-mode="d"></icsw-device-livestatus>'
+            template: '<icsw-device-livestatus icsw-sel-man="0"></icsw-device-livestatus>'
             icswData: icswRouteExtensionProvider.create
                 pageTitle: "Monitoring dashboard"
                 licenses: ["monitoring_dashboard"]
