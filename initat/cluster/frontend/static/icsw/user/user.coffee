@@ -109,7 +109,9 @@ user_module = angular.module(
             @update(user)
 
         update: (user) =>
-            @user = user
+            # user is in fact a list with only one element
+            # (to simplify the framework layers)
+            @user = user[0]
 
         update_user: () =>
             _defer = $q.defer()
@@ -136,16 +138,6 @@ user_module = angular.module(
     Restangular, icswUser, icswTreeBase,
 ) ->
     class icswUserService extends icswTreeBase
-        extra_calls: () =>
-            return [
-                icswSimpleAjaxCall(
-                    {
-                        url: ICSW_URLS.SESSION_GET_AUTHENTICATED_USER
-                        dataType: "json"
-                    }
-                )
-            ]
-
         get: () =>
             return @get_result()
 
@@ -177,7 +169,9 @@ user_module = angular.module(
     return new icswUserService(
         "User"
         icswUser
-        []
+        [
+            ICSW_URLS.SESSION_GET_AUTHENTICATED_USER
+        ]
         "ICSW_USER_CHANGED"
     )
 ]).service("icswUserGroupPermissionTree",

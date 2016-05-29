@@ -59,7 +59,7 @@ session_patterns = [
     url(r"logout", session_views.session_logout.as_view(), name="logout"),
     url(r"login", session_views.session_login.as_view(), name="login"),
     url(r"log_addons$", session_views.login_addons.as_view(), name="login_addons"),
-    url(r"get_authenticated_user$", session_views.get_user.as_view(), name="get_authenticated_user"),
+    url(r"get_authenticated_user$", session_views.UserView.as_view({"get": "get_user"}), name="get_authenticated_user"),
     url(r"get_csrf_token$", session_views.get_csrf_token.as_view(), name="get_csrf_token"),
 ]
 

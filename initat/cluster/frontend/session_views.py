@@ -37,6 +37,8 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import View
+from rest_framework import viewsets
+from rest_framework.response import Response
 
 from initat.cluster.backbone.models import user, login_history
 from initat.cluster.backbone.serializers import user_serializer
@@ -218,13 +220,11 @@ class session_login(View):
         return real_user_name
 
 
-class get_user(View):
-    def post(self, request):
+class UserView(viewsets.ViewSet):
+    def get_user(self, request):
         if request.user and not request.user.is_anonymous:
-            _user = user_serializer(request.user, context={"request": request}).data
+            _user = request.user
         else:
-            _user = user_serializer(user(), context={"request": request}).data
-        return HttpResponse(
-            json.dumps(_user),
-            content_type="application/json"
-        )
+            _user = user()
+        serializer = user_serializer([_user], context={"request": request}, many=True)
+        return Response(serializer.data)

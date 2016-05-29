@@ -1127,13 +1127,23 @@ class user_device_login(models.Model):
 class user_variable(models.Model):
     idx = models.AutoField(primary_key=True)
     user = models.ForeignKey("backbone.user")
-    var_type = models.CharField(max_length=2, choices=[
-        ("s", "string"),
-        ("i", "integer"),
-        ("b", "boolean"),
-        ("n", "none")])
+    var_type = models.CharField(
+        max_length=2,
+        choices=[
+            ("s", "string"),
+            ("i", "integer"),
+            ("b", "boolean"),
+            ("j", "json-encoded"),
+            ("n", "none")
+        ]
+    )
     name = models.CharField(max_length=189)
     value = models.CharField(max_length=512, default="")
+    json_value = models.TextField(default="")
+    # can be edited
+    editable = models.BooleanField(default=False)
+    # is hidden
+    hidden = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
 
     def to_db_format(self):
@@ -1162,6 +1172,14 @@ class user_variable(models.Model):
             self.value = int(self.value)
         elif self.var_type == "n":
             self.value = None
+
+    def __unicode__(self):
+        return "UserVar {} type {}, {}, {}".format(
+            self.name,
+            self.var_type,
+            "hidden" if self.hidden else "not hidden",
+            "editable" if self.editable else "not editable",
+        )
 
     class Meta:
         unique_together = [("name", "user"), ]

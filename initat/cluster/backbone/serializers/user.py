@@ -26,7 +26,7 @@ from rest_framework import serializers
 from initat.cluster.backbone.models import group, user, csw_permission, group_permission, csw_object_permission, \
     group_object_permission, user_permission, user_object_permission, user_quota_setting, \
     group_quota_setting, user_scan_result, user_scan_run, virtual_desktop_protocol, virtual_desktop_user_setting, \
-    window_manager, UserLogEntry
+    window_manager, UserLogEntry, user_variable
 
 __all__ = [
     "csw_permission_serializer",
@@ -47,6 +47,7 @@ __all__ = [
     "virtual_desktop_protocol_serializer",
     "window_manager_serializer",
     "UserLogEntrySerializer",
+    "user_variable_serializer",
 ]
 
 
@@ -115,6 +116,12 @@ class user_scan_run_serializer(serializers.ModelSerializer):
         model = user_scan_run
 
 
+class user_variable_serializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = user_variable
+
+
 class user_serializer(serializers.ModelSerializer):
     # object_perms = csw_object_permission_serializer(many=True, read_only=True)
     user_permission_set = user_permission_serializer(many=True, read_only=True)
@@ -123,6 +130,7 @@ class user_serializer(serializers.ModelSerializer):
     user_scan_run_set = user_scan_run_serializer(many=True, read_only=True)
     info = serializers.CharField(source="get_info", read_only=True)
     login_name = serializers.SerializerMethodField()
+    user_variable_set = user_variable_serializer(many=True, read_only=True)
 
     def get_login_name(self, obj):
         _req = self.context["request"]
@@ -140,6 +148,7 @@ class user_serializer(serializers.ModelSerializer):
             "allowed_device_groups", "aliases", "db_is_auth_for_password", "is_superuser",
             "home_dir_created", "user_quota_setting_set", "info", "scan_user_home", "scan_depth",
             "only_webfrontend", "home", "user_scan_run_set", "login_name", "create_rms_user",
+            "user_variable_set",
         )
 
 
