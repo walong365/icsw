@@ -372,7 +372,7 @@ dashboard_module = angular.module(
                 @sizeX = @dbe.size_x
                 @sizeY = @dbe.size_y
                 # default settings
-                @$$open = true
+                @$$open = @dbe.default_enabled
 
         close: ($event) ->
             @container.close_element(@)
@@ -395,6 +395,7 @@ dashboard_module = angular.module(
                 dashboardEntry:
                     size_x: 2
                     size_y: 1
+                    default_enabled: true
         }
     )
 ]).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
@@ -426,11 +427,15 @@ dashboard_module = angular.module(
             _layout_names = @user.get_var_names(new RegExp(POS_VAR_NAME))
             if not _layout_names.length
                 @layout_names = ["default"]
+                _first_run = true
             else
                 @layout_names = (entry.substr(POS_VAR_NAME.length) for entry in _layout_names)
+                _first_run = false
             @layout_names = @layout_names.sort()
             @current_layout_name = @layout_names[0]
-            @save_positions()
+            if _first_run
+                # only save on first call
+                @save_positions()
             # flags for rights handling
             @_rights_are_valid = icswRouteHelper.get_struct().valid
             @_wait_for_rights = false
@@ -473,7 +478,7 @@ dashboard_module = angular.module(
                 _pos_dict = angular.fromJson(@_pos_str)
             else
                 _pos_dict = {}
-            console.log "p=", _pos_dict
+            # console.log "pos_dict=", _pos_dict
             for el in @elements
                 el.set_layout(_pos_dict)
             @open_elements = (el for el in @elements when el.$$open)
@@ -540,16 +545,18 @@ dashboard_module = angular.module(
                 if save
                     @save_positions()
 
-        open_element: (element) =>
+        open_element: (element, save=true) =>
             if not element.$$open
                 @num_close--
                 @num_open++
                 element.$$open = true
                 @open_elements.push(element)
+                if save
+                    @save_positions()
 
         # reopen_closed_elements: () =>
         #    (@open_element(el) for el in @elements when not el.$$open)
-        add_widget: ($event) =>
+        add_widgets: ($event) =>
             sub_scope = $rootScope.$new(true)
             sub_scope.widgets = _.sortBy(
                 (entry for entry in @elements when not entry.$$open)
@@ -557,7 +564,7 @@ dashboard_module = angular.module(
                     return entry.state.icswData.pageTitle
             )
             sub_scope.struct = {
-                new_widget: sub_scope.widgets[0]
+                new_widgets: []
                 pos: "bottom"
             }
             sub_scope.locations = [
@@ -568,19 +575,19 @@ dashboard_module = angular.module(
                 {
                     message: $compile($templateCache.get("icsw.dashboard.add.widget"))(sub_scope)
                     ok_label: "Add"
-                    title: "Add widget"
+                    title: "Add widgets"
                     closeable: true
                     ok_callback: (modal) =>
                         d = $q.defer()
-                        _w = sub_scope.struct.new_widget
-                        console.log @num_open, sub_scope.struct
-                        if sub_scope.struct.pos == "bottom" and @num_open
-                            _w.col = 0
-                            _w.row = _.max((entry.row + entry.sizeY for entry in @open_elements))
-                        else
-                            _w.col = 0
-                            _w.row = 0
-                        @open_element(_w)
+                        for _w in sub_scope.struct.new_widgets
+                            # console.log @num_open, sub_scope.struct
+                            if sub_scope.struct.pos == "bottom" and @num_open
+                                _w.col = 0
+                                _w.row = _.max((entry.row + entry.sizeY for entry in @open_elements))
+                            else
+                                _w.col = 0
+                                _w.row = 0
+                            @open_element(_w, save=false)
                         @save_positions().then(
                             (done) ->
                                 d.resolve("ok")
@@ -631,8 +638,13 @@ dashboard_module = angular.module(
             sub_scope = $rootScope.$new(true)
             sub_scope.struct = {
                 layout_name: "new layout"
-                start_empty: false
+                init_mode: "c"
             }
+            sub_scope.modes = [
+                {short: "e", long: "start empty"}
+                {short: "c", long: "copy from current"}
+                {short: "d", long: "enable defaults"}
+            ]
             icswComplexModalService(
                 {
                     message: $compile($templateCache.get("icsw.dashboard.add.layout"))(sub_scope)
@@ -650,8 +662,14 @@ dashboard_module = angular.module(
                             # current layout
                             @_new_layout(sub_scope.struct.layout_name)
                             # new position
-                            if sub_scope.struct.start_empty
+                            if sub_scope.struct.init_mode == "c"
                                 (@close_element(el, save=false) for el in @elements)
+                            else if sub_scope.struct.init_mode == "d"
+                                for el in @elements
+                                    if el.dbe.default_enabled and not el.$$open
+                                        @open_element(el, save=false)
+                                    else if not el.dbe.default_enabled and el.$$open
+                                        @close_element(el, save=false)
                             @save_positions().then(
                                 (done) ->
                                     d.resolve("ok")

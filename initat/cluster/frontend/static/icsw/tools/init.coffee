@@ -191,6 +191,7 @@ angular.module(
                     ["size_y", 2, true]
                     ["allow_show", true, false]
                     ["allow_state", false, false]
+                    ["default_enabled", false, false]
                 ]
                     if not @dashboardEntry[_name]?
                         @dashboardEntry[_name] = _default
