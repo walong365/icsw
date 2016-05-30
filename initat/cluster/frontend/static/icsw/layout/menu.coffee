@@ -322,13 +322,14 @@ menu_module = angular.module(
             # _idx = 0
             # flag for last entry was a valid one
             valid_entry = false
+            _post_spacer = false
             for state in @props.entries
                 _idx++
                 data = state.icswData
                 _key = data.key
                 if data.$$allowed
                     # console.log _key
-                    if data.menuEntry.preSpacer? and valid_entry
+                    if (data.menuEntry.preSpacer? and valid_entry) or _post_spacer
                         _items.push(
                             li({className: "divider", key: _key + "_pre"})
                         )
@@ -341,11 +342,10 @@ menu_module = angular.module(
                             React.createElement(menu_line, {key: _key, state: state})
                         )
                     valid_entry = true
-                    if data.menuEntry.postSpacer? and valid_entry
-                        _items.push(
-                            li({className: "divider", key: _key +  "_post"})
-                        )
-                        valid_entry = false
+                    if data.menuEntry.postSpacer?
+                        _post_spacer = true
+                    else
+                        _post_spacer = false
             if _items.length
                 state = @props.state
                 header = state.icswData.menuHeader
