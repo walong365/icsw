@@ -181,3 +181,85 @@
         </div>
     </div>
 </script>
+
+<script type="text/ng-template" id="icsw.internal.state.list">
+    <h3>Internal State List ({{ struct.state_list.length }})</h3>
+    <table
+        st-table="entries_displayed"
+        st-safe-src="struct.state_list"
+        class="table table-condensed table-hover table-striped"
+        style="width:auto;"
+    >
+        <thead>
+            <tr>
+                <td colspan="99">
+                    <div icsw-tools-pagination st-items-by-page="20" st-displayed-pages="11"
+                         possible-items-by-page="20,50,100,200,500,1000"></div>
+                </td>
+            </tr>
+            <tr>
+                <th st-sort="name" st-sort-default="true">Name</th>
+                <th>Allowed</th>
+                <th>Header</th>
+                <th>Entry</th>
+                <th>Quicklink</th>
+                <th>Dashboard</th>
+                <th>PageTitle</th>
+                <th>MenuHeaderInfo</th>
+                <th>MenuEntryInfo</th>
+                <th>DashboardInfo</th>
+                <th>Rights</th>
+                <th>Licenses</th>
+                <th>Service types</th>
+                <th colspan="1" class="text-center">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="obj in entries_displayed">
+                <td>{{ obj.name }}</td>
+                <td class="text-center">{{ obj.icswData.$$allowed | yesno1 }}</td>
+                <td class="text-center">{{ obj.icswData.$$menuHeader | yesno1 }}</td>
+                <td class="text-center">{{ obj.icswData.$$menuEntry | yesno1 }}</td>
+                <td class="text-center">{{ obj.icswData.valid_for_quicklink | yesno1 }}</td>
+                <td class="text-center">{{ obj.icswData.$$dashboardEntry | yesno1 }}</td>
+                <td>{{ obj.icswData.pageTitle }}</td>
+                <td>
+                    <span ng-show="obj.icswData.$$menuHeader">
+                        {{ obj.icswData.menuHeader.key }} <span ng-class="get_header_class(obj)"></span> ({{ obj.icswData.menuHeader.ordering }})
+                    </span>
+                </td>
+                <td>
+                    <span ng-show="obj.icswData.$$menuEntry">
+                        [{{ obj.icswData.menuEntry.menukey }}] {{ obj.icswData.menuEntry.name }} <span ng-class="get_entry_class(obj)"></span> ({{ obj.icswData.menuEntry.ordering }})
+                    </span>
+                </td>
+                <td>
+                    <span ng-show="obj.icswData.$$dashboardEntry">
+                        ({{ obj.icswData.dashboardEntry.size_x }} x {{ obj.icswData.dashboardEntry.size_y }})
+                        <span ng-show="obj.icswData.dashboardEntry.default_enabled">
+                            , default
+                        </span>
+                        <span ng-show="obj.icswData.dashboardEntry.allow_state">
+                            , state
+                        </span>
+                        <span ng-show="obj.icswData.dashboardEntry.allow_show">
+                            , popup
+                        </span>
+                    </span>
+                </td>
+                <td class="text-center">
+                    {{ obj.icswData.$$rights_info }}
+                </td>
+                <td class="text-center">
+                    {{ obj.icswData.$$licenses_info }}
+                </td>
+                <td class="text-center">
+                    {{ obj.icswData.$$service_types_info }}
+                </td>
+                <td class="text-center">
+                    <icsw-tools-button type="create" value="go" size="xs" ng-click="go($event, obj)"></icsw-tools-button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</script>

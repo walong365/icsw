@@ -205,7 +205,8 @@
 </script>
 
 <script type="text/ng-template" id="icsw.dashboard.element">
-    <div class="panel" ng-class="db_element.$$panel_class" style="height:100%;">
+    <!-- the margin-bottom entry fixes issues with scrollbars appearing on the right side of panels -->
+    <div class="panel" ng-class="db_element.$$panel_class" style="height:100%; margin-bottom:0px !important;">
         <div class="panel-heading">
             {{ db_element.title }}
             <span class="pull-right">

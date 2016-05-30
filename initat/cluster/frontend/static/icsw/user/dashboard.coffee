@@ -360,7 +360,10 @@ dashboard_module = angular.module(
             @title = @state.icswData.pageTitle
             # camelcase is important here
             @$$panel_class = "panel-#{@cls}"
-            @template_name = @state.templateUrl
+            if @state.templateUrl
+                @template = $templateCache.get(@state.templateUrl)
+            else
+                @template = @state.template
 
         set_layout: (pos_dict) =>
             if @state.name of pos_dict
@@ -711,7 +714,7 @@ dashboard_module = angular.module(
         controller: "icswDashboardElementCtrl"
         link: (scope, element, attrs) ->
             _outer = $templateCache.get("icsw.dashboard.element")
-            _content = $templateCache.get(scope.db_element.template_name)
+            _content = scope.db_element.template
             _template_content = _outer + _content + "</div></div>"
             element.append($compile(_template_content)(scope))
             #scope.$on('gridster-item-initialized', ($event, element) ->

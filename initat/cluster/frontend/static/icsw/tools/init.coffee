@@ -174,6 +174,17 @@ angular.module(
                     @[_attr] = true
                 else
                     @[_attr] = false
+            # feed states
+            for _attr_name in ["rights", "licenses", "service_types"]
+                _src = @[_attr_name]
+                _dest = "$$#{_attr_name}_info"
+                if angular.isFunction(_src)
+                    @[_dest] = "func"
+                else
+                    if _src.length
+                        @[_dest] = _src.join(", ")
+                    else
+                        @[_dest] = "---"
             # flags: rights ok
             @$$allowed = false
             # unique key

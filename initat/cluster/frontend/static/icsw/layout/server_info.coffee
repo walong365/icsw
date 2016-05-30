@@ -30,6 +30,29 @@ angular.module(
             templateUrl: "icsw/main/serverinfo.html"
             icswData: icswRouteExtensionProvider.create
                 pageTitle: "Server info"
+                rights: (user, acls) ->
+                    if user.is_superuser
+                        return true
+                    else
+                        return false
+        }
+    ).state(
+        "main.statelist", {
+            url: "/statelist"
+            template: '<icsw-internal-state-list></icsw-internal-state-list>'
+            icswData: icswRouteExtensionProvider.create
+                pageTitle: "Internal State list"
+                rights: (user, acls) ->
+                    if user.is_superuser
+                        return true
+                    else
+                        return false
+                menuEntry:
+                    preSpacer: true
+                    menukey: "sys"
+                    icon: "fa-bars"
+                    ordering: 30
+                    postSpacer: true
         }
     )
 ]).controller("icswServerInfoOverviewCtrl",
@@ -345,4 +368,38 @@ angular.module(
         template: $templateCache.get("icsw.layout.server.info.overview")
         controller: "icswServerInfoOverviewCtrl"
     }
+]).directive("icswInternalStateList",
+[
+    "$templateCache", "$compile",
+(
+    $templateCache, $compile
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.internal.state.list")
+        controller: "icswInternalStateListCtrl"
+    }
+]).controller("icswInternalStateListCtrl",
+[
+    "$scope", "$timeout", "icswAcessLevelService", "blockUI", "$window", "ICSW_URLS",
+    "icswLayoutServerInfoService", "icswSimpleAjaxCall", "$state", "icswRouteHelper",
+(
+    $scope, $timeout, icswAcessLevelService, blockUI, $window, ICSW_URLS,
+    icswLayoutServerInfoService, icswSimpleAjaxCall, $state, icswRouteHelper,
+) ->
+    _struct = icswRouteHelper.get_struct()
+    
+    $scope.struct = {
+        state_list: _struct.icsw_states 
+    }
+
+    $scope.get_header_class = (state) ->
+        return "fa #{state.icswData.menuHeader.icon}"
+
+    $scope.get_entry_class = (state) ->
+        return "fa #{state.icswData.menuEntry.icon}"
+
+    $scope.go = ($event, state) ->
+        $state.go(state)
+
 ])

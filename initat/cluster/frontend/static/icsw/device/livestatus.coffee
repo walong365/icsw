@@ -97,6 +97,9 @@ angular.module(
                     menukey: "stat"
                     icon: "fa-dot-circle-o"
                     ordering: 20
+                dashboardEntry:
+                    size_x: 4
+                    size_y: 4
         }
     ).state(
         "main.livestatus.Everything"
@@ -699,7 +702,7 @@ angular.module(
 
     $scope.activate_layout = (state) ->
         $scope.struct.current_layout = state
-        $state.go(state)
+        # $state.go(state)
 
     check_layouts = () ->
         $scope.struct.layouts.length = 0
