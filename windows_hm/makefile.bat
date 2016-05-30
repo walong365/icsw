@@ -19,24 +19,24 @@ bin\7z -o.\tmp\zero x WinPython-64bit-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.%WINPYTH
 bin\7z -o.\tmp\full x WinPython-64bit-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.%WINPYTH_MINORFIX%.exe
 
 
-COPY .\tmp\full\$_OUTDIR\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\pywintypes3%WINPYTH_MAJOR%.dll  .\tmp\zero\$_OUTDIR\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\
-COPY .\tmp\full\$_OUTDIR\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\pythoncom3%WINPYTH_MAJOR%.dll  .\tmp\zero\$_OUTDIR\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\
+COPY .\tmp\full\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\pywintypes3%WINPYTH_MAJOR%.dll  .\tmp\zero\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\
+COPY .\tmp\full\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\pythoncom3%WINPYTH_MAJOR%.dll  .\tmp\zero\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\
 
-COPY .\tmp\full\$_OUTDIR\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\Lib\site-packages\PyWin32.chm  .\tmp\zero\$_OUTDIR\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\Lib\site-packages\
-COPY .\tmp\full\$_OUTDIR\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\Lib\site-packages\pywin32.pth  .\tmp\zero\$_OUTDIR\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\Lib\site-packages\
-COPY .\tmp\full\$_OUTDIR\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\Lib\site-packages\pywin32.version.txt  .\tmp\zero\$_OUTDIR\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\Lib\site-packages\
-COPY .\tmp\full\$_OUTDIR\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\Lib\site-packages\pythoncom.py  .\tmp\zero\$_OUTDIR\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\Lib\site-packages\
-
-
-MOVE .\tmp\full\$_OUTDIR\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\Lib\site-packages\pythonwin  .\tmp\zero\$_OUTDIR\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\Lib\site-packages\
-MOVE .\tmp\full\$_OUTDIR\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\Lib\site-packages\pywin32_system32  .\tmp\zero\$_OUTDIR\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\Lib\site-packages\
-MOVE .\tmp\full\$_OUTDIR\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\Lib\site-packages\pywin32-220.dist-info  .\tmp\zero\$_OUTDIR\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\Lib\site-packages\
-MOVE .\tmp\full\$_OUTDIR\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\Lib\site-packages\win32  .\tmp\zero\$_OUTDIR\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\Lib\site-packages\
-MOVE .\tmp\full\$_OUTDIR\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\Lib\site-packages\win32com  .\tmp\zero\$_OUTDIR\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\Lib\site-packages\
-MOVE .\tmp\full\$_OUTDIR\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\Lib\site-packages\win32comext  .\tmp\zero\$_OUTDIR\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\Lib\site-packages\
+COPY .\tmp\full\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\Lib\site-packages\PyWin32.chm  .\tmp\zero\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\Lib\site-packages\
+COPY .\tmp\full\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\Lib\site-packages\pywin32.pth  .\tmp\zero\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\Lib\site-packages\
+COPY .\tmp\full\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\Lib\site-packages\pywin32.version.txt  .\tmp\zero\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\Lib\site-packages\
+COPY .\tmp\full\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\Lib\site-packages\pythoncom.py  .\tmp\zero\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\Lib\site-packages\
 
 
-MOVE .\tmp\zero\$_OUTDIR\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64 .\nscp\python
+MOVE .\tmp\full\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\Lib\site-packages\pythonwin  .\tmp\zero\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\Lib\site-packages\
+MOVE .\tmp\full\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\Lib\site-packages\pywin32_system32  .\tmp\zero\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\Lib\site-packages\
+MOVE .\tmp\full\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\Lib\site-packages\pywin32-220.dist-info  .\tmp\zero\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\Lib\site-packages\
+MOVE .\tmp\full\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\Lib\site-packages\win32  .\tmp\zero\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\Lib\site-packages\
+MOVE .\tmp\full\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\Lib\site-packages\win32com  .\tmp\zero\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\Lib\site-packages\
+MOVE .\tmp\full\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\Lib\site-packages\win32comext  .\tmp\zero\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\Lib\site-packages\
+
+
+MOVE .\tmp\zero\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64 .\nscp\python
 COPY .\nscp\python\pywintypes3%WINPYTH_MAJOR%.dll .\nscp\
 COPY .\scripts\* .\nscp\scripts\python\
 COPY .\scripts\finalize-install.py .\nscp\
