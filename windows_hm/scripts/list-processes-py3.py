@@ -1,9 +1,6 @@
-import win32pdhutil
 import win32pdh
-
-import io
-import sys
 import time
+import json
 
 counter_english_map = {}
 
@@ -60,23 +57,9 @@ def ShowAllProcesses():
             print()
             win32pdh.CloseQuery(hq)
 
-import time
-def main():
-	time.sleep(10)
-    
-import multiprocessing
-import json
-from multiprocessing.connection import Client
-
 if __name__=="__main__":
     object = find_pdh_counter_localized_name("Process")
     counter_names, process_instances = win32pdh.EnumObjectItems(None, None, object, win32pdh.PERF_DETAIL_WIZARD)
-    
-    # for _counter in counter_names:
-        # print("Counter: {}".format(_counter))
-        
-    # for _process in process_instances:
-        # print("Process: {}".format(_process))
         
     instance_dict = {}
     for process_instance in process_instances:
@@ -89,7 +72,7 @@ if __name__=="__main__":
     for instance_name, instance_count in instance_dict.items():
         for instance_number in range(instance_count + 1):
             hq = win32pdh.OpenQuery()
-            path = win32pdh.MakeCounterPath((None, object, instance_name, None, instance_count, "ID Process"))
+            path = win32pdh.MakeCounterPath((None, object, instance_name, None, instance_count, find_pdh_counter_localized_name("ID Process")))
             hc = win32pdh.AddCounter(hq, path)
             win32pdh.CollectQueryData(hq)
             type, val = win32pdh.GetFormattedCounterValue(hc, win32pdh.PDH_FMT_LONG)
@@ -97,89 +80,6 @@ if __name__=="__main__":
             win32pdh.RemoveCounter(hc)
             
     print(json.dumps(pname_pid_list))
-#    for pname, pid in sorted(pname_pid_list, key=lambda pnamepid: pnamepid[0]):
-#        print("PNAME/PID: {} {}".format(pname, pid))
-    # instances = 0
-    # for process_instance in process_instances:
-        # if process_instance == "python":
-            # instances += 1
-
-    # hq = win32pdh.OpenQuery()
-    
-    
-    
-    # path = win32pdh.MakeCounterPath( (None, object, "python",
-                                      # None, 0, "ID Process") )
-                                      
-    # hc = win32pdh.AddCounter(hq, path)     
-    # win32pdh.CollectQueryData(hq)
-    # time.sleep(0.01)
-    # win32pdh.CollectQueryData(hq)
-    # type, val = win32pdh.GetFormattedCounterValue(hc, win32pdh.PDH_FMT_LONG)
-    # print("PID: {}".format(val))
-    # win32pdh.RemoveCounter(hc)
-    
-    # path = win32pdh.MakeCounterPath( (None, object, "python",
-                                      # None, 0, "Page Faults/sec") )
-    
-    # hc = win32pdh.AddCounter(hq, path)     
-    # win32pdh.CollectQueryData(hq)
-    # time.sleep(1)
-    # win32pdh.CollectQueryData(hq)
-    # type, val = win32pdh.GetFormattedCounterValue(hc, win32pdh.PDH_FMT_LONG)
-    # print("PageFaults: {}".format(val))
-    # win32pdh.RemoveCounter(hc)
-    
-    # path = win32pdh.MakeCounterPath( (None, object, "python",
-                                      # None, 0, "% Processor Time") )
-    
-    # hc = win32pdh.AddCounter(hq, path)     
-    # win32pdh.CollectQueryData(hq)
-    # time.sleep(1)
-    # win32pdh.CollectQueryData(hq)
-    # type, val = win32pdh.GetFormattedCounterValue(hc, win32pdh.PDH_FMT_LONG)
-    # print("ProcessorTime: {}".format(val))
-    # win32pdh.RemoveCounter(hc)
-    
-    
-    
-    
-    
-    #win32pdh.CloseQuery(hq)
-    
-    # address = ('localhost', 6000)
-    # try:
-        # conn = Client(address)
-        # conn.send("lel")
-        # conn.send("close")
-    # except ConnectionRefusedError as e:
-        # print(e)
-    
-    # hq = win32pdh.OpenQuery()
-    # path = win32pdh.MakeCounterPath( (None, object, "python",
-                                      # None, 1, "ID Process") )
-                                      
-    # hc = win32pdh.AddCounter(hq, path)     
-    # win32pdh.CollectQueryData(hq)
-    # time.sleep(1)
-    # win32pdh.CollectQueryData(hq)
-    # type, val = win32pdh.GetFormattedCounterValue(hc, win32pdh.PDH_FMT_LONG)
-    # print("{} {}".format(type, val))
-    # win32pdh.RemoveCounter(hc)
-    # win32pdh.CloseQuery(hq)
-    
-    #ShowAllProcesses()
-        
-    # _stdout = sys.stdout
-    # p_info = io.StringIO()
-    # sys.stdout = p_info
-    
-    # ShowAllProcesses()
-    
-    # s = p_info.getvalue()
-    # sys.stdout = _stdout
-    # print(s)
-
 
 
 

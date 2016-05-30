@@ -1,7 +1,7 @@
-import win32com
 import win32com.client
 import json
-import datetime
+import pywintypes
+
 
 class Update:
     def __init__(self):
@@ -29,7 +29,10 @@ if(__name__ == "__main__"):
         update = Update()
         update.title = updateHistory.Item(i).Title
         update.date = updateHistory.Item(i).Date
-        update.status = updateHistory.Item(i).ResultCode
+        try:
+            update.status = updateHistory.Item(i).ResultCode
+        except pywintypes.com_error:
+            update.status = "Unknown"
 
         if update.status == 0:
             update.status = "NotStarted"
@@ -41,12 +44,9 @@ if(__name__ == "__main__"):
             update.status = "SucceededWithErrors"
         elif update.status == 4:
             update.status = "Failed"
-        elif update.status ==5:
+        elif update.status == 5:
             update.status = "Aborted"
 
         updates.append(update)
-
-    #for update in sorted(updates):
-    #    print("{}\t{}\t{}".format(update.date, update.title, update.status))
 
     print(json.dumps([(update.title, update.date.isoformat(), update.status) for update in updates]))

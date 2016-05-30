@@ -63,6 +63,9 @@ def get_installed_packages_for_keypath(keypath):
                     j += 1
 
                     _val, _data, _type = subvalue
+
+                    _data = str(_data).split("\u0000")[0]
+
                     if _val == "DisplayName":
                         package.displayName = _data
                     elif _val == "DisplayVersion":

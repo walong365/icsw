@@ -458,14 +458,14 @@ class NRPEScanBatch(ScanBatch):
                 continue
 
             # run scan once every hour
-            ds = DispatchSetting(
+            si = ScheduleItem.objects.create(
                 device=self.device,
-                source=source,
-                duration_amount=5,
-                duration_unit=DispatchSetting.DurationUnits.minutes,
-                run_now=True
+                source=10,
+                planned_date=datetime.datetime.now(tz=pytz.utc),
+                run_now=True,
+                dispatch_setting=None
             )
-            ds.save()
+            si.save()
 
         self.finish()
 
