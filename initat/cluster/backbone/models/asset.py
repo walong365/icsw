@@ -238,35 +238,57 @@ def get_base_assets_from_raw_result(asset_run,):
 
         elif runtype == AssetType.PCI:
             if scantype == ScanType.NRPE:
-                l = json.loads(blob)
+                if blob.startswith("b'"):
+                    _data = bz2.decompress(base64.b64decode(blob[2:-1]))
+                else:
+                    _data = bz2.decompress(base64.b64decode(blob))
 
-                for info_dict in l:
-                    try:
-                        bus = int(info_dict['bus']) if 'bus' in info_dict else 0
-                    except:
-                        bus = 0
+                info_dicts = []
 
-                    try:
-                        slot = int(info_dict['slot']) if 'slot' in info_dict else 0
-                    except:
-                        slot = 0
+                info_dict = {}
+                for line in _data.decode().split("\r\n"):
+                    if len(line) == 0:
+                        if len(info_dict) > 0:
+                            info_dicts.append(info_dict)
+                            info_dict = {}
+                    if line.startswith("Slot:"):
+                        info_dict['slot'] = line.split("\t", 1)[1]
 
-                    try:
-                        func = int(info_dict['func']) if 'func' in info_dict else 0
-                    except:
-                        func = 0
+                        comps = info_dict['slot'].split(":")
+                        bus = comps[0]
 
+                        comps = comps[1].split(".")
+                        slot = comps[0]
+                        func = comps[1]
+
+                        info_dict['bus'] = bus
+                        info_dict['slot'] = slot
+                        info_dict['func'] = func
+                    elif line.startswith("Class:"):
+                        info_dict['class'] = line.split("\t", 1)[1]
+                    elif line.startswith("Vendor:"):
+                        info_dict['vendor'] = line.split("\t", 1)[1]
+                    elif line.startswith("Device:"):
+                        info_dict['device'] = line.split("\t", 1)[1]
+                    elif line.startswith("SVendor:"):
+                        info_dict['svendor'] = line.split("\t", 1)[1]
+                    elif line.startswith("SDevice:"):
+                        info_dict['sdevice'] = line.split("\t", 1)[1]
+                    elif line.startswith("Rev:"):
+                        info_dict['rev'] = line.split("\t", 1)[1]
+
+                for info_dict in info_dicts:
                     new_pci = AssetPCIEntry(
                         asset_run=asset_run,
                         domain=0,
-                        bus=bus,
-                        slot=slot,
-                        func=func,
+                        bus=int(info_dict['bus'], 16) if 'bus' in info_dict else 0,
+                        slot=int(info_dict['slot'], 16) if 'slot' in info_dict else 0,
+                        func=int(info_dict['func'], 16) if 'func' in info_dict else 0,
                         pci_class=0,
                         subclass=0,
                         device=0,
                         vendor=0,
-                        revision=int(info_dict['rev']) if 'rev' in info_dict else 0,
+                        revision=int(info_dict['rev'], 16) if 'rev' in info_dict else 0,
                         pci_classname=info_dict['class'],
                         subclassname=info_dict['class'],
                         devicename=info_dict['device'],
