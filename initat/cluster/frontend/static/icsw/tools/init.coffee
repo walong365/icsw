@@ -50,6 +50,35 @@ angular.module(
             if value?
                 node.setAttribute(key, value)
         return $(node)
+]).directive("icswAutoFocus",
+[
+    "$timeout",
+(
+    $timeout,
+) ->
+    return {
+        restrict: "A"
+        link: (scope, element, attrs) ->
+            _af_set = false
+            _set_autofocus = () ->
+                _af_set = true
+                $timeout(
+                    () ->
+                        element[0].focus()
+                    1
+                )
+            if attrs.icswAutoFocus
+                scope.$watch(
+                    () ->
+                        scope.$eval(attrs.icswAutoFocus)
+                    (new_val) ->
+                        if new_val and not _af_set
+                            _set_autofocus()
+                )
+            else
+                # no attribute set, autofocus immediately
+                _set_autofocus()
+    }
 ]).service("icswCSRFService",
 [
     "$http", "ICSW_URLS", "$q",

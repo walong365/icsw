@@ -37,7 +37,6 @@ angular.module(
     $scope.license_tree = undefined
     $scope.django_version = "---"
     $scope.login_hints = []
-    $scope.disabled = true
     first_call = true
     $scope.struct = {
         # fx mode
@@ -46,6 +45,8 @@ angular.module(
         data_valid: false
         # cluster data
         cluster_data: undefined
+        # login form disabled
+        disabled: true
     }
     $scope.init_login = () ->
         $q.all(
@@ -68,7 +69,7 @@ angular.module(
                 xml = data[0]
                 $scope.login_hints = angular.fromJson($(xml).find("value[name='login_hints']").text())
                 $scope.django_version = $(xml).find("value[name='django_version']").text()
-                $scope.disabled = false
+                $scope.struct.disabled = false
                 $scope.struct.cluster_data = data[1]
                 $scope.license_tree = data[2]
                 $scope.struct.fx_mode = icswUserLicenseDataService.fx_mode()
