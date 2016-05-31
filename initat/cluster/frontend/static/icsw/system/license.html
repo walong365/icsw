@@ -1,8 +1,8 @@
 <script type="text/ng-template" id="icsw/main/license/overview.html">
-    <icsw-user-license-overview></icsw-user-license-overview>
+    <icsw-system-license-overview></icsw-system-license-overview>
 </script>
 
-<script type="text/ng-template" id="icsw.user.license.overview">
+<script type="text/ng-template" id="icsw.system.license.overview">
 
 
     <uib-alert type="warning" ng-if="!struct.data_valid">Loading License data</uib-alert>
@@ -16,7 +16,7 @@
                    ng-class="{'glyphicon-chevron-down': your_licenses_open, 'glyphicon-chevron-right': !your_licenses_open}"></i>
             </uib-accordion-heading>
 
-            <icsw-user-license-local-licenses icsw-license-tree="struct.license_tree"></icsw-user-license-local-licenses>
+            <icsw-system-license-local-licenses icsw-license-tree="struct.license_tree"></icsw-system-license-local-licenses>
         </uib-accordion-group>
 
 
@@ -27,7 +27,7 @@
                    ng-class="{'glyphicon-chevron-down': lic_packs_open, 'glyphicon-chevron-right': !lic_packs_open}"></i>
             </uib-accordion-heading>
 
-            <icsw-user-license-packages></icsw-user-license-packages>
+            <icsw-system-license-packages></icsw-system-license-packages>
         </uib-accordion-group>
 
         <uib-accordion-group is-open="lic_upload_open">
@@ -48,7 +48,7 @@
 
 </script>
 
-<script type="text/ng-template" id="icsw.user.license.local.licenses">
+<script type="text/ng-template" id="icsw.system.license.local.licenses">
     <table
         st-table="entries_displayed"
         st-safe-src="license_tree.list"
@@ -121,7 +121,7 @@
     </table>
 </script>
 
-<script type="text/ng-template" id="icsw.user.license.packages">
+<script type="text/ng-template" id="icsw.system.license.packages">
     <uib-tabset>
         <uib-tab
             ng-repeat="pack in struct.license_tree.pack_list | orderBy:package_order_fun:true"

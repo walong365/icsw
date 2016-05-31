@@ -23,15 +23,15 @@
 angular.module(
     "icsw.login",
     [
-        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "icsw.user.license",
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "icsw.system.license",
     ]
 ).controller("icswLoginCtrl",
 [
     "$scope", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswParseXMLResponseService", "blockUI",
-    "initProduct", "icswUserLicenseDataService", "$q", "$state", "icswCSRFService", "icswUserService",
+    "initProduct", "icswSystemLicenseDataService", "$q", "$state", "icswCSRFService", "icswUserService",
 (
     $scope, $window, ICSW_URLS, icswSimpleAjaxCall, icswParseXMLResponseService, blockUI,
-    initProduct, icswUserLicenseDataService, $q, $state, icswCSRFService, icswUserService
+    initProduct, icswSystemLicenseDataService, $q, $state, icswCSRFService, icswUserService
 ) ->
     $scope.initProduct = initProduct
     $scope.license_tree = undefined
@@ -58,11 +58,11 @@ angular.module(
                 )
                 icswSimpleAjaxCall(
                     {
-                        url: ICSW_URLS.MAIN_GET_CLUSTER_INFO,
+                        url: ICSW_URLS.MAIN_GET_CLUSTER_INFO
                         dataType: "json"
                     }
                 )
-                icswUserLicenseDataService.load($scope.$id)
+                icswSystemLicenseDataService.load($scope.$id)
             ]
         ).then(
             (data) ->
@@ -72,7 +72,7 @@ angular.module(
                 $scope.struct.disabled = false
                 $scope.struct.cluster_data = data[1]
                 $scope.license_tree = data[2]
-                $scope.struct.fx_mode = icswUserLicenseDataService.fx_mode()
+                $scope.struct.fx_mode = icswSystemLicenseDataService.fx_mode()
                 $scope.struct.data_valid = true
                 if first_call
                     first_call = false

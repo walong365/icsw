@@ -19,190 +19,19 @@
 #
 
 angular.module(
-    "icsw.user.license",
+    "icsw.backend.system.license",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "angularFileUpload", "gettext",
     ]
-).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
-    $stateProvider.state(
-        "main.licenseoverview", {
-            url: "/licenseoverview"
-            templateUrl: "icsw/main/license/overview.html"
-            icswData: icswRouteExtensionProvider.create
-                pageTitle: "License information"
-                valid_for_quicklink: true
-                rights: (user, acls) ->
-                    if user.is_superuser
-                        return true
-                    else
-                        return false
-                menuEntry:
-                    menukey: "sys"
-                    name: "License"
-                    icon: "fa-key"
-                    ordering: 20
-        }
-    )
-]).controller("icswUserLicenseCtrl",
-[
-    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$timeout", "$uibModal",
-    "ICSW_URLS", 'FileUploader', "icswCSRFService", "blockUI", "icswParseXMLResponseService",
-    "icswUserLicenseDataService", "icswAcessLevelService",
-(
-    $scope, $compile, $filter, $templateCache, Restangular, $q, $timeout, $uibModal,
-    ICSW_URLS, FileUploader, icswCSRFService, blockUI, icswParseXMLResponseService,
-    icswUserLicenseDataService, icswAcessLevelService,
-) ->
-    $scope.struct = {
-        # data valid
-        data_valid: false
-        # license tree
-        license_tree: undefined
-    }
-    load = () ->
-        $q.all(
-            [
-                icswUserLicenseDataService.load($scope.$id)
-            ]
-        ).then(
-            (data) ->
-                $scope.struct.license_tree = data[0]
-                $scope.struct.data_valid = true
-        )
-    load()
-    
-    $scope.uploader = new FileUploader(
-        scope: $scope
-        url: ICSW_URLS.USER_UPLOAD_LICENSE_FILE
-        queueLimit: 1
-        alias: "license_file"
-        formData: []
-        removeAfterUpload: true
-    )
-
-    icswCSRFService.get_token().then(
-        (token) ->
-            $scope.uploader.formData.push({"csrfmiddlewaretoken": token})
-    )
-    $scope.upload_list = []
-
-    $scope.uploader.onBeforeUploadItem = () ->
-        blockUI.start()
-
-    $scope.uploader.onCompleteItem = (item, response, status, headers) ->
-        # must not give direct response to the parse service
-        response = "<document>" + response + "</document>"
-        icswParseXMLResponseService(response)
-        icswUserLicenseDataService.reload()
-        icswAcessLevelService.reload()
-
-    $scope.uploader.onCompleteAll = () ->
-        blockUI.stop()
-        $scope.uploader.clearQueue()
-
-]).directive("icswUserLicenseOverview",
-[
-    "$q",
-(
-    $q,
-) ->
-    return {
-        restrict : "EA"
-        controller: 'icswUserLicenseCtrl'
-        templateUrl : "icsw.user.license.overview"
-        link: (scope, el, attrs) ->
-            scope.your_licenses_open = false
-            scope.lic_packs_open = false
-            scope.lic_upload_open = true
-            if false
-                scope.$watch(
-                    () -> icswUserLicenseDataService.license_packages.length
-                    (new_val, old_val) ->
-                        scope.license_views_disabled = new_val == 0
-                        # only change accordion states on actual change
-                        if old_val == 0 and new_val > 0
-                            scope.your_licenses_open = true
-                            scope.lic_packs_open = true
-                        if old_val > 1 and new_val == 0
-                            scope.your_licenses_open = false
-                            scope.lic_packs_open = false
-                )
-    }
-]).directive("icswUserLicenseLocalLicenses",
-[
-    "$q",
- (
-     $q,
- ) ->
-        return {
-            restrict : "EA"
-            templateUrl : "icsw.user.license.local.licenses"
-            scope: {
-                license_tree: "=icswLicenseTree"
-            }
-            controller: "icswUserLicenseLocalLicensesCtrl"
-        }
-]).controller("icswUserLicenseLocalLicensesCtrl", [
-    "$scope",
-(
-    $scope,
-) ->
-    # console.log "$scope=", $scope, $scope.license_tree
-
-    $scope.get_merged_key_list = (a, b) ->
-        if !a?
-            a = {}
-        if !b?
-            b = {}
-        return _.uniq(Object.keys(a).concat(Object.keys(b)))
-
-    $scope.undefined_to_zero = (x) ->
-        return if x? then x else 0
-]).directive("icswUserLicensePackages",
-[
-    "icswSimpleAjaxCall", "ICSW_URLS",
-(
-    icswSimpleAjaxCall, ICSW_URLS,
-) ->
-    return {
-        restrict : "EA"
-        controller: 'icswUserLicenseCtrl'
-        templateUrl : "icsw.user.license.packages"
-        link: (scope, el, attrs) ->
-            scope.cluster_accordion_open = {
-                0: true  # show first accordion which is the cluster id of this cluster by the ordering below
-            }
-            scope.package_order_fun = (pack) ->
-                return moment(pack.date).unix()
-
-            scope.cluster_order_fun = (data) ->
-                # order by is_this_cluster, cluster_id
-                prio = 0
-                if data[0] == scope.struct.license_tree.cluster_info.CLUSTER_ID
-                    prio -= 1
-                return [prio, data[0]]
-
-            scope.get_list = (obj) ->
-                if !obj.__transformed_list?
-                    # cluster-id, license
-                    obj.__transformed_list = ([k, v] for k, v of obj)
-                return obj.__transformed_list
-
-            scope.get_cluster_title = (cluster_id) ->
-                if cluster_id == scope.struct.license_tree.cluster_info.CLUSTER_ID
-                    return "Current cluster (#{cluster_id})"
-                else
-                    return "Cluster #{cluster_id}"
-    }
-]).service("icswUserLicenseDataTree",
+).service("icswSystemLicenseDataTree",
 [
     "Restangular", "ICSW_URLS", "icswSimpleAjaxCall", "$q",
-    "icswUserLicenseFunctions",
+    "icswSystemLicenseFunctions",
 (
     Restangular, ICSW_URLS, icswSimpleAjaxCall, $q,
-    icswUserLicenseFunctions,
+    icswSystemLicenseFunctions,
 ) ->
-    class icswUserLicenseDataTree
+    class icswSystemLicenseDataTree
         constructor: (list, pack_list, violation_list, @cluster_info) ->
             @list = []
             @pack_list = []
@@ -236,10 +65,10 @@ angular.module(
                 for c_id, lic_list of pack.cluster_licenses
                     for lic in lic_list
                         lic.$$license = @lut_by_id[lic.id]
-                        lic.$$state = icswUserLicenseFunctions.get_license_state_internal(lic)[3]
+                        lic.$$state = icswSystemLicenseFunctions.get_license_state_internal(lic)[3]
                         if lic.$$state?
-                            lic.$$bootstrap_class = icswUserLicenseFunctions.get_license_state_bootstrap_class(lic.$$state.state_id)
-                            lic.$$icon_class = icswUserLicenseFunctions.get_license_state_icon_class(lic.$$state.state_id)
+                            lic.$$bootstrap_class = icswSystemLicenseFunctions.get_license_state_bootstrap_class(lic.$$state.state_id)
+                            lic.$$icon_class = icswSystemLicenseFunctions.get_license_state_icon_class(lic.$$state.state_id)
                         else
                             lic.$$bootstrap_class = ""
                             lic.$$icon_class = ""
@@ -255,7 +84,7 @@ angular.module(
                     check_licenses = (lic_list) ->
                         for pack_lic in lic_list
                             if !license? or pack_lic.id == license.id
-                                lic_state = icswUserLicenseFunctions.get_license_state_internal(pack_lic)
+                                lic_state = icswSystemLicenseFunctions.get_license_state_internal(pack_lic)
                                 lic_state[3].package = pack
                                 lic_state[3].lic = pack_lic
                                 states.push(lic_state)
@@ -289,8 +118,8 @@ angular.module(
             #    state.state_str = gettextCatalog.getString('License parameter violated')
             license.$$state = state
             if license.$$state?
-                license.$$bootstrap_class = icswUserLicenseFunctions.get_license_state_bootstrap_class(license.$$state.state_id)
-                license.$$icon_class = icswUserLicenseFunctions.get_license_state_icon_class(license.$$state.state_id)
+                license.$$bootstrap_class = icswSystemLicenseFunctions.get_license_state_bootstrap_class(license.$$state.state_id)
+                license.$$icon_class = icswSystemLicenseFunctions.get_license_state_icon_class(license.$$state.state_id)
             else
                 license.$$bootstrap_class = ""
                 license.$$icon_class = ""
@@ -313,7 +142,7 @@ angular.module(
 
             lic_state = license.$$state
             if lic_state? and lic_state.state_id == "grace"
-                expiration = icswUserLicenseFunctions.add_grace_period(moment(lic_state.lic.valid_to))
+                expiration = icswSystemLicenseFunctions.add_grace_period(moment(lic_state.lic.valid_to))
                 date_str = expiration.format("YYYY-MM-DD HH:mm")
                 msg = "Your license for #{license.name} is in the grace period and "
                 msg += "will be revoked on <strong>#{date_str}</strong>."
@@ -342,14 +171,14 @@ angular.module(
             # console.log "lic_check", lic_name, @lut_by_id, _valid
             return _valid
 
-]).service("icswUserLicenseDataService",
+]).service("icswSystemLicenseDataService",
 [
     "Restangular", "ICSW_URLS", "gettextCatalog", "icswSimpleAjaxCall", "$q",
-    "icswUserLicenseDataTree", "icswCachingCall", "$rootScope", "ICSW_SIGNALS",
+    "icswSystemLicenseDataTree", "icswCachingCall", "$rootScope", "ICSW_SIGNALS",
     "icswTreeBase",
 (
     Restangular, ICSW_URLS, gettextCatalog, icswSimpleAjaxCall, $q,
-    icswUserLicenseDataTree, icswCachingCall, $rootScope, ICSW_SIGNALS,
+    icswSystemLicenseDataTree, icswCachingCall, $rootScope, ICSW_SIGNALS,
     icswTreeBase,
 ) ->
     rest_map = [
@@ -357,7 +186,7 @@ angular.module(
         ICSW_URLS.ICSW_LIC_GET_LICENSE_PACKAGES
         ICSW_URLS.ICSW_LIC_GET_LICENSE_VIOLATIONS
     ]
-    class icswUserLicenseTree extends icswTreeBase
+    class icswSystemLicenseTree extends icswTreeBase
         extra_calls: () =>
             return [
                 icswSimpleAjaxCall(
@@ -376,13 +205,13 @@ angular.module(
                 _fx_mode = false
             return _fx_mode
 
-    return new icswUserLicenseTree(
-        "LicenseTree"
-        icswUserLicenseDataTree
+    return new icswSystemLicenseTree(
+        "SysLicenseTree"
+        icswSystemLicenseDataTree
         rest_map
         "ICSW_LICENSE_DATA_LOADED"
     )
-]).service("icswUserLicenseFunctions", [
+]).service("icswSystemLicenseFunctions", [
     "$q", "gettextCatalog",
 (
     $q, gettextCatalog,
@@ -485,20 +314,3 @@ angular.module(
         add_grace_period: add_grace_period
     }
 ])
-# FIXME
-#.run([
-##    "toaster", "icswUserLicenseDataService", "$rootScope",
-#(
-#    toaster, icswUserLicenseDataService, $rootScope
-#) ->
-#    $rootScope.$watch(
-#        () -> return Object.keys(icswUserLicenseDataService.license_violations).length + Object.keys(icswUserLicenseDataService.license_packages).length
-#        () ->
-#            if icswUserLicenseDataService.license_violations? and icswUserLicenseDataService.license_violations.plain? and
-#                    Object.keys(icswUserLicenseDataService.all_licenses).length > 0
-#                for license in icswUserLicenseDataService.all_licenses
-#                    msg = icswUserLicenseDataService.get_license_warning(license)
-#                    if msg?
-#                        toaster.pop("warning", "License warning", msg, 10000, 'trustedHtml')
-#    )
-#])

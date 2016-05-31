@@ -169,7 +169,8 @@ sources = {
         "icsw-cs"
         "partd.js"
         [
-            "frontend/static/icsw/**/*.coffee"
+            "frontend/static/icsw/*/*.coffee"
+            "frontend/static/icsw/*/*/*.coffee"
         ]
         "coffee"
         false
@@ -178,7 +179,8 @@ sources = {
         "icsw-html"
         "icsw.html"
         [
-            "frontend/static/icsw/**/*.html"
+            "frontend/static/icsw/*/*.html"
+            "frontend/static/icsw/*/*/*.html"
         ]
         "html"
         false
@@ -564,7 +566,9 @@ else
 gulp.task("watch", (cb) ->
     gulp.watch(
         [
+            "frontend/static/icsw/*/*/*.coffee",
             "frontend/static/icsw/*/*.coffee",
+            "frontend/static/icsw/*/*/*.html",
             "frontend/static/icsw/*/*.html",
             # addons
             "addons/licadmin/initat/cluster/work/icsw/*.js",

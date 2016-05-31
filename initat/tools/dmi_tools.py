@@ -154,6 +154,7 @@ def parse_dmi_output(lines):
         _struct["valid"] = True
     return _struct
 
+
 def dmi_struct_to_xml(dmi_dict):
     _main = E.dmi_tree(
         valid="1" if dmi_dict["valid"] else "0",

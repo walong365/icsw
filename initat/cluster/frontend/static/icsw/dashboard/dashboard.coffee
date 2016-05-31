@@ -24,7 +24,7 @@ dashboard_module = angular.module(
     "icsw.user.dashboard",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular",
-        "noVNC", "ui.select", "icsw.tools", "icsw.user.password", "icsw.user", "icsw.user.license",
+        "noVNC", "ui.select", "icsw.tools", "icsw.user.password", "icsw.user", "icsw.system.license",
     ]
 ).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
     $stateProvider.state(
@@ -233,12 +233,12 @@ dashboard_module = angular.module(
 ]).controller("icswDashboardViewCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$timeout",
-    "icswAcessLevelService", "ICSW_URLS", "icswSimpleAjaxCall",  "icswUserLicenseDataService",
+    "icswAcessLevelService", "ICSW_URLS", "icswSimpleAjaxCall",
     "icswDashboardElement", "icswDashboardContainerService", "icswUserService",
     "toaster",
 (
     $scope, $compile, $filter, $templateCache, Restangular, $q, $timeout,
-    icswAcessLevelService, ICSW_URLS, icswSimpleAjaxCall, icswUserLicenseDataService,
+    icswAcessLevelService, ICSW_URLS, icswSimpleAjaxCall,
     icswDashboardElement, icswDashboardContainerService, icswUserService,
     toaster,
 ) ->
@@ -343,7 +343,6 @@ dashboard_module = angular.module(
         ($event, sizes, gridster) ->
             # console.log "tchanged", $event, sizes, gridster
     )
-    $scope.lds = icswUserLicenseDataService
     $scope.has_menu_permission = icswAcessLevelService.has_menu_permission
 ]).service("icswDashboardElement", [
     "$templateCache", "$q", "$compile", "$state",
