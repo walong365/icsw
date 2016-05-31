@@ -476,6 +476,7 @@ LIST_PROCESSES_CMD = "list-processes-py3"
 LIST_UPDATES_CMD = "list-updates-alt-py3"
 LIST_PENDING_UPDATES_CMD = "list-pending-updates-py3"
 LIST_HARDWARE_CMD = "list-hardware-lstopo-py3"
+DMIINFO_CMD = "dmiinfo"
 
 
 def align_second(now, sched_start_second):
@@ -1056,6 +1057,7 @@ class Dispatcher(object):
             (AssetType.PENDING_UPDATE, LIST_PENDING_UPDATES_CMD),
             (AssetType.UPDATE, LIST_UPDATES_CMD),
             (AssetType.LICENSE, LIST_KEYS_CMD)
+            (AssetType.DMI, DMIINFO_CMD)
         ]
         planned_run.start_feed(cmd_tuples)
         for _idx, (runtype, _command) in enumerate(cmd_tuples):

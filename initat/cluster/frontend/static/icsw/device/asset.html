@@ -436,7 +436,7 @@
             </tr>
         </thead>
         <tbody>
-            <tr ng-repeat="vers in assets_shown">
+            <tr ng-repeat="vers in assets_shown track by $index">
                 <td>{{ vers.$$package.name }}</td>
                 <td class="text-right">{{ vers.version }}</td>
                 <td>{{ vers.release }}</td>
