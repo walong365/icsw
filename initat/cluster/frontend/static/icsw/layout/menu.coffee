@@ -27,11 +27,11 @@ menu_module = angular.module(
 [
     "$scope", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswAcessLevelService",
     "initProduct", "icswLayoutSelectionDialogService", "icswActiveSelectionService",
-    "$q", "icswUserService", "blockUI", "$state", "icswUserLicenseDataService",
+    "$q", "icswUserService", "blockUI", "$state", "icswSystemLicenseDataService",
 (
     $scope, $window, ICSW_URLS, icswSimpleAjaxCall, icswAcessLevelService,
     initProduct, icswLayoutSelectionDialogService, icswActiveSelectionService,
-    $q, icswUserService, blockUI, $state, icswUserLicenseDataService,
+    $q, icswUserService, blockUI, $state, icswSystemLicenseDataService,
 ) ->
     # init service types
     $scope.ICSW_URLS = ICSW_URLS
@@ -89,7 +89,7 @@ menu_module = angular.module(
 
     route_counter = 0
     # load license tree
-    icswUserLicenseDataService.load($scope.$id).then(
+    icswSystemLicenseDataService.load($scope.$id).then(
         (data) ->
     )
 
@@ -124,7 +124,7 @@ menu_module = angular.module(
             # console.log to_params, $scope
         else
             # we allow one gentle transfer
-            if route_counter >= 2 and not icswUserLicenseDataService.fx_mode()
+            if route_counter >= 2 and not icswSystemLicenseDataService.fx_mode()
                 # reduce flicker
                 $(document.body).hide()
                 $window.location.reload()

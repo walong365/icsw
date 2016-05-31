@@ -525,6 +525,7 @@ angular.module(
                 f_idx += 1
             factor = ["", "k", "M", "G", "T", "P", "E"][f_idx]
             return "#{size} #{factor}#{postfix}"
+
         build_lut: (in_list) ->
             lut = {}
             for value in in_list
@@ -602,8 +603,7 @@ angular.module(
         type       : "POST"
         timeout    : 50000
         dataType   : "xml"
-        headers    : {
-        }
+        headers    : {}
         beforeSend : (xhr, settings) ->
             if not settings.hidden
                 xhr.inituuid = local_ajax_info.new_connection(settings)
@@ -619,6 +619,7 @@ angular.module(
                     # if status is != 0 an error has occured
                     alert("*** #{status} ***\nxhr.status : #{xhr.status}\nxhr.statusText : #{xhr.statusText}")
             return false
+
     return (in_dict) ->
         _ret = $q.defer()
         for key of default_ajax_dict
@@ -672,12 +673,13 @@ angular.module(
 ]).service("icswAcessLevelService",
 [
     "ICSW_URLS", "ICSW_SIGNALS", "Restangular", "$q", "$rootScope",
-    "icswUserLicenseDataService",
+    "icswSystemLicenseDataService",
 (
     ICSW_URLS, ICSW_SIGNALS, Restangular, $q, $rootScope,
-    icswUserLicenseDataService,
+    icswSystemLicenseDataService,
 ) ->
     data = {}
+
     _changed = () ->
         $rootScope.$emit(ICSW_SIGNALS("ICSW_ACLS_CHANGED"), data)
 
@@ -694,6 +696,7 @@ angular.module(
     _last_load = 0
     _reload_pending = false
     _acls_loaded = false
+
     reload = (force) ->
         if _reload_pending
             return
@@ -704,7 +707,7 @@ angular.module(
         $q.all(
             [
                 Restangular.all(ICSW_URLS.USER_GET_GLOBAL_PERMISSIONS.slice(1)).customGET()
-                icswUserLicenseDataService.load("access_level")
+                icswSystemLicenseDataService.load("access_level")
                 Restangular.all(ICSW_URLS.USER_GET_OBJECT_PERMISSIONS.slice(1)).customGET()
                 Restangular.all(ICSW_URLS.MAIN_ROUTING_INFO.slice(1)).customPOST({dataType: "json"})
             ]
@@ -725,10 +728,13 @@ angular.module(
                 _reset()
                 _changed()
         )
+
     $rootScope.$on(ICSW_SIGNALS("ICSW_USER_CHANGED"), (event, user) ->
         reload(true)
     )
+
     _reset()
+
     # see lines 205 ff in backbone/models/user.py
     check_level = (obj, ac_name, mask, any) ->
         if ac_name.split(".").length != 3
@@ -760,10 +766,12 @@ angular.module(
                     return (obj[ac_name] & mask) == mask
             else
                 return false
+
     has_menu_permission = (p_name) ->
         if p_name.split(".").length == 2
             p_name = "backbone.#{p_name}"
         return p_name of data.global_permissions or p_name of data.object_permissions
+
     has_service_type = (s_name) ->
         return s_name of data.routing_info.service_types
 
@@ -836,12 +844,17 @@ angular.module(
                     return false
             return true
     }
-    return angular.extend({
-        install: (scope) ->
-            angular.extend(scope, func_dict)
-        reload: () ->
-            reload(false)
-   }, func_dict)
+
+    return angular.extend(
+        {
+            install: (scope) ->
+                angular.extend(scope, func_dict)
+            reload: () ->
+                reload(false)
+        }
+        func_dict
+    )
+
 ]).service("initProduct",
 [
     "ICSW_URLS", "Restangular",

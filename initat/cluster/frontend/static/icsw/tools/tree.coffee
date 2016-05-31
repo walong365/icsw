@@ -26,9 +26,9 @@ angular.module(
     []
 ).directive("tree",
 [
-    "$compile", "$templateCache", "$injector",
+    "$injector",
 (
-    $compile, $templateCache, $injector,
+    $injector,
 ) ->
     return {
         restrict: "E"
@@ -47,7 +47,7 @@ angular.module(
                         new_val.config_service = cservice
                         new_val.config_object = scope.icsw_config_object
                     element.children().remove()
-                    _root_el = angular.element($templateCache.get("icsw.tree.root.node"))
+                    _root_el = angular.element('<ul class="fancytree-container"></ul>')
                     if scope.maxHeight?
                         _root_el.css("max-height", scope.maxHeight() + "px")
                     element.append(_root_el)
