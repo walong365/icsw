@@ -324,8 +324,19 @@ def get_base_assets_from_raw_result(asset_run,):
 
         elif runtype == AssetType.DMI:
             if scantype == ScanType.NRPE:
-                lines = json.loads(blob)
-                _xml = dmi_tools.dmi_struct_to_xml(dmi_tools.parse_dmi_output(lines))
+                if blob.startswith("b'"):
+                    _data = bz2.decompress(base64.b64decode(blob[2:-1]))
+                else:
+                    _data = bz2.decompress(base64.b64decode(blob))
+
+                _lines = []
+
+                for line in _data.decode().split("\r\n"):
+                    _lines.append(line)
+                    if line == "End Of Table":
+                        break
+
+                _xml = dmi_tools.dmi_struct_to_xml(dmi_tools.parse_dmi_output(_lines))
             elif scantype == ScanType.HM:
                 _xml = dmi_tools.decompress_dmi_info(blob)
             head = AssetDMIHead(
