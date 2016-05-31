@@ -241,21 +241,36 @@ def get_base_assets_from_raw_result(asset_run,):
                 l = json.loads(blob)
 
                 for info_dict in l:
+                    try:
+                        bus = int(info_dict['bus']) if 'bus' in info_dict else 0
+                    except:
+                        bus = 0
+
+                    try:
+                        slot = int(info_dict['slot']) if 'slot' in info_dict else 0
+                    except:
+                        slot = 0
+
+                    try:
+                        func = int(info_dict['func']) if 'func' in info_dict else 0
+                    except:
+                        func = 0
+
                     new_pci = AssetPCIEntry(
                         asset_run=asset_run,
                         domain=0,
-                        bus=int(info_dict['bus']),
-                        slot=int(info_dict['slot']),
-                        func=int(info_dict['func']),
+                        bus=bus,
+                        slot=slot,
+                        func=func,
                         pci_class=0,
                         subclass=0,
                         device=0,
                         vendor=0,
-                        revision=int(info_dict['rev']),
+                        revision=int(info_dict['rev']) if 'rev' in info_dict else 0,
                         pci_classname=info_dict['class'],
                         subclassname=info_dict['class'],
                         devicename=info_dict['device'],
-                        vendorname=info_dict['vedor'],
+                        vendorname=info_dict['vendor'],
                     )
                     new_pci.save()
 
