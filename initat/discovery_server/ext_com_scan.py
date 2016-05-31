@@ -888,6 +888,7 @@ class Dispatcher(object):
                 self.discovery_process.get_route_to_devices([_dev])
                 self.log("Address of device {} is {}".format(unicode(_dev), _dev.target_ip))
                 new_pr = PlannedRunsForDevice(self, _dev, _dev.target_ip)
+                #new_pr = PlannedRunsForDevice(self, _dev, _dev.all_ips()[0])
 
                 self.__device_planned_runs[_dev.idx].append(new_pr)
 
@@ -1052,10 +1053,10 @@ class Dispatcher(object):
 
     def _do_nrpe_scan(self, schedule_item, planned_run):
         cmd_tuples = [
+            (AssetType.PENDING_UPDATE, LIST_PENDING_UPDATES_CMD),
             (AssetType.PACKAGE, LIST_SOFTWARE_CMD),
             (AssetType.HARDWARE, LIST_HARDWARE_CMD),
             (AssetType.PROCESS, LIST_PROCESSES_CMD),
-            (AssetType.PENDING_UPDATE, LIST_PENDING_UPDATES_CMD),
             (AssetType.UPDATE, LIST_UPDATES_CMD),
             (AssetType.LICENSE, LIST_KEYS_CMD),
             (AssetType.DMI, DMIINFO_CMD),
@@ -1088,7 +1089,7 @@ class Dispatcher(object):
             planned_run.add_planned_run(
                 new_asset_run,
                 ext_com,
-                120,
+                300,
             )
 
 
