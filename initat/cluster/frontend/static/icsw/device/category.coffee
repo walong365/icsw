@@ -45,7 +45,7 @@ angular.module(
 (
     icswTreeConfig
 ) ->
-    class category_tree extends icswTreeConfig
+    class icswDeviceCategoryTreeService extends icswTreeConfig
         constructor: (@scope, args) ->
             super(args)
             @show_selection_buttons = false

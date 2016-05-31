@@ -80,7 +80,7 @@ class hs_node
         _clicked.iter_childs((obj) -> obj.show = true)
     
 angular.module(
-    "icsw.device.livestatus",
+    "icsw.livestatus.livestatus",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.router",
     ]
@@ -2044,7 +2044,7 @@ angular.module(
 ) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("icsw.device.livestatus.overview")
+        template : $templateCache.get("icsw.livestatus.livestatus.overview")
         controller: "icswDeviceLiveStatusCtrl"
     }
 ]).directive("icswDeviceLivestatusBrief",

@@ -18,8 +18,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-background_job_info_module = angular.module(
-    "icsw.info.background",
+angular.module(
+    "icsw.system.background",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
@@ -27,13 +27,13 @@ background_job_info_module = angular.module(
     $stateProvider.state(
         "main.backgroundinfo",
           {
-              url: "/backgroundinfo"
-              templateUrl: "icsw/main/backgroundinfo.html"
+              url: "/sysbackgroundinfo"
+              templateUrl: "icsw/main/sysbackgroundinfo.html"
               icswData: icswRouteExtensionProvider.create
                   pageTitle: "Background Job Information"
           }
     )
-]).service("icswBackgroundInfoRestService",
+]).service("icswSystemBackgroundInfoRestService",
 [
     "$q", "Restangular", "icswCachingCall", "ICSW_URLS",
 (
@@ -53,23 +53,23 @@ background_job_info_module = angular.module(
             return load_data(client).promise
     }
 
-]).service("icswBackgroundInfoListService",
+]).service("icswSystemBackgroundInfoListService",
 [
-    "icswBackgroundInfoRestService", "$q",
+    "icswSystemBackgroundInfoRestService", "$q",
 (
-    icswBackgroundInfoRestService, $q
+    icswSystemBackgroundInfoRestService, $q
 ) ->
     return {
         fetch: (scope) ->
             defer= $q.defer()
-            icswBackgroundInfoRestService.load(scope.$id).then(
+            icswSystemBackgroundInfoRestService.load(scope.$id).then(
                 (data) ->
                     defer.resolve(data)
             )
             return defer.promise
     }
 
-]).directive("icswBackgroundJobInfoTable",
+]).directive("icswSystemBackgroundJobInfoTable",
 [
     "$templateCache",
 (
@@ -77,9 +77,9 @@ background_job_info_module = angular.module(
 ) ->
     return {
         restrict: "EA"
-        template: $templateCache.get("icsw.background.job.info.table")
+        template: $templateCache.get("icsw.system.background.job.info.table")
     }
-]).factory("icswBackgroundJobFactory",
+]).factory("icswSystemBackgroundJobFactory",
     [() ->
         {tr, td, strong, tbody} = React.DOM
         get_line_class = (job) ->
@@ -134,11 +134,11 @@ background_job_info_module = angular.module(
                 )
         )
         return job_line
-]).directive("icswBackgroundJobLine",
+]).directive("icswSystemBackgroundJobLine",
 [
-    "$templateCache", "icswBackgroundJobFactory",
+    "$templateCache", "icswSystemBackgroundJobFactory",
 (
-    $templateCache, icswBackgroundJobFactory
+    $templateCache, icswSystemBackgroundJobFactory
 ) ->
     return {
         restrict: "EA"
@@ -146,7 +146,7 @@ background_job_info_module = angular.module(
             line: "="
         link: (scope, el, attrs) ->
             ReactDOM.render(
-                React.createElement(icswBackgroundJobFactory, scope.line)
+                React.createElement(icswSystemBackgroundJobFactory, scope.line)
                 # FIXME, the following line is just a temporary hack until we can render whole tables via reactjs
                 el.parent()[0]
             )

@@ -22,7 +22,7 @@ monitoring_overview_module = angular.module(
     "icsw.monitoring.overview",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "ui.bootstrap.datetimepicker", "smart-table",
-        "icsw.tools.table", "icsw.tools.status_history_utils", "icsw.device.livestatus"
+        "icsw.tools.table", "icsw.tools.status_history_utils", "icsw.livestatus.livestatus"
     ]
 ).config(["$stateProvider",  "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
     $stateProvider.state(
