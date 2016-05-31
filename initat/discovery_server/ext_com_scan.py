@@ -23,6 +23,7 @@ import datetime
 import threading
 import time
 import traceback
+import os
 
 import pytz
 from django.core.exceptions import ValidationError
@@ -745,7 +746,7 @@ class PlannedRunsForDevice(object):
     def remove_planned_run(self, pdrf):
         self.num_running -= 1
         self.planned_runs = [entry for entry in self.planned_runs if entry.run_db_obj.idx != pdrf.run_db_obj.idx]
-        if not self.num_running:
+        if not self.num_running and not self.planned_runs:
             # no more running, delete
             self.to_delete = True
 
@@ -857,7 +858,7 @@ class Dispatcher(object):
 
     def dispatch_call(self):
         # called every second, way too often...
-        # print ".", os.getpid()
+        #print ".", os.getpid()
         _now = timezone. now().replace(microsecond=0)
         # schedule_items = sorted(ScheduleItem.objects.all(), key=lambda x: x.planned_date)
 
@@ -888,7 +889,6 @@ class Dispatcher(object):
                 self.discovery_process.get_route_to_devices([_dev])
                 self.log("Address of device {} is {}".format(unicode(_dev), _dev.target_ip))
                 new_pr = PlannedRunsForDevice(self, _dev, _dev.target_ip)
-                #new_pr = PlannedRunsForDevice(self, _dev, _dev.all_ips()[0])
 
                 self.__device_planned_runs[_dev.idx].append(new_pr)
 
@@ -916,14 +916,15 @@ class Dispatcher(object):
 
         # number of ext_coms
         num_ext_coms = 0
+        num_ext_coms_per_ip = {}
 
         for _dev_idx, prfd_list in self.__device_planned_runs.iteritems():
             for prfd in prfd_list:
                 if prfd.ip:
                     for prs in prfd.planned_runs:
                         if not prs.started:
-                            prs.start()
                             if prs.is_zmq_connection:
+                                prs.start()
                                 conn_str = "tcp://{}:{:d}".format(
                                     prfd.ip,
                                     self.__hm_port,
@@ -942,8 +943,16 @@ class Dispatcher(object):
                                     multi=True
                                 )
                             else:
-                                prs.ext_com.run()
-                                num_ext_coms += 1
+                                if prfd.ip in num_ext_coms_per_ip:
+                                    if num_ext_coms_per_ip[prfd.ip] == 0:
+                                        prs.start()
+                                        prs.ext_com.run()
+                                        num_ext_coms += 1
+                                else:
+                                    prs.start()
+                                    prs.ext_com.run()
+                                    num_ext_coms += 1
+                                    num_ext_coms_per_ip[prfd.ip] = 1
                 else:
                     prfd.cancel("no IP")
 
@@ -984,6 +993,7 @@ class Dispatcher(object):
                             _output = prd.ext_com.communicate()
                             prd.store_nrpe_result(_output)
                             num_ext_coms -= 1
+                            num_ext_coms_per_ip[prfd.ip] -= 1
                         else:
                             diff_time = abs((cur_time - prd.run_db_obj.run_start_time).seconds)
                             if diff_time > prd.timeout:
@@ -995,6 +1005,7 @@ class Dispatcher(object):
                                     self.log("external command terminated due to timeout")
                                 prd.cancel("timeout")
                                 num_ext_coms -= 1
+                                num_ext_coms_per_ip[prfd.ip] -= 1
             if num_ext_coms:
                 time.sleep(2)
             #  print "RES=", zmq_res
@@ -1053,18 +1064,18 @@ class Dispatcher(object):
 
     def _do_nrpe_scan(self, schedule_item, planned_run):
         cmd_tuples = [
-            (AssetType.PENDING_UPDATE, LIST_PENDING_UPDATES_CMD),
             (AssetType.PACKAGE, LIST_SOFTWARE_CMD),
             (AssetType.HARDWARE, LIST_HARDWARE_CMD),
             (AssetType.PROCESS, LIST_PROCESSES_CMD),
             (AssetType.UPDATE, LIST_UPDATES_CMD),
             (AssetType.LICENSE, LIST_KEYS_CMD),
             (AssetType.DMI, DMIINFO_CMD),
-            (AssetType.PCI, PCIINFO_CMD)
+            (AssetType.PCI, PCIINFO_CMD),
+            (AssetType.PENDING_UPDATE, LIST_PENDING_UPDATES_CMD)
         ]
         planned_run.start_feed(cmd_tuples)
         for _idx, (runtype, _command) in enumerate(cmd_tuples):
-            _com = "/opt/cluster/sbin/check_nrpe -H {} -n -c {} -t120".format(
+            _com = "/opt/cluster/sbin/check_nrpe -H {} -n -c {} -t180".format(
                 planned_run.ip,
                 _command
             )
@@ -1089,7 +1100,7 @@ class Dispatcher(object):
             planned_run.add_planned_run(
                 new_asset_run,
                 ext_com,
-                300,
+                180,
             )
 
 
