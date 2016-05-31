@@ -20,154 +20,181 @@
 #
 
 
-PATH = "../initat/cluster/frontend/static/icsw/"
-
+import argparse
 import os.path
 import re
-import sys
-import argparse
-from enum import Enum
+import time
+import glob
 
-class Mode(Enum):
-    dh_mode = 1
-    cd_mode = 2
-    dc_mode = 3
+import inflection
+
+from initat.tools import logging_tools
 
 
-def main(mode):
+class DirDefinition(object):
+    def __init__(self, sink, dir_type, dir_name, file_name, line_num, line):
+        self.sink = sink
+        self.type = dir_type
+        self.name = dir_name
+        self.camel_name = inflection.camelize(self.name, False)
+        self.hyphen_name = inflection.dasherize(inflection.underscore(self.name))
+        self.dot_name = inflection.underscore(self.name).replace("_", ".")
+        self.file_name = file_name[len(self.sink.start_path) + 1:]
+        self.line_num = line_num
+        self.line = line
+        self.refs = []
+        # check valid name / path
+        if self.dot_name.count(".") and self.dot_name.startswith("icsw."):
+            self.namespace_ok = True
+            _path_parts = ["icsw"] + self.file_name.split(os.sep)[:-1]
+            self.name_valid = _path_parts == self.dot_name.split(".")[:len(_path_parts)]
+        else:
+            self.namespace_ok = False
+            self.name_valid = False
+
+    def __repr__(self):
+        return unicode(self)
+
+    def __unicode__(self):
+        return "{} {} ({:d}@{})".format(
+            self.type[:1].upper(),
+            self.name,
+            self.line_num,
+            self.file_name,
+        )
+
+    def add_reference(self, file_name, line_num, line):
+        self.refs.append((file_name, line_num, line))
+
+
+class DataSink(object):
+    def __init__(self, start_path):
+        self.start_path = start_path
+        self._defs = []
+        self._type_lut = {}
+
+    def feed(self, file_name, line_num, line, dir_type, dir_name):
+        _def = DirDefinition(self, dir_type, dir_name, file_name, line_num, line)
+        self._defs.append(_def)
+        self._type_lut.setdefault(_def.type, []).append(_def)
+
+    def get_type_defs(self, dir_type):
+        return self._type_lut[dir_type]
+
+    def get_types(self):
+        return sorted(self._type_lut.keys())
+
+
+def main(start_path):
     coffefiles = []
     htmlfiles = []
-    for root, dirs, files in os.walk(PATH, topdown=False):
+    for root, dirs, files in os.walk(start_path, topdown=False):
         coffefiles.extend([os.path.join(root, f) for f in files if f.endswith("coffee")])
         htmlfiles.extend([os.path.join(root, f) for f in files if f.endswith("html")])
 
-    matcher = re.compile('.*(directive)\((.*)|.*(service)\((.*)|.*(controller)\((.*)')
+    print("{:d} Coffee and {:d} HTML files".format(len(coffefiles), len(htmlfiles)))
 
-    directives = {}
-    directives_file_map = {}
-    directives_type_map = {}
-    type_directives_map = {}
-    dname_to_html_dict = {}
+    def_matcher = re.compile(".*\.(?P<type>(directive|service|controller|factory))\((\'|\")(?P<name>(.*?))(\'|\").*")
+    html_matcher = re.compile(".*script type=.text/ng-template. id=(\'|\")(?P<name>.*)(\'|\").")
 
+    my_sink = DataSink(start_path)
+
+    print("Getting defs...")
+
+    # get definitions
 
     for name in coffefiles:
-        f = open(name, "rb")
-        s = f.read()
-        h_nextl = False
-        h_nextl_type = ""
-        f.close()
-
-        if name not in directives:
-            directives[name] = []
-
-        for l in s.split():
-            if h_nextl:
-                h_nextl = False
-                s = l.replace("\"", "").replace("'", "").replace(",", "").replace("(", "").replace(")", "")
-                directives[name].append((h_nextl_type, s))
-                directives_file_map[s] = name
-                directives_type_map[s] = h_nextl_type
-                if h_nextl_type not in type_directives_map:
-                    type_directives_map[h_nextl_type] = []
-                type_directives_map[h_nextl_type].append(s)
-
-            h_nextl_type = "Unknown"
-            match = matcher.match(l)
+        for line_num, line in enumerate(open(name, "rb").xreadlines(), 1):
+            match = def_matcher.match(line)
             if match:
-                if match.group(2):
-                    s = match.group(2)
-                    type = match.group(1)
-                elif match.group(4):
-                    s = match.group(4)
-                    type = match.group(3)
-                elif match.group(6):
-                    s = match.group(6)
-                    type = match.group(5)
-                else:
-                    h_nextl = True
-                    if match.group(1):
-                        h_nextl_type = match.group(1)
-                    elif match.group(3):
-                        h_nextl_type = match.group(3)
-                    elif match.group(5):
-                      h_nextl_type = match.group(5)
-                if not h_nextl:
-                    s = s.replace("\"", "").replace("'", "").replace(",", "").replace("(", "").replace(")", "")
-                    directives[name].append((type, s))
-                    directives_file_map[s] = name
-                    directives_type_map[s] = type
-                    if type not in type_directives_map:
-                        type_directives_map[type] = []
-                    type_directives_map[type].append(s)
+                _gd = match.groupdict()
+                my_sink.feed(name, line_num, line, _gd["type"], _gd["name"])
+    print(
+        "done (found {:d})".format(
+            len(my_sink._defs)
+        )
+    )
 
+    # find refs in HTML to services
 
+    dir_defs = my_sink.get_type_defs("directive") + my_sink.get_type_defs("controller")
+    dir_dict = {}
+    for _def in dir_defs:
+        dir_dict[_def.camel_name] = _def
+        dir_dict[_def.hyphen_name] = _def
+    dir_matcher = set(dir_dict.keys())
+
+    _refs = 0
+    s_time = time.time()
     for name in htmlfiles:
-        f = open(name)
-        data = f.read()
-        f.close()
+        for line_num, line in enumerate(open(name, "rb").xreadlines(), 1):
+            match = html_matcher.match(line)
+            if match:
+                _gd = match.groupdict()
+                my_sink.feed(name, line_num, line, "html", _gd["name"])
+            else:
+                # print line
+                for word in re.split("([^a-zA-Z\-])+", line):
+                    if word in dir_matcher:
+                        dir_dict[word].add_reference(name, line_num, line)
+                        _refs += 1
+    e_time = time.time()
+    print(
+        "Reference from HTML to directive took {} (found: {:d})".format(
+            logging_tools.get_diff_time_str(e_time - s_time),
+            _refs,
+        )
+    )
 
-        for dname in directives_file_map:
-            if dname not in dname_to_html_dict:
-                dname_to_html_dict[dname] = []
-            if cameltohyphen(dname) in data:
-                dname_to_html_dict[dname].append(name)
-            if dname in data:
-                dname_to_html_dict[dname].append(name)
+    # find refs to Services and Factories in coffee
+    sf_refs = my_sink.get_type_defs("factory") + my_sink.get_type_defs("service")
+    sf_dict = {_sf.camel_name: _sf for _sf in sf_refs}
+    sf_matcher = set(sf_dict.keys())
+    _refs = 0
+    s_time = time.time()
+    for name in coffefiles:
+        for line_num, line in enumerate(open(name, "rb").xreadlines(), 1):
+            # print line
+            for word in re.split("([^a-zA-Z])+", line):
+                if word in sf_matcher:
+                    sf_dict[word].add_reference(name, line_num, line)
+                    _refs += 1
+    e_time = time.time()
+    print(
+        "Reference from coffee to service / factory took {} (found: {:d})".format(
+            logging_tools.get_diff_time_str(e_time - s_time),
+            _refs,
+        )
+    )
 
-    if mode == Mode.dh_mode:
-        print "*" * 10
-        print "Directive->HTML Map"
-        print "*" * 10
+    out_list = logging_tools.new_form_list()
+    for _type in my_sink.get_types():
+        _defs = my_sink.get_type_defs(_type)
+        for _def in _defs:
+            out_list.append(
+                [
+                    logging_tools.form_entry(_def.type, header="Type"),
+                    logging_tools.form_entry(_def.name, header="Name"),
+                    logging_tools.form_entry(_def.file_name, header="File"),
+                    logging_tools.form_entry_right(_def.line_num, header="line"),
+                    logging_tools.form_entry_right(len(_def.refs), header="#refs"),
+                    logging_tools.form_entry_center("yes" if _def.namespace_ok else "no", header="NS ok"),
+                    logging_tools.form_entry_center("yes" if _def.name_valid else "no", header="valid"),
+                ]
+            )
+    print(unicode(out_list))
 
-        for typename in type_directives_map:
-            for dname in sorted(type_directives_map[typename]):
-                print "%s: %s" % (typename, dname)
-
-                for hname in dname_to_html_dict[dname]:
-                    print "\t%s" % hname
-
-    if mode == Mode.cd_mode:
-        print
-        print "*" * 10
-        print "Coffee->Directive Map"
-        print "*" * 10
-
-        for fname in directives:
-              print fname
-              for x in sorted(directives[fname], key=lambda x: x[0]):
-                  print "\t%s: %s" % (x[0], x[1])
-
-    if mode == Mode.dc_mode:
-        print
-        print "*" * 10
-        print "Directive->Coffee Map"
-        print
-
-        for typename in type_directives_map:
-            for dname in sorted(type_directives_map[typename]):
-                print "%s:%s -> %s" % (typename, dname, directives_file_map[dname])
-
-def cameltohyphen(s):
-    return re.sub('(?!^)([A-Z]+)', r'-\1', s).lower()
 
 if __name__ == "__main__":
+    DP_LOC = os.path.expanduser("~/.icsw_static_path")
+    if os.path.exists(DP_LOC):
+        _def_path = file(DP_LOC, "r").read().strip()
+    else:
+        _def_path = "."
     parser = argparse.ArgumentParser(description="Directive Mapper")
-    parser.add_argument('--mode', help='[1|2|3] for [Directive->HTML|Coffee->Directive|Directive->Coffee] mapping')
+    parser.add_argument("--path", default=_def_path, help="start path [%(default)s], located in {}".format(DP_LOC))
 
     args = parser.parse_args()
 
-    if not vars(args)["mode"]:
-        parser.print_help()
-    else:
-        try:
-            mode = int(vars(args)["mode"])
-        except:
-            parser.print_help()
-            sys.exit()
-
-        if Mode(mode) not in (Mode.cd_mode, Mode.dc_mode, Mode.dh_mode):
-            parser.print_help()
-            sys.exit()
-
-        main(Mode(mode))
-
+    parser.print_help()
+    main(args.path)
