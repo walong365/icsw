@@ -25,6 +25,7 @@ import os.path
 import re
 import time
 import glob
+from operator import itemgetter, attrgetter, methodcaller
 
 import inflection
 
@@ -40,6 +41,7 @@ class DirDefinition(object):
         self.hyphen_name = inflection.dasherize(inflection.underscore(self.name))
         self.dot_name = inflection.underscore(self.name).replace("_", ".")
         self.file_name = file_name[len(self.sink.start_path) + 1:]
+        self.top_level_dir = self.file_name.split(os.sep)[0]
         self.line_num = line_num
         self.line = line
         self.refs = []
@@ -47,10 +49,17 @@ class DirDefinition(object):
         if self.dot_name.count(".") and self.dot_name.startswith("icsw."):
             self.namespace_ok = True
             _path_parts = ["icsw"] + self.file_name.split(os.sep)[:-1]
-            self.name_valid = _path_parts == self.dot_name.split(".")[:len(_path_parts)]
+            _dot_parts = self.dot_name.split(".")
+            if _path_parts[0] == "backend":
+                _path_parts = _path_parts[1:]
+            self.name_valid = _path_parts == _dot_parts[:len(_path_parts)]
         else:
             self.namespace_ok = False
             self.name_valid = False
+
+    @property
+    def is_valid(self):
+        return self.namespace_ok and self.name_valid
 
     def __repr__(self):
         return unicode(self)
@@ -85,10 +94,10 @@ class DataSink(object):
         return sorted(self._type_lut.keys())
 
 
-def main(start_path):
+def main(args):
     coffefiles = []
     htmlfiles = []
-    for root, dirs, files in os.walk(start_path, topdown=False):
+    for root, dirs, files in os.walk(args.path, topdown=False):
         coffefiles.extend([os.path.join(root, f) for f in files if f.endswith("coffee")])
         htmlfiles.extend([os.path.join(root, f) for f in files if f.endswith("html")])
 
@@ -97,7 +106,7 @@ def main(start_path):
     def_matcher = re.compile(".*\.(?P<type>(directive|service|controller|factory))\((\'|\")(?P<name>(.*?))(\'|\").*")
     html_matcher = re.compile(".*script type=.text/ng-template. id=(\'|\")(?P<name>.*)(\'|\").")
 
-    my_sink = DataSink(start_path)
+    my_sink = DataSink(args.path)
 
     print("Getting defs...")
 
@@ -167,21 +176,34 @@ def main(start_path):
         )
     )
 
+    # generate output
+    # raw list
+    _list = sum([my_sink.get_type_defs(_type) for _type in my_sink.get_types()], [])
+
+    # filter
+    if args.ignore_valid:
+        _list = [entry for entry in _list if not entry.is_valid]
+
+    print("{:d} entries in list".format(len(_list)))
+
+    if args.order_by == "name":
+        _list = sorted(_list, key=attrgetter("name"))
+    if args.order_by == "toplevel":
+        _list = sorted(_list, key=attrgetter("top_level_dir"))
     out_list = logging_tools.new_form_list()
-    for _type in my_sink.get_types():
-        _defs = my_sink.get_type_defs(_type)
-        for _def in _defs:
-            out_list.append(
-                [
-                    logging_tools.form_entry(_def.type, header="Type"),
-                    logging_tools.form_entry(_def.name, header="Name"),
-                    logging_tools.form_entry(_def.file_name, header="File"),
-                    logging_tools.form_entry_right(_def.line_num, header="line"),
-                    logging_tools.form_entry_right(len(_def.refs), header="#refs"),
-                    logging_tools.form_entry_center("yes" if _def.namespace_ok else "no", header="NS ok"),
-                    logging_tools.form_entry_center("yes" if _def.name_valid else "no", header="valid"),
-                ]
-            )
+
+    for _def in _list:
+        out_list.append(
+            [
+                logging_tools.form_entry(_def.type, header="Type"),
+                logging_tools.form_entry(_def.name, header="Name"),
+                logging_tools.form_entry(_def.file_name, header="File"),
+                logging_tools.form_entry_right(_def.line_num, header="line"),
+                logging_tools.form_entry_right(len(_def.refs), header="#refs"),
+                logging_tools.form_entry_center("yes" if _def.namespace_ok else "no", header="NS ok"),
+                logging_tools.form_entry_center("yes" if _def.name_valid else "no", header="valid"),
+            ]
+        )
     print(unicode(out_list))
 
 
@@ -193,8 +215,10 @@ if __name__ == "__main__":
         _def_path = "."
     parser = argparse.ArgumentParser(description="Directive Mapper")
     parser.add_argument("--path", default=_def_path, help="start path [%(default)s], located in {}".format(DP_LOC))
+    parser.add_argument("--ignore-valid", default=False, action="store_true", help="ignore entries with valid names [%(default)s]")
+    parser.add_argument("--order-by", type=str, default="default", choices=["default", "name", "toplevel"], help="set ordering [%(default)s]")
 
     args = parser.parse_args()
 
     parser.print_help()
-    main(args.path)
+    main(args)
