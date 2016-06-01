@@ -63,13 +63,13 @@ class DirDefinition(object):
     def get_ref_list(self):
         return [
             [
-                logging_tools.form_entry("    {:6d}@{}".format(_line_num, self.short_file_name(_file_name)))
+                logging_tools.form_entry("    {:6d}@{}".format(_line_num, _file_name))
             ] for _file_name, _line_num, _line in self.refs
         ]
 
     def add_file_refs(self, in_refs):
         for _fn, _ln, _line in self.refs:
-            in_refs.setdefault(self.short_file_name(_fn), []).append(_ln)
+            in_refs.setdefault(_fn, []).append(_ln)
 
     @property
     def is_valid(self):
@@ -87,7 +87,16 @@ class DirDefinition(object):
         )
 
     def add_reference(self, file_name, line_num, line):
-        self.refs.append((file_name, line_num, line))
+        _short = self.short_file_name(file_name)
+        if _short == self.file_name and line_num == self.line_num:
+            # ignore self-reference
+            pass
+        else:
+            self.refs.append(
+                (
+                    _short, line_num, line
+                )
+            )
 
 
 class DataSink(object):
@@ -160,6 +169,9 @@ def main(args):
                 _add_dict = {}
                 for word in re.split("([^a-zA-Z\-])+", line):
                     if word in dir_matcher:
+                        # skip lines with only closing tags
+                        if "</{}".format(word) in line and "<{}".format(word) not in line:
+                            continue
                         # only one match per line
                         _add_dict[word] = True
                 for word in _add_dict.iterkeys():

@@ -587,7 +587,7 @@ angular.module(
                 (new_obj) =>
                     @_fetch_device(new_obj.idx, defer, "created device ")
                 (not_ok) ->
-                    defer.object("not created")
+                    defer.reject("not created")
             )
             return defer.promise
 

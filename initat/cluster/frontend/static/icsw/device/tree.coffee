@@ -202,6 +202,7 @@ angular.module(
             flap_detection_enabled: true
             name: "dev"
             comment: "new device"
+            categories: []
         }
         if parent_obj
             new_obj.device_group = parent_obj.idx

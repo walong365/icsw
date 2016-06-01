@@ -63,6 +63,9 @@ class XMLWrapper(object):
     def critical(self, log_str, logger=None):
         self.log(logging_tools.LOG_LEVEL_CRITICAL, log_str, logger)
 
+    def feed_log_lines(self, lines):
+        [self.feed_log_line(_lev, _str) for _lev, _str in lines]
+
     def feed_log_line(self, log_level, log_str):
         """
         appends new log line with log data

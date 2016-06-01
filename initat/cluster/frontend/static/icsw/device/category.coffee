@@ -174,7 +174,6 @@ angular.module(
         _ct.$pre_sel = _ct.get_selected_cat_pks()
         # _ct.show_selected(false)
 
-
     $scope.new_devsel = (devs) ->
         $q.all(
             [

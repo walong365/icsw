@@ -450,7 +450,7 @@ class device(models.Model):
     new_kernel = models.ForeignKey("kernel", null=True, related_name="new_kernel")
     # act_kernel = models.ForeignKey("kernel", null=True, related_name="act_kernel")
     # act_kernel_build = models.IntegerField(null=True, blank=True)
-    stage1_flavour = models.CharField(max_length=48, blank=True, default="CPIO")
+    stage1_flavour = models.CharField(max_length=48, blank=True, default="cpio")
     new_image = models.ForeignKey("image", null=True, related_name="new_image")
     # act_image = models.ForeignKey("image", null=True, related_name="act_image")
     # kernel version running
@@ -522,7 +522,7 @@ class device(models.Model):
     # resolve name for monitoring (i.e. use IP for monitoring)
     mon_resolve_name = models.BooleanField(default=True, verbose_name="Resolve to IP for monitoring")
     # categories for this device
-    categories = models.ManyToManyField("backbone.category")
+    categories = models.ManyToManyField("backbone.category", blank=True)
     # store rrd data to disk
     store_rrd_data = models.BooleanField(default=True)
     # has active RRDs
