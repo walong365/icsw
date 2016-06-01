@@ -48,7 +48,11 @@ def get_base_assets_from_raw_result(asset_run,):
         if runtype == AssetType.PACKAGE:
             assets = []
             if scantype == ScanType.NRPE:
-                l = json.loads(blob)
+                if blob.startswith("b'"):
+                    _data = bz2.decompress(base64.b64decode(blob[2:-1]))
+                else:
+                    _data = bz2.decompress(base64.b64decode(blob))
+                l = json.loads(_data)
                 for (name, version, size, date) in l:
                     if size == "Unknown":
                         size = 0
@@ -119,7 +123,10 @@ def get_base_assets_from_raw_result(asset_run,):
 
         elif runtype == AssetType.HARDWARE:
             if scantype == ScanType.NRPE:
-                s = blob[2:-4].encode('ascii')
+                if blob.startswith("b'"):
+                    s = bz2.decompress(base64.b64decode(blob[2:-1]))
+                else:
+                    s = bz2.decompress(base64.b64decode(blob))
             elif scantype == ScanType.HM:
                 s = bz2.decompress(base64.b64decode(blob))
             else:
@@ -164,7 +171,11 @@ def get_base_assets_from_raw_result(asset_run,):
 
         elif runtype == AssetType.LICENSE:
             if scantype == ScanType.NRPE:
-                l = json.loads(blob)
+                if blob.startswith("b'"):
+                    _data = bz2.decompress(base64.b64decode(blob[2:-1]))
+                else:
+                    _data = bz2.decompress(base64.b64decode(blob))
+                l = json.loads(_data)
                 for (name, licensekey) in l:
                     new_lic = AssetLicenseEntry(
                         name=name,
@@ -178,7 +189,11 @@ def get_base_assets_from_raw_result(asset_run,):
 
         elif runtype == AssetType.PENDING_UPDATE:
             if scantype == ScanType.NRPE:
-                l = json.loads(blob)
+                if blob.startswith("b'"):
+                    _data = bz2.decompress(base64.b64decode(blob[2:-1]))
+                else:
+                    _data = bz2.decompress(base64.b64decode(blob))
+                l = json.loads(_data)
                 for (name, optional) in l:
                     new_pup = AssetUpdateEntry(
                         name=name,
@@ -203,7 +218,11 @@ def get_base_assets_from_raw_result(asset_run,):
 
         elif runtype == AssetType.UPDATE:
             if scantype == ScanType.NRPE:
-                l = json.loads(blob)
+                if blob.startswith("b'"):
+                    _data = bz2.decompress(base64.b64decode(blob[2:-1]))
+                else:
+                    _data = bz2.decompress(base64.b64decode(blob))
+                l = json.loads(_data)
                 for (name, up_date, status) in l:
                     new_up = AssetUpdateEntry(
                         name=name,
@@ -224,7 +243,11 @@ def get_base_assets_from_raw_result(asset_run,):
 
         elif runtype == AssetType.PROCESS:
             if scantype == ScanType.NRPE:
-                l = json.loads(blob)
+                if blob.startswith("b'"):
+                    _data = bz2.decompress(base64.b64decode(blob[2:-1]))
+                else:
+                    _data = bz2.decompress(base64.b64decode(blob))
+                l = json.loads(_data)
                 process_dict = {int(pid): {"name": name} for name, pid in l}
             elif scantype == ScanType.HM:
                 process_dict = eval(bz2.decompress(base64.b64decode(blob)))

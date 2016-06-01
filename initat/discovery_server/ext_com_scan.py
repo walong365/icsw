@@ -861,7 +861,7 @@ class Dispatcher(object):
     def dispatch_call(self):
         # called every second, way too often...
         #print ".", os.getpid()
-        _now = timezone. now().replace(microsecond=0)
+        _now = timezone.now().replace(microsecond=0)
         # schedule_items = sorted(ScheduleItem.objects.all(), key=lambda x: x.planned_date)
 
         # prestep: close all pending AssetRuns

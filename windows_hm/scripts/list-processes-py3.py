@@ -1,6 +1,8 @@
 import win32pdh
 import time
 import json
+import base64
+import bz2
 
 counter_english_map = {}
 
@@ -78,8 +80,10 @@ if __name__=="__main__":
             type, val = win32pdh.GetFormattedCounterValue(hc, win32pdh.PDH_FMT_LONG)
             pname_pid_list.append((instance_name, val))
             win32pdh.RemoveCounter(hc)
-            
-    print(json.dumps(pname_pid_list))
+
+    output = json.dumps(pname_pid_list)
+
+    print(base64.b64encode(bz2.compress(bytes(output, "utf-8"))))
 
 
 
