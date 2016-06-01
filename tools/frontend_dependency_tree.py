@@ -22,10 +22,10 @@
 
 import argparse
 import os.path
+import pprint
 import re
 import time
-import glob
-from operator import itemgetter, attrgetter, methodcaller
+from operator import attrgetter
 
 import inflection
 
@@ -66,6 +66,10 @@ class DirDefinition(object):
                 logging_tools.form_entry("    {:6d}@{}".format(_line_num, self.short_file_name(_file_name)))
             ] for _file_name, _line_num, _line in self.refs
         ]
+
+    def add_file_refs(self, in_refs):
+        for _fn, _ln, _line in self.refs:
+            in_refs.setdefault(self.short_file_name(_fn), []).append(_ln)
 
     @property
     def is_valid(self):
@@ -153,10 +157,14 @@ def main(args):
                 my_sink.feed(name, line_num, line, "html", _gd["name"])
             else:
                 # print line
+                _add_dict = {}
                 for word in re.split("([^a-zA-Z\-])+", line):
                     if word in dir_matcher:
-                        dir_dict[word].add_reference(name, line_num, line)
-                        _refs += 1
+                        # only one match per line
+                        _add_dict[word] = True
+                for word in _add_dict.iterkeys():
+                    dir_dict[word].add_reference(name, line_num, line)
+                    _refs += 1
     e_time = time.time()
     print(
         "Reference from HTML to directive took {} (found: {:d})".format(
@@ -221,7 +229,9 @@ def main(args):
         _list = sorted(_list, key=attrgetter("top_level_dir"))
     out_list = logging_tools.new_form_list()
 
+    files_referenced = {}
     for _def in _list:
+        files_referenced.setdefault(_def.file_name, []).append(_def)
         out_list.append(
             [
                 logging_tools.form_entry(_def.type, header="Type"),
@@ -235,8 +245,16 @@ def main(args):
         )
         if args.show_refs:
             out_list.extend(_def.get_ref_list())
+            _def.add_file_refs(files_referenced)
     print(unicode(out_list))
 
+    if args.show_refs:
+        print
+        print(
+            "Referenced files:"
+        )
+        print
+        pprint.pprint(files_referenced)
 
 if __name__ == "__main__":
     DP_LOC = os.path.expanduser("~/.icsw_static_path")

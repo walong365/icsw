@@ -19,7 +19,7 @@
 #
 
 angular.module(
-    "icsw.backend.category_tree",
+    "icsw.backend.category",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters",
         "ui.select", "restangular",

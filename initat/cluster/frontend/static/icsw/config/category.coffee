@@ -18,20 +18,22 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+# category functions (without location)
+
 angular.module(
-    "icsw.config.category_tree",
+    "icsw.config.category",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters",
         "ui.select", "restangular", "uiGmapgoogle-maps", "angularFileUpload",
-        "icsw.backend.category_tree",
+        "icsw.backend.category",
     ]
-).service("icswConfigCategoryTreeService",
+).service("icswConfigCategoryDisplayTree",
 [
     "icswTreeConfig",
 (
     icswTreeConfig
 ) ->
-    class icswConfigCategoryTreeService extends icswTreeConfig
+    class icswConfigCategoryDisplayTree extends icswTreeConfig
         constructor: (@scope, args) ->
             super(args)
             @show_selection_buttons = false
@@ -324,20 +326,20 @@ angular.module(
 ]).controller("icswConfigCategoryTreeCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$timeout", "$rootScope",
-    "$q", "icswAcessLevelService", "blockUI", "icswTools", "ICSW_URLS", "icswConfigCategoryTreeService",
+    "$q", "icswAcessLevelService", "blockUI", "icswTools", "ICSW_URLS", "icswConfigCategoryDisplayTree",
     "icswSimpleAjaxCall", "toaster",
     "icswToolsSimpleModalService", "icswCategoryTreeService", "icswComplexModalService",
     "icswCategoryBackup", "icswInfoModalService", "ICSW_SIGNALS",
 (
     $scope, $compile, $filter, $templateCache, Restangular, $timeout, $rootScope,
-    $q, icswAcessLevelService, blockUI, icswTools, ICSW_URLS, icswConfigCategoryTreeService,
+    $q, icswAcessLevelService, blockUI, icswTools, ICSW_URLS, icswConfigCategoryDisplayTree,
     icswSimpleAjaxCall, toaster,
     icswToolsSimpleModalService,icswCategoryTreeService, icswComplexModalService,
     icswCategoryBackup, icswInfoModalService, ICSW_SIGNALS
 ) ->
     $scope.struct = {}
     $scope.reload = () ->
-        $scope.dn_tree = new icswConfigCategoryTreeService($scope, {})
+        $scope.dn_tree = new icswConfigCategoryDisplayTree($scope, {})
         icswCategoryTreeService.load($scope.$id).then(
             (tree) ->
                 $scope.tree = tree

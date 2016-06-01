@@ -1,0 +1,23 @@
+<script type="text/ng-template" id="icsw.config.category.tree.google.map">
+    <div id="map_canvas" ng-if="struct.maps_ready">
+        <ui-gmap-google-map
+            center="struct.map_options.center"
+            zoom="struct.map_options.zoom"
+            pan="true"
+            refresh="true"
+            style="display:block;"
+            draggable="true"
+            bounds="struct.map_options.bounds"
+            control="struct.map_options.control"
+            options="struct.map_options.options">
+            <ui-gmap-marker
+                ng-repeat="marker in marker_list"
+                idKey="marker.key"
+                coords="marker"
+                options="marker.options"
+                events="event_dict"
+                icon="marker.icon"
+            ></ui-gmap-marker>
+        </ui-gmap-google-map>
+    </div>
+</script>

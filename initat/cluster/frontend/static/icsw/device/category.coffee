@@ -39,14 +39,14 @@ angular.module(
                         ordering: 14
             }
     )
-]).service("icswDeviceCategoryTreeService",
+]).service("icswDeviceCategoryDisplayTree",
 [
     "icswTreeConfig",
 (
     icswTreeConfig
 ) ->
     # device category tree
-    class icswDeviceCategoryTreeService extends icswTreeConfig
+    class icswDeviceCategoryDisplayTree extends icswTreeConfig
         constructor: (@scope, args) ->
             super(args)
             @show_selection_buttons = false
@@ -102,17 +102,17 @@ angular.module(
 ]).controller("icswDeviceCategoryCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q",
-    "icswAcessLevelService", "ICSW_URLS", "icswDeviceCategoryTreeService", "icswSimpleAjaxCall",
+    "icswAcessLevelService", "ICSW_URLS", "icswDeviceCategoryDisplayTree", "icswSimpleAjaxCall",
     "icswDeviceTreeService", "icswCategoryTreeService", "blockUI", "$rootScope", "ICSW_SIGNALS",
 (
     $scope, $compile, $filter, $templateCache, Restangular, $q,
-    icswAcessLevelService, ICSW_URLS, icswDeviceCategoryTreeService, icswSimpleAjaxCall,
+    icswAcessLevelService, ICSW_URLS, icswDeviceCategoryDisplayTree, icswSimpleAjaxCall,
     icswDeviceTreeService, icswCategoryTreeService, blockUI, $rootScope, ICSW_SIGNALS,
 ) ->
     icswAcessLevelService.install($scope)
     $scope.struct = {
         device_list_ready: false
-        cat_tree: new icswDeviceCategoryTreeService($scope, {})
+        cat_tree: new icswDeviceCategoryDisplayTree($scope, {})
     }
 
     $scope.$on("$destroy", () ->
