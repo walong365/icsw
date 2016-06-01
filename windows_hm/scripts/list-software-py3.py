@@ -100,8 +100,8 @@ if __name__=="__main__":
 
     package_list.sort()
 
-    s = json.dumps([(package.displayName, package.displayVersion, package.estimatedSize, package.installDate) for package in package_list])
+    output = json.dumps([(package.displayName, package.displayVersion, package.estimatedSize, package.installDate) for package in package_list])
 
-    print(base64.b64encode(bz2.compress(s)))
+    print(base64.b64encode(bz2.compress(bytes(output, "utf-8"))))
 
     

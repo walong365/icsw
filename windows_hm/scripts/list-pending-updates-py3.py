@@ -18,5 +18,7 @@ if(__name__ == "__main__"):
         title = search_result.Updates.Item(i).Title
         optional = not search_result.Updates.Item(i).IsMandatory
         update_list.append((title, optional))
-        
-    print(base64.b64encode(bz2.compress(json.dumps(update_list))))
+
+    output = json.dumps(update_list)
+
+    print(base64.b64encode(bz2.compress(bytes(output, "utf-8"))))

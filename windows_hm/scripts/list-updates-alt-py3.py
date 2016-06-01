@@ -4,7 +4,6 @@ import pywintypes
 import bz2
 import base64
 
-
 class Update:
     def __init__(self):
         self.title = None
@@ -52,4 +51,5 @@ if(__name__ == "__main__"):
         updates.append(update)
 
     output = json.dumps([(update.title, update.date.isoformat(), update.status) for update in updates])
-    print(base64.b64encode(bz2.compress(output)))
+
+    print(base64.b64encode(bz2.compress(bytes(output, "utf-8"))))

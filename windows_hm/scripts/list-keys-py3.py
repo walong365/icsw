@@ -79,4 +79,6 @@ if __name__=="__main__":
     except:
         pass
 
-    print(base64.b64encode(bz2.compress(json.dumps(keys))))
+    output = json.dumps(keys)
+
+    print(base64.b64encode(bz2.compress(bytes(output, "utf-8"))))
