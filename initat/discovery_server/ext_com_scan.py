@@ -765,6 +765,8 @@ class Dispatcher(object):
         # not really needed because always called from same process
         self.schedule_items_lock = threading.Lock()
 
+        self.num_ext_coms_per_ip = {}
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.discovery_process.log("[Disp] {}".format(what), log_level)
 
@@ -865,8 +867,11 @@ class Dispatcher(object):
         # prestep: close all pending AssetRuns
         _pending = 0
         for pending_run in AssetRun.objects.filter(Q(run_status=RunStatus.RUNNING)).select_related("asset_batch"):
-            pending_run.stop(RunResult.FAILED, "runaway run")
-            _pending += 1
+            diff_time = abs((_now - pending_run.run_start_time).seconds)
+            # get rid of old(er) running (==most likely broken) runs
+            if diff_time > 1800:
+                pending_run.stop(RunResult.FAILED, "runaway run")
+                _pending += 1
         if _pending:
             self.log("Closed {}".format(logging_tools.get_plural("pending AssetRun", _pending)), logging_tools.LOG_LEVEL_ERROR)
 
@@ -914,10 +919,6 @@ class Dispatcher(object):
 
         # step 1: start commands
 
-        # number of ext_coms
-        num_ext_coms = 0
-        num_ext_coms_per_ip = {}
-
         for _dev_idx, prfd_list in self.__device_planned_runs.iteritems():
             for prfd in prfd_list:
                 if prfd.ip:
@@ -943,16 +944,15 @@ class Dispatcher(object):
                                     multi=True
                                 )
                             else:
-                                if prfd.ip in num_ext_coms_per_ip:
-                                    if num_ext_coms_per_ip[prfd.ip] == 0:
+                                if prfd.ip in self.num_ext_coms_per_ip:
+                                    if self.num_ext_coms_per_ip[prfd.ip] == 0:
                                         prs.start()
                                         prs.ext_com.run()
-                                        num_ext_coms += 1
+                                        self.num_ext_coms_per_ip[prfd.ip] += 1
                                 else:
                                     prs.start()
                                     prs.ext_com.run()
-                                    num_ext_coms += 1
-                                    num_ext_coms_per_ip[prfd.ip] = 1
+                                    self.num_ext_coms_per_ip[prfd.ip] = 1
                 else:
                     prfd.cancel("no IP")
 
@@ -983,31 +983,29 @@ class Dispatcher(object):
                         if prd.started and prd.zmq_con_idx == _idx:
                             prd.store_zmq_result(_result)
 
-        while num_ext_coms:
-            self.log("pending external commands: {:d}".format(num_ext_coms))
-            cur_time = timezone.now()
-            for prfd in run_prfds:
-                for prd in prfd.planned_runs:
-                    if prd.started and not prd.is_zmq_connection:
-                        if prd.ext_com.finished() is 0:
-                            _output = prd.ext_com.communicate()
-                            prd.store_nrpe_result(_output)
-                            num_ext_coms -= 1
-                            num_ext_coms_per_ip[prfd.ip] -= 1
-                        else:
-                            diff_time = abs((cur_time - prd.run_db_obj.run_start_time).seconds)
-                            if diff_time > prd.timeout:
-                                try:
-                                    prd.ext_com.terminate()
-                                except:
-                                    self.log("error terminating external process: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-                                else:
-                                    self.log("external command terminated due to timeout")
-                                prd.cancel("timeout")
-                                num_ext_coms -= 1
-                                num_ext_coms_per_ip[prfd.ip] -= 1
-            if num_ext_coms:
-                time.sleep(2)
+        # while num_ext_coms:
+        #     self.log("pending external commands: {:d}".format(num_ext_coms))
+        cur_time = timezone.now()
+        for prfd in run_prfds:
+            for prd in prfd.planned_runs:
+                if prd.started and not prd.is_zmq_connection:
+                    if prd.ext_com.finished() is 0:
+                        _output = prd.ext_com.communicate()
+                        prd.store_nrpe_result(_output)
+                        self.num_ext_coms_per_ip[prfd.ip] -= 1
+                    else:
+                        diff_time = abs((cur_time - prd.run_db_obj.run_start_time).seconds)
+                        if diff_time > prd.timeout:
+                            try:
+                                prd.ext_com.terminate()
+                            except:
+                                self.log("error terminating external process: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                            else:
+                                self.log("external command terminated due to timeout")
+                            prd.cancel("timeout")
+                            self.num_ext_coms_per_ip[prfd.ip] -= 1
+            # if num_ext_coms:
+            #     time.sleep(2)
             #  print "RES=", zmq_res
 
         # remove PlannedRuns which should be deleted
