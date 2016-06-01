@@ -1,23 +1,18 @@
 <?xml version="1.0"?>
-<?define ProductVersion = "0.0.1"?>
-<?define ProductUpgradeCode = "8C2F7965-B9C8-49C8-B4C6-C8757E939D97"?>
+<?define ProductVersion = "0.0.5"?>
+<?define ProductUpgradeCode = "77EA450B-4B37-478C-919B-D0D62F2ED7C5"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
    <Product Id="*" UpgradeCode="$(var.ProductUpgradeCode)" 
             Name="ICSW Windows Client" Version="$(var.ProductVersion)" Manufacturer="init.at" Language="1033">
-      <Package InstallerVersion="200" Compressed="yes" Comments="Windows Installer Package"/>
+      <Package InstallerVersion="200" Compressed="yes" Comments="Windows Installer Package" InstallScope="perMachine"/>
       <Media Id="1" Cabinet="product.cab" EmbedCab="yes"/>
       <Icon Id="ProductIcon" SourceFile="corvus.ico"/>
       <Property Id="ARPPRODUCTICON" Value="ProductIcon"/>
       <Property Id="ARPHELPLINK" Value="http://www.init.at"/>
       <Property Id="ARPURLINFOABOUT" Value="http://www.init.at"/>
       <Property Id="ARPNOREPAIR" Value="1"/>
-      <!-- <Property Id="ARPNOMODIFY" Value="1"/> -->
-      <Upgrade Id="$(var.ProductUpgradeCode)">
-         <UpgradeVersion Minimum="$(var.ProductVersion)" OnlyDetect="yes" Property="NEWERVERSIONDETECTED"/>
-         <UpgradeVersion Minimum="0.0.0" Maximum="$(var.ProductVersion)" IncludeMinimum="yes" IncludeMaximum="no" 
-                         Property="OLDERVERSIONBEINGUPGRADED"/>	  
-      </Upgrade>
-      <!-- <Condition Message="A newer version of this software is already installed.">NOT NEWERVERSIONDETECTED</Condition> -->
+	  <MajorUpgrade AllowDowngrades="no" DowngradeErrorMessage="A later version of ICSW Windows Client is already installed. Setup will now exit" 
+					AllowSameVersionUpgrades="no"/>
  
       <Directory Id="TARGETDIR" Name="SourceDir">
          <Directory Id="ProgramFilesFolder">
@@ -45,12 +40,10 @@
       <CustomAction Id="ExecStopService" Directory="INSTALLDIR" Execute="deferred" Impersonate="no" ExeCommand="[INSTALLDIR]\nscp.exe service --stop --name [SERVICENAME]" Return="check" />
     
       <InstallExecuteSequence>
-         <RemoveExistingProducts After="InstallValidate"/>
          <Custom Action="ExecFinalizeInstall" After="InstallFiles">NOT Installed</Custom>
          <Custom Action="ExecInstallService" After="ExecFinalizeInstall">NOT Installed</Custom>
          <Custom Action="ExecStartService" After="ExecInstallService">NOT Installed</Custom>
          <!-- <Custom Action="ExecStopService" After="InstallInitialize">Installed AND NOT UPGRADINGPRODUCTCODE</Custom> -->
-         <!-- <Custom Action="ExecUninstallService" After="InstallInitialize">Installed AND NOT UPGRADINGPRODUCTCODE</Custom> -->
          <Custom Action="ExecUninstallService" Before="RemoveFiles">Installed AND NOT UPGRADINGPRODUCTCODE</Custom>
       </InstallExecuteSequence>
  
@@ -59,7 +52,6 @@
       </Feature>
       <Property Id="HOSTNAMES" Value="127.0.0.1" />
       <Property Id="PORTNAMES" Value="5666" />
-      <Property Id="SERVICENAME" Value="ICSW_TEST_SERVICE_0001" />
-      
+      <Property Id="SERVICENAME" Value="ICSW_Monitoring_Service" />      
    </Product>
 </Wix>
