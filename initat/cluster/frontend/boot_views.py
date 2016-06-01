@@ -70,11 +70,16 @@ class get_boot_info_json(View):
         ).select_related(
             "device_group",
         )
-        cd_cons = cd_connection.objects.filter(Q(child__in=sel_list) | Q(parent__in=sel_list)).select_related(
+        cd_cons = cd_connection.objects.filter(
+            Q(child__in=sel_list) | Q(parent__in=sel_list)
+        ).select_related(
             "child__device_group",
             "child__domain_tree_node",
             "parent__device_group",
             "parent__domain_tree_node",
+        ).prefetch_related(
+            "child__categories",
+            "parent__categories",
         )
         call_mother = True if int(_post["call_mother"]) else False
         # to speed up things while testing

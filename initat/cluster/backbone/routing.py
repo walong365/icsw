@@ -409,9 +409,10 @@ class SrvTypeRouting(object):
         else:
             log_lines.append((log_level, log_str))
 
-    def feed_result(self, orig_com, result, request, conn_str, log_lines, log_result, log_error):
+    def feed_srv_result(self, orig_com, result, request, conn_str, log_lines, log_result, log_error, srv_type):
         # TODO: if log_error, log all msgs with log_level >= 40
         if result is None:
+            # todo: beautify output
             if log_error:
                 _err_str = "error contacting server {}, {}".format(
                     conn_str,
@@ -422,6 +423,11 @@ class SrvTypeRouting(object):
             # TODO: check if result is set
             log_str, log_level = result.get_log_tuple()
             if log_result or (log_error and log_level >= logging_tools.LOG_LEVEL_ERROR):
+                if log_str.lower().startswith("error sending"):
+                    log_str = "{} at {}".format(
+                        srv_type,
+                        conn_str.split("/")[-1].split(":")[0],
+                    )
                 self._log(request, log_lines, log_str, log_level)
             if self.result is None:
                 self.result = result

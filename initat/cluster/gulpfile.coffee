@@ -99,7 +99,7 @@ sources = {
         "partb.js"
         [
             # angular
-            "frontend/static/js/angular-1.5.5.js",
+            "frontend/static/js/angular-1.5.6.js",
             "frontend/static/js/lodash.js",
             "frontend/static/js/bluebird.js",
             "frontend/static/js/codemirror/codemirror.js",
