@@ -78,6 +78,9 @@ sources = {
             "frontend/static/css/angular-gridster.min.css",
             "frontend/static/css/hotkeys.css",
             "frontend/static/css/icsw_src.css",
+            #"frontend/static/css/init_theme_dark.css",
+            "frontend/static/css/init_theme_light.css",
+            "frontend/static/css/init-style.css",
             # not needed right now, not working with tree-code
             # "frontend/static/css/awesome-bootstrap-checkbox.css",
         ]
