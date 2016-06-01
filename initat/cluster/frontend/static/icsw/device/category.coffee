@@ -45,6 +45,7 @@ angular.module(
 (
     icswTreeConfig
 ) ->
+    # device category tree
     class icswDeviceCategoryTreeService extends icswTreeConfig
         constructor: (@scope, args) ->
             super(args)
@@ -111,7 +112,6 @@ angular.module(
     icswAcessLevelService.install($scope)
     $scope.struct = {
         device_list_ready: false
-        multi_device_mode: false
         cat_tree: new icswDeviceCategoryTreeService($scope, {})
     }
 
@@ -119,27 +119,7 @@ angular.module(
         $scope.struct.device_list_ready = false
     )
 
-    $scope.new_devsel = (devs) ->
-        $q.all(
-            [
-                icswDeviceTreeService.load($scope.$id)
-                icswCategoryTreeService.load($scope.$id)
-            ]
-        ).then(
-            (data) ->
-                device_tree = data[0]
-                $scope.struct.device_list_ready = true
-                $scope.struct.tree = data[1]
-                $scope.struct.multi_device_mode = if devs.length > 1 then true else false
-                $scope.struct.devices = devs
-                $scope.struct.device_tree = device_tree
-                $scope.rebuild_dnt()
-        )
-
-    $rootScope.$on(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), (event) ->
-        $scope.rebuild_dnt()
-    )
-    $scope.rebuild_dnt = () ->
+    rebuild_dnt = () ->
         _ct = $scope.struct.cat_tree
         _ct.change_select = true
         for dev in $scope.struct.devices
@@ -194,6 +174,27 @@ angular.module(
         _ct.$pre_sel = _ct.get_selected_cat_pks()
         # _ct.show_selected(false)
 
+
+    $scope.new_devsel = (devs) ->
+        $q.all(
+            [
+                icswDeviceTreeService.load($scope.$id)
+                icswCategoryTreeService.load($scope.$id)
+            ]
+        ).then(
+            (data) ->
+                device_tree = data[0]
+                $scope.struct.device_list_ready = true
+                $scope.struct.tree = data[1]
+                $scope.struct.devices = devs
+                $scope.struct.device_tree = device_tree
+                rebuild_dnt()
+        )
+
+    $rootScope.$on(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), (event) ->
+        rebuild_dnt()
+    )
+
     $scope.new_selection = (t_entry, sel_list) =>
         blockUI.start()
         cat = t_entry.obj
@@ -218,7 +219,7 @@ angular.module(
                         sync_pks.push(sub_b[0])
                 if sync_pks.length
                     $scope.struct.tree.sync_devices(($scope.struct.device_tree.all_lut[_pk] for _pk in sync_pks))
-                $scope.rebuild_dnt()
+                rebuild_dnt()
                 blockUI.stop()
         )
 ]).directive("icswDeviceCategoryOverview", ["$templateCache", ($templateCache) ->

@@ -40,7 +40,7 @@ class DirDefinition(object):
         self.camel_name = inflection.camelize(self.name, False)
         self.hyphen_name = inflection.dasherize(inflection.underscore(self.name))
         self.dot_name = inflection.underscore(self.name).replace("_", ".")
-        self.file_name = file_name[len(self.sink.start_path) + 1:]
+        self.file_name = self.short_file_name(file_name)
         self.top_level_dir = self.file_name.split(os.sep)[0]
         self.line_num = line_num
         self.line = line
@@ -56,6 +56,16 @@ class DirDefinition(object):
         else:
             self.namespace_ok = False
             self.name_valid = False
+
+    def short_file_name(self, file_name):
+        return file_name[len(self.sink.start_path) + 1:]
+
+    def get_ref_list(self):
+        return [
+            [
+                logging_tools.form_entry("    {:6d}@{}".format(_line_num, self.short_file_name(_file_name)))
+            ] for _file_name, _line_num, _line in self.refs
+        ]
 
     @property
     def is_valid(self):
@@ -159,6 +169,11 @@ def main(args):
     sf_refs = my_sink.get_type_defs("factory") + my_sink.get_type_defs("service")
     sf_dict = {_sf.camel_name: _sf for _sf in sf_refs}
     sf_matcher = set(sf_dict.keys())
+    # also find refs to html templates in coffee
+    html_ref_re = re.compile(".*(template|templateUrl)\s*:\s*.*(\'|\")(?P<temp_name>.*?)(\'|\").*")
+    html_dict = {_html.hyphen_name: _html for _html in my_sink.get_type_defs("html")}
+    html_matcher = set(html_dict.keys())
+    # print html_matcher
     _refs = 0
     s_time = time.time()
     for name in coffefiles:
@@ -166,8 +181,15 @@ def main(args):
             # print line
             for word in re.split("([^a-zA-Z])+", line):
                 if word in sf_matcher:
-                    sf_dict[word].add_reference(name, line_num, line)
-                    _refs += 1
+                    # check if reference is by literal
+                    if "'{}'".format(word) in line or "\"{}\"".format(word) in line:
+                        sf_dict[word].add_reference(name, line_num, line)
+                        _refs += 1
+            _html_match = html_ref_re.match(line)
+            if _html_match:
+                _temp_ref = _html_match.groupdict()["temp_name"]
+                if _temp_ref in html_matcher:
+                    html_dict[_temp_ref].add_reference(name, line_num, line)
     e_time = time.time()
     print(
         "Reference from coffee to service / factory took {} (found: {:d})".format(
@@ -184,7 +206,14 @@ def main(args):
     if args.ignore_valid:
         _list = [entry for entry in _list if not entry.is_valid]
 
-    print("{:d} entries in list".format(len(_list)))
+    name_re = re.compile(args.filter, re.IGNORECASE)
+    _list = [entry for entry in _list if name_re.match(entry.name)]
+
+    print(
+        "{} in result list:".format(
+            logging_tools.get_plural("entry", len(_list)),
+        )
+    )
 
     if args.order_by == "name":
         _list = sorted(_list, key=attrgetter("name"))
@@ -204,6 +233,8 @@ def main(args):
                 logging_tools.form_entry_center("yes" if _def.name_valid else "no", header="valid"),
             ]
         )
+        if args.show_refs:
+            out_list.extend(_def.get_ref_list())
     print(unicode(out_list))
 
 
@@ -217,8 +248,9 @@ if __name__ == "__main__":
     parser.add_argument("--path", default=_def_path, help="start path [%(default)s], located in {}".format(DP_LOC))
     parser.add_argument("--ignore-valid", default=False, action="store_true", help="ignore entries with valid names [%(default)s]")
     parser.add_argument("--order-by", type=str, default="default", choices=["default", "name", "toplevel"], help="set ordering [%(default)s]")
+    parser.add_argument("--filter", type=str, default=".*", help="regexp name filter [%(default)s]")
+    parser.add_argument("--show-refs", default=False, action="store_true", help="Show references in output [%(default)s]")
 
     args = parser.parse_args()
 
-    parser.print_help()
     main(args)

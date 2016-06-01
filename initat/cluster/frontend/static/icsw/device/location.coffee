@@ -172,7 +172,6 @@ angular.module(
     icswAcessLevelService.install($scope)
     $scope.struct = {
         device_list_ready: false
-        multi_device_mode: false
         loc_tree: new icswDeviceLocationTreeService(
             $scope
             {
@@ -223,7 +222,6 @@ angular.module(
                 for dev in devs
                     if not dev.is_meta_device
                         $scope.struct.devices.push(dev)
-                $scope.struct.multi_device_mode = if $scope.struct.devices.length > 1 then true else false
                 $scope.struct.device_tree = device_tree
                 # emit signal
                 $rootScope.$emit(ICSW_SIGNALS("ICSW_LOCATION_SETTINGS_CHANGED"))

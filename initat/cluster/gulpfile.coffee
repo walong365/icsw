@@ -144,7 +144,7 @@ sources = {
             "frontend/static/js/restangular.min.js",
             "frontend/static/js/angular-block-ui.js",
             "frontend/static/js/select.js",
-            "frontend/static/js/ui-bootstrap-tpls-1.3.2.min.js",
+            "frontend/static/js/ui-bootstrap-tpls-1.3.3.min.js",
             "frontend/static/js/angular-ui-router.js",
             # must use minified version, otherwise the minifier destroys injection info
             "frontend/static/js/ui-codemirror.js",

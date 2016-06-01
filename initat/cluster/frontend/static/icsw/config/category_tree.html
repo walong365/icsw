@@ -1,15 +1,3 @@
-<script type="text/ng-template" id="icsw.device.category.overview">
-    <h3>
-        Categories for {{ struct.devices.length }}
-        <ng-pluralize count="struct.devices.length" when="{'1': 'device', 'other': 'devices'}"></ng-pluralize>
-    </h3>
-    <icsw-tools-ensure-device-selection dev-list="struct.devices" list-ready="struct.device_list_ready">
-        <tree treeconfig="struct.cat_tree"></tree>
-        <div style="height: 10px"></div>
-        <icsw-config-category-contents-viewer icsw-category="selected_category"></icsw-config-category-contents-viewer>
-    </icsw-tools-ensure-device-selection>
-</script>
-
 <script type="text/ng-template" id="icsw.config.category.tree.row">
     <td style="font-family:monospace;">
         <span ng-bind-html="get_space(obj.depth )"></span>
