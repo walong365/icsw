@@ -707,6 +707,7 @@ class PlannedRunsForDevice(object):
         self.device = device
         self.planned_runs = []
         self.ip = ip
+        self.nrpe_port = "5666"
         self.num_running = 0
         self.to_delete = False
         self.asset_batch = AssetBatch(
@@ -872,6 +873,12 @@ class Dispatcher(object):
             if diff_time > 1800:
                 pending_run.stop(RunResult.FAILED, "runaway run")
                 _pending += 1
+        for pending_run in AssetRun.objects.filter(Q(run_status=RunStatus.PLANNED)).select_related("asset_batch"):
+            diff_time = abs((_now - pending_run.created).seconds)
+            # get rid of old(er) running (==most likely broken) runs
+            if diff_time > 1800:
+                pending_run.stop(RunResult.FAILED, "runaway run")
+                _pending += 1
         if _pending:
             self.log("Closed {}".format(logging_tools.get_plural("pending AssetRun", _pending)), logging_tools.LOG_LEVEL_ERROR)
 
@@ -894,6 +901,9 @@ class Dispatcher(object):
                 self.discovery_process.get_route_to_devices([_dev])
                 self.log("Address of device {} is {}".format(unicode(_dev), _dev.target_ip))
                 new_pr = PlannedRunsForDevice(self, _dev, _dev.target_ip)
+                nrpe_ports = _dev.device_variable_set.filter(name="nrpe_port")
+                if nrpe_ports:
+                    new_pr.nrpe_port = nrpe_ports[0].value
 
                 self.__device_planned_runs[_dev.idx].append(new_pr)
 
@@ -1073,9 +1083,15 @@ class Dispatcher(object):
         ]
         planned_run.start_feed(cmd_tuples)
         for _idx, (runtype, _command) in enumerate(cmd_tuples):
-            _com = "/opt/cluster/sbin/check_nrpe -H {} -n -c {} -t180".format(
+            timeout = 30
+            if runtype == AssetType.PENDING_UPDATE:
+                timeout = 180
+
+            _com = "/opt/cluster/sbin/check_nrpe -H {} -p {} -n -c {} -t{}".format(
                 planned_run.ip,
-                _command
+                planned_run.nrpe_port,
+                _command,
+                timeout
             )
             ext_com = ExtCom(self.log, _com)
 
@@ -1098,9 +1114,8 @@ class Dispatcher(object):
             planned_run.add_planned_run(
                 new_asset_run,
                 ext_com,
-                180,
+                timeout
             )
-
 
 class _ScheduleItem(object):
     def __init__(self, device, source, planned_date):
