@@ -49,7 +49,7 @@ def get_base_assets_from_raw_result(asset_run,):
             assets = []
             if scantype == ScanType.NRPE:
                 if blob.startswith("b'"):
-                    _data = bz2.decompress(base64.b64decode(blob[2:-1]))
+                    _data = bz2.decompress(base64.b64decode(blob[2:-2]))
                 else:
                     _data = bz2.decompress(base64.b64decode(blob))
                 l = json.loads(_data)
@@ -124,7 +124,7 @@ def get_base_assets_from_raw_result(asset_run,):
         elif runtype == AssetType.HARDWARE:
             if scantype == ScanType.NRPE:
                 if blob.startswith("b'"):
-                    s = bz2.decompress(base64.b64decode(blob[2:-1]))
+                    s = bz2.decompress(base64.b64decode(blob[2:-2]))
                 else:
                     s = bz2.decompress(base64.b64decode(blob))
             elif scantype == ScanType.HM:
@@ -172,7 +172,7 @@ def get_base_assets_from_raw_result(asset_run,):
         elif runtype == AssetType.LICENSE:
             if scantype == ScanType.NRPE:
                 if blob.startswith("b'"):
-                    _data = bz2.decompress(base64.b64decode(blob[2:-1]))
+                    _data = bz2.decompress(base64.b64decode(blob[2:-2]))
                 else:
                     _data = bz2.decompress(base64.b64decode(blob))
                 l = json.loads(_data)
@@ -190,7 +190,7 @@ def get_base_assets_from_raw_result(asset_run,):
         elif runtype == AssetType.PENDING_UPDATE:
             if scantype == ScanType.NRPE:
                 if blob.startswith("b'"):
-                    _data = bz2.decompress(base64.b64decode(blob[2:-1]))
+                    _data = bz2.decompress(base64.b64decode(blob[2:-2]))
                 else:
                     _data = bz2.decompress(base64.b64decode(blob))
                 l = json.loads(_data)
@@ -219,7 +219,7 @@ def get_base_assets_from_raw_result(asset_run,):
         elif runtype == AssetType.UPDATE:
             if scantype == ScanType.NRPE:
                 if blob.startswith("b'"):
-                    _data = bz2.decompress(base64.b64decode(blob[2:-1]))
+                    _data = bz2.decompress(base64.b64decode(blob[2:-2]))
                 else:
                     _data = bz2.decompress(base64.b64decode(blob))
                 l = json.loads(_data)
@@ -244,7 +244,7 @@ def get_base_assets_from_raw_result(asset_run,):
         elif runtype == AssetType.PROCESS:
             if scantype == ScanType.NRPE:
                 if blob.startswith("b'"):
-                    _data = bz2.decompress(base64.b64decode(blob[2:-1]))
+                    _data = bz2.decompress(base64.b64decode(blob[2:-2]))
                 else:
                     _data = bz2.decompress(base64.b64decode(blob))
                 l = json.loads(_data)
@@ -262,7 +262,7 @@ def get_base_assets_from_raw_result(asset_run,):
         elif runtype == AssetType.PCI:
             if scantype == ScanType.NRPE:
                 if blob.startswith("b'"):
-                    _data = bz2.decompress(base64.b64decode(blob[2:-1]))
+                    _data = bz2.decompress(base64.b64decode(blob[2:-2]))
                 else:
                     _data = bz2.decompress(base64.b64decode(blob))
 
@@ -348,7 +348,7 @@ def get_base_assets_from_raw_result(asset_run,):
         elif runtype == AssetType.DMI:
             if scantype == ScanType.NRPE:
                 if blob.startswith("b'"):
-                    _data = bz2.decompress(base64.b64decode(blob[2:-1]))
+                    _data = bz2.decompress(base64.b64decode(blob[2:-2]))
                 else:
                     _data = bz2.decompress(base64.b64decode(blob))
 

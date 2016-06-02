@@ -15,6 +15,7 @@ if __name__=="__main__":
     _info_dict['gpu'] = []
     _info_dict['hdd'] = []
     _info_dict['logical'] = []
+    _info_dict['monitor'] = []
 
     wql = "Select * From Win32_PhysicalMemory"
     for item in c.query(wql):
@@ -68,6 +69,18 @@ if __name__=="__main__":
         _sub_info_dict['free'] = item.FreeSpace
         _info_dict['logical'].append(_sub_info_dict)
 
+    # Win32_DesktopMonitor class
+    #https://msdn.microsoft.com/en-us/library/windows/desktop/aa394173%28v=vs.85%29.aspx
+
+    wql = "Select * From Win32_DesktopMonitor"
+    for item in c.query(wql):
+        _sub_info_dict = {}
+        _sub_info_dict['name'] = item.Caption
+        _sub_info_dict['manufacturer'] = item.MonitorManufacturer
+        _sub_info_dict['type'] = item.MonitorType
+        _sub_info_dict['xpixels'] = item.ScreenHeight
+        _sub_info_dict['ypixels'] = item.ScreenWidth
+        _info_dict['monitor'].append(_sub_info_dict)
 
     output = json.dumps(_info_dict)
     print(base64.b64encode(bz2.compress(bytes(output, "utf-8"))))
