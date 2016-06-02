@@ -6,9 +6,17 @@
                     <span ng-class="synced && 'fa fa-lock' || 'fa fa-unlock'"></span>
                     current selection
                 </uib-tab-heading>
-                <div class="input-group">
+                <form class="input-group" ng-submit="call_devsel_func()">
                     <div ng-class="search_ok && 'form-group' || 'form-group has-error'">
-                        <input type="text" class="form-control" ng-disabled="is_loading" ng-model="vars.search_str" placeholder="search by name, IP or MAC" ng-change="update_search()"/>
+                        <input
+                            type="text"
+                            class="form-control"
+                            ng-disabled="is_loading"
+                            ng-model="vars.search_str"
+                            placeholder="search by name, IP or MAC"
+                            ng-change="update_search()"
+                            icsw-auto-focus
+                        />
                     </div>
                     <span class="input-group-btn">
                         <button class="btn btn-success" title="Use selection (with resolve)" type="button" ng-click="call_devsel_func()" ng-show="devsel_receivers">
@@ -20,19 +28,22 @@
                              Clear
                         </button>
                     </span>
-                </div>
+                </form>
                 <span class="input-group">
-                    <button class="btn btn-primary"
-                            ng-disabled="!selection.any_selected()"
-                            ng-click="show_current_selection_in_overlay()">
+                    <button
+                        class="btn btn-primary"
+                        ng-disabled="!selection.any_selected()"
+                        ng-click="show_current_selection_in_overlay()"
+                    >
                         <span class="bootstrap-dialog-button-icon glyphicon glyphicon-menu-hamburger"></span>
                         show in overlay
                     </button>
-                    <icsw-tools-button type="select_parent"
-                                       value="select parents"
-                                       disabled="!selection.any_selected()"
-                                       ng-click="select_parents()"
-                            ></icsw-tools-button>
+                    <icsw-tools-button
+                        type="select_parent"
+                        value="select parents"
+                        disabled="!selection.any_selected()"
+                        ng-click="select_parents()"
+                    ></icsw-tools-button>
                     <icsw-tools-button type="display" size="sm" value="show selection" ng-show="selection.any_selected()" ng-click="toggle_show_selection()"></icsw-tools-button>
                     <icsw-tools-button type="modify" size="sm" value="resolve lazy selection" ng-show="selection.any_lazy_selected()" ng-click="resolve_lazy_selection()"></icsw-tools-button>
                 </span>

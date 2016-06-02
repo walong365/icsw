@@ -236,49 +236,55 @@ class change_category(View):
         add_cat = True if int(_post.get("set", "0").lower()) else False
         # format: [(device_idx, cat_idx), ...]
         _added, _removed = ([], [])
-        devs_added, devs_removed, dev_ss_removed, mon_loc_removed = ([], [], [], [])
+        obj_added, objs_removed, dev_ss_removed, mon_loc_removed = ([], [], [], [])
+        _ref_obj_name = "???"
         for sc_cat in category.objects.filter(Q(pk__in=json.loads(_post["cat_pks"]))):
-            for _dev in device.objects.filter(
-                Q(pk__in=json.loads(_post["dev_pks"]))
+            _ref_obj = sc_cat.get_ref_object()
+            # set reference object name (defaults to '???')
+            _ref_obj_name = _ref_obj._meta.model_name
+            for _obj in _ref_obj.objects.filter(
+                Q(pk__in=json.loads(_post["obj_pks"]))
             ).prefetch_related(
                 "categories"
             ):
-                if add_cat and sc_cat not in _dev.categories.all():
-                    devs_added.append(_dev)
-                    _dev.categories.add(sc_cat)
-                    _added.append((_dev.idx, sc_cat.idx))
+                if add_cat and sc_cat not in _obj.categories.all():
+                    obj_added.append(_obj)
+                    _obj.categories.add(sc_cat)
+                    _added.append((_obj.idx, sc_cat.idx))
                     if sc_cat.single_select:
                         _single_del_list = [
-                            _del_cat for _del_cat in _dev.categories.all() if _del_cat != sc_cat and _del_cat.single_select
+                            _del_cat for _del_cat in _obj.categories.all() if _del_cat != sc_cat and _del_cat.single_select
                         ]
                         if len(_single_del_list):
-                            dev_ss_removed.append(_dev)
+                            dev_ss_removed.append(_obj)
                             for _to_del in _single_del_list:
-                                _dev.categories.remove(_to_del)
-                                remove_mon_loc(_dev, _to_del)
-                                _removed.append((_dev.idx, _to_del.idx))
-                elif not add_cat and sc_cat in _dev.categories.all():
-                    devs_removed.append(_dev)
-                    _dev.categories.remove(sc_cat)
-                    remove_mon_loc(_dev, sc_cat)
-                    _removed.append((_dev.idx, sc_cat.idx))
+                                _obj.categories.remove(_to_del)
+                                if _ref_obj_name == "device":
+                                    remove_mon_loc(_obj, _to_del)
+                                _removed.append((_obj.idx, _to_del.idx))
+                elif not add_cat and sc_cat in _obj.categories.all():
+                    objs_removed.append(_obj)
+                    _obj.categories.remove(sc_cat)
+                    if _ref_obj_name == "device":
+                        remove_mon_loc(_obj, sc_cat)
+                    _removed.append((_obj.idx, sc_cat.idx))
         _info_f = []
-        if devs_added:
+        if obj_added:
             _info_f.append(
                 "added to {}".format(
-                    logging_tools.get_plural("device", len(devs_added))
+                    logging_tools.get_plural(_ref_obj_name, len(obj_added))
                 )
             )
-        if devs_removed:
+        if objs_removed:
             _info_f.append(
                 "removed from {}".format(
-                    logging_tools.get_plural("device", len(devs_removed))
+                    logging_tools.get_plural(_ref_obj_name, len(objs_removed))
                 )
             )
         if dev_ss_removed:
             request.xml_response.warn(
                 "removed location from {} due to single-select policy".format(
-                    logging_tools.get_plural("device", len(dev_ss_removed)),
+                    logging_tools.get_plural(_ref_obj_name, len(dev_ss_removed)),
                 ),
                 logger
             )

@@ -27,11 +27,11 @@ menu_module = angular.module(
 [
     "$scope", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswAcessLevelService",
     "initProduct", "icswLayoutSelectionDialogService", "icswActiveSelectionService",
-    "$q", "icswUserService", "blockUI", "$state", "icswUserLicenseDataService",
+    "$q", "icswUserService", "blockUI", "$state", "icswSystemLicenseDataService",
 (
     $scope, $window, ICSW_URLS, icswSimpleAjaxCall, icswAcessLevelService,
     initProduct, icswLayoutSelectionDialogService, icswActiveSelectionService,
-    $q, icswUserService, blockUI, $state, icswUserLicenseDataService,
+    $q, icswUserService, blockUI, $state, icswSystemLicenseDataService,
 ) ->
     # init service types
     $scope.ICSW_URLS = ICSW_URLS
@@ -89,7 +89,7 @@ menu_module = angular.module(
 
     route_counter = 0
     # load license tree
-    icswUserLicenseDataService.load($scope.$id).then(
+    icswSystemLicenseDataService.load($scope.$id).then(
         (data) ->
     )
 
@@ -124,7 +124,7 @@ menu_module = angular.module(
             # console.log to_params, $scope
         else
             # we allow one gentle transfer
-            if route_counter >= 2 and not icswUserLicenseDataService.fx_mode()
+            if route_counter >= 2 and not icswSystemLicenseDataService.fx_mode()
                 # reduce flicker
                 $(document.body).hide()
                 $window.location.reload()
@@ -322,13 +322,14 @@ menu_module = angular.module(
             # _idx = 0
             # flag for last entry was a valid one
             valid_entry = false
+            _post_spacer = false
             for state in @props.entries
                 _idx++
                 data = state.icswData
                 _key = data.key
                 if data.$$allowed
                     # console.log _key
-                    if data.menuEntry.preSpacer? and valid_entry
+                    if (data.menuEntry.preSpacer? and valid_entry) or _post_spacer
                         _items.push(
                             li({className: "divider", key: _key + "_pre"})
                         )
@@ -341,11 +342,10 @@ menu_module = angular.module(
                             React.createElement(menu_line, {key: _key, state: state})
                         )
                     valid_entry = true
-                    if data.menuEntry.postSpacer? and valid_entry
-                        _items.push(
-                            li({className: "divider", key: _key +  "_post"})
-                        )
-                        valid_entry = false
+                    if data.menuEntry.postSpacer?
+                        _post_spacer = true
+                    else
+                        _post_spacer = false
             if _items.length
                 state = @props.state
                 header = state.icswData.menuHeader

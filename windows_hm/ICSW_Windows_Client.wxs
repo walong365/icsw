@@ -1,27 +1,39 @@
 <?xml version="1.0"?>
-<?define ProductVersion = "0.0.1"?>
-<?define ProductUpgradeCode = "8C2F7965-B9C8-49C8-B4C6-C8757E939D97"?>
+<?define ProductVersion = "0.0.9"?>
+<?define ProductUpgradeCode = "77EA450B-4B37-478C-919B-D0D62F2ED7C5"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
    <Product Id="*" UpgradeCode="$(var.ProductUpgradeCode)" 
             Name="ICSW Windows Client" Version="$(var.ProductVersion)" Manufacturer="init.at" Language="1033">
-      <Package InstallerVersion="200" Compressed="yes" Comments="Windows Installer Package"/>
+      <Package InstallerVersion="200" Compressed="yes" Comments="Windows Installer Package" InstallScope="perMachine"/>
       <Media Id="1" Cabinet="product.cab" EmbedCab="yes"/>
       <Icon Id="ProductIcon" SourceFile="corvus.ico"/>
       <Property Id="ARPPRODUCTICON" Value="ProductIcon"/>
       <Property Id="ARPHELPLINK" Value="http://www.init.at"/>
       <Property Id="ARPURLINFOABOUT" Value="http://www.init.at"/>
       <Property Id="ARPNOREPAIR" Value="1"/>
-      <!-- <Property Id="ARPNOMODIFY" Value="1"/> -->
-      <Upgrade Id="$(var.ProductUpgradeCode)">
-         <UpgradeVersion Minimum="$(var.ProductVersion)" OnlyDetect="yes" Property="NEWERVERSIONDETECTED"/>
-         <UpgradeVersion Minimum="0.0.0" Maximum="$(var.ProductVersion)" IncludeMinimum="yes" IncludeMaximum="no" 
-                         Property="OLDERVERSIONBEINGUPGRADED"/>	  
-      </Upgrade>
-      <!-- <Condition Message="A newer version of this software is already installed.">NOT NEWERVERSIONDETECTED</Condition> -->
+	  <MajorUpgrade AllowDowngrades="no" DowngradeErrorMessage="A later version of ICSW Windows Client is already installed. Setup will now exit" 
+					AllowSameVersionUpgrades="no"/>
  
       <Directory Id="TARGETDIR" Name="SourceDir">
          <Directory Id="ProgramFilesFolder">
             <Directory Id="INSTALLDIR" Name="ICSW_Windows_Client">
+				<Component Id="nsclientIni" Guid="{649379EC-8990-4382-A089-10C2E0841D32}">
+					<CreateFolder />
+					<IniFile Id="Ini1" 
+					Action="addLine" 
+					Directory="INSTALLDIR" 
+					Section="/settings/default" 
+					Name="nsclient.ini"
+					Key="allowed hosts"
+					Value="[HOSTNAMES]" />
+					<IniFile Id="Ini2" 
+					Action="addLine" 
+					Directory="INSTALLDIR" 
+					Section="/settings/NRPE/server" 
+					Name="nsclient.ini"
+					Key="port"
+					Value="[PORTNAMES]" />
+				</Component>
             </Directory>
          </Directory>
       </Directory>
@@ -38,28 +50,26 @@
       </UI>
       <UIRef Id="WixUI_ErrorProgressText" />
       
-      <CustomAction Id="ExecFinalizeInstall" Directory="INSTALLDIR" Execute="deferred" Impersonate="no" ExeCommand="[INSTALLDIR]\python\pythonw.exe finalize-install.py [HOSTNAMES] [PORTNAMES] [SERVICENAME]" Return="check" />
+      <!--<CustomAction Id="ExecFinalizeInstall" Directory="INSTALLDIR" Execute="deferred" Impersonate="no" ExeCommand="[INSTALLDIR]\python\pythonw.exe finalize-install.py [HOSTNAMES] [PORTNAMES] [SERVICENAME]" Return="check" />-->
       <CustomAction Id="ExecInstallService" Directory="INSTALLDIR" Execute="deferred" Impersonate="no" ExeCommand="[INSTALLDIR]\nscp.exe service --install --name [SERVICENAME]" Return="check" />
       <CustomAction Id="ExecStartService" Directory="INSTALLDIR" Execute="deferred" Impersonate="no" ExeCommand="[INSTALLDIR]\nscp.exe service --start --name [SERVICENAME]" Return="check" />
       <CustomAction Id="ExecUninstallService" Directory="INSTALLDIR" Execute="deferred" Impersonate="no" ExeCommand="[INSTALLDIR]\nscp.exe service --uninstall --name [SERVICENAME]" Return="check" />
       <CustomAction Id="ExecStopService" Directory="INSTALLDIR" Execute="deferred" Impersonate="no" ExeCommand="[INSTALLDIR]\nscp.exe service --stop --name [SERVICENAME]" Return="check" />
     
       <InstallExecuteSequence>
-         <RemoveExistingProducts After="InstallValidate"/>
-         <Custom Action="ExecFinalizeInstall" After="InstallFiles">NOT Installed</Custom>
-         <Custom Action="ExecInstallService" After="ExecFinalizeInstall">NOT Installed</Custom>
+         <!--<Custom Action="ExecFinalizeInstall" After="InstallFiles">NOT Installed</Custom>-->
+         <Custom Action="ExecInstallService" Before="InstallFinalize">NOT Installed</Custom>
          <Custom Action="ExecStartService" After="ExecInstallService">NOT Installed</Custom>
-         <!-- <Custom Action="ExecStopService" After="InstallInitialize">Installed AND NOT UPGRADINGPRODUCTCODE</Custom> -->
-         <!-- <Custom Action="ExecUninstallService" After="InstallInitialize">Installed AND NOT UPGRADINGPRODUCTCODE</Custom> -->
+         <!--<Custom Action="ExecStopService" After="InstallInitialize">Installed AND NOT UPGRADINGPRODUCTCODE</Custom>-->
          <Custom Action="ExecUninstallService" Before="RemoveFiles">Installed AND NOT UPGRADINGPRODUCTCODE</Custom>
       </InstallExecuteSequence>
  
       <Feature Id="DefaultFeature" Level="1">
+	     <ComponentRef Id="nsclientIni" />
          <ComponentGroupRef Id="NscpFiles"/>	 
       </Feature>
       <Property Id="HOSTNAMES" Value="127.0.0.1" />
       <Property Id="PORTNAMES" Value="5666" />
-      <Property Id="SERVICENAME" Value="ICSW_TEST_SERVICE_0001" />
-      
+      <Property Id="SERVICENAME" Value="ICSW_Monitoring_Service" />      
    </Product>
 </Wix>

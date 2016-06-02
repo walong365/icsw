@@ -1,0 +1,17 @@
+<script type="text/ng-template" id="icsw.device.category.overview">
+    <h3>
+        Categories for {{ struct.devices.length }}
+        <ng-pluralize count="struct.devices.length" when="{'1': 'device', 'other': 'devices'}"></ng-pluralize>
+    </h3>
+    <icsw-tools-ensure-device-selection dev-list="struct.devices" list-ready="struct.device_list_ready">
+        <icsw-config-category-tree-select
+            icsw-sub-tree="'device'"
+            edit-obj="struct.devices"
+            icsw-selected-category="selected_category"
+        ></icsw-config-category-tree-select>
+        <div style="height: 10px"></div>
+        <icsw-config-category-contents-viewer
+            icsw-category="selected_category"
+        ></icsw-config-category-contents-viewer>
+    </icsw-tools-ensure-device-selection>
+</script>

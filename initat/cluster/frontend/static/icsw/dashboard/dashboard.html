@@ -1,0 +1,220 @@
+<script type="text/ng-template" id="icsw/main.html">
+    <!-- main entry point for routes -->
+    <div ui-view></div>
+</script>
+
+<script type="text/ng-template" id="icsw/main/dashboard.html">
+    <icsw-dashboard-view></icsw-dashboard-view>
+</script>
+
+<script type="text/ng-template" id="icsw.dashboard.quicklinks">
+    <div ng-controller="icswDashboardQuicklinksCtrl" class="container-fluid">
+        <h3>{{ quicklink_states.length }} Quicklinks</h3>
+        <ul class="list-group">
+            <li class="list-group-item" ng-repeat="state in quicklink_states">
+                <div class="row">
+                    <div class="col-md-6">
+                        {{ state.icswData.pageTitle }}
+                    </div>
+                    <div class="col-md-6">
+                        <a href="#" ui-sref="{{ state.name }}">{{ state.icswData.pageTitle }}</a>
+                    </div>
+                </div>
+            </li>
+        </ul>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.dashboard.externallinks">
+    <div class="container-fluid">
+        <ul class="list-group">
+            <li class="list-group-item">
+                <div class="row">
+                    <div class="col-md-6">
+                        Changelog of the current development master
+                    </div>
+                    <div class="col-md-6">
+                        <a href="http://www.initat.org/hpc_monitoring/changelogs/" target="_blank" >Changelog</a>
+                    </div>
+                </div>
+            </li>
+            <li class="list-group-item">
+                <div class="row">
+                    <div class="col-md-6">
+                        Software support forum (register, discuss and ask questions)
+                    </div>
+                    <div class="col-md-6">
+                        <a href="http://www.initat.org/phpBB3/index.php" target="_blank">Forum</a>
+                    </div>
+                </div>
+            </li>
+            <li class="list-group-item">
+                <div class="row">
+                    <div class="col-md-6">
+                        Mailing list (subscribe)
+                    </div>
+                    <div class="col-md-6">
+                        <a href="http://www.initat.org/mailman/listinfo" target="_blank">MailMan</a>
+                    </div>
+                </div>
+            </li>
+        </ul>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.dashboard.diskquota">
+    <div ng-controller="icswUserAccountCtrl">
+        <icsw-user-quota-settings
+            icsw-object="struct.user.user"
+            icsw-object-type="'user'"
+            icsw-user-group-settings-tree="struct.settings_tree">
+        ></icsw-user-quota-settings>
+        <icsw-user-disk-usage object="edit_obj" type="user"></icsw-user-disk-usage>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.dashboard.virtualdesktops">
+    <div ng-controller="icswUserAccountCtrl">
+        <icsw-user-vdu-overview object="edit_obj"></icsw-user-vdu-overview>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.dashboard.jobinfo">
+    <icsw-user-job-info></icsw-user-job-info>
+</script>
+
+<script type="text/ng-template" id="icsw.dashboard.add.widget">
+    <form class="form-horizontal" name="form_data">
+        <fieldset>
+            <legend>Settings</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-2">
+                    New Widgets
+                </label>
+                <div class="controls col-sm-8">
+                    <ui-select multiple="multiple" ng-model="struct.new_widgets" style="max-width:400px; min-width:240px;">
+                        <ui-select-match class="ui-select-match" placeholder="Select one or more widgets">
+                            {{ $item.state.icswData.pageTitle }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value as value in widgets">
+                            <div ng-bind-html="value.state.icswData.pageTitle | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-2">
+                    Position
+                </label>
+                <div class="controls col-sm-8">
+                    <ui-select ng-model="struct.pos" style="max-width:400px; min-width:240px;">
+                        <ui-select-match class="ui-select-match" placeholder="Select position">
+                            {{ $select.selected.long }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.short as value in locations">
+                            <div ng-bind-html="value.long | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+        </fieldset>
+        <div class="form-group" style="height:100px;"></div>
+    </form>
+</script>
+
+<script type="text/ng-template" id="icsw.dashboard.add.layout">
+    <form class="form-horizontal" name="form_data">
+        <fieldset>
+            <legend>Settings</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-2">
+                    Layout Name
+                </label>
+                <div class="controls col-sm-8">
+                    <input
+                        ng-model="struct.layout_name"
+                        class="textinput textInput form-control"
+                        maxlength="32"
+                        placeholder="name of new Layout"
+                    />
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-2">
+                    Init mode
+                </label>
+                <div class="controls col-sm-8">
+                    <ui-select ng-model="struct.init_mode" style="max-width:400px; min-width:240px;">
+                        <ui-select-match class="ui-select-match" placeholder="Select init mode">
+                            {{ $select.selected.long }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.short as value in modes">
+                            <div ng-bind-html="value.long | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+        </fieldset>
+        <div class="form-group" style="height:100px;"></div>
+    </form>
+</script>
+
+<script type="text/ng-template" id="icsw.dashboard.overview">
+    <uib-alert ng-if="!struct.data_loaded" class="warning">Loading initial data...</uib-alert>
+    <div class="panel panel-success" ng-if="struct.data_loaded">
+        <div class="panel-heading">
+            Main Dashboard ({{ struct.container.num_open }} of {{ struct.container.num_total }} shown)
+            <span class="form-inline">
+                <span class="input-group" ng-show="struct.container.num_close">
+                    <icsw-tools-button type="create" size="sm" value="add Widgets" ng-click="struct.container.add_widgets($event)"></icsw-tools-button>
+                </span>
+                <span class="input-group">
+                    current layout:
+                </span>
+                <span class="input-group">
+                    <ui-select
+                        ng-model="struct.container.current_layout_name" style="max-width:240px; min-width:300px;"
+                        ng-change="struct.container.change_layout()"
+                        ng-disabled="struct.container.layout_names.length == 1"
+                    >
+                        <ui-select-match class="ui-select-match" placeholder="Select Layout">
+                            {{ $select.selected }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value as value in struct.container.layout_names">
+                            <div ng-bind-html="value | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </span>
+                <span class="input-group">
+                    <icsw-tools-button type="create" size="sm" value="add Laypout" ng-click="struct.container.add_layout($event)"></icsw-tools-button>
+                    <icsw-tools-button ng-if="struct.container.layout_names.length > 1" type="delete" size="sm" value="delete Layout" ng-click="struct.container.delete_layout($event)"></icsw-tools-button>
+                </span>
+            </span>
+        </div>
+        <div gridster="gridsterOpts" class="panel-body container-fluid">
+            <ul>
+                <li gridster-item="item" ng-repeat="item in struct.container.open_elements track by item.element_id">
+                    <icsw-dashboard-element-display
+                        style="position:absolute; top:0px; left:0px; bottom:0px; right:0px; overflow:auto;"
+                        icsw-dashboard-element="item"
+                    ></icsw-dashboard-element-display>
+                </li>
+            </ul>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.dashboard.element">
+    <!-- the margin-bottom entry fixes issues with scrollbars appearing on the right side of panels -->
+    <div class="panel" ng-class="db_element.$$panel_class" style="height:100%; margin-bottom:0px !important;">
+        <div class="panel-heading">
+            {{ db_element.title }}
+            <span class="pull-right">
+                <icsw-tools-button size="xs" type="create" value="" ng-if="db_element.dbe.allow_state" ng-click="state()"></icsw-tools-button>
+                <icsw-tools-button size="xs" type="display" value="" ng-if="db_element.dbe.allow_show" ng-click="show()"></icsw-tools-button>
+                <icsw-tools-button size="xs" type="close" value="" ng-click="close()"></icsw-tools-button>
+            </span>
+        </div>
+        <div style="overflow:auto;">
+    <!-- we dont close the </div> here, this happens in the directive -->
+</script>

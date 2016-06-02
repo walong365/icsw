@@ -1,0 +1,274 @@
+<script type="text/ng-template" id="icsw.config.category.tree.row">
+    <td style="font-family:monospace;">
+        <span ng-bind-html="get_space(obj.depth )"></span>
+        {{ obj.name || '[TLN]' }}
+    </td>
+    <td>
+        <span ng-show="obj.depth">{{ obj.full_name }}</span>
+    </td>
+    <td>{{ obj.comment }}</td>
+    <td>
+        <span ng-show="obj.depth > 1">{{ obj.num_refs || '---' }}</span>
+    </td>
+    <td class="text-center">
+        {{ obj.useable | yesno1 }}
+    </td>
+    <td ng-if="is_location(obj) && obj.useable" class="text-right">{{ obj.latitude | number:3 }}</td>
+    <td ng-if="is_location(obj) && !obj.useable"></td>
+    <td ng-if="is_location(obj) && obj.useable" class="text-right">{{ obj.longitude | number:3 }}</td>
+    <td ng-if="is_location(obj) && !obj.useable"></td>
+    <td ng-if="is_location(obj)" class="text-center">{{ obj.locked && 'locked' || 'unlocked' }}</td>
+    <td ng-if="is_location(obj)" class="text-center">{{ obj.physical && 'physical' || 'structural' }}</td>
+    <td ng-if="is_location(obj)" class="text-center">{{ obj.$gfx_list.length }}</td>
+    <td>
+        <icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)" ng-show="obj.depth > 1"></icsw-tools-button>
+    </td>
+    <td>
+        <icsw-tools-button type="delete" size="xs" ng-click="delete($event, obj)" ng-show="obj.depth > 1"></icsw-tools-button>
+    </td>
+</script>
+
+<script type="text/ng-template" id="icsw.config.category.tree">
+    <h2>
+        {{ mode_display | capitalize }} categories ({{ struct.dn_tree.mode_entries.length }}
+        <ng-pluralize count="struct.dn_tree.mode_entries.length" when="{'1': 'entry', 'other': 'entries'}")></ng-pluralize>)
+    </h2>
+    <div class="panel panel-default">
+        <div class="panel-body" ng-if="struct.tree">
+            <icsw-tools-rest-table-new target-list="tree_nodes" config-service="icswConfigCategoryListService" icsw-config-object="struct">
+                <p>
+                    Actions:
+                    <icsw-tools-button type="create" value="create new" size="sm" ng-click="create($event, null)"></icsw-tools-button>
+                    <icsw-tools-button type="modify" value="prune tree" size="sm" ng-click="prune_tree()"/>
+                    <icsw-tools-button type="delete" ng-show="icsw_config_object.num_active" size="sm" value="delete selected" ng-click="special_fn($event, 'delete_many', null)"/>
+                    <icsw-tools-button type="close" ng-show="icsw_config_object.num_active" size="sm" value="clear selection" ng-click="special_fn($event, 'clear_selection', null)"/>
+                </p>
+                <div class="row">
+                    <div class="col-sm-4">
+                        <h3>Tree view</h3>
+                        <tree treeconfig="dn_tree" config-service="icswConfigCategoryListService" icsw-config-object="icsw_config_object"></tree>
+                    </div>
+                    <div class="col-sm-8">
+                        <h3>Table view</h3>
+                        <table st-table="tree_nodes_displayed" st-safe-src="tree_nodes" class="table table-condensed table-hover" style="width:auto;">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Full name</th>
+                                    <th>Comment</th>
+                                    <th>refs</th>
+                                    <th>Useable</th>
+                                    <th ng-if="mode_is_location">lat</th>
+                                    <th ng-if="mode_is_location">long</th>
+                                    <th ng-if="mode_is_location">lockstate</th>
+                                    <th ng-if="mode_is_location">type</th>
+                                    <th ng-if="mode_is_location">#gfx</th>
+                                    <th colspan="2">Action</th>
+                                </tr>
+                                <tr>
+                                    <td colspan="99">
+                                        <div
+                                            icsw-tools-pagination
+                                            st-items-by-page="15"
+                                            st-displayed-pages="11"
+                                            possible-items-by-page="15,30,100,200"
+                                        ></div>
+                                    </td>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr icsw-config-category-tree-row ng-repeat="obj in tree_nodes_displayed" ng-click="click_row(obj)" ng-class="get_tr_class(obj)">
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="col-sm-6">
+                        <div ng-if="modal_active && !settings.use_modal && active_aem == 'cat' && !create_mode">
+                            <icsw-config-category-contents-viewer category-name="_edit_obj.full_name" category-pk="_edit_obj.idx"></icsw-config-category-contents-viewer>
+                        </div>
+                    </div>
+                </div>
+            </icsw-tools-rest-table-new>
+            <icsw-config-category-contents-viewer icsw-category="selected_category"></icsw-config-category-contents-viewer>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.config.category.contents_viewer">
+    <div class="panel panel-default" ng-if="enabled">
+        <div class="panel-heading">
+            Contents of category {{ icsw_category.full_name }}
+        </div>
+        <div class="panel-body" ng-if="data_ready">
+            <uib-alert type="warning" ng-if="enabled && icsw_category.num_refs == 0">
+                This category is empty.
+            </uib-alert>
+            <table st-table="entries" st-safe-src="contents" class="table table-condensed table-striped"
+                   style="width: auto" ng-show="entries.length > 0">
+                <thead>
+                    <tr>
+                        <td colspan="99">
+                            <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                                 possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Type</th>
+                        <th>SubType</th>
+                        <th>Name</th>
+                        <th>Info</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr ng-repeat="entry in entries">
+                        <td>{{ entry.type }}</td>
+                        <td>{{ entry.subtype }}</td>
+                        <td>{{ entry.name }}</td>
+                        <td>{{ entry.info }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.category.form">
+    <form class="form-horizontal" name="form_data">
+        <h2>Category details for '{{ edit_obj.name }}'</h2>
+        <fieldset>
+            <legend>Basic settings</legend>
+            <div id="div_id_name" class="form-group  ng-class:form_error('name')">
+                <label class="control-label col-sm-3 requiredField">
+                    Name<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="64" name="name" ng-model="edit_obj.name" required="True" type="text" ng-disabled="edit_obj.depth < 2"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Parent<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <ui-select ng-model="edit_obj.parent" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                        <ui-select-match class="ui-select-match" placeholder="Select a parent node">
+                            {{ $select.selected.info_string }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in valid_parents | props_filter:{full_name:$select.search}">
+                            <div ng-bind-html="value.info_string | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Additional fields</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-3">
+                    Comment
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="256" name="comment" ng-model="edit_obj.comment" type="text"/>
+                </div>
+            </div>
+            <div class="form-group row" ng-show="edit_obj.was_unuseable">
+                <div class="control-label col-sm-3">
+                    Useable
+                </div>
+                <div class="controls col-sm-7">
+                    <icsw-tools-yes-no flag="edit_obj.useable"></icsw-tools-yes-no>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset ng-if="is_location(edit_obj)">
+            <legend>Positional data</legend>
+            <div class="form-group  ng-class:form_error('latitude')">
+                <label class="control-label col-sm-3 requiredField">
+                    Latitude<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="numberinput form-control" name="latitude" ng-model="edit_obj.latitude" ng-pattern="/^\d+(\.\d+)*$/" required="True" step="any" type="number" value="48.1"/>
+                </div>
+            </div>
+            <div class="form-group  ng-class:form_error('longitude')">
+                <label class="control-label col-sm-3 requiredField">
+                    Longitude<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="numberinput form-control" name="longitude" ng-model="edit_obj.longitude" ng-pattern="/^\d+(\.\d+)*$/" required="True" step="any" type="number" value="16.3"/>
+                </div>
+            </div>
+            <div class="form-group row">
+                <div class="control-label col-sm-3">
+                    Locked
+                </div>
+                <div class="controls col-sm-7">
+                    <icsw-tools-yes-no flag="edit_obj.locked"></icsw-tools-yes-no>
+                </div>
+            </div>
+            <div class="form-group row" ng-if="!edit_obj.$gfx_list.length">
+                <div class="control-label col-sm-3">
+                    Physical
+                </div>
+                <div class="controls col-sm-7">
+                    <icsw-tools-yes-no flag="edit_obj.physical"></icsw-tools-yes-no>
+                </div>
+            </div>
+        </fieldset>
+    </form>
+</script>
+
+<script type="text/ng-template" id="icsw.category.location.form">
+    <form class="form-horizontal" name="form_data">
+        <h2>Category details for '{{ edit_obj.name }}'</h2>
+        <fieldset>
+            <legend>Basic settings</legend>
+            <div id="div_id_name" class="form-group  ng-class:form_error('name')">
+                <label class="control-label col-sm-3 requiredField">
+                    Name<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="64" name="name" ng-model="edit_obj.name" required="True" type="text" ng-disabled="edit_obj.depth < 2"/>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Additional fields</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-3">
+                    Comment
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control" maxlength="256" name="comment" ng-model="edit_obj.comment" type="text"/>
+                </div>
+            </div>
+            <!-- <div class="form-group row" ng-show="edit_obj.was_unuseable">
+                <div class="control-label col-sm-3">
+                    Useable
+                </div>
+                <div class="controls col-sm-7">
+                    <icsw-tools-yes-no flag="edit_obj.useable"></icsw-tools-yes-no>
+                </div>
+            </div> -->
+        </fieldset>
+        <fieldset>
+            <legend>Positional data</legend>
+            <div class="form-group row">
+                <div class="control-label col-sm-3">
+                    Locked
+                </div>
+                <div class="controls col-sm-7">
+                    <icsw-tools-yes-no flag="edit_obj.locked"></icsw-tools-yes-no>
+                </div>
+            </div>
+            <div class="form-group row" ng-if="!edit_obj.$gfx_list.length">
+                <div class="control-label col-sm-3">
+                    Physical
+                </div>
+                <div class="controls col-sm-7">
+                    <icsw-tools-yes-no flag="edit_obj.physical"></icsw-tools-yes-no>
+                </div>
+            </div>
+        </fieldset>
+    </form>
+</script>

@@ -167,6 +167,9 @@ user_module = angular.module(
         set_json_var: (name, value) =>
             return @set_var(name, value, "j")
 
+        set_integer_var: (name, value) =>
+            return @set_var(name, value, "i")
+
         get_var_names: (cur_re) =>
             console.log cur_re
             return (key for key of @var_lut when key.match(cur_re))

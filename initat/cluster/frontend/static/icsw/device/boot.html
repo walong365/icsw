@@ -93,7 +93,13 @@
                     </div>
                 </td>
                 <td>
-                    <icsw-tools-button type="modify" size="xs" ng-show="struct.num_selected && boot_options.any_type_1_selected" value="modify many" ng-click="modify_many($event)"></icsw-tools-button>
+                    <icsw-tools-button
+                        type="modify"
+                        size="xs"
+                        ng-show="struct.num_selected && boot_options.any_type_1_selected"
+                        value="modify many"
+                        ng-click="modify_many($event)"
+                    ></icsw-tools-button>
                 </td>
                 <!-- for log column -->
                 <td colspan="2"></td>
@@ -151,7 +157,7 @@
         {{ dev.$$boot_helper.slave_connections_info }}
     </td>
     <td ng-show="boot_options.any_type_1_selected">
-        <icsw-tools-button type="modify" size="xs" ng-click="modify_device($event, dev)"></icsw-tools-button>
+        <icsw-tools-button type="modify" size="xs" ng-click="modify_one($event, dev)"></icsw-tools-button>
     </td>
     <td ng-show="boot_options.any_type_3_selected">
         <form class="form-inline">
@@ -232,46 +238,55 @@
     </form>
 </script>
 
-<script type="text/ng-template" id="icsw.boot.single.form">
+<script type="text/ng-template" id="icsw.boot.modify.form">
     <form class="form-horizontal" name="form_data">
-        <fieldset>
-            <legend>basic settings</legend>
-            <div ng-repeat="netstate in struct.boot_status_tree.network_states_list" class="form-group" ng-show="boot_options.is_enabled('t')">
+        <fieldset ng-if="boot_options.is_enabled('t')">
+            <legend>basic settings <icsw-tools-yes-no-small flag="$$bs.change.t"></icsw-tools-yes-no-small></legend>
+            <div ng-repeat="netstate in struct.boot_status_tree.network_states_list" class="form-group" ng-show="$$bs.change.t">
                 <label class="control-label col-sm-4">
                     network {{ netstate.info }}
                 </label>
-                <div class="col-sm-7">
-                    <ui-select ng-model="edit_obj.target_state">
+                <div class="col-sm-6">
+                    <ui-select ng-model="$$bs.target_state[netstate.network]" ng-change="$$bs.ts_mode = netstate.network">
                         <ui-select-match class="ui-select-match" placeholder="target state">
                             {{ $select.selected.info }}
                         </ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in netstate.states">
+                        <ui-select-choices class="ui-select-choices" repeat="value.status as value in netstate.states">
                             <div ng-bind-html="value.info"></div>
                         </ui-select-choices>
                     </ui-select>
                 </div>
+                <div class="col-sm-1">
+                    <input type="radio" ng-model="$$bs.ts_mode" ng-value="netstate.network"/>
+                </div>
             </div>
-            <div class="form-group" ng-show="boot_options.is_enabled('t')">
+            <div class="form-group" ng-show="$$bs.change.t">
                 <label class="control-label col-sm-4">
                     special state
                 </label>
-                <div class="col-sm-7">
-                    <ui-select ng-model="edit_obj.target_state">
+                <div class="col-sm-6">
+                    <ui-select ng-model="$$bs.target_state['s']" ng-change="$$bs.ts_mode = 's'">
                         <ui-select-match class="ui-select-match" placeholder="special target state">
                             {{ $select.selected.info }}
                         </ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in struct.boot_status_tree.special_states_list">
+                        <ui-select-choices class="ui-select-choices" repeat="value.status as value in struct.boot_status_tree.special_states_list">
                             <div ng-bind-html="value.info"></div>
                         </ui-select-choices>
                     </ui-select>
                 </div>
+                <div class="col-sm-1">
+                    <input type="radio" ng-model="$$bs.ts_mode" ng-value="'s'"/>
+                </div>
             </div>
-            <div class="form-group" ng_show="boot_options.is_enabled('k')">
+        </fieldset>
+        <fieldset ng-if="boot_options.is_enabled('k')">
+            <legend>Kernel settings <icsw-tools-yes-no-small flag="$$bs.change.k"></icsw-tools-yes-no-small></legend>
+            <div class="form-group" ng-show="$$bs.change.k">
                 <label class="control-label col-sm-4">
                     New kernel
                 </label>
                 <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.new_kernel" style="max-width:400px; min-width:240px;">
+                    <ui-select ng-model="$$bs.new_kernel" style="max-width:400px; min-width:240px;">
                         <ui-select-match class="ui-select-match" placeholder="kernel">
                             {{ $select.selected.display_name }}
                         </ui-select-match>
@@ -281,12 +296,12 @@
                     </ui-select>
                 </div>
             </div>
-            <div class="form-group" ng_show="boot_options.is_enabled('k')">
+            <div class="form-group" ng-show="$$bs.change.k">
                 <label class="control-label col-sm-4">
                     Stage1 flavour
                 </label>
                 <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.stage1_flavour" style="max-width:400px; min-width:240px;">
+                    <ui-select ng-model="$$bs.stage1_flavour" style="max-width:400px; min-width:240px;">
                         <ui-select-match class="ui-select-match" placeholder="stage1 flavour">
                             {{ $select.selected.name }}
                         </ui-select-match>
@@ -296,20 +311,23 @@
                     </ui-select>
                 </div>
             </div>
-            <div class="form-group" ng_show="boot_options.is_enabled('k')">
+            <div class="form-group" ng-show="$$bs.change.k">
                 <label class="control-label col-sm-4">
                     Kernel append
                 </label>
                 <div class="controls col-sm-7">
-                    <input class="textinput textInput form-control" maxlength="384" name="kernel_append" ng-model="edit_obj.kernel_append" type="text"/>
+                    <input class="textinput textInput form-control" maxlength="384" name="kernel_append" ng-model="$$bs.kernel_append" type="text"/>
                 </div>
             </div>
-            <div class="form-group" ng_show="boot_options.is_enabled('i')">
+        </fieldset>
+        <fieldset ng-if="boot_options.is_enabled('i')">
+            <legend>Image settings <icsw-tools-yes-no-small flag="$$bs.change.i"></icsw-tools-yes-no-small></legend>
+            <div class="form-group" ng-show="$$bs.change.i">
                 <label class="control-label col-sm-4">
                     New image
                 </label>
                 <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.new_image" style="max-width:400px; min-width:240px;">
+                    <ui-select ng-model="$$bs.new_image" style="max-width:400px; min-width:240px;">
                         <ui-select-match class="ui-select-match" placeholder="image">
                             {{ $select.selected.name }}
                         </ui-select-match>
@@ -319,13 +337,16 @@
                     </ui-select>
                 </div>
             </div>
+        </fieldset>
+        <fieldset ng-if="boot_options.is_enabled('p')">
+            <legend>Partition settings <icsw-tools-yes-no-small flag="$$bs.change.p"></icsw-tools-yes-no-small></legend>
             <div ng-show="!struct.partition_table_tree.list.length" class="alert alert-danger">no valid partition tables found</div>
-            <div class="form-group" ng_show="boot_options.is_enabled('p') && struct.partition_table_tree.list.length">
+            <div class="form-group" ng-if="struct.partition_table_tree.list.length && $$bs.change.p">
                 <label class="control-label col-sm-4">
                     Partition table
                 </label>
                 <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.partition_table" style="max-width:400px; min-width:240px;">
+                    <ui-select ng-model="$$bs.partition_table" style="max-width:400px; min-width:240px;">
                         <ui-select-match class="ui-select-match" placeholder="partition table">
                             {{ $select.selected.name }}
                         </ui-select-match>
@@ -336,298 +357,36 @@
                 </div>
             </div>
         </fieldset>
-        <fieldset>
-            <legend>bootdevice settings</legend>
-            <div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <div class="checkbox" ng_show="boot_options.is_enabled('b')">
-                            <div class="controls col-lg-offset-0 col-sm-7">
-                                <label>
-                                    <input class="checkboxinput checkbox" name="dhcp_mac" ng-model="edit_obj.dhcp_mac" type="checkbox"/>
-                                    Greedy
-                                </label>
-                            </div>
-                        </div>
-                    </div>
+        <fieldset ng-if="boot_options.is_enabled('b')">
+            <legend>bootdevice settings <icsw-tools-yes-no-small flag="$$bs.change.b"></icsw-tools-yes-no-small></legend>
+            <div class="form-group" ng-show="$$bs.change.b">
+                <label class="control-label col-sm-3">
+                    Greedy
+                </label>
+                <div class="control col-sm-3">
+                    <icsw-tools-yes-no flag="$$bs.dhcp_mac"></icsw-tools-yes-no>
                 </div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <div class="checkbox" ng_show="boot_options.is_enabled('b')">
-                            <div class="controls col-lg-offset-0 col-sm-7">
-                                <label>
-                                    <input class="checkboxinput checkbox" name="dhcp_write" ng-model="edit_obj.dhcp_write" type="checkbox"/>
-                                    Dhcp write
-                                </label>
-                            </div>
-                        </div>
-                    </div>
+                <label class="control-label col-sm-3">
+                    DHCP write
+                </label>
+                <div class="control col-sm-3">
+                    <icsw-tools-yes-no flag="$$bs.dhcp_write"></icsw-tools-yes-no>
                 </div>
             </div>
-            <div class="form-group" ng_show="boot_options.is_enabled('b') && edit_obj.bootnetdevice">
+            <div class="form-group" ng-show="$$bs.bn_present && $$bs.change.b">
                 <label class="control-label col-sm-4">
                     Macaddr
                 </label>
                 <div class="controls col-sm-7">
-                    <input class="textinput textInput form-control" maxlength="177" name="macaddr" ng-model="edit_obj.macaddr" type="text"/>
+                    <input class="textinput textInput form-control" maxlength="177" name="macaddr" ng-model="$$bs.macaddr" type="text"/>
                 </div>
             </div>
-            <div class="form-group" ng_show="boot_options.is_enabled('b') && edit_obj.bootnetdevice">
+            <div class="form-group" ng-show="$$bs.bn_present && $$bs.change.b">
                 <label class="control-label col-sm-4">
                     Driver
                 </label>
                 <div class="controls col-sm-7">
-                    <input class="textinput textInput form-control" maxlength="384" name="driver" ng-model="edit_obj.driver" type="text"/>
-                </div>
-            </div>
-        </fieldset>
-    </form>
-</script>
-
-<script type="text/ng-template" id="icsw.boot.many.form">
-    <form class="form-horizontal" name="form_data">
-        <fieldset ng-if="boot_options.is_enabled('t')">
-            <legend>target state</legend>
-            <div class="row">
-                <div class="col-md-3">
-                    <div class="form-group">
-                        <div class="checkbox" ">
-                            <div class="controls col-lg-offset-0 col-sm-7">
-                                <label>
-                                    <input class="checkboxinput checkbox" name="change_target_state" ng-model="edit_obj.change_target_state" type="checkbox"/>
-                                    target state
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-9">
-                    <div ng-repeat="netstate in struct.boot_status_tree.network_states_list" class="row form-group" ng-show="edit_obj.change_target_state">
-                        <label class="control-label col-sm-4">
-                            network {{ netstate.info }}
-                        </label>
-                        <div class="col-sm-7">
-                            <ui-select ng-model="edit_obj.target_state">
-                                <ui-select-match class="ui-select-match" placeholder="target state">
-                                    {{ $select.selected.info }}
-                                </ui-select-match>
-                                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in netstate.states">
-                                    <div ng-bind-html="value.info"></div>
-                                </ui-select-choices>
-                            </ui-select>
-                        </div>
-                    </div>
-                    <div class="row form-group" ng-show="edit_obj.change_target_state">
-                        <label class="control-label col-sm-4">
-                            special state
-                        </label>
-                        <div class="col-sm-7">
-                            <ui-select ng-model="edit_obj.target_state">
-                                <ui-select-match class="ui-select-match" placeholder="special target state">
-                                    {{ $select.selected.info }}
-                                </ui-select-match>
-                                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in struct.boot_status_tree.special_states_list">
-                                    <div ng-bind-html="value.info"></div>
-                                </ui-select-choices>
-                            </ui-select>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </fieldset>
-        <fieldset>
-            <legend>settings</legend>
-            <div class="row" ng-if="boot_options.is_enabled('k')">
-                <div class="col-md-3">
-                    <div class="form-group">
-                        <div class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7">
-                                <label>
-                                    <input class="checkboxinput checkbox" name="change_new_kernel" ng-model="edit_obj.change_new_kernel" type="checkbox"/>
-                                    kernel
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-9">
-                    <div class="form-group" ng_show="edit_obj.change_new_kernel">
-                        <label class="control-label col-sm-4">
-                            New kernel
-                        </label>
-                        <div class="controls col-sm-7">
-                            <ui-select ng-model="edit_obj.new_kernel" style="max-width:400px; min-width:240px;">
-                                <ui-select-match class="ui-select-match" placeholder="kernel">
-                                    {{ $select.selected.display_name }}
-                                </ui-select-match>
-                                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in struct.kernel_tree.list | props_filter:{name:$select.search}">
-                                    <div ng-bind-html="value.display_name | highlight: $select.search"></div>
-                                </ui-select-choices>
-                            </ui-select>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="row" ng-if="boot_options.is_enabled('k')">
-                <div class="col-md-3"></div>
-                <div class="col-md-9">
-                    <div class="form-group" ng_show="edit_obj.change_new_kernel">
-                        <label class="control-label col-sm-4">
-                            Stage1 flavour
-                        </label>
-                        <div class="controls col-sm-7">
-                            <ui-select ng-model="edit_obj.stage1_flavour" style="max-width:400px; min-width:240px;">
-                                <ui-select-match class="ui-select-match" placeholder="stage1 flavour">
-                                    {{ $select.selected.name }}
-                                </ui-select-match>
-                                <ui-select-choices class="ui-select-choices" repeat="value.val as value in stage1_flavours | props_filter:{name:$select.search}">
-                                    <div ng-bind-html="value.name | highlight: $select.search"></div>
-                                </ui-select-choices>
-                            </ui-select>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="row" ng-if="boot_options.is_enabled('k')">
-                <div class="col-md-3"></div>
-                <div class="col-md-9">
-                    <div class="form-group" ng_show="edit_obj.change_new_kernel">
-                        <label class="control-label col-sm-4">
-                            Kernel append
-                        </label>
-                        <div class="controls col-sm-7">
-                            <input class="textinput textInput form-control" maxlength="384" name="kernel_append" ng-model="edit_obj.kernel_append" type="text"/>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="row" ng-if="boot_options.is_enabled('i')">
-                <div class="col-md-3">
-                    <div class="form-group">
-                        <div class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7">
-                                <label>
-                                    <input class="checkboxinput checkbox" name="change_new_image" ng-model="edit_obj.change_new_image" type="checkbox"/>
-                                    image
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-9">
-                    <div class="form-group" ng_show="edit_obj.change_new_image">
-                        <label class="control-label col-sm-4">
-                            New image
-                        </label>
-                        <div class="controls col-sm-7">
-                            <ui-select ng-model="edit_obj.new_image" style="max-width:400px; min-width:240px;">
-                                <ui-select-match class="ui-select-match" placeholder="image">
-                                    {{ $select.selected.name }}
-                                </ui-select-match>
-                                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in struct.image_tree.list | props_filter:{name:$select.search}">
-                                    <div ng-bind-html="value.name | highlight: $select.search"></div>
-                                </ui-select-choices>
-                            </ui-select>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="row" ng-if="boot_options.is_enabled('p')">
-                <div class="col-md-3">
-                    <div class="form-group">
-                        <div class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7">
-                                <label>
-                                    <input class="checkboxinput checkbox" name="change_partition_table" ng-model="edit_obj.change_partition_table" type="checkbox"/>
-                                    partition
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-9">
-                    <div class="form-group" ng_show="edit_obj.change_partition_table">
-                        <label class="control-label col-sm-4">
-                            Partition table
-                        </label>
-                        <div class="controls col-sm-7">
-                            <ui-select ng-model="edit_obj.partition_table" style="max-width:400px; min-width:240px;">
-                                <ui-select-match class="ui-select-match" placeholder="partition table">
-                                    {{ $select.selected.name }}
-                                </ui-select-match>
-                                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in struct.partition_table_tree.list | props_filter:{name:$select.search}">
-                                    <div ng-bind-html="value.name | highlight: $select.search"></div>
-                                </ui-select-choices>
-                            </ui-select>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="row" ng-if="boot_options.is_enabled('b')">
-                <div class="col-md-3">
-                    <div class="form-group">
-                        <div class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7">
-                                <label>
-                                    <input class="checkboxinput checkbox" name="change_dhcp_mac" ng-model="edit_obj.change_dhcp_mac" type="checkbox"/>
-                                    bootdevice
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-9">
-                    <div class="form-group">
-                        <div class="checkbox" ng_show="edit_obj.change_dhcp_mac">
-                            <div class="controls col-lg-offset-0 col-sm-7">
-                                <label>
-                                    <input class="checkboxinput checkbox" name="dhcp_mac" ng-model="edit_obj.dhcp_mac" type="checkbox"/>
-                                    Greedy
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="row" ng-if="boot_options.is_enabled('b')">
-                <div class="col-md-3"></div>
-                <div class="col-md-9">
-                    <div class="form-group">
-                        <div class="checkbox" ng_show="edit_obj.change_dhcp_mac">
-                            <div class="controls col-lg-offset-0 col-sm-7">
-                                <label>
-                                    <input class="checkboxinput checkbox" name="dhcp_write" ng-model="edit_obj.dhcp_write" type="checkbox"/>
-                                    Dhcp write
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="row" ng-if="boot_options.is_enabled('b')">
-                <div class="col-md-3"></div>
-                <div class="col-md-9">
-                    <div class="form-group" ng_show="edit_obj.change_dhcp_mac">
-                        <label class="control-label col-sm-4">
-                            Macaddr
-                        </label>
-                        <div class="controls col-sm-7">
-                            <input class="textinput textInput form-control" maxlength="177" name="macaddr" ng-model="edit_obj.macaddr" type="text"/>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="row" ng-if="boot_options.is_enabled('b')">
-                <div class="col-md-3"></div>
-                <div class="col-md-9">
-                    <div class="form-group" ng_show="edit_obj.change_dhcp_mac">
-                        <label class="control-label col-sm-4">
-                            Driver
-                        </label>
-                        <div class="controls col-sm-7">
-                            <input class="textinput textInput form-control" maxlength="384" name="driver" ng-model="edit_obj.driver" type="text"/>
-                        </div>
-                    </div>
+                    <input class="textinput textInput form-control" maxlength="384" name="driver" ng-model="$$bs.driver" type="text"/>
                 </div>
             </div>
         </fieldset>

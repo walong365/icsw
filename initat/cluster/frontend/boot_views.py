@@ -24,6 +24,7 @@
 """ boot views """
 
 import json
+import pprint
 import logging
 import time
 
@@ -69,11 +70,16 @@ class get_boot_info_json(View):
         ).select_related(
             "device_group",
         )
-        cd_cons = cd_connection.objects.filter(Q(child__in=sel_list) | Q(parent__in=sel_list)).select_related(
+        cd_cons = cd_connection.objects.filter(
+            Q(child__in=sel_list) | Q(parent__in=sel_list)
+        ).select_related(
             "child__device_group",
             "child__domain_tree_node",
             "parent__device_group",
             "parent__domain_tree_node",
+        ).prefetch_related(
+            "child__categories",
+            "parent__categories",
         )
         call_mother = True if int(_post["call_mother"]) else False
         # to speed up things while testing
@@ -111,8 +117,8 @@ class get_boot_info_json(View):
             context=ctx,
         ).data
         _resp = JSONRenderer().render(_json)
-        import pprint
-        pprint.pprint(_json)
+        # import pprint
+        # pprint.pprint(_json)
         request.xml_response["response"] = _resp
 
 
@@ -130,11 +136,13 @@ class update_device_bootsettings(APIView):
         return response
 
 
-class update_device(APIView):
-    authentication_classes = (SessionAuthentication,)
-    permission_classes = (IsAuthenticated,)
-
-    def put(self, request, pk):
+class update_device(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _post = request.POST
+        dev_data = json.loads(_post["boot"])
+        pprint.pprint(dev_data)
         _change_lut = {
             "b": "change_dhcp_mac",
             "t": "change_target_state",
@@ -142,39 +150,44 @@ class update_device(APIView):
             "i": "change_new_image",
             "k": "change_new_kernel",
         }
-        dev_data = request.data
         # import pprint
         # pprint.pprint(dev_data)
-        _en = dev_data["bo_enabled"]
         _changed = False
         _mother_commands = set()
         _all_update_list = set()
-        if int(pk):
-            pk_list = [int(pk)]
-            # many = False
-        else:
-            pk_list = dev_data["device_pks"]
-            # many = True
-            # update enabled list
-            for short_key in _en.iterkeys():
-                if short_key in _change_lut:
-                    if not dev_data.get(_change_lut[short_key], False):
-                        _en[short_key] = False
+        pk_list = dev_data["pk_list"]
+        # many = True
+        # update enabled list
+        _en = {key: False for key in _change_lut.iterkeys()}
+        for short_key in _en.iterkeys():
+            _en[short_key] = dev_data["bo_enabled"].get(short_key, False) and dev_data["change"].get(short_key, False)
+        print _en
+        print pk_list
         with transaction.atomic():
-            all_devs = list(device.objects.filter(Q(pk__in=pk_list)).select_related(
-                "domain_tree_node", "device_group"
-            ).prefetch_related(
-                "categories"
-            ).order_by("device_group__name", "name"))
+            all_devs = list(
+                device.objects.filter(
+                    Q(pk__in=pk_list)
+                ).select_related(
+                    "domain_tree_node", "device_group"
+                ).prefetch_related(
+                    "categories"
+                ).order_by(
+                    "device_group__name",
+                    "name"
+                )
+            )
+            print all_devs
             for cur_dev in all_devs:
                 # print "**", cur_dev
                 update_list = set()
                 if _en["t"]:
-                    new_new_state, new_prod_link = (None, None)
-                    if dev_data["new_state"]:
-                        new_new_state = status.objects.get(Q(pk=dev_data["new_state"]))
-                        if dev_data["prod_link"]:
-                            new_prod_link = network.objects.get(Q(pk=dev_data["prod_link"]))  # @UndefinedVariable
+                    _bs = dev_data["target_state"]
+                    _ts_mode = dev_data["ts_mode"]
+                    new_new_state = status.objects.get(Q(pk=_bs[str(_ts_mode)]))
+                    if _ts_mode == "s":
+                        new_prod_link = None
+                    else:
+                        new_prod_link = network.objects.get(Q(pk=_ts_mode))
                     if new_new_state != cur_dev.new_state or new_prod_link != cur_dev.prod_link:
                         cur_dev.new_state = new_new_state
                         cur_dev.prod_link = new_prod_link
@@ -208,7 +221,7 @@ class update_device(APIView):
                         cur_dev.dhcp_write = new_dhcp_write
                         _bc = True
                     if cur_dev.bootnetdevice:
-                        new_driver, new_macaddr = (dev_data["driver"], dev_data["macaddr"])
+                        new_driver, new_macaddr = (dev_data["bn_driver"], dev_data["bn_macaddr"])
                         if new_driver != cur_dev.bootnetdevice.driver or new_macaddr != cur_dev.bootnetdevice.macaddr:
                             cur_dev.bootnetdevice.driver = new_driver
                             # ignore empty macaddr (for many changes)
@@ -231,7 +244,6 @@ class update_device(APIView):
                         cur_dev.bootnetdevice.save()
                     cur_dev._no_bg_job = False
                     # print cur_dev.new_kernel, cur_dev.new_image
-        _lines = []
         if _mother_commands:
             for _mother_com in _mother_commands:
                 srv_com = server_command.srv_command(command=_mother_com)
@@ -241,23 +253,25 @@ class update_device(APIView):
                         srv_com.builder("device", name=cur_dev.name, pk="{:d}".format(cur_dev.pk)) for cur_dev in all_devs
                     ]
                 )
-                _res, _log_lines = contact_server(request, "mother", srv_com, timeout=10, connection_id="webfrontend_refresh")
-                # print "*", _mother_com, _log_lines
-                _lines.extend(_log_lines)
+                _res = contact_server(request, "mother", srv_com, timeout=10, connection_id="webfrontend_refresh")
         if _all_update_list:
             if len(all_devs) > 1:
                 dev_info_str = "{}: {}".format(
                     logging_tools.get_plural("device", len(all_devs)),
-                    ", ".join([unicode(cur_dev) for cur_dev in all_devs]))
+                    ", ".join(
+                        [
+                            unicode(cur_dev) for cur_dev in all_devs
+                        ]
+                    )
+                )
             else:
                 dev_info_str = unicode(all_devs[0])
-            _lines.append((logging_tools.LOG_LEVEL_OK, "updated {} for '{}'".format(", ".join(_all_update_list), dev_info_str)))
-        response = Response(
-            {
-                "log_lines": _lines
-            }
-        )
-        return response
+            request.xml_response.info(
+                "updated {} for '{}'".format(
+                    ", ".join(_all_update_list),
+                    dev_info_str
+                )
+            )
 
 
 class get_devlog_info(View):

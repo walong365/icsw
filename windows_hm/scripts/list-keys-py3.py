@@ -1,4 +1,7 @@
 import winreg
+import bz2
+import base64
+import json
 
 def DecodeKey(rpk):
     rpkOffset = 52
@@ -50,8 +53,6 @@ def GetSQLKey2():
 def GetDefaultKey():
     return GetKeyFromRegLoc("SOFTWARE\Microsoft\Windows NT\CurrentVersion\DefaultProductKey")
 
-import json
-
 if __name__=="__main__":
     keys = []
     try:
@@ -78,4 +79,6 @@ if __name__=="__main__":
     except:
         pass
 
-    print(json.dumps(keys))
+    output = json.dumps(keys)
+
+    print(base64.b64encode(bz2.compress(bytes(output, "utf-8"))))

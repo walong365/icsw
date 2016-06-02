@@ -48,7 +48,11 @@ def get_base_assets_from_raw_result(asset_run,):
         if runtype == AssetType.PACKAGE:
             assets = []
             if scantype == ScanType.NRPE:
-                l = json.loads(blob)
+                if blob.startswith("b'"):
+                    _data = bz2.decompress(base64.b64decode(blob[2:-2]))
+                else:
+                    _data = bz2.decompress(base64.b64decode(blob))
+                l = json.loads(_data)
                 for (name, version, size, date) in l:
                     if size == "Unknown":
                         size = 0
@@ -119,7 +123,10 @@ def get_base_assets_from_raw_result(asset_run,):
 
         elif runtype == AssetType.HARDWARE:
             if scantype == ScanType.NRPE:
-                s = blob[2:-4].encode('ascii')
+                if blob.startswith("b'"):
+                    s = bz2.decompress(base64.b64decode(blob[2:-2]))
+                else:
+                    s = bz2.decompress(base64.b64decode(blob))
             elif scantype == ScanType.HM:
                 s = bz2.decompress(base64.b64decode(blob))
             else:
@@ -164,7 +171,11 @@ def get_base_assets_from_raw_result(asset_run,):
 
         elif runtype == AssetType.LICENSE:
             if scantype == ScanType.NRPE:
-                l = json.loads(blob)
+                if blob.startswith("b'"):
+                    _data = bz2.decompress(base64.b64decode(blob[2:-2]))
+                else:
+                    _data = bz2.decompress(base64.b64decode(blob))
+                l = json.loads(_data)
                 for (name, licensekey) in l:
                     new_lic = AssetLicenseEntry(
                         name=name,
@@ -178,7 +189,11 @@ def get_base_assets_from_raw_result(asset_run,):
 
         elif runtype == AssetType.PENDING_UPDATE:
             if scantype == ScanType.NRPE:
-                l = json.loads(blob)
+                if blob.startswith("b'"):
+                    _data = bz2.decompress(base64.b64decode(blob[2:-2]))
+                else:
+                    _data = bz2.decompress(base64.b64decode(blob))
+                l = json.loads(_data)
                 for (name, optional) in l:
                     new_pup = AssetUpdateEntry(
                         name=name,
@@ -203,7 +218,11 @@ def get_base_assets_from_raw_result(asset_run,):
 
         elif runtype == AssetType.UPDATE:
             if scantype == ScanType.NRPE:
-                l = json.loads(blob)
+                if blob.startswith("b'"):
+                    _data = bz2.decompress(base64.b64decode(blob[2:-2]))
+                else:
+                    _data = bz2.decompress(base64.b64decode(blob))
+                l = json.loads(_data)
                 for (name, up_date, status) in l:
                     new_up = AssetUpdateEntry(
                         name=name,
@@ -224,7 +243,11 @@ def get_base_assets_from_raw_result(asset_run,):
 
         elif runtype == AssetType.PROCESS:
             if scantype == ScanType.NRPE:
-                l = json.loads(blob)
+                if blob.startswith("b'"):
+                    _data = bz2.decompress(base64.b64decode(blob[2:-2]))
+                else:
+                    _data = bz2.decompress(base64.b64decode(blob))
+                l = json.loads(_data)
                 process_dict = {int(pid): {"name": name} for name, pid in l}
             elif scantype == ScanType.HM:
                 process_dict = eval(bz2.decompress(base64.b64decode(blob)))
@@ -238,24 +261,61 @@ def get_base_assets_from_raw_result(asset_run,):
 
         elif runtype == AssetType.PCI:
             if scantype == ScanType.NRPE:
-                l = json.loads(blob)
+                if blob.startswith("b'"):
+                    _data = bz2.decompress(base64.b64decode(blob[2:-2]))
+                else:
+                    _data = bz2.decompress(base64.b64decode(blob))
 
-                for info_dict in l:
+                info_dicts = []
+
+                info_dict = {}
+                for line in _data.decode().split("\r\n"):
+                    if len(line) == 0:
+                        if len(info_dict) > 0:
+                            info_dicts.append(info_dict)
+                            info_dict = {}
+                    if line.startswith("Slot:"):
+                        info_dict['slot'] = line.split("\t", 1)[1]
+
+                        comps = info_dict['slot'].split(":")
+                        bus = comps[0]
+
+                        comps = comps[1].split(".")
+                        slot = comps[0]
+                        func = comps[1]
+
+                        info_dict['bus'] = bus
+                        info_dict['slot'] = slot
+                        info_dict['func'] = func
+                    elif line.startswith("Class:"):
+                        info_dict['class'] = line.split("\t", 1)[1]
+                    elif line.startswith("Vendor:"):
+                        info_dict['vendor'] = line.split("\t", 1)[1]
+                    elif line.startswith("Device:"):
+                        info_dict['device'] = line.split("\t", 1)[1]
+                    elif line.startswith("SVendor:"):
+                        info_dict['svendor'] = line.split("\t", 1)[1]
+                    elif line.startswith("SDevice:"):
+                        info_dict['sdevice'] = line.split("\t", 1)[1]
+                    elif line.startswith("Rev:"):
+                        info_dict['rev'] = line.split("\t", 1)[1]
+
+                for info_dict in info_dicts:
                     new_pci = AssetPCIEntry(
                         asset_run=asset_run,
                         domain=0,
-                        bus=int(info_dict['bus']),
-                        slot=int(info_dict['slot']),
-                        func=int(info_dict['func']),
+                        bus=int(info_dict['bus'], 16) if 'bus' in info_dict else 0,
+                        slot=int(info_dict['slot'], 16) if 'slot' in info_dict else 0,
+                        func=int(info_dict['func'], 16) if 'func' in info_dict else 0,
                         pci_class=0,
                         subclass=0,
                         device=0,
                         vendor=0,
-                        revision=int(info_dict['rev']),
+                        revision=int(info_dict['rev'], 16) if 'rev' in info_dict else 0,
                         pci_classname=info_dict['class'],
                         subclassname=info_dict['class'],
                         devicename=info_dict['device'],
-                        vendorname=info_dict['vedor'],
+                        vendorname=info_dict['vendor'],
                     )
                     new_pci.save()
 
@@ -287,8 +347,19 @@ def get_base_assets_from_raw_result(asset_run,):
 
         elif runtype == AssetType.DMI:
             if scantype == ScanType.NRPE:
-                lines = json.loads(blob)
-                _xml = dmi_tools.dmi_struct_to_xml(dmi_tools.parse_dmi_output(lines))
+                if blob.startswith("b'"):
+                    _data = bz2.decompress(base64.b64decode(blob[2:-2]))
+                else:
+                    _data = bz2.decompress(base64.b64decode(blob))
+
+                _lines = []
+
+                for line in _data.decode().split("\r\n"):
+                    _lines.append(line)
+                    if line == "End Of Table":
+                        break
+
+                _xml = dmi_tools.dmi_struct_to_xml(dmi_tools.parse_dmi_output(_lines))
             elif scantype == ScanType.HM:
                 _xml = dmi_tools.decompress_dmi_info(blob)
             head = AssetDMIHead(
@@ -370,7 +441,7 @@ class BaseAssetPackage(object):
     def __hash__(self):
         return hash((self.name, self.version, self.release, self.size, self.install_date, self.package_type))
 
-
+########################################################################################################################
 # Enums
 ########################################################################################################################
 

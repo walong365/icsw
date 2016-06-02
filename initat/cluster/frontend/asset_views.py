@@ -342,11 +342,16 @@ class export_assetruns_to_csv(View):
             'result'
         ]
 
+        if ar.run_start_time and ar.run_end_time:
+            ar_run_time = str((ar.run_end_time - ar.run_start_time).total_seconds())
+        else:
+            ar_run_time = "N/A"
+
         base_row = [AssetType(ar.run_type).name,
                     str(ar.asset_batch.idx),
                     str(ar.run_start_time),
                     str(ar.run_end_time),
-                    str((ar.run_end_time - ar.run_start_time).total_seconds()),
+                    ar_run_time,
                     str(ar.device.full_name),
                     RunStatus(ar.run_status).name,
                     RunResult(ar.run_result).name]
@@ -573,11 +578,16 @@ class export_assetbatch_to_xlsx(View):
                            'status',
                            'result']
 
+            if ar.run_start_time and ar.run_end_time:
+                ar_run_time = str((ar.run_end_time - ar.run_start_time).total_seconds())
+            else:
+                ar_run_time = "N/A"
+
             base_row = [AssetType(ar.run_type).name,
                         str(ar.asset_batch.idx),
                         str(ar.run_start_time),
                         str(ar.run_end_time),
-                        str((ar.run_end_time - ar.run_start_time).total_seconds()),
+                        ar_run_time,
                         str(ar.device.full_name),
                         RunStatus(ar.run_status).name,
                         RunResult(ar.run_result).name]

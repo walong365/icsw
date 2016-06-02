@@ -36,6 +36,9 @@ angular.module(
                     menukey: "dev"
                     icon: "fa-list"
                     ordering: 15
+                dashboardEntry:
+                    size_x: 2
+                    size_y: 5
         }
     )
 ]).directive("icswDeviceTreeOverview",
@@ -199,6 +202,7 @@ angular.module(
             flap_detection_enabled: true
             name: "dev"
             comment: "new device"
+            categories: []
         }
         if parent_obj
             new_obj.device_group = parent_obj.idx

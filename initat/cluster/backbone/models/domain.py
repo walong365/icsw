@@ -536,6 +536,18 @@ class category(models.Model):
     def single_select(self):
         return True if (self.full_name.startswith("/location/") and self.physical) else False
 
+    def get_ref_object(self):
+        from initat.cluster.backbone.models import device, config, mon_check_command
+        if self.depth:
+            _tl = self.full_name.split("/")[1]
+            return {
+                "config": config,
+                "device": device,
+                "location": device,
+                "mon": mon_check_command,
+            }[_tl]
+        else:
+            return None
     # no longer needed
     # def get_reference_dict(self):
     #    all_m2ms = [

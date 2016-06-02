@@ -23,6 +23,7 @@ import datetime
 import threading
 import time
 import traceback
+import os
 
 import pytz
 from django.core.exceptions import ValidationError
@@ -458,14 +459,14 @@ class NRPEScanBatch(ScanBatch):
                 continue
 
             # run scan once every hour
-            ds = DispatchSetting(
+            si = ScheduleItem.objects.create(
                 device=self.device,
-                source=source,
-                duration_amount=5,
-                duration_unit=DispatchSetting.DurationUnits.minutes,
-                run_now=True
+                source=10,
+                planned_date=datetime.datetime.now(tz=pytz.utc),
+                run_now=True,
+                dispatch_setting=None
             )
-            ds.save()
+            si.save()
 
         self.finish()
 
@@ -476,6 +477,8 @@ LIST_PROCESSES_CMD = "list-processes-py3"
 LIST_UPDATES_CMD = "list-updates-alt-py3"
 LIST_PENDING_UPDATES_CMD = "list-pending-updates-py3"
 LIST_HARDWARE_CMD = "list-hardware-lstopo-py3"
+DMIINFO_CMD = "dmiinfo"
+PCIINFO_CMD = "pciinfo"
 
 
 def align_second(now, sched_start_second):
@@ -704,6 +707,7 @@ class PlannedRunsForDevice(object):
         self.device = device
         self.planned_runs = []
         self.ip = ip
+        self.nrpe_port = "5666"
         self.num_running = 0
         self.to_delete = False
         self.asset_batch = AssetBatch(
@@ -743,7 +747,7 @@ class PlannedRunsForDevice(object):
     def remove_planned_run(self, pdrf):
         self.num_running -= 1
         self.planned_runs = [entry for entry in self.planned_runs if entry.run_db_obj.idx != pdrf.run_db_obj.idx]
-        if not self.num_running:
+        if not self.num_running and not self.planned_runs:
             # no more running, delete
             self.to_delete = True
 
@@ -761,6 +765,8 @@ class Dispatcher(object):
         self.schedule_items = []
         # not really needed because always called from same process
         self.schedule_items_lock = threading.Lock()
+
+        self.num_ext_coms_per_ip = {}
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.discovery_process.log("[Disp] {}".format(what), log_level)
@@ -855,15 +861,24 @@ class Dispatcher(object):
 
     def dispatch_call(self):
         # called every second, way too often...
-        # print ".", os.getpid()
-        _now = timezone. now().replace(microsecond=0)
+        #print ".", os.getpid()
+        _now = timezone.now().replace(microsecond=0)
         # schedule_items = sorted(ScheduleItem.objects.all(), key=lambda x: x.planned_date)
 
         # prestep: close all pending AssetRuns
         _pending = 0
         for pending_run in AssetRun.objects.filter(Q(run_status=RunStatus.RUNNING)).select_related("asset_batch"):
-            pending_run.stop(RunResult.FAILED, "runaway run")
-            _pending += 1
+            diff_time = abs((_now - pending_run.run_start_time).seconds)
+            # get rid of old(er) running (==most likely broken) runs
+            if diff_time > 1800:
+                pending_run.stop(RunResult.FAILED, "runaway run")
+                _pending += 1
+        for pending_run in AssetRun.objects.filter(Q(run_status=RunStatus.PLANNED)).select_related("asset_batch"):
+            diff_time = abs((_now - pending_run.created).seconds)
+            # get rid of old(er) running (==most likely broken) runs
+            if diff_time > 1800:
+                pending_run.stop(RunResult.FAILED, "runaway run")
+                _pending += 1
         if _pending:
             self.log("Closed {}".format(logging_tools.get_plural("pending AssetRun", _pending)), logging_tools.LOG_LEVEL_ERROR)
 
@@ -886,6 +901,9 @@ class Dispatcher(object):
                 self.discovery_process.get_route_to_devices([_dev])
                 self.log("Address of device {} is {}".format(unicode(_dev), _dev.target_ip))
                 new_pr = PlannedRunsForDevice(self, _dev, _dev.target_ip)
+                nrpe_ports = _dev.device_variable_set.filter(name="nrpe_port")
+                if nrpe_ports:
+                    new_pr.nrpe_port = nrpe_ports[0].value
 
                 self.__device_planned_runs[_dev.idx].append(new_pr)
 
@@ -911,16 +929,13 @@ class Dispatcher(object):
 
         # step 1: start commands
 
-        # number of ext_coms
-        num_ext_coms = 0
-
         for _dev_idx, prfd_list in self.__device_planned_runs.iteritems():
             for prfd in prfd_list:
                 if prfd.ip:
                     for prs in prfd.planned_runs:
                         if not prs.started:
-                            prs.start()
                             if prs.is_zmq_connection:
+                                prs.start()
                                 conn_str = "tcp://{}:{:d}".format(
                                     prfd.ip,
                                     self.__hm_port,
@@ -939,8 +954,15 @@ class Dispatcher(object):
                                     multi=True
                                 )
                             else:
-                                prs.ext_com.run()
-                                num_ext_coms += 1
+                                if prfd.ip in self.num_ext_coms_per_ip:
+                                    if self.num_ext_coms_per_ip[prfd.ip] == 0:
+                                        prs.start()
+                                        prs.ext_com.run()
+                                        self.num_ext_coms_per_ip[prfd.ip] += 1
+                                else:
+                                    prs.start()
+                                    prs.ext_com.run()
+                                    self.num_ext_coms_per_ip[prfd.ip] = 1
                 else:
                     prfd.cancel("no IP")
 
@@ -971,29 +993,29 @@ class Dispatcher(object):
                         if prd.started and prd.zmq_con_idx == _idx:
                             prd.store_zmq_result(_result)
 
-        while num_ext_coms:
-            self.log("pending external commands: {:d}".format(num_ext_coms))
-            cur_time = timezone.now()
-            for prfd in run_prfds:
-                for prd in prfd.planned_runs:
-                    if prd.started and not prd.is_zmq_connection:
-                        if prd.ext_com.finished() is 0:
-                            _output = prd.ext_com.communicate()
-                            prd.store_nrpe_result(_output)
-                            num_ext_coms -= 1
-                        else:
-                            diff_time = abs((cur_time - prd.run_db_obj.run_start_time).seconds)
-                            if diff_time > prd.timeout:
-                                try:
-                                    prd.ext_com.terminate()
-                                except:
-                                    self.log("error terminating external process: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-                                else:
-                                    self.log("external command terminated due to timeout")
-                                prd.cancel("timeout")
-                                num_ext_coms -= 1
-            if num_ext_coms:
-                time.sleep(2)
+        # while num_ext_coms:
+        #     self.log("pending external commands: {:d}".format(num_ext_coms))
+        cur_time = timezone.now()
+        for prfd in run_prfds:
+            for prd in prfd.planned_runs:
+                if prd.started and not prd.is_zmq_connection:
+                    if prd.ext_com.finished() is 0:
+                        _output = prd.ext_com.communicate()
+                        prd.store_nrpe_result(_output)
+                        self.num_ext_coms_per_ip[prfd.ip] -= 1
+                    else:
+                        diff_time = abs((cur_time - prd.run_db_obj.run_start_time).seconds)
+                        if diff_time > prd.timeout:
+                            try:
+                                prd.ext_com.terminate()
+                            except:
+                                self.log("error terminating external process: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                            else:
+                                self.log("external command terminated due to timeout")
+                            prd.cancel("timeout")
+                            self.num_ext_coms_per_ip[prfd.ip] -= 1
+            # if num_ext_coms:
+            #     time.sleep(2)
             #  print "RES=", zmq_res
 
         # remove PlannedRuns which should be deleted
@@ -1053,15 +1075,23 @@ class Dispatcher(object):
             (AssetType.PACKAGE, LIST_SOFTWARE_CMD),
             (AssetType.HARDWARE, LIST_HARDWARE_CMD),
             (AssetType.PROCESS, LIST_PROCESSES_CMD),
-            (AssetType.PENDING_UPDATE, LIST_PENDING_UPDATES_CMD),
             (AssetType.UPDATE, LIST_UPDATES_CMD),
-            (AssetType.LICENSE, LIST_KEYS_CMD)
+            (AssetType.LICENSE, LIST_KEYS_CMD),
+            (AssetType.DMI, DMIINFO_CMD),
+            (AssetType.PCI, PCIINFO_CMD),
+            (AssetType.PENDING_UPDATE, LIST_PENDING_UPDATES_CMD)
         ]
         planned_run.start_feed(cmd_tuples)
         for _idx, (runtype, _command) in enumerate(cmd_tuples):
-            _com = "/opt/cluster/sbin/check_nrpe -H {} -n -c {} -t120".format(
+            timeout = 30
+            if runtype == AssetType.PENDING_UPDATE:
+                timeout = 180
+
+            _com = "/opt/cluster/sbin/check_nrpe -H {} -p {} -n -c {} -t{}".format(
                 planned_run.ip,
-                _command
+                planned_run.nrpe_port,
+                _command,
+                timeout
             )
             ext_com = ExtCom(self.log, _com)
 
@@ -1084,9 +1114,8 @@ class Dispatcher(object):
             planned_run.add_planned_run(
                 new_asset_run,
                 ext_com,
-                120,
+                timeout
             )
-
 
 class _ScheduleItem(object):
     def __init__(self, device, source, planned_date):

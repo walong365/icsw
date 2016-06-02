@@ -1,0 +1,197 @@
+<script type="text/ng-template" id="icsw/main/license/overview.html">
+    <icsw-system-license-overview></icsw-system-license-overview>
+</script>
+
+<script type="text/ng-template" id="icsw.system.license.overview">
+
+
+    <uib-alert type="warning" ng-if="!struct.data_valid">Loading License data</uib-alert>
+    <h3 ng-show="struct.data_valid">License overview (ClusterID is {{ struct.license_tree.cluster_info.CLUSTER_ID }})</h3>
+    <uib-accordion close-others="false" ng-if="struct.data_valid">
+
+        <uib-accordion-group is-open="your_licenses_open" is-disabled="license_views_disabled">
+            <uib-accordion-heading>
+                Your licenses for this cluster
+                <i class="pull-right glyphicon"
+                   ng-class="{'glyphicon-chevron-down': your_licenses_open, 'glyphicon-chevron-right': !your_licenses_open}"></i>
+            </uib-accordion-heading>
+
+            <icsw-system-license-local-licenses icsw-license-tree="struct.license_tree"></icsw-system-license-local-licenses>
+        </uib-accordion-group>
+
+
+        <uib-accordion-group is-open="lic_packs_open" is-disabled="license_views_disabled">
+            <uib-accordion-heading>
+                License packages
+                <i class="pull-right glyphicon"
+                   ng-class="{'glyphicon-chevron-down': lic_packs_open, 'glyphicon-chevron-right': !lic_packs_open}"></i>
+            </uib-accordion-heading>
+
+            <icsw-system-license-packages></icsw-system-license-packages>
+        </uib-accordion-group>
+
+        <uib-accordion-group is-open="lic_upload_open">
+            <uib-accordion-heading>
+                Upload license file
+                <i class="pull-right glyphicon"
+                   ng-class="{'glyphicon-chevron-down': lic_upload_open, 'glyphicon-chevron-right': !lic_upload_open}"></i>
+            </uib-accordion-heading>
+
+            <div style="width: 300px; float: left; margin-right: 10px;">
+                <input type="file" nv-file-select="" class="form-control btn btn-default btn-file" uploader="uploader">
+            </div>
+            <input type="button" ng-show="uploader.queue.length " class="btn btn-warning btn-sm" value="upload"
+                   ng-click="uploader.uploadAll()">
+        </uib-accordion-group>
+
+    </uib-accordion>
+
+</script>
+
+<script type="text/ng-template" id="icsw.system.license.local.licenses">
+    <table
+        st-table="entries_displayed"
+        st-safe-src="license_tree.list"
+        class="table table-condensed table-hover table-striped"
+        style="width:auto;"
+    >
+        <thead>
+            <tr>
+                <th st-sort="name">License</th>
+                <th st-sort="description" style="width: 300px">Description</th>
+                <th>Parameters</th>
+                <th colspan="3">Status</th>
+                <th style="max-width: 250px"></th>
+                <th>Type</th>
+                <th>License package</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="lic in entries_displayed">
+                <td>
+                    <strong>{{ lic.name }}</strong>
+                </td>
+                <td>{{ lic.description }}</td>
+                <td>
+                    <div ng-repeat="param_type in get_merged_key_list(lic.$$state.lic.parameters, lic.parameter_usage)">
+
+                        <div ng-show="lic.$$state.lic.parameters[param_type]">
+                            <div ng-switch on="_state(lic.id).lic.parameters[param_type] < lic.parameter_usage[param_type]">
+                                <div ng-switch-when="true">
+                                    <!-- parameter exceeded -->
+                                    <uib-alert type="danger" style="padding: 5px">
+                                        <i class="glyphicon glyphicon-exclamation-sign"></i>
+                                        <strong>{{ param_type }}</strong>:
+                                        {{ lic.$$state.lic.parameters[param_type] }}
+                                        (used: {{ lic.parameter_usage[param_type] }})
+                                    </uib-alert>
+                                </div>
+                                <div ng-switch-default>
+                                    <!-- everything ok, parameter usage within limits -->
+                                    <strong>{{ param_type }}</strong>:
+                                    {{ lic.$$state.lic.parameters[param_type] }}
+                                    (used: {{ undefined_to_zero(lic.parameter_usage[param_type]) }})
+                                </div>
+                            </div>
+                        </div>
+                        <uib-alert type="danger" ng-show="!lic.$$state.lic.parameters[param_type]" style="padding: 5px">
+                            <!-- parameter used which is not present -->
+                            <i class="glyphicon glyphicon-exclamation-sign"></i>
+                            <strong>{{ param_type }}</strong>: used: {{ lic.parameter_usage[param_type] }}
+                        </uib-alert>
+                    </div>
+                </td>
+                <td ng-class="lic.$$bootstrap_class">
+                    <i ng-attr-class="{{ lic.$$icon_class }}"></i>
+                </td>
+                <td ng-class="lic.$$bootstrap_class">
+                    <strong>{{ lic.$$state.state_str }}</strong>
+                </td>
+                <td>{{ lic.$$state.date_info }}</td>
+                <td>
+                    <div ng-show="lic.$$in_warning">
+                        <uib-alert type="danger" ng-bind-html="lic.$$warning_info" style="padding: 5px">
+                        </uib-alert>
+                    </div>
+                </td>
+                <td>{{ lic.$$state.package.type_name }}</td>
+                <td>{{ lic.$$state.package.name }}</td>
+            </tr>
+        </tbody>
+    </table>
+</script>
+
+<script type="text/ng-template" id="icsw.system.license.packages">
+    <uib-tabset>
+        <uib-tab
+            ng-repeat="pack in struct.license_tree.pack_list | orderBy:package_order_fun:true"
+        >
+            <uib-tab-heading>
+                {{ pack.name }}
+            </uib-tab-heading>
+            <h3>
+                License package {{ pack.name }}
+            </h3>
+            <table class="table table-condensed table-hover" style="width: auto;">
+                <tbody>
+                    <tr>
+                        <th>Customer</th>
+                        <td>{{ pack.customer }}</td>
+                    </tr>
+                    <tr>
+                        <th>Type</th>
+                        <td>{{ pack.type_name }}</td>
+                    </tr>
+                </tbody>
+            </table>
+            <uib-accordion close-others="true">
+                <uib-accordion-group
+                    ng-repeat="data in get_list(pack.cluster_licenses) | orderBy:cluster_order_fun"
+                >
+                    <!-- workaround for angular bug https://github.com/angular/angular.js/issues/1286 -->
+                    <uib-accordion-heading>
+                        <!-- data[0] is cluster_id, data[1] is cluster_licenses -->
+                        {{ get_cluster_title(data[0]) }}
+                        <i class="pull-right glyphicon"
+                           ng-class="{'glyphicon-chevron-down': cluster_uib-accordion_open[$index], 'glyphicon-chevron-right': !cluster_uib-accordion_open[$index]}"
+                        ></i>
+                    </uib-accordion-heading>
+                    <table
+                        st-table="entries_displayed"
+                        st-safe-src="data[1]"
+                        class="table table-condensed table-hover"
+                        style="width:auto;"
+                    >
+                        <thead>
+                            <tr>
+                                <th st-sort="id" st-sort-default="true" width="150">License</th>
+                                <th width="100" colspan="2">State</th>
+                                <th st-sort="valid_from">Valid from</th>
+                                <th st-sort="valid_to">Valid to</th>
+                                <th>Parameters</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr ng-repeat="pack_lic in entries_displayed">
+                                <td>{{ pack_lic.$$license.name }}</td>
+                                <td ng-class="pack_lic.$$bootstrap_class">
+                                    <i ng-attr-class="{{ pack_lic.$$icon_class }}"></i>
+                                </td>
+                                <td ng-class="pack_lic.$$bootstrap_class">
+                                    {{ pack_lic.$$state.state_str }}
+                                </td>
+                                <td>{{ pack_lic.valid_from | date:'yyyy-MM-dd' }}</td>
+                                <td>{{ pack_lic.valid_to | date:'yyyy-MM-dd' }}</td>
+                                <td>
+                                    <div ng-repeat="(param_type, param_value) in pack_lic.parameters">
+                                        <strong>{{ param_type }}</strong>: {{ param_value }}
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </uib-accordion-group>
+            </uib-accordion>
+        </uib-tab>
+    </uib-tabset>
+</script>

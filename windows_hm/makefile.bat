@@ -40,6 +40,7 @@ MOVE .\tmp\zero\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64 .\nscp\python
 COPY .\nscp\python\pywintypes3%WINPYTH_MAJOR%.dll .\nscp\
 COPY .\scripts\* .\nscp\scripts\python\
 COPY .\scripts\finalize-install.py .\nscp\
+COPY .\nsclient.ini .\nscp\
 
 MOVE .\tmp\pciutils-%PCIUTILS_VERSION%-win32 .\nscp\scripts\python\pciutils
 

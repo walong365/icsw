@@ -92,7 +92,7 @@ sources = {
         "parta.js"
         [
             "frontend/static/js/modernizr-2.8.1.min.js",
-            "frontend/static/js/jquery-2.2.3.min.js",
+            "frontend/static/js/jquery-2.2.4.min.js",
         ]
         "js"
         true
@@ -102,7 +102,7 @@ sources = {
         "partb.js"
         [
             # angular
-            "frontend/static/js/angular-1.5.5.js",
+            "frontend/static/js/angular-1.5.6.js",
             "frontend/static/js/lodash.js",
             "frontend/static/js/bluebird.js",
             "frontend/static/js/codemirror/codemirror.js",
@@ -147,7 +147,7 @@ sources = {
             "frontend/static/js/restangular.min.js",
             "frontend/static/js/angular-block-ui.js",
             "frontend/static/js/select.js",
-            "frontend/static/js/ui-bootstrap-tpls-1.3.2.min.js",
+            "frontend/static/js/ui-bootstrap-tpls-1.3.3.min.js",
             "frontend/static/js/angular-ui-router.js",
             # must use minified version, otherwise the minifier destroys injection info
             "frontend/static/js/ui-codemirror.js",
@@ -567,8 +567,8 @@ else
 gulp.task("watch", (cb) ->
     gulp.watch(
         [
-            "frontend/static/icsw/*/*.coffee",
-            "frontend/static/icsw/*/*.html",
+            "frontend/static/icsw/**/*.coffee",
+            "frontend/static/icsw/**/*.html",
             # addons
             "addons/licadmin/initat/cluster/work/icsw/*.js",
             "addons/licadmin/initat/cluster/work/icsw/*.html",

@@ -80,64 +80,71 @@ def parse_dmi_output(lines):
     # not beautifull but working
 
     def _parse_handle():
-        h_line = lines.pop(0)
-        header_m = _DMI_HEADER_RE.match(h_line)
-        if not header_m:
-            raise ValueError("error interpreting header_line '{}'".format(h_line))
-        _handle_struct = {
-            "handle": int(header_m.group("handle"), 16),
-            "dmi_type": int(header_m.group("dmi_type")),
-            "length": int(header_m.group("length")),
-            "header": lines.pop(0),
-        }
-        _dict = {}
-        while lines[0].strip():
-            _line = lines.pop(0)
-            if _line.startswith("\t\t"):
-                # add to previous _key
-                if type(_dict[_key]) != list:
-                    _dict[_key] = [_dict[_key]]
-                _dict[_key].append(_line.strip())
-            else:
-                _line = _line.strip()
-                if _line.endswith(":"):
-                    _key = _line[:-1].strip()
-                    _dict[_key] = []
+        if lines:
+            h_line = lines.pop(0)
+            header_m = _DMI_HEADER_RE.match(h_line)
+            if not header_m:
+                raise ValueError("error interpreting header_line '{}'".format(h_line))
+            _handle_struct = {
+                "handle": int(header_m.group("handle"), 16),
+                "dmi_type": int(header_m.group("dmi_type")),
+                "length": int(header_m.group("length")),
+                "header": lines.pop(0),
+            }
+            _dict = {}
+        if lines:
+            while lines[0].strip():
+                _line = lines.pop(0)
+                if _line.startswith("\t\t"):
+                    # add to previous _key
+                    if type(_dict[_key]) != list:
+                        _dict[_key] = [_dict[_key]]
+                    _dict[_key].append(_line.strip())
                 else:
-                    # print _line
-                    if _line.count(":"):
-                        _key, _value = _line.split(":", 1)
+                    _line = _line.strip()
+                    if _line.endswith(":"):
+                        _key = _line[:-1].strip()
+                        _dict[_key] = []
                     else:
-                        _key, _value = (_line, "")
-                    _key = _key.strip()
-                    _dict[_key] = _value.strip()
-        if _dict:
-            _handle_struct["values"] = _dict
+                        # print _line
+                        if _line.count(":"):
+                            _key, _value = _line.split(":", 1)
+                        else:
+                            _key, _value = (_line, "")
+                        _key = _key.strip()
+                        _dict[_key] = _value.strip()
+            if _dict:
+                _handle_struct["values"] = _dict
         return _handle_struct
 
     _struct = {"num_lines": len(lines), "handles": []}
     try:
         # header
-        first_line = lines.pop(0)
-        if not first_line.startswith("#"):
-            raise ValueError("first line '{}' does not start with '#'".format(first_line))
-        next_line = lines.pop(0)
-        if next_line.startswith("Scanning"):
+        if lines:
+            first_line = lines.pop(0)
+            if not first_line.startswith("#"):
+                raise ValueError("first line '{}' does not start with '#'".format(first_line))
             next_line = lines.pop(0)
-        if next_line.startswith("Reading"):
-            next_line = lines.pop(0)
-        _bios_m = _BIOS_PRESENT_RE.match(next_line)
-        _struct["version"] = _bios_m.group("version")
-        _structure_m = _STRUCTURE_RE.match(lines.pop(0))
-        _struct["num_struct"] = int(_structure_m.group("num_struct"))
-        _struct["size"] = int(_structure_m.group("size"))
-        while lines:
-            while lines and not lines[0].strip():
+            if next_line.startswith("Scanning"):
+                next_line = lines.pop(0)
+            if next_line.startswith("Reading"):
+                next_line = lines.pop(0)
+            _bios_m = _BIOS_PRESENT_RE.match(next_line)
+            _struct["version"] = _bios_m.group("version")
+            _structure_m = _STRUCTURE_RE.match(lines.pop(0))
+            _struct["num_struct"] = int(_structure_m.group("num_struct"))
+            _struct["size"] = int(_structure_m.group("size"))
+
+            if len(lines) > 0 and lines[0].startswith("Table at"):
                 lines.pop(0)
-            if lines:
-                _struct["handles"].append(_parse_handle())
-        for line in lines:
-            _empty_line = True if not len(line.strip()) else False
+
+            while lines:
+                while lines and not lines[0].strip():
+                    lines.pop(0)
+                if lines:
+                    _struct["handles"].append(_parse_handle())
+            for line in lines:
+                _empty_line = True if not len(line.strip()) else False
 
             # print _empty_line, line
     except:

@@ -7,8 +7,8 @@
         <Control Id="HostEdit" Type="Edit" X="45" Y="85" Width="220" Height="18" Property="HOSTNAMES" Text="{80}" />
         <Control Id="PortLabel" Type="Text" X="45" Y="110" Width="100" Height="15" TabSkip="no" Text="&amp;Port(s):" />
         <Control Id="PortEdit" Type="Edit" X="45" Y="122" Width="220" Height="18" Property="PORTNAMES" Text="{80}" />
-        <Control Id="ServiceNameLabel" Type="Text" X="45" Y="147" Width="100" Height="15" TabSkip="no" Text="&amp;Servicename:" />
-        <Control Id="ServiceNameEdit" Type="Edit" X="45" Y="159" Width="220" Height="18" Property="SERVICENAME" Text="{80}" />
+        <!-- <Control Id="ServiceNameLabel" Type="Text" X="45" Y="147" Width="100" Height="15" TabSkip="no" Text="&amp;Servicename:" />
+        <Control Id="ServiceNameEdit" Type="Edit" X="45" Y="159" Width="220" Height="18" Property="SERVICENAME" Text="{80}" /> -->
         <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="&amp;Back">
           <Publish Event="NewDialog" Value="LicenseAgreementDlg">1</Publish>
         </Control>
