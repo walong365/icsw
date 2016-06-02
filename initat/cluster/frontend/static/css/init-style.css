@@ -1,3 +1,12 @@
 icsw-login-page .container-fluid {
     max-width: 550px;
     }
+
+.fancytree-container > li > .fancytree-folder >.btn-group {
+    margin-left: 5px;
+    margin-top: -6px;
+    }
+.fancytree-title > .label {
+    margin-left:6px;
+}
+
