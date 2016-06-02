@@ -32,6 +32,7 @@ angular.module(
             icswData: icswRouteExtensionProvider.create
                 pageTitle: "Boot nodes"
                 rights: ["device.change_boot"]
+                service_types: ["mother"]
                 licenses: ["netboot"]
                 menuHeader:
                     key: "cluster"
@@ -463,14 +464,20 @@ angular.module(
             @device_lut = _.keyBy(@devices, "idx")
             # console.log "GlobalBootHelper, devices=",  @devices.length
 
+        stop_timeout: () =>
+            if @fetch_timeout
+                $timeout.cancel(@fetch_timeout)
+                @fetch_timeout = undefined
+
+        close: () =>
+            @stop_timeout()
+
         fetch: () =>
             new_timeout = () =>
                 @fetch_timeout = $timeout(@fetch, 10000)
 
             defer = $q.defer()
-            if @fetch_timeout
-                $timeout.cancel(@fetch_timeout)
-                @fetch_timeout = undefined
+            @stop_timeout()
 
             if not @fetch_running
                 # list of devices with devlog fetch
@@ -680,6 +687,12 @@ angular.module(
         # show macbootlog
         show_mbl: false
     }
+
+    $scope.$on("$destroy", () ->
+        if $scope.struct.boot_helper?
+            $scope.struct.boot_helper.close()
+    )
+
     $scope.new_devsel = (dev) ->
         $q.all(
             [
