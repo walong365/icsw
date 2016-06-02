@@ -57,9 +57,6 @@ if __name__=="__main__":
         _sub_info_dict['size'] = item.Size
         _info_dict['hdd'].append(_sub_info_dict)
 
-    print(json.dumps(_info_dict))
-
-
     # Win32_DiskDrive class
     #https://msdn.microsoft.com/en-us/library/windows/desktop/aa394173%28v=vs.85%29.aspx
 
