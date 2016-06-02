@@ -61,7 +61,7 @@ monitoring_device_module = angular.module(
                     name: "Settings"
                     icon: "fa-gears"
                     ordering: 10
-                rights: ["dispatcher_setting.setup"]
+                rights: ["dispatchersetting.setup"]
         }
     ).state(
         "main.statictemplates", {
