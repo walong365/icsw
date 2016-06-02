@@ -374,7 +374,7 @@ angular.module(
                     _list = (_entry for _entry in status_tree.special_states_list when _entry.status == dev.new_state)
                 if _list.length
                     dev.target_state = _list[0].idx
-                    console.log dev.idx, dev.target_state, dev.new_state, dev.prod_link
+                    # console.log dev.idx, dev.target_state, dev.new_state, dev.prod_link
 
             # copy image, act_image is a tuple (idx, vers, release) or none
             for _kv in ["new_image", "act_image"]

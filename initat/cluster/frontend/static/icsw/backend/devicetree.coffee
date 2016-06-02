@@ -917,11 +917,15 @@ angular.module(
 
         # category functions
         add_category_to_device_by_pk: (dev_pk, cat_pk) =>
-            dev = @all_lut[dev_pk]
+            @add_category_to_device(@all_lut[dev_pk], cat_pk)
+
+        add_category_to_device: (dev, cat_pk) =>
             dev.categories.push(cat_pk)
 
         remove_category_from_device_by_pk: (dev_pk, cat_pk) =>
-            dev = @all_lut[dev_pk]
+            @remove_category_from_device(@all_lut[dev_pk], cat_pk)
+
+        remove_category_from_device: (dev, cat_pk) =>
             _.remove(dev.categories, (entry) -> return entry == cat_pk)
 
         # device connection calls

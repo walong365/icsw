@@ -370,9 +370,9 @@ config_module = angular.module(
                     conf["config_#{obj.object_type}_set"] = ref_f
                 $scope._set_fields(conf)
             icswSimpleAjaxCall(
-                url     : ICSW_URLS.CONFIG_DELETE_OBJECTS
-                data    :
-                    "obj_list" : angular.toJson(([entry.object_type, entry.idx] for entry in $scope.selected_objects))
+                url: ICSW_URLS.CONFIG_DELETE_OBJECTS
+                data:
+                    obj_list: angular.toJson(([entry.object_type, entry.idx] for entry in $scope.selected_objects))
             ).then(
                 (xml) ->
                     blockUI.stop()

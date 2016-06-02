@@ -63,7 +63,7 @@ class DirDefinition(object):
     def get_ref_list(self):
         return [
             [
-                logging_tools.form_entry("    {:6d}@{}".format(_line_num, _file_name))
+                logging_tools.form_entry("    {:6d}@{:<30s} {}".format(_line_num, _file_name, _line))
             ] for _file_name, _line_num, _line in self.refs
         ]
 
@@ -229,44 +229,45 @@ def main(args):
     name_re = re.compile(args.filter, re.IGNORECASE)
     _list = [entry for entry in _list if name_re.match(entry.name)]
 
-    print(
-        "{} in result list:".format(
-            logging_tools.get_plural("entry", len(_list)),
-        )
-    )
-
-    if args.order_by == "name":
-        _list = sorted(_list, key=attrgetter("name"))
-    if args.order_by == "toplevel":
-        _list = sorted(_list, key=attrgetter("top_level_dir"))
-    out_list = logging_tools.new_form_list()
-
-    files_referenced = {}
-    for _def in _list:
-        files_referenced.setdefault(_def.file_name, []).append(_def)
-        out_list.append(
-            [
-                logging_tools.form_entry(_def.type, header="Type"),
-                logging_tools.form_entry(_def.name, header="Name"),
-                logging_tools.form_entry(_def.file_name, header="File"),
-                logging_tools.form_entry_right(_def.line_num, header="line"),
-                logging_tools.form_entry_right(len(_def.refs), header="#refs"),
-                logging_tools.form_entry_center("yes" if _def.namespace_ok else "no", header="NS ok"),
-                logging_tools.form_entry_center("yes" if _def.name_valid else "no", header="valid"),
-            ]
-        )
-        if args.show_refs:
-            out_list.extend(_def.get_ref_list())
-            _def.add_file_refs(files_referenced)
-    print(unicode(out_list))
-
-    if args.show_refs:
-        print
+    if _list:
         print(
-            "Referenced files:"
+            "{} in result list:".format(
+                logging_tools.get_plural("entry", len(_list)),
+            )
         )
-        print
-        pprint.pprint(files_referenced)
+
+        if args.order_by == "name":
+            _list = sorted(_list, key=attrgetter("name"))
+        if args.order_by == "toplevel":
+            _list = sorted(_list, key=attrgetter("top_level_dir"))
+        out_list = logging_tools.new_form_list()
+
+        files_referenced = {}
+        for _def in _list:
+            files_referenced.setdefault(_def.file_name, []).append(_def)
+            out_list.append(
+                [
+                    logging_tools.form_entry(_def.type, header="Type"),
+                    logging_tools.form_entry(_def.name, header="Name"),
+                    logging_tools.form_entry(_def.file_name, header="File"),
+                    logging_tools.form_entry_right(_def.line_num, header="line"),
+                    logging_tools.form_entry_right(len(_def.refs), header="#refs"),
+                    logging_tools.form_entry_center("yes" if _def.namespace_ok else "no", header="NS ok"),
+                    logging_tools.form_entry_center("yes" if _def.name_valid else "no", header="valid"),
+                ]
+            )
+            if args.show_refs:
+                out_list.extend(_def.get_ref_list())
+                _def.add_file_refs(files_referenced)
+        print(unicode(out_list))
+
+        if args.show_refs and files_referenced:
+            print
+            print(
+                "Referenced files:"
+            )
+            print
+            pprint.pprint(files_referenced)
 
 if __name__ == "__main__":
     DP_LOC = os.path.expanduser("~/.icsw_static_path")

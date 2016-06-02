@@ -40,6 +40,12 @@ config_module = angular.module(
             @lut = _.keyBy(@list, "idx")
             @catalog_lut = _.keyBy(@catalog_list, "idx")
             @hint_lut = _.keyBy(@hint_list, "idx")
+            @mcc_to_config_lut = {}
+            @mcc_lut = {}
+            for config in @list
+                for mcc in config.mon_check_command_set
+                    @mcc_to_config_lut[mcc.idx] = config.idx
+                    @mcc_lut[mcc.idx] = mcc
             @resolve_hints()
             @reorder()
             @update_category_tree()
@@ -351,6 +357,31 @@ config_module = angular.module(
                      defer.resolve("done")
             )
             return defer.promise
+
+        # category functions
+        add_category_to_config_by_pk: (conf_idx, cat_idx) =>
+            @add_category_to_config(@lut[conf_idx], cat_idx)
+            
+        add_category_to_config: (conf, cat_idx) =>
+            conf.categories.push(cat_idx)
+
+        remove_category_from_config_by_pk: (conf_idx, cat_idx) =>
+            @remove_category_from_config(@lut[conf_idx], cat_idx)
+            
+        remove_category_from_config: (conf, cat_idx) =>
+            _.remove(conf.categories, (entry) -> return entry == cat_idx)
+
+        add_category_to_mcc_by_pk: (mcc_idx, cat_idx) =>
+            @add_category_to_mcc(@mcc_lut[mcc_idx], cat_idx)
+            
+        add_category_to_mcc: (mcc, cat_idx) =>
+            mcc.categories.push(cat_idx)
+
+        remove_category_from_mcc_by_pk: (mcc_idx, cat_idx) =>
+            @remove_category_from_mcc(@mcc_lut[mcc_idx], cat_idx)
+            
+        remove_category_from_mcc: (mcc, cat_idx) =>
+            _.remove(mcc.categories, (entry) -> return entry == cat_idx)
 
 ]).service("icswConfigTreeService",
 [

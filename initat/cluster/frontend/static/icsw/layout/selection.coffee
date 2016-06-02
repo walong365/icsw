@@ -500,6 +500,8 @@ angular.module(
         t_cat_lut = {}
         # store tree
         $scope.tree = tree
+        # flag if we should call devsel after search
+        $scope.call_devsel_after_search = false
         console.log tree
         for entry in tree.cat_tree.list
             t_entry = $scope.tc_categories.create_node(
@@ -592,12 +594,18 @@ angular.module(
         $scope.cur_search_to = $timeout($scope.set_search_filter, 500)
 
     $scope.set_search_filter = () ->
+        $scope.cur_search_to = undefined
         if $scope.vars.search_str == ""
             return
 
         looks_like_ip_or_mac_start = (in_str) ->
             # accept "192.168." or "AB:AB:AB:
             return /^\d{1,3}\.\d{1,3}\./.test(in_str) || /^([0-9A-Fa-f]{2}[:-]){3}/.test(in_str)
+
+        check_for_post_devsel_call = () ->
+            if $scope.call_devsel_after_search
+                $scope.call_devsel_after_search = false
+                $scope.call_devsel_func()
 
         if looks_like_ip_or_mac_start($scope.vars.search_str)
             icswSimpleAjaxCall(
@@ -621,6 +629,7 @@ angular.module(
                     $scope.search_ok = num_found > 0
                     cur_tree.show_selected(false)
                     $scope.selection_changed()
+                    check_for_post_devsel_call()
             )
 
         else  # regular search
@@ -660,6 +669,7 @@ angular.module(
             $scope.search_ok = if num_found > 0 then true else false
             cur_tree.show_selected(false)
             $scope.selection_changed()
+            check_for_post_devsel_call()
 
     $scope.resolve_devices = (sel) ->
         return sel.resolve_devices()
@@ -743,8 +753,12 @@ angular.module(
             $scope.synced = false
 
     $scope.call_devsel_func = () ->
-        icswActiveSelectionService.send_selection($scope.selection)
-        $scope.modal.close()
+        if $scope.cur_search_to?
+            # set flag: call devsel after search is done
+            $scope.call_devsel_after_search = true
+        else
+            icswActiveSelectionService.send_selection($scope.selection)
+            $scope.modal.close()
 
     $scope.enable_saved_selections = () ->
         if not $scope.saved_selections.length

@@ -78,20 +78,6 @@ angular.module(
             # r_info = "#{r_info}"
             return r_info
 
-        add_extra_span: (entry) =>
-            cat = entry.obj
-            #if cat.depth > 0
-            #    return angular.element("<span></span>")
-            #else
-            return null
-
-        update_extra_span: (entry, span) =>
-            span.empty()
-            cat = entry.obj
-            if cat.depth > 0
-                # span.append(angular.element("<input type='button' value='bla'></input>"))
-                true
-
         handle_dblclick: (entry, event) =>
             cat = entry.obj
             if cat.depth
@@ -448,7 +434,6 @@ angular.module(
         templateUrl: "icsw.config.category.contents_viewer"
         scope:
             icsw_category: '=icswCategory'
-            # categoryName: '='
         link : (scope, elements, attrs) ->
             scope.enabled = false
             scope.data_ready = false
@@ -513,193 +498,383 @@ angular.module(
                         scope.data_ready = true
                         scope.contents = res_list
                 )
-            scope.$watch("icsw_category", (new_val) ->
-                if new_val
-                    scope.enabled = true
-                    update()
-                else
-                    scope.enabled = false
-                    scope.data_ready = false
+            scope.$watch(
+                "icsw_category",
+                (new_val) ->
+                    if new_val
+                        scope.enabled = true
+                        update()
+                    else
+                        scope.enabled = false
+                        scope.data_ready = false
+                # hm, to be improved...
+                true
             )
     }
-]).service("icswCatSelectionTreeService", ["icswTreeConfig", (icswTreeConfig) ->
+]).service("icswCatSelectionTreeService",
+[
+    "icswReactTreeConfig",
+(
+    icswReactTreeConfig
+) ->
 
-    class icswCatSelectionTree extends icswTreeConfig
+    class icswCatSelectionTree extends icswReactTreeConfig
         constructor: (@scope, args) ->
             super(args)
-            @show_selection_buttons = false
-            @show_icons = false
-            @show_select = true
-            @show_descendants = false
-            @show_childs = false
+            # valid entries for the selected subtree
+            @mode_entries = []
+            @set_mode(null)
+            @clear_tree()
+
+        clear_tree: () =>
             @lut = {}
 
-        get_name : (t_entry) ->
-            obj = t_entry.obj
-            if obj.comment
-                return "#{obj.name} (#{obj.comment})"
+        set_mode: (mode, dev_list) =>
+            @mode = mode
+            if dev_list?
+                @num_devices = dev_list.length
             else
-                return obj.name
+                @num_devices = 0
+            # console.log "M", @mode, @num_devices
 
-        selection_changed: () =>
-            console.log "SC"
-            sel_list = @get_selected(
+        create_mode_entries: (mode, cat_tree) =>
+            @mode_entries.length = []
+            for entry in cat_tree.list
+                if entry.depth < 1 or entry.full_name.split("/")[1] == mode
+                    @mode_entries.push(entry)
+
+        get_name : (t_entry) =>
+            obj = t_entry.obj
+            if obj.depth
+                if obj.comment
+                    r_info = "#{obj.name} (#{obj.comment})"
+                else
+                    r_info = obj.name
+                if @mode == "obj"
+                    num_sel = t_entry.$match_pks.length
+                    # console.log num_sel, @num_devices
+                    if num_sel and @num_devices > 1
+                        r_info = "#{r_info}, #{num_sel} of #{@num_devices}"
+                    if obj.num_refs
+                        r_info = "#{r_info}, total references=#{obj.num_refs}"
+            else
+                r_info = "TOP"
+            return r_info
+
+
+        get_selected_cat_pks: () =>
+            return @get_selected(
                 (node) ->
                     if node.selected
                         return [node.obj.idx]
                     else
                         return []
             )
-            @scope.new_selection(sel_list)
+
+        selection_changed: (entry) =>
+            console.log "SC"
+            sel_list = @get_selected_cat_pks()
+            @scope.new_selection(entry, sel_list)
+
+        handle_click: ($event, entry) =>
+            if entry.obj.depth > 0
+                @scope.click_category(entry.obj)
 
 ]).directive("icswConfigCategoryTreeSelect",
 [
-    "$templateCache", "icswCatSelectionTreeService", "icswConfigTreeService", "$q",
-    "icswCategoryTreeService",
+    "$templateCache",
 (
-    $templateCache, icswCatSelectionTreeService, icswConfigTreeService, $q,
-    icswCategoryTreeService
+    $templateCache,
 ) ->
     return {
-        restrict : "EA"
-        template : "<tree treeconfig='cat_tree'></tree>"
+        restrict: "EA"
+        template: "<icsw-react-tree icsw-tree-config='cat_tree'></icsw-react-tree>"
         scope:
+            # undefined, single device or list of devices
             edit_obj: "=editObj"
-            mode: "="
+            # subtree, config, category, ...
+            sub_tree: "=icswSubTree"
+            # filter for pipelining
             filter: "=icswLivestatusFilter"
+            # monitoring data for pipelining
             mon_data: "=icswMonitoringData"
+            selected_cat: "=icswSelectedCategory"
+        controller: "icswConfigCategoryTreeSelectCtrl"
         link : (scope, el, attrs) ->
-            scope.cat_tree = new icswCatSelectionTreeService(scope)
-
-            #if scope.filter?
-            #    console.log "FILTER", scope.filter
-
-            if scope.edit_obj?
-                scope.$$op_mode = "obj"
-            else if scope.filter
-                scope.$$op_mode = "filter"
-                # available cats, used to automatically select new cats (from mon-data reload)
-                scope.$$available_cats = []
-                scope.filter.install_category_filter()
-                scope.filter.change_notifier.promise.then(
-                    () ->
-                    () ->
-                    (notify) ->
-                        build_tree()
-                )
-            else
-                scope.$$op_mode = "obj"
-            console.log "SelTree init, mode is #{scope.$$op_mode}"
-
-            send_selection_to_filter = (sel_cat) ->
-                if scope.$$previous_filter?
-                    if scope.$$previous_filter == sel_cat
-                        console.log "same filter"
-                        return
-                scope.$$previous_filter = sel_cat
-                scope.filter.set_category_filter(sel_cat)
-
-            build_tree = () ->
-
-                top_cat_re = new RegExp("/#{scope.mode}")
-
-                # list of useable categories
-
-                _useable_idxs = []
-                for entry in scope.tree.list
-                    if entry.full_name.match(top_cat_re)
-                        if entry.useable
-                            _useable_idxs.push(entry.idx)
-
-                if scope.$$op_mode == "obj"
-                    # obj mode, modify categories of given object
-                    if scope.edit_obj?
-                        # edit_obj is set, all categories selectable and some selected
-                        sel_cat = scope.edit_obj.categories
-                    else
-                        sel_cat = []
-                else
-                    # icswLivestatusFilter set, only some categories selectable und those are preselected
-                    if scope.$$previous_filter?
-                        if scope.mon_data?
-                            _new_cats = _.difference(scope.mon_data.used_cats, scope.$$available_cats)
-                            # store
-                            scope.$$available_cats = (entry for entry in scope.mon_data.used_cats)
-                            if _new_cats.length
-                                # autoselect new categories and send to filter
-                                send_selection_to_filter(_.uniq(_.union(scope.$$previous_filter, _new_cats)))
-                        sel_cat = scope.$$previous_filter
-                    else
-                        if scope.mon_data?
-                            sel_cat = scope.mon_data.used_cats.concat([0])
-                            # push category selection list
-                            send_selection_to_filter(sel_cat)
-                        else
-                            # mon_data no loaded
-                            sel_cat = []
-                    # useable are only the categories present in the current dataset
-                    if scope.mon_data?
-                        _useable_idxs =  _.intersection(_useable_idxs, scope.mon_data.used_cats)
-
-                if scope.cat_tree.root_nodes.length
-                    _to_expand = []
-                    scope.cat_tree.iter(
-                        (node) ->
-                            if node.expand
-                                _to_expand.push(node.obj.idx)
-                    )
-                else
-                    _to_expand = (entry.idx for entry in scope.tree.list when entry.depth < 2)
-
-                scope.cat_tree.clear_root_nodes()
-                if scope.$$op_mode == "filter"
-                    # add uncategorized entry
-                    dummy_entry = scope.cat_tree.new_node(
-                        folder: false
-                        obj: {
-                            idx: 0
-                            depth: 1
-                            comment: "entries without category"
-                            name: "N/A"
-                        }
-                        selected: 0 in sel_cat
-                        _show_select: true
-                    )
-                    scope.cat_tree.lut[dummy_entry.obj.idx] = dummy_entry
-                else
-                    dummy_entry = undefined
-
-                for entry in scope.tree.list
-                    if entry.full_name.match(top_cat_re)
-                        t_entry = scope.cat_tree.new_node(
-                            folder: false
-                            obj: entry
-                            expand: entry.idx in _to_expand
-                            selected: entry.idx in sel_cat
-                            _show_select: entry.idx in _useable_idxs
-                        )
-                        scope.cat_tree.lut[entry.idx] = t_entry
-                        if entry.parent and entry.parent of scope.cat_tree.lut
-                            scope.cat_tree.lut[entry.parent].add_child(t_entry)
-                        else
-                            # hide selection from root nodes
-                            t_entry._show_select = false
-                            scope.cat_tree.add_root_node(t_entry)
-                            if dummy_entry?
-                                # add dummy entry
-                                scope.cat_tree.lut[entry.idx].add_child(dummy_entry)
-                scope.cat_tree.show_selected(true)
-
-            icswCategoryTreeService.load(scope.$id).then(
-                (tree) ->
-                    scope.tree = tree
-                    build_tree()
-            )
-
-            scope.new_selection = (new_sel) ->
-                if scope.$$op_mode == "obj"
-                    scope.edit_obj.categories = new_sel
-                else
-                    send_selection_to_filter(new_sel)
     }
+]).controller("icswConfigCategoryTreeSelectCtrl",
+[
+    "$scope", "$templateCache", "icswCatSelectionTreeService", "icswConfigTreeService", "$q",
+    "icswCategoryTreeService", "icswAcessLevelService", "blockUI", "icswSimpleAjaxCall",
+    "ICSW_URLS", "icswDeviceTreeService", "$rootScope", "ICSW_SIGNALS",
+(
+    $scope, $templateCache, icswCatSelectionTreeService, icswConfigTreeService, $q,
+    icswCategoryTreeService, icswAcessLevelService, blockUI, icswSimpleAjaxCall,
+    ICSW_URLS, icswDeviceTreeService, $rootScope, ICSW_SIGNALS,
+) ->
+    $scope.selected_cat = undefined
+    $scope.click_category = (entry) ->
+        $scope.$apply(
+            $scope.selected_cat = entry
+        )
+
+    $scope.cat_tree = new icswCatSelectionTreeService(
+        $scope
+        {
+            show_selection_buttons: false
+            # show_icons: false
+            show_select: true
+            show_descendants: true
+            # show_childs: false
+            name: "CategorySelectTree"
+        }
+    )
+    console.assert(
+        $scope.sub_tree in [
+            'mon', 'config', 'device', 'location'
+        ],
+        "invalid mode '#{$scope.sub_tree}' in category tree"
+    )
+
+    #if $scope.filter?
+    #    console.log "FILTER", $scope.filter
+
+    get_objs = () ->
+        if not angular.isArray($scope.edit_obj)
+            _devs = [$scope.edit_obj]
+        else
+            _devs = $scope.edit_obj
+        return _devs
+
+    if $scope.edit_obj?
+        $scope.$$op_mode = "obj"
+        # check rights
+        _ct = $scope.cat_tree
+        _ct.change_select = true
+        # iterate
+        for _dev in get_objs()
+            if not icswAcessLevelService.acl_all(_dev, "backbone.device.change_category", 7)
+                _ct.change_select = false
+                break
+        $scope.$watch(
+            "edit_obj"
+            (new_val) ->
+                if new_val? and $scope.tree?
+                    build_tree()
+            true
+        )
+
+    else if $scope.filter
+        $scope.$$op_mode = "filter"
+        # available cats, used to automatically select new cats (from mon-data reload)
+        $scope.$$available_cats = []
+        $scope.filter.install_category_filter()
+        $scope.filter.change_notifier.promise.then(
+            () ->
+            () ->
+            (notify) =>
+                build_tree()
+        )
+    else
+        $scope.$$op_mode = "obj"
+    console.log "SelTree init, mode is #{$scope.$$op_mode}, subtree is #{$scope.sub_tree}"
+    $scope.cat_tree.set_mode($scope.$$op_mode, get_objs())
+
+    send_selection_to_filter = (sel_cat) ->
+        if $scope.$$previous_filter?
+            if $scope.$$previous_filter == sel_cat
+                console.log "same filter"
+                return
+        $scope.$$previous_filter = sel_cat
+        $scope.filter.set_category_filter(sel_cat)
+
+    build_tree = () ->
+
+        top_cat_re = new RegExp("/#{$scope.sub_tree}")
+        # console.log top_cat_re
+
+        # list of useable categories
+
+        $scope.cat_tree.create_mode_entries($scope.sub_tree, $scope.tree)
+
+        _useable_idxs = []
+        for entry in $scope.tree.list
+            if entry.full_name.match(top_cat_re)
+                if entry.useable
+                    _useable_idxs.push(entry.idx)
+
+        if $scope.$$op_mode == "obj"
+            # obj mode, modify categories of given object
+            if $scope.edit_obj?
+                # dictionary of cat_idx -> [dev_idx, ...] list
+                sel_cat = {}
+                for _dev in get_objs()
+                    for _cat in _dev.categories
+                        if _cat not of sel_cat
+                            sel_cat[_cat] = []
+                        sel_cat[_cat].push(_dev.idx)
+            else
+                sel_cat = {}
+        else
+            # icswLivestatusFilter set, only some categories selectable und those are preselected
+            if $scope.$$previous_filter?
+                if $scope.mon_data?
+                    _new_cats = _.difference($scope.mon_data.used_cats, $scope.$$available_cats)
+                    # store
+                    $scope.$$available_cats = (entry for entry in $scope.mon_data.used_cats)
+                    if _new_cats.length
+                        # autoselect new categories and send to filter
+                        send_selection_to_filter(_.uniq(_.union($scope.$$previous_filter, _new_cats)))
+                sel_cat = $scope.$$previous_filter
+            else
+                if $scope.mon_data?
+                    sel_cat = $scope.mon_data.used_cats.concat([0])
+                    # push category selection list
+                    send_selection_to_filter(sel_cat)
+                else
+                    # mon_data no loaded
+                    sel_cat = []
+            # useable are only the categories present in the current dataset
+            if $scope.mon_data?
+                _useable_idxs =  _.intersection(_useable_idxs, $scope.mon_data.used_cats)
+
+        if $scope.cat_tree.root_nodes.length
+            _to_expand = []
+            $scope.cat_tree.iter(
+                (node) ->
+                    if node.expand
+                        _to_expand.push(node.obj.idx)
+            )
+        else
+            _to_expand = (entry.idx for entry in $scope.tree.list when entry.depth < 2)
+
+        $scope.cat_tree.clear_root_nodes()
+        $scope.cat_tree.clear_tree()
+        if $scope.$$op_mode == "filter"
+            # add uncategorized entry
+            dummy_entry = $scope.cat_tree.create_node(
+                folder: false
+                obj: {
+                    idx: 0
+                    depth: 1
+                    comment: "entries without category"
+                    name: "N/A"
+                    full_name: "N/A"
+                }
+                selected: 0 in sel_cat
+                show_select: true
+            )
+            $scope.cat_tree.lut[dummy_entry.obj.idx] = dummy_entry
+            # init
+            _dev_pks = []
+        else
+            dummy_entry = undefined
+            _dev_pks = (_dev.idx for _dev in get_objs())
+
+        # console.log "pks=", _dev_pks
+        for entry in $scope.cat_tree.mode_entries
+            if $scope.$$op_mode == "filter"
+                _sel = entry.idx in sel_cat
+                _match_pks = []
+            else
+                if entry.idx of sel_cat
+                    # only selected when all devices are selected
+                    _sel = sel_cat[entry.idx].length == get_objs().length
+                else
+                    _sel = false
+                _match_pks = (_val for _val in entry.reference_dict.device when _val in _dev_pks)
+                _match_pks.sort()
+            t_entry = $scope.cat_tree.create_node(
+                folder: false
+                obj: entry
+                expand: entry.idx in _to_expand
+                selected: _sel
+                show_select: entry.idx in _useable_idxs and entry.depth > 1
+            )
+            # copy matching pks to tree entry (NOT entry because entry is global)
+            t_entry.$match_pks = (_v for _v in _match_pks)
+            $scope.cat_tree.lut[entry.idx] = t_entry
+            if entry.parent and entry.parent of $scope.cat_tree.lut
+                $scope.cat_tree.lut[entry.parent].add_child(t_entry)
+            else
+                # hide selection from root nodes
+                t_entry.show_select = false
+                $scope.cat_tree.add_root_node(t_entry)
+                if dummy_entry?
+                    # add dummy at first (if defined)
+                    $scope.cat_tree.lut[entry.idx].add_child(dummy_entry)
+        # console.log "*", $scope.cat_tree.lut
+        $scope.cat_tree.show_selected(true)
+
+    icswCategoryTreeService.load($scope.$id).then(
+        (tree) ->
+            $scope.tree = tree
+            build_tree()
+    )
+
+    icswDeviceTreeService.load($scope.$id).then(
+        (dev_tree) ->
+            $scope.device_tree = dev_tree
+    )
+
+    $rootScope.$on(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), (event) ->
+        build_tree()
+    )
+
+    $scope.new_selection = (t_entry, new_sel) ->
+        # console.log "S", t_entry, new_sel
+        if $scope.$$op_mode == "obj"
+            blockUI.start()
+            cat = t_entry.obj
+            icswSimpleAjaxCall(
+                url: ICSW_URLS.BASE_CHANGE_CATEGORY
+                data:
+                    obj_pks: angular.toJson((_entry.idx for _entry in get_objs()))
+                    cat_pks: angular.toJson([cat.idx])
+                    set: if t_entry.selected then "1" else "0"
+            ).then(
+                (xml) ->
+                    # see code in location.coffee
+                    change_dict = angular.fromJson($(xml).find("value[name='changes']").text())
+                    _wait = $q.defer()
+                    console.log change_dict
+                    if $scope.sub_tree in ["config", "mon"]
+                        icswConfigTreeService.load($scope.$id).then(
+                            (config_tree) ->
+                                if $scope.sub_tree == "config"
+                                    for [obj_idx, cat_idx] in change_dict.added
+                                        config_tree.add_category_to_config_by_pk(obj_idx, cat_idx)
+                                    for [obj_idx, cat_idx] in change_dict.removed
+                                        config_tree.remove_category_from_config_by_pk(obj_idx, cat_idx)
+                                else
+                                    for [obj_idx, cat_idx] in change_dict.added
+                                        config_tree.add_category_to_mcc_by_pk(obj_idx, cat_idx)
+                                    for [obj_idx, cat_idx] in change_dict.removed
+                                        config_tree.remove_category_from_mcc_by_pk(obj_idx, cat_idx)
+                                config_tree.update_category_tree()
+                                _wait.resolve("done")
+                        )
+                    else
+                        # device or location
+                        sync_pks = []
+                        for [dev_idx, cat_idx] in change_dict.added
+                            $scope.device_tree.add_category_to_device_by_pk(dev_idx, cat_idx)
+                            if dev_idx not in sync_pks
+                                sync_pks.push(dev_idx)
+                        for [dev_idx, cat_idx] in change_dict.removed
+                            $scope.device_tree.remove_category_from_device_by_pk(dev_idx, cat_idx)
+                            if dev_idx not in sync_pks
+                                sync_pks.push(dev_idx)
+                        if sync_pks.length
+                            $scope.tree.sync_devices(($scope.device_tree.all_lut[_pk] for _pk in sync_pks))
+                        _wait.resolve("done")
+                    _wait.promise.then(
+                        (done) ->
+                            build_tree()
+                            blockUI.stop()
+                    )
+            )
+            # $scope.edit_obj.categories = new_sel
+        else
+            send_selection_to_filter(new_sel)
 ])

@@ -406,7 +406,7 @@ angular.module(
         icswSimpleAjaxCall(
             url: ICSW_URLS.BASE_CHANGE_CATEGORY
             data:
-                dev_pks: angular.toJson(dev_pks)
+                obj_pks: angular.toJson(dev_pks)
                 cat_pks: angular.toJson([loc.idx])
                 set: if t_entry.selected then "1" else "0"
         ).then(
