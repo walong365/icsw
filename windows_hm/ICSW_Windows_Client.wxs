@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<?define ProductVersion = "0.0.5"?>
+<?define ProductVersion = "0.0.9"?>
 <?define ProductUpgradeCode = "77EA450B-4B37-478C-919B-D0D62F2ED7C5"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
    <Product Id="*" UpgradeCode="$(var.ProductUpgradeCode)" 
@@ -17,6 +17,23 @@
       <Directory Id="TARGETDIR" Name="SourceDir">
          <Directory Id="ProgramFilesFolder">
             <Directory Id="INSTALLDIR" Name="ICSW_Windows_Client">
+				<Component Id="nsclientIni" Guid="{649379EC-8990-4382-A089-10C2E0841D32}">
+					<CreateFolder />
+					<IniFile Id="Ini1" 
+					Action="addLine" 
+					Directory="INSTALLDIR" 
+					Section="/settings/default" 
+					Name="nsclient.ini"
+					Key="allowed hosts"
+					Value="[HOSTNAMES]" />
+					<IniFile Id="Ini2" 
+					Action="addLine" 
+					Directory="INSTALLDIR" 
+					Section="/settings/NRPE/server" 
+					Name="nsclient.ini"
+					Key="port"
+					Value="[PORTNAMES]" />
+				</Component>
             </Directory>
          </Directory>
       </Directory>
@@ -33,21 +50,22 @@
       </UI>
       <UIRef Id="WixUI_ErrorProgressText" />
       
-      <CustomAction Id="ExecFinalizeInstall" Directory="INSTALLDIR" Execute="deferred" Impersonate="no" ExeCommand="[INSTALLDIR]\python\pythonw.exe finalize-install.py [HOSTNAMES] [PORTNAMES] [SERVICENAME]" Return="check" />
+      <!--<CustomAction Id="ExecFinalizeInstall" Directory="INSTALLDIR" Execute="deferred" Impersonate="no" ExeCommand="[INSTALLDIR]\python\pythonw.exe finalize-install.py [HOSTNAMES] [PORTNAMES] [SERVICENAME]" Return="check" />-->
       <CustomAction Id="ExecInstallService" Directory="INSTALLDIR" Execute="deferred" Impersonate="no" ExeCommand="[INSTALLDIR]\nscp.exe service --install --name [SERVICENAME]" Return="check" />
       <CustomAction Id="ExecStartService" Directory="INSTALLDIR" Execute="deferred" Impersonate="no" ExeCommand="[INSTALLDIR]\nscp.exe service --start --name [SERVICENAME]" Return="check" />
       <CustomAction Id="ExecUninstallService" Directory="INSTALLDIR" Execute="deferred" Impersonate="no" ExeCommand="[INSTALLDIR]\nscp.exe service --uninstall --name [SERVICENAME]" Return="check" />
       <CustomAction Id="ExecStopService" Directory="INSTALLDIR" Execute="deferred" Impersonate="no" ExeCommand="[INSTALLDIR]\nscp.exe service --stop --name [SERVICENAME]" Return="check" />
     
       <InstallExecuteSequence>
-         <Custom Action="ExecFinalizeInstall" After="InstallFiles">NOT Installed</Custom>
-         <Custom Action="ExecInstallService" After="ExecFinalizeInstall">NOT Installed</Custom>
+         <!--<Custom Action="ExecFinalizeInstall" After="InstallFiles">NOT Installed</Custom>-->
+         <Custom Action="ExecInstallService" Before="InstallFinalize">NOT Installed</Custom>
          <Custom Action="ExecStartService" After="ExecInstallService">NOT Installed</Custom>
-         <!-- <Custom Action="ExecStopService" After="InstallInitialize">Installed AND NOT UPGRADINGPRODUCTCODE</Custom> -->
+         <!--<Custom Action="ExecStopService" After="InstallInitialize">Installed AND NOT UPGRADINGPRODUCTCODE</Custom>-->
          <Custom Action="ExecUninstallService" Before="RemoveFiles">Installed AND NOT UPGRADINGPRODUCTCODE</Custom>
       </InstallExecuteSequence>
  
       <Feature Id="DefaultFeature" Level="1">
+	     <ComponentRef Id="nsclientIni" />
          <ComponentGroupRef Id="NscpFiles"/>	 
       </Feature>
       <Property Id="HOSTNAMES" Value="127.0.0.1" />
