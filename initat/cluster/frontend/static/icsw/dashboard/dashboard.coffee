@@ -664,10 +664,12 @@ dashboard_module = angular.module(
                             # current layout
                             @_new_layout(sub_scope.struct.layout_name)
                             # new position
-                            if sub_scope.struct.init_mode == "c"
+                            if sub_scope.struct.init_mode == "e"
+                                # clear all
                                 (@close_element(el, save=false) for el in @elements)
                             else if sub_scope.struct.init_mode == "d"
                                 for el in @elements
+                                    # enable default
                                     if el.dbe.default_enabled and not el.$$open
                                         @open_element(el, save=false)
                                     else if not el.dbe.default_enabled and el.$$open
