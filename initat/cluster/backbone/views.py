@@ -1,1 +1,1 @@
-# Create your views here.
+# this file is required (Django needs ist)
