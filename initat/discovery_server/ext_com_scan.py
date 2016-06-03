@@ -484,6 +484,7 @@ LIST_PENDING_UPDATES_CMD = "list-pending-updates-py3"
 LIST_HARDWARE_CMD = "list-hardware-lstopo-py3"
 DMIINFO_CMD = "dmiinfo"
 PCIINFO_CMD = "pciinfo"
+PRETTYWINHW_CMD = "list-hardware-py3"
 
 
 def align_second(now, sched_start_second):
@@ -1084,6 +1085,7 @@ class Dispatcher(object):
             (AssetType.LICENSE, LIST_KEYS_CMD),
             (AssetType.DMI, DMIINFO_CMD),
             (AssetType.PCI, PCIINFO_CMD),
+            (AssetType.PRETTYWINHW, PRETTYWINHW_CMD),
             (AssetType.PENDING_UPDATE, LIST_PENDING_UPDATES_CMD)
         ]
         planned_run.start_feed(cmd_tuples)

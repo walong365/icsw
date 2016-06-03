@@ -396,6 +396,52 @@ def get_base_assets_from_raw_result(asset_run,):
                         )
                     value.save()
 
+        elif runtype == AssetType.PRETTYWINHW:
+            if blob.startswith("b'"):
+                _data = bz2.decompress(base64.b64decode(blob[2:-2]))
+            else:
+                _data = bz2.decompress(base64.b64decode(blob))
+
+            _data = json.loads(_data)
+
+            memory_data = _data['memory']
+            cpu_data = _data['cpu']
+            gpu_data = _data['gpu']
+            hdd_data = _data['hdd']
+            logical_drives_data = _data['logical']
+            monitor_data = _data['monitor']
+
+            for memory_entry in memory_data:
+                entry_str = "BankLabel:{} Formfactor:{} Ramtype:{} Manufacturer:{} Capacity:{} MiB".format(
+                    memory_entry['banklabel'],
+                    memory_entry['formfactor'],
+                    memory_entry['memorytype'],
+                    memory_entry['manufacturer'],
+                    int(memory_entry['capacity']) / (1024 * 1024)
+                )
+                new_memory_entry = AssetHWMemoryEntry(
+                    asset_run=asset_run,
+                    value=entry_str
+                )
+                new_memory_entry.save()
+
+            for cpu_entry in cpu_data:
+                entry_str = "CPUType:{} Cores:{}".format(
+                    cpu_entry['name'],
+                    cpu_entry['numberofcores']
+                )
+                new_cpu_entry = AssetHWCPUEntry(
+                    asset_run=asset_run,
+                    value=entry_str
+                )
+                new_cpu_entry.save()
+
+            #print memory_data
+            #print cpu_data
+            #print gpu_data
+            #print hdd_data
+            #print logical_drives_data
+            #print monitor_data
 
 ########################################################################################################################
 # Base Asset Classes
@@ -456,7 +502,7 @@ class AssetType(IntEnum):
     PENDING_UPDATE = 7
     DMI = 8
     PCI = 9
-
+    PRETTYWINHW = 10
 
 class ScanType(IntEnum):
     HM = 1
@@ -486,6 +532,17 @@ class PackageTypeEnum(IntEnum):
 # (Django Database) Classes
 ########################################################################################################################
 
+class AssetHWMemoryEntry(models.Model):
+    idx = models.AutoField(primary_key=True)
+    value = models.TextField()
+    created = models.DateTimeField(auto_now_add=True)
+    asset_run = models.ForeignKey("backbone.AssetRun")
+
+class AssetHWCPUEntry(models.Model):
+    idx = models.AutoField(primary_key=True)
+    value = models.TextField()
+    created = models.DateTimeField(auto_now_add=True)
+    asset_run = models.ForeignKey("backbone.AssetRun")
 
 class AssetPackage(models.Model):
     idx = models.AutoField(primary_key=True)
