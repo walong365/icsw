@@ -6,7 +6,26 @@ icsw-login-page .container-fluid {
     margin-left: 5px;
     margin-top: -6px;
     }
-.fancytree-title > .label {
+.fancytree-title > .label,
+.fancytree-title > span > .label{
     margin-left:6px;
+    padding: 0.2em 0.6em 0.1em;
 }
+.fancytree-checkbox{
+    margin-top:2px;
+    }
+.fa { /* chrome fix */
+    font-family: FontAwesome,"Helvetica Neue",Helvetica,Arial,sans-serif;
+}
+.nav-tabs {
+    margin-top: 7px;
+}
+.nav-tabs > li > a {
+    height:31px;
+}
+.ui-select-match > .ui-select-toggle > i.caret { right:2px; }
+.ui-select-match > .ui-select-toggle > .ui-select-match-text { margin-right:6px;}
 
+::-webkit-scrollbar-track { background-color: #999999; }
+::-webkit-scrollbar{ width: 13px; }
+::-webkit-scrollbar-thumb { background-color: #444444; -webkit-border-radius: 6px; border-radius: 6px; }

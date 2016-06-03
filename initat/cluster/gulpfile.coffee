@@ -72,15 +72,16 @@ sources = {
             "frontend/static/css/select.css",
             "frontend/static/css/ladda-themeless.min.css",
             "frontend/static/css/smart-table.css",
-            "frontend/static/css/font-awesome.min.css",
+            "frontend/static/css/font-awesome.min.css",  #before theme
             "frontend/static/css/toaster.css",
             #"frontend/static/css/bootstrap-dialog.css",
             "frontend/static/css/angular-gridster.min.css",
             "frontend/static/css/hotkeys.css",
             "frontend/static/css/icsw_src.css",
-            "frontend/static/css/init_theme_dark.css",
+            "frontend/static/css/init_theme_dark.css", 
             #"frontend/static/css/init_theme_light.css",
-            "frontend/static/css/init-style.css",
+            
+            "frontend/static/css/init-style.css",  # last
             # not needed right now, not working with tree-code
             # "frontend/static/css/awesome-bootstrap-checkbox.css",
         ]

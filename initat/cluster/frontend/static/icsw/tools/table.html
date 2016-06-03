@@ -3,13 +3,13 @@
         <span ng-if="pages.length > 0">
             <div class="form-group">
                 <!-- small pager -->
-                <ul class="pagination pagination-sm" ng-if="numPages > 1 && numPages < 11"  style="margin-top:0px; margin-bottom:0px;">
+                <ul class="pagination pagination-sm" ng-if="numPages > 1 && numPages < 11"  style="margin-top:4px; margin-bottom:0px;">
                     <li ng-repeat="pag_num in pages" ng-class="{active: pag_num==currentPage}">
                         <a ng-click="selectPage(pag_num)">{{ pag_num }}</a>
                     </li>
                 </ul>
                 <!-- large pager with back/forward buttons -->
-                <ul class="pagination pagination-sm" ng-if="numPages > 1 && numPages > 10"  style="margin-top:0px; margin-bottom:0px;">
+                <ul class="pagination pagination-sm" ng-if="numPages > 1 && numPages > 10"  style="margin-top:4px; margin-bottom:0px;">
                     <li ng-class="{disabled: currentPage == 1}">
                         <a ng-click="selectPage(currentPage-1)">&laquo;</a>
                     </li>
