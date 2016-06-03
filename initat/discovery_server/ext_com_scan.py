@@ -131,6 +131,11 @@ class BaseScanBatch(ScanBatch):
                 if _port.endswith(","):
                     _port = _port[:-1]
                 _num, _type = _port.split("/")
+                if _com.name == "NRPE":
+                    nrpe_ports = self.device.device_variable_set.filter(name="nrpe_port")
+                    if nrpe_ports:
+                        _num = nrpe_ports[0].value
+                        _port = _num + "/" + _type
                 if _type == "tcp":
                     _tcp_list.append(int(_num))
                 elif _type == "udp":
