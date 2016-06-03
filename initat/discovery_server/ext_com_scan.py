@@ -131,6 +131,11 @@ class BaseScanBatch(ScanBatch):
                 if _port.endswith(","):
                     _port = _port[:-1]
                 _num, _type = _port.split("/")
+                if _com.name == "NRPE":
+                    nrpe_ports = self.device.device_variable_set.filter(name="nrpe_port")
+                    if nrpe_ports:
+                        _num = nrpe_ports[0].value
+                        _port = _num + "/" + _type
                 if _type == "tcp":
                     _tcp_list.append(int(_num))
                 elif _type == "udp":
@@ -479,6 +484,7 @@ LIST_PENDING_UPDATES_CMD = "list-pending-updates-py3"
 LIST_HARDWARE_CMD = "list-hardware-lstopo-py3"
 DMIINFO_CMD = "dmiinfo"
 PCIINFO_CMD = "pciinfo"
+PRETTYWINHW_CMD = "list-hardware-py3"
 
 
 def align_second(now, sched_start_second):
@@ -1079,6 +1085,7 @@ class Dispatcher(object):
             (AssetType.LICENSE, LIST_KEYS_CMD),
             (AssetType.DMI, DMIINFO_CMD),
             (AssetType.PCI, PCIINFO_CMD),
+            (AssetType.PRETTYWINHW, PRETTYWINHW_CMD),
             (AssetType.PENDING_UPDATE, LIST_PENDING_UPDATES_CMD)
         ]
         planned_run.start_feed(cmd_tuples)

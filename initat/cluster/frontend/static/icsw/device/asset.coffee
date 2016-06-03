@@ -174,7 +174,8 @@ device_asset_module = angular.module(
             [6, "Process", ""]
             [7, "Pending update", ""]
             [8, "DMI", ""],
-            [9, "PCI", ""]
+            [9, "PCI", ""],
+            [10, "Windows Hardware", ""]
         ]
         package_type: [
             [1, "Windows", ""]
@@ -441,6 +442,10 @@ device_asset_module = angular.module(
         else if obj.run_type == 9
             # PCI map
             obj.$$num_results = obj.num_pci_entries
+        else if obj.run_type == 10
+            # easy/win hw entries
+            console.log(obj)
+            obj.$$num_results = obj.num_hw_entries
         else
             obj.$$num_results = 0
         if obj.run_start_time
@@ -844,6 +849,21 @@ device_asset_module = angular.module(
             return head[0]
         else
             return null
+
+    resolve_hw_entries = (memory_entries, cpu_entries) ->
+        r_list = []
+        console.log "memory_entries:", memory_entries
+        console.log "cpu_entries:", cpu_entries
+
+        for entry in memory_entries
+            entry.$$type = 1
+            r_list.push(entry)
+
+        for entry in cpu_entries
+            entry.$$type = 2
+            r_list.push(entry)
+
+        return r_list
         
     $scope.expand_assetrun = ($event, assetrun) ->
         if !assetrun.$$expanded and not assetrun.$$assets_loaded
@@ -875,6 +895,8 @@ device_asset_module = angular.module(
                         _done.resolve(resolve_dmi_entries(data[0].assetdmihead_set))
                     else if assetrun.run_type == 9
                         _done.resolve(resolve_pci_entries(data[0].assetpcientry_set))
+                    else if assetrun.run_type == 10
+                        _done.resolve(resolve_hw_entries(data[0].assethwmemoryentry_set, data[0].assethwcpuentry_set))
                     else
                         _done.resolve([])
                     _done.promise.then(
@@ -960,6 +982,8 @@ device_asset_module = angular.module(
                 _not_av_el = $compile($templateCache.get("icsw.asset.details.dmihandles"))(scope)
             else if scope.asset_run.run_type == 9
                 _not_av_el = $compile($templateCache.get("icsw.asset.details.pcientries"))(scope)
+            else if scope.asset_run.run_type == 10
+                _not_av_el = $compile($templateCache.get("icsw.asset.details.hw_entry"))(scope)
             else
                 _not_av_el = $compile($templateCache.get("icsw.asset.details.na"))(scope)
             element.append(_not_av_el)
