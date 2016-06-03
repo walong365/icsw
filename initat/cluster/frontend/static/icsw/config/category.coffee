@@ -529,13 +529,13 @@ angular.module(
         clear_tree: () =>
             @lut = {}
 
-        set_mode: (mode, dev_list) =>
+        set_mode: (mode, obj_list) =>
             @mode = mode
             if dev_list?
-                @num_devices = dev_list.length
+                @num_objects = obj_list.length
             else
-                @num_devices = 0
-            # console.log "M", @mode, @num_devices
+                @num_objects = 0
+            # console.log "M", @mode, @num_objects
 
         create_mode_entries: (mode, cat_tree) =>
             @mode_entries.length = []
@@ -552,9 +552,9 @@ angular.module(
                     r_info = obj.name
                 if @mode == "obj"
                     num_sel = t_entry.$match_pks.length
-                    # console.log num_sel, @num_devices
-                    if num_sel and @num_devices > 1
-                        r_info = "#{r_info}, #{num_sel} of #{@num_devices}"
+                    # console.log num_sel, @num_objects
+                    if num_sel and @num_objects > 1
+                        r_info = "#{r_info}, #{num_sel} of #{@num_objects}"
                     if obj.num_refs
                         r_info = "#{r_info}, total references=#{obj.num_refs}"
             else
@@ -590,7 +590,7 @@ angular.module(
         restrict: "EA"
         template: "<icsw-react-tree icsw-tree-config='cat_tree'></icsw-react-tree>"
         scope:
-            # undefined, single device or list of devices
+            # undefined, single object or list of objects (device, config or mon_check_command)
             edit_obj: "=editObj"
             # subtree, config, category, ...
             sub_tree: "=icswSubTree"
@@ -631,7 +631,7 @@ angular.module(
     )
     console.assert(
         $scope.sub_tree in [
-            'mon', 'config', 'device', 'location'
+            "mon", "config", "device", "location"
         ],
         "invalid mode '#{$scope.sub_tree}' in category tree"
     )
@@ -641,10 +641,10 @@ angular.module(
 
     get_objs = () ->
         if not angular.isArray($scope.edit_obj)
-            _devs = [$scope.edit_obj]
+            _objs = [$scope.edit_obj]
         else
-            _devs = $scope.edit_obj
-        return _devs
+            _objs = $scope.edit_obj
+        return _objs
 
     if $scope.edit_obj?
         $scope.$$op_mode = "obj"
@@ -690,7 +690,7 @@ angular.module(
 
     build_tree = () ->
 
-        top_cat_re = new RegExp("/#{$scope.sub_tree}")
+        top_cat_re = new RegExp("/#{$scope.sub_tree}/")
         # console.log top_cat_re
 
         # list of useable categories
@@ -708,11 +708,11 @@ angular.module(
             if $scope.edit_obj?
                 # dictionary of cat_idx -> [dev_idx, ...] list
                 sel_cat = {}
-                for _dev in get_objs()
-                    for _cat in _dev.categories
+                for _obj in get_objs()
+                    for _cat in _obj.categories
                         if _cat not of sel_cat
                             sel_cat[_cat] = []
-                        sel_cat[_cat].push(_dev.idx)
+                        sel_cat[_cat].push(_obj.idx)
             else
                 sel_cat = {}
         else
@@ -766,12 +766,12 @@ angular.module(
             )
             $scope.cat_tree.lut[dummy_entry.obj.idx] = dummy_entry
             # init
-            _dev_pks = []
+            _obj_pks = []
         else
             dummy_entry = undefined
-            _dev_pks = (_dev.idx for _dev in get_objs())
+            _obj_pks = (_obj.idx for _obj in get_objs())
 
-        # console.log "pks=", _dev_pks
+        # console.log "pks=", _obj_pks
         for entry in $scope.cat_tree.mode_entries
             if $scope.$$op_mode == "filter"
                 _sel = entry.idx in sel_cat
@@ -782,7 +782,7 @@ angular.module(
                     _sel = sel_cat[entry.idx].length == get_objs().length
                 else
                     _sel = false
-                _match_pks = (_val for _val in entry.reference_dict.device when _val in _dev_pks)
+                _match_pks = (_val for _val in entry.reference_dict.device when _val in _obj_pks)
                 _match_pks.sort()
             t_entry = $scope.cat_tree.create_node(
                 folder: false

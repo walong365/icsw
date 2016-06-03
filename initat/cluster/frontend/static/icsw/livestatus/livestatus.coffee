@@ -1413,6 +1413,7 @@ angular.module(
                     React.createElement(
                         icswBurstReactSegment,
                         {
+                            key: _element.key
                             element: _element
                             set_focus: @set_focus
                             clear_focus: @clear_focus
@@ -1428,6 +1429,7 @@ angular.module(
                                 React.createElement(
                                     icswBurstReactSegmentText,
                                     {
+                                        key: element.key
                                         element: _element
                                         draw_parameters: @props.draw_parameters
                                     }
@@ -1436,6 +1438,7 @@ angular.module(
             else
                 # not interactive, simple list of graphs
                 _g_list = (path(_element) for _element in root_node.element_list)
+            # _g_list = []
 
             _svg = svg(
                 {
@@ -2497,16 +2500,21 @@ angular.module(
                         icswDeviceLivestatusReactBurst
                         {
                             node: node
+                            key: "dml_node_#{dml.device}"
                             monitoring_data: @props.monitoring_data
                             draw_parameters: @props.draw_parameters
                         }
                     )
                 )
             return div(
-                {key: "top"}
+                {
+                    key: "top"
+                }
                 [
                     h4(
-                        {key: "header"}
+                        {
+                            key: "header"
+                        }
                         _header
                     )
                     svg(
