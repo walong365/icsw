@@ -26,7 +26,7 @@ from rest_framework import serializers
 from initat.cluster.backbone.models import AssetRun, AssetPackage, \
     AssetPackageVersion, AssetBatch, AssetHardwareEntry, AssetProcessEntry, \
     StaticAssetTemplate, StaticAssetTemplateField, AssetLicenseEntry, AssetUpdateEntry, \
-    AssetPCIEntry, AssetDMIHead, AssetDMIHandle, AssetDMIValue
+    AssetPCIEntry, AssetDMIHead, AssetDMIHandle, AssetDMIValue, AssetHWMemoryEntry, AssetHWCPUEntry
 
 __all__ = [
     "AssetRunSimpleSerializer",
@@ -114,6 +114,7 @@ class AssetRunOverviewSerializer(serializers.ModelSerializer):
     num_pending_updates = serializers.IntegerField()
     num_pci_entries = serializers.IntegerField()
     num_asset_handles = serializers.IntegerField()
+    num_hw_entries = serializers.IntegerField()
 
     class Meta:
         model = AssetRun
@@ -125,7 +126,7 @@ class AssetRunOverviewSerializer(serializers.ModelSerializer):
             # many to many count fields
             "num_packages", "num_hardware", "num_processes",
             "num_updates", "num_pending_updates", "num_licenses",
-            "num_pci_entries", "num_asset_handles",
+            "num_pci_entries", "num_asset_handles", "num_hw_entries"
         )
 
 
@@ -172,6 +173,15 @@ class AssetDMIHeadSerializer(serializers.ModelSerializer):
     class Meta:
         model = AssetDMIHead
 
+class AssetHWMemoryEntrySerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = AssetHWMemoryEntry
+
+class AssetHWCPUEntrySeerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = AssetHWCPUEntry
 
 class AssetRunDetailSerializer(serializers.ModelSerializer):
     assethardwareentry_set = AssetHardwareEntrySerializer(many=True)
@@ -180,6 +190,8 @@ class AssetRunDetailSerializer(serializers.ModelSerializer):
     assetupdateentry_set = AssetUpdateEntrySerializer(many=True)
     assetpcientry_set = AssetPCIEntrySerializer(many=True)
     assetdmihead_set = AssetDMIHeadSerializer(many=True)
+    assethwmemoryentry_set = AssetHWMemoryEntrySerializer(many=True)
+    assethwcpuentry_set = AssetHWCPUEntrySeerializer(many=True)
 
     class Meta:
         model = AssetRun
@@ -188,6 +200,7 @@ class AssetRunDetailSerializer(serializers.ModelSerializer):
             "packages", "assethardwareentry_set",
             "assetprocessentry_set", "assetlicenseentry_set",
             "assetupdateentry_set", "assetpcientry_set", "assetdmihead_set",
+            "assethwmemoryentry_set", "assethwcpuentry_set"
         )
 
 

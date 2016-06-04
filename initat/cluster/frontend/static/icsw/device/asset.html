@@ -701,3 +701,60 @@
         </tbody>
     </table>
 </script>
+
+<script type="text/ng-template" id="icsw.asset.details.hw_entry">
+    <table
+        class="table table-condensed table-hover table-striped"
+        style="width:auto;"
+        st-safe-src="asset_run.$$assets"
+        st-table="assets_shown"
+    >
+        <thead>
+            <tr>
+                <td colspan="99">
+                    <div
+                        icsw-tools-pagination
+                        st-items-by-page="10"
+                        st-displayed-pages="11"
+                        possible-items-by-page="10,20,50,100,200,500"
+                    ></div>
+                </td>
+            </tr>
+            <tr>
+                <th>Memory Entries</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="node in assets_shown">
+                <td td ng-if="node.$$type == 1">{{ node.value }}</td>
+            </tr>
+        </tbody>
+    </table>
+    <table
+        class="table table-condensed table-hover table-striped"
+        style="width:auto;"
+        st-safe-src="asset_run.$$assets"
+        st-table="assets_shown"
+    >
+        <thead>
+            <tr>
+                <td colspan="99">
+                    <div
+                        icsw-tools-pagination
+                        st-items-by-page="10"
+                        st-displayed-pages="11"
+                        possible-items-by-page="10,20,50,100,200,500"
+                    ></div>
+                </td>
+            </tr>
+            <tr>
+                <th>CPU Entries</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="node in assets_shown">
+                <td ng-if="node.$$type == 2">{{ node.value }}</td>
+            </tr>
+        </tbody>
+    </table>
+</script>
