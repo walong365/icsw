@@ -50,6 +50,41 @@ angular.module(
             if value?
                 node.setAttribute(key, value)
         return $(node)
+]).directive("icswDeviceListInfo",
+[
+   "$q", "icswSimpleAjaxCall", "$templateCache", "ICSW_URLS",
+(
+    $q, icswSimpleAjaxCall, $templateCache, ICSW_URLS,
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.device.list.info")
+        scope:
+            device_list: "=icswDeviceList"
+        link: (scope, element, attrs) ->
+            scope.struct = {
+                # loading
+                is_loading: true
+                # header
+                header: ""
+            }
+            scope.$watchCollection(
+                "device_list"
+                (new_list) ->
+                    scope.struct.is_loading = true
+                    icswSimpleAjaxCall(
+                        url: ICSW_URLS.DEVICE_DEVICE_LIST_INFO
+                        data:
+                            pk_list: angular.toJson((dev.idx for dev in new_list))
+                        dataType: "json"
+                    ).then(
+                        (result) ->
+                            scope.struct.is_loading = false
+                            scope.struct.header = result.header
+                    )
+            )
+
+    }
 ]).directive("icswAutoFocus",
 [
     "$timeout",

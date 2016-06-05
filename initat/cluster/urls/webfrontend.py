@@ -147,6 +147,7 @@ device_patterns = [
     url("^get_device_locations$", device_views.get_device_location.as_view(), name="get_device_location"),
     url("^GetMatchingDevices$", device_views.GetMatchingDevices.as_view(), name="GetMatchingDevices"),
     url("^create_device", device_views.create_device.as_view(), name="create_device"),
+    url("^device_list_info$", device_views.DeviceListInfo.as_view(), name="device_list_info"),
 ]
 
 

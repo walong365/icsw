@@ -550,6 +550,27 @@ class EnrichDevices(View):
         return HttpResponse(json.dumps(result), content_type="application/json")
 
 
+class DeviceListInfo(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        _pk_list = json.loads(request.POST["pk_list"])
+        # _pk_list = json.loads()
+        if _pk_list:
+            _dev_names = [
+                _dev.full_name for _dev in device.objects.filter(Q(pk__in=_pk_list)).select_related("domain_tree_node")
+            ]
+            _response_str = "{}: {}".format(
+                logging_tools.get_plural("device", len(_dev_names)),
+                logging_tools.reduce_list(_dev_names)
+            )
+        else:
+            _response_str = "no devices selected"
+        return HttpResponse(
+            json.dumps({"header": _response_str}),
+            content_type="application/json"
+        )
+
+
 class create_device(permission_required_mixin, View):
     all_required_permissions = ["backbone.user.modify_tree"]
 

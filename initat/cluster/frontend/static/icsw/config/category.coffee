@@ -520,22 +520,20 @@ angular.module(
 
     class icswCatSelectionTree extends icswReactTreeConfig
         constructor: (@scope, args) ->
+            @mode = args.mode
+            if @mode == "obj"
+                @num_objects = args.object_list.length
+            else
+                @num_objects = 0
+            delete args.mode
+            delete args.object_list
             super(args)
             # valid entries for the selected subtree
             @mode_entries = []
-            @set_mode(null)
             @clear_tree()
 
         clear_tree: () =>
             @lut = {}
-
-        set_mode: (mode, obj_list) =>
-            @mode = mode
-            if dev_list?
-                @num_objects = obj_list.length
-            else
-                @num_objects = 0
-            # console.log "M", @mode, @num_objects
 
         create_mode_entries: (mode, cat_tree) =>
             @mode_entries.length = []
@@ -588,7 +586,7 @@ angular.module(
 ) ->
     return {
         restrict: "EA"
-        template: "<icsw-react-tree icsw-tree-config='cat_tree'></icsw-react-tree>"
+        template: "<icsw-react-tree ng-if='struct.tree_ready' icsw-tree-config='struct.disp_cat_tree'></icsw-react-tree>"
         scope:
             # undefined, single object or list of objects (device, config or mon_check_command)
             edit_obj: "=editObj"
@@ -598,9 +596,13 @@ angular.module(
             filter: "=icswLivestatusFilter"
             # monitoring data for pipelining
             mon_data: "=icswMonitoringData"
-            selected_cat: "=icswSelectedCategory"
+            # to signal selected category, callback function
+            selected_cat: "&icswSelectedCategory"
+            # mode
+            mode: "@icswMode"
         controller: "icswConfigCategoryTreeSelectCtrl"
         link : (scope, el, attrs) ->
+            scope.set_mode_and_tree(scope.mode, scope.sub_tree)
     }
 ]).controller("icswConfigCategoryTreeSelectCtrl",
 [
@@ -612,73 +614,127 @@ angular.module(
     icswCategoryTreeService, icswAcessLevelService, blockUI, icswSimpleAjaxCall,
     ICSW_URLS, icswDeviceTreeService, $rootScope, ICSW_SIGNALS,
 ) ->
-    $scope.selected_cat = undefined
+    $scope.struct = {
+        # object list
+        objects: []
+        # mode, one of
+        # obj ...... set categories for one or more objects
+        # filter ... work as filter for livestatus
+        mode: undefined
+        # categore tree (display)
+        disp_cat_tree: undefined
+        # tree is ready
+        tree_ready: false
+        # category tree (data)
+        cat_tree: undefined
+    }
+
+    # selected category, used in directive
+    # $scope.selected_cat = null
+
+    # deregister list
+    dereg_list = []
+
     $scope.click_category = (entry) ->
         $scope.$apply(
-            $scope.selected_cat = entry
+            # console.log "CS"
+            console.log "x", entry
+            $scope.selected_cat({entry: entry}) #  = entry
         )
 
-    $scope.cat_tree = new icswCatSelectionTreeService(
-        $scope
-        {
-            show_selection_buttons: false
-            # show_icons: false
-            show_select: true
-            show_descendants: true
-            # show_childs: false
-            name: "CategorySelectTree"
-        }
-    )
-    console.assert(
-        $scope.sub_tree in [
-            "mon", "config", "device", "location"
-        ],
-        "invalid mode '#{$scope.sub_tree}' in category tree"
-    )
-
-    #if $scope.filter?
-    #    console.log "FILTER", $scope.filter
-
-    get_objs = () ->
-        if not angular.isArray($scope.edit_obj)
-            _objs = [$scope.edit_obj]
+    $scope.set_mode_and_tree = (mode, sub_tree) ->
+        # set modes and init structure
+        $scope.struct.mode = mode
+        $scope.struct.sub_tree = sub_tree
+        console.assert(
+            $scope.struct.sub_tree in [
+                "mon", "config", "device", "location"
+            ],
+            "invalid sub_tree '#{$scope.struct.sub_tree}' in category tree"
+        )
+        console.assert(
+            $scope.struct.mode in [
+                "obj", "filter"
+            ],
+            "invalid mode '#{$scope.struct.mode}' in category tree"
+        )
+        # init objects
+        if $scope.struct.mode == "obj"
+            if not angular.isArray($scope.edit_obj)
+                $scope.struct.objects = [$scope.edit_obj]
+            else
+                $scope.struct.objects = $scope.edit_obj
         else
-            _objs = $scope.edit_obj
-        return _objs
+            $scope.struct.objects = null
 
-    if $scope.edit_obj?
-        $scope.$$op_mode = "obj"
-        # check rights
-        _ct = $scope.cat_tree
-        _ct.change_select = true
-        # iterate
-        for _dev in get_objs()
-            if not icswAcessLevelService.acl_all(_dev, "backbone.device.change_category", 7)
-                _ct.change_select = false
-                break
-        $scope.$watch(
-            "edit_obj"
-            (new_val) ->
-                if new_val? and $scope.tree?
+        icswCategoryTreeService.load($scope.$id).then(
+            (tree) ->
+                $scope.struct.cat_tree = tree
+                init_tree()
+
+        )
+
+    init_tree = () ->
+        # init tree after structures are loaded
+        $scope.struct.disp_cat_tree = new icswCatSelectionTreeService(
+            $scope
+            {
+                show_selection_buttons: false
+                # show_icons: false
+                show_select: true
+                show_descendants: true
+                # show_childs: false
+                name: "CategorySelectTree"
+                # mode
+                mode: $scope.struct.mode
+                # objects list
+                object_list: $scope.struct.objects
+            }
+        )
+
+        if $scope.struct.mode == "obj"
+            # check rights
+            _ct = $scope.struct.disp_cat_tree
+            _ct.change_select = true
+            # iterate
+            for _dev in $scope.struct.objects
+                if not icswAcessLevelService.acl_all(_dev, "backbone.device.change_category", 7)
+                    _ct.change_select = false
+                    break
+            $scope.$watch(
+                "edit_obj"
+                (new_val) ->
+                    if new_val? and $scope.struct.cat_tree?
+                        build_tree()
+                true
+            )
+
+        else if $scope.struct.mode == "filter"
+            # available cats, used to automatically select new cats (from mon-data reload)
+            $scope.$$available_cats = []
+            $scope.filter.install_category_filter()
+            $scope.filter.change_notifier.promise.then(
+                () ->
+                () ->
+                (notify) =>
+                    console.log "cnrb"
                     build_tree()
-            true
+            )
+
+        console.log "SelTree init, mode is #{$scope.struct.mode}, subtree is #{$scope.struct.sub_tree}"
+        $scope.struct.tree_ready = true
+        # install change handler
+        dereg_list.push(
+            $rootScope.$on(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), (event) ->
+                build_tree()
+            )
         )
 
-    else if $scope.filter
-        $scope.$$op_mode = "filter"
-        # available cats, used to automatically select new cats (from mon-data reload)
-        $scope.$$available_cats = []
-        $scope.filter.install_category_filter()
-        $scope.filter.change_notifier.promise.then(
-            () ->
-            () ->
-            (notify) =>
-                build_tree()
-        )
-    else
-        $scope.$$op_mode = "obj"
-    console.log "SelTree init, mode is #{$scope.$$op_mode}, subtree is #{$scope.sub_tree}"
-    $scope.cat_tree.set_mode($scope.$$op_mode, get_objs())
+        build_tree()
+
+    $scope.$on("$destroy", () ->
+        (_entry() for _entry in dereg_list)
+    )
 
     send_selection_to_filter = (sel_cat) ->
         if $scope.$$previous_filter?
@@ -689,26 +745,21 @@ angular.module(
         $scope.filter.set_category_filter(sel_cat)
 
     build_tree = () ->
-
-        top_cat_re = new RegExp("/#{$scope.sub_tree}/")
-        # console.log top_cat_re
+        # build tree, called when something changes
 
         # list of useable categories
 
-        $scope.cat_tree.create_mode_entries($scope.sub_tree, $scope.tree)
+        $scope.struct.disp_cat_tree.create_mode_entries($scope.struct.sub_tree, $scope.struct.cat_tree)
 
-        _useable_idxs = []
-        for entry in $scope.tree.list
-            if entry.full_name.match(top_cat_re)
-                if entry.useable
-                    _useable_idxs.push(entry.idx)
+        _useable_idxs = (entry.idx for entry in $scope.struct.disp_cat_tree.mode_entries when entry.useable)
+        # console.log "u", _useable_idxs
 
-        if $scope.$$op_mode == "obj"
+        if $scope.struct.mode == "obj"
             # obj mode, modify categories of given object
             if $scope.edit_obj?
                 # dictionary of cat_idx -> [dev_idx, ...] list
                 sel_cat = {}
-                for _obj in get_objs()
+                for _obj in $scope.struct.objects
                     for _cat in _obj.categories
                         if _cat not of sel_cat
                             sel_cat[_cat] = []
@@ -738,21 +789,21 @@ angular.module(
             if $scope.mon_data?
                 _useable_idxs =  _.intersection(_useable_idxs, $scope.mon_data.used_cats)
 
-        if $scope.cat_tree.root_nodes.length
+        if $scope.struct.disp_cat_tree.root_nodes.length
             _to_expand = []
-            $scope.cat_tree.iter(
+            $scope.struct.disp_cat_tree.iter(
                 (node) ->
                     if node.expand
                         _to_expand.push(node.obj.idx)
             )
         else
-            _to_expand = (entry.idx for entry in $scope.tree.list when entry.depth < 2)
+            _to_expand = (entry.idx for entry in $scope.struct.cat_tree.list when entry.depth < 2)
 
-        $scope.cat_tree.clear_root_nodes()
-        $scope.cat_tree.clear_tree()
-        if $scope.$$op_mode == "filter"
+        $scope.struct.disp_cat_tree.clear_root_nodes()
+        $scope.struct.disp_cat_tree.clear_tree()
+        if $scope.struct.mode == "filter"
             # add uncategorized entry
-            dummy_entry = $scope.cat_tree.create_node(
+            dummy_entry = $scope.struct.disp_cat_tree.create_node(
                 folder: false
                 obj: {
                     idx: 0
@@ -764,27 +815,27 @@ angular.module(
                 selected: 0 in sel_cat
                 show_select: true
             )
-            $scope.cat_tree.lut[dummy_entry.obj.idx] = dummy_entry
+            $scope.struct.disp_cat_tree.lut[dummy_entry.obj.idx] = dummy_entry
             # init
             _obj_pks = []
         else
             dummy_entry = undefined
-            _obj_pks = (_obj.idx for _obj in get_objs())
+            _obj_pks = (_obj.idx for _obj in $scope.struct.objects)
 
         # console.log "pks=", _obj_pks
-        for entry in $scope.cat_tree.mode_entries
-            if $scope.$$op_mode == "filter"
+        for entry in $scope.struct.disp_cat_tree.mode_entries
+            if $scope.struct.mode == "filter"
                 _sel = entry.idx in sel_cat
                 _match_pks = []
             else
                 if entry.idx of sel_cat
                     # only selected when all devices are selected
-                    _sel = sel_cat[entry.idx].length == get_objs().length
+                    _sel = sel_cat[entry.idx].length == $scope.struct.objects.length
                 else
                     _sel = false
                 _match_pks = (_val for _val in entry.reference_dict.device when _val in _obj_pks)
                 _match_pks.sort()
-            t_entry = $scope.cat_tree.create_node(
+            t_entry = $scope.struct.disp_cat_tree.create_node(
                 folder: false
                 obj: entry
                 expand: entry.idx in _to_expand
@@ -793,43 +844,28 @@ angular.module(
             )
             # copy matching pks to tree entry (NOT entry because entry is global)
             t_entry.$match_pks = (_v for _v in _match_pks)
-            $scope.cat_tree.lut[entry.idx] = t_entry
-            if entry.parent and entry.parent of $scope.cat_tree.lut
-                $scope.cat_tree.lut[entry.parent].add_child(t_entry)
+            $scope.struct.disp_cat_tree.lut[entry.idx] = t_entry
+            if entry.parent and entry.parent of $scope.struct.disp_cat_tree.lut
+                $scope.struct.disp_cat_tree.lut[entry.parent].add_child(t_entry)
             else
                 # hide selection from root nodes
                 t_entry.show_select = false
-                $scope.cat_tree.add_root_node(t_entry)
+                $scope.struct.disp_cat_tree.add_root_node(t_entry)
                 if dummy_entry?
                     # add dummy at first (if defined)
-                    $scope.cat_tree.lut[entry.idx].add_child(dummy_entry)
+                    $scope.struct.disp_cat_tree.lut[entry.idx].add_child(dummy_entry)
         # console.log "*", $scope.cat_tree.lut
-        $scope.cat_tree.show_selected(true)
-
-    icswCategoryTreeService.load($scope.$id).then(
-        (tree) ->
-            $scope.tree = tree
-            build_tree()
-    )
-
-    icswDeviceTreeService.load($scope.$id).then(
-        (dev_tree) ->
-            $scope.device_tree = dev_tree
-    )
-
-    $rootScope.$on(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), (event) ->
-        build_tree()
-    )
+        $scope.struct.disp_cat_tree.show_selected(true)
 
     $scope.new_selection = (t_entry, new_sel) ->
         # console.log "S", t_entry, new_sel
-        if $scope.$$op_mode == "obj"
+        if $scope.struct.mode == "obj"
             blockUI.start()
             cat = t_entry.obj
             icswSimpleAjaxCall(
                 url: ICSW_URLS.BASE_CHANGE_CATEGORY
                 data:
-                    obj_pks: angular.toJson((_entry.idx for _entry in get_objs()))
+                    obj_pks: angular.toJson((_entry.idx for _entry in $scope.struct.objects))
                     cat_pks: angular.toJson([cat.idx])
                     set: if t_entry.selected then "1" else "0"
             ).then(
@@ -837,7 +873,6 @@ angular.module(
                     # see code in location.coffee
                     change_dict = angular.fromJson($(xml).find("value[name='changes']").text())
                     _wait = $q.defer()
-                    console.log change_dict
                     if $scope.sub_tree in ["config", "mon"]
                         icswConfigTreeService.load($scope.$id).then(
                             (config_tree) ->
@@ -855,19 +890,22 @@ angular.module(
                                 _wait.resolve("done")
                         )
                     else
-                        # device or location
-                        sync_pks = []
-                        for [dev_idx, cat_idx] in change_dict.added
-                            $scope.device_tree.add_category_to_device_by_pk(dev_idx, cat_idx)
-                            if dev_idx not in sync_pks
-                                sync_pks.push(dev_idx)
-                        for [dev_idx, cat_idx] in change_dict.removed
-                            $scope.device_tree.remove_category_from_device_by_pk(dev_idx, cat_idx)
-                            if dev_idx not in sync_pks
-                                sync_pks.push(dev_idx)
-                        if sync_pks.length
-                            $scope.tree.sync_devices(($scope.device_tree.all_lut[_pk] for _pk in sync_pks))
-                        _wait.resolve("done")
+                        icswDeviceTreeService.load($scope.$id).then(
+                            (device_tree) ->
+                                # device or location
+                                sync_pks = []
+                                for [dev_idx, cat_idx] in change_dict.added
+                                    device_tree.add_category_to_device_by_pk(dev_idx, cat_idx)
+                                    if dev_idx not in sync_pks
+                                        sync_pks.push(dev_idx)
+                                for [dev_idx, cat_idx] in change_dict.removed
+                                    device_tree.remove_category_from_device_by_pk(dev_idx, cat_idx)
+                                    if dev_idx not in sync_pks
+                                        sync_pks.push(dev_idx)
+                                if sync_pks.length
+                                    $scope.struct.cat_tree.sync_devices((device_tree.all_lut[_pk] for _pk in sync_pks))
+                                _wait.resolve("done")
+                        )
                     _wait.promise.then(
                         (done) ->
                             build_tree()
