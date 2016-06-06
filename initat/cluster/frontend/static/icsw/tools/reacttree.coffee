@@ -245,8 +245,9 @@ angular.module(
                             _tc.handle_click(event, _tn)
                             @force_redraw()
                             @props.parent_cb()
-                        onDblClick: (event) =>
-                            _tc.handle_dbl_click(event, _tn)
+                        # onDoubleClick: (event) =>
+                        #    console.log "DBL"
+                        #    _tc.handle_dbl_click(event, _tn)
                     }
                     _name_span_list
                 )
