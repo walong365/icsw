@@ -592,6 +592,26 @@ class csw_object_list(viewsets.ViewSet):
         return Response(_ser.data)
 
 
+class device_tree_detail(detail_view):
+    authentication_classes = (SessionAuthentication,)
+    permission_classes = (IsAuthenticated,)
+    model = device
+
+    @rest_logging
+    def _get_serializer_context(self):
+        return {
+            "request": self.request,
+        }
+
+    @rest_logging
+    def get_serializer_context(self):
+        return self._get_serializer_context()
+
+    @rest_logging
+    def get_serializer_class(self):
+        return device_serializer
+
+
 class device_tree_list(
     mixins.ListModelMixin,
     mixins.CreateModelMixin,

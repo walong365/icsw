@@ -570,7 +570,7 @@ angular.module(
             )
 
         selection_changed: (entry) =>
-            console.log "SC"
+            # console.log "SC"
             sel_list = @get_selected_cat_pks()
             @scope.new_selection(entry, sel_list)
 
@@ -638,7 +638,7 @@ angular.module(
     $scope.click_category = (entry) ->
         $scope.$apply(
             # console.log "CS"
-            console.log "x", entry
+            # console.log "x", entry
             $scope.selected_cat({entry: entry}) #  = entry
         )
 
