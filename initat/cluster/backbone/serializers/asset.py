@@ -177,11 +177,17 @@ class AssetHWMemoryEntrySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AssetHWMemoryEntry
+        fields = (
+            "idx", "banklabel", "formfactor", "memorytype", "manufacturer", "capacity"
+        )
 
 class AssetHWCPUEntrySeerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AssetHWCPUEntry
+        fields = (
+            "idx", "numberofcores", "cpuname"
+        )
 
 class AssetRunDetailSerializer(serializers.ModelSerializer):
     assethardwareentry_set = AssetHardwareEntrySerializer(many=True)
@@ -190,8 +196,8 @@ class AssetRunDetailSerializer(serializers.ModelSerializer):
     assetupdateentry_set = AssetUpdateEntrySerializer(many=True)
     assetpcientry_set = AssetPCIEntrySerializer(many=True)
     assetdmihead_set = AssetDMIHeadSerializer(many=True)
-    assethwmemoryentry_set = AssetHWMemoryEntrySerializer(many=True)
-    assethwcpuentry_set = AssetHWCPUEntrySeerializer(many=True)
+    cpus = AssetHWCPUEntrySeerializer(many=True)
+    memory_modules = AssetHWMemoryEntrySerializer(many=True)
 
     class Meta:
         model = AssetRun
@@ -200,7 +206,7 @@ class AssetRunDetailSerializer(serializers.ModelSerializer):
             "packages", "assethardwareentry_set",
             "assetprocessentry_set", "assetlicenseentry_set",
             "assetupdateentry_set", "assetpcientry_set", "assetdmihead_set",
-            "assethwmemoryentry_set", "assethwcpuentry_set"
+            "memory_modules", "memory_count", "cpus", "cpu_count"
         )
 
 
