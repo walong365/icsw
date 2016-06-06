@@ -25,6 +25,7 @@
 import base64
 import json
 import logging
+import pyotp
 
 import django
 from django.contrib.auth import login, logout, authenticate
@@ -140,14 +141,16 @@ class login_addons(View):
 class session_login(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
+        print "try"
         _post = json.loads(request.POST["blob"])
         login_name = _post.get('username')
         login_password = _post.get('password')
+        login_otp = _post.get('otp')
 
         real_user_name = self.__class__.get_real_user_name(login_name)
 
         try:
-            db_user = self.__class__._check_login_data(request, real_user_name, login_password)
+            db_user = self.__class__._check_login_data(request, real_user_name, login_password, login_otp)
         except ValidationError as e:
             for err_msg in e:
                 request.xml_response.error(unicode(err_msg))
@@ -161,19 +164,30 @@ class session_login(View):
                 request.xml_response["redirect"] = "main.dashboard"
 
     @classmethod
-    def _check_login_data(cls, request, username, password):
+    def _check_login_data(cls, request, username, password, otp):
         """Returns a valid user instance to be logged in or raises ValidationError"""
         if username and password:
             # print "*"
             db_user = authenticate(username=username, password=password)
+
             # print "+", db_user
             if db_user is None:
                 raise ValidationError(
                     "Please enter a correct username and password. " +
                     "Note that both fields are case-sensitive."
                 )
+
             if db_user is not None and not db_user.is_active:
                 raise ValidationError("This account is inactive.")
+
+            if db_user and db_user.otp_secret:
+                totp = pyotp.TOTP(db_user.otp_secret)
+                hotp = pyotp.HOTP(db_user.otp_secret)
+                if not totp.verify(otp) and not hotp.verify(otp, db_user.otp_counter):
+                    raise ValidationError(
+                        "Please enter a correct username and password. " +
+                        "Note that both fields are case-sensitive."
+                    )
         else:
             raise ValidationError("Need username and password")
         # TODO: determine whether this should be moved to its own method.
@@ -228,3 +242,30 @@ class UserView(viewsets.ViewSet):
             _user = user()
         serializer = user_serializer([_user], context={"request": request}, many=True)
         return Response(serializer.data)
+
+class send_otp_per_sms(View):
+    def post(self, request):
+        _users = user.objects.filter(login=request.POST["login"])
+        if _users:
+            _user = _users[0]
+            if _user.otp_secret:
+                counter = _user.otp_counter
+                counter += 1
+
+                _user.otp_counter = counter
+                _user.save()
+
+                hotp = pyotp.HOTP(_user.otp_secret)
+
+                # todo send otp per sms
+                print "*" * 20
+                print hotp.at(counter)
+                print "*" * 20
+
+        return HttpResponse(
+            json.dumps(
+                {
+                    'tmp': ""
+                }
+            )
+        )

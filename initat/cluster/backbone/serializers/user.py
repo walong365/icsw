@@ -131,6 +131,7 @@ class user_serializer(serializers.ModelSerializer):
     info = serializers.CharField(source="get_info", read_only=True)
     login_name = serializers.SerializerMethodField()
     user_variable_set = user_variable_serializer(many=True, read_only=True)
+    totp_provisioning_uri = serializers.SerializerMethodField()
 
     def get_login_name(self, obj):
         _req = self.context["request"]
@@ -138,6 +139,9 @@ class user_serializer(serializers.ModelSerializer):
         if hasattr(_req, "session"):
             _login_name = _req.session.get("login_name", _login_name)
         return _login_name
+
+    def get_totp_provisioning_uri(self, obj):
+        return obj.get_otp_provisioning_uri()
 
     class Meta:
         model = user
@@ -148,7 +152,7 @@ class user_serializer(serializers.ModelSerializer):
             "allowed_device_groups", "aliases", "db_is_auth_for_password", "is_superuser",
             "home_dir_created", "user_quota_setting_set", "info", "scan_user_home", "scan_depth",
             "only_webfrontend", "home", "user_scan_run_set", "login_name", "create_rms_user",
-            "user_variable_set",
+            "user_variable_set", "totp_provisioning_uri"
         )
 
 

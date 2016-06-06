@@ -31,6 +31,8 @@ import random
 import smbpasswd
 import pprint
 import string
+import pyotp
+
 
 import django.core.serializers
 from django.apps import apps
@@ -719,6 +721,21 @@ class user(models.Model):
     scan_user_home = models.BooleanField(default=False)
     # scan depth
     scan_depth = models.IntegerField(default=2)
+    # one time password fields
+    otp_secret = models.CharField(max_length=16, blank=True, default="")
+    otp_counter = models.BigIntegerField(default=0)
+
+    def get_otp_provisioning_uri(self):
+        _login_name = self.login
+        _secret = self.otp_secret
+        if _secret:
+            totp = pyotp.TOTP(_secret)
+            uri = "http://chart.apis.google.com/chart?cht=qr&chs=400x400&chl="
+            uri = uri + totp.provisioning_uri("icsw-" + _login_name)
+        else:
+            uri = ""
+        return uri
+
 
     @property
     def is_anonymous(self):

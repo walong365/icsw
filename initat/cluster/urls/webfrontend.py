@@ -61,6 +61,7 @@ session_patterns = [
     url(r"log_addons$", session_views.login_addons.as_view(), name="login_addons"),
     url(r"get_authenticated_user$", session_views.UserView.as_view({"get": "get_user"}), name="get_authenticated_user"),
     url(r"get_csrf_token$", session_views.get_csrf_token.as_view(), name="get_csrf_token"),
+    url(r"send_otp_per_sms$", session_views.send_otp_per_sms.as_view(), name="send_otp_per_sms"),
 ]
 
 rms_patterns = [
@@ -209,6 +210,8 @@ user_patterns = [
     url("^GetObjectPermissions$", user_views.GetObjectPermissions.as_view(), name="GetObjectPermissions"),
     url("^GetInitProduct$", user_views.GetInitProduct.as_view(), name="GetInitProduct"),
     url("^GetNumQuotaServers$", user_views.get_num_quota_servers.as_view(), name="get_num_quota_servers"),
+    url("^generate_new_2fa_secret$", user_views.generate_new_2fa_secret.as_view(), name="generate_new_2fa_secret"),
+    url("^remove_2fa_secret$", user_views.remove_2fa_secret.as_view(), name="remove_2fa_secret")
 ]
 
 pack_patterns = [

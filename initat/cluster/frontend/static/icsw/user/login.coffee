@@ -81,6 +81,7 @@ angular.module(
         $scope.login_data = {
             username: ""
             password: ""
+            otp: ""
             next_url: ""
         }
 
@@ -116,6 +117,18 @@ angular.module(
                 $scope.init_login()
         )
 
+
+    $scope.request_sms_tan = () ->
+        icswSimpleAjaxCall(
+            {
+                url: ICSW_URLS.SESSION_SEND_OTP_PER_SMS
+                data:
+                    login: $scope.login_data.username
+                dataType: 'json'
+            }
+        )
+        console.log($scope.login_data.username)
+        
     $scope.init_login()
 ]).directive("icswLoginForm",
 [

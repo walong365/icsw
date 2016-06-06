@@ -771,6 +771,16 @@
                     </div>
                 </div>
             </uib-tab>
+            <uib-tab heading="Two-Factor-Auth Setup">
+                <fieldset>
+                    <legend>QR Code </legend>
+                    <img ng-if="user.totp_provisioning_uri" ng-src="{{ user.totp_provisioning_uri }}"/>
+                 </fieldset>
+                <div class="col-sm-12" style="padding-bottom: 15px;">
+                    <icsw-tools-button type="modify" ng-click="generate_2fa()" value="Generate 2FA"></icsw-tools-button>
+                    <icsw-tools-button type="delete" ng-click="remove_2fa()" value="Remove 2FA"></icsw-tools-button>
+                </div>
+            </uib-tab>
         </uib-tabset>
         <div class="form-actions">
             <icsw-tools-button type="modify" ng-show="!create_mode && changed() && modify_ok" ng-click="modify()"></icsw-tools-button>

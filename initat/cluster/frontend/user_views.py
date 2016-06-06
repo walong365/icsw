@@ -22,6 +22,7 @@
 
 """ user views """
 
+import pyotp
 import json
 import logging
 
@@ -380,4 +381,36 @@ class GetInitProduct(RetrieveAPIView):
                 'family': family,
                 "build_machine": BUILD_MACHINE,
             }
+        )
+
+class generate_new_2fa_secret(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        _user = user.objects.get(idx=int(request.POST["idx"]))
+        _user.otp_secret = pyotp.random_base32()
+        _user.save()
+
+        uri = _user.get_otp_provisioning_uri()
+
+        return HttpResponse(
+            json.dumps(
+                {
+                    'new_uri': uri
+                }
+            )
+        )
+
+class remove_2fa_secret(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        _user = user.objects.get(idx=int(request.POST["idx"]))
+        _user.otp_secret = ""
+        _user.save()
+
+        return HttpResponse(
+            json.dumps(
+                {
+                    'new_uri': ""
+                }
+            )
         )

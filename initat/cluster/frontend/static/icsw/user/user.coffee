@@ -1209,10 +1209,10 @@ user_module = angular.module(
 ]).controller("icswUserGroupEditCtrl",
 [
     "$scope", "$q", "icswUserGroupTools", "ICSW_SIGNALS", "icswToolsSimpleModalService", "icswUserGetPassword",
-    "blockUI",
+    "blockUI", "icswSimpleAjaxCall", "ICSW_URLS"
 (
     $scope, $q, icswUserGroupTools, ICSW_SIGNALS, icswToolsSimpleModalService, icswUserGetPassword,
-    blockUI,
+    blockUI, icswSimpleAjaxCall, ICSW_URLS
 ) ->
 
     $scope.obj_list_cache = {}
@@ -1485,6 +1485,28 @@ user_module = angular.module(
                     # copy if password is now set
                     $scope.object.password = $scope.object.$$password
                     $scope.modify_ok = true
+        )
+        
+    $scope.generate_2fa = () ->
+        icswSimpleAjaxCall({
+            url: ICSW_URLS.USER_GENERATE_NEW_2FA_SECRET
+            data:
+                idx: $scope.src_object.idx
+            dataType: 'json'
+        }).then(
+            (result) =>
+                $scope.user.totp_provisioning_uri = result['new_uri']
+        )
+        
+    $scope.remove_2fa = () ->
+        icswSimpleAjaxCall({
+            url: ICSW_URLS.USER_REMOVE_2FA_SECRET
+            data:
+                idx: $scope.src_object.idx
+            dataType: 'json'
+        }).then(
+            (result) =>
+                $scope.user.totp_provisioning_uri = result['new_uri']
         )
 
 ]).directive("icswUserGroupPermissions",
