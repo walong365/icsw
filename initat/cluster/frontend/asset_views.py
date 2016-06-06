@@ -258,7 +258,7 @@ class AssetRunsViewSet(viewsets.ViewSet):
             num_pending_updates=Sum(Case(When(assetupdateentry__installed=False, then=1), output_field=IntegerField(), default=0)),
             num_pci_entries=Count("assetpcientry"),
             num_asset_handles=Count("assetdmihead__assetdmihandle"),
-            num_hw_entries=Count("assethwmemoryentry") + Count("assethwcpuentry"),
+            num_hw_entries=Sum("cpu_count") + Sum("memory_count")
         )
         serializer = AssetRunOverviewSerializer(queryset, many=True)
         return Response(serializer.data)

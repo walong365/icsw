@@ -444,7 +444,6 @@ device_asset_module = angular.module(
             obj.$$num_results = obj.num_pci_entries
         else if obj.run_type == 10
             # easy/win hw entries
-            console.log(obj)
             obj.$$num_results = obj.num_hw_entries
         else
             obj.$$num_results = 0
@@ -852,11 +851,72 @@ device_asset_module = angular.module(
 
     resolve_hw_entries = (memory_entries, cpu_entries) ->
         r_list = []
+
         console.log "memory_entries:", memory_entries
         console.log "cpu_entries:", cpu_entries
 
         for entry in memory_entries
             entry.$$type = 1
+            entry.$$capacity = entry.capacity / (1024.0 * 1024.0)
+
+            formFactors = {
+                0: "Unknown"
+                1: "Other"
+                2: "SIP"
+                3: "DIP"
+                4: "ZIP"
+                5: "SOJ"
+                6: "Proprietary"
+                7: "SIMM"
+                8: "DIMM"
+                9: "TSOP"
+                10: "PGA"
+                11: "RIMM"
+                12: "SODIMM"
+                13: "SRIMM"
+                14: "SMD"
+                15: "SSMP"
+                16: "QFP"
+                17: "TQFP"
+                18: "SOIC"
+                19: "LCC"
+                20: "PLCC"
+                21: "BGA"
+                22: "FPBGA"
+                23: "LGA"
+            }
+
+            memoryTypes = {
+                0: "Unknown"
+                1: "Other"
+                2: "DRAM"
+                3: "Synchronous DRAM"
+                4: "Cache DRAM"
+                5: "EDO"
+                6: "EDRAM"
+                7: "VRAM"
+                8: "SRAM"
+                9: "RAM"
+                10: "ROM"
+                11: "FLASH"
+                12: "EEPROM"
+                13: "FEPROM"
+                14: "EPROM"
+                15: "CDRAM"
+                16: "3DRAM"
+                17: "SDRAM"
+                18: "SGRAM"
+                19: "RDRAM"
+                20: "DDR"
+                21: "DDR2"
+                22: "DDR2 FB-DIMM"
+                24: "DDR3"
+                25: "FBD2"
+            }
+
+            entry.$$memorytype = memoryTypes[parseInt(entry.memorytype)]
+            entry.$$formfactor = formFactors[parseInt(entry.formfactor)]
+
             r_list.push(entry)
 
         for entry in cpu_entries
@@ -896,7 +956,8 @@ device_asset_module = angular.module(
                     else if assetrun.run_type == 9
                         _done.resolve(resolve_pci_entries(data[0].assetpcientry_set))
                     else if assetrun.run_type == 10
-                        _done.resolve(resolve_hw_entries(data[0].assethwmemoryentry_set, data[0].assethwcpuentry_set))
+                        console.log "data_object: ", data
+                        _done.resolve(resolve_hw_entries(data[0].memory_modules, data[0].cpus))
                     else
                         _done.resolve([])
                     _done.promise.then(
