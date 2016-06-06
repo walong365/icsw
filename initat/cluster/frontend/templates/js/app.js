@@ -58,7 +58,6 @@ icsw_app = angular.module(
         "gridster",
         "cfp.hotkeys",
         "init.csw.filters",
-        "icsw.tools.tree",
         "icsw.tools.reacttree",
         "icsw.layout.menu",
         "icsw.tools",

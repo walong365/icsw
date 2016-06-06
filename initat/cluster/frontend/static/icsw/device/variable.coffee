@@ -39,67 +39,95 @@ device_variable_module = angular.module(
                     ordering: 30
         }
     )
-]).controller("icswConfigVarsCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$uibModal", "ICSW_URLS", "icswDeviceConfigurationConfigVarTreeService", "icswSimpleAjaxCall",
-    ($scope, $compile, $filter, $templateCache, Restangular, $q, $uibModal, ICSW_URLS, icswDeviceConfigurationConfigVarTreeService, icswSimpleAjaxCall) ->
-        $scope.devvar_tree = new icswDeviceConfigurationConfigVarTreeService($scope)
-        $scope.var_filter = ""
-        $scope.loaded = false
-        $scope.new_devsel = (_dev_sel) ->
-            console.log "icswConfigVarsCtrl", _dev_sel
-            # $scope.devsel_list = _dev_sel
-        $scope.load_vars = () ->
-            if not $scope.loaded
-                $scope.loaded = true
-                icswSimpleAjaxCall(
-                    url     : ICSW_URLS.CONFIG_GET_DEVICE_CVARS
-                    data    :
-                        "keys" : angular.toJson($scope.devsel_list)
-                ).then((xml) ->
+]).controller("icswConfigVarsCtrl",
+[
+    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q",
+    "$uibModal", "ICSW_URLS", "icswDeviceConfigurationConfigVarTreeService",
+    "icswSimpleAjaxCall",
+(
+    $scope, $compile, $filter, $templateCache, Restangular, $q,
+    $uibModal, ICSW_URLS, icswDeviceConfigurationConfigVarTreeService,
+    icswSimpleAjaxCall
+) ->
+    $scope.devvar_tree = new icswDeviceConfigurationConfigVarTreeService(
+        $scope
+        {
+            show_selection_buttons: false
+            show_select: false
+            show_descendants: false
+        }
+    )
+    $scope.var_filter = ""
+    $scope.loaded = false
+    $scope.struct = {
+        # devices
+        devsel_list: []
+    }
+
+    $scope.new_devsel = (_dev_sel) ->
+        $scope.struct.devsel_list.length = 0
+        for entry in _dev_sel
+            if not entry.is_meta_device
+                $scope.struct.devsel_list.push(entry)
+
+    $scope.load_vars = () ->
+        if not $scope.loaded
+            $scope.loaded = true
+            icswSimpleAjaxCall(
+                url: ICSW_URLS.CONFIG_GET_DEVICE_CVARS
+                data:
+                    keys: angular.toJson((dev.idx for dev in $scope.struct.devsel_list))
+            ).then(
+                (xml) ->
                     $scope.set_tree_content($(xml).find("devices"))
-                )
-        $scope.set_tree_content = (in_xml) ->
-            for dev_xml in in_xml.find("device")
-                dev_xml = $(dev_xml)
-                dev_entry = $scope.devvar_tree.new_node({folder: true, expand:true, obj:{"name" : dev_xml.attr("name"), "info_str": dev_xml.attr("info_str"), "state_level" : parseInt(dev_xml.attr("state_level"))}, _node_type:"d"})
-                $scope.devvar_tree.add_root_node(dev_entry)
-                for _xml in dev_xml.find("var_tuple_list").children()
-                    _xml = $(_xml)
-                    t_entry = $scope.devvar_tree.new_node(
-                        folder: true
-                        obj:
-                            "key": _xml.attr("key")
-                            "value": _xml.attr("value")
-                        _node_type: "c"
-                    )
-                    dev_entry.add_child(t_entry)
-                    _xml.children().each (idx, _sv) ->
-                        _sv = $(_sv)
-                        t_entry.add_child(
-                            $scope.devvar_tree.new_node(
-                                folder: false
-                                obj:
-                                    "key": _sv.attr("key")
-                                    "value": _sv.attr("value")
-                                _node_type: "v"
-                            )
-                        )
-            $scope.$digest()
-        $scope.$watch("var_filter", (new_val) -> $scope.new_filter_set(new_val, true))
-        $scope.new_filter_set = (new_val) ->
-            if new_val
-                try
-                    filter_re = new RegExp(new_val, "gi")
-                catch
-                    filter_re = new RegExp("^$", "gi")
-            else
-                filter_re = new RegExp("^$", "gi")
-            $scope.devvar_tree.iter(
-                (entry, filter_re) ->
-                    cmp_name = if entry._node_type == "d" then entry.obj.name else entry.obj.key
-                    entry.set_selected(if cmp_name.match(filter_re) then true else false)
-                filter_re
             )
-            $scope.devvar_tree.show_selected(false)
+
+    $scope.set_tree_content = (in_xml) ->
+        console.log "in_xml=", in_xml[0]
+        for dev_xml in in_xml.find("device")
+            dev_xml = $(dev_xml)
+            dev_entry = $scope.devvar_tree.create_node({folder: true, expand:true, obj:{"name" : dev_xml.attr("name"), "info_str": dev_xml.attr("info_str"), "state_level" : parseInt(dev_xml.attr("state_level"))}, _node_type:"d"})
+            $scope.devvar_tree.add_root_node(dev_entry)
+            for _xml in dev_xml.find("var_tuple_list").children()
+                _xml = $(_xml)
+                t_entry = $scope.devvar_tree.create_node(
+                    folder: true
+                    obj:
+                        "key": _xml.attr("key")
+                        "value": _xml.attr("value")
+                    _node_type: "c"
+                )
+                dev_entry.add_child(t_entry)
+                _xml.children().each (idx, _sv) ->
+                    _sv = $(_sv)
+                    t_entry.add_child(
+                        $scope.devvar_tree.create_node(
+                            folder: false
+                            obj:
+                                "key": _sv.attr("key")
+                                "value": _sv.attr("value")
+                            _node_type: "v"
+                        )
+                    )
+        $scope.$digest()
+
+    $scope.$watch("var_filter", (new_val) -> $scope.new_filter_set(new_val, true))
+
+    $scope.new_filter_set = (new_val) ->
+        if new_val
+            try
+                filter_re = new RegExp(new_val, "gi")
+            catch
+                filter_re = new RegExp("^$", "gi")
+        else
+            filter_re = new RegExp("^$", "gi")
+        $scope.devvar_tree.iter(
+            (entry, filter_re) ->
+                cmp_name = if entry._node_type == "d" then entry.obj.name else entry.obj.key
+                entry.set_selected(if cmp_name.match(filter_re) then true else false)
+            filter_re
+        )
+        $scope.devvar_tree.show_selected(false)
 ]).directive("icswDeviceConfigurationVarOverview",
 [
     "$templateCache",
@@ -112,15 +140,16 @@ device_variable_module = angular.module(
         template : $templateCache.get("icsw.device.configuration.var.overview")
         controller: "icswConfigVarsCtrl"
     }
-]).service("icswDeviceConfigurationConfigVarTreeService", ["icswTreeConfig", (icswTreeConfig) ->
-    class device_config_var_tree extends icswTreeConfig
+]).service("icswDeviceConfigurationConfigVarTreeService",
+[
+    "icswReactTreeConfig",
+(
+    icswReactTreeConfig
+) ->
+    class device_config_var_tree extends icswReactTreeConfig
         constructor: (@scope, args) ->
             super(args)
-            @show_selection_buttons = false
-            @show_icons = true
-            @show_select = false
-            @show_descendants = false
-            @show_childs = false
+
         get_name_class: (t_entry) =>
             # override
             obj = t_entry.obj
@@ -133,6 +162,7 @@ device_variable_module = angular.module(
                     return "text-warning"
             else
                 return ""
+
         get_name : (t_entry) ->
             obj = t_entry.obj
             if t_entry._node_type == "d"

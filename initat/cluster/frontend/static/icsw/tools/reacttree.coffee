@@ -245,6 +245,10 @@ angular.module(
                             _tc.handle_click(event, _tn)
                             @force_redraw()
                             @props.parent_cb()
+                        onContextMenu: (event) =>
+                            _tc.handle_context_menu(event, _tn)
+                            @force_redraw()
+                            @props.parent_cb()
                         # onDoubleClick: (event) =>
                         #    console.log "DBL"
                         #    _tc.handle_dbl_click(event, _tn)
@@ -812,11 +816,17 @@ angular.module(
         selection_changed: (entry) =>
             console.warn "selection_changed not implemented for #{@name}"
 
+        handle_click: (event, entry) =>
+            console.warn "click not implemented"
+
+        handle_context_menu: (event, entry) =>
+            console.warn "context_menu not implemented"
+
 ]).directive("icswReactTree",
 [
-    "icswReactTreeDrawContainer", "icswReactTreeConfig",
+    "icswReactTreeDrawContainer", "icswReactTreeConfig", "$injector",
 (
-    icswReactTreeDrawContainer, icswReactTreeConfig,
+    icswReactTreeDrawContainer, icswReactTreeConfig, $injector,
 ) ->
     return {
         restrict: "E"
