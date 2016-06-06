@@ -49,6 +49,7 @@ wait = require("gulp-wait")
 strip_debug = require("gulp-strip-debug")
 fs = require("fs")
 plumber = require("gulp-plumber")
+preprocess = require("gulp-preprocess")
 
 class SourceMap
     constructor: (@name, @dest, @sources, @type, @static) ->
@@ -233,6 +234,11 @@ create_task = (key) ->
         ).pipe(
             changed(COMPILE_DIR)
         ).pipe(
+            gulpif(
+                (_is_coffee or _is_js),
+                preprocess({context: {DEBUG: not _is_prod}})
+            )
+        ).pipe(
             gulpif(_is_coffee and ! options.production, sourcemaps.init())
         ).pipe(
             gulpif(
@@ -250,7 +256,7 @@ create_task = (key) ->
         ).pipe(
             gulpif(
                 # remove console.log calls when in production
-                (_is_coffee or _is_js) and options.production, strip_debug()
+                _is_prod and (_is_coffee or _is_js), strip_debug()
             )
         ).pipe(
             gulpif(

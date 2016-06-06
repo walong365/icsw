@@ -18,6 +18,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+# selection module, handles session-persistent selections for non-FX enabled frontends
+
 angular.module(
     "icsw.layout.selection",
     [
@@ -34,8 +36,11 @@ angular.module(
 ) ->
     # used by menu.coffee (menu_base)
     _receivers = 0
-    # for testing
+    cur_selection = new icswSelection([], [], [], [])
+    # for testing, uses gulp-preprocess
+    # @if DEBUG
     cur_selection = new icswSelection([], [], [666, 3, 5, 16, 21], [3, 5, 16, 21, 666])
+    # @endif
     # cur_selection = new icswSelection([], [], [3, 5], [3, 5])
     # cur_selection = new icswSelection([], [], [3], [3])
     # windowstest
@@ -65,19 +70,24 @@ angular.module(
         $rootScope.$emit(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"))
 
     return {
-        "num_receivers": () ->
+        num_receivers: () ->
             return _receivers
+
         current: () ->
             return cur_selection
-        "get_selection": () ->
+
+        get_selection: () ->
             return cur_selection
-        "sync_selection": (new_sel) ->
+
+        sync_selection: (new_sel) ->
             # synchronizes cur_selection with new_sel
             sync_selection(new_sel)
-        "unsync_selection": () ->
+
+        unsync_selection: () ->
             # remove synchronization with saved (==DB-selection)
             unsync_selection()
-        "send_selection": () ->
+
+        send_selection: () ->
             send_selection()
 
         register_receiver: () ->
@@ -93,6 +103,8 @@ angular.module(
     Restangular, icswSavedSelectionService, ICSW_SIGNALS
 ) ->
 
+    SEL_VAR_NAME = "$$saved_selection"
+
     class icswSelection
         # only instantiated once (for now), also handles saved selections
         constructor: (@cat_sel, @devg_sel, @dev_sel, @tot_dev_sel) ->
@@ -102,8 +114,37 @@ angular.module(
             )
             @tree = undefined
             @sync_with_db(undefined)
+            @user = undefined
+            $rootScope.$on(ICSW_SIGNALS("ICSW_USER_CHANGED"), ($event, user) =>
+                @user = user
+                if user.has_var(SEL_VAR_NAME)
+                    @_last_stored = user.get_var(SEL_VAR_NAME).json_value
+                    _stored = angular.fromJson(@_last_stored)
+                    @dev_sel = _stored.dev_sel
+                    @tot_dev_sel = _stored.tot_dev_sel
+                    @sync_with_db(undefined)
+                else
+                    @_last_stored = ""
+            )
 
         update: (@cat_sel, @devg_sel, @dev_sel, @tot_dev_sel) ->
+            @selection_changed()
+
+        selection_changed: () =>
+            if @user
+                _new_store = angular.toJson(
+                    {
+                        dev_sel: @dev_sel
+                        tot_dev_sel: @tot_dev_sel
+                    }
+                )
+                if _new_store != @_last_stored
+                    @_last_stored = _new_store
+                    @user.set_json_var(
+                        SEL_VAR_NAME
+                        @_last_stored
+                    )
+
 
         sync_with_db: (@db_obj=undefined) =>
             if @db_obj
@@ -155,12 +196,14 @@ angular.module(
             if obj.idx not in @dev_sel
                 @dev_sel.push(obj.idx)
                 @tot_dev_sel.push(obj.idx)
+                @selection_changed()
 
         remove_selection: (obj) =>
             # remove selection
             if obj.idx in @dev_sel
                 _.pull(@dev_sel, obj.idx)
                 _.pull(@tot_dev_sel, obj.idx)
+                @selection_changed()
 
         device_is_selected: (obj) =>
             # only works for devices
@@ -169,6 +212,7 @@ angular.module(
         deselect_all_devices: (obj) =>
             @dev_sel = []
             @tot_dev_sel = []
+            @selection_changed()
 
         selection_saved: () =>
             # database object saved
@@ -198,6 +242,7 @@ angular.module(
             @devg_sel = []
             @tot_dev_sel = _.uniq(@tot_dev_sel)
             @dev_sel = _.uniq(@dev_sel)
+            @selection_changed()
 
         resolve_dev_name: (dev_idx) =>
             _dev = @tree.all_lut[dev_idx]
@@ -270,6 +315,7 @@ angular.module(
                 return true
             else
                 return false
+
         save_db_obj: () =>
             if @db_obj
                 # console.log @db_obj

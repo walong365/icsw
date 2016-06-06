@@ -171,7 +171,6 @@ user_module = angular.module(
             return @set_var(name, value, "i")
 
         get_var_names: (cur_re) =>
-            console.log cur_re
             return (key for key of @var_lut when key.match(cur_re))
             
         set_var: (name, value, var_type) =>
@@ -206,7 +205,7 @@ user_module = angular.module(
             _wait.promise.then(
                 (_var) =>
                     if _var.var_type != var_type
-                        console.log "trying to change var_type for '#{_var.name}'' from '#{_var.var_type}' to '#{var_type}'"
+                        console.error "trying to change var_type for '#{_var.name}'' from '#{_var.var_type}' to '#{var_type}'"
                         _result.reject("wrong type")
                     else
                         if var_type == "j"
@@ -376,7 +375,7 @@ user_module = angular.module(
         return _fetch_dict[client]
 
     return {
-        "load": (client) ->
+        load: (client) ->
             if load_called
                 # fetch when data is present (after sidebar)
                 return fetch_data(client).promise
