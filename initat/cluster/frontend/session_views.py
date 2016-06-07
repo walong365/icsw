@@ -186,13 +186,20 @@ class session_login(View):
             if db_user and db_user.otp_secret:
                 totp = pyotp.TOTP(db_user.otp_secret)
                 hotp = pyotp.HOTP(db_user.otp_secret)
+
                 if not totp.verify(otp) and not hotp.verify(otp, db_user.otp_counter):
                     raise ValidationError(
                         "Please enter a correct username and password. " +
                         "Note that both fields are case-sensitive."
                     )
-                else:
-                    db_user.get_and_increase_otp_counter()
+                elif hotp.verify(otp, db_user.otp_counter):
+                    ## make sure the otp is "fresh" enough, i.e the counter was reset recently
+                    if (timezone.now() - db_user.last_otp_counter_increase).seconds > 10:
+                        raise ValidationError(
+                            "One Time Password no longer valid. Please request a new one."
+                        )
+
+                db_user.get_and_increase_otp_counter()
         else:
             raise ValidationError("Need username and password")
         # TODO: determine whether this should be moved to its own method.
@@ -265,7 +272,7 @@ class send_otp_per_sms(View):
 
                 hotp = pyotp.HOTP(_user.otp_secret)
 
-                self.__send_sms("+4369917198115", _user.pager, str(hotp.at(counter)))
+                self.__send_sms("+4369912345678", _user.pager, str(hotp.at(counter)))
 
         return HttpResponse(
             json.dumps(
