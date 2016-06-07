@@ -194,7 +194,7 @@ class session_login(View):
                     )
                 elif hotp.verify(otp, db_user.otp_counter):
                     ## make sure the otp is "fresh" enough, i.e the counter was reset recently
-                    if (timezone.now() - db_user.last_otp_counter_increase).seconds > 10:
+                    if (timezone.now() - db_user.last_otp_counter_increase).seconds > OTP_VALIDITY_TIME:
                         raise ValidationError(
                             "One Time Password no longer valid. Please request a new one."
                         )
@@ -259,6 +259,7 @@ class UserView(viewsets.ViewSet):
 PLIVO_AUTH_ID = ""
 PLIVO_AUTH_TOKEN = ""
 LAST_SMS_SEND_TIME_DICT = {}
+OTP_VALIDITY_TIME = 300
 
 
 class send_otp_per_sms(View):
@@ -272,7 +273,9 @@ class send_otp_per_sms(View):
 
                 hotp = pyotp.HOTP(_user.otp_secret)
 
-                self.__send_sms("+4369912345678", _user.pager, str(hotp.at(counter)))
+                message = "otp:{} -- valid for {} minutes".format(hotp.at(counter), int(OTP_VALIDITY_TIME / 60))
+
+                self.__send_sms("+4369912345678", _user.pager, message)
 
         return HttpResponse(
             json.dumps(
@@ -286,7 +289,6 @@ class send_otp_per_sms(View):
         if _to not in LAST_SMS_SEND_TIME_DICT:
             LAST_SMS_SEND_TIME_DICT[_to] = _now
         else:
-            print (_now - LAST_SMS_SEND_TIME_DICT[_to]).seconds
             if (_now - LAST_SMS_SEND_TIME_DICT[_to]).seconds < 30:
                 return
 
