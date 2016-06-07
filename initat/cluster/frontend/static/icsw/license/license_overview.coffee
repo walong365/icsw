@@ -79,7 +79,7 @@ class license_usage
 
 lic_module = angular.module("icsw.license.overview",
     [
-        "ngResource", "ngCookies", "ngSanitize", "init.csw.filters", "ui.bootstrap", "ui.codemirror", "icsw.d3", "icsw.dimple",
+        "ngResource", "ngCookies", "ngSanitize", "init.csw.filters", "ui.bootstrap", "icsw.d3", "icsw.dimple",
         "icsw.tools.angular-dimple-init", "ui.bootstrap.datetimepicker", "restangular", "icsw.tools"
     ]
 ).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->

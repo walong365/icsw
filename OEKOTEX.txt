@@ -1,0 +1,36 @@
+Oekotex - Security
+
+Datensicherheit
+
+Sehr hoch, RAID6 als Storage, sämtliche Server laufen als virtuelle Instanzen
+auf oVirt-Clustern (kein Problem bei Hardwareausfall)
+Engmaschiges Monitoring, KPIs
+Redundante Anbindung ans Internet
+Redundante Server für den Zugriff auf die Datenbestände
+Redundante SQL-Server
+
+Gefahrenszenarien
+
+- physischer Zugriff
+
+Gering (Interxion), Diebstahl / Verlust eines Laptops mit Datenbank: hoch
+
+- virtueller Zugriff
+
+Zugriff auf Intranet gesichert durch VPNs
+Gefahr des Mißbrauchs einer VPN durch Accountsharing (vor allem im asiatischen Raum)
+Passwörter oft zu einfach, Passwortänderungen regelmäßig durchführen ?
+
+Mögliche Verbesserungen:
+
+Zugriff durch einen Account nur mehr von einer IP zugleich
+Nur mehr eine gültige Session pro User
+
+Zugriffskontrolle über 2-Factor authentication
+
+Mitprotokollieren von Zugriffen (passiert jetzt schon)
+
+Zukünftige Probleme:
+
+- Komplexitätsfalle, unterschiedliche Rollen beim Bearbeiten des Datenbestandes
+- vollständige Abdeckung über automatische Tests

@@ -148,14 +148,13 @@
         <button class="btn btn-xs" ng-class="io_struct.update && 'btn-success' || ''" ng-click="io_struct.update = !io_struct.update">
            <span class="fa fa-refresh"/> reload
         </button>
-        <button class="btn btn-xs" ng-class="io_struct.editorOptions.followTail && 'btn-success' || ''" ng-click="io_struct.editorOptions.followTail = !io_struct.editorOptions.followTail">
+        <button class="btn btn-xs" ng-class="io_struct.follow_tail && 'btn-success' || ''" ng-click="io_struct.toggle_follow_tail()">
            <span class="fa fa-arrow-down"/> follow
         </button>
     </h4>
     <div>
         <tt>
-            <textarea ui-codemirror="io_struct.editorOptions" ng-model="io_struct.text">
-            </textarea>
+            <div ui-ace="io_struct.ace_options" ng-model="io_struct.text" style="height:600px;"></div>
         </tt>
     </div>
 </script>

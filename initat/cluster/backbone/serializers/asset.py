@@ -26,7 +26,8 @@ from rest_framework import serializers
 from initat.cluster.backbone.models import AssetRun, AssetPackage, \
     AssetPackageVersion, AssetBatch, AssetHardwareEntry, AssetProcessEntry, \
     StaticAssetTemplate, StaticAssetTemplateField, AssetLicenseEntry, AssetUpdateEntry, \
-    AssetPCIEntry, AssetDMIHead, AssetDMIHandle, AssetDMIValue, AssetHWMemoryEntry, AssetHWCPUEntry
+    AssetPCIEntry, AssetDMIHead, AssetDMIHandle, AssetDMIValue, AssetHWMemoryEntry, AssetHWCPUEntry, AssetHWGPUEntry, \
+    AssetHWHDDEntry, AssetHWLogicalEntry, AssetHWDisplayEntry
 
 __all__ = [
     "AssetRunSimpleSerializer",
@@ -181,12 +182,44 @@ class AssetHWMemoryEntrySerializer(serializers.ModelSerializer):
             "idx", "banklabel", "formfactor", "memorytype", "manufacturer", "capacity"
         )
 
-class AssetHWCPUEntrySeerializer(serializers.ModelSerializer):
+class AssetHWCPUEntrySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AssetHWCPUEntry
         fields = (
             "idx", "numberofcores", "cpuname"
+        )
+
+class AssetHWGPUEntrySerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = AssetHWGPUEntry
+        fields = (
+            "idx", "gpuname", "driverversion"
+        )
+
+class AssetHWHDDEntrySerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = AssetHWHDDEntry
+        fields = (
+            "idx", "name", "serialnumber", "size"
+        )
+
+class AssetHWLogicalEntrySerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = AssetHWLogicalEntry
+        fields = (
+            "idx", "name", "size", "free"
+        )
+
+class AssetHWDisplayEntrySerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = AssetHWDisplayEntry
+        fields = (
+            "idx", "name", "type", "manufacturer"
         )
 
 class AssetRunDetailSerializer(serializers.ModelSerializer):
@@ -196,8 +229,12 @@ class AssetRunDetailSerializer(serializers.ModelSerializer):
     assetupdateentry_set = AssetUpdateEntrySerializer(many=True)
     assetpcientry_set = AssetPCIEntrySerializer(many=True)
     assetdmihead_set = AssetDMIHeadSerializer(many=True)
-    cpus = AssetHWCPUEntrySeerializer(many=True)
+    cpus = AssetHWCPUEntrySerializer(many=True)
     memory_modules = AssetHWMemoryEntrySerializer(many=True)
+    gpus = AssetHWGPUEntrySerializer(many=True)
+    hdds = AssetHWHDDEntrySerializer(many=True)
+    partitions = AssetHWLogicalEntrySerializer(many=True)
+    displays = AssetHWDisplayEntrySerializer(many=True)
 
     class Meta:
         model = AssetRun
@@ -206,7 +243,8 @@ class AssetRunDetailSerializer(serializers.ModelSerializer):
             "packages", "assethardwareentry_set",
             "assetprocessentry_set", "assetlicenseentry_set",
             "assetupdateentry_set", "assetpcientry_set", "assetdmihead_set",
-            "memory_modules", "memory_count", "cpus", "cpu_count"
+            "memory_modules", "memory_count", "cpus", "cpu_count", "gpus", "hdds",
+            "partitions", "displays"
         )
 
 

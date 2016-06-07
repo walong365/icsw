@@ -408,8 +408,8 @@ def get_base_assets_from_raw_result(asset_run,):
             cpu_data = _data['cpu']
             gpu_data = _data['gpu']
             hdd_data = _data['hdd']
-            logical_drives_data = _data['logical']
-            monitor_data = _data['monitor']
+            logical_data = _data['logical']
+            display_data = _data['monitor']
 
             for memory_entry in memory_data:
                 banklabel = memory_entry['banklabel']
@@ -465,12 +465,132 @@ def get_base_assets_from_raw_result(asset_run,):
                 asset_run.cpus.add(cpu)
                 asset_run.cpu_count += 1
 
-            #print memory_data
-            #print cpu_data
-            #print gpu_data
-            #print hdd_data
-            #print logical_drives_data
-            #print monitor_data
+            for gpu_entry in gpu_data:
+                gpuname = gpu_entry['name']
+                driverversion = gpu_entry['driverversion']
+
+                gpus = AssetHWGPUEntry.objects.filter(
+                    gpuname=gpuname,
+                    driverversion=driverversion
+                )
+
+                assert (len(gpus) < 2)
+
+                if gpus:
+                    gpu = gpus[0]
+                else:
+                    gpu = AssetHWGPUEntry(
+                        gpuname=gpuname,
+                        driverversion=driverversion
+                    )
+                    gpu.save()
+
+                asset_run.gpus.add(gpu)
+
+            for hdd_entry in hdd_data:
+                name = hdd_entry['name']
+                serialnumber = hdd_entry["serialnumber"]
+                size = hdd_entry['size']
+                if size:
+                    size = int(size)
+                else:
+                    size = None
+
+                hdds = AssetHWHDDEntry.objects.filter(
+                    name=name,
+                    serialnumber=serialnumber,
+                    size=size
+                )
+
+                assert (len(hdds) < 2)
+
+                if hdds:
+                    hdd = hdds[0]
+                else:
+                    hdd = AssetHWHDDEntry(
+                        name=name,
+                        serialnumber=serialnumber,
+                        size=size
+                    )
+                    hdd.save()
+
+                asset_run.hdds.add(hdd)
+
+            for logical_entry in logical_data:
+                name = logical_entry['name']
+                size = logical_entry['size']
+                free = logical_entry['free']
+
+                if size:
+                    size = int(size)
+                else:
+                    size = None
+
+                if free:
+                    free = int(free)
+                else:
+                    free = None
+
+                partitions = AssetHWLogicalEntry.objects.filter(
+                    name=name,
+                    size=size,
+                    free=free
+                )
+
+                assert (len(partitions) < 2)
+
+                if partitions:
+                    partition = partitions[0]
+                else:
+                    partition = AssetHWLogicalEntry(
+                        name=name,
+                        size=size,
+                        free=free
+                    )
+                    partition.save()
+
+                asset_run.partitions.add(partition)
+
+            for display_entry in display_data:
+                xpixels = display_entry['xpixels']
+                ypixels = display_entry['ypixels']
+                manufacturer = display_entry['manufacturer']
+                type = display_entry['type']
+                name = display_entry['name']
+
+                if xpixels:
+                    xpixels = int(xpixels)
+                else:
+                    xpixels = None
+
+                if ypixels:
+                    ypixels = int(ypixels)
+                else:
+                    ypixels = None
+
+                displays = AssetHWDisplayEntry.objects.filter(
+                    xpixels=xpixels,
+                    ypixels=ypixels,
+                    manufacturer=manufacturer,
+                    type=type,
+                    name=name
+                )
+
+                assert (len(displays) < 2)
+
+                if displays:
+                    display = displays[0]
+                else:
+                    display = AssetHWDisplayEntry(
+                        xpixels=xpixels,
+                        ypixels=ypixels,
+                        manufacturer=manufacturer,
+                        type=type,
+                        name=name
+                    )
+                    display.save()
+
+                asset_run.displays.add(display)
 
 ########################################################################################################################
 # Base Asset Classes
@@ -585,6 +705,50 @@ class AssetHWCPUEntry(models.Model):
     numberofcores = models.IntegerField(null=True)
 
     created = models.DateTimeField(auto_now_add=True)
+
+class AssetHWGPUEntry(models.Model):
+    idx = models.AutoField(primary_key=True)
+
+    gpuname = models.TextField(null=True)
+
+    driverversion = models.TextField(null=True)
+
+    created = models.DateTimeField(auto_now_add=True)
+
+class AssetHWHDDEntry(models.Model):
+    idx = models.AutoField(primary_key=True)
+
+    name = models.TextField(null=True)
+
+    serialnumber = models.TextField(null=True)
+
+    size = models.BigIntegerField(null=True)
+
+    created = models.DateTimeField(auto_now_add=True)
+
+class AssetHWLogicalEntry(models.Model):
+    idx = models.AutoField(primary_key=True)
+
+    name = models.TextField(null=True)
+
+    size = models.BigIntegerField(null=True)
+
+    free = models.BigIntegerField(null=True)
+
+    created = models.DateTimeField(auto_now_add=True)
+
+class AssetHWDisplayEntry(models.Model):
+    idx = models.AutoField(primary_key=True)
+
+    name = models.TextField(null=True)
+
+    type = models.TextField(null=True)
+
+    xpixels = models.IntegerField(null=True)
+
+    ypixels = models.IntegerField(null=True)
+
+    manufacturer = models.TextField(null=True)
 
 class AssetPackage(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -862,6 +1026,10 @@ class AssetRun(models.Model):
     memory_count = models.IntegerField(default=0)
     cpus = models.ManyToManyField(AssetHWCPUEntry)
     cpu_count = models.IntegerField(default=0)
+    gpus = models.ManyToManyField(AssetHWGPUEntry)
+    hdds = models.ManyToManyField(AssetHWHDDEntry)
+    partitions = models.ManyToManyField(AssetHWLogicalEntry)
+    displays = models.ManyToManyField(AssetHWDisplayEntry)
 
     def start(self):
         self.run_status = RunStatus.RUNNING

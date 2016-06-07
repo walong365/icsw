@@ -60,29 +60,6 @@ th.rotate > div > span {
   padding: 5px 10px;
 }
 
-.CodeMirror {
-    border-top: 1px solid black;
-    border-bottom: 1px solid black;
-    height: auto;
-}
-
-.CodeMirror-scroll {
-    overflow-y: hidden;
-    overflow-x: auto;
-    max-height: 600px;
-}
-
-.CodeMirror-activeline-background {
-    background: #ffff00 !important;
-}
-
-/*
-// workaround for missing code mirror indention (this bug does not seem to occur currently)  // BM 20150616
-.CodeMirror pre {
-    padding-left: 35px !important;
-}
-*/
-
 circle.fixed {
     fill : #ffaaaa ;
     stroke : #5555ff ;
@@ -191,3 +168,6 @@ del {
     width: 50px;
 }
 
+.ace_editor {
+    height: 200px;
+}

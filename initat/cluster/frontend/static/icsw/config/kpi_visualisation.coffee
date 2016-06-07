@@ -21,7 +21,7 @@
 angular.module(
     "icsw.config.kpi_visualisation",
     [
-        "icsw.tools.utils", "icsw.d3", "icsw.tools", "icsw.tools.status_history_utils", "ui.codemirror",
+        "icsw.tools.utils", "icsw.d3", "icsw.tools", "icsw.tools.status_history_utils",
     ]
 ).directive("icswConfigKpiEvaluationGraph",
 [
