@@ -338,6 +338,13 @@ device_asset_module = angular.module(
                 _salted.$$expanded = _prev.$$expanded
                 if _salted.$$assets_loaded
                     _salted.$$assets = _prev.$$assets
+                    _salted.$$memory_entries = _prev.$$memory_entries
+                    _salted.$$cpu_entries = _prev.$$cpu_entries
+                    _salted.$$gpu_entries = _prev.$$gpu_entries
+                    _salted.$$hdd_entries = _prev.$$hdd_entries
+                    _salted.$$partition_entries = _prev.$$partition_entries
+                    _salted.$$display_entries = _prev.$$display_entries
+
             $scope.struct.asset_runs.push(_salted)
             _dev = $scope.struct.device_tree.all_lut[_salted.device]
             _dev.assetrun_set.push(_salted)
@@ -849,14 +856,24 @@ device_asset_module = angular.module(
         else
             return null
 
-    resolve_hw_entries = (memory_entries, cpu_entries) ->
+    resolve_hw_entries = (assetrun, data) ->
+        memory_entries = data[0].memory_modules
+        cpu_entries = data[0].cpus
+        gpu_entries = data[0].gpus
+        hdd_entries = data[0].hdds
+        partition_entries = data[0].partitions
+        display_entries = data[0].displays
+
+        assetrun.$$memory_entries = []
+        assetrun.$$cpu_entries = []
+        assetrun.$$gpu_entries = []
+        assetrun.$$hdd_entries = []
+        assetrun.$$partition_entries = []
+        assetrun.$$display_entries = []
+
         r_list = []
 
-        console.log "memory_entries:", memory_entries
-        console.log "cpu_entries:", cpu_entries
-
         for entry in memory_entries
-            entry.$$type = 1
             entry.$$capacity = entry.capacity / (1024.0 * 1024.0)
 
             formFactors = {
@@ -917,11 +934,26 @@ device_asset_module = angular.module(
             entry.$$memorytype = memoryTypes[parseInt(entry.memorytype)]
             entry.$$formfactor = formFactors[parseInt(entry.formfactor)]
 
-            r_list.push(entry)
+            assetrun.$$memory_entries.push(entry)
 
         for entry in cpu_entries
-            entry.$$type = 2
-            r_list.push(entry)
+            assetrun.$$cpu_entries.push(entry)
+
+        for entry in gpu_entries
+            assetrun.$$gpu_entries.push(entry)
+
+        for entry in hdd_entries
+            entry.$$size = (parseInt(entry.size) / (1024 * 1024 * 1024)).toFixed(2)
+            assetrun.$$hdd_entries.push(entry)
+
+        for entry in partition_entries
+            entry.$$size = (parseInt(entry.size) / (1024 * 1024 * 1024)).toFixed(2)
+            entry.$$free = (parseInt(entry.free) / (1024 * 1024 * 1024)).toFixed(2)
+            entry.$$percentage_free = (((parseInt(entry.free) / parseInt(entry.size))) * 100).toFixed(2)
+            assetrun.$$partition_entries.push(entry)
+
+        for entry in display_entries
+            assetrun.$$display_entries.push(entry)
 
         return r_list
         
@@ -957,7 +989,7 @@ device_asset_module = angular.module(
                         _done.resolve(resolve_pci_entries(data[0].assetpcientry_set))
                     else if assetrun.run_type == 10
                         console.log "data_object: ", data
-                        _done.resolve(resolve_hw_entries(data[0].memory_modules, data[0].cpus))
+                        _done.resolve(resolve_hw_entries(assetrun, data))
                     else
                         _done.resolve([])
                     _done.promise.then(
