@@ -115,16 +115,20 @@ angular.module(
             @tree = undefined
             @sync_with_db(undefined)
             @user = undefined
+            @__user_var_used = false
             $rootScope.$on(ICSW_SIGNALS("ICSW_USER_CHANGED"), ($event, user) =>
                 @user = user
-                if user.has_var(SEL_VAR_NAME)
-                    @_last_stored = user.get_var(SEL_VAR_NAME).json_value
-                    _stored = angular.fromJson(@_last_stored)
-                    @dev_sel = _stored.dev_sel
-                    @tot_dev_sel = _stored.tot_dev_sel
-                    @sync_with_db(undefined)
-                else
-                    @_last_stored = ""
+                if @user?
+                    if user.has_var(SEL_VAR_NAME)
+                        if not @__user_var_used
+                            @__user_var_used = true
+                            @_last_stored = user.get_var(SEL_VAR_NAME).json_value
+                            _stored = angular.fromJson(@_last_stored)
+                            @dev_sel = _stored.dev_sel
+                            @tot_dev_sel = _stored.tot_dev_sel
+                            @sync_with_db(undefined)
+                    else
+                        @_last_stored = ""
             )
 
         update: (@cat_sel, @devg_sel, @dev_sel, @tot_dev_sel) ->
