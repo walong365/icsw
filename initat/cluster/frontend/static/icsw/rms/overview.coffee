@@ -21,15 +21,9 @@
 rms_module = angular.module(
     "icsw.rms",
     [
-        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.codemirror", "ui.bootstrap.datetimepicker", "angular-ladda"
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.bootstrap.datetimepicker", "angular-ladda"
     ]
-).value('ui.config', {
-    codemirror: {
-        mode: 'text/x-php'
-        lineNumbers: true
-        matchBrackets: true
-    }
-}).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
+).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
     $stateProvider.state(
         "main.rmsoverview", {
             url: "/rmsoverview"
@@ -258,15 +252,32 @@ rms_module = angular.module(
             @waiting = true
             @refresh = 0
             @update = true
-            @editorOptions = {
-                lineWrapping: false
-                lineNumbers: true
+            @follow_tail = false
+            @editor = undefined
+            @ace_options = {
+                uswWrapMode: false
+                showGutter: true
                 readOnly: true
-                styleActiveLine: true
-                indentUnit: 4
-                followTail: false
-                trackPosition: true
+                mode: "python"
+                onChange: @editor_changed
+                onLoad: @editor_loaded
             }
+
+        editor_loaded: (editor) =>
+            # console.log "editor=", editor
+            @editor = editor
+            @editor.setReadOnly(true)
+
+        editor_changed: () =>
+            # console.log "EC", @follow_tail, @editor
+            # console.log @editor.session.getLength(), @editor.getSession().getDocument().getLength();
+            # if @follow_tail
+            #     @editor.navigateFileEnd()
+
+        toggle_follow_tail: () =>
+            @follow_tail = !@follow_tail
+            if @editor and @follow_tail
+                @editor.navigateFileEnd()
 
         get_file_info: () ->
             if @valid
@@ -293,6 +304,8 @@ rms_module = angular.module(
                 if @text != _new_text
                     @text = _new_text
                     @refresh++
+                if @editor and @follow_tail
+                    @editor.navigateFileEnd()
             else
                 @update = false
                 @refresh++
@@ -837,14 +850,14 @@ rms_module = angular.module(
     "icswSimpleAjaxCall", "icswDeviceTreeService", "icswUserService",
     "icswRMSTools", "icswRMSHeaderStruct", "icswRMSSlotInfo", "icswRMSRunningStruct",
     "icswRMSWaitingStruct", "icswRMSDoneStruct", "icswRMSNodeStruct",
-    "icswComplexModalService", "icswRMSJobVarStruct",
+    "icswComplexModalService", "icswRMSJobVarStruct", "$window",
 (
     $scope, $compile, Restangular, ICSW_SIGNALS,
     $q, icswAcessLevelService, $timeout, ICSW_URLS,
     icswSimpleAjaxCall, icswDeviceTreeService, icswUserService,
     icswRMSTools, icswRMSHeaderStruct, icswRMSSlotInfo, icswRMSRunningStruct,
     icswRMSWaitingStruct, icswRMSDoneStruct, icswRMSNodeStruct,
-    icswComplexModalService, icswRMSJobVarStruct,
+    icswComplexModalService, icswRMSJobVarStruct, $window,
 ) ->
         icswAcessLevelService.install($scope)
 

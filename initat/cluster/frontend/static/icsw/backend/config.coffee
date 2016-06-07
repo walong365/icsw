@@ -21,7 +21,7 @@
 config_module = angular.module(
     "icsw.backend.config",
     [
-        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.codemirror",
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular",
         "angularFileUpload", "ui.select", "icsw.tools.button",
     ]
 ).service("icswConfigTree",

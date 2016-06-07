@@ -52,6 +52,7 @@ icsw_app = angular.module(
         "ngPromiseExtras",
         "ui.bootstrap",
         "ui.router",
+        "ui.ace",
         "restangular",
         "blockUI",
         "toaster",

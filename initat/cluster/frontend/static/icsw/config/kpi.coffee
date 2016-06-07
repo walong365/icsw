@@ -21,7 +21,7 @@
 angular.module(
     "icsw.config.kpi",
     [
-        "icsw.tools.utils", "icsw.d3", "icsw.config.kpi_visualisation", "angular-ladda", "ui.codemirror",
+        "icsw.tools.utils", "icsw.d3", "icsw.config.kpi_visualisation", "angular-ladda",
     ]
 ).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
     $stateProvider.state(
@@ -293,17 +293,11 @@ angular.module(
         child_scope.mode = mode
         child_scope.cur_edit_kpi = cur_edit_kpi
 
-        child_scope.editorOptions = {
-            lineWrapping : false
-            lineNumbers: true
-            mode:
-                name : "python"
-                version : 2
-            matchBrackets: true
-            styleActiveLine: true
-            indentUnit : 4
+        child_scope.ace_options = {
+            uswWrapMode: false
+            showGutter: true
+            mode: "python"
         }
-
 
         update_kpi_data_source = () ->
             # make sure to not query server twice at the same time
@@ -490,7 +484,7 @@ angular.module(
             time_range_parameter: 1
             enabled: true
             soft_states_as_hard_states: true
-            formula: "return initial_data\n\n\n\n\n\n\n\n\n\n"  # stupid workaround for CodeMirror indention bug
+            formula: "return initial_data\n"
         }
         show_kpi_dlg(scope, new_edit_kpi, KPI_DLG_MODE_CREATE)
     ret.show_modify_kpi_dlg = (scope, kpi) ->

@@ -64,7 +64,6 @@ sources = {
         "icsw.css"
         [
             "frontend/static/css/ui.fancytree.css",
-            "frontend/static/css/codemirror.css",
             "frontend/static/css/bootstrap.css",
             # "frontend/static/css/luna.css",
             "frontend/static/css/jquery.Jcrop.min.css",
@@ -91,6 +90,9 @@ sources = {
         [
             "frontend/static/js/modernizr-2.8.1.min.js",
             "frontend/static/js/jquery-2.2.4.min.js",
+            # ace editor
+            "frontend/static/js/ace-noconflict.js",
+            "frontend/static/js/mode-python.js",
         ]
         "js"
         true
@@ -103,7 +105,6 @@ sources = {
             "frontend/static/js/angular-1.5.6.js",
             "frontend/static/js/lodash.js",
             "frontend/static/js/bluebird.js",
-            "frontend/static/js/codemirror/codemirror.js",
             "frontend/static/js/bootstrap.js",
             "frontend/static/js/jquery.color.js",
             "frontend/static/js/jquery.blockUI.js",
@@ -123,6 +124,8 @@ sources = {
             # not needed ?
             "frontend/static/js/react-draggable.js",
             "frontend/static/js/hotkeys.js",
+            # ace editor
+            "frontend/static/js/ui-ace.js",
         ]
         "js"
         true
@@ -131,10 +134,6 @@ sources = {
         "js_extra1"
         "partc.js"
         [
-            "frontend/static/js/codemirror/addon/selection/active-line.js",
-            "frontend/static/js/codemirror/mode/python/python.js",
-            "frontend/static/js/codemirror/mode/xml/xml.js",
-            "frontend/static/js/codemirror/mode/shell/shell.js",
             # "frontend/static/js/jquery-ui-timepicker-addon.js",
             "frontend/static/js/angular-route.min.js",
             "frontend/static/js/angular-resource.min.js",
@@ -147,8 +146,6 @@ sources = {
             "frontend/static/js/select.js",
             "frontend/static/js/ui-bootstrap-tpls-1.3.3.min.js",
             "frontend/static/js/angular-ui-router.js",
-            # must use minified version, otherwise the minifier destroys injection info
-            "frontend/static/js/ui-codemirror.js",
             "frontend/static/js/datetime-picker.js",
             "frontend/static/js/datetime-picker.tpls.js",
             # "frontend/static/js/angular-strap.min.js",
