@@ -758,7 +758,7 @@ angular.module(
                 Restangular.all(ICSW_URLS.USER_GET_GLOBAL_PERMISSIONS.slice(1)).customGET()
                 icswSystemLicenseDataService.load("access_level")
                 Restangular.all(ICSW_URLS.USER_GET_OBJECT_PERMISSIONS.slice(1)).customGET()
-                Restangular.all(ICSW_URLS.MAIN_ROUTING_INFO.slice(1)).customPOST({dataType: "json"})
+                Restangular.all(ICSW_URLS.MAIN_ROUTING_INFO.slice(1)).customGET()
             ]
         ).then(
             (r_data) ->

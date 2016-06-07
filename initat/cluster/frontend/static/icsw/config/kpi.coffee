@@ -21,7 +21,7 @@
 angular.module(
     "icsw.config.kpi",
     [
-        "icsw.tools.utils", "icsw.d3", "icsw.config.kpi_visualisation", "angular-ladda"
+        "icsw.tools.utils", "icsw.d3", "icsw.config.kpi_visualisation", "angular-ladda", "ui.codemirror",
     ]
 ).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
     $stateProvider.state(
@@ -431,17 +431,18 @@ angular.module(
                 timeout: 120 * 1000
                 data:
                     kpi_serialized: kpi_serialized
-                    dev_mon_cat_tuples: JSON.stringify(cur_edit_kpi.selected_device_monitoring_category_tuple)
-            ).then((xml) ->
-                child_scope.kpi_result.kpi_set = angular.fromJson($(xml).find("value[name='kpi_set']").text())
+                    dev_mon_cat_tuples: angular.toJson(cur_edit_kpi.selected_device_monitoring_category_tuple)
+            ).then(
+                (xml) ->
+                    child_scope.kpi_result.kpi_set = angular.fromJson($(xml).find("value[name='kpi_set']").text())
 
-                kpi_error_report = angular.fromJson($(xml).find("value[name='kpi_error_report']").text())
-                if  kpi_error_report?
-                    # sometimes <type 'int'> or similar occurs in error, handle that
-                    kpi_error_report = (_.escape(line) for line in kpi_error_report)
-                    #child_scope.kpi_result.kpi_error_report = "<pre>" + kpi_error_report.join("<br/>") + "</pre>"
-                    child_scope.kpi_result.kpi_error_report = "<tt>" + kpi_error_report.join("<br/>").replace(/\ /g, "&nbsp;") + "</tt>"
-                child_scope.kpi_result.loading = false
+                    kpi_error_report = angular.fromJson($(xml).find("value[name='kpi_error_report']").text())
+                    if  kpi_error_report?
+                        # sometimes <type 'int'> or similar occurs in error, handle that
+                        kpi_error_report = (_.escape(line) for line in kpi_error_report)
+                        #child_scope.kpi_result.kpi_error_report = "<pre>" + kpi_error_report.join("<br/>") + "</pre>"
+                        child_scope.kpi_result.kpi_error_report = "<tt>" + kpi_error_report.join("<br/>").replace(/\ /g, "&nbsp;") + "</tt>"
+                    child_scope.kpi_result.loading = false
 
             )
 

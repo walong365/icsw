@@ -324,11 +324,11 @@ class GetKpiSourceData(View):
         srv_com['time_range_parameter'] = request.POST['time_range_parameter']
         result = contact_server(request, "md-config", srv_com, log_error=True, log_result=False)
         if result:
-            print result.pretty_print()
+            # print result.pretty_print()
             request.xml_response['response'] = result['kpi_set']
 
 
-class CalculateKpiPreview(ListAPIView):
+class CalculateKpiPreview(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     @rest_logging
