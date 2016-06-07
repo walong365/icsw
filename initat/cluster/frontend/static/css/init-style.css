@@ -1,5 +1,5 @@
 icsw-login-page .container-fluid {
-    max-width: 550px;
+    max-width: 400px;
     }
 
 .fancytree-container > li > .fancytree-folder >.btn-group {
@@ -15,7 +15,7 @@ icsw-login-page .container-fluid {
     margin-top:2px;
     }
 .fa { /* chrome fix */
-    font-family: FontAwesome,"Helvetica Neue",Helvetica,Arial,sans-serif;
+    font-family: FontAwesome,Arial,Helvetica,sans-serif;
 }
 .nav-tabs {
     margin-top: 7px;
