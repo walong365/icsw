@@ -26,8 +26,11 @@ import base64
 import json
 import logging
 import pyotp
+import plivo
+import datetime
 
 import django
+from django.utils import timezone
 from django.contrib.auth import login, logout, authenticate
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
@@ -188,6 +191,8 @@ class session_login(View):
                         "Please enter a correct username and password. " +
                         "Note that both fields are case-sensitive."
                     )
+                else:
+                    db_user.get_and_increase_otp_counter()
         else:
             raise ValidationError("Need username and password")
         # TODO: determine whether this should be moved to its own method.
@@ -243,24 +248,24 @@ class UserView(viewsets.ViewSet):
         serializer = user_serializer([_user], context={"request": request}, many=True)
         return Response(serializer.data)
 
+
+PLIVO_AUTH_ID = ""
+PLIVO_AUTH_TOKEN = ""
+LAST_SMS_SEND_TIME_DICT = {}
+
+
 class send_otp_per_sms(View):
     def post(self, request):
         _users = user.objects.filter(login=request.POST["login"])
         if _users:
             _user = _users[0]
-            if _user.otp_secret:
-                counter = _user.otp_counter
-                counter += 1
 
-                _user.otp_counter = counter
-                _user.save()
+            if _user.otp_secret and _user.pager:
+                counter = _user.get_and_increase_otp_counter()
 
                 hotp = pyotp.HOTP(_user.otp_secret)
 
-                # todo send otp per sms
-                print "*" * 20
-                print hotp.at(counter)
-                print "*" * 20
+                self.__send_sms("+4369917198115", _user.pager, str(hotp.at(counter)))
 
         return HttpResponse(
             json.dumps(
@@ -269,3 +274,21 @@ class send_otp_per_sms(View):
                 }
             )
         )
+    def __send_sms(self, _from, _to, msg):
+        _now = datetime.datetime.now()
+        if _to not in LAST_SMS_SEND_TIME_DICT:
+            LAST_SMS_SEND_TIME_DICT[_to] = _now
+        else:
+            print (_now - LAST_SMS_SEND_TIME_DICT[_to]).seconds
+            if (_now - LAST_SMS_SEND_TIME_DICT[_to]).seconds < 30:
+                return
+
+        p = plivo.RestAPI(PLIVO_AUTH_ID, PLIVO_AUTH_TOKEN)
+        params = {
+            'src': _from,
+            'dst': _to,
+            'text': msg,
+            'method': 'POST'
+        }
+        response = p.send_message(params)
+        print(response)

@@ -43,6 +43,7 @@ from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
 from django.utils.encoding import force_text
+from django.utils import timezone
 
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models.functions import check_empty_string, check_integer, \
@@ -724,6 +725,17 @@ class user(models.Model):
     # one time password fields
     otp_secret = models.CharField(max_length=16, blank=True, default="")
     otp_counter = models.BigIntegerField(default=0)
+    last_otp_counter_increase = models.DateTimeField(auto_now_add=True)
+
+    def get_and_increase_otp_counter(self):
+        counter = self.otp_counter
+        counter += 1
+
+        self.otp_counter = counter
+        self.last_otp_counter_increase = timezone.now()
+        self.save()
+
+        return counter
 
     def get_otp_provisioning_uri(self):
         _login_name = self.login
