@@ -109,6 +109,7 @@ angular.module(
                             csrf_token = data[0]
                             _user = data[1].user
                             blockUI.stop()
+                            console.log "STATE=", _val
                             $state.go(_val)
                     )
             (error) ->

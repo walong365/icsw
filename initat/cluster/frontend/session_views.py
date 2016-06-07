@@ -46,7 +46,7 @@ from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.constants import GEN_CS_NAME
 from initat.tools import config_store
 
-logger = logging.getLogger("cluster.setup")
+logger = logging.getLogger("cluster.session")
 
 
 class get_csrf_token(View):

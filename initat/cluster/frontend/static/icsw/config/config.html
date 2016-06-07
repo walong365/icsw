@@ -123,6 +123,7 @@
                     <icsw-config-category-tree-select
                         edit-obj="edit_obj"
                         icsw-sub-tree="'config'"
+                        icsw-mode="obj"
                     ></icsw-config-category-tree-select>
                 </fieldset>
             </uib-tab>
@@ -563,7 +564,7 @@
                     <h4><span ng-class="get_info_class(dev_conf)">{{ dev_conf.info_str }}</span></h4>
                     <div class="row">
                         <div class="col-md-5">
-                            <tree treeconfig="dev_conf.tree"></tree>
+                            <icsw-react-tree icsw-tree-config="dev_conf.tree"></icsw-react-tree>
                         </div>
                         <div class="col-md-7">
                             <div ng-show="dev_conf.active_error.length">
@@ -802,6 +803,7 @@
                     <icsw-config-category-tree-select
                         edit-obj="edit_obj"
                         icsw-sub-tree="'mon'"
+                        icsw-mode="obj"
                     ></icsw-config-category-tree-select>
                 </fieldset>
             </uib-tab>

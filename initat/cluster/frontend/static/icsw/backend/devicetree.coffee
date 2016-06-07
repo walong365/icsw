@@ -26,7 +26,7 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap",
         "init.csw.filters", "restangular", "noVNC", "ui.select", "icsw.tools",
-        "icsw.device.info", "icsw.tools.tree", "icsw.user",
+        "icsw.device.info", "icsw.user",
     ]
 ).service("icswDeviceTreeHelper",
 [

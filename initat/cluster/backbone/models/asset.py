@@ -412,29 +412,58 @@ def get_base_assets_from_raw_result(asset_run,):
             monitor_data = _data['monitor']
 
             for memory_entry in memory_data:
-                entry_str = "BankLabel:{} Formfactor:{} Ramtype:{} Manufacturer:{} Capacity:{} MiB".format(
-                    memory_entry['banklabel'],
-                    memory_entry['formfactor'],
-                    memory_entry['memorytype'],
-                    memory_entry['manufacturer'],
-                    int(memory_entry['capacity']) / (1024 * 1024)
-                )
-                new_memory_entry = AssetHWMemoryEntry(
-                    asset_run=asset_run,
-                    value=entry_str
-                )
-                new_memory_entry.save()
+                banklabel = memory_entry['banklabel']
+                formfactor = memory_entry['formfactor']
+                memorytype = memory_entry['memorytype']
+                manufacturer = memory_entry['manufacturer']
+                capacity = int(memory_entry['capacity'])
+
+                memory_modules = AssetHWMemoryEntry.objects.filter(
+                    banklabel=banklabel,
+                    formfactor=formfactor,
+                    memorytype=memorytype,
+                    manufacturer=manufacturer,
+                    capacity=capacity)
+
+                assert(len(memory_modules) < 2)
+
+                if memory_modules:
+                    memory_module = memory_modules[0]
+                else:
+                    memory_module = AssetHWMemoryEntry(
+                        banklabel=banklabel,
+                        formfactor=formfactor,
+                        memorytype=memorytype,
+                        manufacturer=manufacturer,
+                        capacity=capacity
+                    )
+                    memory_module.save()
+
+                asset_run.memory_modules.add(memory_module)
+                asset_run.memory_count += 1
 
             for cpu_entry in cpu_data:
-                entry_str = "CPUType:{} Cores:{}".format(
-                    cpu_entry['name'],
-                    cpu_entry['numberofcores']
+                cpuname = cpu_entry['name']
+                numberofcores = int(cpu_entry['numberofcores'])
+
+                cpus = AssetHWCPUEntry.objects.filter(
+                    cpuname=cpuname,
+                    numberofcores=numberofcores
                 )
-                new_cpu_entry = AssetHWCPUEntry(
-                    asset_run=asset_run,
-                    value=entry_str
-                )
-                new_cpu_entry.save()
+
+                assert(len(cpus) < 2)
+
+                if cpus:
+                    cpu = cpus[0]
+                else:
+                    cpu = AssetHWCPUEntry(
+                        cpuname=cpuname,
+                        numberofcores=numberofcores
+                    )
+                    cpu.save()
+
+                asset_run.cpus.add(cpu)
+                asset_run.cpu_count += 1
 
             #print memory_data
             #print cpu_data
@@ -534,15 +563,28 @@ class PackageTypeEnum(IntEnum):
 
 class AssetHWMemoryEntry(models.Model):
     idx = models.AutoField(primary_key=True)
-    value = models.TextField()
+
+    # i.e slot 0 / slot A
+    banklabel = models.TextField(null=True)
+    # dimm type
+    formfactor = models.TextField(null=True)
+    # i.e ddr/ddr2 if known
+    memorytype = models.TextField(null=True)
+
+    manufacturer = models.TextField(null=True)
+
+    capacity = models.BigIntegerField(null=True)
+
     created = models.DateTimeField(auto_now_add=True)
-    asset_run = models.ForeignKey("backbone.AssetRun")
 
 class AssetHWCPUEntry(models.Model):
     idx = models.AutoField(primary_key=True)
-    value = models.TextField()
+
+    cpuname = models.TextField(null=True)
+
+    numberofcores = models.IntegerField(null=True)
+
     created = models.DateTimeField(auto_now_add=True)
-    asset_run = models.ForeignKey("backbone.AssetRun")
 
 class AssetPackage(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -815,6 +857,11 @@ class AssetRun(models.Model):
     # link to packageversions
     packages = models.ManyToManyField(AssetPackageVersion)
     created = models.DateTimeField(auto_now_add=True)
+
+    memory_modules = models.ManyToManyField(AssetHWMemoryEntry)
+    memory_count = models.IntegerField(default=0)
+    cpus = models.ManyToManyField(AssetHWCPUEntry)
+    cpu_count = models.IntegerField(default=0)
 
     def start(self):
         self.run_status = RunStatus.RUNNING

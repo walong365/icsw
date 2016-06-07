@@ -96,7 +96,7 @@ menu_module = angular.module(
     $scope.$on("$stateChangeStart", (event, to_state, to_params, from_state, from_params) ->
         to_main = if to_state.name.match(/^main/) then true else false
         from_main = if from_state.name.match(/^main/) then true else false
-        console.log "state_cs", to_state.name, to_main, from_state.name, from_main
+        console.log "$stateChangeStart from '#{from_state.name}' (#{from_main}) to '#{to_state.name}' (#{to_main})"
         if to_main and not from_main
             true
         else if to_state.name == "login"
@@ -110,7 +110,7 @@ menu_module = angular.module(
     $scope.$on("$stateChangeSuccess", (event, to_state, to_params, from_state, from_params) ->
         to_main = if to_state.name.match(/^main/) then true else false
         from_main = if from_state.name.match(/^main/) then true else false
-        console.log "success", to_state.name, to_main, from_state.name, from_main
+        console.log "$stateChangeSuccess from '#{from_state.name}' (#{from_main}) to '#{to_state.name}' (#{to_main})"
         route_counter++
         if to_state.name == "logout"
             blockUI.start("Logging out...")
@@ -436,19 +436,24 @@ menu_module = angular.module(
             $(window).off("resize", @update_dimensions)
     
         render: () ->
-            _menu_struct = icswRouteHelper.get_struct() 
-            menus = (new MenuHeader(state) for state in _menu_struct.menu_header_states)
+            _menu_struct = icswRouteHelper.get_struct()
+            # may not be valid
+            # console.log "mv", _menu_struct.valid
+            if _menu_struct.valid
+                menus = (new MenuHeader(state) for state in _menu_struct.menu_header_states)
+                # console.log menus.length
+                for state in _menu_struct.menu_states
+                    # find menu
+                    menu = (entry for entry in menus when entry.state.icswData.menuHeader.key == state.icswData.menuEntry.menukey)
+                    if menu.length
+                        menu[0].add_entry(state)
+                    else
+                        console.error("No menu with name #{state.icswData.menuEntry.menukey} found (#{state.icswData.pageTitle})")
+                        console.log "Menus known:", (entry.state.icswData.menuHeader.key for entry in menus).join(", ")
 
-            for state in _menu_struct.menu_states
-                # find menu
-                menu = (entry for entry in menus when entry.state.icswData.menuHeader.key == state.icswData.menuEntry.menukey)
-                if menu.length
-                    menu[0].add_entry(state)
-                else
-                    console.error("No menu with name #{state.icswData.menuEntry.menukey} found (#{state.icswData.pageTitle})")
-                    console.log "Menus known:", (entry.state.icswData.menuHeader.key for entry in menus).join(", ")
+            else
+                menus = []
 
-            # todo: check for service_type
             if menus.length
                 _res = ul(
                     {

@@ -740,7 +740,7 @@ dashboard_module = angular.module(
         d = $q.defer()
         # to be improved, use icswComplexModalService
         BootstrapDialog.show
-            message: $compile($templateCache.get($scope.db_element.template_name))(sub_scope)
+            message: $compile($scope.db_element.template)(sub_scope)
             title: $scope.db_element.title
             size: BootstrapDialog.SIZE_WIDE
             cssClass: "modal-tall modal-wide"
@@ -751,11 +751,12 @@ dashboard_module = angular.module(
                 # hack to position to the left
                 _tw = ref.getModal().width()
                 _diag = ref.getModalDialog()
-                if prev_left?
-                    $(_diag[0]).css("left", prev_left)
-                    $(_diag[0]).css("top", prev_top)
-                else
-                    $(_diag[0]).css("left", - (_tw - 600)/2)
+                height = $(window).height() - 100
+                # if prev_left?
+                #    $(_diag[0]).css("left", prev_left)
+                #    $(_diag[0]).css("top", prev_top)
+                # else
+                #    $(_diag[0]).css("left", - (_tw - 600)/2)
                 sub_scope.modal = ref
             onhidden: (ref) ->
                 _diag = ref.getModalDialog()

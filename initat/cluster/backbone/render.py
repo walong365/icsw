@@ -42,7 +42,11 @@ class permission_required_mixin(object):
     def dispatch(self, request, *args, **kwargs):
         perm_ok = True
         if self.all_required_permissions:
-            if any([_perm.count(".") != 2 for _perm in self.all_required_permissions]):
+            if any(
+                [
+                    _perm.count(".") != 2 for _perm in self.all_required_permissions
+                ]
+            ):
                 raise ImproperlyConfigured(
                     "permission format error: {}".format(
                         ", ".join(self.all_required_permissions)
@@ -57,7 +61,11 @@ class permission_required_mixin(object):
                 )
                 perm_ok = False
         if self.any_required_permissions:
-            if any([_perm.count(".") != 2 for _perm in self.any_required_permissions]):
+            if any(
+                [
+                    _perm.count(".") != 2 for _perm in self.any_required_permissions
+                ]
+            ):
                 raise ImproperlyConfigured("permission format error: {}".format(", ".join(self.any_required_permissions)))
             if not request.user.has_any_object_perms(self.any_required_permissions):
                 logger.error(

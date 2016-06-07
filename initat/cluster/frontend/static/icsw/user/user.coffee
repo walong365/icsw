@@ -171,7 +171,6 @@ user_module = angular.module(
             return @set_var(name, value, "i")
 
         get_var_names: (cur_re) =>
-            console.log cur_re
             return (key for key of @var_lut when key.match(cur_re))
             
         set_var: (name, value, var_type) =>
@@ -206,7 +205,7 @@ user_module = angular.module(
             _wait.promise.then(
                 (_var) =>
                     if _var.var_type != var_type
-                        console.log "trying to change var_type for '#{_var.name}'' from '#{_var.var_type}' to '#{var_type}'"
+                        console.error "trying to change var_type for '#{_var.name}'' from '#{_var.var_type}' to '#{var_type}'"
                         _result.reject("wrong type")
                     else
                         if var_type == "j"
@@ -376,7 +375,7 @@ user_module = angular.module(
         return _fetch_dict[client]
 
     return {
-        "load": (client) ->
+        load: (client) ->
             if load_called
                 # fetch when data is present (after sidebar)
                 return fetch_data(client).promise
@@ -753,18 +752,13 @@ user_module = angular.module(
     }
 ]).service("icswUserGroupDisplayTree",
 [
-    "icswTreeConfig",
+    "icswReactTreeConfig",
 (
-    icswTreeConfig
+    icswReactTreeConfig
 ) ->
-    class icswUserGroupDisplayTree extends icswTreeConfig
+    class icswUserGroupDisplayTree extends icswReactTreeConfig
         constructor: (@scope, args) ->
             super(args)
-            @show_selection_buttons = false
-            @show_icons = true
-            @show_select = false
-            @show_descendants = true
-            @show_childs = false
             @init_feed()
 
         init_feed: () =>
@@ -793,9 +787,9 @@ user_module = angular.module(
                 if entry.obj.only_webfrontend
                     span.addClass("fa fa-genderless fa-fw")
 
-        handle_click: (entry, event) =>
+        handle_click: (event, entry) =>
             @clear_active()
-            entry.active = true
+            entry.set_active(true)
             @scope.add_edit_object_from_tree(entry)
             @scope.$digest()
 
@@ -808,15 +802,16 @@ user_module = angular.module(
             else
                 return "fa fa-group"
 
-]).service("icswDiskUsageTree", ["icswTreeConfig", (icswTreeConfig) ->
-    class icsw_disk_usage_tree extends icswTreeConfig
+]).service("icswDiskUsageTree",
+[
+    "icswReactTreeConfig",
+(
+    icswReactTreeConfig
+) ->
+    class icsw_disk_usage_tree extends icswReactTreeConfig
         constructor: (@scope, args) ->
             super(args)
-            @show_selection_buttons = false
-            @show_icons = true
-            @show_select = false
-            @show_descendants = true
-            @show_childs = false
+
         get_name : (t_entry) ->
             _dir = t_entry.obj
             _size_total = _dir.size_total
@@ -859,7 +854,16 @@ user_module = angular.module(
         # error string (info string
         error_string: ""
         # display tree
-        display_tree: new icswUserGroupDisplayTree($scope)
+        display_tree: new icswUserGroupDisplayTree(
+            $scope
+            {
+                show_selection_buttons: false
+                show_icons: true
+                show_select: false
+                show_descendants: true
+                show_childs: false
+            }
+        )
         # filter string
         filterstr: ""
         # edit groups and users
@@ -921,7 +925,7 @@ user_module = angular.module(
             for entry in _ugt.group_list
                 # set csw dummy permission list and optimizse object_permission list
                 # $scope.init_csw_cache(entry, "group")
-                t_entry = _dt.new_node(
+                t_entry = _dt.create_node(
                     folder: true
                     obj: entry
                     expand: !entry.parent_group
@@ -953,7 +957,7 @@ user_module = angular.module(
             for entry in _ugt.user_list
                 # set csw dummy permission list and optimise object_permission_list
                 # $scope.init_csw_cache(entry, "user")
-                t_entry = _dt.new_node(
+                t_entry = _dt.create_node(
                     {
                         folder: false
                         obj: entry
@@ -1644,7 +1648,12 @@ user_module = angular.module(
                     entry.$$files_limit = _get_files_limit(entry)
 
     }
-]).directive("icswUserDiskUsage", ["$compile", "$templateCache", "icswTools", "icswDiskUsageTree", ($compile, $templateCache, icswTools, icswDiskUsageTree) ->
+]).directive("icswUserDiskUsage",
+[
+    "$compile", "$templateCache", "icswTools", "icswDiskUsageTree",
+(
+    $compile, $templateCache, icswTools, icswDiskUsageTree,
+) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.user.disk.usage")
@@ -1681,7 +1690,16 @@ user_module = angular.module(
                         if entry.expand
                             _expanded.push(entry.obj.full_name)
                     )
-                scope.du_tree = new icswDiskUsageTree(scope)
+                scope.du_tree = new icswDiskUsageTree(
+                    scope
+                    {
+                        show_selection_buttons: false
+                        show_icons: true
+                        show_select: false
+                        show_descendants: true
+                        show_childs: false
+                    }
+                )
                 scope.SIZE_LIMIT = 1024 * 1024
                 _tree_lut = {}
                 _rest_list = []
@@ -1699,7 +1717,7 @@ user_module = angular.module(
                         _ns_list.push(entry.idx)
                         continue
                     nodes_shown++
-                    t_entry = scope.du_tree.new_node(
+                    t_entry = scope.du_tree.create_node(
                         folder: false
                         obj: entry
                         expand: entry.full_name in _expanded

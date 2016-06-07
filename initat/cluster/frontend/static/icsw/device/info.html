@@ -416,3 +416,10 @@
         </fieldset>
     </form>
 </script>
+
+<script type="text/ng-template" id="icsw.device.list.info">
+    <span>
+        <button ladda="struct.is_loading" class="btn btn-xs btn-warning" ng-show="struct.is_loading">Loading</button>
+        <span ng-show="!struct.is_loading">{{ struct.header }}</span>
+    </span>
+</script>
