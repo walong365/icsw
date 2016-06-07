@@ -1429,7 +1429,7 @@ angular.module(
                                 React.createElement(
                                     icswBurstReactSegmentText,
                                     {
-                                        key: element.key
+                                        key: _element.key + "_leg"
                                         element: _element
                                         draw_parameters: @props.draw_parameters
                                     }

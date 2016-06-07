@@ -31,7 +31,7 @@
                     &nbsp;
                     <icsw-tools-button type="submit" value="sync users" ng-click="sync_users()"></icsw-tools-button>
                 </div>
-                <tree treeconfig="struct.display_tree"></tree>
+                <icsw-react-tree icsw-tree-config="struct.display_tree"></icsw-react-tree>
             </uib-tab>
             <uib-tab ng-repeat="edit_group in struct.edit_groups">
                 <uib-tab-heading>
@@ -330,9 +330,13 @@
 </script>
 
 <script type="text/ng-template" id="icsw.user.disk.usage">
-    <h4>{{ scan_run_info() }}<span ng-show="current_scan_run">, </span><input ng-show="current_scan_run" type="button" class="btn btn-xs" ng-class="show_dots && 'btn-success'" value="show dot dirs" ng-click="toggle_dots()"></input></h4>
-    <div ng-show="current_scan_run">
-        <tree treeconfig="du_tree"></tree>
+    <h4>
+        {{ scan_run_info() }}
+        <span ng-show="current_scan_run">,</span>
+        <input ng-show="current_scan_run" type="button" class="btn btn-xs" ng-class="show_dots && 'btn-success'" value="show dot dirs" ng-click="toggle_dots()"/>
+    </h4>
+    <div ng-if="current_scan_run">
+        <icsw-react-tree icsw-tree-config="du_tree"></icsw-react-tree>
     </div>
 </script>
 

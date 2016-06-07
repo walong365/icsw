@@ -294,6 +294,7 @@ angular.module(
     _init = false
     _user = undefined
     _acls = undefined
+    _acls_valid = false
     _struct = {
         valid: false
         icsw_states: []
@@ -316,11 +317,14 @@ angular.module(
         # dashboard states
         _struct.dashboard_states.length = 0
         if _init
+            # console.log "U/ACLS:", _user, _acls, _init, _acls
+            #if _acls?
+            #    console.log _acls.global_permissions
             for state in _struct.icsw_states
                 data = state.icswData
                 _add = true
                 if data.rights?
-                    if _user and _acls
+                    if _user and _acls_valid
                         if angular.isFunction(data.rights)
                             if _user?
                                 _add = data.rights(_user.user, _acls)
@@ -329,6 +333,8 @@ angular.module(
                         else
                             # console.log data.rights
                             _add = icswAcessLevelService.has_all_menu_permissions(data.rights)
+                            # if not _add
+                            #    console.log "NOT", data.rights
                         if data.licenses? and _add
                             _add = icswAcessLevelService.has_all_valid_licenses(data.licenses)
                             if not _add
@@ -351,14 +357,16 @@ angular.module(
                     if data.$$dashboardEntry
                         _struct.dashboard_states.push(state)
             # signal: we have changed the rights
-            $rootScope.$emit(ICSW_SIGNALS("ICSW_ROUTE_RIGHTS_CHANGED"))
-        if _init and _user and _acls
+        if _init and _user? and _acls_valid
             _struct.valid = true
             # signal: we have changed the rights with valid user and acls
             $rootScope.$emit(ICSW_SIGNALS("ICSW_ROUTE_RIGHTS_VALID"))
         else
             _struct.valid = false
             $rootScope.$emit(ICSW_SIGNALS("ICSW_ROUTE_RIGHTS_INVALID"))
+        # console.log "RR", _init, _struct.valid, _user, _acls, _struct.icsw_states.length
+        # emit this signal at last so that struct.valid is already set
+        $rootScope.$emit(ICSW_SIGNALS("ICSW_ROUTE_RIGHTS_CHANGED"))
                     
 
     init_struct = () ->
@@ -386,6 +394,10 @@ angular.module(
 
     $rootScope.$on(ICSW_SIGNALS("ICSW_ACLS_CHANGED"), (event, acls) ->
         _acls = acls
+        if _acls?
+            _acls_valid = _acls.acls_are_valid
+        else
+            _acls_valid = false
         _check_rights()
     )
 
@@ -726,6 +738,7 @@ angular.module(
         data.license_tree = {}
         # routing info
         data.routing_info = {}
+        # acls are valid
         data.acls_are_valid = false
 
     _last_load = 0
@@ -734,6 +747,7 @@ angular.module(
 
     reload = (force) ->
         if _reload_pending
+            console.log "RELOAD PENDING"
             return
         cur_time = moment().unix()
         if Math.abs(cur_time - _last_load) < 5 and not force
@@ -744,27 +758,32 @@ angular.module(
                 Restangular.all(ICSW_URLS.USER_GET_GLOBAL_PERMISSIONS.slice(1)).customGET()
                 icswSystemLicenseDataService.load("access_level")
                 Restangular.all(ICSW_URLS.USER_GET_OBJECT_PERMISSIONS.slice(1)).customGET()
-                Restangular.all(ICSW_URLS.MAIN_ROUTING_INFO.slice(1)).customPOST({dataType: "json"})
+                Restangular.all(ICSW_URLS.MAIN_ROUTING_INFO.slice(1)).customGET()
             ]
         ).then(
             (r_data) ->
                 _reload_pending = false
                 _acls_loaded = true
                 _last_load = moment().unix()
-                data.global_permissions = r_data[0]
+                data.global_permissions = r_data[0].plain()
+                # console.log "************"
+                # console.log "__authenticated" of data.global_permissions, data.global_permissions["__authenticated"]
+                # console.log "************"
                 data.license_tree = r_data[1]
-                data.object_permissions = r_data[2]
-                data.routing_info = r_data[3]
+                data.object_permissions = r_data[2].plain()
+                data.routing_info = r_data[3].plain()
                 # console.log data.routing_info.service_types
-                data.acls_are_valid = true
+                data.acls_are_valid = data.global_permissions["__authenticated"]
                 # console.log "Acls set, sending signal"
                 _changed()
             (error) ->
+                # console.log "NOT LOADED"
                 _reset()
                 _changed()
         )
 
     $rootScope.$on(ICSW_SIGNALS("ICSW_USER_CHANGED"), (event, user) ->
+        # console.log "***", user
         reload(true)
     )
 
@@ -805,7 +824,10 @@ angular.module(
     has_menu_permission = (p_name) ->
         if p_name.split(".").length == 2
             p_name = "backbone.#{p_name}"
-        return p_name of data.global_permissions or p_name of data.object_permissions
+        _valid = p_name of data.global_permissions or p_name of data.object_permissions
+        # if not _valid
+        #    console.log "NV", p_name, _.keys(data.global_permissions), _.keys(data.object_permissions)
+        return _valid
 
     has_service_type = (s_name) ->
         return s_name of data.routing_info.service_types

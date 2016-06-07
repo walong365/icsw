@@ -42,7 +42,7 @@ from rest_framework_xml.parsers import XMLParser
 from rest_framework_xml.renderers import XMLRenderer
 
 from initat.cluster.backbone import serializers
-from initat.cluster.backbone.models import config, device, device_config, ConfigTreeNode, \
+from initat.cluster.backbone.models import device, device_config, ConfigTreeNode, \
     get_related_models, mon_check_command, category, config_str, config, \
     config_script, config_bool, config_blob, config_int, config_catalog
 from initat.cluster.backbone.serializers import config_dump_serializer, mon_check_command_serializer

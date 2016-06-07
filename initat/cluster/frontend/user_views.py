@@ -67,7 +67,7 @@ class sync_users(View):
         ).filter(
             Q(home_dir_created=False) & Q(active=True) & Q(group__active=True)
         ).select_related("export__device")
-        logger.info("user homes to create: %d" % (len(create_user_list)))
+        logger.info("user homes to create: {:d}".format(len(create_user_list)))
         for create_user in create_user_list:
             logger.info(
                 "trying to create user_home for '{}' on server {}".format(
@@ -148,7 +148,10 @@ class change_object_permission(View):
     def post(self, request):
         _post = request.POST
         auth_pk = int(_post["auth_pk"])
-        auth_obj = {"g": group, "u": user}[_post["auth_type"]].objects.get(Q(pk=auth_pk))
+        auth_obj = {
+            "g": group,
+            "u": user
+        }[_post["auth_type"]].objects.get(Q(pk=auth_pk))
         set_perm = csw_permission.objects.select_related("content_type").get(Q(pk=_post["csw_idx"]))
         obj_pk = int(_post["obj_idx"])
         add = True if int(_post["set"]) else False
@@ -354,16 +357,17 @@ class GetGlobalPermissions(RetrieveAPIView):
         for _key in _keys:
             _parts = _key.split(".")
             in_dict.setdefault(_parts[0], {}).setdefault(_parts[1], {})[_parts[2]] = in_dict[_key]
+        in_dict["__authenticated"] = True
         return in_dict
 
-    @method_decorator(login_required_rest(lambda: {}))
+    @method_decorator(login_required_rest(lambda: {"__authenticated": False}))
     @rest_logging
     def get(self, request, *args, **kwargs):
         return Response(self._unfold(request.user.get_global_permissions()))
 
 
 class GetObjectPermissions(RetrieveAPIView):
-    @method_decorator(login_required_rest(lambda: {}))
+    @method_decorator(login_required_rest(lambda: {"__authenticated": False}))
     @rest_logging
     def get(self, request, *args, **kwargs):
         return Response(GetGlobalPermissions._unfold(request.user.get_all_object_perms(None)))

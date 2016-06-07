@@ -29,23 +29,18 @@ angular.module(
     ]
 ).service("icswConfigCategoryDisplayTree",
 [
-    "icswTreeConfig",
+    "icswReactTreeConfig",
 (
-    icswTreeConfig
+    icswReactTreeConfig
 ) ->
-    class icswConfigCategoryDisplayTree extends icswTreeConfig
+    class icswConfigCategoryDisplayTree extends icswReactTreeConfig
         constructor: (@scope, args) ->
             super(args)
-            @show_selection_buttons = false
-            @show_icons = false
-            @show_select = false
-            @show_descendants = true
-            @show_childs = false
             @mode_entries = []
             @location_re = new RegExp("^/location/.*$")
             # link to config-service of a list controller
-            @config_service = undefined
-            @config_object = undefined
+            # @config_service = undefined
+            # @config_object = undefined
 
         create_mode_entries: (mode, cat_tree) =>
             @mode_entries.length = []
@@ -78,15 +73,16 @@ angular.module(
             # r_info = "#{r_info}"
             return r_info
 
-        handle_dblclick: (entry, event) =>
+        handle_context_menu: (event, entry) =>
             cat = entry.obj
             if cat.depth
                 @config_service.create_or_edit(@config_object.scope, event, false, cat)
+            event.preventDefault()
 
         toggle_active_obj: (obj) =>
             node = @lut[obj.idx]
             if node.obj
-                node.active = !node.active
+                node.set_active(!node.active)
                 if node.active
                     @scope.selected_category = node.obj
                 else
@@ -94,7 +90,7 @@ angular.module(
                 @show_active()
                 @scope.update_active()
 
-        handle_click: (entry, event) =>
+        handle_click: (event, entry) =>
             @toggle_active_obj(entry.obj)
             @scope.$digest()
 
@@ -117,6 +113,9 @@ angular.module(
             scope.dn_tree = scope.icsw_config_object.dn_tree
             scope.mode = scope.icsw_config_object.mode
             scope.mode_is_location = scope.mode == "location"
+            # links, a little hacky...
+            scope.dn_tree.config_object = scope.icsw_config_object
+            scope.dn_tree.config_service = @
             defer.resolve(scope.dn_tree.mode_entries)
             return defer.promise
 
@@ -325,7 +324,14 @@ angular.module(
 ) ->
     $scope.struct = {}
     $scope.reload = () ->
-        $scope.dn_tree = new icswConfigCategoryDisplayTree($scope, {})
+        $scope.dn_tree = new icswConfigCategoryDisplayTree(
+            $scope
+            {
+                show_selection_buttons: false
+                show_select: false
+                show_descendants: true
+            }
+        )
         icswCategoryTreeService.load($scope.$id).then(
             (tree) ->
                 $scope.tree = tree
@@ -359,7 +365,7 @@ angular.module(
         $scope.dn_tree.clear_tree()
         # only use mode_entries (for historic reasons, different category types are still mixed elsewhere here)
         for entry in $scope.dn_tree.mode_entries
-            t_entry = $scope.dn_tree.new_node(
+            t_entry = $scope.dn_tree.create_node(
                 {
                     folder: false
                     obj: entry
@@ -541,6 +547,22 @@ angular.module(
                 if entry.depth < 1 or entry.full_name.split("/")[1] == mode
                     @mode_entries.push(entry)
 
+        hide_unused_entries: (useable_idxs, cat_tree) =>
+            _full_list = []
+            # mark all used up to parent
+            for _idx in useable_idxs
+                # speedup
+                if _idx not in _full_list
+                    _full_list.push(_idx)
+                    _p = cat_tree.lut[_idx]
+                    while _p.parent
+                        _p = cat_tree.lut[_p.parent]
+                        _full_list.push(_p.idx)
+            # make unique
+            _full_list = _.uniq(_full_list)
+            # filter mode entries
+            @mode_entries = (entry for entry in @mode_entries when entry.idx in _full_list)
+
         get_name : (t_entry) =>
             obj = t_entry.obj
             if obj.depth
@@ -717,7 +739,7 @@ angular.module(
                 () ->
                 () ->
                 (notify) =>
-                    console.log "cnrb"
+                    # console.log "cnrb"
                     build_tree()
             )
 
@@ -748,10 +770,11 @@ angular.module(
         # build tree, called when something changes
 
         # list of useable categories
+        _dct = $scope.struct.disp_cat_tree
 
-        $scope.struct.disp_cat_tree.create_mode_entries($scope.struct.sub_tree, $scope.struct.cat_tree)
+        _dct.create_mode_entries($scope.struct.sub_tree, $scope.struct.cat_tree)
 
-        _useable_idxs = (entry.idx for entry in $scope.struct.disp_cat_tree.mode_entries when entry.useable)
+        _useable_idxs = (entry.idx for entry in _dct.mode_entries when entry.useable)
         # console.log "u", _useable_idxs
 
         if $scope.struct.mode == "obj"
@@ -787,11 +810,13 @@ angular.module(
                     sel_cat = []
             # useable are only the categories present in the current dataset
             if $scope.mon_data?
-                _useable_idxs =  _.intersection(_useable_idxs, $scope.mon_data.used_cats)
+                _useable_idxs = _.intersection(_useable_idxs, $scope.mon_data.used_cats)
+                # further reduce mode entries by filtering non-useable entries
+                _dct.hide_unused_entries(_useable_idxs, $scope.struct.cat_tree)
 
-        if $scope.struct.disp_cat_tree.root_nodes.length
+        if _dct.root_nodes.length
             _to_expand = []
-            $scope.struct.disp_cat_tree.iter(
+            _dct.iter(
                 (node) ->
                     if node.expand
                         _to_expand.push(node.obj.idx)
@@ -799,11 +824,11 @@ angular.module(
         else
             _to_expand = (entry.idx for entry in $scope.struct.cat_tree.list when entry.depth < 2)
 
-        $scope.struct.disp_cat_tree.clear_root_nodes()
-        $scope.struct.disp_cat_tree.clear_tree()
+        _dct.clear_root_nodes()
+        _dct.clear_tree()
         if $scope.struct.mode == "filter"
             # add uncategorized entry
-            dummy_entry = $scope.struct.disp_cat_tree.create_node(
+            dummy_entry = _dct.create_node(
                 folder: false
                 obj: {
                     idx: 0
@@ -815,7 +840,7 @@ angular.module(
                 selected: 0 in sel_cat
                 show_select: true
             )
-            $scope.struct.disp_cat_tree.lut[dummy_entry.obj.idx] = dummy_entry
+            _dct.lut[dummy_entry.obj.idx] = dummy_entry
             # init
             _obj_pks = []
         else
@@ -823,7 +848,7 @@ angular.module(
             _obj_pks = (_obj.idx for _obj in $scope.struct.objects)
 
         # console.log "pks=", _obj_pks
-        for entry in $scope.struct.disp_cat_tree.mode_entries
+        for entry in _dct.mode_entries
             if $scope.struct.mode == "filter"
                 _sel = entry.idx in sel_cat
                 _match_pks = []
@@ -835,7 +860,7 @@ angular.module(
                     _sel = false
                 _match_pks = (_val for _val in entry.reference_dict.device when _val in _obj_pks)
                 _match_pks.sort()
-            t_entry = $scope.struct.disp_cat_tree.create_node(
+            t_entry = _dct.create_node(
                 folder: false
                 obj: entry
                 expand: entry.idx in _to_expand
@@ -844,18 +869,18 @@ angular.module(
             )
             # copy matching pks to tree entry (NOT entry because entry is global)
             t_entry.$match_pks = (_v for _v in _match_pks)
-            $scope.struct.disp_cat_tree.lut[entry.idx] = t_entry
-            if entry.parent and entry.parent of $scope.struct.disp_cat_tree.lut
-                $scope.struct.disp_cat_tree.lut[entry.parent].add_child(t_entry)
+            _dct.lut[entry.idx] = t_entry
+            if entry.parent and entry.parent of _dct.lut
+                _dct.lut[entry.parent].add_child(t_entry)
             else
                 # hide selection from root nodes
                 t_entry.show_select = false
-                $scope.struct.disp_cat_tree.add_root_node(t_entry)
+                _dct.add_root_node(t_entry)
                 if dummy_entry?
                     # add dummy at first (if defined)
-                    $scope.struct.disp_cat_tree.lut[entry.idx].add_child(dummy_entry)
+                    _dct.lut[entry.idx].add_child(dummy_entry)
         # console.log "*", $scope.cat_tree.lut
-        $scope.struct.disp_cat_tree.show_selected(true)
+        _dct.show_selected(true)
 
     $scope.new_selection = (t_entry, new_sel) ->
         # console.log "S", t_entry, new_sel

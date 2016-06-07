@@ -23,15 +23,15 @@ config_gen_module = angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular",
     ]
-).service("icswConfigConfigTreeService", ["icswTreeConfig", (icswTreeConfig) ->
-    class config_tree extends icswTreeConfig
+).service("icswConfigConfigTreeService",
+[
+    "icswReactTreeConfig",
+(
+    icswReactTreeConfig
+) ->
+    class icswConfigConfigTreeService extends icswReactTreeConfig
         constructor: (@scope, args) ->
             super(args)
-            @show_selection_buttons = false
-            @show_icons = true
-            @show_select = false
-            @show_descendants = false
-            @show_childs = false
         get_name : (t_entry) ->
             switch t_entry._node_type
                 when "eh"
@@ -54,7 +54,7 @@ config_gen_module = angular.module(
                     return node_str
                 else
                     return "unknown _node_type '#{t_entry._node_type}'"
-        handle_click: (t_entry, event) =>
+        handle_click: (event, t_entry) =>
             @clear_selected()
             t_entry.selected = true
             switch t_entry._node_type
@@ -83,24 +83,27 @@ config_gen_module = angular.module(
     $scope.result_trees = []
     $scope.new_devsel = (_dev_sel) ->
         $scope.devsel_list = _dev_sel
+
     $scope.dev_names = () ->
         # FIXME
         return $scope.devsel_list.join("::")
         return resolve_device_keys($scope.devsel_list)
+
     $scope._build_list = (ct) ->
         _r_list = [ct]
         for _subnode in ct.sub_nodes
             for _res in $scope._build_list(_subnode)
                 _r_list.push(_res)
         return _r_list
+
     $scope.generate_config = () ->
         $scope.result_trees = []
         blockUI.start()
         icswSimpleAjaxCall(
-            url     : ICSW_URLS.CONFIG_GENERATE_CONFIG
-            data    : {
-                "pk_list" : angular.toJson($scope.devsel_list)
-            },
+            url: ICSW_URLS.CONFIG_GENERATE_CONFIG
+            data: {
+                pk_list: angular.toJson((_dev.idx for _dev in $scope.devsel_list))
+            }
         ).then(
             (xml) ->
                 blockUI.stop()
@@ -108,40 +111,55 @@ config_gen_module = angular.module(
                 _json = angular.fromJson(result)
                 cur_list = []
                 for cur_dev in _json["devices"]
-                    new_tree = new icswConfigConfigTreeService($scope)
+                    new_tree = new icswConfigConfigTreeService(
+                        $scope
+                        {
+                            show_selection_buttons: false
+                            show_icons: true
+                            show_select: false
+                            show_descendants: false
+                        }
+                    )
                     new_conf = {
-                        state : parseInt(cur_dev.state_level)
-                        name : cur_dev.name
-                        tree : new_tree
-                        info_str : cur_dev.info_str
-                        active_error : []
-                        active_content : []
+                        state: parseInt(cur_dev.state_level)
+                        name: cur_dev.name
+                        tree: new_tree
+                        info_str: cur_dev.info_str
+                        active_error: []
+                        active_content: []
                     }
                     new_tree.dev_conf = new_conf
                     if new_conf.state >= 40
-                        top_node = new_tree.new_node(
+                        top_node = new_tree.create_node(
                             {
-                                folder     :  true
-                                _node_type : "eh"
-                                expand     : true
+                                folder:  true
+                                _node_type: "eh"
+                                expand: true
                             }
                         )
                         new_tree.add_root_node(top_node)
                         # build error tree
                         for entry in cur_dev.info_dict
-                            t_entry = new_tree.new_node({folder:true, obj:entry, _node_type : "e", expand:true})
+                            t_entry = new_tree.create_node(
+                                {
+                                    folder: true
+                                    obj: entry
+                                    _node_type: "e"
+                                    expand: true
+                                }
+                            )
                             top_node.add_child(t_entry)
                     else
                         node_lut = {}
                         # build list of entries
                         _tree_list = $scope._build_list(cur_dev.config_tree)
                         for entry in _tree_list
-                            t_entry = new_tree.new_node(
+                            t_entry = new_tree.create_node(
                                 {
-                                    folder : parseInt(entry.is_dir)
-                                    _node_type : "c"
-                                    expand : parseInt(entry.depth) < 2
-                                    obj : entry
+                                    folder: parseInt(entry.is_dir)
+                                    _node_type: "c"
+                                    expand: parseInt(entry.depth) < 2
+                                    obj: entry
                                 }
                             )
                             node_id = entry.node_id

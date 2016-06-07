@@ -34,7 +34,7 @@ from initat.cluster.backbone.models.license import LicenseViolation, LicenseUsag
 from initat.cluster.frontend.rest_views import rest_logging
 
 
-logger = logging.getLogger("cluster.monitoring")
+logger = logging.getLogger("cluster.license")
 
 
 def login_required_rest(default_value_generator=lambda: []):
