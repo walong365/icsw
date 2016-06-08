@@ -7,7 +7,9 @@
         <uib-accordion-group is-open="struct.is_open_roles">
             <uib-accordion-heading>
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': struct.is_open_roles, 'glyphicon-chevron-right': !struct.is_open_roles}"></i>
-                {{ num_roles() }} valid cluster roles defined (viewed from {{ struct.local_device }})
+                {{ num_roles() }} valid cluster roles defined
+                <span ng-show="struct.local_device_ok">(viewed from {{ struct.local_device }})</span>
+                <span ng-show="!struct.local_device_ok" class="text-danger">({{ struct.local_device }})</span>
                 <span class="text-warning" ng-show="struct.loading">Updating ...</span>
                 <span class="label label-danger" ng-show="struct.unroutable_config_names.length">There are {{ struct.unroutable_config_names.length }} unroutable configs</span>
             </uib-accordion-heading>

@@ -75,6 +75,8 @@ angular.module(
         server_info_list: []
         # local device
         local_device: "---"
+        # local device is ok
+        local_device_ok: false
         # routing information
         routing_info: {}
         # current timeout object
@@ -90,7 +92,12 @@ angular.module(
             if new_val
                 _ri = icswAcessLevelService.get_routing_info()
                 $scope.struct.routing_info = _ri.routing
-                $scope.struct.local_device = _ri.local_device
+                if _ri.local_device
+                    $scope.struct.local_device_ok = true
+                    $scope.struct.local_device = _ri.local_device
+                else
+                    $scope.struct.local_device_ok = false
+                    $scope.struct.local_device = _ri.internal_dict._server_info_str
                 $scope.struct.unroutable_configs = _ri.unroutable_configs
                 $scope.struct.unroutable_config_names =  []
                 for key, v of _ri.unroutable_configs
