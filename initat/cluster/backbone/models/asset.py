@@ -697,6 +697,15 @@ class AssetHWMemoryEntry(models.Model):
 
     created = models.DateTimeField(auto_now_add=True)
 
+    def __unicode__(self):
+        return "MemoryEntry[BankLabel:{}|FormFactor:{}|Memorytype:{}|Manufacturer:{}|Capacity:{}]".format(
+            self.banklabel,
+            self.formfactor,
+            self.memorytype,
+            self.manufacturer,
+            self.capacity
+        )
+
 class AssetHWCPUEntry(models.Model):
     idx = models.AutoField(primary_key=True)
 
@@ -706,6 +715,9 @@ class AssetHWCPUEntry(models.Model):
 
     created = models.DateTimeField(auto_now_add=True)
 
+    def __unicode__(self):
+        return "CPUEntry[CPUname:{}|Numberofcores:{}]".format(self.cpuname, self.numberofcores)
+
 class AssetHWGPUEntry(models.Model):
     idx = models.AutoField(primary_key=True)
 
@@ -714,6 +726,9 @@ class AssetHWGPUEntry(models.Model):
     driverversion = models.TextField(null=True)
 
     created = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return "GPUEntry[GPUname:{}|Driverversion:{}]".format(self.gpuname, self.driverversion)
 
 class AssetHWHDDEntry(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -726,6 +741,9 @@ class AssetHWHDDEntry(models.Model):
 
     created = models.DateTimeField(auto_now_add=True)
 
+    def __unicode__(self):
+        return "HDDEntry[Name:{}|Serialnumber:{}|Size:{}]".format(self.name, self.serialnumber, self.size)
+
 class AssetHWLogicalEntry(models.Model):
     idx = models.AutoField(primary_key=True)
 
@@ -736,6 +754,10 @@ class AssetHWLogicalEntry(models.Model):
     free = models.BigIntegerField(null=True)
 
     created = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return "PartitionEntry[Name:{}|Size:{}|Free:{}]".format(self.name, self.size, self.free)
+
 
 class AssetHWDisplayEntry(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -749,6 +771,15 @@ class AssetHWDisplayEntry(models.Model):
     ypixels = models.IntegerField(null=True)
 
     manufacturer = models.TextField(null=True)
+
+    def __unicode__(self):
+        return "DisplayEntry[Name:{}|Type:{}|xpixels:{}|ypixels:{}|manufacturer:{}]".format(
+            self.name,
+            self.type,
+            self.xpixels,
+            self.ypixels,
+            self.manufacturer
+        )
 
 class AssetPackage(models.Model):
     idx = models.AutoField(primary_key=True)
