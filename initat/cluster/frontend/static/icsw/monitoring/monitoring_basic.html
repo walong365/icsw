@@ -329,7 +329,7 @@
                             </td>
                         </tr>
                         <tr>
-                            <th st-sort="getters.user">User</th>
+                            <th st-sort="loginname" st-sort-default="ascending">User</th>
                             <th st-sort="snperiod">Service:</th>
                             <th st-sort="snrecovery">rec</th>
                             <th st-sort="sncritical">crit</th>
@@ -350,7 +350,7 @@
                     </thead>
                     <tbody>
                         <tr ng-repeat="obj in entries_displayed">
-                            <td>{{ user_group_tree.user_lut[obj.user].login }}</td>
+                            <td>{{ obj.loginname }}</td>
                             <td>{{ basic_tree.mon_period_lut[obj.snperiod].name }}</td>
                             <td>{{ obj.snrecovery | yesno1 }}</td>
                             <td>{{ obj.sncritical | yesno1 }}</td>
