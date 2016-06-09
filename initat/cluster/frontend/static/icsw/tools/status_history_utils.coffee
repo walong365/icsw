@@ -394,8 +394,14 @@ angular.module(
 
                         _mousemove = (event) ->
                             entry = event.data
-                            _pos_x = event.offsetX - _tooltip.width() / 2
-                            _pos_y = event.offsetY - _tooltip.height() - 10
+
+                            _pos_x = event.pageX - _tooltip.width() / 2
+                            _pos_y = event.pageY - _tooltip.height() - 10
+
+                            if _pos_x < 0
+                                _pos_x = 0
+
+                            _tooltip.css("position", "fixed")
                             _tooltip.css("left", "#{_pos_x}px")
                             _tooltip.css("top", "#{_pos_y}px")
 
