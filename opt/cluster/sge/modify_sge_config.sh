@@ -82,8 +82,6 @@ prolog root@${SGE_ROOT}/3rd_party/prologue \$host \$job_owner \$job_id \$job_nam
 epilog root@${SGE_ROOT}/3rd_party/epilogue \$host \$job_owner \$job_id \$job_name \$queue 
 shell_start_mode posix_compliant
 reschedule_unknown 00:30:00
-enforce_project true
-enforce_user true
 qmaster_params ENABLE_FORCED_QDEL
 execd_params ACCT_RESERVED_USAGE,NO_REPRIORITIZATION,SHARETREE_RESERVED_USAGE,ENABLE_ADDGRP_KILL=true,NOTIFY_KILL,H_MEMORYLOCKED=infinity
 qlogin_command ${SGE_ROOT}/3rd_party/qlogin_wrapper.sh
@@ -92,7 +90,8 @@ qlogin_daemon /usr/sbin/sshd -i
 rlogin_daemon /usr/sbin/sshd -i
 xterm /usr/bin/xterm
 enforce_project false
-enforce_user false
+auto_user_fshare 100
+enforce_user auto
 EOF
 #echo "rsh_command none" >> /tmp/.qconf_config
 #echo "rsh_daemon none" >> /tmp/.qconf_config

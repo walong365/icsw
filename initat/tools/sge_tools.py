@@ -1431,19 +1431,29 @@ def build_waiting_list(s_info, options, **kwargs):
                 # ... deadline
                 "dl_contr": float(act_job.findtext("JB_dlcontr")),
                 # override portion of the total number of tickets assigned to the job currently
-                "otckt": float(act_job.findtext("otickets")),
+                "otickets": float(act_job.findtext("otickets")),
                 # functional portion of the total number of tickets assigned to the job currently
-                "ftckt": float(act_job.findtext("ftickets")),
+                "ftickets": float(act_job.findtext("ftickets")),
                 # share portion of the total number of tickets assigned to the job currently
-                "stckt": float(act_job.findtext("stickets")),
-                # share of the total system to which the job is entitled currentl
+                "stickets": float(act_job.findtext("stickets")),
+                # total number of tickets
+                "tickets": float(act_job.findtext("tickets")),
+                # share of the total system to which the job is entitled currently
                 "share": float(act_job.findtext("JAT_share")),
+
             }
             # import pprint
             # pprint.pprint(_info_dict)
             # print _info_dict
             cur_job.append(
-                E.queue_details("{:.4f}".format(_info_dict["share"]), raw=json.dumps(_info_dict))
+                E.queue_details(
+                    "{:.4f} / {:.4f} / {:.4f}".format(
+                        _info_dict["norm_pprio"],
+                        _info_dict["norm_urg"],
+                        _info_dict["norm_tickets"],
+                    ),
+                    raw=json.dumps(_info_dict)
+                )
             )
         cur_job.extend(
             [
