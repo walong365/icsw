@@ -175,11 +175,20 @@ class AssetDMIHeadSerializer(serializers.ModelSerializer):
         model = AssetDMIHead
 
 class AssetHWMemoryEntrySerializer(serializers.ModelSerializer):
+    formfactorname = serializers.SerializerMethodField()
+    memorytypename = serializers.SerializerMethodField()
+
+    def get_formfactorname(self, obj):
+        return obj.get_name_of_form_factor()
+
+    def get_memorytypename(self, obj):
+        return obj.get_name_of_memory_type()
 
     class Meta:
         model = AssetHWMemoryEntry
         fields = (
-            "idx", "banklabel", "formfactor", "memorytype", "manufacturer", "capacity"
+            "idx", "banklabel", "formfactor", "memorytype",
+            "manufacturer", "capacity", "formfactorname", "memorytypename"
         )
 
 class AssetHWCPUEntrySerializer(serializers.ModelSerializer):
