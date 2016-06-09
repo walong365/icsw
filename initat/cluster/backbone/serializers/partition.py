@@ -96,6 +96,18 @@ class partition_table_serializer(serializers.ModelSerializer):
     lvm_vg_set = lvm_vg_serializer(many=True)
     device = serializers.SerializerMethodField()
 
+    def create(self, obj):
+        name = obj['name']
+        enabled = obj['enabled']
+        nodeboot = obj['nodeboot']
+        description = obj['description'] if 'description' in obj else ""
+
+        return partition_table.objects.create(
+            name=name,
+            enabled=enabled,
+            nodeboot=nodeboot,
+            description=description)
+
     def get_device(self, obj):
         if self.context and "device" in self.context:
             return self.context["device"]
