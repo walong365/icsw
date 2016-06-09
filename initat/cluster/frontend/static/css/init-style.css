@@ -1,7 +1,29 @@
+/**** Loginpage start ****/
 icsw-login-page .container-fluid {
     max-width: 400px;
+    padding-top: 15px;
+    margin-top:3%;
     }
-
+icsw-login-page .container-fluid .well{
+    padding-bottom: 0px;
+    margin-top:15px;
+    }
+.login-background {
+    position: absolute;
+    left: 0px; 
+    top:0px;
+    width: 100%;
+    height: 100%;
+    z-index: -10;
+    background-image: url(login-bg3.jpg);
+    background-size: cover;
+    background-repeat: no-repeat;
+}
+/**** Loginpage end ****/
+/**** Fancytree start ****/
+ul.fancytree-container {
+    font-family: Arial,Helvetica,sans-serif,FontAwesome;
+}
 .fancytree-container > li > .fancytree-folder >.btn-group {
     margin-left: 5px;
     margin-top: -6px;
@@ -14,6 +36,8 @@ icsw-login-page .container-fluid {
 .fancytree-checkbox{
     margin-top:2px;
     }
+/**** Fancytree end ****/
+
 .fa { /* chrome fix */
     font-family: FontAwesome,Arial,Helvetica,sans-serif;
 }
@@ -29,3 +53,28 @@ icsw-login-page .container-fluid {
 ::-webkit-scrollbar-track { background-color: #999999; }
 ::-webkit-scrollbar{ width: 13px; }
 ::-webkit-scrollbar-thumb { background-color: #444444; -webkit-border-radius: 6px; border-radius: 6px; }
+
+.ip_address {
+    font-family: monospace;
+    background-color: #dddddd;
+    color: #000000;
+}
+
+.modal-body table {
+    background-color: #444444;
+}
+
+//.panel-heading {
+//    background: #555555; /* Old browsers */
+//    background: -moz-linear-gradient(-45deg, rgba(85,85,85,1) 0%, rgba(63,63,63,1) 100%); /* FF3.6-15 */
+//    background: -webkit-linear-gradient(-45deg, rgba(85,85,85,1) 0%,rgba(63,63,63,1) 100%); /* Chrome10-25,Safari5.1-6 */
+//    background: linear-gradient(135deg, rgba(85,85,85,1) 0%,rgba(63,63,63,1) 100%); /* W3C, IE10+, FF16+, Chrome26+, Opera12+, Safari7+ */
+//    filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#555555', endColorstr='#3f3f3f',GradientType=1 ); /* IE6-9 fallback on horizontal gradient */
+//    padding: 3px 15px;
+//}
+.panel-success {
+    border-color: #555555;
+}
+.alert h1, .alert h2, .alert h3, .alert h4, .alert h5 {
+    color: #ffffff;
+}

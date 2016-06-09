@@ -217,7 +217,7 @@ angular.module(
         template: """
 Show/Hide columns: <div class="btn-group btn-group-xs">
     <input type="button" ng-repeat="entry in columns" ng-attr-title="show/hide columns {{entry}}" ng-value="entry"
-        ng-class="show_column[entry] && 'btn btn-success' || 'btn'" ng-click="show_column[entry] = ! show_column[entry]"></input>
+        ng-class="show_column[entry] && 'btn btn-success' || 'btn btn-default'" ng-click="show_column[entry] = ! show_column[entry]"></input>
 </div>
 """
         scope: false

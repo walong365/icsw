@@ -572,7 +572,7 @@ angular.module(
     
     salt_device_state = (entry) ->
         entry.$$burst_fill_color = {
-            0: "#66dd66"
+            0: "#b5d000"
             1: "#ff7777"
             2: "#ff0000"
             # special state 
@@ -602,7 +602,7 @@ angular.module(
                 3: "danger"
             }[entry.state]
             entry.$$burst_fill_color = {
-                0: "#66dd66"
+                0: "#b5d000"
                 1: "#dddd88"
                 2: "#ff7777"
                 3: "#ff0000"
@@ -1804,20 +1804,20 @@ angular.module(
                 if part.check?
                     if part.check.ct == "system"
                         color = {
-                            0 : "#66dd66"
+                            0 : "#b5d000"
                             1 : "#ff7777"
                             2 : "#ff0000"
                             4 : "#eeeeee"
                         }[part.check.state]
                     else if part.check.ct == "host"
                         color = {
-                            0 : "#66dd66"
+                            0 : "#b5d000"
                             1 : "#ff7777"
                             2 : "#ff0000"
                         }[part.check.state]
                     else
                         color = {
-                            0 : "#66dd66"
+                            0 : "#b5d000"
                             1 : "#dddd88"
                             2 : "#ff7777"
                             3 : "#ff0000"
@@ -2523,7 +2523,7 @@ angular.module(
                             width: width
                             height: height
                             preserveAspectRatio: "xMidYMid meet"
-                            viewBox: "0 0 #{width} #{height}"
+                            viewBox: "-1 -1 #{width + 2} #{height +2}"
                         }
                         [
                             g(

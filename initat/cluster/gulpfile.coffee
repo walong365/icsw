@@ -438,7 +438,8 @@ gulp.task("deploy-d3", () ->
 
 gulp.task("deploy-images", () ->
     return gulp.src(
-        [
+        [   
+            "frontend/static/images/*.jpg"
             "frontend/static/images/product/*.png"
             "frontend/static/css/*.gif"
         ]

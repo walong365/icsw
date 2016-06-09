@@ -340,7 +340,7 @@
     </td>
     <td class="text-center">{{ get_num_cats(config) }}</td>
     <td>
-        <input type="button" ng-class="config.$selected && 'btn btn-primary btn-xs' || 'btn btn-xs'" value="select" ng-click="config_service.select(config)"/>
+        <input type="button" ng-class="config.$selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="select" ng-click="config_service.select(config)"/>
     </td>
     <td>
         <icsw-tools-button-static type="modify" value="modify" ng-click="edit($event, config)" size="xs"/>
@@ -415,7 +415,7 @@
                     <td>{{ config_service.get_value(obj) }}</td>
                     <td>{{ obj.description }}</td>
                     <td class="text-center">{{ obj.v_type }}</td>
-                    <td><input type="button" ng-class="obj.$selected && 'btn btn-primary btn-xs' || 'btn btn-xs'" value="sel" ng-click="config_service.select(obj)"/>
+                    <td><input type="button" ng-class="obj.$selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="sel" ng-click="config_service.select(obj)"/>
                     <td><icsw-tools-button-static type="modify" value="modify" ng-click="edit($event, obj)" size="xs"/></td>
                     <td><icsw-tools-button-static type="delete" value="delete" ng-click="delete($event, obj)" size="xs"/></td>
                 </tr>
@@ -467,7 +467,7 @@
                     <td>{{ obj.description }}</td>
                     <td>{{ obj.priority }}</td>
                     <td>{{ obj.enabled | yesno1 }}</td>
-                    <td><input type="button" ng-class="obj.$selected && 'btn btn-primary btn-xs' || 'btn btn-xs'" value="sel" ng-click="config_service.select(obj)"/></td>
+                    <td><input type="button" ng-class="obj.$selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="sel" ng-click="config_service.select(obj)"/></td>
                     <td><icsw-tools-button-static type="modify" value="modify" ng-click="edit($event, obj)" size="xs"></icsw-tools-button-static></td>
                     <td><icsw-tools-button-static type="delete" value="delete" ng-click="delete($event, obj)" size="xs"></icsw-tools-button-static></td>
                 </tr>
@@ -542,7 +542,7 @@
                     <td>{{ config_service.get_event_handler(obj.event_handler) }}</td>
                     <td>{{ obj.event_handler_enabled }}</td>
                     <td>{{ obj.categories.length || '-' }}</td>
-                    <td><input type="button" ng-class="obj.$selected && 'btn btn-primary btn-xs' || 'btn btn-xs'" value="sel" ng-click="config_service.select(obj)"/>
+                    <td><input type="button" ng-class="obj.$selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="sel" ng-click="config_service.select(obj)"/>
                     <td><icsw-tools-button-static type="modify" value="modify" ng-click="edit($event, obj)" size="xs"></icsw-tools-button-static></td>
                     <td><input type="button" class="btn btn-warning btn-xs" ng-click="duplicate($event, obj, config)" value="duplicate"/></td>
                     <td><icsw-tools-button-static type="delete" value="delete" ng-click="delete($event, obj)" size="xs"></icsw-tools-button-static></td>
@@ -986,7 +986,7 @@
                     <div class="form-group">
                         <label class="control-label col-sm-3">Value</label>
                         <div class="controls col-sm-7">
-                            <input type="button" ng-class='edit_obj.value &amp;&amp; "btn btn-sm btn-success" || "btn btn-sm"' ng-click="edit_obj.value = 1 - edit_obj.value" ng-value='edit_obj.value &amp;&amp; "true" || "false"'/>
+                            <input type="button" ng-class='edit_obj.value &amp;&amp; "btn btn-sm btn-success" || "btn btn-sm btn-default"' ng-click="edit_obj.value = 1 - edit_obj.value" ng-value='edit_obj.value &amp;&amp; "true" || "false"'/>
                         </div>
                     </div>
                 </fieldset>

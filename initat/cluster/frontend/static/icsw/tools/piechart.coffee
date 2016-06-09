@@ -44,7 +44,7 @@ angular.module(
 
                 _div = angular.element("<div class='icsw-chart'></div>")
                 _div.css("width", "#{diameter}px").css("height", "#{diameter}px")
-                _svg = createSVGElement("svg", {width: diameter, height: diameter, viewBox: "0 0 #{diameter} #{diameter}"})
+                _svg = createSVGElement("svg", {width: diameter, height: diameter, viewBox: "-1 -1 #{diameter + 2} #{diameter + 2}"})
                 _div.append(_svg)
                 _g = createSVGElement("g", {opacity: 1})
                 _svg.append(_g)

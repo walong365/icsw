@@ -258,8 +258,8 @@
             </div>
             show
             <div class="btn-group btn-group-sm">
-                <input type="button" ng-class="is_mode == 'a' && 'btn btn-success' || 'btn'" ng-click="is_mode = 'a'" value="action"/>
-                <input type="button" ng-class="is_mode == 'v' && 'btn btn-success' || 'btn'" ng-click="is_mode = 'v'" value="version"/>
+                <input type="button" ng-class="is_mode == 'a' && 'btn btn-success' || 'btn btn-default'" ng-click="is_mode = 'a'" value="action"/>
+                <input type="button" ng-class="is_mode == 'v' && 'btn btn-success' || 'btn btn-default'" ng-click="is_mode = 'v'" value="version"/>
             </div>
         </div>
     </h3>
@@ -376,12 +376,12 @@
                 <input type="button" class="btn disabled" ng-class="pdc.$$button_class" value="{{ pdc.installed }}"/>
                 <input type="button" class="btn disabled" ng-class="pdc.force_flag && 'btn-primary' || 'btn-default'" value="F"/>
                 <input type="button" class="btn disabled" ng-class="pdc.nodeps_flag && 'btn-primary' || 'btn-default'" value="N"/>
-                <input type="button" ng-class="pdc.selected && 'btn btn-primary' || 'btn'" value="S" title="select" ng-model="pdc.selected" ng-click="change_sel()"/>
+                <input type="button" ng-class="pdc.selected && 'btn btn-primary' || 'btn btn-default'" value="S" title="select" ng-model="pdc.selected" ng-click="change_sel()"/>
             </div>
         </span>
         <span ng-show="!pdc.set">
             <div class="btn-group btn-group-xs">
-                <input type="button" ng-class="pdc.selected && 'btn btn-primary' || 'btn'" value="S" title="select" ng-model="pdc.selected" ng-click="change_sel()"/>
+                <input type="button" ng-class="pdc.selected && 'btn btn-primary' || 'btn btn-default'" value="S" title="select" ng-model="pdc.selected" ng-click="change_sel()"/>
             </div>
         </span>
     </div>

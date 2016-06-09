@@ -446,7 +446,7 @@ rms_module = angular.module(
             if @toggle[entry]
                 return "btn btn-sm btn-success"
             else
-                return "btn btn-sm"
+                return "btn btn-sm btn-default"
 
         header_not_hidden : (entry) ->
             return entry not in @hidden_headers

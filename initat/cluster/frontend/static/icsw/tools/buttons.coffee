@@ -167,7 +167,7 @@ angular.module(
     return {
         restict: "EA"
         template: """
-<button class="btn btn-xs" ng-class="get_class()" style="width:50px;" ng-click="change_value($event)">{{ get_value() }}</button>
+<button class="btn btn-xs btn-default" ng-class="get_class()" style="width:50px;" ng-click="change_value($event)">{{ get_value() }}</button>
 """
         scope:
             flag: "="
@@ -277,7 +277,7 @@ visible-md visible-lg
     # static button, doenst change its face during his lifetime
     return {
         restrict: "EA",
-        template: '<button type="button" class="btn" ng-disabled="is_disabled">value</button>'
+        template: '<button type="button" class="btn btn-default" ng-disabled="is_disabled">value</button>'
         link: (scope, element, attrs) ->
             # attrs:
             # - type (mandatory): "modify", "create", "delete", "reload", "show", "clear_selection", "download"

@@ -145,10 +145,10 @@
 <script type="text/ng-template" id="icsw.rms.iostruct">
     <h4>
         {{ io_struct.get_file_info() }}, 
-        <button class="btn btn-xs" ng-class="io_struct.update && 'btn-success' || ''" ng-click="io_struct.update = !io_struct.update">
+        <button class="btn btn-xs btn-default" ng-class="io_struct.update && 'btn-success' || ''" ng-click="io_struct.update = !io_struct.update">
            <span class="fa fa-refresh"/> reload
         </button>
-        <button class="btn btn-xs" ng-class="io_struct.editorOptions.followTail && 'btn-success' || ''" ng-click="io_struct.editorOptions.followTail = !io_struct.editorOptions.followTail">
+        <button class="btn btn-xs btn-default" ng-class="io_struct.editorOptions.followTail && 'btn-success' || ''" ng-click="io_struct.editorOptions.followTail = !io_struct.editorOptions.followTail">
            <span class="fa fa-arrow-down"/> follow
         </button>
     </h4>

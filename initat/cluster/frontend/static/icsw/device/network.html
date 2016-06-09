@@ -148,7 +148,7 @@
     <td>
         <input
             type="button"
-            class="btn btn-xs"
+            class="btn btn-xs btn-default"
             ng-class="get_bootdevice_info_class(ndip_obj)"
             ng-show="ndip_obj.num_boot_ips"
             ng-value="get_boot_value(ndip_obj)"
@@ -477,12 +477,12 @@
                 <tr ng-repeat="obj in entries_displayed">
                     <td>{{ obj.identifier }}</td>
                     <td ng-show="show_column.network" style="font-family:monospace;">
-                        <span style="background-color:#ededed;" ng-bind-html="obj.network | ip_fixed_width"></span> /
-                        <span style="background-color:#ededed;" ng-bind-html="obj.netmask | ip_fixed_width"></span> /
-                        <span style="background-color:#ededed;" ng-bind-html="obj.broadcast | ip_fixed_width"></span>
+                        <span class="ip_address" ng-bind-html="obj.network | ip_fixed_width"></span> /
+                        <span class="ip_address" ng-bind-html="obj.netmask | ip_fixed_width"></span> /
+                        <span class="ip_address" ng-bind-html="obj.broadcast | ip_fixed_width"></span>
                     </td>
                     <td ng-show="show_column.gateway" style="font-family:monospace;">
-                        <span style="background-color:#ededed;" ng-bind-html="obj.gateway | ip_fixed_width"></span>
+                        <span class="ip_address" ng-bind-html="obj.gateway | ip_fixed_width"></span>
                     </td>
                     <td ng-show="show_column.gateway" class="text-center">
                         <span class="badge">{{ obj.gw_pri }}</span>
@@ -490,8 +490,8 @@
                     <td ng-show="show_column.autorange" style="font-family:monospace;">
                         <span ng-switch="config_service.autorange_set(obj)">
                             <span ng-switch-when="true">
-                                <span style="background-color:#ededed;" ng-bind-html="obj.start_range | ip_fixed_width"></span> -
-                                <span style="background-color:#ededed;" ng-bind-html="obj.end_range | ip_fixed_width"></span>
+                                <span class="ip_address" ng-bind-html="obj.start_range | ip_fixed_width"></span> -
+                                <span class="ip_address" ng-bind-html="obj.end_range | ip_fixed_width"></span>
                             </span>
                             <span ng-switch-default>
                                 ----

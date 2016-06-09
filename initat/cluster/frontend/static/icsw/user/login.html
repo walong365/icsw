@@ -3,17 +3,18 @@
 </script>
 
 <script type="text/ng-template" id="icsw.user.login.page">
+    <div class="login-background"></div>
     <div class="container-fluid">
         <div class="row" >
             <div class="col-md-12 hidden-xs text-center">
-                <img width="70%;" ng-attr-src="{{ initProduct.menu_gfx_big_url }}" alt="{{ initProduct.name }} logo"/>
+                <img width="90%;" ng-attr-src="{{ initProduct.menu_gfx_big_url }}" alt="{{ initProduct.name }} logo"/>
             </div>
         </div>
         <div class="row" >
             <div class="col-xs-12 col-md-12">
-                <h2 ng-show="struct.cluster_data">
+                <!--<h2 ng-show="struct.cluster_data">
                     Welcome to {{ struct.cluster_data.CLUSTER_NAME }}
-                </h2>
+                </h2>-->
                 <div class="well">
                     <icsw-login-form></icsw-login-form>
                     <!--<fieldset>

@@ -88,7 +88,7 @@
                     {{ loc.full_name }}
                     <span class="pull-right" ng-show="loc.$gfx_list.length">
                         <button class="btn btn-xs btn-primary">
-                            {{ loc.$gfx_list.length }}
+                            <span class="pull-left">{{ loc.$gfx_list.length }}</span>
                             <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': loc.$$expanded, 'glyphicon-chevron-right': !loc.$$expanded}"></i>
                         </button>
                     </span>
@@ -159,7 +159,7 @@
                 <icsw-tools-button type="create" value="add locGfx" size="sm" ng-click="add_location_gfx($event, loc)"></icsw-tools-button>
                 <icsw-tools-button type="display" value="locate" size="sm" ng-click="locate(loc, $event)" title="({{ loc.latitude }}, {{ loc.longitude }})"></icsw-tools-button>
                 <button
-                    class="btn btn-sm"
+                    class="btn btn-sm btn-default"
                     ng-class="loc.locked && 'fa fa-lock btn-success' || 'fa fa-unlock btn-warning'"
                     ng-ng-value="loc.locked && 'unlock' || 'lock'"
                     title="{{ loc.locked && 'location is locked' || 'location is unlocked' }}"
