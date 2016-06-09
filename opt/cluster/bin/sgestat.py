@@ -290,7 +290,7 @@ class my_opt_parser(argparse.ArgumentParser):
             self.add_argument("--seq", dest="show_seq", help="show sequence number [%(default)s]", action="store_true", default=False)
             self.add_argument("-u", dest="users", type=str, help="show only jobs of user [%(default)s]", action="append", default=[])
             self.add_argument("-c", dest="complexes", type=str, help="show only jobs with the given complexes [%(default)s]", action="append", default=[])
-            self.add_argument("-w", dest="detailed_wait", default=False, help="show detailed wait statistics [%(default)s]", action="store_true")
+            self.add_argument("-w", dest="queue_details", default=False, help="show detailed wait statistics [%(default)s]", action="store_true")
             self.add_argument(
                 "-e",
                 dest="show_nonstd",
