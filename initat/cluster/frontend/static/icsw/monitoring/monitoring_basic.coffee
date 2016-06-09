@@ -905,6 +905,12 @@ monitoring_basic_module = angular.module(
 ) ->
     basic_tree = undefined
     user_group_tree = undefined
+
+    getters = {
+        user: (value) ->
+            return user_group_tree.user_lut[value].login
+    }
+
     return {
         fetch: (scope) ->
             defer = $q.defer()
@@ -917,6 +923,9 @@ monitoring_basic_module = angular.module(
                 (data) ->
                     basic_tree = data[0]
                     user_group_tree = data[1]
+
+                    getters = getters
+
                     scope.basic_tree = basic_tree
                     scope.user_group_tree = user_group_tree
                     defer.resolve(basic_tree.mon_contact_list)
