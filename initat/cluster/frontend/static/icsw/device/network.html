@@ -61,8 +61,12 @@
                     </tr>
                     <tr>
                         <td colspan="99">
-                            <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
-                                 possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                            <div
+                                icsw-tools-pagination
+                                st-items-by-page="10"
+                                st-displayed-pages="11"
+                                possible-items-by-page="10,20,50,100,200,500,1000"
+                            ></div>
                         </td>
                     </tr>
                 </thead>
@@ -234,16 +238,23 @@
     <td ng-show="show_column.status" ng-class="get_snmp_ao_status_class(ndip_obj)">{{ get_snmp_ao_status(ndip_obj) }}</td>
     <td ng-show="show_column.desired" class="text-center">{{ get_desired_status(ndip_obj) }}</td>
     <td>
-        <button type="button" class="btn btn-xs btn-success"
-         uib-tooltip-placement="right"
-         uib-tooltip-html="build_netdevice_tooltip(ndip_obj)">
-             <span class="glyphicon glyphicon-info-sign"></span>
-         </button>
+        <button
+            type="button"
+            class="btn btn-xs btn-success"
+            tooltip-placement="right"
+            uib-tooltip-html="build_netdevice_tooltip(ndip_obj)"
+        >
+            <span class="glyphicon glyphicon-info-sign"></span>
+        </button>
     </td>
     <td>
         <div ng-show="no_scan_running(ndip_obj)">
-            <icsw-tools-button type="modify" ng-click="edit_netdevice(ndip_obj, $event, false)" size="xs"
-                    ng-show="acl_modify(obj, 'backbone.device.change_network')"></icsw-tools-button>
+            <icsw-tools-button
+                type="modify"
+                ng-click="edit_netdevice(ndip_obj, $event, false)"
+                size="xs"
+                ng-show="acl_modify(obj, 'backbone.device.change_network')"
+            ></icsw-tools-button>
         </div>
     </td>
     <td>

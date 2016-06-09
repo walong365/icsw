@@ -421,7 +421,7 @@ rms_module = angular.module(
         change_entry : (entry) =>
             @toggle[entry] = ! @toggle[entry]
             _str = (key for key, value of @toggle when not value).join(",")
-            console.log @toggle, _str
+            # console.log @toggle, _str
             _var_name = "_rms_wf_#{@name}"
             @struct.icsw_user.set_string_var(_var_name, _str).then(
                 (ok) ->
@@ -651,16 +651,21 @@ rms_module = angular.module(
 ]).service("icswRMSWaitingStruct",
 [
     "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswRMSQueue", "icswRMSTools",
-    "icswRMSHeaderStruct",
+    "icswRMSHeaderStruct", "$templateCache", "$compile", "$rootScope", "$timeout",
 (
     $q, ICSW_URLS, icswSimpleAjaxCall, icswRMSQueue, icswRMSTools,
-    icswRMSHeaderStruct,
+    icswRMSHeaderStruct, $templateCache, $compile, $rootScope, $timeout,
 ) ->
     class icswRMSWaitingStruct extends icswRMSHeaderStruct
         constructor: (h_struct, struct) ->
             super("waiting", h_struct, struct)
 
-        feed_list : (simple_list) =>
+        feed_list: (simple_list) =>
+            # get list of currently open popovers
+            if @list?
+                _open_pops = (entry.job_id.value for entry in @list when entry.queue_details.$$open)
+            else
+                _open_pops = []
             @feed_xml_list(simple_list)
             @set_alter_job_flags()
             @set_full_ids()
@@ -670,10 +675,67 @@ rms_module = angular.module(
                     _waiting_slots++
                 else
                     _waiting_slots += parseInt(entry.requested_pe.value.split("(")[1].split(")")[0])
+                sub_scope = $rootScope.$new(true)
+                sub_scope.j = entry
+                sub_scope.d = entry.queue_details.raw
+                sub_scope.s = @struct.rms.sched
+                @calc_details(sub_scope)
+                entry.queue_details.$$compiled = $compile($templateCache.get("icsw.rms.detail.popover"))(sub_scope)
+                entry.queue_details.$$sub_scope = sub_scope
             if @list.length
+                @calc_details_global()
+                $timeout(
+                    () =>
+                        for entry in @list
+                            # console.log entry.queue_details.raw
+                            entry.queue_details.popover = (_line.outerHTML for _line in entry.queue_details.$$compiled).join(" ")
+                            entry.queue_details.$$sub_scope.$destroy()
+                            entry.queue_details.$$open = entry.job_id.value in _open_pops
+                    0
+                )
                 @info = "waiting (#{@list.length} jobs, #{_waiting_slots} slots)"
             else
                 @info = "no jobs waiting"
+                
+        calc_details: (ss) =>
+            # calculate scheduling details
+            # job
+            j = ss.j
+            # info dict
+            d = ss.d
+            # scheduler vars
+            v = ss.s.vars
+            d.raw_rr_contr = d.rr_contr
+            # raw wait time
+            d.raw_wt_contr = j.wait_time.raw
+            if v.weight_deadline
+                d.raw_dl_contr = d.dl_contr / v.weight_deadline
+            else
+                d.raw_dl_contr = "???"
+            d.total_contr = d.rr_contr + d.wt_contr + d.dl_contr
+            # priority
+            d.eff_norm_pprio = v.weight_priority * d.norm_pprio
+            # urgency
+            d.eff_norm_urg = v.weight_urgency * d.norm_urg
+            # tickets
+            d.eff_norm_tickets = v.weight_ticket * d.norm_tickets
+            # total
+            d.eff_norm = d.eff_norm_pprio + d.eff_norm_urg + d.eff_norm_tickets
+
+        calc_details_global: () =>
+            _tot_min = _.min((entry.queue_details.raw.total_contr for entry in @list))
+            _tot_max = _.max((entry.queue_details.raw.total_contr for entry in @list))
+            if _tot_min == _tot_max
+                d = @list[0].queue_details.raw
+                d.f = 0.5
+            else
+                for entry in @list
+                    d = entry.queue_details.raw
+                    # this must be equal to norm_urg
+                    d.f = (d.total_contr - _tot_min) / (_tot_max - _tot_min)
+
+        toggle_popover: (job) =>
+            job.queue_details.$$open = !job.queue_details.$$open
 
 ]).service("icswRMSDoneStruct",
 [
@@ -734,7 +796,7 @@ rms_module = angular.module(
                 # pe_info
                 r_list = []
                 if entry.rms_pe? and entry.rms_pe.length
-                    console.log "*", entry.pe
+                    # console.log "*", entry.pe
                     for _entry in entry.rms_pe
                         r_list.push("#{_entry.hostname} (#{_entry.slots})")
                 else
@@ -747,6 +809,22 @@ rms_module = angular.module(
                 @info = "done (#{@list.length} jobs)"
             else
                 @info = "no jobs finished"
+
+]).service("icswRMSSchedulerStruct",
+[
+    "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswRMSQueue", "icswRMSTools",
+    "icswRMSHeaderStruct",
+(
+    $q, ICSW_URLS, icswSimpleAjaxCall, icswRMSQueue, icswRMSTools,
+    icswRMSHeaderStruct,
+) ->
+    # simple key-value store for scheduler config
+    class icswRMSSchedulerStruct
+        constructor: (@scope) ->
+            @vars = {}
+
+        feed_list: (in_dict) =>
+            @vars = in_dict
 
 ]).service("icswRMSNodeStruct",
 [
@@ -850,14 +928,14 @@ rms_module = angular.module(
     "icswSimpleAjaxCall", "icswDeviceTreeService", "icswUserService",
     "icswRMSTools", "icswRMSHeaderStruct", "icswRMSSlotInfo", "icswRMSRunningStruct",
     "icswRMSWaitingStruct", "icswRMSDoneStruct", "icswRMSNodeStruct",
-    "icswComplexModalService", "icswRMSJobVarStruct", "$window",
+    "icswComplexModalService", "icswRMSJobVarStruct", "$window", "icswRMSSchedulerStruct",
 (
     $scope, $compile, Restangular, ICSW_SIGNALS,
     $q, icswAcessLevelService, $timeout, ICSW_URLS,
     icswSimpleAjaxCall, icswDeviceTreeService, icswUserService,
     icswRMSTools, icswRMSHeaderStruct, icswRMSSlotInfo, icswRMSRunningStruct,
     icswRMSWaitingStruct, icswRMSDoneStruct, icswRMSNodeStruct,
-    icswComplexModalService, icswRMSJobVarStruct, $window,
+    icswComplexModalService, icswRMSJobVarStruct, $window, icswRMSSchedulerStruct,
 ) ->
         icswAcessLevelService.install($scope)
 
@@ -1001,7 +1079,6 @@ rms_module = angular.module(
                         _dt_name_lut[entry.full_name] = entry
                     $scope.struct.name_lut = _dt_name_lut
                     $scope.struct.icsw_user = data[1]
-                    console.log $scope.struct.icsw_user.user.user_variable_set
                     $scope.struct.user = data[1].user
                     $scope.struct.rms_operator = $scope.acl_modify(null, "backbone.user.rms_operator")
                     $scope.struct.loading = false
@@ -1010,12 +1087,13 @@ rms_module = angular.module(
                         waiting: new icswRMSWaitingStruct(data[2].waiting_headers, $scope.struct)
                         done: new icswRMSDoneStruct(data[2].done_headers, $scope.struct)
                         node: new icswRMSNodeStruct(data[2].node_headers, $scope.struct)
+                        sched: new icswRMSSchedulerStruct($scope.struct)
                     }
                     # apply user settings
                     _u = $scope.struct.icsw_user
                     for key of $scope.struct.rms
                         _var_name = "_rms_wf_#{key}"
-                        console.log key, _var_name
+                        # console.log key, _var_name
                         if _u.has_var(_var_name)
                             _value = _u.get_var(_var_name).value.split(",")
                             $scope.struct.rms[key].set_user_disabled(_value)
@@ -1049,11 +1127,14 @@ rms_module = angular.module(
                 ).then(
                     (json) ->
                         # console.log "json=", json
+                        # feed scheduler at first
+                        $scope.struct.rms.sched.feed_list(json.sched_conf)
                         # reset counter
                         $scope.struct.slot_info.reset()
                         $scope.struct.jv_struct.feed_start()
 
                         $scope.struct.rms.running.feed_list(json.run_table, json.files)
+                        # console.log json.wait_table
                         $scope.struct.rms.waiting.feed_list(json.wait_table)
                         $scope.struct.rms.done.feed_list(json.done_table)
                         $scope.struct.rms.node.feed_list(json.node_table)
@@ -1329,7 +1410,7 @@ rms_module = angular.module(
                             icswSimpleAjaxCall(
                                 url: ICSW_URLS.RMS_CHANGE_JOB_PRIORITY
                                 data:
-                                    job_id: child_scope.job_id
+                                    job_id: child_scope.job.job_id.value
                                     new_pri: child_scope.cur_priority
                             ).then(
                                 (xml) ->
