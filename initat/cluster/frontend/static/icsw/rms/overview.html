@@ -441,7 +441,7 @@
         <button
             type="button"
             class="btn btn-xs btn-primary"
-            popover-placement="right"
+            popover-placement="right-top"
             popover-trigger="none"
             popover-is-open="job.queue_details.$$open"
             uib-popover-html="job.queue_details.popover"
@@ -679,6 +679,47 @@
                     <td class="text-right"></td>
                     <td class="text-center"></td>
                     <td class="text-right">{{ d.total_contr }}</td>
+                </tr>
+                <tr>
+                    <th colspan="6">Ticket Contribution</th>
+                </tr>
+                <tr class="info">
+                    <th>Name</th>
+                    <th colspan="2">Value</th>
+                    <th colspan="2">Weight</th>
+                    <th>eff.Value</th>
+                </tr>
+                <tr>
+                    <td>Override</td>
+                    <td class="text-right">{{ d.otickets }}</td>
+                    <td class="text-center">*</td>
+                    <td class="text-left warning">1</td>
+                    <td class="text-center">=</td>
+                    <td class="text-right">{{ d.otickets }}</td>
+                </tr>
+                <tr>
+                    <td>Functional</td>
+                    <td class="text-right">{{ d.ftickets }}</td>
+                    <td class="text-center">*</td>
+                    <td class="text-left warning">1</td>
+                    <td class="text-center">=</td>
+                    <td class="text-right">{{ d.ftickets }}</td>
+                </tr>
+                <tr>
+                    <td>Fairshare</td>
+                    <td class="text-right">{{ d.stickets }}</td>
+                    <td class="text-center">*</td>
+                    <td class="text-left warning">1</td>
+                    <td class="text-center">=</td>
+                    <td class="text-right">{{ d.stickets }}</td>
+                </tr>
+                <tr class="success">
+                    <td>Total</td>
+                    <td class="text-right"></td>
+                    <td class="text-center"></td>
+                    <td class="text-right"></td>
+                    <td class="text-center"></td>
+                    <td class="text-right">{{ d.tickets }}</td>
                 </tr>
             </tbody>
         </table>
