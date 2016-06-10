@@ -1,0 +1,170 @@
+<script type="text/ng-template" id="icsw.device.livestatus.location.map">
+    <h4>{{ loc_gfx.name }}<span ng-show="loc_gfx.comment"> ({{ loc_gfx.comment }})</span></h4>
+    <svg icsw-svg-set-viewbox="loc_gfx" ng-show="loc_gfx" ng-attr-width="{{ width }}" ng-attr-height="{{ height }}" preserveAspectRatio="xMidYMid meet">
+        <g>
+            <image
+                xlink:href="{{ loc_gfx.image_url }}"
+                ng-attr-width="{{ loc_gfx.width }}"
+                ng-attr-height="{{ loc_gfx.height }}"
+            >
+            </image>
+            <polyline icsw-svg-borderpoints="loc_gfx" style="fill:none; stroke:black; stroke-width:3;"></polyline>
+            <icsw-device-livestatus-device-node dml="dml" ls-filter="ls_filter" ng-repeat="dml in loc_gfx.dml_list">
+            </icsw-device-livestatus-device-node>
+            <!--<g>
+                <defs>
+                    <linearGradient id="MyGradient">
+                        <stop offset="0%" stop-color="#ff6000" />
+                        <stop offset="100%" stop-color="#00ff0f" />
+                    </linearGradient>
+                    <marker id='start' orient='auto' markerWidth='30' markerHeight='30'
+                        refX='15' refY='15'
+                        markerUnits="userSpaceOnUse"
+                    >
+                        <path d='M0,0 L30,15 L0,30 Z' fill="#00ff0f"/>
+                    </marker>
+                    <marker id='starts' orient='auto' markerWidth='30' markerHeight='30'
+                        refX='15' refY='15'
+                        markerUnits="userSpaceOnUse"
+                    >
+                        <path d='M0,0 L30,15 L0,30 Z' fill="none" stroke="black" stroke-width="2"/>
+                    </marker>
+                </defs>
+                <path
+                    d="M10,20 S 200,100 300,300"
+                    marker-end="url(#starts)"
+                    stroke="black"
+                    stroke-width="12"
+                    stroke-linecap="round""
+                    fill="none"
+                />
+                <path
+                    d="M10,20 S 200,100 300,300"
+                    marker-end="url(#start)"
+                    stroke="url(#MyGradient)"
+                    stroke-width="10"
+                    stroke-linecap="round"
+                    fill="none"
+                />
+                <g transform="translate(100,100)">
+                    <rect x="-20" y="-10" width="40" height="20"
+                        fill="none" stroke="black" stroke-width="2">
+                    </rect>
+                    <rect x="-20" y="-10" width="40" height="20"
+                        fill="white">
+                    </rect>
+                    <text
+                        text-anchor="middle"
+                        alignment-baseline="middle"
+                        fill="black"
+                    >
+                    in/out
+                    </text>
+                </g>
+            </g>-->
+        </g>
+    </svg>
+</script>
+
+<script type="text/ng-template" id="icsw.device.livestatus.device.node">
+    <g ng-attr-transform="{{ transform }}">
+        <newburst
+            ls-filter="ls_filter"
+            device-pk="dml.device"
+            innerradius="20"
+            outerradius="50"
+            showname="1"
+            fontstroke="1"
+            draw-all="1"
+            zoom-level="d"
+            noninteractive="true"
+        ></newburst>
+    </g>
+</script>
+
+<!-- <script type="text/ng-template" id="icsw.device.livestatus.brief">
+    <react-burst
+        icsw-livestatus-filter="struct.filter"
+        icsw-monitoring-data="struct.monitoring_data"
+        icsw-draw-parameters="struct.draw_parameters"
+    ></react-burst>
+</script> -->
+
+<script type="text/ng-template" id="icsw.device.livestatus.map">
+    <svg width="50" height="50" font-family="'Open-Sans', sans-serif" font-size="10pt">
+        <g transform="translate(25,25)">
+            <newburst
+                ls-filter="ls_filter"
+                device-pk="devicepk"
+                innerradius="5"
+                outerradius="25"
+                noninteractive="true"
+                draw-all="true"
+                zoom-level="g"
+                is-drawn="is_drawn"
+            ></newburst>
+        </g>
+    </svg>
+</script>
+
+<script type="text/ng-template" id="icsw.device.livestatus.network_graph">
+    <g>
+        <path
+            ng-repeat="node in nodes track by $index"
+            ng-attr-d="{{ node.path }}"
+            stroke="black"
+            ng-attr-fill="{{ get_fill_color(node) }}"
+            ng-attr-fill-opacity="{{ get_fill_opacity(node) }}"
+            stroke-width="0.5"
+            ng-mouseenter="mouse_enter(node)"
+            ng-mouseleave="mouse_leave(node)"
+            ng-click="mouse_click(node)"
+        >
+        </path>
+        <polyline
+            ng-repeat="node in nodes track by $index"
+            ng-attr-points="{{ node.legendpath }}"
+            stroke="black"
+            fill="none"
+            stroke-width="0.5"
+            ng-if="node.legend_show"
+        >
+        </polyline>
+        <g ng-repeat="node in nodes track by $index">
+            <text
+                ng-attr-x="{{ node.legend_x }}"
+                ng-attr-y="{{ node.legend_y }}"
+                text-anchor="{{ node.legend_anchor }}"
+                ng-if="node.legend_show && font_stroke"
+                alignment-baseline="middle"
+                stroke="white"
+                stroke-width="3"
+            >{{ node.name }}</text>
+
+            <text
+                ng-attr-x="{{ node.legend_x }}"
+                ng-attr-y="{{ node.legend_y }}"
+                text-anchor="{{ node.legend_anchor }}"
+                ng-if="node.legend_show"
+                alignment-baseline="middle"
+            >{{ node.name }}</text>
+        </g>
+        <g ng-if="show_name">
+            <text
+                ng-if="font_stroke"
+                text-anchor="middle"
+                alignment-baseline="middle"
+                font-weight="bold"
+                fill="black"
+                stroke="white"
+                stroke-width="2"
+            >{{ name }}</text>
+            <text
+                text-anchor="middle"
+                alignment-baseline="middle"
+                font-weight="bold"
+                fill="black"
+            >{{ name }}</text>
+        </g>
+    </g>
+</script>
