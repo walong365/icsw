@@ -619,7 +619,7 @@ def migrate_db(opts):
                 print("found app {}, disabled automatic migrations, please migrate by hand".format(_sync_app))
                 # call_manage(["makemigrations", _sync_app, "--noinput"])
                 # call_manage(["migrate", _sync_app, "--noinput"])
-        subprocess.check_output("/opt/cluster/sbin/pis/check_content_stores.py")
+        subprocess.check_output("/opt/cluster/sbin/pis/check_content_stores_server.py")
         auth_app_name = "django.contrib.auth"
         for _app in ["backbone", auth_app_name, "reversion", "django.contrib.admin", "django.contrib.sessions", "django.contrib.sites"]:
             if app_has_unapplied_migrations(_app.split(".")[-1]):

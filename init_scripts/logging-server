@@ -1,6 +1,6 @@
 #! /bin/bash
 #
-# Copyright (c) 2003-2008,2011-2015 Andreas Lang-Nevyjel init.at
+# Copyright (c) 2003-2008,2011-2016 Andreas Lang-Nevyjel init.at
 #
 #
 # RedHat stuff
@@ -30,10 +30,10 @@ fi
 setup() {
     [ ! -d /var/run/logserver ] && mkdir /var/run/logserver 
     [ ! -d /var/lock/logserver ] && mkdir /var/lock/logserver 
-    if [ ! -d /var/log/cluster/logging-server ] ; then
-        mkdir -p /var/log/cluster/logging-server
-        chown idlog.idg /var/log/cluster/
-        chown -R idlog.idg /var/log/cluster/logging-server
+    if [ ! -d /var/log/icsw/logging-server ] ; then
+        mkdir -p /var/log/icsw/logging-server
+        chown idlog.idg /var/log/icsw/
+        chown -R idlog.idg /var/log/icsw/logging-server
     fi
     chmod 0750 /var/run/logserver
     chown idlog.idg /var/run/logserver /var/lock/logserver 

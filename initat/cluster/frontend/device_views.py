@@ -22,10 +22,10 @@
 
 """ device views """
 
+import datetime
 import json
 import logging
 import re
-import datetime
 
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
@@ -48,7 +48,7 @@ from initat.cluster.backbone.serializers import netdevice_serializer, ComCapabil
     partition_table_serializer, monitoring_hint_serializer, DeviceSNMPInfoSerializer, \
     snmp_scheme_serializer, device_variable_serializer, cd_connection_serializer, \
     SensorThresholdSerializer, package_device_connection_serializer, DeviceDispatcherLinkSerializer, \
-    AssetRunSimpleSerializer, ShallowPastAssetRunSerializer, ShallowPastAssetBatchSerializer
+    AssetRunSimpleSerializer, ShallowPastAssetBatchSerializer
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from initat.tools import logging_tools, server_command, process_tools
 

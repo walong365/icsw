@@ -48,7 +48,9 @@ VERSION_CS_NAME = "icsw.sysversion"
 CLUSTER_DIR = "/opt/cluster"
 # user extension dir
 USER_EXTENSION_ROOT = os.path.join(CLUSTER_DIR, "share", "user_extensions.d")
-LOG_ROOT = "/var/log/cluster"
+# changed from cluster to icsw due to clash with corosync packages
+LOG_ROOT = "/var/log/icsw"
+
 _PY_VERSION = "{:d}.{:d}".format(
     sys.version_info.major,
     sys.version_info.minor

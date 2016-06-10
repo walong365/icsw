@@ -26,7 +26,6 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import ForeignKey
 from django.utils.decorators import method_decorator
-from django.views.generic import View
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.response import Response
 from reversion import revisions as reversion

@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2001-2009,2011-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2009,2011-2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #
@@ -21,17 +21,17 @@
 
 """ container for service checks """
 
+import netifaces
 import os
+import signal
 import stat
 import subprocess
-import signal
-import netifaces
 
-from lxml.builder import E
 import psutil
+from lxml.builder import E
 
-from initat.tools import logging_tools, process_tools, config_store
 from initat.constants import VERSION_CS_NAME, INITAT_BASE
+from initat.tools import logging_tools, process_tools, config_store
 from .constants import *
 
 
