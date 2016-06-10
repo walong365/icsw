@@ -157,7 +157,8 @@ def _input(in_str, default, **kwargs):
     if len(_choices) == 1:
         return _choices[0]
     _cur_inp = None
-    while True:
+
+    while sys.stdin.isatty():
         try:
             _cur_inp = raw_input(
                 "{:<30s} : ".format(
