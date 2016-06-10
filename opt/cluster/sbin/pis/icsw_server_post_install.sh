@@ -79,7 +79,7 @@ for server in ${SERVER_SERVICES} ; do
 done
 
 # PostInstallTaks
-[ -x ${ICSW_PIS}/check_content_stores.py ] && ${ICSW_PIS}/check_content_stores.py
+[ -x ${ICSW_PIS}/check_content_stores_server.py ] && ${ICSW_PIS}/check_content_stores_server.py
 
 # ... remove ...
 # old config files
