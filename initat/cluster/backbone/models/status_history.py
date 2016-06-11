@@ -1,6 +1,6 @@
 # Copyright (C) 2015-2016 Bernhard Mallinger, init.at
 #
-# this file is part of cluster-backbone-sql
+# this file is part of icsw-server
 #
 # Send feedback to: <mallinger@init.at>
 #

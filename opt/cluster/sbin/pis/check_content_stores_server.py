@@ -2,7 +2,7 @@
 #
 # Copyright (C) 2014-2016 Andreas Lang-Nevyjel
 #
-# this file is part of cluster-backbone-sql
+# this file is part of icsw-server
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
