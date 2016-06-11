@@ -28,7 +28,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from lxml.builder import E  # @UnresolvedImport
+from lxml.builder import E
 
 from initat.cluster.backbone.models import partition_table, image
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper

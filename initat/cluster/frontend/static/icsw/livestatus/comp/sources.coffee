@@ -18,7 +18,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-# livestatus sources and filter functions
+# livestatus sources and filter functions (components)
+
 angular.module(
     "icsw.livestatus.comp.sources",
     [

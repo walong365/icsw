@@ -19,7 +19,7 @@
 #
 # -*- coding: utf-8 -*-
 #
-""" model serializers """
+""" model serializers for partition setup """
 
 from rest_framework import serializers
 
@@ -101,12 +101,12 @@ class partition_table_serializer(serializers.ModelSerializer):
         enabled = obj['enabled']
         nodeboot = obj['nodeboot']
         description = obj['description'] if 'description' in obj else ""
-
         return partition_table.objects.create(
             name=name,
             enabled=enabled,
             nodeboot=nodeboot,
-            description=description)
+            description=description,
+        )
 
     def get_device(self, obj):
         if self.context and "device" in self.context:
