@@ -88,7 +88,8 @@ sources = {
         "js_query_new"
         "parta.js"
         [
-            "frontend/static/js/modernizr-2.8.1.min.js",
+            # no longer needed ... ?
+            # "frontend/static/js/modernizr-2.8.1.min.js",
             "frontend/static/js/jquery-2.2.4.min.js",
             # ace editor
             "frontend/static/js/ace-noconflict.js",
@@ -104,7 +105,8 @@ sources = {
             # angular
             "frontend/static/js/angular-1.5.6.js",
             "frontend/static/js/lodash.js",
-            "frontend/static/js/bluebird.js",
+            # no longer needed ... ?
+            # "frontend/static/js/bluebird.js",
             "frontend/static/js/bootstrap.js",
             "frontend/static/js/jquery.color.js",
             "frontend/static/js/jquery.blockUI.js",
@@ -157,6 +159,7 @@ sources = {
             "frontend/static/js/angular-simple-logger.js",
             "frontend/static/js/angular-google-maps.min.js",
             "frontend/static/js/bootstrap-dialog.js",
+            # should be removed, use CSV export only via server-side calls
             "frontend/static/js/ng-csv.min.js",
             "frontend/static/js/sprintf.js",
         ]

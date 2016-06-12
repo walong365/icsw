@@ -19,6 +19,9 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+"""
+parse and show dependency tree for ICSW coffeescript and HTML templates
+"""
 
 import argparse
 import os.path
@@ -118,11 +121,12 @@ class DataSink(object):
 
 
 def main(args):
+    ignore_re = re.compile(args.ignore)
     coffefiles = []
     htmlfiles = []
     for root, dirs, files in os.walk(args.path, topdown=False):
-        coffefiles.extend([os.path.join(root, f) for f in files if f.endswith("coffee")])
-        htmlfiles.extend([os.path.join(root, f) for f in files if f.endswith("html")])
+        coffefiles.extend([os.path.join(root, f) for f in files if f.endswith("coffee") and not ignore_re.search(f)])
+        htmlfiles.extend([os.path.join(root, f) for f in files if f.endswith("html") and not ignore_re.search(f)])
 
     print("{:d} Coffee and {:d} HTML files".format(len(coffefiles), len(htmlfiles)))
 
@@ -227,7 +231,7 @@ def main(args):
         _list = [entry for entry in _list if not entry.is_valid]
 
     name_re = re.compile(args.filter, re.IGNORECASE)
-    _list = [entry for entry in _list if name_re.match(entry.name)]
+    _list = [entry for entry in _list if name_re.search(entry.name)]
 
     if _list:
         print(
@@ -279,8 +283,9 @@ if __name__ == "__main__":
     parser.add_argument("--path", default=_def_path, help="start path [%(default)s], located in {}".format(DP_LOC))
     parser.add_argument("--ignore-valid", default=False, action="store_true", help="ignore entries with valid names [%(default)s]")
     parser.add_argument("--order-by", type=str, default="default", choices=["default", "name", "toplevel"], help="set ordering [%(default)s]")
-    parser.add_argument("--filter", type=str, default=".*", help="regexp name filter [%(default)s]")
-    parser.add_argument("--show-refs", default=False, action="store_true", help="Show references in output [%(default)s]")
+    parser.add_argument("-f", "--filter", type=str, default=".*", help="regexp name filter [%(default)s]")
+    parser.add_argument("-i", "--ignore", type=str, default="^old.*$", help="regexp for files to ignore [%(default)s]")
+    parser.add_argument("-r", "--show-refs", default=False, action="store_true", help="Show references in output [%(default)s]")
 
     args = parser.parse_args()
 

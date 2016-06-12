@@ -25,16 +25,37 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.router",
     ]
-).service("icswLivestatusFilterService",
+).service("icswMonLivestatusPipeBase",
 [
     "$q", "$rootScope",
 (
     $q, $rootScope,
 ) ->
+    class icswMonLivestatusPipeBase
+        constructor: (name, is_receiver, is_emitter) ->
+            @name = name
+            @is_receiver = is_receiver
+            @is_emitter = is_emitter
+            # notifier for downstream elements
+            if @is_emitter
+                @notifier = $q.defer()
+            console.log "init #{@name} (recv: #{@is_receiver}, emit: #{@is_emitter})"
+
+        feed: () ->
+            # feed data
+            true
+
+]).service("icswLivestatusFilterService",
+[
+    "$q", "$rootScope", "icswMonLivestatusPipeBase",
+(
+    $q, $rootScope, icswMonLivestatusPipeBase,
+) ->
     # ToDo: separate data / filtered data from filter
     running_id = 0
-    class icswLivestatusFilter
+    class icswLivestatusFilter extends icswMonLivestatusPipeBase
         constructor: () ->
+            super("icswLivestatusFilter", true, true)
             running_id++
             @id = running_id
             # console.log "new LivestatusFilter with id #{@id}"
