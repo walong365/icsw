@@ -34,7 +34,7 @@ move_log_dir
 [ -x ${ICSW_PIS}/check_content_stores_client.py ] && ${ICSW_PIS}/check_content_stores_client.py
 
 # purge debian packages
-if [ -f /etc/debian_version ] ; theni
+if [ -f /etc/debian_version ] ; then
 
     for service in host-monitoring package-client ; do
         if [ -f /etc/init.d/${service} ] ; then
