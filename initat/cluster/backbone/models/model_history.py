@@ -21,15 +21,12 @@
 #
 """ Complementary wrapper around django reversion """
 
-import django
-
-from reversion import revisions as reversion
-
 from django.contrib.contenttypes.models import ContentType
 from django.core import serializers
 from django.db import models
 from django.db.models.signals import post_delete
 from django.utils.encoding import force_text
+from reversion import revisions as reversion
 
 from initat.cluster.backbone.middleware import thread_local_middleware
 from initat.cluster.backbone.models import user
@@ -93,7 +90,7 @@ def icsw_register(model):
 
     def create_save_with_reversion(original_save):
         def save_with_reversion(*args, **kwargs):
-            if not reversion.revision_context_manager.is_active():
+            if not reversion.is_active():
                 with reversion.create_revision():
                     original_save(*args, **kwargs)
             else:
