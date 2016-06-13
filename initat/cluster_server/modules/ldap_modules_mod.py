@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010,2012-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2007-2010,2012-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -23,15 +23,16 @@ import re
 import sys
 import time
 
+import ldap  # @UnresolvedImport @UnusedImport
+import ldap.modlist  # important, do not remove  @UnresolvedImport
+import unidecode
 from django.db.models import Q
+
+import cs_base_class
 from initat.cluster.backbone.models import user, group, device_config, \
     config_str, home_export_list, config
 from initat.cluster_server.config import global_config
-import ldap  # @UnresolvedImport @UnusedImport
-import ldap.modlist  # important, do not remove  @UnresolvedImport
 from initat.tools import logging_tools, process_tools, server_command
-
-import cs_base_class
 
 """ possible smb.conf:
 
@@ -712,11 +713,13 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                         "cn": [u_stuff.login.strip()],
                         "userid": [u_stuff.login.strip()],
                         "gecos": [
-                            u"{} {} {} ({})".format(
-                                u_stuff.title,
-                                u_stuff.first_name,
-                                u_stuff.last_name,
-                                u_stuff.email
+                            unidecode.unidecode(
+                                u"{} {} {} ({})".format(
+                                    u_stuff.title,
+                                    u_stuff.first_name,
+                                    u_stuff.last_name,
+                                    u_stuff.email
+                                )
                             )
                         ],
                         "gidNumber": [str(g_stuff.gid)],
@@ -1020,7 +1023,7 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                             _ignore_cause = "empty or invalid homestart in group {}".format(unicode(group_stuff))
                         if _ignore_cause:
                             self.log(
-                                "ignoring export for user {}: {}".format(
+                                u"ignoring export for user {}: {}".format(
                                     unicode(user_stuff),
                                     _ignore_cause,
                                 ),
