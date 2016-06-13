@@ -1308,7 +1308,7 @@ def _register_models():
         # net
         netdevice, net_ip, peer_information,
         # device
-        device, device_group, device_config, device_variable,
+        device, device_group, device_config, device_variable, ComCapability,
         # config
         config, config_catalog, config_script, config_int, config_bool, config_str, config_blob,
         # category
