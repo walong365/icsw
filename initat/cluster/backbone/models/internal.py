@@ -19,6 +19,7 @@
 #
 # -*- coding: utf-8 -*-
 #
+
 """ model definitions, internal stuff (database version, patch levels, ....) """
 
 from django.db import models

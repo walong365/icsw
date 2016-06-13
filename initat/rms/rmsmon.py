@@ -21,6 +21,7 @@
 """ rms-server, monitoring process """
 
 import os
+import re
 import time
 import uuid
 
@@ -28,7 +29,7 @@ import zmq
 from django.core.cache import cache
 from django.db.models import Q
 from lxml import etree
-from lxml.builder import E  # @UnresolvedImport
+from lxml.builder import E
 
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device
@@ -97,6 +98,9 @@ class RMSMonProcess(threading_tools.process_obj):
         self.register_func("full_reload", self._full_reload)
         # job stop/start info
         self.register_timer(self._update, 30)
+        if global_config["TRACE_FAIRSHARE"]:
+            self.log("register fairshare tracer")
+            self.register_timer(self._update_fairshare, 60, instant=True)
 
     def _init_cache(self):
         self.__cache = {
@@ -447,3 +451,68 @@ class RMSMonProcess(threading_tools.process_obj):
         self.vector_socket.close()
         self.collectd_socket.close()
         self.__log_template.close()
+
+    # fairshare handling
+    def _update_fairshare(self):
+        # get user list
+        # todo: match user list with sharetree config
+        cur_stat, cur_out = call_command(
+            "{} -n -c 1 ".format(
+                self._get_sge_bin("sge_share_mon"),
+            ),
+            log_com=self.log
+        )
+        _float_re = re.compile("^\d+\.\d+")
+        # headers
+        import pprint
+        drop_com = server_command.srv_command(command="set_vector")
+        _bldr = drop_com.builder()
+        _rms_vector = _bldr("values")
+        # 10 minutes valid
+        act_time = int(time.time())
+        valid_until = act_time + 10 * 60
+        if not cur_stat:
+            for _line in cur_out.split("\n"):
+                _dict = {}
+                for _part in _line.strip().split():
+                    _header, _value = _part.split("=", 1)
+                    _header = _header.replace("%", "")
+                    if _float_re.match(_value):
+                        _dict[_header] = float(_value)
+                    elif _value.isdigit():
+                        _dict[_header] = int(_value)
+                    else:
+                        _dict[_header] = _value
+                # filter
+                if _dict["project_name"] == "defaultproject" and _dict.get("user_name", None):
+                    _user = _dict["user_name"]
+                    for _t_key, _key, _info in [
+                        ("cpu", "cpu", "CPU usage"),
+                        ("io", "io", "IO usage"),
+                        ("mem", "mem", "Memory usage"),
+                        ("ltcpu", "ltcpu", "long target CPU usage"),
+                        ("ltio", "ltio", "long target IO usage"),
+                        ("ltmem", "ltmem", "long target Memory usage"),
+                        ("job_count", "job_count", "Job count"),
+                        ("share.short_target", "short_target_share", "short target share"),
+                        ("share.long_target", "long_target_share", "long target share"),
+                        ("share.actual", "actual_share", "actual share"),
+                        ("shares", "shares", "configured shares"),
+                        ("level", "level", "level"),
+                        ("totla", "total", "total"),
+                    ]:
+                        _rms_vector.append(
+                            hm_classes.mvect_entry(
+                                "rms.fairshare.{}.{}".format(_user, _t_key),
+                                info="{} for user {}".format(_info, _user),
+                                default=0.,
+                                value=_dict[_key],
+                                factor=1,
+                                valid_until=valid_until,
+                                base=1000,
+                            ).build_xml(_bldr)
+                        )
+
+        drop_com["vector_rms"] = _rms_vector
+        drop_com["vector_rms"].attrib["type"] = "vector"
+        self.vector_socket.send_unicode(unicode(drop_com))

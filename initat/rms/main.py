@@ -86,7 +86,7 @@ def main():
             ("SGE_ARCH", configfile.str_c_var(sge_dict["SGE_ARCH"])),
             ("SGE_ROOT", configfile.str_c_var(sge_dict["SGE_ROOT"])),
             ("SGE_CELL", configfile.str_c_var(sge_dict["SGE_CELL"])),
-            # ("TRACE_FAIRSHARE", configfile.bool_c_var(False)),
+            ("TRACE_FAIRSHARE", configfile.bool_c_var(False)),
             ("CLEAR_ITERATIONS", configfile.int_c_var(1)),
             ("CHECK_ACCOUNTING_TIMEOUT", configfile.int_c_var(300)),
             ("LICENSE_BASE", configfile.str_c_var("/etc/sysconfig/licenses")),
