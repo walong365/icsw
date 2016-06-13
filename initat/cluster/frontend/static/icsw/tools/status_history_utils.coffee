@@ -181,7 +181,7 @@ angular.module(
         "Ok", "Warning", "Critical", "Unknown", "Undetermined", "Planned down", "Flapping",
     ]
     service_colors = {
-        "Ok": "#b5d000"
+        "Ok": "#92aa00"
         "Warning": "#f0ad4e"
         "Critical": "#bb332e"
         "Unknown": "#c7c7c7"
@@ -190,7 +190,7 @@ angular.module(
     }
 
     host_colors = {
-        "Up": "#b5d000"
+        "Up": "#92aa00"
         "Down": "#bb332e"
         "Unreachable": "#f0ad4e"
         "Undetermined": "#c7c7c7"

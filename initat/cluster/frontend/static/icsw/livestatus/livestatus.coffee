@@ -572,8 +572,8 @@ angular.module(
     
     salt_device_state = (entry) ->
         entry.$$burst_fill_color = {
-            0: "#b5d000"
-            1: "#ff7777"
+            0: "#92aa00"
+            1: "#bb3d1e"
             2: "#ff0000"
             # special state 
             3: "#dddddd"
@@ -602,9 +602,9 @@ angular.module(
                 3: "danger"
             }[entry.state]
             entry.$$burst_fill_color = {
-                0: "#b5d000"
-                1: "#dddd88"
-                2: "#ff7777"
+                0: "#92aa00"
+                1: "#e2972d"
+                2: "#bb3d1e"
                 3: "#ff0000"
             }[entry.state]
             entry.$$icswStateLabelClass = "label-#{_r_str}"
@@ -1804,22 +1804,22 @@ angular.module(
                 if part.check?
                     if part.check.ct == "system"
                         color = {
-                            0 : "#b5d000"
-                            1 : "#ff7777"
+                            0 : "#92aa00"
+                            1 : "#bb3d1e"
                             2 : "#ff0000"
                             4 : "#eeeeee"
                         }[part.check.state]
                     else if part.check.ct == "host"
                         color = {
-                            0 : "#b5d000"
-                            1 : "#ff7777"
+                            0 : "#92aa00"
+                            1 : "#bb3d1e"
                             2 : "#ff0000"
                         }[part.check.state]
                     else
                         color = {
-                            0 : "#b5d000"
-                            1 : "#dddd88"
-                            2 : "#ff7777"
+                            0 : "#92aa00"
+                            1 : "#e2972d"
+                            2 : "#bb3d1e"
                             3 : "#ff0000"
                         }[part.check.state]
                 else if part.omitted?
