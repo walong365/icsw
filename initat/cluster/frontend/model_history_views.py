@@ -2,7 +2,7 @@
 #
 # Send feedback to: <mallinger@init.at>
 #
-# This file is part of webfrontend
+# This file is part of icsw-server
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -26,10 +26,8 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import ForeignKey
 from django.utils.decorators import method_decorator
-from django.views.generic import View
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.response import Response
-from reversion import revisions as reversion
 from reversion.models import Version
 
 import initat
@@ -45,12 +43,16 @@ class get_models_with_history(RetrieveAPIView):
     @method_decorator(login_required)
     @rest_logging
     def get(self, request, *args, **kwargs):
-        return Response({model.__name__: model._meta.verbose_name for model in icsw_register.REGISTERED_MODELS})
+        return Response(
+            {
+                model.__name__: model._meta.verbose_name for model in icsw_register.REGISTERED_MODELS
+            }
+        )
 
 
 class DeletedObjectsCache(dict):
     def __missing__(self, target_model):
-        value = {entry.pk: entry for entry in reversion.get_deleted(target_model)}
+        value = {entry.pk: entry for entry in Version.objects.get_deleted(target_model)}
         self[target_model] = value
         return value
 

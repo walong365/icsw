@@ -4,7 +4,7 @@
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
-# This file is part of webfrontend
+# This file is part of icsw-server
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -76,12 +76,14 @@ class get_docu_info(View):
 
 
 class get_routing_info(View):
-    def post(self, request):
+    # @method_decorator(login_required)
+    def get(self, request):
         cur_routing = routing.SrvTypeRouting(force="force" in request.POST)
         _return = {
             "service_types": {key: True for key in routing.SrvTypeRouting().service_types},
             "routing": cur_routing.resolv_dict,
-            "local_device": unicode(cur_routing.local_device.full_name if cur_routing.local_device is not None else "UNKNOWN"),
+            "local_device": unicode(cur_routing.local_device.full_name) if cur_routing.local_device is not None else None,
+            "internal_dict": cur_routing.internal_dict,
             "unroutable_configs": cur_routing.unroutable_configs,
         }
         return HttpResponse(json.dumps(_return), content_type="application/json")

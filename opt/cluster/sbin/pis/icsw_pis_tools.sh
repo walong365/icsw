@@ -35,6 +35,8 @@ MANAGE=${PREFIX_INIT}/initat/cluster/manage.py
 USRSBIN=/usr/sbin
 USRBIN=/usr/bin
 INIT=/etc/init.d
+NEW_LOG_DIR="/var/log/icsw"
+OLD_LOG_DIR="/var/log/cluster"
 
 BOLD="\033[1m"
 RED="\033[31m"
@@ -60,6 +62,25 @@ function icsw_cleanup() {
     rm -rf ${PREFIX_INIT}/initat/cluster/rms
     # old django py(o|c) files, for instance importlib
     rm -f ${DJANGO_PY}/utils/*.py{c,o}
+    [ -d /var/log/cluster/sockets ] && rm -rf /var/log/cluster/sockets
+    [ -d /tmp/.icsw_zmq ] && rm -rf /tmp/.icsw_zmq
+    [ -d /usr/local/sbin/modules ] && rm -rf /usr/local/sbin/modules
+    PY_FILES="host-monitoring limits hm_classes ipc_comtools"
+
+    for file in $PY_FILES ; do
+        rm -f ${ICSW_SBIN}/$file.py{c,o}
+    done
+}
+
+function move_log_dir() {
+    if [ -d ${NEW_LOG_DIR} -a -d ${OLD_LOG_DIR} ] ; then
+        # check for empty new log
+        if [ $(ls -1 ${NEW_LOG_DIR} | wc -l) = "0" ] ; then
+            echo -e "${YELLOW}New logdir present but empty, moving from ${OLD_LOG_DIR} to ${NEW_LOG_DIR}...${OFF}"
+            mv ${OLD_LOG_DIR}/* ${NEW_LOG_DIR}
+            echo -e "${GREEN}done${OFF}"
+        fi
+    fi
 }
 
 function is_chroot() {

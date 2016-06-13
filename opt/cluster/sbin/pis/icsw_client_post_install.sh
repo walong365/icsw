@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2013-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2013-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -22,23 +22,20 @@ source $(dirname $0)/icsw_pis_tools.sh
 /sbin/ldconfig
 
 # some cleanup tasks
-
 icsw_cleanup
 
-[ -d /var/log/cluster/sockets ] && rm -rf /var/log/cluster/sockets
-[ -d /tmp/.icsw_zmq ] && rm -rf /tmp/.icsw_zmq
-[ -d /usr/local/sbin/modules ] && rm -rf /usr/local/sbin/modules
+# move logging dir
+move_log_dir
 
 # migrate client config files
 /opt/cluster/sbin/pis/merge_client_configs.py
 
-PY_FILES="host-monitoring limits hm_classes ipc_comtools"
-for file in $PY_FILES ; do
-    rm -f ${ICSW_SBIN}/$file.py{c,o}
-done
+# check content stores for client
+[ -x ${ICSW_PIS}/check_content_stores_client.py ] && ${ICSW_PIS}/check_content_stores_client.py
 
 # purge debian packages
 if [ -f /etc/debian_version ] ; then
+
     for service in host-monitoring package-client ; do
         if [ -f /etc/init.d/${service} ] ; then
             aptitude purge ${service}

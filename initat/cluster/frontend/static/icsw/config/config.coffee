@@ -21,7 +21,7 @@
 config_module = angular.module(
     "icsw.config.config",
     [
-        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.codemirror", "angularFileUpload", "ui.select", "icsw.tools.button",
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "angularFileUpload", "ui.select", "icsw.tools.button",
     ]
 ).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
     $stateProvider.state(
@@ -662,16 +662,21 @@ config_module = angular.module(
             sub_scope = scope.$new(false)
             sub_scope.create = create
             sub_scope.edit_obj = obj_or_parent
-            sub_scope.editorOptions = {
-                lineWrapping: false
-                lineNumbers: true
-                mode:
-                    name: "python"
-                    version: 2
-                matchBrackets: true
-                styleActiveLine: true
-                indentUnit: 4
+            sub_scope.ace_options = {
+                uswWrapMode: false
+                showGutter: true
+                mode: "python"
             }
+            #sub_scope.editorOptions = {
+            #    lineWrapping: false
+            #    lineNumbers: true
+            #    mode:
+            #        name: "python"
+            #        version: 2
+            #    matchBrackets: true
+            #    styleActiveLine: true
+            #    indentUnit: 4
+            #}
             sub_scope.on_script_revert = (obj, get_change_list) ->
                 # script is called edit_value in edit_obj
                 rename = (key) ->

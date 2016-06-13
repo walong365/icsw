@@ -228,7 +228,7 @@ install: install_webcontent
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_TFTP}
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${VARDIR}
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/var/lib/logging-server
-	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/var/log/cluster
+	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/var/log/icsw
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${META_DIR}
 	# uwsgi
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}${ICSW_ETC}/uwsgi

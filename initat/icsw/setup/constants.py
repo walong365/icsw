@@ -42,7 +42,7 @@ MIGRATION_DIRS = [
 # which apps needs syncing
 SYNC_APPS = ["liebherr", "licadmin"]
 
-NEEDED_DIRS = ["/var/log/cluster"]
+NEEDED_DIRS = ["/var/log/icsw"]
 
 BACKBONE_DIR = os.path.join(ICSW_ROOT, "initat/cluster/backbone")
 PRE_MODELS_DIR = os.path.join(BACKBONE_DIR, "models16")

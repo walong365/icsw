@@ -709,8 +709,8 @@
     <table
         class="table table-condensed table-hover table-striped"
         style="width:auto;"
-        st-safe-src="asset_run.$$assets"
-        st-table="assets_shown"
+        st-safe-src="asset_run.$$memory_entries"
+        st-table="assets_shown_memory_entries"
     >
         <thead>
             <tr>
@@ -732,10 +732,10 @@
             </tr>
         </thead>
         <tbody>
-            <tr ng-if="node.$$type == 1" ng-repeat="node in assets_shown">
+            <tr ng-repeat="node in assets_shown_memory_entries">
                 <td>{{ node.banklabel }}</td>
-                <td>{{ node.$$formfactor }}</td>
-                <td>{{ node.$$memorytype }}</td>
+                <td>{{ node.formfactorname }}</td>
+                <td>{{ node.memorytypename }}</td>
                 <td>{{ node.manufacturer }}</td>
                 <td>{{ node.$$capacity }} MiB</td>
             </tr>
@@ -748,8 +748,8 @@
     <table
         class="table table-condensed table-hover table-striped"
         style="width:auto;"
-        st-safe-src="asset_run.$$assets"
-        st-table="assets_shown"
+        st-safe-src="asset_run.$$cpu_entries"
+        st-table="assets_shown_cpu_entries"
     >
         <thead>
             <tr>
@@ -768,9 +768,149 @@
             </tr>
         </thead>
         <tbody>
-            <tr ng-if="node.$$type == 2" ng-repeat="node in assets_shown">
+            <tr ng-repeat="node in assets_shown_cpu_entries">
                 <td>{{ node.cpuname }}</td>
                 <td>{{ node.numberofcores }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h3>
+        Installed GPU(s)
+    </h3>
+    <table
+        class="table table-condensed table-hover table-striped"
+        style="width:auto;"
+        st-safe-src="asset_run.$$gpu_entries"
+        st-table="assets_shown_gpu_entries"
+    >
+        <thead>
+            <tr>
+                <td colspan="99">
+                    <div
+                        icsw-tools-pagination
+                        st-items-by-page="10"
+                        st-displayed-pages="11"
+                        possible-items-by-page="10,20,50,100,200,500"
+                    ></div>
+                </td>
+            </tr>
+            <tr>
+                <th>GPU Name/Type</th>
+                <th>Driver Version</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="node in assets_shown_gpu_entries">
+                <td>{{ node.gpuname }}</td>
+                <td>{{ node.driverversion }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h3>
+        Installed Harddrive(s)
+    </h3>
+    <table
+        class="table table-condensed table-hover table-striped"
+        style="width:auto;"
+        st-safe-src="asset_run.$$hdd_entries"
+        st-table="assets_shown_hdd_entries"
+    >
+        <thead>
+            <tr>
+                <td colspan="99">
+                    <div
+                        icsw-tools-pagination
+                        st-items-by-page="10"
+                        st-displayed-pages="11"
+                        possible-items-by-page="10,20,50,100,200,500"
+                    ></div>
+                </td>
+            </tr>
+            <tr>
+                <th>HDD Name/Type</th>
+                <th>Serialnumber</th>
+                <th>Size</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="node in assets_shown_hdd_entries">
+                <td>{{ node.name }}</td>
+                <td>{{ node.serialnumber }}</td>
+                <td>{{ node.$$size }} GiB</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h3>
+        Partition Overview
+    </h3>
+    <table
+        class="table table-condensed table-hover table-striped"
+        style="width:auto;"
+        st-safe-src="asset_run.$$partition_entries"
+        st-table="assets_shown_partition_entries"
+    >
+        <thead>
+            <tr>
+                <td colspan="99">
+                    <div
+                        icsw-tools-pagination
+                        st-items-by-page="10"
+                        st-displayed-pages="11"
+                        possible-items-by-page="10,20,50,100,200,500"
+                    ></div>
+                </td>
+            </tr>
+            <tr>
+                <th>Name</th>
+                <th>Size</th>
+                <th>Free</th>
+                <th>Free %</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="node in assets_shown_partition_entries">
+                <td>{{ node.name }}</td>
+                <td>{{ node.$$size }} GiB</td>
+                <td>{{ node.$$free }} GiB</td>
+                <td>{{ node.$$percentage_free }} %</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h3>
+        Installed Display(s)
+    </h3>
+    <table
+        class="table table-condensed table-hover table-striped"
+        style="width:auto;"
+        st-safe-src="asset_run.$$display_entries"
+        st-table="assets_shown_display_entries"
+    >
+        <thead>
+            <tr>
+                <td colspan="99">
+                    <div
+                        icsw-tools-pagination
+                        st-items-by-page="10"
+                        st-displayed-pages="11"
+                        possible-items-by-page="10,20,50,100,200,500"
+                    ></div>
+                </td>
+            </tr>
+            <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Manufacturer</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="node in assets_shown_display_entries">
+                <td>{{ node.name }}</td>
+                <td>{{ node.type }}</td>
+                <td>{{ node.manufacturer }}</td>
             </tr>
         </tbody>
     </table>

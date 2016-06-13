@@ -5,7 +5,7 @@
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
-# This file is part of webfrontend
+# This file is part of icsw-server
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -221,7 +221,7 @@ class update_device(View):
                         cur_dev.dhcp_write = new_dhcp_write
                         _bc = True
                     if cur_dev.bootnetdevice:
-                        new_driver, new_macaddr = (dev_data["bn_driver"], dev_data["bn_macaddr"])
+                        new_driver, new_macaddr = (dev_data["driver"], dev_data["macaddr"])
                         if new_driver != cur_dev.bootnetdevice.driver or new_macaddr != cur_dev.bootnetdevice.macaddr:
                             cur_dev.bootnetdevice.driver = new_driver
                             # ignore empty macaddr (for many changes)

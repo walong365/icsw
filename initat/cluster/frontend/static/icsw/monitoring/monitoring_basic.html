@@ -126,13 +126,13 @@
                             </td>
                         </tr>
                         <tr>
-                            <th st-sort="name" st-sort-default="true">Name</th>
+                            <th st-sort="loginname" st-sort-default="true">Name</th>
                             <th st-sort="volatile">volatile</th>
-                            <th st-sort="nsc_period">Service:</th>
+                            <th st-sort="getters.nsc_period">Service:</th>
                             <th st-sort="max_attempts">att</th>
                             <th st-sort="check_interval">check</th>
                             <th st-sort="retry_interval">retry</th>
-                            <th st-sort="nsn_period">Notify:</th>
+                            <th st-sort="getters.nsn_period">Notify:</th>
                             <th st-sort="ninterval">interval</th>
                             <th st-sort="nrecovery">rec</th>
                             <th st-sort="ncritical">crit</th>
@@ -154,7 +154,7 @@
                     </thead>
                     <tbody>
                         <tr ng-repeat="obj in entries_displayed">
-                            <td>{{ obj.name }}</td>
+                            <td>{{ obj.loginname }}</td>
                             <td>{{ obj.volatile | yesno1 }}</td>
                             <td>{{ basic_tree.mon_period_lut[obj.nsc_period].name }}</td>
                             <td>{{ obj.max_attempts }}</td>
@@ -329,7 +329,7 @@
                             </td>
                         </tr>
                         <tr>
-                            <th st-sort="user" st-sort-default="true">User</th>
+                            <th st-sort="loginname" st-sort-default="ascending">User</th>
                             <th st-sort="snperiod">Service:</th>
                             <th st-sort="snrecovery">rec</th>
                             <th st-sort="sncritical">crit</th>
@@ -350,7 +350,7 @@
                     </thead>
                     <tbody>
                         <tr ng-repeat="obj in entries_displayed">
-                            <td>{{ user_group_tree.user_lut[obj.user].login }}</td>
+                            <td>{{ obj.loginname }}</td>
                             <td>{{ basic_tree.mon_period_lut[obj.snperiod].name }}</td>
                             <td>{{ obj.snrecovery | yesno1 }}</td>
                             <td>{{ obj.sncritical | yesno1 }}</td>

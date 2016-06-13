@@ -85,7 +85,7 @@
 
                 <uib-accordion close-others="false">
                     <uib-accordion-group heading="Formula" is-open="true">
-                        <textarea ui-codemirror="editorOptions" ng-model="cur_edit_kpi.formula"></textarea>
+                        <div ui-ace="ace_options" ng-model="cur_edit_kpi.formula"></div>
                     </uib-accordion-group>
                     <uib-accordion-group heading="Evaluation" is-open="true" ng-show="true">
                         <icsw-tools-button type="reload" value="recalculate" ng-click="calculate_kpi()" ></icsw-tools-button>

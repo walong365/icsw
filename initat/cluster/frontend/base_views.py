@@ -3,7 +3,7 @@
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
-# This file is part of host-monitoring
+# This file is part of icsw-server
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -40,8 +40,7 @@ from rest_framework.response import Response
 
 import initat.cluster.backbone.models
 from initat.cluster.backbone.models import device_variable, category, \
-    category_tree, location_gfx, DeleteRequest, device, config, mon_check_command, \
-    device_mon_location
+    category_tree, location_gfx, DeleteRequest, device_mon_location
 from initat.cluster.backbone.models.functions import can_delete_obj, get_related_models
 from initat.cluster.backbone.render import permission_required_mixin
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
@@ -324,11 +323,11 @@ class GetKpiSourceData(View):
         srv_com['time_range_parameter'] = request.POST['time_range_parameter']
         result = contact_server(request, "md-config", srv_com, log_error=True, log_result=False)
         if result:
-            print result.pretty_print()
+            # print result.pretty_print()
             request.xml_response['response'] = result['kpi_set']
 
 
-class CalculateKpiPreview(ListAPIView):
+class CalculateKpiPreview(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     @rest_logging

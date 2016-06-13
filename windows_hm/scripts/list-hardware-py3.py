@@ -70,7 +70,7 @@ if __name__=="__main__":
         _info_dict['logical'].append(_sub_info_dict)
 
     # Win32_DesktopMonitor class
-    #https://msdn.microsoft.com/en-us/library/windows/desktop/aa394173%28v=vs.85%29.aspx
+    #https://msdn.microsoft.com/en-us/library/aa394122%28v=vs.85%29.aspx
 
     wql = "Select * From Win32_DesktopMonitor"
     for item in c.query(wql):

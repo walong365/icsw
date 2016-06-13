@@ -332,144 +332,7 @@ class export_assetruns_to_csv(View):
 
         ar = AssetRun.objects.get(idx=int(request.POST["pk"]))
 
-        base_header = [
-            'Asset Type',
-            'Batch Id',
-            'Start Time',
-            'End Time',
-            'Total Run Time',
-            'device',
-            'status',
-            'result'
-        ]
-
-        if ar.run_start_time and ar.run_end_time:
-            ar_run_time = str((ar.run_end_time - ar.run_start_time).total_seconds())
-        else:
-            ar_run_time = "N/A"
-
-        base_row = [AssetType(ar.run_type).name,
-                    str(ar.asset_batch.idx),
-                    str(ar.run_start_time),
-                    str(ar.run_end_time),
-                    ar_run_time,
-                    str(ar.device.full_name),
-                    RunStatus(ar.run_status).name,
-                    RunResult(ar.run_result).name]
-
-        if ar.run_type == AssetType.PACKAGE:
-            base_header.extend([
-                'package_name',
-                'package_version',
-                'package_release',
-                'package_size',
-                'package_install_date',
-                'package_type'])
-
-            writer.writerow(base_header)
-
-            for package_version in ar.packages.select_related("asset_package").all():
-                row = base_row[:]
-
-                row.append(package_version.asset_package.name)
-                row.append(package_version.version)
-                row.append(package_version.release)
-                row.append(package_version.size)
-                row.append(package_version.created)
-                row.append(PackageTypeEnum(package_version.asset_package.package_type).name)
-
-                writer.writerow(row)
-
-        elif ar.run_type == AssetType.HARDWARE:
-            pass
-            # TODO implement me
-
-        elif ar.run_type == AssetType.LICENSE:
-            base_header.extend([
-                'license_name',
-                'license_key'])
-
-            writer.writerow(base_header)
-
-            for license in ar.assetlicenseentry_set.all():
-                row = base_row[:]
-
-                row.append(license.name)
-                row.append(license.license_key)
-
-                writer.writerow(row)
-
-        elif ar.run_type == AssetType.UPDATE:
-            base_header.extend([
-                'update_name',
-                'update_version',
-                'update_release',
-                'update_kb_idx',
-                'update_install_date'
-                'update_status',
-                'update_optional'
-                'update_installed'
-            ])
-
-            writer.writerow(base_header)
-
-            for update in ar.assetupdateentry_set.all():
-                row = base_row[:]
-
-                row.append(update.name)
-                row.append(update.version)
-                row.append(update.release)
-                row.append(update.kb_idx)
-                row.append(update.install_date)
-                row.append(update.status)
-                row.append(update.optional)
-                row.append(update.installed)
-
-                writer.writerow(row)
-
-        elif ar.run_type == AssetType.PROCESS:
-            base_header.extend([
-                'process_name',
-                'process_id'
-            ])
-
-            writer.writerow(base_header)
-
-            for process in ar.assetprocessentry_set.all():
-                row = base_row[:]
-
-                row.append(str(process.name))
-                row.append(str(process.pid))
-
-                writer.writerow(row)
-
-        elif ar.run_type == AssetType.PENDING_UPDATE:
-            base_header.extend([
-                'update_name',
-                'update_version',
-                'update_release',
-                'update_kb_idx',
-                'update_install_date'
-                'update_status',
-                'update_optional'
-                'update_installed'
-            ])
-
-            writer.writerow(base_header)
-
-            for update in ar.assetupdateentry_set.all():
-                row = base_row[:]
-
-                row.append(update.name)
-                row.append(update.version)
-                row.append(update.release)
-                row.append(update.kb_idx)
-                row.append(update.install_date)
-                row.append(update.status)
-                row.append(update.optional)
-                row.append(update.installed)
-
-                writer.writerow(row)
+        _generate_csv_entry_for_assetrun(ar, writer.writerow)
 
         tmpfile.seek(0)
         s = tmpfile.read()
@@ -570,145 +433,10 @@ class export_assetbatch_to_xlsx(View):
         workbook.remove_sheet(workbook.active)
 
         for ar in assetruns:
-            base_header = ['Asset Type',
-                           'Batch Id',
-                           'Start Time',
-                           'End Time',
-                           'Total Run Time',
-                           'device',
-                           'status',
-                           'result']
-
-            if ar.run_start_time and ar.run_end_time:
-                ar_run_time = str((ar.run_end_time - ar.run_start_time).total_seconds())
-            else:
-                ar_run_time = "N/A"
-
-            base_row = [AssetType(ar.run_type).name,
-                        str(ar.asset_batch.idx),
-                        str(ar.run_start_time),
-                        str(ar.run_end_time),
-                        ar_run_time,
-                        str(ar.device.full_name),
-                        RunStatus(ar.run_status).name,
-                        RunResult(ar.run_result).name]
-
             sheet = workbook.create_sheet()
             sheet.title = AssetType(ar.run_type).name
 
-            if ar.run_type == AssetType.PACKAGE:
-                base_header.extend([
-                    'package_name',
-                    'package_version',
-                    'package_release',
-                    'package_size',
-                    'package_install_date',
-                    'package_type'])
-
-                sheet.append(base_header)
-
-                for package_version in ar.packages.select_related("asset_package").all():
-                    row = base_row[:]
-
-                    row.append(package_version.asset_package.name)
-                    row.append(package_version.version)
-                    row.append(package_version.release)
-                    row.append(package_version.size)
-                    row.append(package_version.created)
-                    row.append(PackageTypeEnum(package_version.asset_package.package_type).name)
-
-                    sheet.append(row)
-
-            elif ar.run_type == AssetType.HARDWARE:
-                pass
-                # TODO implement me
-
-            elif ar.run_type == AssetType.LICENSE:
-                base_header.extend([
-                    'license_name',
-                    'license_key'])
-
-                sheet.append(base_header)
-
-                for license in ar.assetlicenseentry_set.all():
-                    row = base_row[:]
-
-                    row.append(license.name)
-                    row.append(license.license_key)
-
-                    sheet.append(row)
-
-            elif ar.run_type == AssetType.UPDATE:
-                base_header.extend([
-                    'update_name',
-                    'update_version',
-                    'update_release',
-                    'update_kb_idx',
-                    'update_install_date'
-                    'update_status',
-                    'update_optional'
-                    'update_installed'
-                ])
-
-                sheet.append(base_header)
-
-                for update in ar.assetupdateentry_set.all():
-                    row = base_row[:]
-
-                    row.append(update.name)
-                    row.append(update.version)
-                    row.append(update.release)
-                    row.append(update.kb_idx)
-                    row.append(update.install_date)
-                    row.append(update.status)
-                    row.append(update.optional)
-                    row.append(update.installed)
-
-                    sheet.append(row)
-
-            elif ar.run_type == AssetType.PROCESS:
-                base_header.extend([
-                    'process_name',
-                    'process_id'
-                ])
-
-                sheet.append(base_header)
-
-                for process in ar.assetprocessentry_set.all():
-                    row = base_row[:]
-
-                    row.append(str(process.name))
-                    row.append(str(process.pid))
-
-                    sheet.append(row)
-
-            elif ar.run_type == AssetType.PENDING_UPDATE:
-                base_header.extend([
-                    'update_name',
-                    'update_version',
-                    'update_release',
-                    'update_kb_idx',
-                    'update_install_date'
-                    'update_status',
-                    'update_optional'
-                    'update_installed'
-                ])
-
-                sheet.append(base_header)
-
-                for update in ar.assetupdateentry_set.all():
-                    row = base_row[:]
-
-                    row.append(update.name)
-                    row.append(update.version)
-                    row.append(update.release)
-                    row.append(update.kb_idx)
-                    row.append(update.install_date)
-                    row.append(update.status)
-                    row.append(update.optional)
-                    row.append(update.installed)
-
-                    sheet.append(row)
+            _generate_csv_entry_for_assetrun(ar, sheet.append)
 
         s = save_virtual_workbook(workbook)
 
@@ -721,3 +449,248 @@ class export_assetbatch_to_xlsx(View):
                 }
             )
         )
+
+
+def _generate_csv_entry_for_assetrun(ar, row_writer_func):
+    base_header = ['Asset Type',
+                   'Batch Id',
+                   'Start Time',
+                   'End Time',
+                   'Total Run Time',
+                   'device',
+                   'status',
+                   'result']
+
+
+    if ar.run_start_time and ar.run_end_time:
+        ar_run_time = str((ar.run_end_time - ar.run_start_time).total_seconds())
+    else:
+        ar_run_time = "N/A"
+
+    base_row = [AssetType(ar.run_type).name,
+                str(ar.asset_batch.idx),
+                str(ar.run_start_time),
+                str(ar.run_end_time),
+                ar_run_time,
+                str(ar.device.full_name),
+                RunStatus(ar.run_status).name,
+                RunResult(ar.run_result).name]
+
+    if ar.run_type == AssetType.PACKAGE:
+        base_header.extend([
+            'package_name',
+            'package_version',
+            'package_release',
+            'package_size',
+            'package_install_date',
+            'package_type'])
+
+        row_writer_func(base_header)
+
+        for package_version in ar.packages.select_related("asset_package").all():
+            row = base_row[:]
+
+            row.append(package_version.asset_package.name)
+            row.append(package_version.version)
+            row.append(package_version.release)
+            row.append(package_version.size)
+            row.append(package_version.created)
+            row.append(PackageTypeEnum(package_version.asset_package.package_type).name)
+
+            row_writer_func(row)
+
+    elif ar.run_type == AssetType.HARDWARE:
+        base_header.extend([
+            'hardware_node_type',
+            'hardware_depth',
+            'hardware_attributes', ])
+
+        row_writer_func(base_header)
+
+        for hardware_item in ar.assethardwareentry_set.all():
+            row = base_row[:]
+
+            row.append(hardware_item.type)
+            row.append(hardware_item.depth)
+            row.append(hardware_item.attributes)
+
+            row_writer_func(row)
+
+
+    elif ar.run_type == AssetType.LICENSE:
+        base_header.extend([
+            'license_name',
+            'license_key'])
+
+        row_writer_func(base_header)
+
+        for license in ar.assetlicenseentry_set.all():
+            row = base_row[:]
+
+            row.append(license.name)
+            row.append(license.license_key)
+
+            row_writer_func(row)
+
+    elif ar.run_type == AssetType.UPDATE:
+        base_header.extend([
+            'update_name',
+            'update_version',
+            'update_release',
+            'update_kb_idx',
+            'update_install_date',
+            'update_status',
+            'update_optional',
+            'update_installed'
+        ])
+
+        row_writer_func(base_header)
+
+        for update in ar.assetupdateentry_set.all():
+            row = base_row[:]
+
+            row.append(update.name)
+            row.append(update.version)
+            row.append(update.release)
+            row.append(update.kb_idx)
+            row.append(update.install_date)
+            row.append(update.status)
+            row.append(update.optional)
+            row.append(update.installed)
+
+            row_writer_func(row)
+
+    elif ar.run_type == AssetType.PROCESS:
+        base_header.extend([
+            'process_name',
+            'process_id'
+        ])
+
+        row_writer_func(base_header)
+
+        for process in ar.assetprocessentry_set.all():
+            row = base_row[:]
+
+            row.append(str(process.name))
+            row.append(str(process.pid))
+
+            row_writer_func(row)
+
+    elif ar.run_type == AssetType.PENDING_UPDATE:
+        base_header.extend([
+            'update_name',
+            'update_version',
+            'update_release',
+            'update_kb_idx',
+            'update_install_date',
+            'update_status',
+            'update_optional',
+            'update_installed'
+        ])
+
+        row_writer_func(base_header)
+
+        for update in ar.assetupdateentry_set.all():
+            row = base_row[:]
+
+            row.append(update.name)
+            row.append(update.version)
+            row.append(update.release)
+            row.append(update.kb_idx)
+            row.append(update.install_date)
+            row.append(update.status)
+            row.append(update.optional)
+            row.append(update.installed)
+
+            row_writer_func(row)
+
+    elif ar.run_type == AssetType.PCI:
+        base_header.extend([
+            'pci_info'
+        ])
+
+        row_writer_func(base_header)
+
+        for pci_entry in ar.assetpcientry_set.all():
+            row = base_row[:]
+
+            row.append(str(pci_entry))
+
+            row_writer_func(row)
+
+    elif ar.run_type == AssetType.DMI:
+        base_header.extend([
+            'handle',
+            'dmi_type',
+            'header',
+            'key',
+            'value'
+        ])
+
+        row_writer_func(base_header)
+
+        for dmi_head in ar.assetdmihead_set.all():
+            for dmi_handle in dmi_head.assetdmihandle_set.all():
+                handle = dmi_handle.handle
+                dmi_type = dmi_handle.dmi_type
+                header = dmi_handle.header
+
+                for dmi_value in dmi_handle.assetdmivalue_set.all():
+                    key = dmi_value.key
+                    value = dmi_value.value
+
+                    row = base_row[:]
+
+                    row.append(handle)
+                    row.append(dmi_type)
+                    row.append(header)
+                    row.append(key)
+                    row.append(value)
+
+                    row_writer_func(row)
+
+
+    elif ar.run_type == AssetType.PRETTYWINHW:
+        row_writer_func(base_header)
+
+        for cpu in ar.cpus.all():
+            row = base_row[:]
+
+            row.append(str(cpu))
+
+            row_writer_func(row)
+
+        for memorymodule in ar.memory_modules.all():
+            row = base_row[:]
+
+            row.append(str(memorymodule))
+
+            row_writer_func(row)
+
+        for gpu in ar.gpus.all():
+            row = base_row[:]
+
+            row.append(str(gpu))
+
+            row_writer_func(row)
+
+        for hdd in ar.hdds.all():
+            row = base_row[:]
+
+            row.append(str(hdd))
+
+            row_writer_func(row)
+
+        for partition in ar.partitions.all():
+            row = base_row[:]
+
+            row.append(str(partition))
+
+            row_writer_func(row)
+
+        for display in ar.displays.all():
+            row = base_row[:]
+
+            row.append(str(display))
+
+            row_writer_func(row)

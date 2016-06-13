@@ -579,6 +579,9 @@ class server_check(object):
             # fetch ip_info
             self._db_check_ip()
             self._fetch_network_info()
+            self.server_info_str = "device {}".format(
+                unicode(self.device),
+            )
 
     def fetch_config_vars(self):
         self.__config_vars.update(get_config_var_list(self.config, self.effective_device))

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2015 Andreas Lang-Nevyjel (lang-nevyjel@init.at)
+# Copyright (C) 2015-2016 Andreas Lang-Nevyjel (lang-nevyjel@init.at)
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -26,8 +26,9 @@ import os
 import re
 
 from initat.tools import process_tools
+from initat.constants import LOG_ROOT
 
-LOGSERVER_ROOT = "/var/log/cluster/logging-server"
+LOGSERVER_ROOT = os.path.join(LOG_ROOT, "logging-server")
 
 
 class Parser(object):

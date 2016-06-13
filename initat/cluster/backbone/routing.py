@@ -4,7 +4,7 @@
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
-# This file is part of cluster-backbone-sql
+# This file is part of icsw-server
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -195,7 +195,15 @@ class SrvTypeRouting(object):
 
     @property
     def resolv_dict(self):
-        return {key: value for key, value in self._resolv_dict.iteritems() if not key.startswith("_")}
+        return {
+            key: value for key, value in self._resolv_dict.iteritems() if not key.startswith("_")
+        }
+
+    @property
+    def internal_dict(self):
+        return {
+            key: value for key, value in self._resolv_dict.iteritems() if key.startswith("_")
+        }
 
     @property
     def local_device(self):
@@ -331,6 +339,7 @@ class SrvTypeRouting(object):
         # set local device
         if _myself.device is not None:
             _resolv_dict["_local_device"] = (_myself.device.pk,)
+        _resolv_dict["_server_info_str"] = _myself.server_info_str
         _resolv_dict["_alias_dict"] = _INSTANCE.get_alias_dict()
         _resolv_dict["_node_split_list"] = node_split_list
         _resolv_dict["_unroutable_configs"] = _unroutable_configs

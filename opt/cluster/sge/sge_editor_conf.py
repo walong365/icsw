@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001-2007,2014-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2007,2014-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -47,7 +47,13 @@ def main():
             a_lines += [act_line]
     content = dict([_line.split(None, 1) for _line in a_lines])
     try:
-        new_keys = dict([_line.split(None, 1) for _line in [_entry.strip() for _entry in file("/tmp/.qconf_config", "r").read().splitlines()]])
+        new_keys = dict(
+            [
+                _line.split(None, 1) for _line in [
+                    _entry.strip() for _entry in file("/tmp/.qconf_config", "r").read().splitlines()
+                ]
+            ]
+        )
     except:
         pass
     else:

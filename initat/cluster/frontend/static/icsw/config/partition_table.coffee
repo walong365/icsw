@@ -138,6 +138,8 @@ partition_table_module = angular.module(
             d = $q.defer()
             Restangular.all(ICSW_URLS.REST_PARTITION_DISC_LIST.slice(1)).post(disc).then(
                 (new_disc) =>
+                    if not new_disc.partition_set?
+                        new_disc.partition_set = []
                     layout.partition_disc_set.push(new_disc)
                     @build_luts()
                     d.resolve("updated")
@@ -305,11 +307,11 @@ partition_table_module = angular.module(
 ]).controller("icswDevicePartitionEditOverviewCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular",
-    "$q", "$timeout", "ICSW_URLS", "icswToolsSimpleModalService",
+    "$q", "$timeout", "ICSW_URLS", "icswToolsSimpleModalService", "ICSW_SIGNALS",
     "icswPartitionTableTreeService", "blockUI", "icswComplexModalService", "toaster",
 (
     $scope, $compile, $filter, $templateCache, Restangular,
-    $q, $timeout, ICSW_URLS, icswToolsSimpleModalService,
+    $q, $timeout, ICSW_URLS, icswToolsSimpleModalService, ICSW_SIGNALS,
     icswPartitionTableTreeService, blockUI, icswComplexModalService, toaster,
 ) ->
     $scope.struct = {
@@ -384,27 +386,6 @@ partition_table_module = angular.module(
                 sub_scope.$destroy()
         )
 
-    $scope.create = () ->
-        names = (entry.name for entry in $scope.entries)
-        _idx = -1
-        while true
-            _idx += 1
-            new_name = if _idx then "new_part_#{_idx}" else "new_part"
-            if not (new_name in names)
-                break
-        Restangular.all(ICSW_URLS.REST_PARTITION_TABLE_LIST.slice(1)).post(
-            {
-                "name" : new_name
-                "sys_partition_set" : []
-                "lvm_vg_set" : []
-                "partition_disc_set" : []
-                "lvm_lv_set" : []
-            }
-        ).then((data) ->
-            $scope.reload(() ->
-                $scope.edit_layout(data)
-            )
-        )
     # tab functions
     $scope.edit = ($event, layout) ->
         if !layout.$$tab_open
@@ -428,7 +409,7 @@ partition_table_module = angular.module(
                 $scope.struct.partition_tree.delete_partition_table_layout(layout).then(
                     (ok) ->
                         # close tab if open
-                        $scope.close_part(layout)
+                        $scope.close(undefined, layout)
                         console.log "layout deleted"
                         blockUI.stop()
                     (not_ok) ->

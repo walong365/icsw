@@ -4,7 +4,7 @@
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
-# This file is part of webfrontend
+# This file is part of icsw-server
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -107,7 +107,7 @@ my_sge_info = ThreadLockedSGEInfo()
 
 
 def get_job_options(request):
-    return sge_tools.get_empty_job_options(compress_nodelist=False)
+    return sge_tools.get_empty_job_options(compress_nodelist=False, queue_details=True)
 
 
 def get_node_options(request):
@@ -262,6 +262,7 @@ class get_rms_json(View):
             "wait_table": _sort_list(rms_info.wait_job_list, _post),
             "node_table": _sort_list(node_list, _post),
             "done_table": _done_ser,
+            "sched_conf": sge_tools.build_scheduler_info(my_sge_info),
             "files": fc_dict,
         }
         return HttpResponse(json.dumps(json_resp), content_type="application/json")

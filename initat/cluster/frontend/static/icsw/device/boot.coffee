@@ -1071,6 +1071,7 @@ angular.module(
         # create boot select entries, used to gather info from subelements
         sub_scope.$$bs = {
             ts_mode: "s"
+            # dict, network_idx -> state_list
             target_state: {}
             macaddr: ""
             driver: ""
@@ -1130,10 +1131,10 @@ angular.module(
         else
             if dev.target_state of $scope.struct.boot_status_tree.special_states_lut
                 _bs.ts_mode = "s"
-                _bs.target_state.s = dev.target_state
+                _bs.target_state.s = dev.new_state
             else
                 _bs.ts_mode = dev.prod_link
-                _bs.ts_mode[dev.prod_link] = dev.target_state
+                _bs.target_state[dev.prod_link] = dev.new_state
         if dev.stage1_flavour
             _bs.stage1_flavour = _.toLower(dev.stage1_flavour)
         if dev.bootnetdevice

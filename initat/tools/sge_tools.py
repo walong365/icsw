@@ -52,7 +52,7 @@ def get_empty_job_options(**kwargs):
     options.suppress_nodelist = False
     options.compress_nodelist = True
     options.only_valid_waiting = False
-    options.detailed_wait = False
+    options.queue_details = False
     options.long_status = False
     options.show_stdoutstderr = True
     for key, value in kwargs.iteritems():
@@ -237,7 +237,8 @@ class sge_info(object):
             "queueconf": (2, self._check_queueconf_dict),
             "complexes": (3, self._check_complexes_dict),
             "qhost": (4, self._check_qhost_dict),
-            "qstat": (5, self._check_qstat_dict)
+            "qstat": (5, self._check_qstat_dict),
+            "sconf": (6, self._check_sconf_dict),
         }
         self.__valid_dicts = [
             v_key for _bla, v_key in sorted(
@@ -406,12 +407,15 @@ class sge_info(object):
     def del_wait_job_info(self, job_id):
         del self.__wait_job_dict[job_id]
 
-    def get_run_time(self, cur_time):
-        # returns time running
+    def _get_diff_seconds(self, cur_time):
         run_time = abs(datetime.datetime.now() - cur_time)
         days = run_time.days
         secs = run_time.seconds
-        return sec_to_str(24 * 3600 * days + secs)
+        return 24 * 3600 * days + secs
+
+    def get_run_time(self, cur_time):
+        # returns time running
+        return sec_to_str(self._get_diff_seconds(cur_time))
 
     def get_left_time(self, start_time, h_rt):
         if h_rt:
@@ -762,6 +766,21 @@ class sge_info(object):
                     cur_hgroups.append(new_hg)
         return cur_hgroups
 
+    def _check_sconf_dict(self):
+        qconf_com = self._get_com_name("qconf")
+        c_stat, c_out = self._execute_command("{} -ssconf".format(qconf_com))
+        cur_sconf = E.sconf()
+        if not c_stat:
+            for line_parts in [
+                s_line.strip().split(None, 1) for s_line in c_out.split("\n") if not s_line.strip().startswith("#")
+            ]:
+                new_ss = E.setting(line_parts[1], name=line_parts[0])
+                # for host in c_out.pop(0)[1].split():
+                #     new_hg.append(E.host(host))
+                cur_sconf.append(new_ss)
+        # print etree.tostring(cur_sconf)
+        return cur_sconf
+
     def _check_complexes_dict(self):
         qconf_com = self._get_com_name("qconf")
         c_stat, c_out = self._execute_command("{} -sc".format(qconf_com))
@@ -1013,7 +1032,9 @@ class sge_info(object):
         for cur_host in self.__tree.findall("qhost/host"):
             self.__host_lut[cur_host.get("name")] = cur_host
         # expand host_list of queue q_name if not already expanded
-        hg_lut = {cur_hg.get("name"): cur_hg for cur_hg in self.__tree.findall("hostgroup/hostgroup")}
+        hg_lut = {
+            cur_hg.get("name"): cur_hg for cur_hg in self.__tree.findall("hostgroup/hostgroup")
+        }
         for queue in self.__queue_lut.itervalues():
             if not queue.findall("hosts"):
                 hosts_el = E.hosts()
@@ -1029,6 +1050,11 @@ class sge_info(object):
                                 )
                         else:
                             hosts_el.append(E.host(hg_name))
+        self.__scheduler_conf = self.__tree.find("sconf")
+
+    @property
+    def scheduler_conf(self):
+        return self.__scheduler_conf
 
 
 def get_running_headers(options):
@@ -1113,6 +1139,27 @@ def create_stdout_stderr(act_job, info):
 
 def create_file_content(act_job):
     return E.files("{:d}".format(len(act_job.xpath(".//file_info/file_content", smart_strings=False))))
+
+
+def build_scheduler_info(s_info):
+    # build scheduler info as dict
+    r_dict = {}
+    int_re = re.compile("^\d+$")
+    float_re = re.compile("^\d+\.\d+$")
+    for entry in s_info.scheduler_conf:
+        _name = entry.attrib["name"]
+        if entry.text.lower() in ["true"]:
+            _val = True
+        elif entry.text.lower() in ["false"]:
+            _val = False
+        elif int_re.match(entry.text):
+            _val = int(entry.text)
+        elif float_re.match(entry.text):
+            _val = float(entry.text)
+        else:
+            _val = entry.text
+        r_dict[_name] = _val
+    return r_dict
 
 
 def build_running_list(s_info, options, **kwargs):
@@ -1271,9 +1318,11 @@ def get_waiting_headers(options):
                 E.exec_time(),
             ]
         )
-    if options.detailed_wait:
-        cur_job.ext(
-            E.wait_details()
+    if options.queue_details:
+        cur_job.extend(
+            [
+                E.queue_details()
+            ]
         )
     cur_job.extend(
         [
@@ -1346,8 +1395,14 @@ def build_waiting_list(s_info, options, **kwargs):
             submit_time = datetime.datetime.fromtimestamp(int(act_job.attrib["submit_time"]))
             cur_job.extend(
                 [
-                    E.queue_time(logging_tools.get_relative_dt(submit_time)),
-                    E.wait_time(s_info.get_run_time(submit_time)),
+                    E.queue_time(
+                        logging_tools.get_relative_dt(submit_time),
+                        raw=act_job.attrib["submit_time"]
+                    ),
+                    E.wait_time(
+                        s_info.get_run_time(submit_time),
+                        raw="{:d}".format(s_info._get_diff_seconds(submit_time)),
+                    ),
                     E.runtime(s_info.get_h_rt_time(act_job.findtext("hard_request[@name='h_rt']"))),
                 ]
             )
@@ -1359,23 +1414,46 @@ def build_waiting_list(s_info, options, **kwargs):
                 cur_job.append(E.exec_time(logging_tools.get_relative_dt(_exec_time)))
         dep_list = sorted(act_job.xpath(".//predecessor_jobs_req/text()", smart_strings=False))
         # print etree.tostring(act_job, pretty_print=True)
-        if options.detailed_wait:
+        # print "*"
+        if options.queue_details:
+            # see: http://talby.rcs.manchester.ac.uk/~ri/_notes_sge/scheduling.html
             # parse
             _info_dict = {
                 # normalized values
                 "norm_pprio": float(act_job.findtext("JB_nppri")),
                 "norm_urg": float(act_job.findtext("JB_nurg")),
-                # resource requirements
+                "norm_tickets": float(act_job.findtext("JAT_ntix")),
+                # the urgency values contribution that reflects the urgency related to ...
+                # ... resource requirements
                 "rr_contr": float(act_job.findtext("JB_rrcontr")),
-                # wait time
+                # ... wait time
                 "wt_contr": float(act_job.findtext("JB_wtcontr")),
-                # deadline
+                # ... deadline
                 "dl_contr": float(act_job.findtext("JB_dlcontr")),
+                # override portion of the total number of tickets assigned to the job currently
+                "otickets": float(act_job.findtext("otickets")),
+                # functional portion of the total number of tickets assigned to the job currently
+                "ftickets": float(act_job.findtext("ftickets")),
+                # share portion of the total number of tickets assigned to the job currently
+                "stickets": float(act_job.findtext("stickets")),
+                # total number of tickets
+                "tickets": float(act_job.findtext("tickets")),
+                # share of the total system to which the job is entitled currently
+                "share": float(act_job.findtext("JAT_share")),
 
             }
+            # import pprint
+            # pprint.pprint(_info_dict)
             # print _info_dict
             cur_job.append(
-                E.detailed_wait("X")
+                E.queue_details(
+                    "{:.4f} / {:.4f} / {:.4f}".format(
+                        _info_dict["norm_pprio"],
+                        _info_dict["norm_urg"],
+                        _info_dict["norm_tickets"],
+                    ),
+                    raw=json.dumps(_info_dict)
+                )
             )
         cur_job.extend(
             [

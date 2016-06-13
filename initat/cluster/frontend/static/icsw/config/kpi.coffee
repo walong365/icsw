@@ -21,7 +21,7 @@
 angular.module(
     "icsw.config.kpi",
     [
-        "icsw.tools.utils", "icsw.d3", "icsw.config.kpi_visualisation", "angular-ladda"
+        "icsw.tools.utils", "icsw.d3", "icsw.config.kpi_visualisation", "angular-ladda",
     ]
 ).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
     $stateProvider.state(
@@ -293,17 +293,11 @@ angular.module(
         child_scope.mode = mode
         child_scope.cur_edit_kpi = cur_edit_kpi
 
-        child_scope.editorOptions = {
-            lineWrapping : false
-            lineNumbers: true
-            mode:
-                name : "python"
-                version : 2
-            matchBrackets: true
-            styleActiveLine: true
-            indentUnit : 4
+        child_scope.ace_options = {
+            uswWrapMode: false
+            showGutter: true
+            mode: "python"
         }
-
 
         update_kpi_data_source = () ->
             # make sure to not query server twice at the same time
@@ -431,17 +425,18 @@ angular.module(
                 timeout: 120 * 1000
                 data:
                     kpi_serialized: kpi_serialized
-                    dev_mon_cat_tuples: JSON.stringify(cur_edit_kpi.selected_device_monitoring_category_tuple)
-            ).then((xml) ->
-                child_scope.kpi_result.kpi_set = angular.fromJson($(xml).find("value[name='kpi_set']").text())
+                    dev_mon_cat_tuples: angular.toJson(cur_edit_kpi.selected_device_monitoring_category_tuple)
+            ).then(
+                (xml) ->
+                    child_scope.kpi_result.kpi_set = angular.fromJson($(xml).find("value[name='kpi_set']").text())
 
-                kpi_error_report = angular.fromJson($(xml).find("value[name='kpi_error_report']").text())
-                if  kpi_error_report?
-                    # sometimes <type 'int'> or similar occurs in error, handle that
-                    kpi_error_report = (_.escape(line) for line in kpi_error_report)
-                    #child_scope.kpi_result.kpi_error_report = "<pre>" + kpi_error_report.join("<br/>") + "</pre>"
-                    child_scope.kpi_result.kpi_error_report = "<tt>" + kpi_error_report.join("<br/>").replace(/\ /g, "&nbsp;") + "</tt>"
-                child_scope.kpi_result.loading = false
+                    kpi_error_report = angular.fromJson($(xml).find("value[name='kpi_error_report']").text())
+                    if  kpi_error_report?
+                        # sometimes <type 'int'> or similar occurs in error, handle that
+                        kpi_error_report = (_.escape(line) for line in kpi_error_report)
+                        #child_scope.kpi_result.kpi_error_report = "<pre>" + kpi_error_report.join("<br/>") + "</pre>"
+                        child_scope.kpi_result.kpi_error_report = "<tt>" + kpi_error_report.join("<br/>").replace(/\ /g, "&nbsp;") + "</tt>"
+                    child_scope.kpi_result.loading = false
 
             )
 
@@ -489,7 +484,7 @@ angular.module(
             time_range_parameter: 1
             enabled: true
             soft_states_as_hard_states: true
-            formula: "return initial_data\n\n\n\n\n\n\n\n\n\n"  # stupid workaround for CodeMirror indention bug
+            formula: "return initial_data\n"
         }
         show_kpi_dlg(scope, new_edit_kpi, KPI_DLG_MODE_CREATE)
     ret.show_modify_kpi_dlg = (scope, kpi) ->
