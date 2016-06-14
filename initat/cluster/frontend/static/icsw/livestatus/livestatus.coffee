@@ -26,7 +26,7 @@ angular.module(
 ).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
     $stateProvider.state(
         "main.livestatus", {
-            url: "/livestatus"
+            url: "/livestatus/all"
             template: '<icsw-device-livestatus icsw-sel-man="0"></icsw-device-livestatus>'
             icswData: icswRouteExtensionProvider.create
                 pageTitle: "Monitoring dashboard"
@@ -40,56 +40,22 @@ angular.module(
                     size_x: 4
                     size_y: 4
         }
-    ).state(
-        "main.livestatus.Everything"
-        {
-            url: "/livestatus/lo1"
-            templateUrl: "icsw.device.livestatus.everything"
-            icswData: icswRouteExtensionProvider.create()
-        }
-    ).state(
-        "main.livestatus.BurstTable"
-        {
-            url: "/livestatus/lo2"
-            templateUrl: "icsw.device.livestatus.bursttable"
-            icswData: icswRouteExtensionProvider.create()
-        }
-    ).state(
-        "main.livestatus.OnlyTable"
-        {
-            url: "/livestatus/lo3"
-            templateUrl: "icsw.device.livestatus.onlytable"
-            icswData: icswRouteExtensionProvider.create()
-        }
-    ).state(
-        "main.livestatus.MapWithBurst"
-        {
-            url: "/livestatus/lo4"
-            templateUrl: "icsw.device.livestatus.mapwithburst"
-            icswData: icswRouteExtensionProvider.create()
-        }
     )
 ]).controller("icswDeviceLiveStatusCtrl",
 [
     "$scope", "$compile", "$templateCache", "Restangular",
     "$q", "$timeout", "icswTools", "ICSW_URLS", "icswSimpleAjaxCall",
     "icswDeviceLivestatusDataService", "icswCachingCall", "icswLivestatusFilterService",
-    "icswDeviceTreeService", "$state",
+    "icswDeviceTreeService", "icswMonLivestatusConnector",
 (
     $scope, $compile, $templateCache, Restangular,
     $q, $timeout, icswTools, ICSW_URLS, icswSimpleAjaxCall,
     icswDeviceLivestatusDataService, icswCachingCall, icswLivestatusFilterService,
-    icswDeviceTreeService, $state
+    icswDeviceTreeService, icswMonLivestatusConnector,
 ) ->
     # top level controller of monitoring dashboard
 
-    LS_KEY = "main.livestatus"
-
     $scope.struct = {
-        # list of layouts
-        layouts: []
-        # current layout
-        current_layout: undefined
         # filter
         filter: new icswLivestatusFilterService()
         # selected devices
@@ -102,29 +68,9 @@ angular.module(
         device_tree: undefined
         # monitoring data
         monitoring_data: undefined
+        # connector
+        connector: new icswMonLivestatusConnector("test", angular.toJson({"icswLivestatusDataSource": [{"icswLivestatusFilterService": [{"icswLivestatusFullBurst": []}]}]}))
     }
-
-    # layout functions
-
-    $scope.activate_layout = (state) ->
-        $scope.struct.current_layout = state
-        # $state.go(state)
-
-    check_layouts = () ->
-        $scope.struct.layouts.length = 0
-        $scope.struct.current_layout = $state.current
-        _change_state = true
-        for state in $state.get()
-            if state.name.match(LS_KEY) and state.name != LS_KEY
-                state.icswData.short_name = state.name.slice(LS_KEY.length + 1)
-                $scope.struct.layouts.push(state)
-                if state.url == $scope.struct.current_layout.url
-                    # url is in local states, no change
-                    _change_state = false
-        if _change_state
-            $scope.activate_layout($scope.struct.layouts[0])
-
-    check_layouts()
 
     # $scope.ls_devsel = new icswLivestatusDevSelFactory()
 
@@ -140,7 +86,10 @@ angular.module(
         if $scope.struct.filter?
             $scope.struct.filter.set_monitoring_data($scope.struct.monitoring_data)
 
-    $scope.new_devsel = (_dev_sel, _devg_sel) ->
+    $scope.new_devsel = (_dev_sel) ->
+        @struct.connector.new_devsel(_dev_sel)
+        return
+        # only called when new devices are selected, not on every monitoring data update
         $scope.struct.updating = true
 
         if $scope.struct.fetch_timeout
@@ -165,31 +114,17 @@ angular.module(
                 # console.log "watch for", data[1]
                 $scope.struct.updating = false
                 $scope.struct.monitoring_data = data[1]
+                console.log "start loop"
                 $scope.struct.monitoring_data.result_notifier.promise.then(
                     (ok) ->
                         console.log "dr ok"
                     (not_ok) ->
                         console.log "dr error"
                     (generation) ->
-                        # console.log "data here"
+                        console.log "new data here"
                         $scope.filter_changed()
                 )
         )
-
-    #$scope.new_data = (mres) ->
-    #    host_entries = mres.hosts
-    #    service_entries = mres.services
-    #    used_cats = mres.used_cats
-    #    $scope.host_entries = host_entries
-    #    $scope.service_entries = service_entries
-        # $scope.ls_filter.set_total_num(host_entries.length, service_entries.length)
-        # $scope.ls_filter.set_used_cats(used_cats)
-        # $scope.apply_filter()
-
-    #$scope.apply_filter = () ->
-        # filter entries for table
-        # $scope.filtered_entries = _.filter($scope.service_entries, (_v) -> return $scope.ls_filter.apply_filter(_v, true))
-        # $scope.ls_filter.set_filtered_num($scope.host_entries.length, $scope.filtered_entries.length)
 
     $scope.$on("$destroy", () ->
         icswDeviceLivestatusDataService.destroy($scope.$id)
@@ -667,11 +602,11 @@ angular.module(
     }
 ]).controller("icswDeviceLivestatusBurstReactContainerCtrl",
 [
-    "$scope", "icswDeviceTreeService", "icswDeviceLivestatusDataService", "$q",
+    "$scope", "icswDeviceTreeService", "$q",
     "icswDeviceLivestatusFunctions", "icswDeviceLivestatusBurstReactContainer",
     "icswBurstDrawParameters",
 (
-    $scope, icswDeviceTreeService, icswDeviceLivestatusDataService, $q,
+    $scope, icswDeviceTreeService, $q,
     icswDeviceLivestatusFunctions, icswDeviceLivestatusBurstReactContainer,
     icswBurstDrawParameters,
 ) ->
@@ -848,11 +783,20 @@ angular.module(
     $scope.struct.filter = $scope.filter
     # console.log "struct=", $scope.struct
 
+]).service('icswLivestatusFullBurst',
+[
+    "$q", "icswMonLivestatusPipeBase",
+(
+    $q, icswMonLivestatusPipeBase,
+) ->
+    class icswLivestatusFullBurst extends icswMonLivestatusPipeBase
+        constructor: (connector) ->
+            super("icswLivestatusFullBurst", true, false, connector)
 ]).directive('icswDeviceLivestatusFullburst',
 [
     "$templateCache",
 (
-    $templateCache
+    $templateCache,
 ) ->
     return {
         restrict: "EA"

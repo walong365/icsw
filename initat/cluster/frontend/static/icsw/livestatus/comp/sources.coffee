@@ -32,18 +32,44 @@ angular.module(
     $q, $rootScope,
 ) ->
     class icswMonLivestatusPipeBase
-        constructor: (name, is_receiver, is_emitter) ->
-            @name = name
-            @is_receiver = is_receiver
-            @is_emitter = is_emitter
+        constructor: (@name, @is_receiver, @is_emitter, @connector) ->
             # notifier for downstream elements
             if @is_emitter
                 @notifier = $q.defer()
+                @childs = []
             console.log "init #{@name} (recv: #{@is_receiver}, emit: #{@is_emitter})"
 
-        feed: () ->
-            # feed data
-            true
+        # santify checks
+        check_for_emitter: () =>
+            if not @is_emitter or @is_receiver
+                throw new error("node is not an emitter but a receiver")
+
+        feed_data: (mon_data) ->
+            # feed data, used to insert data into the pipeline
+            console.log "fd", mon_data
+            @notifier.notify(mon_data)
+
+        add_child_node: (node) ->
+            if not @is_emitter
+                throw new error("Cannot add childs to non-emitting element")
+            @childs.push(node)
+            node.link_to_parent(@notifier)
+
+        new_data_received: (new_data) =>
+            console.log "new data received, to be overwritten", new_data
+
+        link_to_parent: (parent_not) ->
+            parent_not.promise.then(
+                (ok) ->
+                    console.log "pn ok"
+                (not_ok) ->
+                    console.log "pn error"
+                (new_data) =>
+                    console.log "new data", new_data
+                    @new_data_received(new_data)
+                    if @is_emitter
+                        @notifier.notify(new_data)
+            )
 
 ]).service("icswLivestatusFilterService",
 [
@@ -54,8 +80,8 @@ angular.module(
     # ToDo: separate data / filtered data from filter
     running_id = 0
     class icswLivestatusFilter extends icswMonLivestatusPipeBase
-        constructor: () ->
-            super("icswLivestatusFilter", true, true)
+        constructor: (connector) ->
+            super("icswLivestatusFilter", true, true, connector)
             running_id++
             @id = running_id
             # console.log "new LivestatusFilter with id #{@id}"
@@ -855,4 +881,63 @@ angular.module(
             if not watchers_present()
                 stop_interval()
     }
+]).service("icswLivestatusDataSource",
+[
+    "$q", "$rootScope", "icswMonLivestatusPipeBase", "$timeout",
+    "icswDeviceTreeService", "icswDeviceLivestatusDataService", "icswTools",
+(
+    $q, $rootScope, icswMonLivestatusPipeBase, $timeout,
+    icswDeviceTreeService, icswDeviceLivestatusDataService, icswTools,
+) ->
+    class icswLivestatusDataSource extends icswMonLivestatusPipeBase
+        constructor: (connector) ->
+            super("icswLivestatusDataSource", false, true, connector)
+            @_my_id = icswTools.get_unique_id()
+            @struct = {
+                # device list
+                devices: []
+                # is updating
+                updating: false
+                # data fetch timeout
+                fetch_timeout: undefined
+                # device tree, really needed here ?
+                device_tree: undefined
+                # monitoring data
+                monitoring_data: undefined
+            }
+
+        new_devsel: (devs) =>
+            @struct.devices.length = 0
+            for dev in devs
+                if not dev.is_meta_device
+                    @struct.devices.push(dev)
+            @start()
+
+        stop_update: () =>
+            if @struct.fetch_timeout
+                $timeout.cancel(@struct.fetch_timeout)
+                @struct.fetch_timeout = undefined
+
+        start: () =>
+            @stop_update()
+            @struct.updating = true
+            wait_list = [
+                icswDeviceTreeService.load(@_my_id)
+                icswDeviceLivestatusDataService.retain(@_my_id, @struct.devices)
+            ]
+            console.log "INIT"
+            $q.all(wait_list).then(
+                (data) =>
+                    @struct.device_tree = data[0]
+                    @struct.updating = false
+                    monitoring_data = data[1]
+                    monitoring_data.result_notifier.promise.then(
+                        (ok) ->
+                            console.log "dr ok"
+                        (not_ok) ->
+                            console.log "dr error"
+                        (generation) =>
+                            @feed_data(monitoring_data)
+                    )
+            )
 ])

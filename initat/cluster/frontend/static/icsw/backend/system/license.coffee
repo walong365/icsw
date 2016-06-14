@@ -218,7 +218,7 @@ angular.module(
 ) ->
 
     add_grace_period = (date) ->
-        # NOTE: keep grace period in sync with py
+        # NOTE: keep grace period in sync with py, see license.py line 295
         return date.add(2, 'weeks')
 
     get_license_state_internal = (issued_lic) ->
