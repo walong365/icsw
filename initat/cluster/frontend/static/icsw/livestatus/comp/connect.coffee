@@ -83,19 +83,21 @@ angular.module(
             _resolve_iter(@spec_json)
             # build tree
             _build_iter(@spec_json)
+            for el in @display_elements
+                el.build_title()
             @init_gridster()
             
             @setup_ok = true
             
         init_gridster: () =>
             @gridsterOpts = {
-                columns: 6
+                columns: 20
                 pushing: true
                 floating: true
                 swapping: false
                 width: 'auto'
                 colWidth: 'auto'
-                rowHeight: '200'
+                rowHeight: '40'
                 margins: [4, 4]
                 outerMargin: true
                 isMobile: true
@@ -103,9 +105,9 @@ angular.module(
                 mobileModeEnabled: true
                 minColumns: 1
                 minRows: 2
-                maxRows: 100,
-                defaultSizeX: 2
-                defaultSizeY: 1
+                maxRows: 100
+                defaultSizeX: 4
+                defaultSizeY: 4
                 minSizeX: 1
                 maxSizeX: null
                 minSizeY: 1

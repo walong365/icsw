@@ -34,6 +34,8 @@ angular.module(
     class icswMonLivestatusPipeBase
         constructor: (@name, @is_receiver, @is_emitter) ->
             @has_template = false
+            # parent element
+            @parent = undefined
             # notifier for downstream elements
             if @is_emitter
                 @notifier = $q.defer()
@@ -45,6 +47,14 @@ angular.module(
             @has_template = true
             # template content, not URL
             @template = template
+            @_raw_title = title
+
+        build_title: () =>
+            title = @_raw_title
+            if @parent
+                title = "#{title} from #{@parent.element_id}"
+            if @childs
+                title = "#{title} to " + (entry.element_id for entry in @childs).join(", ")
             @title = title
 
         # santify checks
@@ -61,16 +71,18 @@ angular.module(
             if not @is_emitter
                 throw new error("Cannot add childs to non-emitting element")
             @childs.push(node)
-            node.link_to_parent(@notifier)
+            node.link_to_parent(@, @notifier)
 
         new_data_received: (new_data) =>
-            console.log "new data received, to be overwritten", new_data
+            console.error "new data received, to be overwritten", new_data
+            return new_data
 
         # link with connector
         link_with_connector: (@connector, id) =>
             @element_id = id
 
-        link_to_parent: (parent_not) ->
+        link_to_parent: (parent, parent_not) ->
+            @parent = parent
             parent_not.promise.then(
                 (ok) ->
                     console.log "pn ok"
@@ -100,12 +112,28 @@ angular.module(
             @set_template('<icsw-livestatus-filter-display icsw-livestatus-filter="con_element"></icsw-livestatus-filter-display>', "BaseFilter")
             running_id++
             @id = running_id
+            @_latest_data = undefined
             # emit data
             @_emit_data = new icswMonitoringResult()
             @_local_init()
 
-        new_data_received: (mon_data) =>
-            return @set_monitoring_data(mon_data)
+        filter_changed: () ->
+            # callback from React
+            if @_latest_data?
+                @emit_data_downstream(@new_data_received(@_latest_data))
+
+        new_data_received: (data) =>
+            @_latest_data = data
+            @n_hosts = data.hosts.length
+            @n_services = data.services.length
+            @categories = data.categories
+
+            @_emit_data.apply_base_filter(@, @_latest_data)
+            @f_hosts = @_emit_data.hosts.length
+            @f_services = @_emit_data.services.length
+            @react_notifier.notify()
+            return @_emit_data
+            # @change_notifier.notify()
 
         _local_init: () =>
             # console.log "new LivestatusFilter with id #{@id}"
@@ -166,16 +194,9 @@ angular.module(
             # category filter settings
             @cat_filter_installed = false
 
-        install_category_filter: () =>
-            @cat_filter_installed = true
-            @cat_filter_list = undefined
-
-        set_category_filter: (in_list) =>
-            @cat_filter_list = in_list
-            # console.log "cur_cat_filter=", in_list
-            if @_latest_data?
-                # a little hack but working
-                @set_monitoring_data(@_latest_data)
+        # install_category_filter: () =>
+        #     @cat_filter_installed = true
+        #     @cat_filter_list = undefined
 
         toggle_service_state: (code) =>
             _srvc_idx = @service_state_lut[code][0]
@@ -218,24 +239,6 @@ angular.module(
         stop_notifying: () ->
             @change_notifier.reject("stop")
             
-        filter_changed: () ->
-            if @_latest_data?
-                @emit_data_downstream(@set_monitoring_data(@_latest_data))
-
-
-        set_monitoring_data: (data) ->
-            @_latest_data = data
-            @n_hosts = data.hosts.length
-            @n_services = data.services.length
-            @categories = data.categories
-
-            @_emit_data.filter(@, @_latest_data)
-            @f_hosts = @_emit_data.hosts.length
-            @f_services = @_emit_data.services.length
-            @react_notifier.notify()
-            return @_emit_data
-            # @change_notifier.notify()
-
 ]).factory("icswLivestatusFilterReactDisplay",
 [
     "$q",
@@ -660,8 +663,6 @@ angular.module(
 
         update: (hosts, services, used_cats) =>
             @generation++
-            # console.log "update", @generation
-            @result_notifier.notify(@generation)
             @hosts.length = 0
             for entry in hosts
                 @hosts.push(entry)
@@ -669,41 +670,53 @@ angular.module(
             for entry in services
                 @services.push(entry)
             @used_cats = used_cats
+            # console.log "update", @generation
+            @result_notifier.notify(@generation)
 
-        filter: (filter, src_data) =>
-            # apply livestatus filter
-
+        apply_base_filter: (filter, src_data) =>
+            # apply base livestatus filter
             @hosts.length = 0
             for entry in src_data.hosts
                 if filter.service_types[entry.state_type] and filter.host_states[entry.state]
-                    entry.$$show = true
                     @hosts.push(entry)
-                else
-                    entry.$$show = false
 
             # category filtering ?
-            _cf = if filter.cat_filter_installed and filter.cat_filter_list? then true else false
-            if _cf
-                # show uncategorized entries
-                _zero_cf = 0 in filter.cat_filter_list
-
             @services.length = 0
             for entry in src_data.services
                 if filter.service_types[entry.state_type] and filter.service_states[entry.state]
-                    entry.$$show = true
-                    if _cf
-                        if entry.custom_variables? and entry.custom_variables.cat_pks?
-                            if not _.intersection(filter.cat_filter_list, entry.custom_variables.cat_pks).length
-                                entry.$$show = false
-                        else if not _zero_cf
-                            entry.$$show = false
-                    if entry.$$show
-                        @services.push(entry)
-                else
-                    entry.$$show = false
+                    @services.push(entry)
+            # simply copy
+            @used_cats.length = 0
+            for entry in src_data.used_cats
+                @used_cats.push(entry)
 
             # bump generation counter
             @generation++
+
+        apply_category_filter: (cat_list, src_data) =>
+            @hosts.length = 0
+            for entry in src_data.hosts
+                @hosts.push(entry)
+            # show uncategorized entries
+            _zero_cf = 0 in cat_list
+            @services.length = 0
+            for entry in src_data.services
+                _add = true
+                if entry.custom_variables? and entry.custom_variables.cat_pks?
+                    if not _.intersection(cat_list, entry.custom_variables.cat_pks).length
+                        _add = false
+                else if not _zero_cf
+                    _add = false
+                if _add # entry.$$show
+                    @services.push(entry)
+            # simply copy
+            @used_cats.length = 0
+            for entry in src_data.used_cats
+                if entry in cat_list
+                    @used_cats.push(entry)
+            # bump generation counter
+            @generation++
+
 
 ]).service("icswDeviceLivestatusDataService",
 [
@@ -951,7 +964,6 @@ angular.module(
                 icswDeviceTreeService.load(@_my_id)
                 icswDeviceLivestatusDataService.retain(@_my_id, @struct.devices)
             ]
-            console.log "INIT"
             $q.all(wait_list).then(
                 (data) =>
                     @struct.device_tree = data[0]
@@ -966,4 +978,34 @@ angular.module(
                             @feed_data(monitoring_data)
                     )
             )
+]).service('icswLivestatusCategoryFilter',
+[
+    "$q", "icswMonLivestatusPipeBase", "icswMonitoringResult",
+(
+    $q, icswMonLivestatusPipeBase, icswMonitoringResult,
+) ->
+    class icswLivestatusCategoryFilter extends icswMonLivestatusPipeBase
+        constructor: () ->
+            super("icswLivestatusCategoryFilter", true, true)
+            @set_template(
+                '<icsw-config-category-tree-select icsw-mode="filter" icsw-sub-tree="\'mon\'" icsw-mode="filter" icsw-connect-element="con_element"></icsw-config-category-tree-select>'
+                "CategoryFilter"
+            )
+            @_emit_data = new icswMonitoringResult()
+            @_cat_filter = undefined
+            @_latest_data = undefined
+            @new_data_notifier = $q.defer()
+            #  @new_data_notifier = $q.defer()
+
+        set_category_filter: (sel_cat) ->
+            @_cat_filter = sel_cat
+            if @_latest_data?
+                @emit_data_downstream(@new_data_received(@_latest_data))
+
+        new_data_received: (data) ->
+            @_latest_data = data
+            if @_cat_filter?
+                @_emit_data.apply_category_filter(@_cat_filter, @_latest_data)
+            @new_data_notifier.notify(data)
+            return @_emit_data
 ])

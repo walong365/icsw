@@ -69,7 +69,41 @@ angular.module(
         # monitoring data
         monitoring_data: undefined
         # connector
-        connector: new icswMonLivestatusConnector("test", angular.toJson({"icswLivestatusDataSource": [{"icswLivestatusFilterService": [{"icswLivestatusFullBurst": []}, {"icswLivestatusFullBurst": []}]}]}))
+        # connector: new icswMonLivestatusConnector("test", angular.toJson({"icswLivestatusDataSource": [{"icswLivestatusFilterService": [{"icswLivestatusCategoryFilter": [{"icswLivestatusFullBurst": []}]}]}]}))
+        # connector: new icswMonLivestatusConnector("test", angular.toJson({"icswLivestatusDataSource": [{"icswLivestatusFullBurst": []}]}))
+        connector: new icswMonLivestatusConnector(
+            "test"
+            angular.toJson(
+                {
+                    "icswLivestatusDataSource": [
+                        {
+                            "icswLivestatusFilterService": [
+                                {
+                                    "icswLivestatusFullBurst": []
+                                }
+                                {
+                                    "icswLivestatusCategoryFilter": [
+                                        {
+                                            "icswLivestatusFullBurst": []
+                                        }
+                                    ]
+                                }
+                                {
+                                    "icswLivestatusFilterService": [
+                                        {
+                                            "icswLivestatusFullBurst": []
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                        {
+                            "icswLivestatusFullBurst": []
+                        }
+                    ]
+                }
+            )
+        )
     }
 
     # $scope.ls_devsel = new icswLivestatusDevSelFactory()

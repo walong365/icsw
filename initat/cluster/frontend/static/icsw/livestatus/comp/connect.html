@@ -18,12 +18,8 @@
     <!-- the margin-bottom entry fixes issues with scrollbars appearing on the right side of panels -->
     <div class="panel panel-success" style="height:100%; margin-bottom:0px !important;">
         <div class="panel-heading">
+            <span class="badge">{{ con_element.element_id }}</span>
             {{ con_element.title }}
-            <span class="pull-right">
-                <icsw-tools-button size="xs" type="create" value="" ng-if="db_element.dbe.allow_state" ng-click="state()"></icsw-tools-button>
-                <icsw-tools-button size="xs" type="display" value="" ng-if="db_element.dbe.allow_show" ng-click="show()"></icsw-tools-button>
-                <icsw-tools-button size="xs" type="close" value="" ng-click="close()"></icsw-tools-button>
-            </span>
         </div>
         <div style="overflow:auto;">
     <!-- we dont close the </div> here, this happens in the directive -->
