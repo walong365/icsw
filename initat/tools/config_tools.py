@@ -577,7 +577,7 @@ class server_check(object):
             # fetch ip_info
             self._db_check_ip()
             self._fetch_network_info()
-            self.server_info_str = "device {}".format(
+            self.server_info_str = u"device {}".format(
                 unicode(self.device),
             )
 

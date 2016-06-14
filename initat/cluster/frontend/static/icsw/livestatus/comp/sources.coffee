@@ -32,12 +32,20 @@ angular.module(
     $q, $rootScope,
 ) ->
     class icswMonLivestatusPipeBase
-        constructor: (@name, @is_receiver, @is_emitter, @connector) ->
+        constructor: (@name, @is_receiver, @is_emitter) ->
+            @has_template = false
             # notifier for downstream elements
             if @is_emitter
                 @notifier = $q.defer()
                 @childs = []
             console.log "init #{@name} (recv: #{@is_receiver}, emit: #{@is_emitter})"
+
+        # set template
+        set_template: (template, title) =>
+            @has_template = true
+            # template content, not URL
+            @template = template
+            @title = title
 
         # santify checks
         check_for_emitter: () =>
@@ -58,32 +66,48 @@ angular.module(
         new_data_received: (new_data) =>
             console.log "new data received, to be overwritten", new_data
 
+        # link with connector
+        link_with_connector: (@connector, id) =>
+            @element_id = id
+
         link_to_parent: (parent_not) ->
             parent_not.promise.then(
                 (ok) ->
                     console.log "pn ok"
                 (not_ok) ->
                     console.log "pn error"
-                (new_data) =>
-                    console.log "new data", new_data
-                    @new_data_received(new_data)
+                (recv_data) =>
+                    emit_data = @new_data_received(recv_data)
                     if @is_emitter
-                        @notifier.notify(new_data)
+                        @emit_data_downstream(emit_data)
             )
+
+        emit_data_downstream: (emit_data) ->
+            @notifier.notify(emit_data)
+
 
 ]).service("icswLivestatusFilterService",
 [
-    "$q", "$rootScope", "icswMonLivestatusPipeBase",
+    "$q", "$rootScope", "icswMonLivestatusPipeBase", "icswMonitoringResult",
 (
-    $q, $rootScope, icswMonLivestatusPipeBase,
+    $q, $rootScope, icswMonLivestatusPipeBase, icswMonitoringResult,
 ) ->
     # ToDo: separate data / filtered data from filter
     running_id = 0
     class icswLivestatusFilter extends icswMonLivestatusPipeBase
-        constructor: (connector) ->
-            super("icswLivestatusFilter", true, true, connector)
+        constructor: () ->
+            super("icswLivestatusFilter", true, true)
+            @set_template('<icsw-livestatus-filter-display icsw-livestatus-filter="con_element"></icsw-livestatus-filter-display>', "BaseFilter")
             running_id++
             @id = running_id
+            # emit data
+            @_emit_data = new icswMonitoringResult()
+            @_local_init()
+
+        new_data_received: (mon_data) =>
+            return @set_monitoring_data(mon_data)
+
+        _local_init: () =>
             # console.log "new LivestatusFilter with id #{@id}"
             @categories = []
             # number of entries
@@ -137,6 +161,7 @@ angular.module(
                 @service_type_lut[entry[1]] = entry
                 @service_types[entry[0]] = entry[2]
 
+            @react_notifier = $q.defer()
             @change_notifier = $q.defer()
             # category filter settings
             @cat_filter_installed = false
@@ -193,15 +218,23 @@ angular.module(
         stop_notifying: () ->
             @change_notifier.reject("stop")
             
+        filter_changed: () ->
+            if @_latest_data?
+                @emit_data_downstream(@set_monitoring_data(@_latest_data))
+
+
         set_monitoring_data: (data) ->
+            @_latest_data = data
             @n_hosts = data.hosts.length
             @n_services = data.services.length
             @categories = data.categories
-            @_latest_data = data
-            data.filter(@)
-            @f_hosts = data.filtered_hosts.length
-            @f_services = data.filtered_services.length
-            @change_notifier.notify()
+
+            @_emit_data.filter(@, @_latest_data)
+            @f_hosts = @_emit_data.hosts.length
+            @f_services = @_emit_data.services.length
+            @react_notifier.notify()
+            return @_emit_data
+            # @change_notifier.notify()
 
 ]).factory("icswLivestatusFilterReactDisplay",
 [
@@ -216,7 +249,7 @@ angular.module(
     return React.createClass(
         propTypes: {
             livestatus_filter: React.PropTypes.object
-            filter_changed_cb: React.PropTypes.func
+            # filter_changed_cb: React.PropTypes.func
         }
         getInitialState: () ->
             return {
@@ -226,7 +259,7 @@ angular.module(
 
         componentWillMount: () ->
             # @umount_defer = $q.defer()
-            @props.livestatus_filter.change_notifier.promise.then(
+            @props.livestatus_filter.react_notifier.promise.then(
                 () ->
                 () ->
                     # will get called when the component unmounts
@@ -248,8 +281,7 @@ angular.module(
         render: () ->
 
             _filter_changed = () =>
-                if @props.filter_changed_cb?
-                    @props.filter_changed_cb()
+                @props.livestatus_filter.filter_changed()
 
             # console.log "r", @props.livestatus_filter
             _lf = @props.livestatus_filter
@@ -355,7 +387,7 @@ angular.module(
             _list.push(
                 _text_f.join(" ")
             )
-            return span(
+            return div(
                 {key: "top"}
                 _list
             )
@@ -371,16 +403,12 @@ angular.module(
         replace: true
         scope:
             filter: "=icswLivestatusFilter"
-            changed_cb: "=icswChangedCallback"
         link: (scope, element, attr) ->
             ReactDOM.render(
                 React.createElement(
                     icswLivestatusFilterReactDisplay
                     {
                         livestatus_filter: scope.filter
-                        filter_changed_cb: () ->
-                            if scope.changed_cb?
-                                scope.changed_cb()
                     }
                 )
                 element[0]
@@ -624,8 +652,6 @@ angular.module(
             @selection_notifier = $q.defer()
             @hosts = []
             @services = []
-            @filtered_hosts = []
-            @filtered_services = []
             @used_cats = []
 
         new_selection: () =>
@@ -644,14 +670,14 @@ angular.module(
                 @services.push(entry)
             @used_cats = used_cats
 
-        filter: (filter) =>
+        filter: (filter, src_data) =>
             # apply livestatus filter
 
-            @filtered_hosts.length = 0
-            for entry in @hosts
+            @hosts.length = 0
+            for entry in src_data.hosts
                 if filter.service_types[entry.state_type] and filter.host_states[entry.state]
                     entry.$$show = true
-                    @filtered_hosts.push(entry)
+                    @hosts.push(entry)
                 else
                     entry.$$show = false
 
@@ -661,8 +687,8 @@ angular.module(
                 # show uncategorized entries
                 _zero_cf = 0 in filter.cat_filter_list
 
-            @filtered_services.length = 0
-            for entry in @services
+            @services.length = 0
+            for entry in src_data.services
                 if filter.service_types[entry.state_type] and filter.service_states[entry.state]
                     entry.$$show = true
                     if _cf
@@ -672,7 +698,7 @@ angular.module(
                         else if not _zero_cf
                             entry.$$show = false
                     if entry.$$show
-                        @filtered_services.push(entry)
+                        @services.push(entry)
                 else
                     entry.$$show = false
 
@@ -890,8 +916,8 @@ angular.module(
     icswDeviceTreeService, icswDeviceLivestatusDataService, icswTools,
 ) ->
     class icswLivestatusDataSource extends icswMonLivestatusPipeBase
-        constructor: (connector) ->
-            super("icswLivestatusDataSource", false, true, connector)
+        constructor: () ->
+            super("icswLivestatusDataSource", false, true)
             @_my_id = icswTools.get_unique_id()
             @struct = {
                 # device list

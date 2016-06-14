@@ -1,0 +1,30 @@
+<script type="text/ng-template" id="icsw.livestatus.connect.overview">
+    <uib-alert ng-if="!struct.connector.setup_ok" class="warning">Building page...</uib-alert>
+    <div class="panel panel-success" ng-if="struct.connector.setup_ok">
+        <div gridster="struct.connector.gridsterOpts" class="panel-body container-fluid">
+            <ul>
+                <li gridster-item="item" ng-repeat="item in struct.connector.display_elements track by item.element_id">
+                    <icsw-connect-element-display
+                        style="position:absolute; top:0px; left:0px; bottom:0px; right:0px; overflow:auto;"
+                        icsw-connect-element="item"
+                    ></icsw-connect-element-display>
+                </li>
+            </ul>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.connect.element">
+    <!-- the margin-bottom entry fixes issues with scrollbars appearing on the right side of panels -->
+    <div class="panel panel-success" style="height:100%; margin-bottom:0px !important;">
+        <div class="panel-heading">
+            {{ con_element.title }}
+            <span class="pull-right">
+                <icsw-tools-button size="xs" type="create" value="" ng-if="db_element.dbe.allow_state" ng-click="state()"></icsw-tools-button>
+                <icsw-tools-button size="xs" type="display" value="" ng-if="db_element.dbe.allow_show" ng-click="show()"></icsw-tools-button>
+                <icsw-tools-button size="xs" type="close" value="" ng-click="close()"></icsw-tools-button>
+            </span>
+        </div>
+        <div style="overflow:auto;">
+    <!-- we dont close the </div> here, this happens in the directive -->
+</script>

@@ -34,6 +34,7 @@ angular.module(
     # creates a DisplayPipeline
     class icswMonLivestatusConnector
         constructor: (name, spec) ->
+            @setup_ok = false
             @name = name
             # connection specification as text
             @spec_src = spec
@@ -58,10 +59,17 @@ angular.module(
                     for _el in value
                         _resolve_iter(_el, depth+1)
 
+            # list of display elements
+            @display_elements = []
             # build dependencies
+            el_idx = 0
             _build_iter = (in_obj, depth=0) =>
                 for key, value of in_obj
-                    node = new elements[key](@)
+                    el_idx++
+                    node = new elements[key]()
+                    node.link_with_connector(@, el_idx)
+                    if node.has_template
+                        @display_elements.push(node)
                     if depth == 0
                         @root_element = node
                         @root_element.check_for_emitter()
@@ -75,9 +83,84 @@ angular.module(
             _resolve_iter(@spec_json)
             # build tree
             _build_iter(@spec_json)
+            @init_gridster()
+            
+            @setup_ok = true
+            
+        init_gridster: () =>
+            @gridsterOpts = {
+                columns: 6
+                pushing: true
+                floating: true
+                swapping: false
+                width: 'auto'
+                colWidth: 'auto'
+                rowHeight: '200'
+                margins: [4, 4]
+                outerMargin: true
+                isMobile: true
+                mobileBreakPoint: 600
+                mobileModeEnabled: true
+                minColumns: 1
+                minRows: 2
+                maxRows: 100,
+                defaultSizeX: 2
+                defaultSizeY: 1
+                minSizeX: 1
+                maxSizeX: null
+                minSizeY: 1
+                maxSizeY: null
+                resizable: {
+                   enabled: true,
+                   handles: ["n", 'w', 'ne', 'se', 'sw', 'nw']
+                   stop: (event, element, options) =>
+                       @ps_changed()
+                }
+                draggable: {
+                   enabled: true
+                   handle: '.my-class'
+                   stop: (event, element, options) =>
+                       @ps_changed()
+                }
+            }
+
+        ps_changed: () =>
+            console.log "psc"
             
         new_devsel: (devs) =>
             # start loop
             console.log @root_element, "*"
             @root_element.new_devsel(devs)
+]).directive("icswConnectElementDisplay",
+[
+    "$templateCache", "$compile",
+(
+    $templateCache, $compile
+) ->
+    return {
+        restrict: "E"
+        scope:
+            con_element: "=icswConnectElement"
+        controller: "icswConnectElementCtrl"
+        link: (scope, element, attrs) ->
+            _outer = $templateCache.get("icsw.connect.element")
+            _content = scope.con_element.template
+            console.log "C=", scope.con_element
+            _template_content = _outer + _content + "</div></div>"
+            element.append($compile(_template_content)(scope))
+            #scope.$on('gridster-item-initialized', ($event, element) ->
+            #    console.log "init", element, element.row, element.col
+            #)
+
+    }
+]).controller("icswConnectElementCtrl", [
+    "$scope", "icswRouteHelper", "$templateCache", "$compile", "$q",
+    "$state",
+(
+    $scope, icswRouteHelper, $templateCache, $compile, $q,
+    $state,
+) ->
+    $scope.close = () ->
+        $scope.con_element.close()
+
 ])

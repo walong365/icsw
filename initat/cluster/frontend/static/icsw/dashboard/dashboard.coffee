@@ -115,7 +115,7 @@ dashboard_module = angular.module(
         icswSimpleAjaxCall(
             url: ICSW_URLS.RMS_GET_RMS_JOBINFO
             data:
-                "jobinfo_jobsfrom": jobsfrom
+                jobinfo_jobsfrom: jobsfrom
             dataType: "json"
         ).then(
             (json) ->
@@ -281,14 +281,12 @@ dashboard_module = angular.module(
            handles: ["n", 'w', 'ne', 'se', 'sw', 'nw']
            stop: (event, element, options) ->
                options.ps_changed()
-               # console.log "size stop", event, element, options
         }
         draggable: {
            enabled: true
            handle: '.my-class'
            stop: (event, element, options) ->
                options.ps_changed()
-               # console.log "drag stop", event, element, options
         }
     }
     $scope.struct = {
@@ -313,7 +311,6 @@ dashboard_module = angular.module(
                     (done) ->
                         $scope.struct.data_loaded = true
                 )
-                # console.log $scope.struct.elements
         )
 
     load()
