@@ -239,6 +239,7 @@ class sge_info(object):
             "qhost": (4, self._check_qhost_dict),
             "qstat": (5, self._check_qstat_dict),
             "sconf": (6, self._check_sconf_dict),
+            "fstree": (7, self._check_fairshare_tree_dict),
         }
         self.__valid_dicts = [
             v_key for _bla, v_key in sorted(
@@ -780,6 +781,48 @@ class sge_info(object):
                 cur_sconf.append(new_ss)
         # print etree.tostring(cur_sconf)
         return cur_sconf
+
+    def _check_fairshare_tree_dict(self):
+        def _feed_dict(p_dict):
+            _id = p_dict["id"]
+            new_el = E.node(
+                E.childs(),
+                id=_id,
+                shares=p_dict["shares"],
+                type=p_dict["type"],
+                name=p_dict["name"],
+            )
+            id_lut[_id] = new_el
+            child_dict[_id] = []
+            if p_dict["childnodes"].lower() != "none":
+                child_dict[_id] = p_dict["childnodes"].split(",")
+        qconf_com = self._get_com_name("qconf")
+        c_stat, c_out = self._execute_command("{} -sstree".format(qconf_com))
+        id_lut = {}
+        child_dict = {}
+        if not c_stat:
+            _dict = {}
+            for _key, _value in [
+                s_line.strip().split("=", 1) for s_line in c_out.split("\n") if not s_line.strip().startswith("#")
+            ]:
+                if _key == "id" and _dict:
+                    _feed_dict(_dict)
+                    _dict = {}
+                _dict[_key] = _value
+                # for host in c_out.pop(0)[1].split():
+                #     new_hg.append(E.host(host))
+                # cur_sconf.append(new_ss)
+            if "id" in _dict:
+                _feed_dict(_dict)
+        # create links
+        for _p_id, _childs in child_dict.iteritems():
+            for _child in _childs:
+                id_lut[_p_id].find("childs").append(id_lut[_child])
+        cur_fs_tree = E.fairshare_tree()
+        if "0" in id_lut:
+            cur_fs_tree.append(id_lut["0"])
+        # print etree.tostring(cur_fs_tree, pretty_print=True)
+        return cur_fs_tree
 
     def _check_complexes_dict(self):
         qconf_com = self._get_com_name("qconf")

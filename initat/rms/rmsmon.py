@@ -97,7 +97,7 @@ class RMSMonProcess(threading_tools.process_obj):
         self.register_func("file_watch_content", self._file_watch_content)
         self.register_func("full_reload", self._full_reload)
         # job stop/start info
-        self.register_timer(self._update, 30)
+        self.register_timer(self._update_nodes, 30)
         if global_config["TRACE_FAIRSHARE"]:
             self.log("register fairshare tracer")
             self.register_timer(self._update_fairshare, 60, instant=True)
@@ -138,6 +138,9 @@ class RMSMonProcess(threading_tools.process_obj):
     def _update(self):
         self.__sge_info.update(no_file_cache=True, force_update=True)
         self.__sge_info.build_luts()
+
+    def _update_nodes(self):
+        self._update()
         _res = sge_tools.build_node_list(self.__sge_info, self.__node_options)
         self._generate_slotinfo(_res)
 
@@ -454,7 +457,45 @@ class RMSMonProcess(threading_tools.process_obj):
 
     # fairshare handling
     def _update_fairshare(self):
+        self._update()
         # get user list
+        cur_stat, cur_out = call_command(
+            "{} -suserl".format(
+                self._get_sge_bin("qconf"),
+            ),
+            log_com=self.log
+        )
+        _users = [line.strip() for line in cur_out.split("\n")]
+        _fs_tree = self.__sge_info.get_tree().find("fairshare_tree")
+        if _fs_tree is not None:
+            # fairshare tree found
+            # check if all users are present
+            for _user in _users:
+                _user_el = _fs_tree.find(".//node[@name='{}']".format(_user))
+                if _user_el is None:
+                    _path = global_config["FAIRSHARE_TREE_NODE_TEMPLATE"].format(
+                        project="defaultproject",
+                        user=_user,
+                    )
+                    _shares = global_config["FAIRSHARE_TREE_DEFAULT_SHARES"]
+                    self.log(
+                        "No user element for user '{}' found, adding node at {} with {:d} shares".format(
+                            _user,
+                            _path,
+                            _shares,
+                        ),
+                        logging_tools.LOG_LEVEL_WARN
+                    )
+                    cur_stat, cur_out = call_command(
+                        "{} -astnode {}={:d}".format(
+                            self._get_sge_bin("qconf"),
+                            _path,
+                            _shares,
+                        ),
+                        log_com=self.log
+                    )
+        else:
+            self.log("no fairshare tree element found", logging_tools.LOG_LEVEL_WARN)
         # todo: match user list with sharetree config
         cur_stat, cur_out = call_command(
             "{} -n -c 1 ".format(
