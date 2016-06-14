@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001-2008,2011-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2008,2011-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -73,7 +73,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin, 
 
     def _init_network_sockets(self):
         self.network_bind(
-            need_all_binds=True,
+            need_all_binds=False,
             bind_port=global_config["COMMAND_PORT"],
             pollin=self.remote_call,
             server_type="logcheck-server",
