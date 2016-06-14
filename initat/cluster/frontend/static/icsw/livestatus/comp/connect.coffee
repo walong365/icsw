@@ -127,7 +127,7 @@ angular.module(
             }
 
         ps_changed: () =>
-            console.log "psc"
+            # console.log "psc"
             
         new_devsel: (devs) =>
             # start loop

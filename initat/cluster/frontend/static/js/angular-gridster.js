@@ -1386,7 +1386,8 @@
 
 					originalCol = item.col;
 					originalRow = item.row;
-
+					if (document.querySelector('.gridster-item-moving') !== null)
+						return;
 					dragStart(e);
 
 					return true;

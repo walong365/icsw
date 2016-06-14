@@ -154,14 +154,6 @@
     </div>
 </script>
 
-<script type="text/ng-template" id="icsw.device.livestatus.fullburst">
-    <react-burst
-        icsw-livestatus-filter="struct.filter"
-        icsw-monitoring-data="struct.monitoring_data"
-        icsw-draw-parameters="struct.draw_parameters"
-    ></react-burst>
-</script>
-
 <script type="text/ng-template" id="icsw.device.livestatus.table.view">
     <h3 ng-show="!struct.monitoring_data.filtered_services.length">No checks</h3>
     <table
@@ -282,14 +274,6 @@
             </div>
         </fieldset>
     </ng-form>
-</script>
-
-<script type="text/ng-template" id="icsw.device.livestatus.brief">
-    <react-burst
-        icsw-livestatus-filter="struct.filter"
-        icsw-monitoring-data="struct.monitoring_data"
-        icsw-draw-parameters="struct.draw_parameters"
-    ></react-burst>
 </script>
 
 <script type="text/ng-template" id="icsw.device.livestatus.device.row">
