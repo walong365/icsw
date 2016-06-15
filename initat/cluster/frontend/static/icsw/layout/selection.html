@@ -44,8 +44,8 @@
                         disabled="!selection.any_selected()"
                         ng-click="select_parents()"
                     ></icsw-tools-button>
-                    <icsw-tools-button type="display" size="sm" value="show selection" ng-show="selection.any_selected()" ng-click="toggle_show_selection()"></icsw-tools-button>
-                    <icsw-tools-button type="modify" size="sm" value="resolve lazy selection" ng-show="selection.any_lazy_selected()" ng-click="resolve_lazy_selection()"></icsw-tools-button>
+                    <icsw-tools-button type="display" size="" value="show selection" ng-show="selection.any_selected()" ng-click="toggle_show_selection()"></icsw-tools-button>
+                    <icsw-tools-button type="modify" size="" value="resolve lazy selection" ng-show="selection.any_lazy_selected()" ng-click="resolve_lazy_selection()"></icsw-tools-button>
                 </span>
                 <small>
                     <ul class="list-group" ng-show="show_selection && selection.any_selected()">
@@ -161,7 +161,7 @@
                             <input class="form-control" ng-model="selection.db_obj.name" type="text"/>
                         </div>
                         <div class="col-md-2 controls">
-                            <icsw-tools-button type="create" size="sm" ng-click="create_selection()"></icsw-tools-button>
+                            <icsw-tools-button type="create" size="" ng-click="create_selection()"></icsw-tools-button>
                         </div>
                     </div>
                 </form>

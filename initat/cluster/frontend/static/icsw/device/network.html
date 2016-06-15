@@ -1305,7 +1305,7 @@
                         <input ng-repeat="ip in ip_dict[name]" type="button" class="btn btn-sm btn-primary" value="{{ ip }}" ng-click="set_ip(ip)"></input>
                     </li>
                     <li class="list-group-item">
-                        IP: <input ng-model="scan_settings.manual_address"/>
+                        <label>IP:</label> <input ng-model="scan_settings.manual_address" class="form-control col-lg-8" />
                     </li>
                 </ul>
             </div>

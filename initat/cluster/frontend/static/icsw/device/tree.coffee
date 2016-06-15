@@ -468,7 +468,7 @@ angular.module(
                 if sel.device_is_selected(device)
                     return "btn btn-xs btn-success"
                 else
-                    return "btn btn-xs"
+                    return "btn btn-xs btn-default"
             scope.toggle_dev_sel = () ->
                 sel.toggle_selection(device)
             scope.change_dg_sel = (flag) ->

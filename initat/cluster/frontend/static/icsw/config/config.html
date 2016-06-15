@@ -247,10 +247,10 @@
                                     <input st-search="search_str" class="form-control" placeholder="filter">
                                     </input>
                                     <div class="input-group-btn">
-                                        <input type="button" ng-class="config_service.get_filter_class('name')" value="name" ng-click="config_service.change_filter_setting('name')"/>
-                                        <input type="button" ng-class="config_service.get_filter_class('script')" value="script" ng-click="config_service.change_filter_setting('script')"/>
-                                        <input type="button" ng-class="config_service.get_filter_class('var')" value="var" ng-click="config_service.change_filter_setting('var')"/>
-                                        <input type="button" ng-class="config_service.get_filter_class('mon')" value="mon" ng-click="config_service.change_filter_setting('mon')"/>
+                                        <input type="button" ng-class="config_service.get_filter_class('name')" value="name" ng-click="config_service.change_filter_setting('name')" class="btn btn-default"/>
+                                        <input type="button" ng-class="config_service.get_filter_class('script')" value="script" ng-click="config_service.change_filter_setting('script')" class="btn btn-default"/>
+                                        <input type="button" ng-class="config_service.get_filter_class('var')" value="var" ng-click="config_service.change_filter_setting('var')" class="btn btn-default"/>
+                                        <input type="button" ng-class="config_service.get_filter_class('mon')" value="mon" ng-click="config_service.change_filter_setting('mon')" class="btn btn-default"/>
                                     </div>
                                 </div>
                             </div>
@@ -313,8 +313,8 @@
     <td class="text-center">
         <div class="btn-group btn-group-xs">
             <!-- tooltips not working right now -->
-            <input type="button" class="btn disabled" ng-class="config.server_config && 'btn-success'" value="S" data-toggle="tooltip" title="is server config"/>
-            <input type="button" class="btn disabled" ng-class="config.system_config && 'btn-success'" value="Y" data-toggle="tooltip" title="is system config" data-placement="bottom"/>
+            <input type="button" class="btn btn-default disabled" ng-class="config.server_config && 'btn-success'" value="S" data-toggle="tooltip" title="is server config"/>
+            <input type="button" class="btn btn-default disabled" ng-class="config.system_config && 'btn-success'" value="Y" data-toggle="tooltip" title="is system config" data-placement="bottom"/>
         </div>
     </td>
     <td>{{ get_config_catalog_name(config) }}</td>

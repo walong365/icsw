@@ -257,7 +257,7 @@ lic_module = angular.module("icsw.license.overview",
         if li.selected
             return "btn btn-xs btn-success"
         else
-            return "btn btn-xs"
+            return "btn btn-xs btn-default"
     $scope.toggle_li_sel = (li) ->
         li.selected = !li.selected
         $scope.license_select_change()

@@ -1326,7 +1326,7 @@ mark,
   text-transform: capitalize;
 }
 .text-muted {
-  color: #999999;
+  color: #777777;
 }
 .text-primary {
   color: #92aa00;
@@ -2244,7 +2244,7 @@ table {
 caption {
   padding-top: 2px;
   padding-bottom: 2px;
-  color: #999999;
+  color: #777777;
   text-align: left;
 }
 th {
@@ -3049,26 +3049,26 @@ fieldset[disabled] a.btn {
 }
 .btn-default {
   color: #444444;
-  background-color: rgba(189, 188, 188, 0.98);
-  border-color: rgba(189, 188, 188, 0.98);
+  background-color: #bdbcbc;
+  border-color: #bdbcbc;
 }
 .btn-default:focus,
 .btn-default.focus {
   color: #444444;
-  background-color: rgba(164, 162, 162, 0.98);
-  border-color: rgba(126, 124, 124, 0.98);
+  background-color: #a4a2a2;
+  border-color: #7e7c7c;
 }
 .btn-default:hover {
   color: #444444;
-  background-color: rgba(164, 162, 162, 0.98);
-  border-color: rgba(159, 157, 157, 0.98);
+  background-color: #a4a2a2;
+  border-color: #9f9d9d;
 }
 .btn-default:active,
 .btn-default.active,
 .open > .dropdown-toggle.btn-default {
   color: #444444;
-  background-color: rgba(164, 162, 162, 0.98);
-  border-color: rgba(159, 157, 157, 0.98);
+  background-color: #a4a2a2;
+  border-color: #9f9d9d;
 }
 .btn-default:active:hover,
 .btn-default.active:hover,
@@ -3080,8 +3080,8 @@ fieldset[disabled] a.btn {
 .btn-default.active.focus,
 .open > .dropdown-toggle.btn-default.focus {
   color: #444444;
-  background-color: rgba(146, 144, 144, 0.98);
-  border-color: rgba(126, 124, 124, 0.98);
+  background-color: #929090;
+  border-color: #7e7c7c;
 }
 .btn-default:active,
 .btn-default.active,
@@ -3097,11 +3097,11 @@ fieldset[disabled] .btn-default:focus,
 .btn-default.disabled.focus,
 .btn-default[disabled].focus,
 fieldset[disabled] .btn-default.focus {
-  background-color: rgba(189, 188, 188, 0.98);
-  border-color: rgba(189, 188, 188, 0.98);
+  background-color: #bdbcbc;
+  border-color: #bdbcbc;
 }
 .btn-default .badge {
-  color: rgba(189, 188, 188, 0.98);
+  color: #bdbcbc;
   background-color: #444444;
 }
 .btn-primary {
@@ -3518,7 +3518,7 @@ tbody.collapse.in {
   list-style: none;
   font-size: 13px;
   text-align: left;
-  background-color: rgba(176, 176, 176, 0.98);
+  background-color: #b0b0b0;
   border: 1px solid #bbbbbb;
   border: 1px solid rgba(0, 0, 0, 0.15);
   border-radius: 1px;
@@ -3548,16 +3548,16 @@ tbody.collapse.in {
 .dropdown-menu > li > a:hover,
 .dropdown-menu > li > a:focus {
   text-decoration: none;
-  color: #ffffff;
-  background-color: #92aa00;
+  color: #313131;
+  background-color: #eeeeee;
 }
 .dropdown-menu > .active > a,
 .dropdown-menu > .active > a:hover,
 .dropdown-menu > .active > a:focus {
-  color: #92aa00;
+  color: #313131;
   text-decoration: none;
   outline: 0;
-  background-color: #92aa00;
+  background-color: #eeeeee;
 }
 .dropdown-menu > .disabled > a,
 .dropdown-menu > .disabled > a:hover,
@@ -6773,22 +6773,6 @@ button.close {
   -webkit-box-shadow: none;
   box-shadow: none;
 }
-ul.fancytree-container {
-  background-color: #404040;
-}
-span.fancytree-title {
-  color: #ffffff;
-}
-.fancytree-expander {
-  color: #ffffff;
-}
-span.fancytree-node:hover span.fancytree-title {
-  background-color: transparent;
-  border-color: none;
-}
-span.fancytree-node:hover {
-  background-color: #313131;
-}
 .btn,
 .label,
 .pagination > .active,
@@ -6799,39 +6783,44 @@ span.fancytree-node:hover {
 }
 .label,
 .pagination > .active,
-.nav-tabs > .active,
-.nav .active,
-.list-group .active,
-.btn-primary,
+.nav-tabs > .active > a,
+.list-group,
 .btn-warning,
 .btn-info,
+.btn-primary,
 .success,
 .warning,
 .alert-success,
 .alert-warning {
   text-shadow: 0px 0px 7px #000000;
 }
-.btn-default:hover {
-  background-color: rgba(189, 188, 188, 0.98);
-  border: 1px solid rgba(189, 188, 188, 0.98);
+.btn-default:hover,
+.btn-default[disabled]:hover {
+  background-color: #bdbcbc;
+  border: 1px solid #bdbcbc;
 }
-.btn-primary:hover {
+.btn-primary:hover,
+.btn-primary[disabled]:hover {
   background-color: #92aa00;
   border: 1px solid #92aa00;
 }
-.btn-warning:hover {
+.btn-warning:hover,
+.btn-warning[disabled]:hover {
   background-color: #e2972d;
   border: 1px solid #e2972d;
 }
-.btn-success:hover {
+.btn-success:hover,
+.btn-success[disabled]:hover {
   background-color: #6e8200;
   border: 1px solid #6e8200;
 }
-.btn-info:hover {
+.btn-info:hover,
+.btn-info[disabled]:hover {
   background-color: #4c9d83;
   border: 1px solid #4c9d83;
 }
-.btn-danger:hover {
+.btn-danger:hover,
+.btn-danger[disabled]:hover {
   background-color: #bb3d1e;
   border: 1px solid #bb3d1e;
 }
@@ -6839,8 +6828,18 @@ span.fancytree-node:hover {
 .dropdown-menu li:hover a{
  text-shadow: 0px 0px 7px #000000; 
 }*/
-.dropdown-menu li.active > a {
-  color: #ffffff;
+/*.dropdown-menu li.active > a{
+ color: #ffffff;
+}*/
+.ui-select-bootstrap .ui-select-choices-row.active > a {
+  /*format like others*/
+  background-color: #b0b0b0;
+  color: #313131;
+  outline: 0 none;
+  text-decoration: none;
+}
+.ui-select-bootstrap .ui-select-choices-row.active > a:hover {
+  background-color: #eeeeee;
 }
 .badge {
   text-shadow: none;
@@ -6860,6 +6859,9 @@ fieldset[disabled] .btn {
   -o-filter: saturate(50%);
   -ms-filter: saturate(50%);
 }
+.btn-default[disabled] {
+  color: #000000;
+}
 .pager li a {
   color: #313131;
   font-weight: normal;
@@ -6869,11 +6871,11 @@ fieldset[disabled] .btn {
 fieldset[disabled] .form-control {
   background-color: #555555;
 }
-.ui-select-bootstrap .ui-select-choices-row.active > a,
-select > option:hover {
-  background-color: #b5d000;
-  color: #ffffff;
-}
+/*.ui-select-bootstrap .ui-select-choices-row.active > a,
+select > option:hover{
+    background-color: #b5d000;
+    color: #ffffff;
+}*/
 .navbar-nav {
   font-size: 14px;
 }

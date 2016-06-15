@@ -373,9 +373,9 @@
         <span ng-show="pdc.set" uib-tooltip-placement="bottom" uib-tooltip-html="pdc.$$tooltip">
             <span ng-class="pdc.$$ts_class"></span>
             <div class="btn-group btn-group-xs">
-                <input type="button" class="btn disabled" ng-class="pdc.$$button_class" value="{{ pdc.installed }}"/>
-                <input type="button" class="btn disabled" ng-class="pdc.force_flag && 'btn-primary' || 'btn-default'" value="F"/>
-                <input type="button" class="btn disabled" ng-class="pdc.nodeps_flag && 'btn-primary' || 'btn-default'" value="N"/>
+                <input type="button" class="btn btn-default disabled" ng-class="pdc.$$button_class" value="{{ pdc.installed }}"/>
+                <input type="button" class="btn btn-default disabled" ng-class="pdc.force_flag && 'btn-primary' || 'btn-default'" value="F"/>
+                <input type="button" class="btn btn-default disabled" ng-class="pdc.nodeps_flag && 'btn-primary' || 'btn-default'" value="N"/>
                 <input type="button" ng-class="pdc.selected && 'btn btn-primary' || 'btn btn-default'" value="S" title="select" ng-model="pdc.selected" ng-click="change_sel()"/>
             </div>
         </span>

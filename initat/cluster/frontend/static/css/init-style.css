@@ -30,6 +30,23 @@ icsw-login-page .container-fluid .well{
 /**** Loginpage end ****/
 /**** Fancytree start ****/
 ul.fancytree-container {
+    background-color: #404040;
+}
+span.fancytree-title {
+    color: #ffffff;
+}
+.fancytree-expander {
+    color: #ffffff;
+}
+
+span.fancytree-node:hover span.fancytree-title {
+    background-color: transparent;
+    border-color: none;
+}
+span.fancytree-node:hover {
+    background-color: #313131;
+}
+ul.fancytree-container {
     font-family: Arial,Helvetica,sans-serif,FontAwesome;
 }
 .fancytree-container > li > .fancytree-folder >.btn-group {
@@ -45,6 +62,23 @@ ul.fancytree-container {
     margin-top:2px;
     }
 /**** Fancytree end ****/
+/**** Toaster start ****/
+.toast-success {
+  background-color: #92aa00;
+}
+.toast-error {
+  background-color: #bb3d1e;
+}
+.toast-info {
+  background-color: #4c9d83;
+}
+.toast-wait {
+  background-color: #313131;
+}
+.toast-warning {
+  background-color: #e2972d;
+}
+/**** Toaster end ****/
 
 .fa { /* chrome fix */
     font-family: FontAwesome,Arial,Helvetica,sans-serif;

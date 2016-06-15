@@ -46,7 +46,7 @@
                     <div class="controls col-md-6" ng-class="form_data.ip.$invalid && 'has-error'">
                         <div class="form-inline">
                             <input name="ip" class="form-control" ng-model="device_data.ip" required ng-pattern="/^(\d+)\.(\d+)\.(\d)+\.(\d+)$/" placeholder="IP Address"/>
-                            <button class="btn btn-primary btn-sm" ng-show="!resolve_pending && device_data.full_name" ng-click="resolve_name()">Resolve</button>
+                            <button class="btn btn-primary" ng-show="!resolve_pending && device_data.full_name" ng-click="resolve_name()">Resolve</button>
                             <span ng-show="resolve_pending" class="glyphicon glyphicon-refresh"></span>
                         </div>
                         <span ng-show="form_data.ip.$invalid" class="text-danger">
