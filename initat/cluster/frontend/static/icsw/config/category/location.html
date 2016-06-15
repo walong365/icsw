@@ -47,7 +47,6 @@
     <uib-alert type="warning" style="max-width: 500px" ng-if="struct.locations.length == 0">
         Please create locations in the tab 'Available locations'.
     </uib-alert>
-
     <h3 ng-show="struct.locations.length">Map view, {{ struct.locations.length }} useable locations</h3>
     <div class="row" ng-if="struct.locations.length > 0">
         <div class="col-md-6">
@@ -85,33 +84,33 @@
                 ng-class="{'success': loc.$$selected}"
             >
                 <td ng-click="toggle_expand($event, loc)">
-                    {{ loc.full_name }}
-                    <span class="pull-right" ng-show="loc.$gfx_list.length">
+                    {{ loc.location.full_name }}
+                    <span class="pull-right" ng-show="loc.location.$gfx_list.length">
                         <button class="btn btn-xs btn-primary">
-                            {{ loc.$gfx_list.length }}
+                            {{ loc.location.$gfx_list.length }}
                             <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': loc.$$expanded, 'glyphicon-chevron-right': !loc.$$expanded}"></i>
                         </button>
                     </span>
                 </td>
                 <td class="text-center">
-                    <button class="btn btn-xs btn-success" ng-click="locate($event, loc)">
+                    <button class="btn btn-xs btn-success" ng-click="locate($event, loc.location)">
                         <span class="fa fa-map-marker"></span>
                     </button>
                 </td>
-                <td class="text-center">{{ loc.depth }}</td>
-                <td class="text-right">{{ loc.latitude | number:3 }}</td>
-                <td class="text-right">{{ loc.longitude | number:3 }}</td>
+                <td class="text-center">{{ loc.location.depth }}</td>
+                <td class="text-right">{{ loc.location.latitude | number:3 }}</td>
+                <td class="text-right">{{ loc.location.longitude | number:3 }}</td>
                 <td class="text-center">
-                    <span ng-show="loc.physical" class="label label-success">Physical</span>
-                    <span ng-show="!loc.physical" class="label label-default">Structural</span>
+                    <span ng-show="loc.location.physical" class="label label-success">Physical</span>
+                    <span ng-show="!loc.location.physical" class="label label-default">Structural</span>
                 </td>
                 <td class="text-center">
-                    <span ng-show="loc.locked" class="fa fa-lock"/>
-                    <span ng-show="!loc.locked" class="fa fa-unlock"/>
+                    <span ng-show="loc.location.locked" class="fa fa-lock"/>
+                    <span ng-show="!loc.location.locked" class="fa fa-unlock"/>
                 </td>
                 <td>
-                    <icsw-tools-button type="create" size="xs" value="Gfx" ng-click="create_or_edit($event, true, loc)"></icsw-tools-button>
-                    <icsw-tools-button type="modify" size="xs" ng-click="edit_location($event, loc)"></icsw-tools-button>
+                    <icsw-tools-button type="create" size="xs" value="Gfx" ng-click="create_or_edit($event, true, loc.location)"></icsw-tools-button>
+                    <icsw-tools-button type="modify" size="xs" ng-click="edit_location($event, loc.location)"></icsw-tools-button>
                 </td>
             </tr>
             <tr ng-show="loc.$$expanded" ng-repeat-end>
@@ -129,7 +128,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr ng-repeat="gfx in loc.$gfx_list">
+                            <tr ng-repeat="gfx in loc.location.$gfx_list">
                                 <td>{{ gfx.name }}</td>
                                 <td>{{ gfx.comment }}</td>
                                 <td>{{ gfx.$dml_list.length }}</td>
@@ -142,7 +141,7 @@
                                     <image ng-src="{{ gfx.icon_url }}" width="24" height="24"></image>
                                 </td>
                                 <td>
-                                    <icsw-tools-button type="modify" size="xs" ng-click="create_or_edit($event, false, loc, gfx)"></icsw-tools-button>
+                                    <icsw-tools-button type="modify" size="xs" ng-click="create_or_edit($event, false, loc.location, gfx)"></icsw-tools-button>
                                     <icsw-tools-button type="display" size="xs" ng-click="show_gfx_preview(gfx)"></icsw-tools-button>
                                     <icsw-tools-button ng-show="!gfx.$dml_list.length" type="delete" size="xs" ng-click="delete_gfx($event, gfx)"></icsw-tools-button>
                                 </td>
@@ -226,22 +225,23 @@
             </tr>
         </thead>
         <tbody>
-            <tr ng-repeat="loc in struct.locations">
+            <tr ng-repeat="proxy_loc in struct.locations">
                 <td>
-                    <span class="glyphicon glyphicon-globe" ng-show="loc.physical" title="physical"></span>
-                    <span class="glyphicon glyphicon-th-list" ng-show="!loc.physical" title="structural"></span>&nbsp;
+                    <span class="glyphicon glyphicon-globe" ng-show="proxy_loc.location.physical" title="physical"></span>
+                    <span class="glyphicon glyphicon-th-list" ng-show="!proxy_loc.location.physical" title="structural"></span>&nbsp;
                 </td>
                 <td>
-                    <span title="{{ loc.full_name }}">{{ loc.name }}</span><span ng-show="loc.comment"> ({{ loc.comment }})</span>
+                    <span title="{{ proxy_loc.location.full_name }}">{{ proxy_loc.location.name }}</span>
+                    <span ng-show="proxy_loc.location.comment"> ({{ proxy_loc.location.comment }})</span>
                 </td>
                 <td class="text-center">
-                    {{ loc.$gfx_list.length }}
+                    {{ proxy_loc.location.$gfx_list.length }}
                 </td>
                 <td class="text-center">
-                    {{ loc.$dml_list.length }}
+                    {{ proxy_loc.num_devs }} / {{ proxy_loc.shown_devs }}
                 </td>
                 <td>
-                    <icsw-tools-button type="display" value="locate" size="sm" ng-click="locate($event, loc)" title="({{ loc.latitude }}, {{ loc.longitude }})"></icsw-tools-button>
+                    <icsw-tools-button type="display" value="locate" size="sm" ng-click="locate($event, proxy_loc.location)" title="({{ proxy_loc.location.latitude }}, {{ proxy_loc.location.longitude }})"></icsw-tools-button>
                 </td>
             </tr>
         </tbody>

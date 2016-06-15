@@ -104,6 +104,31 @@ angular.module(
                     10
                 )
     }
+]).service("icswCategoryLocationHelper",
+[
+    "$q",
+(
+    $q,
+) ->
+    # implements simple location proxy objects
+    class LocationProxy
+        # wrap location to add controller-specific filtered entries
+        constructor: (@location) ->
+
+    class LocationProxyHelper
+        constructor: () ->
+            @lut = {}
+
+        get: (loc) ->
+            if loc.idx not of @lut
+                @lut[loc.idx] = new LocationProxy(loc)
+            return @lut[loc.idx]
+
+
+    return {
+        get_location_proxy: () ->
+            return new LocationProxyHelper()
+    }
 ]).controller("icswConfigCategoryLocationCtrl",
 [
     "$scope", "$compile", "$templateCache", "Restangular", "$timeout",
@@ -112,6 +137,7 @@ angular.module(
     "FileUploader", "blockUI", "icswTools", "ICSW_URLS", "icswCategoryBackup",
     "icswSimpleAjaxCall", "icswParseXMLResponseService", "toaster",
     "icswComplexModalService", "icswLocationGfxBackup", "icswToolsSimpleModalService",
+    "icswCategoryLocationHelper",
 (
     $scope, $compile, $templateCache, Restangular, $timeout,
     icswCSRFService, $rootScope, ICSW_SIGNALS, icswDeviceTreeService,
@@ -119,7 +145,10 @@ angular.module(
     FileUploader, blockUI, icswTools, ICSW_URLS, icswCategoryBackup,
     icswSimpleAjaxCall, icswParseXMLResponseService, toaster,
     icswComplexModalService, icswLocationGfxBackup, icswToolsSimpleModalService,
+    icswCategoryLocationHelper,
 ) ->
+    my_loc_helper = icswCategoryLocationHelper.get_location_proxy()
+    
     $scope.struct = {
         # tree data valid
         tree_data_valid: false
@@ -127,7 +156,7 @@ angular.module(
         device_tree: null
         # category tree
         category_tree: null
-        # locations
+        # locations, list of LocationProxy objects
         locations: []
         # orig list (for displaypipe filtering)
         orig_locations: []
@@ -143,13 +172,16 @@ angular.module(
         # filter location list (run through con_element)
         $scope.struct.locations.length = 0
         for loc in $scope.struct.orig_locations
+            _proxy = my_loc_helper.get(loc)
             _dev_idxs = (entry.device for entry in loc.$dml_list)
             _local_idxs = []
             for dev in $scope.struct.monitoring_data.hosts
                 if dev.$$icswDevice.idx in _dev_idxs
                     _local_idxs.push(dev.$$icswDevice.idx)
+            _proxy.shown_devs = _local_idxs.length
+            _proxy.num_devs = _dev_idxs.length 
             if _local_idxs.length
-                $scope.struct.locations.push(loc)
+                $scope.struct.locations.push(_proxy)
 
     rebuild_list = () ->
         $scope.struct.category_tree.build_location_list($scope.struct.orig_locations)
@@ -161,7 +193,7 @@ angular.module(
             # copy all
             $scope.struct.locations.length = 0
             for entry in $scope.struct.orig_locations
-                $scope.struct.locations.push(entry)
+                $scope.struct.locations.push(my_loc_helper.get(entry))
 
     reload = () ->
         $q.all(
@@ -210,12 +242,14 @@ angular.module(
             loc.$$selected = true
 
     $scope.toggle_expand = ($event, loc) ->
-        if loc.$gfx_list.length
+        if loc.location.$gfx_list.length
             loc.$$expanded = !loc.$$expanded
         else
             loc.$$expanded = false
 
     $scope.locate = ($event, loc) ->
+        # loc is a real location (not a proxy location)
+        # locate map on google-maps location
         if $scope.struct.google_maps_fn
             $scope.struct.google_maps_fn("refresh", [loc.latitude, loc.longitude])
             $scope.struct.google_maps_fn("zoom", 11)

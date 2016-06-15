@@ -162,14 +162,15 @@ angular.module(
     "$scope", "$q", "icswAcessLevelService", "icswDeviceTreeService",
     "icswCategoryTreeService", "$rootScope", "ICSW_SIGNALS", "blockUI",
     "icswDeviceLocationTreeService", "ICSW_URLS", "icswSimpleAjaxCall",
-    "icswToolsSimpleModalService";
+    "icswToolsSimpleModalService", "icswCategoryLocationHelper",
 (
     $scope, $q, icswAcessLevelService, icswDeviceTreeService,
     icswCategoryTreeService, $rootScope, ICSW_SIGNALS, blockUI,
     icswDeviceLocationTreeService, ICSW_URLS, icswSimpleAjaxCall,
-    icswToolsSimpleModalService,
+    icswToolsSimpleModalService, icswCategoryLocationHelper,
 ) ->
     icswAcessLevelService.install($scope)
+    my_proxy = icswCategoryLocationHelper.get_location_proxy()
     $scope.struct = {
         device_list_ready: false
         loc_tree: new icswDeviceLocationTreeService(
@@ -242,7 +243,9 @@ angular.module(
     $scope.rebuild_dnt = () ->
         _ct = $scope.struct.loc_tree
         # build location list for google-maps
-        $scope.struct.tree.build_location_list($scope.struct.locations)
+        _list = []
+        $scope.struct.tree.build_location_list(_list)
+        $scope.struct.locations = (my_proxy.get(entry) for entry in _list)
         _ct.change_select = true
         for dev in $scope.struct.devices
             # check all devices and disable change button when not all devices are in allowed list

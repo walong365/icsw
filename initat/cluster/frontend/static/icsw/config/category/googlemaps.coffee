@@ -1,6 +1,6 @@
 # Copyright (C) 2015-2016 init.at
 #
-# Send feedback to: <mallinger@init.at>
+# Send feedback to: <lang-nevyjel@init.at>
 #
 # This file is part of webfrontend
 #
@@ -33,6 +33,7 @@ angular.module(
         restrict: "EA"
         template: $templateCache.get("icsw.config.category.tree.google.map")
         scope: {
+            # locations are in fact proxylocations
             locations: "=locations"
             active_tab: "=activeTab"
             maps_control: "=icswGoogleMapsFn"
@@ -175,7 +176,7 @@ angular.module(
                     React.createElement(
                         reactMarkerEntry
                         {
-                            location: loc
+                            location: loc.location
                         }
                     ) for loc in @props.locations
                 )
@@ -308,7 +309,7 @@ angular.module(
         # center map around the locations
         _bounds = new $scope.struct.google_maps.LatLngBounds()
         for entry in $scope.locations
-            _bounds.extend(new $scope.struct.google_maps.LatLng(entry.latitude, entry.longitude))
+            _bounds.extend(new $scope.struct.google_maps.LatLng(entry.location.latitude, entry.location.longitude))
         if $scope.struct.map_options.control.getGMap?
             $scope.struct.map_options.control.getGMap().fitBounds(_bounds)
         else
@@ -318,7 +319,7 @@ angular.module(
         # center map around the locations
         _bounds = new $scope.struct.google_maps.LatLngBounds()
         for entry in $scope.locations
-            _bounds.extend(new $scope.struct.google_maps.LatLng(entry.latitude, entry.longitude))
+            _bounds.extend(new $scope.struct.google_maps.LatLng(entry.location.latitude, entry.location.longitude))
         $scope.struct.map_options.center = {latitude:_bounds.getCenter().lat(), longitude: _bounds.getCenter().lng()}
 
     # helper functions
@@ -327,7 +328,8 @@ angular.module(
         $scope.marker_list.length = 0
         marker_lut = {}
         # console.log "init markers", $scope.locations.length
-        for _entry in $scope.locations
+        for _proxy_entry in $scope.locations
+            _entry = _proxy_entry.location
             comment = _entry.name
             if _entry.comment
                 comment = "#{comment} (#{_entry.comment})"
@@ -384,7 +386,7 @@ angular.module(
                             _map = $scope.struct.map_options
                             # zoom
                             $scope.zoom_to_locations()
-                            console.log _map.control
+                            # console.log _map.control
                             # marker overlay
                             marker_overlay = new $scope.struct.google_maps.OverlayView()
                             angular.extend(marker_overlay, new icswGoogleMapsMarkerOverlay(marker_overlay, $scope.struct.google_maps, $scope.locations))

@@ -88,6 +88,13 @@ angular.module(
                         {
                             "icswLivestatusFullBurst": []
                         }
+                        {
+                            "icswLivestatusFilterService": [
+                                {
+                                    "icswLivestatusLocationDisplay": []
+                                }
+                            ]
+                        }
                     ]
                 }
             )
