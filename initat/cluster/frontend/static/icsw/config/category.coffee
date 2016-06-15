@@ -794,8 +794,6 @@ angular.module(
                 sel_cat = {}
         else
             # icswLivestatusFilter set, only some categories selectable und those are preselected
-            if $scope.struct.mon_data?
-                console.log "***", $scope.struct.mon_data
             if $scope.$$previous_filter?
                 if $scope.struct.mon_data?
                     _new_cats = _.difference($scope.struct.mon_data.used_cats, $scope.$$available_cats)

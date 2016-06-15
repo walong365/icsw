@@ -46,32 +46,20 @@ angular.module(
     "$scope", "$compile", "$templateCache", "Restangular",
     "$q", "$timeout", "icswTools", "ICSW_URLS", "icswSimpleAjaxCall",
     "icswDeviceLivestatusDataService", "icswCachingCall", "icswLivestatusFilterService",
-    "icswDeviceTreeService", "icswMonLivestatusConnector",
+    "icswDeviceTreeService", "icswMonLivestatusPipeConnector",
 (
     $scope, $compile, $templateCache, Restangular,
     $q, $timeout, icswTools, ICSW_URLS, icswSimpleAjaxCall,
     icswDeviceLivestatusDataService, icswCachingCall, icswLivestatusFilterService,
-    icswDeviceTreeService, icswMonLivestatusConnector,
+    icswDeviceTreeService, icswMonLivestatusPipeConnector,
 ) ->
     # top level controller of monitoring dashboard
 
     $scope.struct = {
-        # filter
-        filter: new icswLivestatusFilterService()
-        # selected devices
-        devices: []
-        # data fetch timeout
-        fetch_timeout: undefined
-        # updating flag
-        updating: false
-        # device tree, really needed here ?
-        device_tree: undefined
-        # monitoring data
-        monitoring_data: undefined
         # connector
-        # connector: new icswMonLivestatusConnector("test", angular.toJson({"icswLivestatusDataSource": [{"icswLivestatusFilterService": [{"icswLivestatusCategoryFilter": [{"icswLivestatusFullBurst": []}]}]}]}))
-        # connector: new icswMonLivestatusConnector("test", angular.toJson({"icswLivestatusDataSource": [{"icswLivestatusFullBurst": []}]}))
-        connector: new icswMonLivestatusConnector(
+        # connector: new icswMonLivestatusPipeConnector("test", angular.toJson({"icswLivestatusDataSource": [{"icswLivestatusFilterService": [{"icswLivestatusCategoryFilter": [{"icswLivestatusFullBurst": []}]}]}]}))
+        # connector: new icswMonLivestatusPipeConnector("test", angular.toJson({"icswLivestatusDataSource": [{"icswLivestatusFullBurst": []}]}))
+        connector: new icswMonLivestatusPipeConnector(
             "test"
             angular.toJson(
                 {
@@ -106,62 +94,11 @@ angular.module(
         )
     }
 
-    # $scope.ls_devsel = new icswLivestatusDevSelFactory()
-
-    #$scope.$watch(
-    #    $scope.ls_filter.changed
-    #    (new_filter) ->
-    #        $scope.apply_filter()
-    #)
-
-    # selected categories
-
-    # $scope.filter_changed = () ->
-    #    if $scope.struct.filter?
-    #        $scope.struct.filter.set_monitoring_data($scope.struct.monitoring_data)
-
     $scope.new_devsel = (_dev_sel) ->
         $scope.struct.connector.new_devsel(_dev_sel)
-        return
-        # only called when new devices are selected, not on every monitoring data update
-        $scope.struct.updating = true
-
-        if $scope.struct.fetch_timeout
-            $timeout.cancel($scope.struct.fetch_timeout)
-            $scope.struct.fetch_timeout = undefined
-
-        $scope.struct.devices.length = 0
-        for entry in _dev_sel
-            if not entry.is_meta_device
-                $scope.struct.devices.push(entry)
-
-        #pre_sel = (dev.idx for dev in $scope.devices when dev.expanded)
-        wait_list = [
-            icswDeviceTreeService.load($scope.$id)
-            icswDeviceLivestatusDataService.retain($scope.$id, $scope.struct.devices)
-        ]
-        $q.all(wait_list).then(
-            (data) ->
-                $scope.struct.device_tree = data[0]
-                # $scope.new_data(data[1])
-                # console.log "gen", data[1][4]
-                # console.log "watch for", data[1]
-                $scope.struct.updating = false
-                $scope.struct.monitoring_data = data[1]
-                console.log "start loop"
-                $scope.struct.monitoring_data.result_notifier.promise.then(
-                    (ok) ->
-                        console.log "dr ok"
-                    (not_ok) ->
-                        console.log "dr error"
-                    (generation) ->
-                        console.log "new data here"
-                        $scope.filter_changed()
-                )
-        )
 
     $scope.$on("$destroy", () ->
-        icswDeviceLivestatusDataService.destroy($scope.$id)
+        $scope.struct.connector.close()
     )
 
 ]).factory("icswBurstServiceDetail",
@@ -623,9 +560,10 @@ angular.module(
     $scope.set_notifier = (notify, element, draw_params) ->
         notify.promise.then(
             (ok) ->
-                console.log "ok"
-            (not_ok) ->
-                console.log "notok"
+                # console.log "ok"
+            (reject) ->
+                # stop processing
+                # console.log "notok"
             (new_data) ->
                 if not _mounted
                     _mounted = true
@@ -698,11 +636,19 @@ angular.module(
     class icswLivestatusFullBurst extends icswMonLivestatusPipeBase
         constructor: () ->
             super("icswLivestatusFullBurst", true, false)
-            @set_template('<icsw-device-livestatus-fullburst icsw-element-size="size" icsw-connect-element="con_element"></icsw-device-livestatus-fullburst>', "BurstGraph")
+            @set_template(
+                '<icsw-device-livestatus-fullburst icsw-element-size="size" icsw-connect-element="con_element"></icsw-device-livestatus-fullburst>'
+                "BurstGraph"
+                6
+                10
+            )
             @new_data_notifier = $q.defer()
 
         new_data_received: (new_data) ->
             @new_data_notifier.notify(new_data)
+
+        pipeline_reject_called: (reject) ->
+            @new_data_notifier.reject("stop")
 
 ]).directive('icswDeviceLivestatusFullburst',
 [
@@ -748,7 +694,7 @@ angular.module(
             _mounted = false
 
             scope.$on("$destroy", () ->
-                console.log "DESTROY FullBurst"
+                # console.log "DESTROY FullBurst"
                 if _mounted
                     ReactDOM.unmountComponentAtNode(element[0])
                     scope.struct.react_element = undefined

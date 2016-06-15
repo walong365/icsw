@@ -25,80 +25,7 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.router",
     ]
-).service("icswMonLivestatusPipeBase",
-[
-    "$q", "$rootScope",
-(
-    $q, $rootScope,
-) ->
-    class icswMonLivestatusPipeBase
-        constructor: (@name, @is_receiver, @is_emitter) ->
-            @has_template = false
-            # parent element
-            @parent = undefined
-            # notifier for downstream elements
-            if @is_emitter
-                @notifier = $q.defer()
-                @childs = []
-            console.log "init #{@name} (recv: #{@is_receiver}, emit: #{@is_emitter})"
-
-        # set template
-        set_template: (template, title) =>
-            @has_template = true
-            # template content, not URL
-            @template = template
-            @_raw_title = title
-
-        build_title: () =>
-            title = @_raw_title
-            if @parent
-                title = "#{title} from #{@parent.element_id}"
-            if @childs
-                title = "#{title} to " + (entry.element_id for entry in @childs).join(", ")
-            @title = title
-
-        # santify checks
-        check_for_emitter: () =>
-            if not @is_emitter or @is_receiver
-                throw new error("node is not an emitter but a receiver")
-
-        feed_data: (mon_data) ->
-            # feed data, used to insert data into the pipeline
-            console.log "fd", mon_data
-            @notifier.notify(mon_data)
-
-        add_child_node: (node) ->
-            if not @is_emitter
-                throw new error("Cannot add childs to non-emitting element")
-            @childs.push(node)
-            node.link_to_parent(@, @notifier)
-
-        new_data_received: (new_data) =>
-            console.error "new data received, to be overwritten", new_data
-            return new_data
-
-        # link with connector
-        link_with_connector: (@connector, id) =>
-            @element_id = id
-
-        link_to_parent: (parent, parent_not) ->
-            @parent = parent
-            parent_not.promise.then(
-                (ok) ->
-                    console.log "pn ok"
-                (not_ok) ->
-                    console.log "pn error"
-                (recv_data) =>
-                    emit_data = @new_data_received(recv_data)
-                    if @is_emitter
-                        @emit_data_downstream(emit_data)
-            )
-
-        emit_data_downstream: (emit_data) ->
-            @notifier.notify(emit_data)
-
-
-]).service("icswLivestatusFilterService",
+).service("icswLivestatusFilterService",
 [
     "$q", "$rootScope", "icswMonLivestatusPipeBase", "icswMonitoringResult",
 (
@@ -134,6 +61,9 @@ angular.module(
             @react_notifier.notify()
             return @_emit_data
             # @change_notifier.notify()
+
+        pipeline_reject_called: (reject) ->
+            # ignore, stop processing
 
         _local_init: () =>
             # console.log "new LivestatusFilter with id #{@id}"
@@ -651,15 +581,16 @@ angular.module(
             @generation = 0
             # notifier for new data
             @result_notifier = $q.defer()
-            # notifier for new devices
-            @selection_notifier = $q.defer()
             @hosts = []
             @services = []
             @used_cats = []
 
         new_selection: () =>
+            # hm, not needed ... ?
             @sel_generation++
-            @selection_notifier.notify(@sel_generation)
+
+        stop_receive: () =>
+            @result_notifier.reject("stop")
 
         update: (hosts, services, used_cats) =>
             @generation++
@@ -768,6 +699,8 @@ angular.module(
     remove_watchers_by_client = (client) ->
         remove_device_watchers_by_client(client)
         # remove from result list
+        console.log "RWBC", client.toString(), result_dict[client.toString()]
+        result_dict[client.toString()].stop_receive()
         delete result_dict[client.toString()]
 
     remove_device_watchers_by_client = (client) ->
@@ -892,6 +825,7 @@ angular.module(
                     result_dict[client] = new icswMonitoringResult()
                 else
                     # console.log "k", client
+                    # not really needed ?
                     result_dict[client].new_selection()
 
                 _defer.resolve(result_dict[client])
@@ -942,9 +876,13 @@ angular.module(
                 # device tree, really needed here ?
                 device_tree: undefined
                 # monitoring data
-                monitoring_data: undefined
+                is_running: true
+                # monitoring_data: undefined
             }
 
+        set_running_flag: (flag) =>
+            @struct.is_running = flag
+            
         new_devsel: (devs) =>
             @struct.devices.length = 0
             for dev in devs
@@ -956,6 +894,9 @@ angular.module(
             if @struct.fetch_timeout
                 $timeout.cancel(@struct.fetch_timeout)
                 @struct.fetch_timeout = undefined
+
+        pipeline_pre_close: () =>
+            icswDeviceLivestatusDataService.destroy(@_my_id)
 
         start: () =>
             @stop_update()
@@ -973,9 +914,13 @@ angular.module(
                         (ok) ->
                             console.log "dr ok"
                         (not_ok) ->
-                            console.log "dr error"
+                            # stop receiving
+                            # console.log "dr error"
                         (generation) =>
-                            @feed_data(monitoring_data)
+                            if @struct.is_running
+                                @feed_data(monitoring_data)
+                            else
+                                console.warn "is_running flag is false"
                     )
             )
 ]).service('icswLivestatusCategoryFilter',
@@ -1008,4 +953,7 @@ angular.module(
                 @_emit_data.apply_category_filter(@_cat_filter, @_latest_data)
             @new_data_notifier.notify(data)
             return @_emit_data
+
+        pipeline_reject_called: (reject) ->
+            # ignore, stop processing
 ])
