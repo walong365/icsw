@@ -52,6 +52,7 @@ angular.module(
                 {short: "AVERAGE", long: "average"}
                 {short: "MAX", long: "maximum"}
             ]
+            
         update: (size_list, timeshift_list, forecast_list, timeframe_list, sensor_action_list) =>
             for [attr_name, in_list] in [["size_list", size_list], ["timeshift_list", timeshift_list],
             ["forecast_list", forecast_list], ["timeframe_list", timeframe_list],

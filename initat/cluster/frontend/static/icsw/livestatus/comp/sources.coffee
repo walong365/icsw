@@ -966,7 +966,7 @@ angular.module(
         constructor: () ->
             super("icswLivestatusLocationDisplay", true, false)
             @set_template(
-                '<icsw-config-category-location-show icsw-connect-element="con_element"></icsw-config-category-location-show>'
+                '<icsw-livestatus-location-display icsw-connect-element="con_element"></icsw-livestatus-location-display>'
                 "LocationDisplay"
                 8
                 8
@@ -978,8 +978,9 @@ angular.module(
             @new_data_notifier.notify(data)
 
         pipeline_reject_called: (reject) ->
-            # ignore, stop processing
-]).directive("icswConfigCategoryLocationShow",
+            @new_data_notifier.reject("stop")
+            
+]).directive("icswLivestatusLocationDisplay",
 [
     "$templateCache",
 (
@@ -989,11 +990,11 @@ angular.module(
         restrict: "EA"
         template: $templateCache.get("icsw.config.category.location.show")
         scope: {
-            filter: "=icswLivestatusFilter"
-            monitoring_data: "=icswMonitoringData"
+            con_element: "=icswConnectElement"
         }
         controller: "icswConfigCategoryLocationCtrl"
-        # link: (scope, element, attrs) ->
+        link: (scope, element, attrs) ->
+            scope.set_mode("show")
     }
 ]).service("icswLivestatusMapDisplay",
 [
@@ -1068,12 +1069,11 @@ angular.module(
         # notifier for maps
         notifier: $q.defer()
         # current device idxs
-        devices_idxs: []
+        device_idxs: []
     }
     $scope.struct.cur_gfx_size = $scope.struct.gfx_sizes[0]
 
     load = () ->
-        console.log "LOAD"
         $scope.struct.data_valid = false
         $scope.struct.maps_present = false
         $q.all(
@@ -1085,13 +1085,12 @@ angular.module(
                 $scope.struct.cat_tree = data[0]
                 $scope.struct.data_valid = true
                 check_for_maps()
-                $scope.struct.notifier.notify()
         )
 
     check_for_maps = () ->
         dev_idxs = (dev.$$icswDevice.idx for dev in $scope.struct.monitoring_data.hosts)
-        if dev_idxs != $scope.struct.devices_idxs
-            $scope.struct.devices_idxs = dev_idxs
+        if _.difference(dev_idxs, $scope.struct.device_idxs).length
+            $scope.struct.device_idxs = dev_idxs
             # check for valid maps for current device selection
             $scope.struct.loc_gfx_list.length = 0
             $scope.struct.page_idx = 0
@@ -1106,6 +1105,7 @@ angular.module(
                         gfx.$$filtered_dml_list.push(dml)
                         gfx.$$page_idx = $scope.struct.loc_gfx_list.length
             $scope.struct.maps_present = $scope.struct.loc_gfx_list.length > 0
+        $scope.struct.notifier.notify()
 
     $scope.link = (notifier) ->
         load_called = false
@@ -1121,8 +1121,6 @@ angular.module(
                     load()
                 else if $scope.struct.data_valid
                     check_for_maps()
-                    $scope.struct.notifier.notify()
-                # console.log "nd", data
         )
 
     # rotation functions

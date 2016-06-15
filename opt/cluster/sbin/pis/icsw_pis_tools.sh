@@ -76,7 +76,7 @@ function move_log_dir() {
     if [ -d ${NEW_LOG_DIR} -a -d ${OLD_LOG_DIR} ] ; then
         # check for empty new log
         if [ $(ls -1 ${NEW_LOG_DIR} | wc -l) = "0" ] ; then
-            echo -e "${YELLOW}New logdir present but empty, moving from ${OLD_LOG_DIR} to ${NEW_LOG_DIR}...${OFF}"
+            echo -e "${YELLOW}New logdir present but empty, moving from ${OLD_LOG_DIR} to ${NEW_LOG_DIR} ...${OFF}"
             mv ${OLD_LOG_DIR}/* ${NEW_LOG_DIR}
             echo -e "${GREEN}done${OFF}"
         fi

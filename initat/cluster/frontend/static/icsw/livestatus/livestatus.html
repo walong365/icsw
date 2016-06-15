@@ -259,7 +259,9 @@
                 </label>
                 <div class="controls col-sm-7">
                     <ui-select ng-model="struct.cur_gfx_size" style="width:200px;">
-                        <ui-select-match class="ui-select-match" placeholder="choose size ...">{{ $select.selected }}</ui-select-match>
+                        <ui-select-match class="ui-select-match" placeholder="choose size ...">
+                            {{ $select.selected }}
+                        </ui-select-match>
                         <ui-select-choices class="ui-select-choices" repeat="value in struct.gfx_sizes">
                             <div ng-bind-html="value"></div>
                         </ui-select-choices>
