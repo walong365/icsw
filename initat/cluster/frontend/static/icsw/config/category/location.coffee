@@ -54,23 +54,6 @@ angular.module(
         }
         controller: "icswConfigCategoryLocationCtrl"
     }
-]).directive("icswConfigCategoryLocationShow",
-# not in use right now, was in Dashboard
-[
-    "$templateCache",
-(
-    $templateCache,
-) ->
-    return {
-        restrict: "EA"
-        template: $templateCache.get("icsw.config.category.location.show")
-        scope: {
-            filter: "=icswLivestatusFilter"
-            monitoring_data: "=icswMonitoringData"
-        }
-        controller: "icswConfigCategoryLocationCtrl"
-        # link: (scope, element, attrs) ->
-    }
 ]).directive("icswConfigCategoryLocationListEdit",
 [
     "$templateCache",

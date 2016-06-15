@@ -155,13 +155,13 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.livestatus.table.view">
-    <h3 ng-show="!struct.monitoring_data.filtered_services.length">No checks</h3>
+    <h3 ng-show="!struct.monitoring_data.services.length">No checks</h3>
     <table
         st-table="entries_displayed"
-        st-safe-src="struct.monitoring_data.filtered_services"
+        st-safe-src="struct.monitoring_data.services"
         class="table table-condensed table-hover table-striped"
         style="font-size:100%;width:auto;"
-        ng-if="struct.monitoring_data.filtered_services.length"
+        ng-if="struct.monitoring_data.services.length"
     >
         <thead>
             <tr>
@@ -227,7 +227,9 @@
             <span ng-show="struct.cur_page_idx">
                 showing map {{ struct.cur_page_idx }},
             </span>
-            <span ng-show="struct.autorotate" class="label label-primary">autorotate</span>,
+            <span ng-show="struct.autorotate">
+                <span class="label label-primary">autorotate</span>,
+            </span>
             <icsw-tools-button type="modify" size="xs" ng-click="show_settings()"></icsw-tools-button>
         </h3>
         <uib-tabset ng-if="struct.maps_present" active="struct.page_idx">
@@ -236,10 +238,10 @@
                     {{ loc_gfx.name }} (<ng-pluralize count="loc_gfx.$$filtered_dml_list.length" when="{'1': '1 device', 'other' : '{} devices'}"></ng-pluralize>)
                 </uib-tab-heading>
                 <icsw-device-livestatus-location-map
-                    icsw-livestatus-filter="struct.filter"
                     icsw-location-gfx="loc_gfx"
                     icsw-gfx-size="struct.cur_gfx_size"
                     icsw-monitoring-data="struct.monitoring_data"
+                    icsw-notifier="struct.notifier"
                 ></icsw-device-livestatus-location-map>
             </uib-tab>
         </uib-tabset>

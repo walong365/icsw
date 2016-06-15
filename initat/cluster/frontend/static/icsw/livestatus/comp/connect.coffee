@@ -66,6 +66,9 @@ angular.module(
                 title = "#{title} to " + (entry.__dp_element_id for entry in @__dp_childs).join(", ")
             @__dp_title = title
 
+        hide_element: ($event) =>
+            @__dp_connector.hide_element(@)
+            
         # santify checks
         check_for_emitter: () =>
             if not @is_emitter or @is_receiver
@@ -93,9 +96,11 @@ angular.module(
             console.error "reject called #{rejected} for #{@name}"
 
         # link with connector
-        link_with_connector: (@connector, id, depth) =>
+        link_with_connector: (connector, id, depth) =>
+            @__dp_connector = connector
             @__dp_element_id = id
             @__dp_depth = depth
+            @display_name = "#{@name} ##{@__dp_element_id}"
 
         link_to_parent: (parent, parent_not) ->
             @__dp_parent = parent
@@ -171,6 +176,8 @@ angular.module(
 
             # list of display elements
             @display_elements = []
+            @hidden_elements = []
+            @num_hidden_elements = 0
             @num_total_elements = 0
             # build dependencies
             el_idx = 0
@@ -201,6 +208,16 @@ angular.module(
             @init_gridster()
             @running = true
             @setup_ok = true
+
+        hide_element: (hide_el) =>
+            @hidden_elements.push(hide_el)
+            _.remove(@display_elements, (entry) -> return entry.__dp_element_id == hide_el.__dp_element_id)
+            @num_hidden_elements++
+
+        unhide_element: ($item) ->
+            @display_elements.push($item)
+            _.remove(@hidden_elements, (entry) -> return entry.__dp_element_id == $item.__dp_element_id)
+            @num_hidden_elements--
 
         init_gridster: () =>
             @gridsterOpts = {
@@ -244,8 +261,8 @@ angular.module(
             
         new_devsel: (devs) =>
             # start loop
-            console.log @root_element, "*"
             @root_element.new_devsel(devs)
+
 ]).directive("icswConnectElementDisplay",
 [
     "$templateCache", "$compile",
