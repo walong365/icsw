@@ -1,0 +1,37 @@
+<script type="text/ng-template" id="icsw.livestatus.connect.overview">
+    <div class="panel panel-warning" ng-if="!struct.connector.setup_ok">
+        <div class="panel-heading">
+            DisplayPipeline, please wait
+        </div>
+    </div>
+    <div ng-class="struct.connector.get_panel_class()" ng-if="struct.connector.setup_ok">
+        <div class="panel-heading">
+            <h4>
+                DisplayPipeline '{{ struct.connector.name }}',
+                {{ struct.connector.num_display_elements }} ({{ struct.connector.num_total_elements }}) elements,
+                <icsw-tools-button type="enable" is-enable="struct.connector.running" ng-click="struct.connector.toggle_running()"></icsw-tools-button>
+            </h4>
+        </div>
+        <div gridster="struct.connector.gridsterOpts" class="panel-body container-fluid">
+            <ul>
+                <li gridster-item="item" ng-repeat="item in struct.connector.display_elements track by item.__dp_element_id">
+                    <icsw-connect-element-display
+                        style="position:absolute; top:0px; left:0px; bottom:0px; right:0px; overflow:auto;"
+                        icsw-connect-element="item"
+                    ></icsw-connect-element-display>
+                </li>
+            </ul>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.connect.element">
+    <!-- the margin-bottom entry fixes issues with scrollbars appearing on the right side of panels -->
+    <div class="panel panel-success" style="height:100%; margin-bottom:0px !important;">
+        <div class="panel-heading">
+            <span class="badge">{{ con_element.__dp_element_id }}@{{ con_element.__dp_depth }}</span>
+            {{ con_element.__dp_title }}
+        </div>
+        <div style="overflow:auto;">
+    <!-- we dont close the </div> here, this happens in the directive -->
+</script>

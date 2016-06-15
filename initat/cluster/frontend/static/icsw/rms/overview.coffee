@@ -879,18 +879,20 @@ rms_module = angular.module(
                 complexes = i_split(entry.complex.value, _number_queues)
                 pe_lists = i_split(entry.pe_list.value, _number_queues)
 
-                _total = (parseInt(_val) for _val in entry.slots_total.value.split("/"))
-                _used = (parseInt(_val) for _val in entry.slots_used.value.split("/"))
-                _reserved = (parseInt(_val) for _val in entry.slots_reserved.value.split("/"))
-                _size = _.max([_total.length, _used.length, _reserved.length])
-                if _total.length < _size
-                    _total = (_total[0] for _idx in _.range(_size))
-                if _used.length < _size
-                    _used = (_used[0] for _idx in _.range(_size))
-                if _reserved.length < _size
-                    _reserved = (_reserved[0] for _idx in _.range(_size))
-                entry.$$load_vector = _.zip(_total, _used, _reserved)
-                (slot_info.feed_vector(_lv) for _lv in entry.$$load_vector)
+                if entry.slots_total.value
+                    # filter out empty slots values
+                    _total = (parseInt(_val) for _val in entry.slots_total.value.split("/"))
+                    _used = (parseInt(_val) for _val in entry.slots_used.value.split("/"))
+                    _reserved = (parseInt(_val) for _val in entry.slots_reserved.value.split("/"))
+                    _size = _.max([_total.length, _used.length, _reserved.length])
+                    if _total.length < _size
+                        _total = (_total[0] for _idx in _.range(_size))
+                    if _used.length < _size
+                        _used = (_used[0] for _idx in _.range(_size))
+                    if _reserved.length < _size
+                        _reserved = (_reserved[0] for _idx in _.range(_size))
+                    entry.$$load_vector = _.zip(_total, _used, _reserved)
+                    (slot_info.feed_vector(_lv) for _lv in entry.$$load_vector)
 
                 _idx = 0
                 for _vals in _.zip(

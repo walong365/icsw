@@ -468,7 +468,9 @@ angular.module(
         #        host_data = undefined
         #else
         #    host_data = undefined
-        for host in mon_data.filtered_hosts
+        # service ids to show
+        _sts = (entry.$$idx for entry in mon_data.services)
+        for host in mon_data.hosts
             dev = host.$$icswDevice
             if not draw_params.device_idx_filter? or dev.idx == draw_params.device_idx_filter
                 devg = host.$$icswDeviceGroup
@@ -491,7 +493,7 @@ angular.module(
                 _devg.add_child(_dev)
                 for service in host.$$service_list
                     # check for filter
-                    if service.$$show
+                    if service.$$idx in _sts
                         _dev.add_child(new icswStructuredBurstNode(service.description, service.$$idx, service, true))
                 if not _dev.children.length
                     # add dummy service for devices without services
@@ -580,7 +582,7 @@ angular.module(
             # console.log "rn=", root_node, @props.monitoring_data
             # reset
             @props.draw_parameters.device_idx_filter = undefined
-            # srvc_data = (entry for entry in @props.monitoring_data.filtered_services when entry.host.host_name  == node.$$device.full_name)
+            # srvc_data = (entry for entry in @props.monitoring_data.services when entry.host.host_name  == node.$$device.full_name)
 
             # console.log host_data, srvc_data
             # if host_data and srvc_data.length

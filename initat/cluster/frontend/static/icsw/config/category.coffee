@@ -614,8 +614,9 @@ angular.module(
             edit_obj: "=editObj"
             # subtree, config, category, ...
             sub_tree: "=icswSubTree"
-            # filter for pipelining
-            filter: "=icswLivestatusFilter"
+            # connect element for pipelining
+            con_element: "=icswConnectElement"
+            # filter: "=icswLivestatusFilter"
             # monitoring data for pipelining
             mon_data: "=icswMonitoringData"
             # to signal selected category, callback function
@@ -649,6 +650,8 @@ angular.module(
         tree_ready: false
         # category tree (data)
         cat_tree: undefined
+        # monitoring data for filter mode
+        mon_data: undefined
     }
 
     # selected category, used in directive
@@ -734,12 +737,12 @@ angular.module(
         else if $scope.struct.mode == "filter"
             # available cats, used to automatically select new cats (from mon-data reload)
             $scope.$$available_cats = []
-            $scope.filter.install_category_filter()
-            $scope.filter.change_notifier.promise.then(
+            $scope.con_element.new_data_notifier.promise.then(
                 () ->
                 () ->
-                (notify) =>
+                (new_data) =>
                     # console.log "cnrb"
+                    $scope.struct.mon_data = new_data
                     build_tree()
             )
 
@@ -764,7 +767,7 @@ angular.module(
                 console.log "same filter"
                 return
         $scope.$$previous_filter = sel_cat
-        $scope.filter.set_category_filter(sel_cat)
+        $scope.con_element.set_category_filter(sel_cat)
 
     build_tree = () ->
         # build tree, called when something changes
@@ -792,25 +795,25 @@ angular.module(
         else
             # icswLivestatusFilter set, only some categories selectable und those are preselected
             if $scope.$$previous_filter?
-                if $scope.mon_data?
-                    _new_cats = _.difference($scope.mon_data.used_cats, $scope.$$available_cats)
+                if $scope.struct.mon_data?
+                    _new_cats = _.difference($scope.struct.mon_data.used_cats, $scope.$$available_cats)
                     # store
-                    $scope.$$available_cats = (entry for entry in $scope.mon_data.used_cats)
+                    $scope.$$available_cats = (entry for entry in $scope.struct.mon_data.used_cats)
                     if _new_cats.length
                         # autoselect new categories and send to filter
                         send_selection_to_filter(_.uniq(_.union($scope.$$previous_filter, _new_cats)))
                 sel_cat = $scope.$$previous_filter
             else
-                if $scope.mon_data?
-                    sel_cat = $scope.mon_data.used_cats.concat([0])
+                if $scope.struct.mon_data?
+                    sel_cat = $scope.struct.mon_data.used_cats.concat([0])
                     # push category selection list
                     send_selection_to_filter(sel_cat)
                 else
                     # mon_data no loaded
                     sel_cat = []
             # useable are only the categories present in the current dataset
-            if $scope.mon_data?
-                _useable_idxs = _.intersection(_useable_idxs, $scope.mon_data.used_cats)
+            if $scope.struct.mon_data?
+                _useable_idxs = _.intersection(_useable_idxs, $scope.struct.mon_data.used_cats)
                 # further reduce mode entries by filtering non-useable entries
                 _dct.hide_unused_entries(_useable_idxs, $scope.struct.cat_tree)
 

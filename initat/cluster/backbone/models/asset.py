@@ -391,7 +391,7 @@ def get_base_assets_from_raw_result(asset_run,):
                             dmihandle=handle,
                             key=_value.get("key"),
                             single_value=True,
-                            value=_value.text,
+                            value=_value.text or "",
                             num_values=1,
                         )
                     value.save()

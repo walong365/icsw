@@ -632,7 +632,7 @@ def category_pre_save(sender, **kwargs):
             raise ValidationError("illegal characters in name '{}'".format(cur_inst.name))
         if cur_inst.depth:
             if cur_inst.depth == 1:
-                if "/{}".format(cur_inst.name) not in TREE_SUBTYPES:
+                if cur_inst.name not in TREE_SUBTYPES:
                     raise ValidationError("illegal top-level category name '{}'".format(cur_inst.name))
             check_empty_string(cur_inst, "name")
             parent_node = cur_inst.parent

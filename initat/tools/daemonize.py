@@ -1,5 +1,5 @@
 #!/usr/bin/python-init -Otu
-# Copyright (C) 2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2015-2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of icsw-client
 #
@@ -22,14 +22,15 @@
 """ daemonizes a given server """
 
 import argparse
+import grp
+import importlib
+import os
+import pwd
 import setproctitle
 import sys
-import importlib
-import pwd
-import grp
-import os
 
 import daemon
+
 
 #  do NOT but initat imports here (otherwise path manipulations below will not work)
 
@@ -94,11 +95,11 @@ def main():
     if opts.daemonize:
         _daemon_context.open()
     else:
+        if gids:
+            os.setgroups(gids)
         if uid or gid:
             os.setgid(gid)
             os.setuid(uid)
-        if gids:
-            os.setgroups(gids)
     if opts.debug:
         abs_path = os.path.dirname(__file__)
         abs_path = os.path.split(os.path.split(abs_path)[0])[0]

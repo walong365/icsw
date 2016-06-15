@@ -123,7 +123,7 @@ angular.module(
                     # only a valid sensor when the db-idx has a device (no compound displays)
                     @num_sensors++
                     @sensors.push(new icswRRDSensor(@, $(gv), @user_settings.threshold_lut_by_mvv_id))
-                    console.log @sensors, gv
+                    # console.log @sensors, gv
             @sensors = _.sortBy(@sensors, (sensor) -> return sensor.mv_key)
 
         get_sensor_info: () ->

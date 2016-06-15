@@ -25,39 +25,47 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.router",
     ]
-).service("icswMonLivestatusPipeBase",
+).service("icswLivestatusFilterService",
 [
-    "$q", "$rootScope",
+    "$q", "$rootScope", "icswMonLivestatusPipeBase", "icswMonitoringResult",
 (
-    $q, $rootScope,
-) ->
-    class icswMonLivestatusPipeBase
-        constructor: (name, is_receiver, is_emitter) ->
-            @name = name
-            @is_receiver = is_receiver
-            @is_emitter = is_emitter
-            # notifier for downstream elements
-            if @is_emitter
-                @notifier = $q.defer()
-            console.log "init #{@name} (recv: #{@is_receiver}, emit: #{@is_emitter})"
-
-        feed: () ->
-            # feed data
-            true
-
-]).service("icswLivestatusFilterService",
-[
-    "$q", "$rootScope", "icswMonLivestatusPipeBase",
-(
-    $q, $rootScope, icswMonLivestatusPipeBase,
+    $q, $rootScope, icswMonLivestatusPipeBase, icswMonitoringResult,
 ) ->
     # ToDo: separate data / filtered data from filter
     running_id = 0
     class icswLivestatusFilter extends icswMonLivestatusPipeBase
         constructor: () ->
             super("icswLivestatusFilter", true, true)
+            @set_template('<icsw-livestatus-filter-display icsw-livestatus-filter="con_element"></icsw-livestatus-filter-display>', "BaseFilter")
             running_id++
             @id = running_id
+            @_latest_data = undefined
+            # emit data
+            @_emit_data = new icswMonitoringResult()
+            @_local_init()
+
+        filter_changed: () ->
+            # callback from React
+            if @_latest_data?
+                @emit_data_downstream(@new_data_received(@_latest_data))
+
+        new_data_received: (data) =>
+            @_latest_data = data
+            @n_hosts = data.hosts.length
+            @n_services = data.services.length
+            @categories = data.categories
+
+            @_emit_data.apply_base_filter(@, @_latest_data)
+            @f_hosts = @_emit_data.hosts.length
+            @f_services = @_emit_data.services.length
+            @react_notifier.notify()
+            return @_emit_data
+            # @change_notifier.notify()
+
+        pipeline_reject_called: (reject) ->
+            # ignore, stop processing
+
+        _local_init: () =>
             # console.log "new LivestatusFilter with id #{@id}"
             @categories = []
             # number of entries
@@ -111,20 +119,14 @@ angular.module(
                 @service_type_lut[entry[1]] = entry
                 @service_types[entry[0]] = entry[2]
 
+            @react_notifier = $q.defer()
             @change_notifier = $q.defer()
             # category filter settings
             @cat_filter_installed = false
 
-        install_category_filter: () =>
-            @cat_filter_installed = true
-            @cat_filter_list = undefined
-
-        set_category_filter: (in_list) =>
-            @cat_filter_list = in_list
-            # console.log "cur_cat_filter=", in_list
-            if @_latest_data?
-                # a little hack but working
-                @set_monitoring_data(@_latest_data)
+        # install_category_filter: () =>
+        #     @cat_filter_installed = true
+        #     @cat_filter_list = undefined
 
         toggle_service_state: (code) =>
             _srvc_idx = @service_state_lut[code][0]
@@ -167,16 +169,6 @@ angular.module(
         stop_notifying: () ->
             @change_notifier.reject("stop")
             
-        set_monitoring_data: (data) ->
-            @n_hosts = data.hosts.length
-            @n_services = data.services.length
-            @categories = data.categories
-            @_latest_data = data
-            data.filter(@)
-            @f_hosts = data.filtered_hosts.length
-            @f_services = data.filtered_services.length
-            @change_notifier.notify()
-
 ]).factory("icswLivestatusFilterReactDisplay",
 [
     "$q",
@@ -190,7 +182,7 @@ angular.module(
     return React.createClass(
         propTypes: {
             livestatus_filter: React.PropTypes.object
-            filter_changed_cb: React.PropTypes.func
+            # filter_changed_cb: React.PropTypes.func
         }
         getInitialState: () ->
             return {
@@ -200,7 +192,7 @@ angular.module(
 
         componentWillMount: () ->
             # @umount_defer = $q.defer()
-            @props.livestatus_filter.change_notifier.promise.then(
+            @props.livestatus_filter.react_notifier.promise.then(
                 () ->
                 () ->
                     # will get called when the component unmounts
@@ -222,8 +214,7 @@ angular.module(
         render: () ->
 
             _filter_changed = () =>
-                if @props.filter_changed_cb?
-                    @props.filter_changed_cb()
+                @props.livestatus_filter.filter_changed()
 
             # console.log "r", @props.livestatus_filter
             _lf = @props.livestatus_filter
@@ -329,7 +320,7 @@ angular.module(
             _list.push(
                 _text_f.join(" ")
             )
-            return span(
+            return div(
                 {key: "top"}
                 _list
             )
@@ -345,16 +336,12 @@ angular.module(
         replace: true
         scope:
             filter: "=icswLivestatusFilter"
-            changed_cb: "=icswChangedCallback"
         link: (scope, element, attr) ->
             ReactDOM.render(
                 React.createElement(
                     icswLivestatusFilterReactDisplay
                     {
                         livestatus_filter: scope.filter
-                        filter_changed_cb: () ->
-                            if scope.changed_cb?
-                                scope.changed_cb()
                     }
                 )
                 element[0]
@@ -594,22 +581,19 @@ angular.module(
             @generation = 0
             # notifier for new data
             @result_notifier = $q.defer()
-            # notifier for new devices
-            @selection_notifier = $q.defer()
             @hosts = []
             @services = []
-            @filtered_hosts = []
-            @filtered_services = []
             @used_cats = []
 
         new_selection: () =>
+            # hm, not needed ... ?
             @sel_generation++
-            @selection_notifier.notify(@sel_generation)
+
+        stop_receive: () =>
+            @result_notifier.reject("stop")
 
         update: (hosts, services, used_cats) =>
             @generation++
-            # console.log "update", @generation
-            @result_notifier.notify(@generation)
             @hosts.length = 0
             for entry in hosts
                 @hosts.push(entry)
@@ -617,41 +601,53 @@ angular.module(
             for entry in services
                 @services.push(entry)
             @used_cats = used_cats
+            # console.log "update", @generation
+            @result_notifier.notify(@generation)
 
-        filter: (filter) =>
-            # apply livestatus filter
-
-            @filtered_hosts.length = 0
-            for entry in @hosts
+        apply_base_filter: (filter, src_data) =>
+            # apply base livestatus filter
+            @hosts.length = 0
+            for entry in src_data.hosts
                 if filter.service_types[entry.state_type] and filter.host_states[entry.state]
-                    entry.$$show = true
-                    @filtered_hosts.push(entry)
-                else
-                    entry.$$show = false
+                    @hosts.push(entry)
 
             # category filtering ?
-            _cf = if filter.cat_filter_installed and filter.cat_filter_list? then true else false
-            if _cf
-                # show uncategorized entries
-                _zero_cf = 0 in filter.cat_filter_list
-
-            @filtered_services.length = 0
-            for entry in @services
+            @services.length = 0
+            for entry in src_data.services
                 if filter.service_types[entry.state_type] and filter.service_states[entry.state]
-                    entry.$$show = true
-                    if _cf
-                        if entry.custom_variables? and entry.custom_variables.cat_pks?
-                            if not _.intersection(filter.cat_filter_list, entry.custom_variables.cat_pks).length
-                                entry.$$show = false
-                        else if not _zero_cf
-                            entry.$$show = false
-                    if entry.$$show
-                        @filtered_services.push(entry)
-                else
-                    entry.$$show = false
+                    @services.push(entry)
+            # simply copy
+            @used_cats.length = 0
+            for entry in src_data.used_cats
+                @used_cats.push(entry)
 
             # bump generation counter
             @generation++
+
+        apply_category_filter: (cat_list, src_data) =>
+            @hosts.length = 0
+            for entry in src_data.hosts
+                @hosts.push(entry)
+            # show uncategorized entries
+            _zero_cf = 0 in cat_list
+            @services.length = 0
+            for entry in src_data.services
+                _add = true
+                if entry.custom_variables? and entry.custom_variables.cat_pks?
+                    if not _.intersection(cat_list, entry.custom_variables.cat_pks).length
+                        _add = false
+                else if not _zero_cf
+                    _add = false
+                if _add # entry.$$show
+                    @services.push(entry)
+            # simply copy
+            @used_cats.length = 0
+            for entry in src_data.used_cats
+                if entry in cat_list
+                    @used_cats.push(entry)
+            # bump generation counter
+            @generation++
+
 
 ]).service("icswDeviceLivestatusDataService",
 [
@@ -703,6 +699,8 @@ angular.module(
     remove_watchers_by_client = (client) ->
         remove_device_watchers_by_client(client)
         # remove from result list
+        console.log "RWBC", client.toString(), result_dict[client.toString()]
+        result_dict[client.toString()].stop_receive()
         delete result_dict[client.toString()]
 
     remove_device_watchers_by_client = (client) ->
@@ -827,6 +825,7 @@ angular.module(
                     result_dict[client] = new icswMonitoringResult()
                 else
                     # console.log "k", client
+                    # not really needed ?
                     result_dict[client].new_selection()
 
                 _defer.resolve(result_dict[client])
@@ -855,4 +854,106 @@ angular.module(
             if not watchers_present()
                 stop_interval()
     }
+]).service("icswLivestatusDataSource",
+[
+    "$q", "$rootScope", "icswMonLivestatusPipeBase", "$timeout",
+    "icswDeviceTreeService", "icswDeviceLivestatusDataService", "icswTools",
+(
+    $q, $rootScope, icswMonLivestatusPipeBase, $timeout,
+    icswDeviceTreeService, icswDeviceLivestatusDataService, icswTools,
+) ->
+    class icswLivestatusDataSource extends icswMonLivestatusPipeBase
+        constructor: () ->
+            super("icswLivestatusDataSource", false, true)
+            @_my_id = icswTools.get_unique_id()
+            @struct = {
+                # device list
+                devices: []
+                # is updating
+                updating: false
+                # data fetch timeout
+                fetch_timeout: undefined
+                # device tree, really needed here ?
+                device_tree: undefined
+                # monitoring data
+                is_running: true
+                # monitoring_data: undefined
+            }
+
+        set_running_flag: (flag) =>
+            @struct.is_running = flag
+            
+        new_devsel: (devs) =>
+            @struct.devices.length = 0
+            for dev in devs
+                if not dev.is_meta_device
+                    @struct.devices.push(dev)
+            @start()
+
+        stop_update: () =>
+            if @struct.fetch_timeout
+                $timeout.cancel(@struct.fetch_timeout)
+                @struct.fetch_timeout = undefined
+
+        pipeline_pre_close: () =>
+            icswDeviceLivestatusDataService.destroy(@_my_id)
+
+        start: () =>
+            @stop_update()
+            @struct.updating = true
+            wait_list = [
+                icswDeviceTreeService.load(@_my_id)
+                icswDeviceLivestatusDataService.retain(@_my_id, @struct.devices)
+            ]
+            $q.all(wait_list).then(
+                (data) =>
+                    @struct.device_tree = data[0]
+                    @struct.updating = false
+                    monitoring_data = data[1]
+                    monitoring_data.result_notifier.promise.then(
+                        (ok) ->
+                            console.log "dr ok"
+                        (not_ok) ->
+                            # stop receiving
+                            # console.log "dr error"
+                        (generation) =>
+                            if @struct.is_running
+                                @feed_data(monitoring_data)
+                            else
+                                console.warn "is_running flag is false"
+                    )
+            )
+]).service('icswLivestatusCategoryFilter',
+[
+    "$q", "icswMonLivestatusPipeBase", "icswMonitoringResult",
+(
+    $q, icswMonLivestatusPipeBase, icswMonitoringResult,
+) ->
+    class icswLivestatusCategoryFilter extends icswMonLivestatusPipeBase
+        constructor: () ->
+            super("icswLivestatusCategoryFilter", true, true)
+            @set_template(
+                '<icsw-config-category-tree-select icsw-mode="filter" icsw-sub-tree="\'mon\'" icsw-mode="filter" icsw-connect-element="con_element"></icsw-config-category-tree-select>'
+                "CategoryFilter"
+            )
+            @_emit_data = new icswMonitoringResult()
+            @_cat_filter = undefined
+            @_latest_data = undefined
+            @new_data_notifier = $q.defer()
+            #  @new_data_notifier = $q.defer()
+
+        set_category_filter: (sel_cat) ->
+            @_cat_filter = sel_cat
+            if @_latest_data?
+                @emit_data_downstream(@new_data_received(@_latest_data))
+
+        new_data_received: (data) ->
+            @_latest_data = data
+            if @_cat_filter?
+                @_emit_data.apply_category_filter(@_cat_filter, @_latest_data)
+            @new_data_notifier.notify(data)
+            return @_emit_data
+
+        pipeline_reject_called: (reject) ->
+            # ignore, stop processing
 ])

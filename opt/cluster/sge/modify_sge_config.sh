@@ -90,7 +90,7 @@ qlogin_daemon /usr/sbin/sshd -i
 rlogin_daemon /usr/sbin/sshd -i
 xterm /usr/bin/xterm
 enforce_project false
-auto_user_fshare 100
+auto_user_fshare 1000
 enforce_user auto
 EOF
 #echo "rsh_command none" >> /tmp/.qconf_config

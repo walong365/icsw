@@ -1,15 +1,5 @@
 <script type="text/ng-template" id="icsw.livestatus.livestatus.overview">
     <h3>
-        <div class="btn-group">
-            <button type="button" class="btn btn-primary btn-sm dropdown-toggle" data-toggle="dropdown">
-                Layout ({{ struct.current_layout.icswData.short_name }}) <span class="caret"></span>
-            </button>
-            <ul class="dropdown-menu">
-                <li ng-click="activate_layout(lo)" ng-repeat="lo in struct.layouts">
-                    <a>{{ lo.icswData.short_name }}</a>
-                </li>
-            </ul>
-        </div>
         <icsw-livestatus-filter-display
             icsw-livestatus-filter="struct.filter"
             icsw-changed-callback="filter_changed"
@@ -164,14 +154,6 @@
     </div>
 </script>
 
-<script type="text/ng-template" id="icsw.device.livestatus.fullburst">
-    <react-burst
-        icsw-livestatus-filter="struct.filter"
-        icsw-monitoring-data="struct.monitoring_data"
-        icsw-draw-parameters="struct.draw_parameters"
-    ></react-burst>
-</script>
-
 <script type="text/ng-template" id="icsw.device.livestatus.table.view">
     <h3 ng-show="!struct.monitoring_data.filtered_services.length">No checks</h3>
     <table
@@ -292,14 +274,6 @@
             </div>
         </fieldset>
     </ng-form>
-</script>
-
-<script type="text/ng-template" id="icsw.device.livestatus.brief">
-    <react-burst
-        icsw-livestatus-filter="struct.filter"
-        icsw-monitoring-data="struct.monitoring_data"
-        icsw-draw-parameters="struct.draw_parameters"
-    ></react-burst>
 </script>
 
 <script type="text/ng-template" id="icsw.device.livestatus.device.row">

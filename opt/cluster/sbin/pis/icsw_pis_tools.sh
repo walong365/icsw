@@ -109,6 +109,7 @@ function restart_software() {
         echo -e "\n${GREEN}restarting logging-server${OFF}\n"
         ${ICSW_SBIN}/icsw --logger stdout --logall service restart logging-server
 
+        # check if icsw-server is installed
         if [ ! -f ${ICSW_PIS}/icsw_server_post_install.sh -o "${mode}" = "server" ] ; then
             # start / stop to force restart of all services
             if [ ! -d /var/lib/meta-server/.srvstate ] ; then
@@ -117,7 +118,7 @@ function restart_software() {
                 NUM_RS=1
             fi
 
-            echo -e "\n${GREEN}restarting all ICSW related services (${RESTART_CAUSE}) (LC: ${NUM_RS})${OFF}\n"
+            echo -e "\n${GREEN}restarting all ICSW related services (${RESTART_CAUSE}) (LoopCount is ${NUM_RS})${OFF}\n"
 
             for idx in $(seq ${NUM_RS} ) ; do
                 echo -e "${GREEN}(${idx}/${NUM_RS}) restarting all ICSW related services (mode=${mode})${OFF}\n"

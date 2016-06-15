@@ -291,7 +291,7 @@ class LicenseUsage(object):
         from initat.cluster.backbone.models import ext_license
         return lic.pk if isinstance(lic, ext_license) else int(lic)
 
-    # NOTE: keep in sync with js
+    # NOTE: keep in sync with js, see systeme/license.coffee line 222
     GRACE_PERIOD = relativedelta.relativedelta(weeks=2)
 
     @staticmethod
@@ -323,8 +323,7 @@ class LicenseUsage(object):
                 # check if devices are still present
                 dev_pks_missing_dev_present = device.objects.filter(pk__in=dev_pks_missing).values_list("pk", flat=True)
                 entries_to_add = [
-                    LicenseUsageDeviceService(device_id=dev_pk, service=None, **common_params)
-                    for dev_pk in dev_pks_missing_dev_present
+                    LicenseUsageDeviceService(device_id=dev_pk, service=None, **common_params) for dev_pk in dev_pks_missing_dev_present
                 ]
                 LicenseUsageDeviceService.objects.bulk_create(entries_to_add)
 
@@ -332,15 +331,22 @@ class LicenseUsage(object):
                 if value and any(value.itervalues()):  # not empty
                     dev_serv_filter = reduce(
                         operator.ior,
-                        (Q(device_id=LicenseUsage.device_to_pk(dev), service_id=LicenseUsage.service_to_pk(serv))
-                         for dev, serv_list in value.iteritems()
-                         for serv in serv_list
-                         )
+                        (
+                            Q(
+                                device_id=LicenseUsage.device_to_pk(dev),
+                                service_id=LicenseUsage.service_to_pk(serv)
+                            )
+                            for dev, serv_list in value.iteritems()
+                            for serv in serv_list
+                        )
                     ) & Q(**common_params)
 
-                    present_entries =\
-                        frozenset(LicenseUsageDeviceService.objects.filter(dev_serv_filter).values_list("device_id",
-                                                                                                        "service_id"))
+                    present_entries = frozenset(
+                        LicenseUsageDeviceService.objects.filter(dev_serv_filter).values_list(
+                            "device_id",
+                            "service_id"
+                        )
+                    )
                     existing_dev_pks = frozenset(device.objects.all().values_list("pk", flat=True))
                     existing_serv_pks = frozenset(mon_check_command.objects.all().values_list("pk", flat=True))
                     entries_to_add = []

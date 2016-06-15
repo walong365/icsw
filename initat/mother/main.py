@@ -70,6 +70,7 @@ def main():
             ("DHCP_AUTHORITATIVE", configfile.bool_c_var(False)),
             ("DHCP_ONLY_BOOT_NETWORKS", configfile.bool_c_var(True)),
             ("MODIFY_NFS_CONFIG", configfile.bool_c_var(True)),
+            ("NEED_ALL_NETWORK_BINDS", configfile.bool_c_var(True)),
         ]
     )
     global_config.add_config_entries(

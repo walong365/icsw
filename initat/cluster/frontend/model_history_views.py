@@ -105,11 +105,13 @@ class get_historical_data(ListAPIView):
         content_type = ContentType.objects.get_for_model(model)
 
         filter_dict = {'content_type': content_type}
+        filter_dict_del = {"content_type": content_type}
         if object_id is not None:
-            filter_dict['object_id_int'] = object_id
+            filter_dict['object_id'] = object_id
+            filter_dict_del['object_id_int'] = object_id
 
         # get data for deletion and version (they mostly have the same fields)
-        deletion_queryset = icsw_deletion_record.objects.filter(**filter_dict)
+        deletion_queryset = icsw_deletion_record.objects.filter(**filter_dict_del)
         # print dir(reversion.VersionAdapter)
         version_queryset = Version.objects.filter(**filter_dict).select_related('revision')
 
