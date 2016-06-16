@@ -60,11 +60,13 @@
             <div class="form-group row">
                 <label class="col-xs-3 control-label">
                     <span class="fa fa-arrows-v"/>
-                    CF:
+                    ConsolidationFunc:
                 </label>
                 <div class="col-xs-9 controls">
                     <ui-select ng-model="vars.current.cf">
-                        <ui-select-match class="ui-select-match" placeholder="Consolidation function...">{{ $select.selected.long }}</ui-select-match>
+                        <ui-select-match class="ui-select-match" placeholder="Consolidation function...">
+                            {{ $select.selected.long }}
+                        </ui-select-match>
                         <ui-select-choices class="ui-select-choices" repeat="cf.short as cf in base_setting.cf_list">
                             <div ng-bind-html="cf.long"></div>
                         </ui-select-choices>
@@ -83,7 +85,9 @@
                 </label>
                 <div class="col-xs-3 controls">
                     <ui-select ng-model="vars.current.legend_mode">
-                        <ui-select-match class="ui-select-match" placeholder="Legend mode...">{{ $select.selected.long }}</ui-select-match>
+                        <ui-select-match class="ui-select-match" placeholder="Legend mode...">
+                            {{ $select.selected.long }}
+                        </ui-select-match>
                         <ui-select-choices class="ui-select-choices" repeat="lm.short as lm in base_setting.legend_mode_list">
                             <div ng-bind-html="lm.long"></div>
                         </ui-select-choices>
@@ -95,7 +99,9 @@
                 </label>
                 <div class="col-xs-3 controls">
                     <ui-select ng-model="vars.current.scale_mode">
-                        <ui-select-match class="ui-select-match" placeholder="Scale mode...">{{ $select.selected.long }}</ui-select-match>
+                        <ui-select-match class="ui-select-match" placeholder="Scale mode...">
+                            {{ $select.selected.long }}
+                        </ui-select-match>
                         <ui-select-choices class="ui-select-choices" repeat="sm.short as sm in base_setting.scale_mode_list">
                             <div ng-bind-html="sm.long"></div>
                         </ui-select-choices>
@@ -109,7 +115,9 @@
                 </label>
                 <div class="col-xs-9 controls">
                     <ui-select ng-model="vars.current.graph_setting_size">
-                        <ui-select-match class="ui-select-match" placeholder="Size">{{ $select.selected.info }}</ui-select-match>
+                        <ui-select-match class="ui-select-match" placeholder="Size">
+                            {{ $select.selected.info }}
+                        </ui-select-match>
                         <ui-select-choices class="ui-select-choices" repeat="sz.idx as sz in base_setting.size_list">
                             <div ng-bind-html="sz.info"></div>
                         </ui-select-choices>
@@ -128,8 +136,13 @@
                 </label>
                 <div class="col-xs-9 controls">
                     <div class="input-group">
-                        <ui-select ng-model="vars.current.graph_setting_timeshift">
-                            <ui-select-match class="ui-select-match" placeholder="Shift">{{ $select.selected.name }}</ui-select-match>
+                        <ui-select ng-model="vars.current.graph_setting_timeshift" style="max-width:400px; min-width:240px;">
+                            <ui-select-match
+                                class="ui-select-match"
+                                placeholder="Shift"
+                            >
+                                {{ $select.selected.name }}
+                            </ui-select-match>
                             <ui-select-choices class="ui-select-choices" repeat="sh.idx as sh in base_setting.timeshift_list">
                                 <div ng-bind-html="sh.name"></div>
                             </ui-select-choices>
@@ -145,8 +158,10 @@
                 </label>
                 <div class="col-xs-9 controls">
                     <div class="input-group">
-                        <ui-select ng-model="vars.current.graph_setting_forecast">
-                            <ui-select-match class="ui-select-match" placeholder="Forecast">{{ $select.selected.name }}</ui-select-match>
+                        <ui-select ng-model="vars.current.graph_setting_forecast" style="max-width:400px; min-width:240px;">
+                            <ui-select-match class="ui-select-match" placeholder="Forecast">
+                                {{ $select.selected.name }}
+                            </ui-select-match>
                             <ui-select-choices class="ui-select-choices" repeat="fc.idx as fc in base_setting.forecast_list">
                                 <div ng-bind-html="fc.name"></div>
                             </ui-select-choices>
@@ -167,7 +182,7 @@
                 </label>
                 <div class="col-xs-9 controls">
                     <div class="input-group">
-                        <ui-select ng-model="vars.current" on-select="select_setting($item, $model)">
+                        <ui-select ng-model="vars.current" on-select="select_setting($item, $model)" style="max-width:400px; min-width:240px;">
                             <ui-select-match>
                                 {{ $select.selected.name }}
                             </ui-select-match>

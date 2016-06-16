@@ -1323,8 +1323,8 @@
 		};
 	}])
 
-	.factory('GridsterDraggable', ['$document', '$window', 'GridsterTouch',
-		function($document, $window, GridsterTouch) {
+	.factory('GridsterDraggable', ['$document', '$window', 'GridsterTouch', "icswGoogleMapsHelper",
+		function($document, $window, GridsterTouch, icswGoogleMapsHelper) {
 			function GridsterDraggable($el, scope, gridster, item, itemOptions) {
 
 				var elmX, elmY, elmW, elmH,
@@ -1387,6 +1387,9 @@
 					originalCol = item.col;
 					originalRow = item.row;
 					if (document.querySelector('.gridster-item-moving') !== null)
+						return;
+					// check if googlemap is panning or mouse is in map
+					if (icswGoogleMapsHelper.is_panning() || icswGoogleMapsHelper.in_map())
 						return;
 					dragStart(e);
 

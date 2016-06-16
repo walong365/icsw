@@ -8,7 +8,24 @@
         <div class="panel-heading">
             <h4>
                 DisplayPipeline '{{ struct.connector.name }}',
-                {{ struct.connector.num_display_elements }} ({{ struct.connector.num_total_elements }}) elements,
+                {{ struct.connector.num_display_elements }} ({{ struct.connector.num_total_elements }}) elements
+                <span ng-show="struct.connector.num_hidden_elements">
+                    {{ struct.connector.num_hidden_elements }} hidden
+                    <ui-select
+                        ng-model="struct.connector.reopen_hidden"
+                        style="max-width:400px; min-width:240px;"
+                        title="Choose monitoring service template"
+                        on-select="struct.connector.unhide_element($item)"
+                    >
+                        <ui-select-match class="ui-select-match" placeholder="reopen element">
+                            {{ $select.selected.display_name }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.__dp_element_id as value in struct.connector.hidden_elements | props_filter:{name:$select.search}">
+                            <div ng-bind-html="value.display_name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+
+                </span>
                 <icsw-tools-button type="enable" is-enable="struct.connector.running" ng-click="struct.connector.toggle_running()"></icsw-tools-button>
             </h4>
         </div>
@@ -31,6 +48,9 @@
         <div class="panel-heading">
             <span class="badge">{{ con_element.__dp_element_id }}@{{ con_element.__dp_depth }}</span>
             {{ con_element.__dp_title }}
+            <span class="pull-right">
+                <icsw-tools-button size="xs" type="close" value="" ng-click="con_element.hide_element($event)"></icsw-tools-button>
+            </span>
         </div>
         <div style="overflow:auto;">
     <!-- we dont close the </div> here, this happens in the directive -->

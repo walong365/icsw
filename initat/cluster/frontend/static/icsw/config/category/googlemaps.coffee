@@ -1,6 +1,6 @@
 # Copyright (C) 2015-2016 init.at
 #
-# Send feedback to: <mallinger@init.at>
+# Send feedback to: <lang-nevyjel@init.at>
 #
 # This file is part of webfrontend
 #
@@ -33,6 +33,7 @@ angular.module(
         restrict: "EA"
         template: $templateCache.get("icsw.config.category.tree.google.map")
         scope: {
+            # locations are in fact proxylocations
             locations: "=locations"
             active_tab: "=activeTab"
             maps_control: "=icswGoogleMapsFn"
@@ -175,7 +176,7 @@ angular.module(
                     React.createElement(
                         reactMarkerEntry
                         {
-                            location: loc
+                            location: loc.location
                         }
                     ) for loc in @props.locations
                 )
@@ -242,13 +243,41 @@ angular.module(
             @mydiv.style.left = "#{center.x - 10}px"
             @mydiv.style.top = "#{center.y - 10}px"
 
+]).service("icswGoogleMapsHelper",
+[
+    "$q",
+(
+    $q,
+) ->
+    # small helper to be used by gridster to avoid double-panning
+    _is_panning = false
+    _in_map = false
+    return {
+        start_panning: () ->
+            _is_panning = true
+
+        end_panning: () ->
+            _is_panning = false
+
+        enter_map: () ->
+            _in_map = true
+
+        leave_map: () ->
+            _in_map = false
+
+        is_panning: () ->
+            return _is_panning
+
+        in_map: () ->
+            return _in_map
+    }
 ]).controller("icswConfigCategoryTreeGoogleMapCtrl",
 [
     "$scope", "$templateCache", "uiGmapGoogleMapApi", "$timeout", "$rootScope", "ICSW_SIGNALS",
-    "icswGoogleMapsLivestatusOverlay", "icswGoogleMapsMarkerOverlay", "uiGmapIsReady",
+    "icswGoogleMapsLivestatusOverlay", "icswGoogleMapsMarkerOverlay", "uiGmapIsReady", "icswGoogleMapsHelper",
 (
     $scope, $templateCache, uiGmapGoogleMapApi, $timeout, $rootScope, ICSW_SIGNALS,
-    icswGoogleMapsLivestatusOverlay, icswGoogleMapsMarkerOverlay, uiGmapIsReady,
+    icswGoogleMapsLivestatusOverlay, icswGoogleMapsMarkerOverlay, uiGmapIsReady, icswGoogleMapsHelper,
 ) ->
 
     $scope.struct = {
@@ -269,6 +298,16 @@ angular.module(
                 streetViewControl: false
                 minZoom: 1
                 maxZoom: 20
+            }
+            events: {
+                dragstart: (args...) ->
+                    icswGoogleMapsHelper.start_panning()
+                dragend: (args...) ->
+                    icswGoogleMapsHelper.end_panning()
+                mouseover: (args...) ->
+                    icswGoogleMapsHelper.enter_map()
+                mouseout: (args...) ->
+                    icswGoogleMapsHelper.leave_map()
             }
         }
     }
@@ -308,7 +347,7 @@ angular.module(
         # center map around the locations
         _bounds = new $scope.struct.google_maps.LatLngBounds()
         for entry in $scope.locations
-            _bounds.extend(new $scope.struct.google_maps.LatLng(entry.latitude, entry.longitude))
+            _bounds.extend(new $scope.struct.google_maps.LatLng(entry.location.latitude, entry.location.longitude))
         if $scope.struct.map_options.control.getGMap?
             $scope.struct.map_options.control.getGMap().fitBounds(_bounds)
         else
@@ -318,7 +357,7 @@ angular.module(
         # center map around the locations
         _bounds = new $scope.struct.google_maps.LatLngBounds()
         for entry in $scope.locations
-            _bounds.extend(new $scope.struct.google_maps.LatLng(entry.latitude, entry.longitude))
+            _bounds.extend(new $scope.struct.google_maps.LatLng(entry.location.latitude, entry.location.longitude))
         $scope.struct.map_options.center = {latitude:_bounds.getCenter().lat(), longitude: _bounds.getCenter().lng()}
 
     # helper functions
@@ -327,7 +366,8 @@ angular.module(
         $scope.marker_list.length = 0
         marker_lut = {}
         # console.log "init markers", $scope.locations.length
-        for _entry in $scope.locations
+        for _proxy_entry in $scope.locations
+            _entry = _proxy_entry.location
             comment = _entry.name
             if _entry.comment
                 comment = "#{comment} (#{_entry.comment})"
@@ -384,7 +424,7 @@ angular.module(
                             _map = $scope.struct.map_options
                             # zoom
                             $scope.zoom_to_locations()
-                            console.log _map.control
+                            # console.log _map.control
                             # marker overlay
                             marker_overlay = new $scope.struct.google_maps.OverlayView()
                             angular.extend(marker_overlay, new icswGoogleMapsMarkerOverlay(marker_overlay, $scope.struct.google_maps, $scope.locations))

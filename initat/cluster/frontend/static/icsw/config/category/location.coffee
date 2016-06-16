@@ -53,23 +53,8 @@ angular.module(
             enhance_list: "=gfxEnhanceList"
         }
         controller: "icswConfigCategoryLocationCtrl"
-    }
-]).directive("icswConfigCategoryLocationShow",
-# not in use right now, was in Dashboard
-[
-    "$templateCache",
-(
-    $templateCache,
-) ->
-    return {
-        restrict: "EA"
-        template: $templateCache.get("icsw.config.category.location.show")
-        scope: {
-            filter: "=icswLivestatusFilter"
-            monitoring_data: "=icswMonitoringData"
-        }
-        controller: "icswConfigCategoryLocationCtrl"
-        # link: (scope, element, attrs) ->
+        link: (scope, element, attrs) ->
+            scope.set_mode("edit")
     }
 ]).directive("icswConfigCategoryLocationListEdit",
 [
@@ -91,7 +76,6 @@ angular.module(
     return {
         restrict: "EA"
         template: $templateCache.get("icsw.config.category.location.list.show")
-        controller: "icswConfigCategoryLocationCtrl"
     }
 ]).directive("icswConfigLocationTabHelper", [() ->
     return {
@@ -120,6 +104,31 @@ angular.module(
                     10
                 )
     }
+]).service("icswCategoryLocationHelper",
+[
+    "$q",
+(
+    $q,
+) ->
+    # implements simple location proxy objects
+    class LocationProxy
+        # wrap location to add controller-specific filtered entries
+        constructor: (@location) ->
+
+    class LocationProxyHelper
+        constructor: () ->
+            @lut = {}
+
+        get: (loc) ->
+            if loc.idx not of @lut
+                @lut[loc.idx] = new LocationProxy(loc)
+            return @lut[loc.idx]
+
+
+    return {
+        get_location_proxy: () ->
+            return new LocationProxyHelper()
+    }
 ]).controller("icswConfigCategoryLocationCtrl",
 [
     "$scope", "$compile", "$templateCache", "Restangular", "$timeout",
@@ -128,6 +137,7 @@ angular.module(
     "FileUploader", "blockUI", "icswTools", "ICSW_URLS", "icswCategoryBackup",
     "icswSimpleAjaxCall", "icswParseXMLResponseService", "toaster",
     "icswComplexModalService", "icswLocationGfxBackup", "icswToolsSimpleModalService",
+    "icswCategoryLocationHelper",
 (
     $scope, $compile, $templateCache, Restangular, $timeout,
     icswCSRFService, $rootScope, ICSW_SIGNALS, icswDeviceTreeService,
@@ -135,18 +145,57 @@ angular.module(
     FileUploader, blockUI, icswTools, ICSW_URLS, icswCategoryBackup,
     icswSimpleAjaxCall, icswParseXMLResponseService, toaster,
     icswComplexModalService, icswLocationGfxBackup, icswToolsSimpleModalService,
+    icswCategoryLocationHelper,
 ) ->
+    my_loc_helper = icswCategoryLocationHelper.get_location_proxy()
+    
     $scope.struct = {
+        # tree data valid
+        tree_data_valid: false
         # device tree
         device_tree: null
         # category tree
         category_tree: null
-        # locations
+        # locations, list of LocationProxy objects
         locations: []
+        # orig list (for displaypipe filtering)
+        orig_locations: []
         # google maps entry
         google_maps: null
+        # mode
+        mode: undefined
+        # monitoring data
+        monitoring_data: undefined
     }
-    $scope.reload = () ->
+
+    filter_list = () ->
+        # filter location list (run through con_element)
+        $scope.struct.locations.length = 0
+        for loc in $scope.struct.orig_locations
+            _proxy = my_loc_helper.get(loc)
+            _dev_idxs = (entry.device for entry in loc.$dml_list)
+            _local_idxs = []
+            for dev in $scope.struct.monitoring_data.hosts
+                if dev.$$icswDevice.idx in _dev_idxs
+                    _local_idxs.push(dev.$$icswDevice.idx)
+            _proxy.shown_devs = _local_idxs.length
+            _proxy.num_devs = _dev_idxs.length 
+            if _local_idxs.length
+                $scope.struct.locations.push(_proxy)
+
+    rebuild_list = () ->
+        $scope.struct.category_tree.build_location_list($scope.struct.orig_locations)
+        if $scope.struct.mode == "show"
+            if $scope.struct.monitoring_datra?
+                filter_list()
+                # set new monitoring data
+        else
+            # copy all
+            $scope.struct.locations.length = 0
+            for entry in $scope.struct.orig_locations
+                $scope.struct.locations.push(my_loc_helper.get(entry))
+
+    reload = () ->
         $q.all(
             [
                 icswDeviceTreeService.load($scope.$id)
@@ -154,17 +203,33 @@ angular.module(
             ]
         ).then(
             (data) ->
+                $scope.struct.tree_data_valid = true
                 $scope.struct.device_tree = data[0]
                 $scope.struct.category_tree = data[1]
-                $scope.rebuild_list()
+                rebuild_list()
         )
 
     $rootScope.$on(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), (event) ->
-        $scope.rebuild_list()
+        # force rebuild list because categories may have chagned
+        rebuild_list()
     )
 
-    $scope.rebuild_list = () ->
-        $scope.struct.category_tree.build_location_list($scope.struct.locations)
+    # determine runmode, set by link function
+    $scope.set_mode = (mode) ->
+        $scope.struct.mode = mode
+        reload()
+        if $scope.struct.mode == "show"
+            $scope.con_element.new_data_notifier.promise.then(
+                (resolved) ->
+                (rejected) ->
+                    console.log "REJ", rejected
+                (new_data) ->
+                    if not $scope.struct.monitoring_data?
+                        $scope.struct.monitoring_data = new_data
+                    if $scope.struct.tree_data_valid
+                        filter_list()
+                        console.log "nd", new_data
+            )
 
     # utility functions
 
@@ -177,12 +242,14 @@ angular.module(
             loc.$$selected = true
 
     $scope.toggle_expand = ($event, loc) ->
-        if loc.$gfx_list.length
+        if loc.location.$gfx_list.length
             loc.$$expanded = !loc.$$expanded
         else
             loc.$$expanded = false
 
     $scope.locate = ($event, loc) ->
+        # loc is a real location (not a proxy location)
+        # locate map on google-maps location
         if $scope.struct.google_maps_fn
             $scope.struct.google_maps_fn("refresh", [loc.latitude, loc.longitude])
             $scope.struct.google_maps_fn("zoom", 11)
@@ -377,7 +444,6 @@ angular.module(
     # $scope.preview_close = () ->
     #     $scope.preview_gfx = undefined
     
-    $scope.reload()
 ]).directive("icswConfigCategoryTreeMapEnhance",
 [
     "$templateCache", "ICSW_URLS", "icswSimpleAjaxCall", "blockUI",
