@@ -543,7 +543,7 @@ class sge_info(object):
             if poll_result:
                 recv = client.recv_unicode()
             else:
-                print "timeout after {:d} seconds".format(timeout_secs)
+                print("timeout after {:d} seconds".format(timeout_secs))
                 recv = None
             my_poller.unregister(client)
             del my_poller
@@ -1189,19 +1189,28 @@ def build_scheduler_info(s_info):
     r_dict = {}
     int_re = re.compile("^\d+$")
     float_re = re.compile("^\d+\.\d+$")
-    for entry in s_info.scheduler_conf:
-        _name = entry.attrib["name"]
-        if entry.text.lower() in ["true"]:
-            _val = True
-        elif entry.text.lower() in ["false"]:
-            _val = False
-        elif int_re.match(entry.text):
-            _val = int(entry.text)
-        elif float_re.match(entry.text):
-            _val = float(entry.text)
-        else:
-            _val = entry.text
-        r_dict[_name] = _val
+    _sconf = s_info.scheduler_conf
+    if _sconf is not None:
+        for entry in _sconf:
+            _name = entry.attrib["name"]
+            if entry.text.lower() in ["true"]:
+                _val = True
+            elif entry.text.lower() in ["false"]:
+                _val = False
+            elif int_re.match(entry.text):
+                _val = int(entry.text)
+            elif float_re.match(entry.text):
+                _val = float(entry.text)
+            else:
+                _val = entry.text
+            r_dict[_name] = _val
+    else:
+        _els = [x.tag for x in s_info.get_tree().findall("./*")]
+        print(
+            "Found elements: {}".format(
+                ", ".join(_els)
+            )
+        )
     return r_dict
 
 
@@ -1618,6 +1627,9 @@ def build_node_list(s_info, options):
     node_list = E.node_list()
     if options.merge_node_queue:
         for h_name, q_list in d_list:
+            if not q_list:
+                # skip hosts without related queues
+                continue
             act_q_list, act_h = ([s_info.get_queue(q_name) for q_name in q_list], s_info.get_host(h_name))
             act_q_list = [_entry for _entry in act_q_list if _entry is not None]
             s_name = act_h.get("short_name")

@@ -69,7 +69,7 @@ def sjs(s_info, opt_dict):
         ret_list.append(str(r_out_list))
     # waiting jobs
     w_out_list = logging_tools.new_form_list()
-    left_justified = set(["id", "task", "depends"])
+    left_justified = {"id", "task", "depends"}
     wait_list = sge_tools.build_waiting_list(s_info, opt_dict)
     for wait_job in wait_list:
         w_out_list.append(
@@ -280,6 +280,7 @@ class dt_edge(object):
 class my_opt_parser(argparse.ArgumentParser):
     def __init__(self, run_mode):
         argparse.ArgumentParser.__init__(self)
+        print run_mode
         if run_mode in ["sjs", "sns"]:
             self.add_argument("--source", dest="source", default="local", choices=["local", "server"], help="specify data source [%(default)s]")
             self.add_argument("-m", dest="show_memory", help="show memory information [%(default)s]", action="store_true", default=False)
@@ -356,7 +357,12 @@ def stress_system():
     _iter = 0
     while True:
         if not _iter % 20:
-            print("iteration: {:3d}, memory usage: {}".format(_iter, logging_tools.get_size_str(process_tools.get_mem_info())))
+            print(
+                "iteration: {:3d}, memory usage: {}".format(
+                    _iter,
+                    logging_tools.get_size_str(process_tools.get_mem_info())
+                )
+            )
         s_si.update()
         _iter += 1
         if _iter == 1000:
@@ -439,12 +445,15 @@ def main():
         else:
             sns(act_si, options)
     else:
-        print "Unknown runmode {}".format(run_mode)
+        print("Unknown runmode {}".format(run_mode))
     e_time = time.time()
     if not options.interactive:
-        print "took {} / {}".format(
-            logging_tools.get_diff_time_str(s_time - c_time),
-            logging_tools.get_diff_time_str(e_time - s_time))
+        print(
+            "took {} / {}".format(
+                logging_tools.get_diff_time_str(s_time - c_time),
+                logging_tools.get_diff_time_str(e_time - s_time)
+            )
+        )
 
 if __name__ == "__main__":
     main()
