@@ -243,13 +243,41 @@ angular.module(
             @mydiv.style.left = "#{center.x - 10}px"
             @mydiv.style.top = "#{center.y - 10}px"
 
+]).service("icswGoogleMapsHelper",
+[
+    "$q",
+(
+    $q,
+) ->
+    # small helper to be used by gridster to avoid double-panning
+    _is_panning = false
+    _in_map = false
+    return {
+        start_panning: () ->
+            _is_panning = true
+
+        end_panning: () ->
+            _is_panning = false
+
+        enter_map: () ->
+            _in_map = true
+
+        leave_map: () ->
+            _in_map = false
+
+        is_panning: () ->
+            return _is_panning
+
+        in_map: () ->
+            return _in_map
+    }
 ]).controller("icswConfigCategoryTreeGoogleMapCtrl",
 [
     "$scope", "$templateCache", "uiGmapGoogleMapApi", "$timeout", "$rootScope", "ICSW_SIGNALS",
-    "icswGoogleMapsLivestatusOverlay", "icswGoogleMapsMarkerOverlay", "uiGmapIsReady",
+    "icswGoogleMapsLivestatusOverlay", "icswGoogleMapsMarkerOverlay", "uiGmapIsReady", "icswGoogleMapsHelper",
 (
     $scope, $templateCache, uiGmapGoogleMapApi, $timeout, $rootScope, ICSW_SIGNALS,
-    icswGoogleMapsLivestatusOverlay, icswGoogleMapsMarkerOverlay, uiGmapIsReady,
+    icswGoogleMapsLivestatusOverlay, icswGoogleMapsMarkerOverlay, uiGmapIsReady, icswGoogleMapsHelper,
 ) ->
 
     $scope.struct = {
@@ -270,6 +298,16 @@ angular.module(
                 streetViewControl: false
                 minZoom: 1
                 maxZoom: 20
+            }
+            events: {
+                dragstart: (args...) ->
+                    icswGoogleMapsHelper.start_panning()
+                dragend: (args...) ->
+                    icswGoogleMapsHelper.end_panning()
+                mouseover: (args...) ->
+                    icswGoogleMapsHelper.enter_map()
+                mouseout: (args...) ->
+                    icswGoogleMapsHelper.leave_map()
             }
         }
     }

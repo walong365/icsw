@@ -1008,8 +1008,8 @@ angular.module(
             @set_template(
                 '<icsw-device-livestatus-maplist icsw-connect-element="con_element"></icsw-device-livestatus-maplist>'
                 "LocationDisplay"
-                8
-                8
+                10
+                16
             )
             @new_data_notifier = $q.defer()
             #  @new_data_notifier = $q.defer()
@@ -1223,25 +1223,36 @@ angular.module(
 
         render: () ->
             _gfx = @props.location_gfx
+            # target width and height
             {width, height} = @state
+            # gfx width and height
+            _gfx_width = _gfx.width
+            _gfx_height = _gfx.height
+            # scale
+            _scale_x = width / _gfx_width
+            _scale_y = height / _gfx_height
+            _scale = _.min([_scale_x, _scale_y])
+            # console.log _scale_x, _scale_y, _scale
             _header = _gfx.name
             if _gfx.comment
                 _header = "#{_header} (#{_gfx.comment})"
+            _header = "#{_header} (#{_gfx_width} x #{_gfx_height}) * scale (#{_.round(_scale, 3)}) = (#{_.round(_gfx_width * _scale, 3)} x #{_.round(_gfx_height * _scale, 3)})"
 
             _dml_list = [
                 image(
                     {
                         key: "bgimage"
-                        width: width
-                        height: height
+                        width: _gfx_width
+                        height: _gfx_height
                         href: _gfx.image_url
+                        preserveAspectRatio: "none"
                     }
                 )
                 polyline(
                     {
                         key: "imageborder"
                         style: {fill:"none", stroke:"black", strokeWidth:"3"}
-                        points: "0,0 #{width},0 #{width},#{height} 0,#{height} 0 0"
+                        points: "0,0 #{_gfx_width - 1},0 #{_gfx_width - 1},#{_gfx_height - 1} 0,#{_gfx_height - 1} 0 0"
                     }
                 )
             ]
@@ -1264,6 +1275,7 @@ angular.module(
                         }
                     )
                 )
+            # console.log width, height, _gfx_width, _gfx_height
             return div(
                 {
                     key: "top"
@@ -1281,12 +1293,14 @@ angular.module(
                             width: width
                             height: height
                             preserveAspectRatio: "xMidYMid meet"
-                            viewBox: "0 0 #{width} #{height}"
+                            viewBox: "0 0 #{_gfx_width} #{_gfx_height}"
                         }
                         [
                             g(
                                 {
                                     key: "gouter"
+                                    # scale not needed because of viewbox
+                                    # transform: "scale(#{_scale})"
                                 }
                                 _dml_list
                             )
