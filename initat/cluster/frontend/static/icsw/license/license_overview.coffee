@@ -97,6 +97,9 @@ lic_module = angular.module("icsw.license.overview",
                     name: "License liveview"
                     icon: "fa-line-chart"
                     ordering: 30
+                dashboardEntry:
+                    size_x: 2
+                    size_y: 6
         }
     )
 ]).directive("icswLicenseLiveView", [

@@ -43,6 +43,9 @@ rms_module = angular.module(
                     name: "RMS Overview"
                     icon: "fa-table"
                     ordering: 0
+                dashboardEntry:
+                    size_x: 4
+                    size_y: 6
         }
     )
 ]).directive("icswRmsOverview",
