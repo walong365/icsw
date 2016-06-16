@@ -65,7 +65,7 @@ sources = {
         [
             "frontend/static/css/ui.fancytree.css",
             #"frontend/static/css/codemirror.css",
-            #"frontend/static/css/bootstrap.css",
+            "frontend/static/css/bootstrap.css",
             # "frontend/static/css/luna.css",
             "frontend/static/css/jquery.Jcrop.min.css",
             "frontend/static/css/angular-datetimepicker.css",
@@ -75,14 +75,12 @@ sources = {
             "frontend/static/css/smart-table.css",
             "frontend/static/css/font-awesome.min.css",  #before theme
             "frontend/static/css/toaster.css",
-            #"frontend/static/css/bootstrap-dialog.css",
+            "frontend/static/css/bootstrap-dialog.css",
             "frontend/static/css/angular-gridster.min.css",
             "frontend/static/css/hotkeys.css",
             "frontend/static/css/icsw_src.css",
-            "frontend/static/css/init_theme_dark.css", 
-            #"frontend/static/css/init_theme_light.css",
-            
-            "frontend/static/css/init-style.css",  # last
+            #"frontend/static/css/init_theme_dark.css",
+            #"frontend/static/css/init-style.css",  # last
             # not needed right now, not working with tree-code
             # "frontend/static/css/awesome-bootstrap-checkbox.css",
         ]

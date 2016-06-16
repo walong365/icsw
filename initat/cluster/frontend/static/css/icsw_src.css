@@ -171,3 +171,24 @@ del {
 .ace_editor {
     height: 200px;
 }
+.form-control-inline {
+    min-width: 0;
+    width: auto;
+    display: inline;
+}
+icsw-login-page .container-fluid {
+    max-width: 400px;
+    padding-top: 15px;
+    margin-top:3%;
+    }
+.btn {
+    /*normalize buttons which may include fa-class*/
+    line-height: 1;
+}
+.glyphicon {
+    font-size: 87%;
+}
+.fa { /* chrome fix */
+    font-family: FontAwesome,Arial,Helvetica,sans-serif;
+    font-size: 11px;
+}

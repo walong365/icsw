@@ -181,17 +181,17 @@ angular.module(
         "Ok", "Warning", "Critical", "Unknown", "Undetermined", "Planned down", "Flapping",
     ]
     service_colors = {
-        "Ok": "#92aa00"
+        "Ok": "#66dd66"
         "Warning": "#f0ad4e"
-        "Critical": "#bb332e"
+        "Critical": "#ff7777"
         "Unknown": "#c7c7c7"
         "Undetermined": "#c7c7c7"
         "Planned down": "#5bc0de"
     }
 
     host_colors = {
-        "Up": "#92aa00"
-        "Down": "#bb332e"
+        "Up": "#66dd66"
+        "Down": "#ff7777"
         "Unreachable": "#f0ad4e"
         "Undetermined": "#c7c7c7"
         "Planned down": "#5bc0de"
@@ -362,7 +362,7 @@ angular.module(
                                     {
                                         x: pos_x
                                         y: scope.height
-                                        style: "fill:white"
+                                        style: "fill:black"
                                         "font-size": "#{scope.fontSize}px"
                                         "text-anchor": "middle"
                                         "alignment-baseline": "baseline"

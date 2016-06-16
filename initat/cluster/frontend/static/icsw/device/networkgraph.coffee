@@ -668,14 +668,12 @@ angular.module(
             # <circle r="18" fill="{{ fill_color }}" stroke-width="{{ stroke_width }}" stroke="{{ stroke_color }}" cursor="crosshair"></circle>
             .attr('r', (d) -> return d.radius)
             .attr("stroke-width", "2")
-            .attr("stroke", "#92aa00")
-            .attr("fill", "grey")
+            .attr("stroke", "grey")
+            .attr("fill", "white")
             .attr("cursor", "crosshair")
             _g.append("text")
-            .attr("stroke-width", "1")
-            .attr("stroke", "#222222")
-            .attr("style", "font-size:14px;")
-            .attr("fill", "#ffffff")
+            .attr("stroke-width", "2")
+            .attr("stroke", "white")
             .attr("paint-order", "stroke")
             .text(
                 (d) ->
@@ -706,8 +704,8 @@ angular.module(
             ds = selector.data(graph.links, (l) -> return graph.link_to_dom_id(l))
             ds.enter().append("line")
             .attr("class", "d3-link")
-            .attr("stroke", "#92aa00")
-            .attr("stroke-width", "3")
+            .attr("stroke", "#ff7788")
+            .attr("stroke-width", "4")
             .attr("opacity", "1")
             ds.exit().remove()
 
@@ -906,7 +904,7 @@ angular.module(
 
         set_fixed: (dom_node, device, flag) ->
             device.fixed = flag
-            fill_color = if flag then "#bb3d1e" else "grey"
+            fill_color = if flag then "red" else "white"
             $(dom_node).find("circle").attr("fill", fill_color)
 
         tick: () =>
