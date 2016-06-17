@@ -96,6 +96,7 @@ icsw_app = angular.module(
         "icsw.livestatus.livestatus",
         "icsw.livestatus.comp.sources",
         "icsw.livestatus.comp.connect",
+        "icsw.livestatus.comp.burst",
         "icsw.device.monconfig",
         "icsw.device.location",
         "icsw.device.status_history",

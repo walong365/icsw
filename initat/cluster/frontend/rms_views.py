@@ -61,7 +61,7 @@ RMS_ADDONS = [
 logger = logging.getLogger("cluster.rms")
 
 if sge_tools:
-    class ThreadLockedSGEInfo(sge_tools.sge_info):
+    class ThreadLockedSGEInfo(sge_tools.SGEInfo):
         # sge_info object with thread lock layer
         def __init__(self):
             self._init = False
@@ -78,7 +78,7 @@ if sge_tools:
                     _srv_address = _routing.get_server_address(_srv_type)
                 else:
                     _srv_address = "127.0.0.1"
-                sge_tools.sge_info.__init__(
+                sge_tools.SGEInfo.__init__(
                     self,
                     server=_srv_address,
                     source="server",
@@ -94,8 +94,8 @@ if sge_tools:
             self.ensure_init()
             self.lock.acquire()
             try:
-                sge_tools.sge_info.update(self)
-                sge_tools.sge_info.build_luts(self)
+                sge_tools.SGEInfo.update(self)
+                sge_tools.SGEInfo.build_luts(self)
             finally:
                 self.lock.release()
 else:

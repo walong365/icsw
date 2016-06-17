@@ -73,6 +73,7 @@ def get_empty_node_options(**kwargs):
     options.show_seq = False
     options.suppress_status = False
     options.long_status = False
+    options.show_topology = True
     options.show_type = False
     options.show_long_type = False
     options.show_complexes = True
@@ -186,7 +187,7 @@ def sec_to_str(in_sec):
     return out_f
 
 
-class sge_info(object):
+class SGEInfo(object):
     def __init__(self, **kwargs):
         """ arguments :
         verbose            : enables verbose messages
@@ -445,6 +446,14 @@ class sge_info(object):
     def _direct_call(self, dict_name):
         s_time = time.time()
         new_el = self.__update_call_dict[dict_name]()
+        if new_el.tag != dict_name:
+            self.log(
+                "update call for dict '{}' returned an '{}' Element -> memory leak".format(
+                    dict_name,
+                    new_el.tag,
+                ),
+                logging_tools.LOG_LEVEL_CRITICAL
+            )
         new_el.attrib["last_update"] = "{:d}".format(int(time.time()))
         new_el.attrib["valid_until"] = "{:d}".format(int(time.time()) + self.__timeout_dicts[dict_name])
         e_time = time.time()
@@ -818,7 +827,7 @@ class sge_info(object):
         for _p_id, _childs in child_dict.iteritems():
             for _child in _childs:
                 id_lut[_p_id].find("childs").append(id_lut[_child])
-        cur_fs_tree = E.fairshare_tree()
+        cur_fs_tree = E.fstree()
         if "0" in id_lut:
             cur_fs_tree.append(id_lut["0"])
         # print etree.tostring(cur_fs_tree, pretty_print=True)
@@ -842,7 +851,7 @@ class sge_info(object):
         if _c_stat:
             all_qhosts = E.call_error(c_out, stat="{:d}".format(_c_stat))
         else:
-            all_qhosts = etree.fromstring(c_out)  # @UndefinedVariable
+            all_qhosts = etree.fromstring(c_out)
         for cur_host in all_qhosts.xpath(".//host", smart_strings=False):  # [not(@name='global')]"):
             cur_host.attrib["short_name"] = cur_host.attrib["name"].split(".")[0]
         for cur_job in all_qhosts.xpath(".//job", smart_strings=False):
@@ -851,6 +860,7 @@ class sge_info(object):
                 cur_job.attrib["full_id"] = "{}.{}".format(cur_job.attrib["name"], task_node.text)
             else:
                 cur_job.attrib["full_id"] = cur_job.attrib["name"]
+        # print etree.tostring(all_qhosts, pretty_print=True)
         for state_el in all_qhosts.xpath(".//queue/queuevalue[@name='state_string']", smart_strings=False):
             state_el.addnext(
                 E.queuevalue(
@@ -1557,14 +1567,28 @@ def get_node_headers(options):
                 E.virtual_free()
             ]
         )
-    cur_node.extend(
-        [
-            E.load(),
-            E.slots_used(span="2"),
-            E.slots_reserved(),
-            E.slots_total()
-        ]
-    )
+    if options.merge_node_queue:
+        cur_node.extend(
+            [
+                E.load(span="2"),
+                E.slots_used(),
+                E.slots_reserved(),
+                E.slots_total(),
+            ]
+        )
+    else:
+        cur_node.extend(
+            [
+                E.load(),
+                E.slot_info(),
+            ]
+        )
+    if options.show_topology:
+        cur_node.extend(
+            [
+                E.topology()
+            ]
+        )
     if options.show_acl:
         cur_node.extend(
             [
@@ -1576,13 +1600,29 @@ def get_node_headers(options):
     return cur_node
 
 
-def shorten_list(in_list, **kwargs):
+def _shorten_list(in_list, **kwargs):
     if "empty_str" in kwargs:
         in_list = [value if value else kwargs["empty_str"] for value in in_list]
     if kwargs.get("reduce", True):
         if len(set(in_list)) == 1:
             return in_list[0]
     return kwargs.get("sep", "/").join(in_list)
+
+
+def _get_topology_node(act_h):
+    _topo, _topo_used = (
+        act_h.findtext("resourcevalue[@name='m_topology']"),
+        act_h.findtext("resourcevalue[@name='m_topology_inuse']")
+    )
+    if _topo is not None:
+        _node = E.topology(
+            "{} / {}".format(_topo, _topo_used)
+        )
+    else:
+        _node = E.topology(
+            "-"
+        )
+    return _node
 
 
 def build_node_list(s_info, options):
@@ -1684,7 +1724,7 @@ def build_node_list(s_info, options):
                     continue
             cur_node = E.node(
                 E.host(act_h.get("short_name")),
-                E.queues(shorten_list(q_list))
+                E.queues(_shorten_list(q_list))
             )
             if options.show_seq:
                 seq_list = [
@@ -1697,7 +1737,7 @@ def build_node_list(s_info, options):
                         )[-1]
                     ) for act_q in act_q_list
                 ]
-                cur_node.append(E.seqno(shorten_list(seq_list)))
+                cur_node.append(E.seqno(_shorten_list(seq_list)))
             if not options.suppress_status:
                 _list = [
                     m_queue.findtext(
@@ -1708,7 +1748,7 @@ def build_node_list(s_info, options):
                 ]
                 cur_node.append(
                     E.state(
-                        shorten_list(
+                        _shorten_list(
                             [_val or "-" for _val in _list]
                         ),
                         raw=json.dumps(_list)
@@ -1724,7 +1764,7 @@ def build_node_list(s_info, options):
                 ]
                 cur_node.append(
                     E.type(
-                        shorten_list(
+                        _shorten_list(
                             _list
                         ),
                         raw=json.dumps(_list)
@@ -1733,7 +1773,7 @@ def build_node_list(s_info, options):
             if options.show_complexes:
                 cur_node.append(
                     E.complex(
-                        shorten_list(
+                        _shorten_list(
                             [
                                 ",".join(
                                     sorted(
@@ -1755,7 +1795,7 @@ def build_node_list(s_info, options):
             if options.show_pe:
                 cur_node.append(
                     E.pe_list(
-                        shorten_list(
+                        _shorten_list(
                             [
                                 ",".join(
                                     sorted(
@@ -1789,11 +1829,15 @@ def build_node_list(s_info, options):
                         ),
                         **{"type": "float", "format": "{:.2f}"}
                     ),
-                    E.slots_used(shorten_list([m_queue.findtext("queuevalue[@name='slots_used']") for m_queue in m_queue_list])),
-                    E.slots_reserved(shorten_list([m_queue.findtext("queuevalue[@name='slots_resv']") for m_queue in m_queue_list])),
-                    E.slots_total(shorten_list([m_queue.findtext("queuevalue[@name='slots']") for m_queue in m_queue_list])),
+                    E.slots_used(_shorten_list([m_queue.findtext("queuevalue[@name='slots_used']") for m_queue in m_queue_list])),
+                    E.slots_reserved(_shorten_list([m_queue.findtext("queuevalue[@name='slots_resv']") for m_queue in m_queue_list])),
+                    E.slots_total(_shorten_list([m_queue.findtext("queuevalue[@name='slots']") for m_queue in m_queue_list])),
                 ]
             )
+            if options.show_topology:
+                cur_node.append(
+                    _get_topology_node(act_h)
+                )
             if options.show_acl:
                 acl_str_dict = {}
                 for act_q in act_q_list:
@@ -1817,7 +1861,7 @@ def build_node_list(s_info, options):
                             acl_str = "{} and not ({})".format(pos_list, neg_list)
                         acl_str_dict.setdefault(header_name, []).append(acl_str)
                 for header_name in ["userlists", "projects"]:
-                    cur_node.append(getattr(E, header_name)(shorten_list(acl_str_dict.get(header_name, []))))
+                    cur_node.append(getattr(E, header_name)(_shorten_list(acl_str_dict.get(header_name, []))))
             job_list = []
             for q_name in q_list:
                 type_dict = job_host_pe_lut.get(s_name, {}).get(q_name, {})
@@ -1973,14 +2017,24 @@ def build_node_list(s_info, options):
             cur_node.extend(
                 [
                     E.load("{:.2f}".format(_load_to_float(act_h.findtext("resourcevalue[@name='load_avg']")))),
-                    E.slots_used(m_queue.findtext("queuevalue[@name='slots_used']")),
-                    E.slots_reserved(m_queue.findtext("queuevalue[@name='slots_resv']")),
-                    E.slots_total(m_queue.findtext("queuevalue[@name='slots']")),
+                    E.slot_info(
+                        "{}/{}/{}".format(
+                            m_queue.findtext("queuevalue[@name='slots_used']"),
+                            m_queue.findtext("queuevalue[@name='slots_resv']"),
+                            m_queue.findtext("queuevalue[@name='slots']")
+                        )
+                    )
                 ]
             )
+            if options.show_topology:
+                cur_node.append(
+                    _get_topology_node(act_h)
+                )
             if options.show_acl:
-                for ref_name, header_name in [("user_list", "userlists"),
-                                              ("project", "projects")]:
+                for ref_name, header_name in [
+                    ("user_list", "userlists"),
+                    ("project", "projects")
+                ]:
                     pos_list = " or ".join(
                         act_q.xpath(
                             ".//{}s/conf_var[not(@host) or @host='{}']/@name".format(
@@ -2042,7 +2096,7 @@ def build_node_list(s_info, options):
 
 
 def _stress_test():
-    a = sge_info(mode="local", verbose=True)
+    a = SGEInfo(mode="local", verbose=True)
     _iters = 100
     for _x in xrange(_iters):
         a.update(force_update=True)

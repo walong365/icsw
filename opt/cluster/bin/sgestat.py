@@ -102,6 +102,9 @@ def sns(s_info, opt_dict):
         "complex", "pe_list", "userlists", "projects", "jobs"
     }
     short_dict = {
+        # one queue per line
+        # "slot_info": "si",
+        # for merged info
         "slots_used": "su",
         "slots_reserved": "sr",
         "slots_total": "st",
@@ -280,7 +283,6 @@ class dt_edge(object):
 class my_opt_parser(argparse.ArgumentParser):
     def __init__(self, run_mode):
         argparse.ArgumentParser.__init__(self)
-        print run_mode
         if run_mode in ["sjs", "sns"]:
             self.add_argument("--source", dest="source", default="local", choices=["local", "server"], help="specify data source [%(default)s]")
             self.add_argument("-m", dest="show_memory", help="show memory information [%(default)s]", action="store_true", default=False)
@@ -308,6 +310,7 @@ class my_opt_parser(argparse.ArgumentParser):
             self.add_argument("--pe", dest="show_pe", help="show pe information [%(default)s]", action="store_true", default=False)
             self.add_argument("-J", dest="merge_node_queue", help="merge node with queues in output [%(default)s]", action="store_true", default=False)
             self.add_argument("-q", dest="queue_name", type=str, default="", help="queue to show [%(default)s]")
+            self.add_argument("--notopo", action="store_false", dest="show_topology", default=True, help="suppress topology [%(default)s]")
         elif run_mode == "sjs":
             # self.add_argument("-s", dest="no_status", help="suppress status [%(default)s]", action="store_true", default=False)
             self.add_argument("--valid", dest="only_valid_waiting", help="show only valid waiting jobs [%(default)s]", action="store_true", default=False)
@@ -347,7 +350,7 @@ def get_server():
 def stress_system():
     from initat.tools import process_tools
     # stress sge info
-    s_si = sge_tools.sge_info(
+    s_si = sge_tools.SGEInfo(
         server="localhost",
         default_pref=["server"],
         never_direct=True,
@@ -385,7 +388,7 @@ def main():
         options = my_opt_parser(run_mode).parse_args()
     if getattr(options, "stress", False):
         stress_system()
-    act_si = sge_tools.sge_info(
+    act_si = sge_tools.SGEInfo(
         verbose=options.verbose,
         log_command=log_com,
         server=get_server(),

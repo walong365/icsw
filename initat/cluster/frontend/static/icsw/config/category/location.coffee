@@ -228,7 +228,7 @@ angular.module(
                         $scope.struct.monitoring_data = new_data
                     if $scope.struct.tree_data_valid
                         filter_list()
-                        console.log "nd", new_data
+                        # console.log "nd", new_data
             )
 
     # utility functions

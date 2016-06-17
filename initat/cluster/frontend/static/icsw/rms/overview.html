@@ -198,8 +198,10 @@
 <script type="text/ng-template" id="icsw.rms.queue.line">
     <td ng-show="struct.toggle['host']">
         {{ queue.host.host.value }}&nbsp;
-        <icsw-tools-button type="draw" size="xs" ng-show="queue.host.$$has_rrd" ng-click="gstruct.draw_rrd($event, queue.host)">
-        </icsw-tools-button>
+        <span class="pull-right">
+            <icsw-tools-button type="draw" size="xs" ng-show="queue.host.$$has_rrd" ng-click="gstruct.draw_rrd($event, queue.host)">
+            </icsw-tools-button>
+        </span>
     </td>
     <td ng-show="struct.toggle['queues']">
         <icsw-rms-queue-state icsw-rms-queue="queue" ng-if="gstruct.rms_operator"></icsw-rms-queue-state>
@@ -231,21 +233,18 @@
         </div>
         <b ng-show="!queue.$$load_is_valid">{{ queue.load.value }}</b>
     </td>
-    <td ng-show="struct.toggle['slots_used']">
+    <td ng-show="struct.toggle['load']">
         <div ng-repeat="entry in queue.load_vector" class="row">
              <div class="col-sm-12" style="width:140px; height:20px;">
                  <uib-progressbar max="entry[0]" value="entry[1]" animate="false" type="info"><span style="color:black;">{{ entry[1] }} / {{ entry[0] }}</span></uib-progressbar>
              </div>
         </div>
     </td>
-    <td ng-show="struct.toggle['slots_used']">
-        {{ queue.slots_used.value }}
+    <td ng-show="struct.toggle['slots_used']" class="text-center">
+        <tt>{{ queue.slots_info.used }}  / {{ queue.slots_info.reserved }} / {{ queue.slots_info.total }}</tt>
     </td>
-    <td ng-show="struct.toggle['slots_reserved']">
-        {{ queue.slots_reserved.value }}
-    </td>
-    <td ng-show="struct.toggle['slots_total']">
-        {{ queue.slots_total.value }}
+    <td ng-show="struct.toggle['topology']" class="text-center">
+        <tt>{{ queue.topology }}</tt>
     </td>
     <td ng-show="struct.toggle['jobs']">
         {{ queue.jobs.value }}

@@ -221,7 +221,7 @@ class build_process(threading_tools.process_obj):
         cur_c.log("built took {}".format(logging_tools.get_diff_time_str(e_time - s_time)))
         if global_config["DEBUG"]:
             tot_query_count = len(connection.queries) - cur_query_count
-            cur_c.log("queries issued: %d" % (tot_query_count))
+            cur_c.log("queries issued: {:d}".format(tot_query_count))
             for q_idx, act_sql in enumerate(connection.queries[cur_query_count:], 1):
                 cur_c.log(" %4d %s" % (q_idx, act_sql["sql"][:120]))
         # pprint.pprint(cur_c.get_send_dict())
