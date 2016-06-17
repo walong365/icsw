@@ -320,13 +320,21 @@ rms_module = angular.module(
     $q, icswRMSTools,
 ) ->
     class icswRMSQueue
-        constructor: (@name, @host, state_value, seqno, host_state, load_value, max_load) ->
+        constructor: (@name, @host, state_value, seqno, host_state, load_value, max_load, slot_info, topology) ->
             @state = {
                 value: state_value
                 raw: host_state
             }
+            slot_info = (parseInt(_value) for _value in slot_info)
             @seqno = {value: seqno}
             @load = {value: load_value}
+            @slots_info = {
+                used: slot_info[0]
+                reserved: slot_info[1]
+                total: slot_info[2]
+            }
+            console.log "t=", topology
+            @topology = topology
             _sv = @state.value
             # display flags
             @$$enable_ok = if _sv.match(/d/g) then true else false
@@ -843,7 +851,7 @@ rms_module = angular.module(
             super("node", h_struct, struct)
             @queue_list = []
             # disable display of this headers
-            @hidden_headers = ["state"]
+            @hidden_headers = ["state", "slots_reserved", "slots_total"]
 
         feed_list : (simple_list) =>
             @feed_xml_list(simple_list)
@@ -866,11 +874,18 @@ rms_module = angular.module(
         build_queue_list: () =>
             {slot_info} = @struct
             i_split = (in_str, nq) ->
+                # one element per queue, if all elements are identical only one is reported
                 parts = in_str.split("/")
                 if parts.length != nq
                     parts = (parts[0] for _x in [1..nq])
                 return parts
-
+            n_split = (in_str) ->
+                _rd = {}
+                if in_str
+                    for _part in in_str.split("/")
+                        [_name, _value] = _part.split("::")
+                        _rd[_name] = _value
+                return _rd
             # empty old list
             @queue_list.length = 0
 
@@ -901,6 +916,8 @@ rms_module = angular.module(
                     entry.$$load_vector = _.zip(_total, _used, _reserved)
                     (slot_info.feed_vector(_lv) for _lv in entry.$$load_vector)
 
+                # parse job entry, see sge_tools.py
+                job_dict = n_split(entry.jobs.value)
                 _idx = 0
                 for _vals in _.zip(
                     queues, states, seqnos, loads, types, complexes, pe_lists,
@@ -917,15 +934,20 @@ rms_module = angular.module(
                         entry.state.raw[_idx]
                         _vals[3]
                         @max_load
+                        # slots used / reserved / total
+                        [_vals[7], _vals[8], _vals[9]]
+                        entry.topology.value
                     )
                     queue.type = {value: _vals[4]}
                     queue.complex = {value: _vals[5]}
                     queue.pe_list = {value: _vals[6]}
-                    queue.slots_used = {value: _vals[7]}
-                    queue.slots_reserved = {value: _vals[8]}
-                    queue.slots_total = {value: _vals[9]}
-                    # job display still buggy, FIXME
-                    queue.jobs = {value: _vals[10]}
+                    # queue.slots_used = {value: _vals[7]}
+                    # queue.slots_reserved = {value: _vals[8]}
+                    # queue.slots_total = {value: _vals[9]}
+                    if _vals[0] of job_dict
+                        queue.jobs = {value: job_dict[_vals[0]]}
+                    else
+                        queue.jobs = {value: ""}
                     @queue_list.push(queue)
                     _idx++
             @info = "queue (#{@queue_list.length} queues on #{@list.length} nodes, #{slot_info.used} of #{slot_info.total} slots used)"
@@ -997,7 +1019,7 @@ rms_module = angular.module(
     icsw-select-keys="load.*,net.all.*,mem.used.phys$,^swap.*"
     draw="1"
     mergedevices="0"
-    graphsize="240x100"
+    icsw-graph-size="240x100"
     <!-- fromdt="#{start_time}"
     # todt="#{end_time}"
     # jobmode="#{job_mode}"

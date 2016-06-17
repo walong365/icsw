@@ -62,7 +62,8 @@ angular.module(
             title = @__dp_raw_title
             if @__dp_parent
                 title = "#{title} from #{@__dp_parent.__dp_element_id}"
-            if @__dp_childs
+            if @is_emitter and @__dp_childs.length
+                # only for emitters
                 title = "#{title} to " + (entry.__dp_element_id for entry in @__dp_childs).join(", ")
             @__dp_title = title
 

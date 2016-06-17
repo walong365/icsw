@@ -109,7 +109,7 @@ class RMSMonProcess(threading_tools.process_obj):
 
     def _init_sge_info(self):
         self.log("init sge_info")
-        self.__sge_info = sge_tools.sge_info(
+        self.__sge_info = sge_tools.SGEInfo(
             log_command=self.log,
             run_initial_update=False,
             verbose=True if global_config["DEBUG"] else False,
@@ -196,11 +196,8 @@ class RMSMonProcess(threading_tools.process_obj):
             _queue = _node.findtext("queue")
             _queue_names.add(_queue)
             _host_names.add(_host)
-            _su, _sr, _st = (
-                int(_node.findtext("slots_used")),
-                int(_node.findtext("slots_reserved")),
-                int(_node.findtext("slots_total")),
-            )
+            _si = _node.findtext("slot_info")
+            _su, _sr, _st = (int(_val) for _val in _si.split("/"))
             _state = _node.findtext("state")
             _queues["total"].feed(_st, _sr, _su, _state)
             if _queue not in _queues:

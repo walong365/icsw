@@ -617,6 +617,10 @@ angular.module(
                 scope.job_mode = attrs["jobmode"]
             if attrs["selectedjob"]?
                 scope.selected_job = attrs["selectedjob"]
+            if attrs["icswGraphSize"]?
+                # TODO, FixMe
+                # console.log attrs["icswGraphSize"]
+                true
             scope.struct.draw_on_init = attrs["draw"] ? false
         controller: "icswGraphOverviewCtrl"
     }

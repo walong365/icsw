@@ -306,7 +306,8 @@ class partition_table(models.Model):
                 ] for p_disc in self.partition_disc_set.all()
             ], [])
         )
-        all_mps = sum(
+        # physical mountpoints
+        phys_mps = sum(
             [
                 [
                     cur_p.mountpoint for cur_p in p_disc.partition_set.all() if cur_p.mountpoint.strip() and (
@@ -316,7 +317,9 @@ class partition_table(models.Model):
             ],
             []
         )
-        all_mps.extend([sys_p.mountpoint for sys_p in self.sys_partition_set.all()])
+        # system mountpoints
+        sys_mps = [sys_p.mountpoint for sys_p in self.sys_partition_set.all()]
+        all_mps = phys_mps + sys_mps
         unique_mps = set(all_mps)
         for non_unique_mp in sorted([name for name in unique_mps if all_mps.count(name) > 1]):
             prob_list.append(
@@ -329,10 +332,16 @@ class partition_table(models.Model):
                     True
                 )
             )
-        if u"/" not in all_mps:
+        if u"/" in sys_mps:
             prob_list.append(
                 (
-                    logging_tools.LOG_LEVEL_ERROR, "no '/' mountpoint defined", True
+                    logging_tools.LOG_LEVEL_ERROR, "'/' is defined as system parition", True
+                )
+            )
+        if u"/" not in phys_mps:
+            prob_list.append(
+                (
+                    logging_tools.LOG_LEVEL_ERROR, "no '/' mountpoint on physical discs defined", True
                 )
             )
         new_valid = not any(

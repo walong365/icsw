@@ -101,7 +101,12 @@ angular.module(
     [
         "icsw.mouseCapture"
     ]
-).factory("dragging", ["mouseCaptureFactory", (mouseCaptureFactory) ->
+).factory("dragging",
+[
+    "mouseCaptureFactory",
+(
+    mouseCaptureFactory
+) ->
     return {
         start_drag: (event, threshold, config) ->
             dragging = false
@@ -304,6 +309,12 @@ angular.module(
             entry.parent = @
             @children.push(entry)
             @lut[entry.idx] = entry
+
+        get_self_and_childs: () ->
+            _r = [@]
+            for node in @children
+                _r = _.concat(_r, node.get_self_and_childs())
+            return _r
 
         iter_childs: (cb_f) ->
             cb_f(@)
