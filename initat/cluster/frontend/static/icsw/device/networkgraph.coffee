@@ -415,6 +415,7 @@ angular.module(
                         key: "path.#{key_prefix}.#{_idx}"
                         d: _path
                         fill: srvc.$$burst_fill_color
+                        classes : srvc.className
                         stroke: "black"
                         # hm, stroke-width seems to be ignored
                         strokeWidth: "0.5"
