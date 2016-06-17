@@ -1,0 +1,15 @@
+.sb_lines {
+    stroke: black;
+    stroke-width: 0.5;
+}
+
+.svg_ok { fill: #66dd66; }  /* sources.coffee */
+.svg_up { fill: #66dd66; }
+.svg_down { fill: #ff7777; }
+.svg_warn { fill: #dddd88; }  /* sources.coffee *//* f0ad4e status_history_utils.coffee??*/
+.svg_crit { fill: #ff7777; } /* sources.coffee */
+.svg_danger { fill: #ff0000; } /* sources.coffee */
+.svg_down { fill: #ff0000; }
+.svg_plandown { fill: #5bc0de; }
+.svg_unknown { fill: #c7c7c7; }
+.svg_undetermined { fill: #c7c7c7; }
