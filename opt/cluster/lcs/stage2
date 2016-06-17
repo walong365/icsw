@@ -720,6 +720,17 @@ function generate_devicefiles() {
         done
         minor=$(( $minor + 1 ))
     done
+    major=254
+    minor=0
+    for dsk in a b c d e f g h i j k l m n o p ; do
+        bname=/dev/vd$dsk
+        mknod -m 0600 $bname b $major $minor
+        for i in $(seq 15) ; do
+            minor=$(( $minor + 1 ))
+            mknod -m 0600 $bname$i b $major $minor
+        done
+        minor=$(( $minor + 1 ))
+    done
     cpq=/dev/cciss
     mkdir $cpq
     major=104
