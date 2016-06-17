@@ -339,7 +339,9 @@ rms_module = angular.module(
                 # console.log _raw
             else
                 _use = "-"
+                _raw = null
             @topology_info = _use
+            @topology_raw = _raw
             # if @topology.
             _sv = @state.value
             # display flags
@@ -1501,11 +1503,123 @@ rms_module = angular.module(
                 )
 
     }
-]).directive("icswRmsFileInfo", ["$compile", "$templateCache", ($compile, $templateCache) ->
+]).directive("icswRmsFileInfo",
+[
+    "$compile", "$templateCache",
+(
+    $compile, $templateCache
+) ->
     return {
         restrict: "EA"
         scope:
             job: "=icswRmsJob"
         template: $templateCache.get("icsw.rms.file.info")
+    }
+]).service("icswRmsTopologyInfoReact",
+[
+    "$q",
+(
+    $q,
+) ->
+    {div, g, text, line, polyline, path, svg, h3, rect} = React.DOM
+    return React.createClass(
+        propTypes: {
+            topo: React.PropTypes.array
+        }
+
+        render: () ->
+            get_color = (node) ->
+                if node.u
+                    return "#dd8888"
+                else
+                    return "#f0f0f0"
+
+            if @props.topo
+                # baseline size
+                _bs = 10
+                _num_sockets = 0
+                _num_cores = 0
+                _num_threads = 0
+                _rect_list = []
+                _x = 0
+                for _s in @props.topo
+                    _num_sockets++
+                    _rect_list.push(
+                        rect(
+                            {
+                                key: "s#{_num_sockets}"
+                                _x: _x
+                                _y: 0
+                                width: _bs * _s.l.length
+                                height: _bs
+                                style: {fill: get_color(_s), strokeWidth: "1px", stroke: "black"}
+                            }
+                        )
+                    )
+                    for _c in _s.l
+                        _num_cores++
+                        _rect_list.push(
+                            rect(
+                                {
+                                    key: "c#{_num_cores}"
+                                    x: _x
+                                    y: _bs
+                                    width: _bs
+                                    height: _bs
+                                    style: {fill: get_color(_c), strokeWidth: "1px", stroke: "black"}
+                                }
+                            )
+                        )
+                        _x += _bs
+                        for _t in _c.l
+                            _num_threads++
+                _w = _num_cores * _bs
+                _h = 2 * _bs
+
+                # console.log @props.topo, _num_sockets, _num_cores, _num_threads
+                return svg(
+                    {
+                        key: "svg.top"
+                        width: "#{_w}px"
+                        height: "#{_h}px"
+                    }
+                    g(
+                        {
+                            key: "svg.g"
+                        }
+                        _rect_list
+                    )
+                )
+            else
+                return div(
+                    {
+                        key: "top"
+                    }
+                    "N/A"
+                )
+    )
+]).directive("icswRmsTopologyInfo",
+[
+    "$q", "icswRmsTopologyInfoReact",
+(
+    $q, icswRmsTopologyInfoReact,
+) ->
+    return {
+        restrict: "E"
+        link: (scope, element, attrs) ->
+            _el = ReactDOM.render(
+                React.createElement(
+                    icswRmsTopologyInfoReact
+                    {
+                        topo: scope.queue.topology_raw
+                    }
+                )
+                element[0]
+            )
+            scope.$on(
+                "$destroy"
+                () ->
+                    ReactDOM.unmountComponentAtNode(element[0])
+            )
     }
 ])
