@@ -333,8 +333,8 @@ rms_module = angular.module(
                 reserved: slot_info[1]
                 total: slot_info[2]
             }
-            if _.indexOf(topology.value, "/") > 0
-                _use = _.trim(topology.value.split("/")[1])
+            if topology.value.length
+                _use = topology.value
                 _raw = angular.fromJson(topology.raw)
                 # console.log _raw
             else

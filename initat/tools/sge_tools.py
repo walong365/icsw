@@ -1632,10 +1632,9 @@ def _get_topology_node(act_h):
         act_h.findtext("resourcevalue[@name='m_topology']"),
         act_h.findtext("resourcevalue[@name='m_topology_inuse']")
     )
-    if _topo_used is not None and _topo_used is not None:
-
+    if _topo is not None and _topo_used is not None:
         _node = E.topology(
-            "{} / {}".format(_topo, _topo_used),
+            _topo_used,
             raw=SGETopologyInfo(_topo_used).dump
         )
     else:
