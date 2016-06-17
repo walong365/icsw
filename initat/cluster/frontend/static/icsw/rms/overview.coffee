@@ -333,8 +333,14 @@ rms_module = angular.module(
                 reserved: slot_info[1]
                 total: slot_info[2]
             }
-            console.log "t=", topology
-            @topology = topology
+            if _.indexOf(topology.value, "/") > 0
+                _use = _.trim(topology.value.split("/")[1])
+                _raw = angular.fromJson(topology.raw)
+                # console.log _raw
+            else
+                _use = "-"
+            @topology_info = _use
+            # if @topology.
             _sv = @state.value
             # display flags
             @$$enable_ok = if _sv.match(/d/g) then true else false
@@ -936,14 +942,11 @@ rms_module = angular.module(
                         @max_load
                         # slots used / reserved / total
                         [_vals[7], _vals[8], _vals[9]]
-                        entry.topology.value
+                        entry.topology
                     )
                     queue.type = {value: _vals[4]}
                     queue.complex = {value: _vals[5]}
                     queue.pe_list = {value: _vals[6]}
-                    # queue.slots_used = {value: _vals[7]}
-                    # queue.slots_reserved = {value: _vals[8]}
-                    # queue.slots_total = {value: _vals[9]}
                     if _vals[0] of job_dict
                         queue.jobs = {value: job_dict[_vals[0]]}
                     else
@@ -1193,10 +1196,10 @@ rms_module = angular.module(
                                         struct.file_read_error()
                             )
                         $scope.struct.updating = false
-                        $scope.struct.fetch_timeout = $timeout(fetch_data, 10000)
+                        $scope.struct.fetch_timeout = $timeout(fetch_data, 15000)
                     (error) ->
                         $scope.struct.updating = false
-                        $scope.struct.fetch_timeout = $timeout(fetch_data, 10000)
+                        $scope.struct.fetch_timeout = $timeout(fetch_data, 15000)
             )
 
         $scope.close_io = (io_struct) ->

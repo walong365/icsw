@@ -1609,14 +1609,33 @@ def _shorten_list(in_list, **kwargs):
     return kwargs.get("sep", "/").join(in_list)
 
 
+class SGETopologyInfo(object):
+    def __init__(self, in_str):
+        self._info = []
+        for _c in in_str:
+            self._feed(_c)
+
+    @property
+    def dump(self):
+        return json.dumps(self._info)
+
+    def _feed(self, in_char):
+        _ref = self._info
+        for _idx in xrange({"s": 0, "c": 1, "t": 2}[in_char.lower()]):
+            _ref = _ref[-1].setdefault("l", [])
+        _ref.append({"u": in_char.lower() == in_char, "t": in_char.upper()})
+
+
 def _get_topology_node(act_h):
     _topo, _topo_used = (
         act_h.findtext("resourcevalue[@name='m_topology']"),
         act_h.findtext("resourcevalue[@name='m_topology_inuse']")
     )
     if _topo is not None:
+
         _node = E.topology(
-            "{} / {}".format(_topo, _topo_used)
+            "{} / {}".format(_topo, _topo_used),
+            raw=SGETopologyInfo(_topo_used).dump
         )
     else:
         _node = E.topology(
