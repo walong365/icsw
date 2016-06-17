@@ -1571,7 +1571,7 @@ rms_module = angular.module(
                             )
                         )
                         _x += _bs
-                        if c.l?
+                        if _c.l?
                             for _t in _c.l
                                 _num_threads++
                         else
