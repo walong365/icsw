@@ -1548,8 +1548,8 @@ rms_module = angular.module(
                         rect(
                             {
                                 key: "s#{_num_sockets}"
-                                _x: _x
-                                _y: 0
+                                x: _x
+                                y: 0
                                 width: _bs * _s.l.length
                                 height: _bs
                                 style: {fill: get_color(_s), strokeWidth: "1px", stroke: "black"}
@@ -1571,7 +1571,11 @@ rms_module = angular.module(
                             )
                         )
                         _x += _bs
-                        for _t in _c.l
+                        if c.l?
+                            for _t in _c.l
+                                _num_threads++
+                        else
+                            # at least one thread per core
                             _num_threads++
                 _w = _num_cores * _bs
                 _h = 2 * _bs

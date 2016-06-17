@@ -1612,8 +1612,9 @@ def _shorten_list(in_list, **kwargs):
 class SGETopologyInfo(object):
     def __init__(self, in_str):
         self._info = []
-        for _c in in_str:
-            self._feed(_c)
+        if in_str:
+            for _c in in_str:
+                self._feed(_c)
 
     @property
     def dump(self):
@@ -1631,7 +1632,7 @@ def _get_topology_node(act_h):
         act_h.findtext("resourcevalue[@name='m_topology']"),
         act_h.findtext("resourcevalue[@name='m_topology_inuse']")
     )
-    if _topo is not None:
+    if _topo_used is not None and _topo_used is not None:
 
         _node = E.topology(
             "{} / {}".format(_topo, _topo_used),
