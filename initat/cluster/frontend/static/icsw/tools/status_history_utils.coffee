@@ -81,6 +81,7 @@ angular.module(
                                 srv_data
                                 weights
                                 status_utils_functions.host_colors
+                                status_utils_functions.host_cssclass
                                 scope.float_format
                             )
                             line_data = new_data[1].plain()[0]
@@ -101,6 +102,7 @@ angular.module(
                         scope.data
                         weights
                         status_utils_functions.host_colors
+                        status_utils_functions.host_cssclass
                         scope.float_format
                     )
 
@@ -188,6 +190,14 @@ angular.module(
         "Undetermined": "#c7c7c7"
         "Planned down": "#5bc0de"
     }
+    service_cssclass = {
+        "Ok": "svg_ok"
+        "Warning": "svg_warn"
+        "Critical": "svg_crit"
+        "Unknown": "svg_unknown"
+        "Undetermined": "svg_undetermined"
+        "Planned down": "svg_plandown"
+    }
 
     host_colors = {
         "Up": "#66dd66"
@@ -195,6 +205,13 @@ angular.module(
         "Unreachable": "#f0ad4e"
         "Undetermined": "#c7c7c7"
         "Planned down": "#5bc0de"
+    }
+    host_cssclass = {
+        "Up": "svg_up"
+        "Down": "svg_down"
+        "Unreachable": "svg_unreach"
+        "Undetermined": "svg_undetermined"
+        "Planned down": "svg_plandown"
     }
     # olive? "#808000"
 
@@ -236,7 +253,7 @@ angular.module(
     float_format = (n) ->
         return (n * 100).toFixed(3) + "%"
 
-    preprocess_state_data = (new_data, weights, colors) ->
+    preprocess_state_data = (new_data, weights, colors, cssclass) ->
         formatted_data = _.cloneDeep(new_data)
         for key of weights
             if not _.some(new_data, (d) -> return d['state'] == key)
@@ -257,9 +274,10 @@ angular.module(
         for d in new_data
             if d['state'] != "Flapping"  # can't display flapping in pie
                 pie_data.push {
-                    'title': d['state']
-                    'value': Math.round(d['value'] * 10000) / 100
-                    'color': colors[d['state']]
+                    'title':    d['state']
+                    'value':    Math.round(d['value'] * 10000) / 100
+                    'color':    colors[d['state']]
+                    'cssclass': cssclass[d['state']]
                 }
         return [final_data, pie_data]
 
@@ -271,7 +289,7 @@ angular.module(
             Unknown: -5
             Undetermined: -4
         }
-        return preprocess_state_data(new_data, weights, service_colors, float_format)
+        return preprocess_state_data(new_data, weights, service_colors, service_cssclass, float_format)
 
     return {
         float_format: float_format
@@ -285,7 +303,9 @@ angular.module(
         # kpi states and service states currently coincide even though kpis also have host data
         preprocess_kpi_state_data: preprocess_service_state_data
         service_colors: service_colors
+        service_cssclass: service_cssclass
         host_colors: host_colors
+        host_cssclass: host_cssclass
     }
 ]).directive("icswToolsHistLineGraph",
 [
@@ -362,8 +382,8 @@ angular.module(
                                     {
                                         x: pos_x
                                         y: scope.height
-                                        style: "fill:black"
-                                        "font-size": "#{scope.fontSize}px"
+                                        class: "default_text"
+                                        # style: "font-size": "#{scope.fontSize}px"
                                         "text-anchor": "middle"
                                         "alignment-baseline": "baseline"
                                     }
@@ -432,6 +452,7 @@ angular.module(
                                         when "Unreachable" then 22
                                         when "Undetermined" then 18
                                     color = status_utils_functions.host_colors[last_entry.state]
+                                    cssclass = status_utils_functions.host_cssclass[last_entry.state]
                                 else
                                     entry_height = switch last_entry.state
                                         when "Ok" then 15
@@ -441,6 +462,7 @@ angular.module(
                                         when "Unknown" then 18
                                         when "Undetermined" then 18
                                     color = status_utils_functions.service_colors[last_entry.state]
+                                    cssclass = status_utils_functions.service_cssclass[last_entry.state]
 
                                 label_height = 13
 
@@ -469,7 +491,8 @@ angular.module(
                                         y: pos_y
                                         rx: 1
                                         ry: 1
-                                        style: "fill:#{color}; stroke-width: 0; stroke: rgb(0, 0, 0)"
+                                        #style: "fill:#{color}; stroke-width: 0; stroke: rgb(0, 0, 0);"
+                                        class: cssclass
                                     }
                                 )
                                 _rect.bind("mouseenter", last_entry, (event) ->

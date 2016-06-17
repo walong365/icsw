@@ -112,11 +112,7 @@ angular.module(
                     _path = createSVGElement(
                         "path"
                         {
-                            "stroke-width": 1
-                            "stroke-miterlimit": 2
-                            stroke: "#fff"
-                            fill: entry.color
-                            class: "pieSegment"
+                            class: "pieSegment #{entry.cssclass}"
                             d: cmd.join(" ")
                         }
                     )

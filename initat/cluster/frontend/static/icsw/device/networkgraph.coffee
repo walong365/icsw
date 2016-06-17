@@ -668,21 +668,15 @@ angular.module(
             _g.append("circle")
             # <circle r="18" fill="{{ fill_color }}" stroke-width="{{ stroke_width }}" stroke="{{ stroke_color }}" cursor="crosshair"></circle>
             .attr('r', (d) -> return d.radius)
-            .attr("stroke-width", "2")
-            .attr("stroke", "grey")
-            .attr("fill", "white")
+            .attr("class", "svg_d3circle")
             .attr("cursor", "crosshair")
             _g.append("text")
-            .attr("stroke-width", "2")
-            .attr("stroke", "white")
-            .attr("paint-order", "stroke")
+            .attr("class", "svg_d3text")
             .text(
                 (d) ->
                     return d.$$device.full_name
             )
             # <text text-anchor="middle" alignment-baseline="middle" cursor="crosshair">{{ node.name }}</text>
-            .attr("text-anchor", "middle")
-            .attr("alignment-baseline", "middle")
             .attr("cursor", "crosshair")
             # mouse handling
             that = @
@@ -704,10 +698,7 @@ angular.module(
             # console.log "link=", graph.links
             ds = selector.data(graph.links, (l) -> return graph.link_to_dom_id(l))
             ds.enter().append("line")
-            .attr("class", "d3-link")
-            .attr("stroke", "#ff7788")
-            .attr("stroke-width", "4")
-            .attr("opacity", "1")
+            .attr("class", "d3-link svg_d3link")
             ds.exit().remove()
 
 ]).service("icswNetworkTopologyDrawService",
@@ -905,8 +896,8 @@ angular.module(
 
         set_fixed: (dom_node, device, flag) ->
             device.fixed = flag
-            fill_color = if flag then "red" else "white"
-            $(dom_node).find("circle").attr("fill", fill_color)
+            cssclass = if flag then "svg_d3circle_selected" else "svg_d3circle"
+            $(dom_node).find("circle").attr("class", cssclass)
 
         tick: () =>
             # updates all coordinates, attention: not very effective for dragging
