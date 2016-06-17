@@ -54,7 +54,7 @@
     <h2>Licenses from Licenseserver: {{ licenses.length }}</h2>
     <uib-accordion close-others="no" ng-show="licenses.length">
         <uib-accordion-group ng-repeat="license in licenses" is-open="license.open">
-            <uib-ccordion-heading>
+            <uib-accordion-heading>
                 <div class="row">
                     <div class="col-md-2">
                     <i class="glyphicon" ng-class="{'glyphicon-chevron-down': license.open, 'glyphicon-chevron-right': !license.open}"></i>
@@ -67,7 +67,7 @@
                         <span class="label label-primary">{{ license.issued }} issued</span>
                     </div>
                 </div>
-            </uib-ccordion-heading>
+            </uib-accordion-heading>
             <h4 ng-show="!license.used">No licenses in use</h4>
             <table class="table table-condensed table-hover table-striped" style="width:auto;" ng-show="license.used">
                 <thead>

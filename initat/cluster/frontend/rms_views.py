@@ -111,7 +111,7 @@ def get_job_options(request):
 
 
 def get_node_options(request):
-    return sge_tools.get_empty_node_options(merge_node_queue=True, show_type=True)
+    return sge_tools.get_empty_node_options(merge_node_queue=True, show_type=True, show_seq=True)
 
 
 class get_header_dict(View):
@@ -232,7 +232,7 @@ class get_rms_json(View):
                                 content,
                                 len(content),
                                 int(cur_fc.attrib.get("last_update", cur_time)),
-                                min(10, len(lines) + 1)
+                                min(10, len(lines) + 1),
                             )
                         )
                 fc_dict[file_el.attrib["full_id"]] = list(reversed(sorted(cur_fcd, cmp=lambda x, y: cmp(x[3], y[3]))))

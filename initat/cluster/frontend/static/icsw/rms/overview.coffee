@@ -43,6 +43,9 @@ rms_module = angular.module(
                     name: "RMS Overview"
                     icon: "fa-table"
                     ordering: 0
+                dashboardEntry:
+                    size_x: 4
+                    size_y: 6
         }
     )
 ]).directive("icswRmsOverview",
@@ -317,11 +320,12 @@ rms_module = angular.module(
     $q, icswRMSTools,
 ) ->
     class icswRMSQueue
-        constructor: (@name, @host, state_value, host_state, load_value, max_load) ->
+        constructor: (@name, @host, state_value, seqno, host_state, load_value, max_load) ->
             @state = {
                 value: state_value
                 raw: host_state
             }
+            @seqno = {value: seqno}
             @load = {value: load_value}
             _sv = @state.value
             # display flags
@@ -380,9 +384,9 @@ rms_module = angular.module(
 
 ]).service("icswRMSHeaderStruct",
 [
-    "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswRMSQueue", "icswRMSTools",
+    "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswRMSTools",
 (
-    $q, ICSW_URLS, icswSimpleAjaxCall, icswRMSQueue, icswRMSTools,
+    $q, ICSW_URLS, icswSimpleAjaxCall, icswRMSTools,
 ) ->
     class icswRMSHeaderStruct
         constructor: (@name, h_struct, @struct) ->
@@ -584,10 +588,10 @@ rms_module = angular.module(
 
 ]).service("icswRMSRunningStruct",
 [
-    "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswRMSQueue", "icswRMSTools",
+    "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswRMSTools",
     "icswRMSHeaderStruct",
 (
-    $q, ICSW_URLS, icswSimpleAjaxCall, icswRMSQueue, icswRMSTools,
+    $q, ICSW_URLS, icswSimpleAjaxCall, icswRMSTools,
     icswRMSHeaderStruct,
 ) ->
     class icswRMSRunningStruct extends icswRMSHeaderStruct
@@ -650,10 +654,10 @@ rms_module = angular.module(
 
 ]).service("icswRMSWaitingStruct",
 [
-    "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswRMSQueue", "icswRMSTools",
+    "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswRMSTools",
     "icswRMSHeaderStruct", "$templateCache", "$compile", "$rootScope", "$timeout",
 (
-    $q, ICSW_URLS, icswSimpleAjaxCall, icswRMSQueue, icswRMSTools,
+    $q, ICSW_URLS, icswSimpleAjaxCall, icswRMSTools,
     icswRMSHeaderStruct, $templateCache, $compile, $rootScope, $timeout,
 ) ->
     class icswRMSWaitingStruct extends icswRMSHeaderStruct
@@ -739,10 +743,10 @@ rms_module = angular.module(
 
 ]).service("icswRMSDoneStruct",
 [
-    "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswRMSQueue", "icswRMSTools",
+    "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswRMSTools",
     "icswRMSHeaderStruct",
 (
-    $q, ICSW_URLS, icswSimpleAjaxCall, icswRMSQueue, icswRMSTools,
+    $q, ICSW_URLS, icswSimpleAjaxCall, icswRMSTools,
     icswRMSHeaderStruct,
 ) ->
     class icswRMSDoneStruct extends icswRMSHeaderStruct
@@ -812,10 +816,10 @@ rms_module = angular.module(
 
 ]).service("icswRMSSchedulerStruct",
 [
-    "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswRMSQueue", "icswRMSTools",
+    "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswRMSTools",
     "icswRMSHeaderStruct",
 (
-    $q, ICSW_URLS, icswSimpleAjaxCall, icswRMSQueue, icswRMSTools,
+    $q, ICSW_URLS, icswSimpleAjaxCall, icswRMSTools,
     icswRMSHeaderStruct,
 ) ->
     # simple key-value store for scheduler config
@@ -838,6 +842,8 @@ rms_module = angular.module(
         constructor: (h_struct, struct) ->
             super("node", h_struct, struct)
             @queue_list = []
+            # disable display of this headers
+            @hidden_headers = ["state"]
 
         feed_list : (simple_list) =>
             @feed_xml_list(simple_list)
@@ -878,6 +884,7 @@ rms_module = angular.module(
                 types = i_split(entry.type.value, _number_queues)
                 complexes = i_split(entry.complex.value, _number_queues)
                 pe_lists = i_split(entry.pe_list.value, _number_queues)
+                seqnos = i_split(entry.seqno.value, _number_queues)
 
                 if entry.slots_total.value
                     # filter out empty slots values
@@ -896,7 +903,7 @@ rms_module = angular.module(
 
                 _idx = 0
                 for _vals in _.zip(
-                    queues, states, loads, types, complexes, pe_lists,
+                    queues, states, seqnos, loads, types, complexes, pe_lists,
                     i_split(entry.slots_used.value, _number_queues),
                     i_split(entry.slots_reserved.value, _number_queues),
                     i_split(entry.slots_total.value, _number_queues),
@@ -906,18 +913,19 @@ rms_module = angular.module(
                         _vals[0]
                         entry
                         _vals[1]
-                        entry.state.raw[_idx]
                         _vals[2]
+                        entry.state.raw[_idx]
+                        _vals[3]
                         @max_load
                     )
-                    queue.type = {value: _vals[3]}
-                    queue.complex = {value: _vals[4]}
-                    queue.pe_list = {value: _vals[5]}
-                    queue.slots_used = {value: _vals[6]}
-                    queue.slots_reserved = {value: _vals[7]}
-                    queue.slots_total = {value: _vals[8]}
+                    queue.type = {value: _vals[4]}
+                    queue.complex = {value: _vals[5]}
+                    queue.pe_list = {value: _vals[6]}
+                    queue.slots_used = {value: _vals[7]}
+                    queue.slots_reserved = {value: _vals[8]}
+                    queue.slots_total = {value: _vals[9]}
                     # job display still buggy, FIXME
-                    queue.jobs = {value: _vals[9]}
+                    queue.jobs = {value: _vals[10]}
                     @queue_list.push(queue)
                     _idx++
             @info = "queue (#{@queue_list.length} queues on #{@list.length} nodes, #{slot_info.used} of #{slot_info.total} slots used)"
