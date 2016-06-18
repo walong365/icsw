@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001-2008,2011-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2008,2011-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -24,19 +24,17 @@
 import os
 import shutil
 import subprocess
-import scandir
 import time
 
 import pymongo
-from pymongo.errors import PyMongoError
+import scandir
 
 from initat.cluster.backbone.models import device
-from initat.host_monitoring import limits
 from initat.tools import logging_tools, process_tools, inotify_tools
-from ..config import global_config
-from .objects import LogRotateResult, InotifyRoot, FileWatcher
-from .commands import MonCommand
 from initat.tools.mongodb import MongoDbConnector
+from .commands import MonCommand
+from .objects import LogRotateResult, InotifyRoot, FileWatcher
+from ..config import global_config
 
 
 class Machine(object):
@@ -132,6 +130,8 @@ class Machine(object):
                 ),
                 logging_tools.LOG_LEVEL_ERROR
             )
+            # _e = process_tools.exception_info()
+            # print _e.log_lines
         else:
             pass
 
@@ -168,7 +168,8 @@ class Machine(object):
         if g_res.compress_list and Machine.c_binary:
             start_time = time.time()
             for _c_file in g_res.compress_list:
-                _bin = "{} {}".format(Machine.c_binary, _c_file)
+                # escape certain strings
+                _bin = "{} {}".format(Machine.c_binary, _c_file.replace("(", r"\("))
                 retcode = subprocess.call(_bin, shell=True)
                 if retcode:
                     Machine.g_log("'{}' returned {:d}".format(_bin, retcode), logging_tools.LOG_LEVEL_WARN)

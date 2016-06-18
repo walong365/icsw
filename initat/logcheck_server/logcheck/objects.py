@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001-2008,2011-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2008,2011-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -54,10 +54,19 @@ class LogLine(object):
             _priority, _facility = (1, 1)
             _hostname = "unknown"
             _tag = "unknown"
-        _pd = datetime.datetime.strptime(
-            _datetime.split("+")[0],
-            LogLine.DT_FORMAT,
-        )
+        try:
+            _pd = datetime.datetime.strptime(
+                _datetime.split("+")[0],
+                LogLine.DT_FORMAT,
+            )
+        except ValueError:
+            raise ValueError(
+                "cannot parse '{}' from line '{}' via {}".format(
+                    _datetime.split("+")[0],
+                    line,
+                    LogLine.DT_FORMAT,
+                )
+            )
         # format idx, datetime, parsed_datetime, line
         self.id = "{}{:06d}".format(prefix, offset)
         self.pd = _pd
