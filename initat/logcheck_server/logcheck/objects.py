@@ -166,7 +166,7 @@ class FileBatch(object):
         return unicode(self)
 
     def __unicode__(self):
-        return "Filebatch at {:d} ({:d} [{:d}] lines @ {:d})".format(
+        return "Filebatch at {:d} ({:d} [{:d}] lines @{:d})".format(
             self.time,
             self.diff_lines,
             self.tot_lines,
@@ -174,7 +174,7 @@ class FileBatch(object):
         )
 
 
-class FileWiteRater(object):
+class FileWriteRater(object):
     MAX_STREAM_TIME = 15 * 60
 
     def __init__(self):
@@ -182,7 +182,7 @@ class FileWiteRater(object):
         self.stream = []
 
     def trim_stream(self, trim_time):
-        self.stream = [_entry for _entry in self.stream if abs(_entry[0] - trim_time) < FileWiteRater.MAX_STREAM_TIME]
+        self.stream = [_entry for _entry in self.stream if abs(_entry[0] - trim_time) < FileWriteRater.MAX_STREAM_TIME]
 
     def feed(self, fb):
         # fb ... filebatch
@@ -213,7 +213,7 @@ class FileWiteRater(object):
         )
 
     def __unicode__(self):
-        return FileWiteRater.get_stream_info(self.get_stream_dict())
+        return FileWriteRater.get_stream_info(self.get_stream_dict())
 
 
 class FileSize(object):
@@ -233,6 +233,10 @@ class FileSize(object):
         _file.seek(_size)
         _num = 0
         for _line in _file:
+            if not _line.endswith("\n"):
+                self.log("incomplete line, ignoring", logging_tools.LOG_LEVEL_WARN)
+                # ignore incomplete lines
+                break
             if not first:
                 # not first call (find first line of file)
                 self.in_file.line_to_mongo(_line, _start_line + 1 + _num)
@@ -242,7 +246,7 @@ class FileSize(object):
                 break
         # todo: create a new batch only every 10 minute
         new_batch = FileBatch(
-            size,
+            _size,
             _num,
             _num + self.slices[_num_slices - 1].tot_lines
         )
@@ -268,7 +272,7 @@ class InotifyFile(object):
         # record last sizes with timestamps
         self.sizes = FileSize(self)
         self.stat = None
-        self.rater = FileWiteRater()
+        self.rater = FileWriteRater()
         # read filesize, skip lineparsing when opening for the first time
         self._update(first=True)
 
@@ -384,7 +388,7 @@ class InotifyRoot(object):
         self.register_dir(self.root_dir)
 
     def get_stream_info(self, in_dict):
-        return FileWiteRater.get_stream_info(in_dict)
+        return FileWriteRater.get_stream_info(in_dict)
 
     def get_latest_stream_dict(self):
         # return stream dict of latest written file

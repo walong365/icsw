@@ -28,8 +28,11 @@ import logging
 import sys
 import threading
 import time
+import re
 from collections import namedtuple
 
+import memcache
+from initat.icsw.service.instance import InstanceXML
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
@@ -39,7 +42,7 @@ from django.utils.decorators import method_decorator
 from django.views.generic import View
 from lxml.builder import E
 
-from initat.cluster.backbone.models import rms_job_run
+from initat.cluster.backbone.models import rms_job_run, device
 from initat.cluster.backbone.routing import SrvTypeRouting
 from initat.cluster.backbone.serializers import rms_job_run_serializer
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
@@ -57,6 +60,10 @@ RMS_ADDON_KEYS = [
 RMS_ADDONS = [
     sys.modules[key].modify_rms() for key in RMS_ADDON_KEYS if key.split(".")[-1] not in ["base"]
 ]
+
+# memcached port and address
+MC_PORT = InstanceXML(quiet=True).get_port_dict("memcached", command=True)
+MC_ADDRESS = "127.0.0.1"
 
 logger = logging.getLogger("cluster.rms")
 
@@ -256,6 +263,29 @@ class get_rms_json(View):
             "-pk"
         )[0:100]
         _done_ser = rms_job_run_serializer(done_jobs, many=True).data
+        # get name of all hosts
+        _host_names = node_list.xpath(".//node/host/text()")
+        # memcache client
+        _mcc = memcache.Client(["{}:{:d}".format(MC_ADDRESS, MC_PORT)])
+        h_dict = json.loads(_mcc.get("cc_hc_list"))
+        # required keys
+        req_keys = re.compile("^load\.(1|5|15)$")
+        # resolve to full host names / dev_pks / uuids
+        _dev_dict = {
+            _name: {
+                "uuid": _uuid,
+                "values": {},
+            } for _name, _uuid in device.objects.filter(
+                Q(name__in=_host_names)
+            ).values_list("name", "uuid")
+        }
+        for _name, _struct in _dev_dict.iteritems():
+            if _struct["uuid"] in h_dict:
+                _value_list = json.loads(_mcc.get("cc_hc_{}".format(_struct["uuid"])))
+                for _list in _value_list:
+                    if req_keys.match(_list[1]):
+                        _struct["values"][_list[1]] = _list[5]
+
         # pprint.pprint(_done_ser)
         json_resp = {
             "run_table": _sort_list(rms_info.run_job_list, _post),
@@ -264,6 +294,7 @@ class get_rms_json(View):
             "done_table": _done_ser,
             "sched_conf": sge_tools.build_scheduler_info(my_sge_info),
             "files": fc_dict,
+            "load_values": _dev_dict,
         }
         return HttpResponse(json.dumps(json_resp), content_type="application/json")
 
