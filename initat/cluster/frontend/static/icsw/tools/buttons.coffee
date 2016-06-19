@@ -23,7 +23,12 @@
 angular.module(
     "icsw.tools.button",
     []
-).service('icswToolsButtonConfigService', ['gettextCatalog', (gettextCatalog) ->
+).service('icswToolsButtonConfigService',
+[
+    'gettextCatalog',
+(
+    gettextCatalog
+) ->
     get_config_for_button_type = (type) ->
         ret_obj = {}
         if type == "modify"
@@ -184,7 +189,12 @@ angular.module(
             scope.get_class = () ->
                 return if scope.flag then "btn-success" else "btn-default"
     }
-]).directive('icswToolsButton', ["icswToolsButtonConfigService", "gettextCatalog", (icswToolsButtonsConfigService, gettextCatalog) ->
+]).directive('icswToolsButton',
+[
+    "icswToolsButtonConfigService", "gettextCatalog",
+(
+    icswToolsButtonsConfigService, gettextCatalog
+) ->
     return {
         restrict: "EA",
         template: """
@@ -273,7 +283,12 @@ visible-md visible-lg
                             scope.icon_class = "fa fa-lock"
                 )
     }
-]).directive('icswToolsButtonStatic', ["icswToolsButtonConfigService", "gettextCatalog", (icswToolsButtonsConfigService, gettextCatalog) ->
+]).directive('icswToolsButtonStatic',
+[
+    "icswToolsButtonConfigService", "gettextCatalog",
+(
+    icswToolsButtonsConfigService, gettextCatalog
+) ->
     # static button, doenst change its face during his lifetime
     return {
         restrict: "EA",

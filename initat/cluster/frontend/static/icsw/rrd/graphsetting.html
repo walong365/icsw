@@ -2,7 +2,7 @@
 
 <script type="text/ng-template" id="icsw.rrd.graphsetting.overview">
     <div class="input-group">
-        <ui-select ng-model="current" on-select="select_setting($item, $model)" style="width:160px;">
+        <ui-select ng-model="current" on-select="select_setting($item, $model)" theme="bootstrap">
             <ui-select-match class="ui-select-match" title="Stored RRD graphing settings">
                 {{ $select.selected.name }}&nbsp;&nbsp;&nbsp;
             </ui-select-match>
@@ -10,10 +10,8 @@
                 <div ng-bind-html="entry.name"></div>
             </ui-select-choices>
         </ui-select>
-        <span class="input-group-btn">
-            <button class="btn btn-sm btn-primary" type="modify" value="" size="sm" ng-click="edit_settings()" title="RRD graphing settings">
-                <span class="fa fa-wrench"></span>
-            </button>
+        <span class="input-group-addon">
+            <icsw-tools-button type="modify" size="xs" value="" ng-click="edit_settings()" title="RRD graphing settings"></icsw-tools-button>
         </span>
     </div>
 </script>
@@ -134,9 +132,9 @@
                     <span class="fa fa-exchange"/>
                     Timeshift:
                 </label>
-                <div class="col-xs-9 controls">
-                    <div class="input-group">
-                        <ui-select ng-model="vars.current.graph_setting_timeshift" style="max-width:400px; min-width:240px;">
+                <div class="col-xs-9">
+                    <div class="input-group input-group-sm">
+                        <ui-select ng-model="vars.current.graph_setting_timeshift">
                             <ui-select-match
                                 class="ui-select-match"
                                 placeholder="Shift"
@@ -147,7 +145,9 @@
                                 <div ng-bind-html="sh.name"></div>
                             </ui-select-choices>
                         </ui-select>
-                        <icsw-tools-button type="delete" value="" ng-click="vars.current.graph_setting_timeshift=null"></icsw-tools-button>
+                        <span class="input-group-addon">
+                            <icsw-tools-button type="delete" value="" ng-click="vars.current.graph_setting_timeshift=null"></icsw-tools-button>
+                        </span>
                     </div>
                 </div>
             </div>
@@ -156,9 +156,9 @@
                     <span class="fa fa-eye"/>
                     Forecast:
                 </label>
-                <div class="col-xs-9 controls">
-                    <div class="input-group">
-                        <ui-select ng-model="vars.current.graph_setting_forecast" style="max-width:400px; min-width:240px;">
+                <div class="col-xs-9">
+                    <div class="input-group input-group-sm">
+                        <ui-select ng-model="vars.current.graph_setting_forecast">
                             <ui-select-match class="ui-select-match" placeholder="Forecast">
                                 {{ $select.selected.name }}
                             </ui-select-match>
@@ -166,7 +166,9 @@
                                 <div ng-bind-html="fc.name"></div>
                             </ui-select-choices>
                         </ui-select>
-                        <icsw-tools-button type="delete" value="" ng-click="vars.current.graph_setting_forecast=null"></icsw-tools-button>
+                        <span class="input-group-addon">
+                            <icsw-tools-button type="delete" value="" ng-click="vars.current.graph_setting_forecast=null"></icsw-tools-button>
+                        </span>
                     </div>
                 </div>
             </div>
@@ -180,9 +182,9 @@
                     <span class="fa fa-anchor"/>
                     Select:
                 </label>
-                <div class="col-xs-9 controls">
-                    <div class="input-group">
-                        <ui-select ng-model="vars.current" on-select="select_setting($item, $model)" style="max-width:400px; min-width:240px;">
+                <div class="col-xs-9">
+                    <div class="input-group input-group-sm">
+                        <ui-select ng-model="vars.current" on-select="select_setting($item, $model)">
                             <ui-select-match>
                                 {{ $select.selected.name }}
                             </ui-select-match>
@@ -190,17 +192,21 @@
                                 <div ng-bind-html="entry.name"></div>
                             </ui-select-choices>
                         </ui-select>
-                        <icsw-tools-button type="delete" value="" ng-click="delete_setting()"></icsw-tools-button>
+                        <span class="input-group-addon">
+                            <icsw-tools-button type="delete" value="" ng-click="delete_setting()"></icsw-tools-button>
+                        </span>
                     </div>
                 </div>
             </div>
-            <div class="form-group row">
+            <div class="row">
                 <label class="col-xs-3 control-label">Name:</label>
-                <div class="col-xs-9 controls">
-                    <div class="input-group">
+                <div class="col-xs-9">
+                    <div class="input-group input-group-sm">
                         <input class="form-control" type="text" size="100" max_length="100" ng-model="vars.current.name"/>
-                        <icsw-tools-button type="create" size="sm" ng-click="create_setting()"></icsw-tools-button>
-                        <icsw-tools-button type="save" size="sm" ng-click="save_setting()"></icsw-tools-button>
+                        <span class="input-group-addon">
+                            <icsw-tools-button type="create" size="sm" ng-click="create_setting()"></icsw-tools-button>
+                            <icsw-tools-button type="save" size="sm" ng-click="save_setting()"></icsw-tools-button>
+                        </span>
                     </div>
                 </div>
             </div>

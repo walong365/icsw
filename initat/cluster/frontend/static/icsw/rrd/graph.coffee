@@ -190,7 +190,11 @@ angular.module(
         $scope.auto_select_keys = []
         $scope.graph_list = []
         # none, all or selected
-        $scope.job_modes = ["none", "all", "selected"]
+        $scope.job_modes = [
+            {short: "none", long: "No jobs"}
+            {short: "all", long: "All Jobs"}
+            {short: "selected", long: "Only selected"}
+        ]
         $scope.job_mode = $scope.job_modes[0]
         $scope.selected_job = 0
         $scope.struct = {
@@ -241,6 +245,8 @@ angular.module(
             }
             # error string, if not empty show as top-level warning-div
             error_string: "Init structures"
+            # job mode
+            job_mode: $scope.job_modes[0]
         }
         $scope.new_devsel = (dev_list) ->
             # clear graphs
@@ -299,8 +305,8 @@ angular.module(
                     $scope.struct.error_string = "Error loading tree"
             )
 
-        $scope.set_job_mode = (new_jm) ->
-            $scope.job_mode = new_jm
+        # $scope.set_job_mode = (new_jm) ->
+        #     $scope.job_mode = new_jm
 
         $scope.get_job_mode = (_jm) ->
             if _jm == "selected"
@@ -541,6 +547,7 @@ angular.module(
             if !$scope.struct.is_drawing
                 $scope.struct.is_drawing = true
                 $scope.struct.error_string = "Drawing graphs"
+                console.log $scope.struct.job_mode
                 gfx = $q.defer()
                 icswSimpleAjaxCall(
                     url  : ICSW_URLS.RRD_GRAPH_RRDS
@@ -549,7 +556,7 @@ angular.module(
                         "pks": angular.toJson((dev.idx for dev in $scope.struct.devices))
                         "start_time": moment($scope.timeframe.from_date_mom).format(DT_FORM)
                         "end_time": moment($scope.timeframe.to_date_mom).format(DT_FORM)
-                        "job_mode": $scope.job_mode
+                        "job_mode": $scope.struct.job_mode.short
                         "selected_job": $scope.selected_job
                         "graph_setting": $scope.struct.user_settings.get_active().idx
                     }
