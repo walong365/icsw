@@ -234,12 +234,23 @@ class FileSize(object):
         _num = 0
         for _line in _file:
             if not _line.endswith("\n"):
-                self.log("incomplete line, ignoring", logging_tools.LOG_LEVEL_WARN)
+                self.in_file.log("incomplete line, ignoring", logging_tools.LOG_LEVEL_WARN)
                 # ignore incomplete lines
                 break
             if not first:
                 # not first call (find first line of file)
-                self.in_file.line_to_mongo(_line, _start_line + 1 + _num)
+                try:
+                    self.in_file.line_to_mongo(_line, _start_line + 1 + _num)
+                except ValueError:
+                    # ignore
+                    self.in_file.log(
+                        "Got ValueError: {}".format(
+                            process_tools.get_except_info()
+                        ),
+                        logging_tools.LOG_LEVEL_CRITICAL
+                    )
+                except:
+                    raise
             _size += len(_line)
             _num += 1
             if _size == size:
@@ -275,6 +286,9 @@ class InotifyFile(object):
         self.rater = FileWriteRater()
         # read filesize, skip lineparsing when opening for the first time
         self._update(first=True)
+
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.in_root.log(u"[IF] {}".format(what), log_level)
 
     def __repr__(self):
         return u"InotifyFile for {}".format(self.f_name)

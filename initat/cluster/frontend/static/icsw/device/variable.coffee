@@ -358,10 +358,13 @@ device_variable_module = angular.module(
         delete: (scope, event, d_var) ->
             icswToolsSimpleModalService("Really delete DeviceVariable #{d_var.name} ?").then(
                 () =>
+                    blockUI.start()
                     scope.device_tree.delete_device_variable(d_var).then(
                         () ->
                             scope.helper.filter_device_variables()
-                            console.log "DevVar deleted"
+                            blockUI.stop()
+                        (error) ->
+                            blockUI.stop()
                     )
             )
 
@@ -395,7 +398,10 @@ device_variable_module = angular.module(
         name_filter: ""
     }
     # struct to hand over to VarCtrl
-    $scope.struct = {}
+    $scope.struct = {
+        # devices
+        devices: []
+    }
     $scope.dataLoaded = false
 
     $scope.new_devsel = (devs) ->
@@ -410,7 +416,9 @@ device_variable_module = angular.module(
                 hs = icswDeviceTreeHelperService.create(device_tree, trace_devices)
                 device_tree.enrich_devices(hs, ["variable_info"]).then(
                     (_done) ->
-                        $scope.struct.devices = devs
+                        $scope.struct.devices.length = 0
+                        for entry in devs
+                            $scope.struct.devices.push(entry)
                         $scope.struct.device_tree = device_tree
                         $scope.struct.helper = hs
                         # console.log "****", $scope.devices
