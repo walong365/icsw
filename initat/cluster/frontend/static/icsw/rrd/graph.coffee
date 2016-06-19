@@ -196,6 +196,16 @@ angular.module(
             {short: "selected", long: "Only selected"}
         ]
         $scope.job_mode = $scope.job_modes[0]
+
+        # helper functions
+        _get_empty_sensor_data = () ->
+            return {
+                num_struct: 0
+                num_mve: 0
+                num_devices: 0
+                num_mve_sel: 0
+                num_sensors: 0
+            }
         $scope.selected_job = 0
         $scope.struct = {
             # draw when called
@@ -210,6 +220,8 @@ angular.module(
             user: undefined
             # selected devices
             devices: []
+            # show settings
+            show_settings: true
             # device tree
             device_tree: undefined
             # helper server
@@ -237,12 +249,7 @@ angular.module(
             # vector (==treeView) valid
             vector_valid: false
             # vector data
-            vectordata: {
-                num_struct: 0
-                num_mve: 0
-                num_devices: 0
-                num_mve_sel: 0
-            }
+            vectordata: _get_empty_sensor_data()
             # error string, if not empty show as top-level warning-div
             error_string: "Init structures"
             # job mode
@@ -286,12 +293,7 @@ angular.module(
 
         $scope.load_tree = () ->
             $scope.struct.error_string = "Loading VectorTree"
-            $scope.struct.vectordata = {
-                num_struct: 0
-                num_mve: 0
-                num_devices: 0
-                num_mve_sel: 0
-            }
+            $scope.struct.vectordata = _get_empty_sensor_data()
             icswSimpleAjaxCall(
                 url: ICSW_URLS.RRD_DEVICE_RRDS
                 data: {
@@ -385,7 +387,7 @@ angular.module(
                             _mult : 1
                             _dev_pks : [$scope.mv_dev_pk]
                             _node_type : "s"
-                            _show_select: false
+                            show_select: false
                             build_info: []
                             # marker: this is not an mve entry
                             _is_mve: false
@@ -448,8 +450,10 @@ angular.module(
             cur_node._node_type = "e"
             cur_node.build_info.push(entry.build_info)
             cur_node.num_sensors = entry.num_sensors
+            if entry.num_sensors?
+                $scope.struct.vectordata.num_sensors += entry.num_sensors
             cur_node.folder = false
-            cur_node._show_select = true
+            cur_node.show_select = true
             cur_node._g_key = g_key
             cur_node.node = entry
             cur_node.selected = _sel
@@ -462,7 +466,7 @@ angular.module(
                     folder: true
                     expand: true
                     _node_type: "h"
-                    _show_select: false
+                    show_select: true
                 }
             )
             root_node.build_info = []
@@ -994,41 +998,51 @@ angular.module(
         return React.createClass(
             {
                 propTypes: {
-                    num_struct : React.PropTypes.number.isRequired
-                    num_devices : React.PropTypes.number.isRequired
-                    num_mve : React.PropTypes.number.isRequired
-                    num_mve_sel : React.PropTypes.number.isRequired
+                    num_struct: React.PropTypes.number.isRequired
+                    num_devices: React.PropTypes.number.isRequired
+                    num_mve: React.PropTypes.number.isRequired
+                    num_mve_sel: React.PropTypes.number.isRequired
+                    num_sensors: React.PropTypes.number.isRequired
                 }
                 render: () ->
+                    console.log @props
                     {div, span} = React.DOM
+                    _show_list = [
+                        span(
+                            {key: "se", className: "label label-primary", title: "structural entries"},
+                            [
+                                @props.num_struct
+                                if @props.num_devices
+                                    span(
+                                        {key: "nd", title: "number of devices"}
+                                        " / " + @props.num_devices
+                                    )
+                            ]
+                        )
+                        " / "
+                        span(
+                            {key: "de", className: "label label-primary", title: "data entries"},
+                            [
+                                @props.num_mve
+                                if @props.num_mve_sel
+                                    span(
+                                        {key: "des", title: "selected entries"}
+                                        " / " + @props.num_mve_sel
+                                    )
+                            ]
+                        )
+                    ]
+                    if @props.num_sensors
+                        _show_list.push(" / ")
+                        _show_list.push(
+                            span(
+                                {key: "ns", className: "label label-warning", title: "Sensor entries"}
+                                @props.num_sensors
+                            )
+                        )
                     div(
                         {key: "k0", className: "form-group"},
-                        [
-                            "Vector info: "
-                            span(
-                                {key: "se", className: "label label-primary", title: "structural entries"},
-                                [
-                                    @props.num_struct
-                                    if @props.num_devices
-                                        span(
-                                            {key: "nd", title: "number of devices"}
-                                            " / " + @props.num_devices
-                                        )
-                                ]
-                            )
-                            " / "
-                            span(
-                                {key: "de", className: "label label-primary", title: "data entries"},
-                                [
-                                    @props.num_mve
-                                    if @props.num_mve_sel
-                                        span(
-                                            {key: "des", title: "selected entries"}
-                                            " / " + @props.num_mve_sel
-                                        )
-                                ]
-                            )
-                        ]
+                        _show_list
                     )
             }
         )

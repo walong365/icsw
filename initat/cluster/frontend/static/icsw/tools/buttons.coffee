@@ -153,6 +153,8 @@ angular.module(
         scope:
             flag: "="
         link: (scope, element, attrs) ->
+            _yes_value = if attrs.icswYes? then attrs.icswYes else "yes"
+            _no_value = if attrs.icswNo? then attrs.icswNo else "no"
             if attrs.disabled?
                 _disabled = true
             else
@@ -163,7 +165,7 @@ angular.module(
                 $event.preventDefault()
 
             scope.get_value = () ->
-                return if scope.flag then "yes" else "no"
+                return if scope.flag then _yes_value else _no_value
 
             scope.get_class = () ->
                 return if scope.flag then "btn-success" else "btn-default"
@@ -177,6 +179,8 @@ angular.module(
         scope:
             flag: "="
         link: (scope, element, attrs) ->
+            _yes_value = if attrs.icswYes? then attrs.icswYes else "yes"
+            _no_value = if attrs.icswNo? then attrs.icswNo else "no"
             scope.change_value = ($event) ->
                 if not attrs.ngClick?
                     # ngClick not defined in attributes
@@ -184,7 +188,7 @@ angular.module(
                 $event.preventDefault()
 
             scope.get_value = () ->
-                return if scope.flag then "yes" else "no"
+                return if scope.flag then _yes_value else _no_value
 
             scope.get_class = () ->
                 return if scope.flag then "btn-success" else "btn-default"

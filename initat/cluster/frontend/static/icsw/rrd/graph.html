@@ -7,31 +7,59 @@
         <div ng-if="struct.error_string">
             <uib-alert type="warning">{{ struct.error_string }}</uib-alert>
         </div>
-        <h4 ng-show="struct.vector_valid">
-            <div class="input-group form-inline">
-                <icsw-rrd-vector-info vector-info="struct.vectordata"></icsw-rrd-vector-info>,
-                <div class="form-group">
-                    <div class="input-group-btn">
-                        <button type="button" ng-class="struct.show_tree && 'btn btn-xs btn-primary' || 'btn btn-xs'" ng-click="struct.show_tree=!struct.show_tree" title="show/hide RRD tree">
-                            <span class="glyphicon glyphicon-align-left"></span>
-                            tree
-                        </button>
-                    </div>
-                </div>&nbsp;
-                <icsw-rrd-graph-setting></icsw-rrd-graph-setting>
-                <icsw-rrd-graph-time-frame timeframe="timeframe" detail="1"></icsw-rrd-graph-time-frame>
-                <div class="form-group">
-                    <ui-select ng-model="struct.job_mode">
-                        <ui-select-match class="ui-select-match" placeholder="Job mode...">
-                            {{ $select.selected.long }}
-                        </ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="jm as jm in job_modes">
-                            <div ng-bind-html="jm.long"></div>
-                        </ui-select-choices>
-                    </ui-select>
-                </div>
-            </div>
-        </h4>
+        <div>
+            <h2>
+                Graphing,
+                <icsw-tools-yes-no icsw-yes="show settings" icsw-no="hide settings" flag="struct.show_settings"></icsw-tools-yes-no>
+                <icsw-tools-yes-no icsw-yes="show tree" icsw-no="hide tree" flag="struct.show_tree"></icsw-tools-yes-no>
+            </h2>
+        </div>
+        <table class="table table-condensed table-striped table-bordered" style="width:auto;"  ng-show="struct.vector_valid && struct.show_settings">
+            <tbody>
+                <tr>
+                    <th>Vector Info</th>
+                    <td>
+                        <div class="input-group form-inline">
+                            <icsw-rrd-vector-info vector-info="struct.vectordata"></icsw-rrd-vector-info>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <th>Settings</th>
+                    <td>
+                        <div class="input-group form-inline">
+                            <icsw-rrd-graph-setting></icsw-rrd-graph-setting><br/>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <th>Timeframe</th>
+                    <td>
+                        <div class="input-group form-inline">
+                            <icsw-rrd-graph-time-frame timeframe="timeframe" detail="1"></icsw-rrd-graph-time-frame></br>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <th>
+                        Jobs
+                    </th>
+                    <td>
+                        <div class="form-group form-inline">
+                            <ui-select ng-model="struct.job_mode">
+                                <ui-select-match class="ui-select-match" placeholder="Job mode...">
+                                    {{ $select.selected.long }}
+                                </ui-select-match>
+                                <ui-select-choices class="ui-select-choices" repeat="jm as jm in job_modes">
+                                    <div ng-bind-html="jm.long"></div>
+                                </ui-select-choices>
+                            </ui-select>
+                        </div>
+                    </td>
+                </tr>
+
+            </tbody>
+        </table>
         <div class="row" ng-if="struct.vector_valid">
             <div class="col-md-3" ng-show="struct.show_tree">
                 <div class="input-group input-group-xs">
