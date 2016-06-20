@@ -114,7 +114,6 @@ class rms_job_serializer(serializers.ModelSerializer):
 class rms_pe_info_serializer(serializers.ModelSerializer):
     class Meta:
         model = rms_pe_info
-        fields = ("name",)
 
 
 class rms_job_run_serializer(serializers.ModelSerializer):
@@ -123,8 +122,7 @@ class rms_job_run_serializer(serializers.ModelSerializer):
     rms_project = rms_project_serializer()
     rms_department = rms_department_serializer()
     rms_pe = rms_pe_serializer()
-    # need workaround because of django restframework error :-(
-    rms_pe_info = serializers.CharField()
+    rms_pe_info_set = rms_pe_info_serializer(many=True)
     start_time = serializers.CharField()
     end_time = serializers.CharField()
     queue_time = serializers.CharField()
@@ -135,10 +133,10 @@ class rms_job_run_serializer(serializers.ModelSerializer):
     class Meta:
         model = rms_job_run
         fields = (
-            "rms_job", "rms_queue", "rms_project", "rms_department", "rms_pe", "rms_pe_info",
+            "rms_job", "rms_queue", "rms_project", "rms_department", "rms_pe",
             "start_time", "end_time", "start_time_py", "end_time_py", "device", "hostname",
             "granted_pe", "slots", "priority", "account", "failed", "exit_status", "rms_queue",
-            "queue_time", "rmsjobvariable_set",
+            "queue_time", "rmsjobvariable_set", "rms_pe_info_set",
         )
 
 

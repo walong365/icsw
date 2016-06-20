@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2011-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2011-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -27,10 +27,11 @@ import select
 import socket
 import time
 
+import zmq
+
 from initat.host_monitoring.config import global_config
 from initat.tools import icmp_class, logging_tools, process_tools, server_command, \
     threading_tools
-import zmq
 
 
 class HMIcmpProtocol(icmp_class.icmp_protocol):
@@ -228,7 +229,7 @@ class HMIcmpProtocol(icmp_class.icmp_protocol):
                 value = self[_key]
                 if _key in self.__handled:
                     self.log(
-                        "got delay ping result ({}) for host {} ({:.2f})".format(
+                        "got delayed ping result ({}) for host {} ({:.2f})".format(
                             seqno,
                             value["host"],
                             recv_time - value["start"],
@@ -288,6 +289,7 @@ class TCPCon(object):
                 errno = _err.errno
                 if errno != 115:
                     self.log("error while bind to ({}, {:d}): {}".format(self._host, self._port, errno))
+
             # if errno
             # print errno
             # time.sleep(0.1)
@@ -305,6 +307,9 @@ class TCPCon(object):
 
     def _error(self, sock):
         self.log("POLLERR in hm_direct for socket {}".format(str(sock)), logging_tools.LOG_LEVEL_ERROR)
+        _err_str = "error in sending"
+        self.__process.send_result(self.src_id, unicode(self.srv_com), _err_str, True)
+        self.close()
 
     def _send(self, sock):
         try:
@@ -342,7 +347,13 @@ class TCPCon(object):
                         len(_data) - 8
                     )
             else:
-                _recv_str = "wrong header: {}".format(":".join(["{:02x}".format(ord(_chr)) for _chr in _data[0:8]]))
+                _recv_str = "wrong header: {}".format(
+                    ":".join(
+                        [
+                            "{:02x}".format(ord(_chr)) for _chr in _data[0:8]
+                        ]
+                    )
+                )
         if _is_error:
             _recv_str = "error {}".format(_recv_str)
             self.log(

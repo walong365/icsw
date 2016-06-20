@@ -333,8 +333,16 @@ rms_module = angular.module(
                 reserved: slot_info[1]
                 total: slot_info[2]
             }
-            console.log "t=", topology
-            @topology = topology
+            if topology.value.length
+                _use = topology.value
+                _raw = angular.fromJson(topology.raw)
+                # console.log _raw
+            else
+                _use = "-"
+                _raw = null
+            @topology_info = _use
+            @topology_raw = _raw
+            # if @topology.
             _sv = @state.value
             # display flags
             @$$enable_ok = if _sv.match(/d/g) then true else false
@@ -533,24 +541,22 @@ rms_module = angular.module(
                 # if entry.rms_pe?
                 #     console.log "*", entry
                 _names = []
-                if entry.rms_pe_info? and entry.rms_pe_info.length
-                    # hm, this is not correct ...
+                if entry.$$pe_raw?
                     # done list
-                    _names = entry.rms_pe_info
+                    _names = (_entry.hostname for _entry in entry.$$pe_raw)
                 else if entry.nodelist? and entry.nodelist.raw? and entry.nodelist.raw.devs?
-                    # running list
+                    # running list, maybe move to PE parsing
                     _names = entry.nodelist.raw.devs
                 else if entry.host?
-                    # device name via host
+                    # queue list
                     _names = [entry.host.value]
-
                 _rrds = false
                 for _name in _names
+                    # todo, update has_active_rrds from server when running in single-page-app mode
                     if _name of name_lut and name_lut[_name].has_active_rrds
                         _rrds = true
                     if _rrds
                         entry.$$rrd_device_ids = (name_lut[_name].idx for _name in _names when _name of name_lut)
-                        # console.log entry.$$rrd_device_ids
                 entry.$$has_rrd = _rrds
 
         set_alter_job_flags: () ->
@@ -611,12 +617,12 @@ rms_module = angular.module(
         feed_list : (simple_list, file_dict) =>
             {io_dict} = @struct
             @feed_xml_list(simple_list)
-            @set_rrd_flags()
             @set_alter_job_flags()
             @set_full_ids()
             @check_jobvar_display()
             _running_slots = 0
             for entry in @list
+                console.log entry.nodelist
                 nodes = entry.nodelist.value.split(",")
                 r_list = []
                 _.forEach(_.countBy(nodes), (key, value) ->
@@ -659,6 +665,7 @@ rms_module = angular.module(
                 @info = "running (#{@list.length} jobs, #{_running_slots} slots)"
             else
                 @info = "no running"
+            @set_rrd_flags()
 
 ]).service("icswRMSWaitingStruct",
 [
@@ -764,7 +771,6 @@ rms_module = angular.module(
         feed_list : (simple_list) =>
             @feed_json_list(simple_list)
             @salt_datetimes()
-            @set_rrd_flags()
             @set_full_ids()
             @check_jobvar_display()
             {name_lut} = @struct
@@ -806,21 +812,42 @@ rms_module = angular.module(
                 entry.$$failed_glyph = _glyph
                 entry.$$failed_title = _title
                 # pe_info
-                r_list = []
-                if entry.rms_pe? and entry.rms_pe.length
+                if entry.rms_pe_info_set.length
+                    _pe_raw = entry.rms_pe_info_set
+                else if entry.rms_pe? and entry.rms_pe.length
                     # console.log "*", entry.pe
+                    # console.log "***", entry.rms_pe
+                    _pe_raw = []
                     for _entry in entry.rms_pe
-                        r_list.push("#{_entry.hostname} (#{_entry.slots})")
+                        if _entry.hostname of name_lut
+                            _dev = name_lut[_entry.hostname]
+                            _pe_raw.push(
+                                {
+                                    device: _dev.idx
+                                    hostname: _dev.full_name
+                                    slots: _entry.slots
+                                }
+                            )
                 else
+                    _pe_raw = []
                     if entry.device of name_lut
-                        r_list.push("#{name_lut[entry.device].full_name} (#{entry.slots})")
-                    else
-                        r_list.push("---")
-                entry.$$pe_info = r_list.join(",")
+                        _pe_raw.push(
+                            {
+                                device: name_lut[entry.device].idx
+                                hostname: name_lut[entry.device].full_name
+                                slots: entry.slots
+                            }
+                        )
+                entry.$$pe_raw = _pe_raw
+                if entry.$$pe_raw.length
+                    entry.$$pe_info = ("#{obj.hostname} (#{obj.slots})" for obj in entry.$$pe_raw).join(", ")
+                else
+                    entry.$$pe_info = "N/A"
             if @list.length
                 @info = "done (#{@list.length} jobs)"
             else
                 @info = "no jobs finished"
+            @set_rrd_flags()
 
 ]).service("icswRMSSchedulerStruct",
 [
@@ -855,7 +882,6 @@ rms_module = angular.module(
 
         feed_list : (simple_list) =>
             @feed_xml_list(simple_list)
-            @set_rrd_flags()
 
             valid_loads = (parseFloat(entry.load.value) for entry in @list when entry.load.value.match(icswRMSTools.load_re))
 
@@ -868,6 +894,7 @@ rms_module = angular.module(
             if @max_load == 0
                 @max_load = 4
 
+            @set_rrd_flags()
             # build queue list
             @build_queue_list()
 
@@ -936,14 +963,11 @@ rms_module = angular.module(
                         @max_load
                         # slots used / reserved / total
                         [_vals[7], _vals[8], _vals[9]]
-                        entry.topology.value
+                        entry.topology
                     )
                     queue.type = {value: _vals[4]}
                     queue.complex = {value: _vals[5]}
                     queue.pe_list = {value: _vals[6]}
-                    # queue.slots_used = {value: _vals[7]}
-                    # queue.slots_reserved = {value: _vals[8]}
-                    # queue.slots_total = {value: _vals[9]}
                     if _vals[0] of job_dict
                         queue.jobs = {value: job_dict[_vals[0]]}
                     else
@@ -997,22 +1021,27 @@ rms_module = angular.module(
         #            rrd_title = "running job #{job_id} on node " + rrd_nodes[0]
         #        scope.show_rrd(event, rrd_nodes, job.start_time.raw, undefined, rrd_title, "selected", job_id)
 
-        $scope.draw_rrd = (args...) ->
+        $scope.draw_rrd = (event, device_ids) ->
             # disable fetching
             $scope.struct.do_fetch = false
-            # first argument is $event
-            entry = args[1]
-            # console.log "Draw", args
-            sub_scope = $scope.$new(false)
             # set devices
-            devices = ($scope.struct.device_tree.all_lut[_pk] for _pk in entry.$$rrd_device_ids)
+            devices = ($scope.struct.device_tree.all_lut[_pk] for _pk in device_ids)
             # console.log "devs=", devices
-            sub_scope.devices = devices
-            start_time = 0
-            end_time = 0
-            job_mode = 0
-            selected_job = 0
-            _template = """
+            icswSimpleAjaxCall(
+                url: ICSW_URLS.DEVICE_DEVICE_LIST_INFO
+                data:
+                    pk_list: angular.toJson(device_ids)
+                dataType: "json"
+            ).then(
+                (result) ->
+                    _header = result.header
+                    sub_scope = $scope.$new(true)
+                    sub_scope.devices = devices
+                    start_time = 0
+                    end_time = 0
+                    job_mode = 0
+                    selected_job = 0
+                    _template = """
 <icsw-rrd-graph
     icsw-sel-man="1"
     icsw-device-list="devices"
@@ -1026,22 +1055,23 @@ rms_module = angular.module(
     # selectedjob="#{selected_job}" -->
 ></icsw-rrd-graph>
 """
-            icswComplexModalService(
-                {
-                    message: $compile(_template)(sub_scope)
-                    title: "RRD"
-                    cancel_label: "Close"
-                    cancel_callback: (modal) ->
-                        defer = $q.defer()
-                        defer.resolve("close")
-                        return defer.promise
-                }
-            ).then(
-                (fin) ->
-                    sub_scope.$destroy()
-                    $scope.struct.do_fetch = true
-                    # trigger fetch
-                    fetch_data()
+                    icswComplexModalService(
+                        {
+                            message: $compile(_template)(sub_scope)
+                            title: "RRD for #{_header}"
+                            cancel_label: "Close"
+                            cancel_callback: (modal) ->
+                                defer = $q.defer()
+                                defer.resolve("close")
+                                return defer.promise
+                        }
+                    ).then(
+                        (fin) ->
+                            sub_scope.$destroy()
+                            $scope.struct.do_fetch = true
+                            # trigger fetch
+                            fetch_data()
+                    )
             )
 
         $scope.struct = {
@@ -1193,10 +1223,10 @@ rms_module = angular.module(
                                         struct.file_read_error()
                             )
                         $scope.struct.updating = false
-                        $scope.struct.fetch_timeout = $timeout(fetch_data, 10000)
+                        $scope.struct.fetch_timeout = $timeout(fetch_data, 15000)
                     (error) ->
                         $scope.struct.updating = false
-                        $scope.struct.fetch_timeout = $timeout(fetch_data, 10000)
+                        $scope.struct.fetch_timeout = $timeout(fetch_data, 15000)
             )
 
         $scope.close_io = (io_struct) ->
@@ -1498,11 +1528,127 @@ rms_module = angular.module(
                 )
 
     }
-]).directive("icswRmsFileInfo", ["$compile", "$templateCache", ($compile, $templateCache) ->
+]).directive("icswRmsFileInfo",
+[
+    "$compile", "$templateCache",
+(
+    $compile, $templateCache
+) ->
     return {
         restrict: "EA"
         scope:
             job: "=icswRmsJob"
         template: $templateCache.get("icsw.rms.file.info")
+    }
+]).service("icswRmsTopologyInfoReact",
+[
+    "$q",
+(
+    $q,
+) ->
+    {div, g, text, line, polyline, path, svg, h3, rect} = React.DOM
+    return React.createClass(
+        propTypes: {
+            topo: React.PropTypes.array
+        }
+
+        render: () ->
+            get_color = (node) ->
+                if node.u
+                    return "#dd8888"
+                else
+                    return "#f0f0f0"
+
+            if @props.topo
+                # baseline size
+                _bs = 10
+                _num_sockets = 0
+                _num_cores = 0
+                _num_threads = 0
+                _rect_list = []
+                _x = 0
+                for _s in @props.topo
+                    _num_sockets++
+                    _rect_list.push(
+                        rect(
+                            {
+                                key: "s#{_num_sockets}"
+                                x: _x
+                                y: 0
+                                width: _bs * _s.l.length
+                                height: _bs
+                                style: {fill: get_color(_s), strokeWidth: "1px", stroke: "black"}
+                            }
+                        )
+                    )
+                    for _c in _s.l
+                        _num_cores++
+                        _rect_list.push(
+                            rect(
+                                {
+                                    key: "c#{_num_cores}"
+                                    x: _x
+                                    y: _bs
+                                    width: _bs
+                                    height: _bs
+                                    style: {fill: get_color(_c), strokeWidth: "1px", stroke: "black"}
+                                }
+                            )
+                        )
+                        _x += _bs
+                        if _c.l?
+                            for _t in _c.l
+                                _num_threads++
+                        else
+                            # at least one thread per core
+                            _num_threads++
+                _w = _num_cores * _bs
+                _h = 2 * _bs
+
+                # console.log @props.topo, _num_sockets, _num_cores, _num_threads
+                return svg(
+                    {
+                        key: "svg.top"
+                        width: "#{_w}px"
+                        height: "#{_h}px"
+                    }
+                    g(
+                        {
+                            key: "svg.g"
+                        }
+                        _rect_list
+                    )
+                )
+            else
+                return div(
+                    {
+                        key: "top"
+                    }
+                    "N/A"
+                )
+    )
+]).directive("icswRmsTopologyInfo",
+[
+    "$q", "icswRmsTopologyInfoReact",
+(
+    $q, icswRmsTopologyInfoReact,
+) ->
+    return {
+        restrict: "E"
+        link: (scope, element, attrs) ->
+            _el = ReactDOM.render(
+                React.createElement(
+                    icswRmsTopologyInfoReact
+                    {
+                        topo: scope.queue.topology_raw
+                    }
+                )
+                element[0]
+            )
+            scope.$on(
+                "$destroy"
+                () ->
+                    ReactDOM.unmountComponentAtNode(element[0])
+            )
     }
 ])

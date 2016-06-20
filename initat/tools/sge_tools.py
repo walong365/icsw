@@ -684,13 +684,14 @@ class SGEInfo(object):
         os.environ["SGE_ROOT"] = self.__sge_dict["SGE_ROOT"]
         os.environ["SGE_CELL"] = self.__sge_dict["SGE_CELL"]
         os.environ["SGE_SINGLE_LINE"] = "1"
+        _silent_error = kwargs.get("silent_error", False)
         base_com = command.split()[0]
         if os.path.exists(base_com):
             s_time = time.time()
             c_stat, c_out = process_tools.getstatusoutput(command)
             c_out = unicode(c_out, errors='replace')
             e_time = time.time()
-            if c_stat:
+            if c_stat and not _silent_error:
                 self.log(
                     "command '{}' gave ({:d}) in {}: {}".format(
                         command,
@@ -806,7 +807,7 @@ class SGEInfo(object):
             if p_dict["childnodes"].lower() != "none":
                 child_dict[_id] = p_dict["childnodes"].split(",")
         qconf_com = self._get_com_name("qconf")
-        c_stat, c_out = self._execute_command("{} -sstree".format(qconf_com))
+        c_stat, c_out = self._execute_command("{} -sstree".format(qconf_com), silent_error=True)
         id_lut = {}
         child_dict = {}
         if not c_stat:
@@ -1609,14 +1610,33 @@ def _shorten_list(in_list, **kwargs):
     return kwargs.get("sep", "/").join(in_list)
 
 
+class SGETopologyInfo(object):
+    def __init__(self, in_str):
+        self._info = []
+        if in_str:
+            for _c in in_str:
+                self._feed(_c)
+
+    @property
+    def dump(self):
+        return json.dumps(self._info)
+
+    def _feed(self, in_char):
+        _ref = self._info
+        for _idx in xrange({"s": 0, "c": 1, "t": 2}[in_char.lower()]):
+            _ref = _ref[-1].setdefault("l", [])
+        _ref.append({"u": in_char.lower() == in_char, "t": in_char.upper()})
+
+
 def _get_topology_node(act_h):
     _topo, _topo_used = (
         act_h.findtext("resourcevalue[@name='m_topology']"),
         act_h.findtext("resourcevalue[@name='m_topology_inuse']")
     )
-    if _topo is not None:
+    if _topo is not None and _topo_used is not None:
         _node = E.topology(
-            "{} / {}".format(_topo, _topo_used)
+            _topo_used,
+            raw=SGETopologyInfo(_topo_used).dump
         )
     else:
         _node = E.topology(

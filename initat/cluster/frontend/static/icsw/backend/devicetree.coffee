@@ -724,8 +724,9 @@ angular.module(
             del_var.remove().then(
                 (ok) =>
                     dev = @all_lut[del_var.device]
-                    console.log del_var, dev.device_variable_set
+                    # console.log del_var, dev.device_variable_set.length
                     _.remove(dev.device_variable_set, (entry) -> return entry.idx == del_var.idx)
+                    # console.log del_var, dev.device_variable_set.length
                     defer.resolve("deleted")
                 (error) ->
                     defer.reject("not deleted")
@@ -1016,7 +1017,7 @@ angular.module(
                     (results) ->
                         for entry in results
                             device.dispatcher_set.push(entry)
-                        console.log results
+                        # console.log results
                         _c_defer.resolve("created")
                 )
             else

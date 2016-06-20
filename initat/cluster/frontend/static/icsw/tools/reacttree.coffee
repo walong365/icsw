@@ -160,6 +160,9 @@ angular.module(
                                 className: "btn btn-success"
                                 value: "e"
                                 title: "expand tree"
+                                onClick: () =>
+                                    # expand tree
+                                    @props.tree_config.expand_all()
                             }
                         )
                     ]
@@ -172,6 +175,9 @@ angular.module(
                                     className: "btn btn-primary"
                                     value: "s"
                                     title: "expand selected"
+                                    onClick: () =>
+                                        # show only selected
+                                        @props.tree_config.show_selected(false)
                                 }
                             )
                         )
@@ -183,6 +189,9 @@ angular.module(
                                 className: "btn btn-warning"
                                 value: "c"
                                 title: "collapse tree"
+                                onClick: () =>
+                                    # collapse tree
+                                    @props.tree_config.collapse_all()
                             }
                         )
                     )
@@ -298,8 +307,7 @@ angular.module(
     $q, icswReactTreeDrawNode,
 ) ->
     # display of livestatus filter
-    react_dom = ReactDOM
-    {div, h4, select, option, p, input, span, ul} = React.DOM
+    {span, ul} = React.DOM
 
     return React.createClass(
         propTypes: {
@@ -751,6 +759,19 @@ angular.module(
                 else
                     show = entry.selected
             return entry.set_expand(show)
+
+        # collapse / expand tree
+        collapse_all: () =>
+            (@_expcol_subtree(entry, false) for entry in @root_nodes)
+            @new_generation()
+
+        expand_all: () =>
+            (@_expcol_subtree(entry, true) for entry in @root_nodes)
+            @new_generation()
+
+        _expcol_subtree: (entry, flag) =>
+            (@_expcol_subtree(sub_entry, flag) for sub_entry in entry.children)
+            entry.set_expand(flag)
 
         show_active: (keep=true) =>
             # make all selected nodes visible

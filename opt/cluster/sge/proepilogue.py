@@ -2,7 +2,7 @@
 #
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001-2008,2010-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2010-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -26,7 +26,9 @@
 import sys
 
 # clean sys.path, remove all paths not starting with /opt
-sys.path = [entry for entry in sys.path if entry.startswith("/opt")]
+sys.path = [
+    entry for entry in sys.path if entry.startswith("/opt")
+]
 
 import grp
 import os
