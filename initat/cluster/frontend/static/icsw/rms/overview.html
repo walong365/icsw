@@ -199,7 +199,7 @@
     <td ng-show="struct.toggle['host']">
         {{ queue.host.host.value }}&nbsp;
         <span class="pull-right">
-            <icsw-tools-button type="draw" size="xs" ng-show="queue.host.$$has_rrd" ng-click="gstruct.draw_rrd($event, queue.host)">
+            <icsw-tools-button type="draw" size="xs" ng-show="queue.host.$$has_rrd" ng-click="gstruct.draw_rrd($event, queue.host.$$rrd_device_ids)">
             </icsw-tools-button>
         </span>
     </td>
@@ -281,7 +281,7 @@
 <script type="text/ng-template" id="icsw.rms.job.done.line">
     <td ng-show="struct.toggle['job_id']">
         {{ job.rms_job.jobid }}&nbsp;
-        <icsw-tools-button type="draw" size="xs" ng-show="job.$$has_rrd" ng-click="gstruct.draw_rrd($event, job)"></icsw-tools-button>
+        <icsw-tools-button type="draw" size="xs" ng-show="job.$$has_rrd" ng-click="gstruct.draw_rrd($event, job.$$rrd_device_ids)"></icsw-tools-button>
     </td>
     <td ng-show="struct.toggle['task_id']">
         {{ job.rms_job.taskid }}
@@ -470,7 +470,7 @@
 <script type="text/ng-template" id="icsw.rms.job.run.line">
     <td ng-show="struct.toggle['job_id']">
         {{ job.job_id.value }}&nbsp;
-        <icsw-tools-button ng-show="job.$$has_rrd" type="draw" size="xs" ng-click="gstruct.draw_rrd($event, job)"></icsw-tools-button>
+        <icsw-tools-button ng-show="job.$$has_rrd" type="draw" size="xs" ng-click="gstruct.draw_rrd($event, job.$$rrd_device_ids)"></icsw-tools-button>
     </td>
     <td ng-show="struct.toggle['task_id']">
         {{ job.task_id.value }}
