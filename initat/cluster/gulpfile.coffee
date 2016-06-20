@@ -53,16 +53,17 @@ plumber = require("gulp-plumber")
 preprocess = require("gulp-preprocess")
 
 
-use_theme = "default"
+use_theme = "init"
 
 themes =
-    default : ["frontend/static/css/bootstrap.css",
-               "frontend/static/css/icsw_src.css"]
-    init : ["frontend/static/css/init_theme_dark.css",
+    default : ["frontend/static/css/theme-default/bootstrap.css",
+               "frontend/static/css/icsw_src.css",
+               "frontend/static/css/theme-default/theme-fixes.css"]
+    init : ["frontend/static/css/theme-init/bootstrap.css",
             "frontend/static/css/icsw_src.css",
-            "frontend/static/css/init-style.css"]
+            "frontend/static/css/theme-init/theme-fixes.css"]
 
-svg_style = "frontend/static/css/svg-#{use_theme}.css"
+svg_style = "frontend/static/css/theme-#{use_theme}/svg-style.css"
 
 
 class SourceMap

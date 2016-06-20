@@ -200,7 +200,7 @@ angular.module(
 
         render: () ->
             _path_el = @props.element
-            _color = _path_el.fill
+            #_color = _path_el.fill
             # if @state.focus
             #    _color = "#445566"
 
@@ -209,9 +209,10 @@ angular.module(
             _segment = {
                 key: _path_el.key
                 d: _path_el.d
-                fill: _color
-                stroke: _path_el.stroke
-                strokeWidth: _path_el.strokeWidth
+                #fill: _color
+                className: "sb_lines #{_path_el.classes}"
+                #stroke: _path_el.stroke
+                #strokeWidth: _path_el.strokeWidth
                 onMouseEnter: @on_mouse_enter
                 onMouseLeave: @on_mouse_leave
             }

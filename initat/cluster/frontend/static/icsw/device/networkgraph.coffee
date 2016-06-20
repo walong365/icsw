@@ -425,11 +425,12 @@ angular.module(
                     _el = {
                         key: "path.#{key_prefix}.#{_idx}"
                         d: _path
-                        fill: srvc.$$burst_fill_color
-                        classes : srvc.className
-                        stroke: "black"
+                        # fill: #srvc.$$burst_fill_color
+                        #classes : srvc.className #not needed any more?
+                        className: "sb_lines #{srvc.className}"
+                        #stroke: "black"
                         # hm, stroke-width seems to be ignored
-                        strokeWidth: "0.5"
+                        #strokeWidth: "0.5"
                         # link to segment
                         $$segment: node
                         # link to check (node or device or devicegroup or system)

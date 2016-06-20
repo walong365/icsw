@@ -59,7 +59,7 @@ th.rotate > div > span {
   border-bottom: 1px solid #ccc;
   padding: 5px 10px;
 }
-
+/* not used
 circle.fixed {
     fill : #ffaaaa ;
     stroke : #5555ff ;
@@ -71,7 +71,7 @@ circle.fixed {
 }
 .connect_line_hidden {
     stroke-width : 0 ;
-}
+} */
 .angular-google-map-container { height: 480px; }
 
 /* modal changes */
@@ -129,7 +129,7 @@ del {
     border-radius: 2px;
     background: rgba(255, 255, 255, 1);
     color: #444;
-    font-size: 14px;
+    font-size: 12px;
     text-shadow: 0 1px 0 #fff;
     // text-transform: uppercase;
     text-align: center;
