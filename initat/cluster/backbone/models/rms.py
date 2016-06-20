@@ -55,7 +55,7 @@ __all__ = [
     "ext_license_usage_coarse",
     "RMSJobVariable",
     "RMSJobVariableAction",
-    "RMSJobVariableActionRun"
+    "RMSJobVariableActionRun",
 ]
 
 

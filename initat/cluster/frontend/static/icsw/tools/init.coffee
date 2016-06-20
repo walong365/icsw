@@ -542,6 +542,7 @@ angular.module(
         ICSW_ROUTE_RIGHTS_VALID: "icsw.route.rights.valid"
         # route rights updated, user and acls are valid
         ICSW_ROUTE_RIGHTS_INVALID: "icsw.route.rights.invalid"
+
         # local signals (for local $emit / $on)
 
         _ICSW_CLOSE_USER_GROUP: "_icsw.close.user.group"
@@ -623,13 +624,15 @@ angular.module(
             # if $window.DEBUG
             #    title_str = "(#{cur_id}) #{title_str}"
             ai_ul.append(
-                $("<li>").attr({
-                    "id" : cur_id
-                }).text(title_str)
+                $("<li>").attr(
+                    {
+                        id: cur_id
+                    }
+                ).text(title_str)
             )
             @ajax_dict[cur_id] = {
-                "state" : "pending"
-                "start" : new Date()
+                state: "pending"
+                start: new Date()
             }
             @ajax_uuid++
             return cur_id

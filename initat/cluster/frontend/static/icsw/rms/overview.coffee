@@ -1550,6 +1550,7 @@ rms_module = angular.module(
     return React.createClass(
         propTypes: {
             topo: React.PropTypes.array
+            slots_info: React.PropTypes.array
         }
 
         render: () ->
@@ -1559,6 +1560,8 @@ rms_module = angular.module(
                 else
                     return "#f0f0f0"
 
+            # todo: show oversubscription, topology info
+            # console.log @props.slots_info
             if @props.topo
                 # baseline size
                 _bs = 10
@@ -1641,6 +1644,7 @@ rms_module = angular.module(
                     icswRmsTopologyInfoReact
                     {
                         topo: scope.queue.topology_raw
+                        slots_info: scope.queue.slots_info
                     }
                 )
                 element[0]

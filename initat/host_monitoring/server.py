@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -22,31 +22,29 @@
 
 """ host-monitoring, with 0MQ and direct socket support, server code """
 
-from lxml import etree  # @UnresolvedImport
-import argparse
 import StringIO
+import argparse
 import difflib
 import netifaces
 import os
 import sys
 import time
-from multiprocessing import Queue
-# import exceptions
 from Queue import Empty
+from multiprocessing import Queue
 
+import zmq
+from lxml import etree
+
+from initat.host_monitoring.hm_mixins import HMHRMixin
 from initat.tools import configfile, logging_tools, process_tools, \
     server_command, threading_tools, uuid_tools, config_store
-import zmq
 from initat.tools.server_mixins import ICSWBasePool
-from initat.host_monitoring.hm_mixins import HMHRMixin
-
 from .config import global_config
 from .constants import TIME_FORMAT, ZMQ_ID_MAP_STORE
-from .long_running_checks import LongRunningCheck, LONG_RUNNING_CHECK_RESULT_KEY
-from .hm_inotify import HMInotifyProcess
 from .hm_direct import SocketProcess
+from .hm_inotify import HMInotifyProcess
 from .hm_resolve import ResolveProcess
-
+from .long_running_checks import LongRunningCheck, LONG_RUNNING_CHECK_RESULT_KEY
 
 # defaults to 10 seconds
 IDLE_LOOP_GRANULARITY = 10000.0
@@ -549,11 +547,11 @@ class server_code(ICSWBasePool, HMHRMixin):
                     raise
                 client.close()
             else:
-                self.register_poller(client, zmq.POLLIN, self._recv_command)  # @UndefinedVariable
+                self.register_poller(client, zmq.POLLIN, self._recv_command)
                 self.socket_list.append(client)
 
     def register_vector_receiver(self, t_func):
-        self.register_poller(self.vector_socket, zmq.POLLIN, t_func)  # @UndefinedVariable
+        self.register_poller(self.vector_socket, zmq.POLLIN, t_func)
 
     def _recv_ext_command(self, zmq_sock):
         data = zmq_sock.recv()
@@ -577,13 +575,13 @@ class server_code(ICSWBasePool, HMHRMixin):
                 "got unknown command {}".format(srv_com["command"].text),
                 server_command.SRV_REPLY_STATE_ERROR
             )
-            self.result_socket.send_unicode(src_id, zmq.SNDMORE)  # @UndefinedVariable
+            self.result_socket.send_unicode(src_id, zmq.SNDMORE)
             self.result_socket.send_unicode(unicode(srv_com))
         # print "."
 
     def _callback_result(self, *args, **kwargs):
         _call_proc, _proc_pid, src_id, srv_com = args
-        self.result_socket.send_unicode(src_id, zmq.SNDMORE)  # @UndefinedVariable
+        self.result_socket.send_unicode(src_id, zmq.SNDMORE)
         self.result_socket.send_unicode(unicode(srv_com))
 
     def _check_cpu_usage(self):
@@ -595,7 +593,7 @@ class server_code(ICSWBasePool, HMHRMixin):
     def _recv_command(self, zmq_sock):
         # print [(key, value.pid) for key, value in self.processes.iteritems()]
         data = [zmq_sock.recv()]
-        while zmq_sock.getsockopt(zmq.RCVMORE):  # @UndefinedVariable
+        while zmq_sock.getsockopt(zmq.RCVMORE):
             data.append(zmq_sock.recv())
         if len(data) == 2:
             src_id = data.pop(0)

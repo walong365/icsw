@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -25,7 +25,8 @@ import signal
 import time
 
 from initat.host_monitoring import hm_classes, limits
-from initat.tools import affinity_tools, logging_tools, process_tools, config_store
+from initat.tools import affinity_tools, logging_tools, process_tools, config_store, \
+    server_command
 import psutil
 
 MIN_UPDATE_TIME = 10
@@ -36,7 +37,8 @@ HZ = 100
 
 
 class AffinityStruct(object):
-    def __init__(self, log_com, af_re):
+    def __init__(self, module_info, log_com, af_re):
+        self.module_info = module_info
         self.log_com = log_com
         self.affinity_re = af_re
         self.log("init")
@@ -45,9 +47,50 @@ class AffinityStruct(object):
         self.last_update = None
         self.cpu_container = affinity_tools.CPUContainer()
         self.__counter = 0
+        # read config and init socket dict
+        self._read_config()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.log_com("[as] {}".format(what), log_level)
+
+    def _read_config(self):
+        _c_dict = {}
+        for src_file, key, default in [
+            ("/etc/sge_server_port", "SGE_SERVER_PORT", 8009),
+            ("/etc/sge_server", "SGE_SERVER", "localhost"),
+        ]:
+            if os.path.isfile(src_file):
+                try:
+                    act_val = file(src_file, "r").read().split()[0]
+                except:
+                    self.log(
+                        "cannot read {} from {}: {}".format(
+                            key,
+                            src_file,
+                            process_tools.get_except_info()
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
+                    act_val = default
+            else:
+                self.log(
+                    "file {} does not exist (key {})".format(
+                        src_file,
+                        key
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
+                act_val = default
+            _c_dict[key] = act_val
+        self._config_dict = _c_dict
+        self.log("config dict: {}".format(str(self._config_dict)))
+        # print dir(self.module_info), self.module_info.main_proc.zmq_context
+        self.__server_socket = None
+
+    def close(self):
+        if self.__server_socket:
+            self.__server_socket.close()
+            del self.__server_socket
 
     def feed(self, p_dict):
         self.__counter += 1
@@ -129,6 +172,38 @@ class AffinityStruct(object):
                 self._reschedule(sched_keys)
         self.last_update = cur_time
 
+    def _signal_server(self, job_id, task_id, process_id, target_cpu):
+        if not self.__server_socket:
+            self.__server_socket = process_tools.get_socket(
+                self.module_info.main_proc.zmq_context,
+                "DEALER",
+                linger=10,
+                identity="afm_{}_{:d}".format(process_tools.get_machine_name(), os.getpid()),
+                immediate=False,
+            )
+            _srv_address = "tcp://{}:{:d}".format(
+                self._config_dict["SGE_SERVER"],
+                self._config_dict["SGE_SERVER_PORT"],
+            )
+            self.__server_socket.connect(_srv_address)
+            self.log("connected to {}".format(_srv_address))
+        srv_com = server_command.srv_command(
+            command="affinity_info",
+            job_id=job_id,
+            task_id=task_id or "",
+            process_id="{:d}".format(process_id),
+            target_cpu="{:d}".format(target_cpu)
+        )
+        try:
+            self.__server_socket.send_unicode(unicode(srv_com))
+        except:
+            self.log(
+                "error sending affinity info: {}".format(
+                    process_tools.get_except_info()
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
+
     def _reschedule(self, keys):
         cpu_c = self.cpu_container
         cpu_c.clear_cpu_usage()
@@ -157,8 +232,26 @@ class AffinityStruct(object):
             )
             for key, targ_cpu in zip(resched, core_list):
                 cur_s = self.dict[key]
+                _process = psutil.Process(cur_s.pid)
+                _env = _process.environ()
+                if "JOB_ID" in _env:
+                    _job_id = _env["JOB_ID"]
+                    if "SGE_TASK_ID" in _env:
+                        _task_id = _env["SGE_TASK_ID"]
+                    else:
+                        _task_id = None
+                else:
+                    _job_id, _task_id = (None, None)
                 # get optimal CPU (i.e. with lowest load)
-                self.log(u"pinning process {} to core {:d}".format(unicode(cur_s), targ_cpu))
+                self.log(
+                    u"pinning process {} (JobID={}) to core {:d}".format(
+                        unicode(cur_s),
+                        str(_job_id),
+                        targ_cpu,
+                    )
+                )
+                if _job_id:
+                    self._signal_server(_job_id, _task_id, cur_s.pid, targ_cpu)
                 if not cur_s.migrate(targ_cpu):
                     cur_s.read_mask()
                     if cur_s.single_cpu_set:
@@ -201,10 +294,11 @@ class _general(hm_classes.hm_module):
                 )
             )
             affinity_re = re.compile("|".join(["(%s)" % (line) for line in self.affinity_set]))
-            self.af_struct = AffinityStruct(self.log, affinity_re)
+            self.af_struct = AffinityStruct(self, self.log, affinity_re)
         else:
             self.log("affinity-cstore {} missing".format(AFFINITY_CSTORE), logging_tools.LOG_LEVEL_ERROR)
             self.feed_affinity = False
+            self.af_struct = None
 
     def reload(self):
         if self.check_affinity:
@@ -214,6 +308,10 @@ class _general(hm_classes.hm_module):
         mv.register_entry("proc.total", 0, "total number of processes")
         for key, value in process_tools.PROC_INFO_DICT.iteritems():
             mv.register_entry("proc.{}".format(key), 0, value)
+
+    def close_module(self):
+        if self.af_struct:
+            self.af_struct.close()
 
     def update_machine_vector(self, mv):
         pdict = process_tools.get_proc_list()
