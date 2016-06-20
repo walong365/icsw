@@ -53,10 +53,11 @@ plumber = require("gulp-plumber")
 preprocess = require("gulp-preprocess")
 
 
-use_theme = "init"
+use_theme = "default"
 
 themes =
-    default : ["frontend/static/css/theme-default/bootstrap.css",
+    default : ["frontend/static/css/theme-default/bootstrap-dialog.css",
+               "frontend/static/css/theme-default/bootstrap.css",
                "frontend/static/css/icsw_src.css",
                "frontend/static/css/theme-default/theme-fixes.css"]
     init : ["frontend/static/css/theme-init/bootstrap.css",
@@ -88,7 +89,7 @@ sources = {
             "frontend/static/css/smart-table.css",
             "frontend/static/css/font-awesome.min.css",  #before theme
             "frontend/static/css/toaster.css",
-            "frontend/static/css/bootstrap-dialog.css",
+            #"frontend/static/css/bootstrap-dialog.css", part of theme!!!!
             "frontend/static/css/angular-gridster.min.css",
             "frontend/static/css/hotkeys.css",
             # not needed right now, not working with tree-code

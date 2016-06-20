@@ -203,14 +203,13 @@ angular.module(
             #_color = _path_el.fill
             # if @state.focus
             #    _color = "#445566"
-
             # focus element
             _g_list = []
             _segment = {
                 key: _path_el.key
                 d: _path_el.d
                 #fill: _color
-                className: "sb_lines #{_path_el.classes}"
+                className: _path_el.className
                 #stroke: _path_el.stroke
                 #strokeWidth: _path_el.strokeWidth
                 onMouseEnter: @on_mouse_enter

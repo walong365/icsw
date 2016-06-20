@@ -1,0 +1,22 @@
+.btn {
+    padding: 5.5px 12px;
+    /*normalize buttons which may include fa-class*/
+    line-height: 1.42857;
+}
+.btn-xs, .btn-group-xs > .btn {
+    padding: 1px 5px;
+}
+.btn-sm, .btn-group-sm > .btn {
+    padding: 3px 5px;
+}
+.glyphicon {
+    font-size: 87%;
+}
+.fa { /* chrome fix */
+    font-family: FontAwesome,Arial,Helvetica,sans-serif;
+    font-size: 11px;
+   line-height: 1.42857;
+}
+icsw-tools-button{
+    line-height: 1;
+}
