@@ -1550,7 +1550,7 @@ rms_module = angular.module(
     return React.createClass(
         propTypes: {
             topo: React.PropTypes.array
-            slots_info: React.PropTypes.array
+            slots_info: React.PropTypes.object
         }
 
         render: () ->

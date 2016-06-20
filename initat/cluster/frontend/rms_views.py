@@ -243,6 +243,14 @@ class get_rms_json(View):
                             )
                         )
                 fc_dict[file_el.attrib["full_id"]] = list(reversed(sorted(cur_fcd, cmp=lambda x, y: cmp(x[3], y[3]))))
+        # format pinning_dict:
+        # job_id -> device_id -> process_id -> core_id
+        pinning_dict = {}
+        for job_el in my_sge_info.get_tree().xpath(".//job_list[master/text() = \"MASTER\"]", smart_strings=False):
+            job_id = job_el.attrib["full_id"]
+            pinning_el = job_el.find(".//pinning_info")
+            if pinning_el is not None and pinning_el.text:
+                pinning_dict[job_id] = json.loads(pinning_el.text)
         # todo: add jobvars to running (waiting for rescheduled ?) list
         # print dir(rms_info.run_job_list)
         done_jobs = rms_job_run.objects.all().exclude(
@@ -295,6 +303,7 @@ class get_rms_json(View):
             "sched_conf": sge_tools.build_scheduler_info(my_sge_info),
             "files": fc_dict,
             "load_values": _dev_dict,
+            "pinning_dict": pinning_dict,
         }
         return HttpResponse(json.dumps(json_resp), content_type="application/json")
 
