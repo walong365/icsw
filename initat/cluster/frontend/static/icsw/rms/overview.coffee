@@ -1588,9 +1588,9 @@ rms_module = angular.module(
             ]
             _idx = 0
             _diff_h = _h / _lv.length
+            _colors = ["#44ff00", "#ddaa22", "#ff8888"]
             _y = 0
             for _load in _lv
-                _idx++
                 _perc = _w * _load / @props.max_load
                 _rect_list.push(
                     rect(
@@ -1602,10 +1602,12 @@ rms_module = angular.module(
                             ry: 2
                             width: "#{_perc}px"
                             height: "#{_diff_h}px"
-                            style: {fill: "#44ff00", strokeWidth: "1px", stroke: "black"}
+                            style: {fill: _colors[_idx], strokeWidth: "1px", stroke: "black"}
                         }
                     )
                 )
+                console.log _colors[_idx]
+                _idx++
                 _y += _diff_h
             _mean_load = _.mean(_lv)
             return div(
