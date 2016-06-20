@@ -174,15 +174,21 @@ class main_process(ICSWBasePoolClient):
         if self.__exit_process:
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
-            self.log("got signal ({})".format(err_cause))
+            self.log(
+                "got signal ({}), nsis={}, debug={}".format(
+                    err_cause,
+                    self.__next_stop_is_restart,
+                    global_config["DEBUG"],
+                )
+            )
             self.__exit_process = True
-            if not (self.__next_stop_is_restart or global_config["DEBUG"]):
+            if not (self.__next_stop_is_restart): #  or global_config["DEBUG"]):
                 self.service_state.enable_shutdown_mode()
                 _res_list = self.container.check_system(self.def_ns, self.server_instance)
                 trans_list = self.service_state.update(
                     _res_list,
                     throttle=[("uwsgi-init", 5)],
-                    exclude=["logging-server", "meta-server"],
+                    exclude=["meta-server"],
                 )
                 self._new_transitions(trans_list)
                 if not self.__transitions:
@@ -369,7 +375,7 @@ class main_process(ICSWBasePoolClient):
         self.def_ns.service = []
         trans_list = self.service_state.update(
             _res_list,
-            exclude=["meta-server", "logging-server"],
+            exclude=["meta-server"],
             throttle=[("uwsgi-init", 5)],
             # force first call
             force=(self.__loopcount == 1 or force),
