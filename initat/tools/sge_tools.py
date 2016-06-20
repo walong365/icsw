@@ -336,7 +336,6 @@ class SGEInfo(object):
                 if len(job_el):
                     job_el = job_el[0]
                     pinning_info = job_el.find(".//pinning_info")
-                    print _struct
                     if pinning_info is not None:
                         pinning_info.text = json.dumps(_struct)
         return r_tree

@@ -320,7 +320,7 @@ rms_module = angular.module(
     $q, icswRMSTools,
 ) ->
     class icswRMSQueue
-        constructor: (@name, @host, state_value, seqno, host_state, load_value, max_load, slot_info, topology) ->
+        constructor: (@name, @host, state_value, seqno, host_state, load_value, max_load, slot_info, topology, cl_info) ->
             @state = {
                 value: state_value
                 raw: host_state
@@ -344,6 +344,8 @@ rms_module = angular.module(
             @topology_raw = _raw
             # if @topology.
             _sv = @state.value
+            # complex load info, including current load values and pinning info
+            @cl_info = cl_info
             # display flags
             @$$enable_ok = if _sv.match(/d/g) then true else false
             @$$disable_ok = if not _sv.match(/d/g) then true else false
@@ -622,7 +624,6 @@ rms_module = angular.module(
             @check_jobvar_display()
             _running_slots = 0
             for entry in @list
-                console.log entry.nodelist
                 nodes = entry.nodelist.value.split(",")
                 r_list = []
                 _.forEach(_.countBy(nodes), (key, value) ->
@@ -880,7 +881,7 @@ rms_module = angular.module(
             # disable display of this headers
             @hidden_headers = ["state", "slots_reserved", "slots_total"]
 
-        feed_list : (simple_list) =>
+        feed_list : (simple_list, values_dict) =>
             @feed_xml_list(simple_list)
 
             valid_loads = (parseFloat(entry.load.value) for entry in @list when entry.load.value.match(icswRMSTools.load_re))
@@ -896,9 +897,9 @@ rms_module = angular.module(
 
             @set_rrd_flags()
             # build queue list
-            @build_queue_list()
+            @build_queue_list(values_dict)
 
-        build_queue_list: () =>
+        build_queue_list: (values_dict) =>
             {slot_info} = @struct
             i_split = (in_str, nq) ->
                 # one element per queue, if all elements are identical only one is reported
@@ -943,6 +944,10 @@ rms_module = angular.module(
                     entry.$$load_vector = _.zip(_total, _used, _reserved)
                     (slot_info.feed_vector(_lv) for _lv in entry.$$load_vector)
 
+                if entry.host.value of values_dict
+                    cl_info = values_dict[entry.host.value]
+                else
+                    cl_info = null
                 # parse job entry, see sge_tools.py
                 job_dict = n_split(entry.jobs.value)
                 _idx = 0
@@ -964,6 +969,7 @@ rms_module = angular.module(
                         # slots used / reserved / total
                         [_vals[7], _vals[8], _vals[9]]
                         entry.topology
+                        cl_info
                     )
                     queue.type = {value: _vals[4]}
                     queue.complex = {value: _vals[5]}
@@ -1199,7 +1205,7 @@ rms_module = angular.module(
                         # console.log json.wait_table
                         $scope.struct.rms.waiting.feed_list(json.wait_table)
                         $scope.struct.rms.done.feed_list(json.done_table)
-                        $scope.struct.rms.node.feed_list(json.node_table)
+                        $scope.struct.rms.node.feed_list(json.node_table, json.load_values)
 
                         $scope.struct.jv_struct.feed_end()
 
@@ -1549,13 +1555,19 @@ rms_module = angular.module(
     {div, g, text, line, polyline, path, svg, h3, rect} = React.DOM
     return React.createClass(
         propTypes: {
+            # CPU topology
             topo: React.PropTypes.array
+            # slots info (used / reserved / free)
             slots_info: React.PropTypes.object
+            # complex load info, current load values and pinning info
+            cl_info: React.PropTypes.object
         }
 
         render: () ->
-            get_color = (node) ->
-                if node.u
+            get_color = (node, pinned) ->
+                if pinned
+                    return "#ee9922"
+                else if node.u
                     return "#dd8888"
                 else
                     return "#f0f0f0"
@@ -1563,6 +1575,10 @@ rms_module = angular.module(
             # todo: show oversubscription, topology info
             # console.log @props.slots_info
             if @props.topo
+                if @props.cl_info? and @props.cl_info.pinning?
+                    pinn_d = @props.cl_info.pinning
+                else
+                    pinn_d = {}
                 # baseline size
                 _bs = 10
                 _num_sockets = 0
@@ -1571,7 +1587,6 @@ rms_module = angular.module(
                 _rect_list = []
                 _x = 0
                 for _s in @props.topo
-                    _num_sockets++
                     _rect_list.push(
                         rect(
                             {
@@ -1585,7 +1600,17 @@ rms_module = angular.module(
                         )
                     )
                     for _c in _s.l
-                        _num_cores++
+                        if _c.l?
+                            _thread_list = _c.l
+                        else
+                            # at least one thread per core
+                            _thread_list = [true]
+                        _pinned = false
+                        for _t in _c.l
+                            # true if the current thread_number occurs in the pinning dict
+                            if _num_threads of pinn_d
+                                _pinned = true
+                            _num_threads++
                         _rect_list.push(
                             rect(
                                 {
@@ -1594,17 +1619,13 @@ rms_module = angular.module(
                                     y: _bs
                                     width: _bs
                                     height: _bs
-                                    style: {fill: get_color(_c), strokeWidth: "1px", stroke: "black"}
+                                    style: {fill: get_color(_c, _pinned), strokeWidth: "1px", stroke: "black"}
                                 }
                             )
                         )
                         _x += _bs
-                        if _c.l?
-                            for _t in _c.l
-                                _num_threads++
-                        else
-                            # at least one thread per core
-                            _num_threads++
+                        _num_cores++
+                    _num_sockets++
                 _w = _num_cores * _bs
                 _h = 2 * _bs
 
@@ -1645,6 +1666,7 @@ rms_module = angular.module(
                     {
                         topo: scope.queue.topology_raw
                         slots_info: scope.queue.slots_info
+                        cl_info: scope.queue.cl_info
                     }
                 )
                 element[0]
