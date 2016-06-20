@@ -407,6 +407,7 @@ class RMSMonProcess(threading_tools.process_obj):
         srv_com = server_command.srv_command(source=args[0])
         job_id = srv_com["*job_id"]
         task_id = srv_com["*task_id"]
+        action = srv_com["*action"]
         if task_id and task_id.lower().isdigit():
             task_id = int(task_id)
             full_job_id = "{}.{:d}".format(job_id, task_id)
@@ -414,23 +415,40 @@ class RMSMonProcess(threading_tools.process_obj):
             task_id = None
             full_job_id = job_id
         process_id = int(srv_com["*process_id"])
-        target_cpu = int(srv_com["*target_cpu"])
         _source_host = srv_com["source"].attrib["host"]
         _source_dev = self._get_device(_source_host)
-        self.log(
-            "pinning process {:d} of job {} to CPU {:d} (host: {})".format(
-                process_id,
-                full_job_id,
-                target_cpu,
-                unicode(_source_dev),
+        if action == "add":
+            target_cpu = int(srv_com["*target_cpu"])
+            self.log(
+                "pinning process {:d} of job {} to CPU {:d} (host: {})".format(
+                    process_id,
+                    full_job_id,
+                    target_cpu,
+                    unicode(_source_dev),
+                )
             )
-        )
+        else:
+            self.log(
+                "removing process {:d} of job {} (host: {})".format(
+                    process_id,
+                    full_job_id,
+                    unicode(_source_dev),
+                )
+            )
         if _source_dev is not None:
-            self.__job_pinning_dict.setdefault(
-                full_job_id, {}
-            ).setdefault(
-                _source_dev.idx, {}
-            )[process_id] = target_cpu
+            if action == "add":
+                self.__job_pinning_dict.setdefault(
+                    full_job_id, {}
+                ).setdefault(
+                    _source_dev.idx, {}
+                )[process_id] = target_cpu
+            else:
+                if full_job_id in self.__job_pinning_dict:
+                    if _source_dev.idx in self.__job_pinning_dict[full_job_id]:
+                        if process_id in self.__job_pinning_dict[full_job_id][_source_dev.idx]:
+                            del self.__job_pinning_dict[full_job_id][_source_dev.idx][process_id]
+        # import pprint
+        # pprint.pprint(self.__job_pinning_dict)
 
     def _job_ended(self, *args, **kwargs):
         job_id, task_id = (args[0], args[1])
@@ -447,11 +465,11 @@ class RMSMonProcess(threading_tools.process_obj):
 
     def _file_watch_content(self, *args, **kwargs):
         srv_com = server_command.srv_command(source=args[0])
-        job_id = srv_com["send_id"].text.split(":")[0]
-        file_name = srv_com["name"].text
+        job_id = srv_com["*send_id"].split(":")[0]
+        file_name = srv_com["*name"]
         # in case of empty file
         content = srv_com["content"].text or ""
-        last_update = int(float(srv_com["update"].text))
+        last_update = int(float(srv_com["*update"]))
         self.log(
             u"got content for '{}' (job {}), len {:d} bytes, update_ts {:d}".format(
                 file_name,

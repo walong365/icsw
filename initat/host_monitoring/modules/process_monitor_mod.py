@@ -145,6 +145,9 @@ class AffinityStruct(object):
                 )
             )
             for old_key in old_keys:
+                _pi = self.dict[old_key]
+                if _pi.has_job_info:
+                    self._unregister_affinity(_pi.job_id, _pi.task_id, old_key)
                 del self.dict[old_key]
         if self.last_update:
             diff_time = max(1, abs(cur_time - self.last_update))
@@ -172,7 +175,28 @@ class AffinityStruct(object):
                 self._reschedule(sched_keys)
         self.last_update = cur_time
 
-    def _signal_server(self, job_id, task_id, process_id, target_cpu):
+    def _unregister_affinity(self, job_id, task_id, process_id):
+        srv_com = server_command.srv_command(
+            command="affinity_info",
+            action="remove",
+            job_id=job_id,
+            task_id=task_id or "",
+            process_id="{:d}".format(process_id),
+        )
+        self._send_to_rms_server(srv_com)
+
+    def _register_affinity(self, job_id, task_id, process_id, target_cpu):
+        srv_com = server_command.srv_command(
+            command="affinity_info",
+            action="add",
+            job_id=job_id,
+            task_id=task_id or "",
+            process_id="{:d}".format(process_id),
+            target_cpu="{:d}".format(target_cpu)
+        )
+        self._send_to_rms_server(srv_com)
+
+    def _send_to_rms_server(self, srv_com):
         if not self.__server_socket:
             self.__server_socket = process_tools.get_socket(
                 self.module_info.main_proc.zmq_context,
@@ -187,13 +211,6 @@ class AffinityStruct(object):
             )
             self.__server_socket.connect(_srv_address)
             self.log("connected to {}".format(_srv_address))
-        srv_com = server_command.srv_command(
-            command="affinity_info",
-            job_id=job_id,
-            task_id=task_id or "",
-            process_id="{:d}".format(process_id),
-            target_cpu="{:d}".format(target_cpu)
-        )
         try:
             self.__server_socket.send_unicode(unicode(srv_com))
         except:
@@ -209,6 +226,7 @@ class AffinityStruct(object):
         cpu_c.clear_cpu_usage()
         # get core distribution scheme
         core_d = cpu_c.get_distribution_scheme(len(keys))
+        # available cores
         core_list = [_entry for _entry in core_d.cpunum]
         if cpu_c.cds_changed(len(keys)):
             # reschedule all processes if the number of processes has changed
@@ -240,6 +258,7 @@ class AffinityStruct(object):
                         _task_id = _env["SGE_TASK_ID"]
                     else:
                         _task_id = None
+                    cur_s.set_job_info(_job_id, _task_id)
                 else:
                     _job_id, _task_id = (None, None)
                 # get optimal CPU (i.e. with lowest load)
@@ -251,7 +270,7 @@ class AffinityStruct(object):
                     )
                 )
                 if _job_id:
-                    self._signal_server(_job_id, _task_id, cur_s.pid, targ_cpu)
+                    self._register_affinity(_job_id, _task_id, cur_s.pid, targ_cpu)
                 if not cur_s.migrate(targ_cpu):
                     cur_s.read_mask()
                     if cur_s.single_cpu_set:
