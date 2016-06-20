@@ -360,6 +360,7 @@ rms_module = angular.module(
                 _cls = "success"
             @$$queue_btn_class = "btn-#{_cls}"
             @$$queue_label_class = "label-#{_cls}"
+            @$$max_load = max_load
 
             if @load.value.match(icswRMSTools.load_re)
                 @$$load_is_valid = true
@@ -1545,6 +1546,121 @@ rms_module = angular.module(
         scope:
             job: "=icswRmsJob"
         template: $templateCache.get("icsw.rms.file.info")
+    }
+]).service("icswRmsLoadInfoReact",
+[
+    "$q",
+(
+    $q,
+) ->
+    {div, g, text, line, polyline, path, svg, h3, rect, span} = React.DOM
+    return React.createClass(
+        propTypes: {
+            # simple load
+            load: React.PropTypes.number
+            # max load
+            max_load: React.PropTypes.number
+            # complex load info
+            cl_info: React.PropTypes.object
+        }
+
+        render: () ->
+            _w = 120
+            _h = 21
+            if @props.cl_info? and @props.cl_info.values? and @props.cl_info.values["load.1"]?
+                _lv = (@props.cl_info.values[_key] for _key in ["load.1", "load.5", "load.15"])
+            else
+                _lv = [@props.load]
+            # build rect list
+            _rect_list = [
+                rect(
+                    {
+                        key: "load.border"
+                        x: 0
+                        y: 0
+                        rx: 6
+                        ry: 6
+                        width: "#{_w}px"
+                        height: "#{_h}px"
+                        style: {fill: "#ffffff", strokeWidth: "1px", stroke: "black"}
+                    }
+                )
+            ]
+            _idx = 0
+            _diff_h = _h / _lv.length
+            _y = 0
+            for _load in _lv
+                _idx++
+                _perc = _w * _load / @props.max_load
+                _rect_list.push(
+                    rect(
+                        {
+                            key: "load.#{_idx}"
+                            x: 0
+                            y: _y
+                            rx: 2
+                            ry: 2
+                            width: "#{_perc}px"
+                            height: "#{_diff_h}px"
+                            style: {fill: "#44ff00", strokeWidth: "1px", stroke: "black"}
+                        }
+                    )
+                )
+                _y += _diff_h
+            _mean_load = _.mean(_lv)
+            return div(
+                {
+                    key: "top"
+                }
+                [
+                    span(
+                        {
+                            key: "text"
+                            style: {minWidth: "48px", display: "inline-block", marginRight: "6px", textAlign: "right"}
+                        }
+                        _.round(_mean_load, 2)
+                    )
+                    svg(
+                        {
+                            key: "svg.top"
+                            width: "#{_w}px"
+                            height: "#{_h}px"
+                        }
+                        _rect_list
+                    )
+                ]
+
+            )
+    )
+]).directive("icswRmsLoadInfo",
+[
+    "$q", "icswRmsLoadInfoReact",
+(
+    $q, icswRmsLoadInfoReact,
+) ->
+    return {
+        restrict: "E"
+        link: (scope, element, attrs) ->
+            if scope.queue.$$load_is_valid
+                _load = parseFloat(scope.queue.load.value)
+            else
+                _load = 0.0
+            _el = ReactDOM.render(
+                React.createElement(
+                    icswRmsLoadInfoReact
+                    {
+                        load: _load
+                        max_load: scope.queue.$$max_load
+                        cl_info: scope.queue.cl_info
+                    }
+                )
+                element[0]
+            )
+            scope.$on(
+                "$destroy"
+                () ->
+                    ReactDOM.unmountComponentAtNode(element[0])
+            )
     }
 ]).service("icswRmsTopologyInfoReact",
 [

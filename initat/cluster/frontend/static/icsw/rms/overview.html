@@ -225,20 +225,21 @@
         {{ queue.pe_list.value }}
     </td>
     <td ng-show="struct.toggle['load']">
-        <div class="row" ng-show="queue.$$load_is_valid">
+        <!-- <div class="row" ng-show="queue.$$load_is_valid">
             <div class="col-sm-3"><b>{{ queue.load.value }}</b>&nbsp;</div>
             <div class="col-sm-9" style="width:140px; height:20px;">
                 <uib-progressbar value="queue.$$load_percentage" animate="false"></uib-progressbar>
             </div>
         </div>
-        <b ng-show="!queue.$$load_is_valid">{{ queue.load.value }}</b>
+        <b ng-show="!queue.$$load_is_valid">{{ queue.load.value }}</b>-->
     </td>
     <td ng-show="struct.toggle['load']">
-        <div ng-repeat="entry in queue.load_vector" class="row">
+        <icsw-rms-load-info></icsw-rms-load-info>
+        <!-- <div ng-repeat="entry in queue.load_vector" class="row">
              <div class="col-sm-12" style="width:140px; height:20px;">
                  <uib-progressbar max="entry[0]" value="entry[1]" animate="false" type="info"><span style="color:black;">{{ entry[1] }} / {{ entry[0] }}</span></uib-progressbar>
              </div>
-        </div>
+        </div> -->
     </td>
     <td ng-show="struct.toggle['slots_used']" class="text-center">
         <tt>{{ queue.slots_info.used }}  / {{ queue.slots_info.reserved }} / {{ queue.slots_info.total }}</tt>
