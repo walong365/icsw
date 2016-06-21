@@ -885,7 +885,12 @@ rms_module = angular.module(
         feed_list : (simple_list, values_dict) =>
             @feed_xml_list(simple_list)
 
+            # simple loads
             valid_loads = (parseFloat(entry.load.value) for entry in @list when entry.load.value.match(icswRMSTools.load_re))
+            # load from devices via collectd
+            for key, value of values_dict
+                if value.values? and value.values["load.1"]?
+                    valid_loads = _.concat(valid_loads, (value.values["load.#{_idx}"] for _idx in [1, 5, 15]))
 
             if valid_loads.length
                 @max_load = _.max(valid_loads)
