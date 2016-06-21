@@ -1011,7 +1011,7 @@ rms_module = angular.module(
     "icswRMSTools", "icswRMSHeaderStruct", "icswRMSSlotInfo", "icswRMSRunningStruct",
     "icswRMSWaitingStruct", "icswRMSDoneStruct", "icswRMSNodeStruct",
     "icswComplexModalService", "icswRMSJobVarStruct", "$window", "icswRMSSchedulerStruct",
-    "icswRRDGraphUserSettingService",
+    "icswRRDGraphUserSettingService", "icswGraphBaseSetting",
 (
     $scope, $compile, Restangular, ICSW_SIGNALS,
     $q, icswAcessLevelService, $timeout, ICSW_URLS,
@@ -1019,7 +1019,7 @@ rms_module = angular.module(
     icswRMSTools, icswRMSHeaderStruct, icswRMSSlotInfo, icswRMSRunningStruct,
     icswRMSWaitingStruct, icswRMSDoneStruct, icswRMSNodeStruct,
     icswComplexModalService, icswRMSJobVarStruct, $window, icswRMSSchedulerStruct,
-    icswRRDGraphUserSettingService,
+    icswRRDGraphUserSettingService, icswGraphBaseSetting,
 ) ->
         icswAcessLevelService.install($scope)
 
@@ -1071,10 +1071,14 @@ rms_module = angular.module(
                     _user_setting = data[1]
                     console.log _user_setting
                     local_settings = _user_setting.get_default()
+                    base_setting = new icswGraphBaseSetting()
+                    base_setting.draw_on_init = true
+                    base_setting.show_tree = false
                     _user_setting.set_custom_size(local_settings, 400, 180)
                     sub_scope = $scope.$new(true)
                     sub_scope.devices = devices
                     sub_scope.local_settings = local_settings
+                    sub_scope.base_setting = base_setting
                     start_time = 0
                     end_time = 0
                     job_mode = 0
@@ -1084,9 +1088,8 @@ rms_module = angular.module(
     icsw-sel-man="1"
     icsw-device-list="devices"
     icsw-select-keys="load.*,net.all.*,mem.used.phys$,^swap.*"
-    draw="1"
-    mergedevices="0"
     icsw-graph-setting="local_settings"
+    icsw-base-setting="base_setting"
     <!-- fromdt="#{start_time}"
     # todt="#{end_time}"
     # jobmode="#{job_mode}"

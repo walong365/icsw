@@ -351,6 +351,19 @@ angular.module(
     $scope.select_setting = (setting) ->
         $scope.struct.settings.set_active(setting)
 
+    $scope.save_current = () ->
+        current = $scope.struct.current
+        if not current.$$synced
+            blockUI.start()
+            $scope.struct.current.save().then(
+                (ok) ->
+                    blockUI.stop()
+                    # only save sets synced to true
+                    $scope.struct.current.$$synced = true
+                (notok) ->
+                    blockUI.stop()
+            )
+
     $scope.edit_settings = () ->
         sub_scope = $scope.$new()
         sub_scope.base_setting = $scope.struct.settings.base

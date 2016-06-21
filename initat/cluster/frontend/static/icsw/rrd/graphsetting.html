@@ -3,7 +3,7 @@
 <script type="text/ng-template" id="icsw.rrd.graphsetting.overview">
     <div class="input-group" ng-class="struct.current.$$synced && 'has-success' || 'has-error'">
         <span class="input-group-addon">
-            <span ng-class="struct.current.$$synced && 'fa fa-lock' || 'fa fa-unlock'"></span>
+            <span ng-class="struct.current.$$synced && 'fa fa-lock' || 'fa fa-unlock'" ng-click="save_current()"></span>
         </span>
         <ui-select ng-model="struct.current" on-select="select_setting($item, $model)" theme="bootstrap">
             <ui-select-match class="ui-select-match" title="Stored RRD graphing settings">

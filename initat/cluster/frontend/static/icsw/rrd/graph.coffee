@@ -168,6 +168,20 @@ angular.module(
 
         toggle_expand: () ->
             @active = !@active
+]).service("icswGraphBaseSetting",
+[
+    "$q",
+(
+    $q,
+) ->
+    class icswGraphBaseSetting
+        constructor: () ->
+            # settings visable
+            @show_settings = true
+            # show tree
+            @show_tree = true
+            # draw on init
+            @draw_on_init = false
 
 ]).controller("icswGraphOverviewCtrl",
 [
@@ -176,12 +190,14 @@ angular.module(
     "icswParseXMLResponseService", "toaster", "icswCachingCall", "icswUserService",
     "icswSavedSelectionService", "icswRRDGraphUserSettingService", "icswDeviceTreeService",
     "icswUserGroupTreeService", "icswDeviceTreeHelperService", "icswRRDDisplayGraph",
+    "icswGraphBaseSetting",
 (
     $scope, $compile, $filter, $templateCache, Restangular,
     $q, $uibModal, $timeout, ICSW_URLS, icswRRDGraphTree, icswSimpleAjaxCall,
     icswParseXMLResponseService, toaster, icswCachingCall, icswUserService,
     icswSavedSelectionService, icswRRDGraphUserSettingService, icswDeviceTreeService,
     icswUserGroupTreeService,  icswDeviceTreeHelperService, icswRRDDisplayGraph,
+    icswGraphBaseSetting,
 ) ->
         moment().utc()
         $scope.timeframe = undefined
@@ -208,20 +224,14 @@ angular.module(
             }
         $scope.selected_job = 0
         $scope.struct = {
-            # draw when called
-            draw_on_init: false
             # search string
             searchstr: ""
             # is drawing
             is_drawing: false
-            # show tree
-            show_tree: true
             # user
             user: undefined
             # selected devices
             devices: []
-            # show settings
-            show_settings: true
             # device tree
             device_tree: undefined
             # helper server
@@ -254,6 +264,8 @@ angular.module(
             error_string: "Init structures"
             # job mode
             job_mode: $scope.job_modes[0]
+            # base settings
+            base_setting: new icswGraphBaseSetting()
             # custom setting
             custom_setting: undefined
             # custom settin set ?
@@ -262,7 +274,9 @@ angular.module(
         $scope.set_custom_setting = (setting) ->
             $scope.struct.custom_setting_set = true
             $scope.struct.custom_setting = setting
-            console.log "SET"
+
+        $scope.set_base_setting = (setting) ->
+            $scope.struct.base_setting = setting
 
         $scope.new_devsel = (dev_list) ->
             # clear graphs
@@ -356,7 +370,7 @@ angular.module(
                         # recalc tree when an autoselect_re is present
                         $scope.struct.g_tree.show_selected(false)
                         $scope.selection_changed()
-                        if $scope.struct.draw_on_init and $scope.struct.vectordata.num_mve_sel
+                        if $scope.struct.base_setting.draw_on_init and $scope.struct.vectordata.num_mve_sel
                             $scope.draw_graph()
                 else
                     $scope.struct.error_string = "No vector found"
@@ -642,10 +656,10 @@ angular.module(
             if attrs["selectedjob"]?
                 scope.selected_job = attrs["selectedjob"]
             if attrs["icswGraphSetting"]?
-                # TODO, FixMe
-                # console.log attrs["icswGraphSize"]
                 scope.set_custom_setting(scope.$eval(attrs["icswGraphSetting"]))
-            scope.struct.draw_on_init = attrs["draw"] ? false
+            if attrs["icswBaseSetting"]?
+                scope.set_base_setting(scope.$eval(attrs["icswBaseSetting"]))
+            # scope.struct.base_settings.draw_on_init = attrs["draw"] ? false
     }
 ]).service("icswRRDGraphTree",
 [
@@ -1018,43 +1032,21 @@ angular.module(
                 }
                 render: () ->
                     console.log @props
-                    {div, span} = React.DOM
-                    _show_list = [
-                        span(
-                            {key: "se", className: "label label-primary", title: "structural entries"},
-                            [
-                                @props.num_struct
-                                if @props.num_devices
-                                    span(
-                                        {key: "nd", title: "number of devices"}
-                                        " / " + @props.num_devices
-                                    )
-                            ]
-                        )
-                        " / "
-                        span(
-                            {key: "de", className: "label label-primary", title: "data entries"},
-                            [
-                                @props.num_mve
-                                if @props.num_mve_sel
-                                    span(
-                                        {key: "des", title: "selected entries"}
-                                        " / " + @props.num_mve_sel
-                                    )
-                            ]
-                        )
-                    ]
+                    {div, span, strong} = React.DOM
+                    _show_list = []
+                    if @props.num_devices
+                        _show_list.push("Devices: #{@props.num_devices}")
+                    if @props.num_struct
+                        _show_list.push("Structural: #{@props.num_struct}")
+                    if @props.num_mve
+                        _show_list.push("Data: #{@props.num_mve}")
+                    if @props.num_mve_sel
+                        _show_list.push("Selected: #{@props.num_mve_sel}")
                     if @props.num_sensors
-                        _show_list.push(" / ")
-                        _show_list.push(
-                            span(
-                                {key: "ns", className: "label label-warning", title: "Sensor entries"}
-                                @props.num_sensors
-                            )
-                        )
-                    div(
+                        _show_list.push("Sensors: #{@props.num_sensors}")
+                    return strong(
                         {key: "k0", className: "form-group"},
-                        _show_list
+                        _show_list.join(" / ")
                     )
             }
         )
