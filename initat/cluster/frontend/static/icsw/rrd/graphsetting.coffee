@@ -346,95 +346,154 @@ angular.module(
 
 ]).directive("icswRrdGraphSetting",
 [
-    "$templateCache", "icswRRDGraphUserSettingService", "$compile", "icswComplexModalService",
-    "blockUI", "toaster", "icswToolsSimpleModalService", "icswRRDGraphSettingBackup", "$q",
+    "$templateCache",
 (
-    $templateCache, icswRRDGraphUserSettingService, $compile, icswComplexModalService,
-    blockUI, toaster, icswToolsSimpleModalService, icswRRDGraphSettingBackup, $q,
+    $templateCache,
 ) ->
     return {
         scope: true
         restrict: "EA"
         template: $templateCache.get("icsw.rrd.graphsetting.overview")
-        link: (scope, el, attrs) ->
-            scope.settings = []
-            icswRRDGraphUserSettingService.load(scope.$id).then(
-                (data) ->
-                    scope.settings = data
-                    scope.current = scope.settings.get_active()
-                    scope.edit_settings = () ->
-                        sub_scope = scope.$new()
-                        sub_scope.base_setting = scope.settings.base
-                        sub_scope.user_setting = scope.settings
-                        sub_scope.vars = {
-                            current: sub_scope.user_setting.get_active()
-                            # previous (for changing)
-                            prev: sub_scope.user_setting.get_active()
-                        }
-                        bu_obj = new icswRRDGraphSettingBackup()
-                        bu_obj.create_backup(sub_scope.vars.current)
-
-                        sub_scope.create_setting = () ->
-                            scope.settings.create_setting(sub_scope.vars.current).then(
-                                (new_setting) ->
-                                    scope.select_setting(new_setting)
-                                    # reset current
-                                    bu_obj.restore_backup(sub_scope.vars.current)
-                                    sub_scope.vars.current = new_setting
-                                    sub_scope.vars.prev = new_setting
-                                    # new backup
-                                    bu_obj.create_backup(sub_scope.vars.current)
-                            )
-
-                        sub_scope.save_setting = () ->
-                            scope.settings.get_active().save().then(
-                                (ok) ->
-                                    bu_obj.create_backup(sub_scope.vars.current)
-                            )
-
-                        sub_scope.delete_setting = () ->
-                            cur = sub_scope.vars.current
-                            icswToolsSimpleModalService("Really delete setting '#{cur.name}' ?").then(
-                                (is_ok) ->
-                                    scope.settings.delete_setting(sub_scope.vars.current).then(
-                                        (done) ->
-                                            scope.settings.ensure_active().then(
-                                                (new_act) ->
-                                                    scope.select_setting(new_act)
-                                                    sub_scope.vars.current = new_act
-                                                    sub_scope.vars.prev = new_act
-                                                    bu_obj.create_backup(sub_scope.vars.current)
-                                            )
-                                    )
-                            )
-
-                        sub_scope.select_setting = (a, b, c) ->
-                            bu_obj.restore_backup(sub_scope.vars.prev)
-                            bu_obj.create_backup(sub_scope.vars.current)
-                            sub_scope.vars.prev = sub_scope.vars.current
-                            scope.select_setting(sub_scope.vars.current)
-
-                        icswComplexModalService(
-                            {
-                                message: $compile($templateCache.get("icsw.rrd.graphsetting.modify"))(sub_scope)
-                                title: "RRD graph settings"
-                                ok_label: "Close"
-                                ok_callback: (modal) ->
-                                    # reset current
-                                    bu_obj.restore_backup(sub_scope.vars.current)
-                                    d = $q.defer()
-                                    d.resolve("Close")
-                                    return d.promise
-                            }
-                        ).then(
-                            (fin) ->
-                                sub_scope.$destroy()
-                                scope.current = scope.settings.get_active()
-                        )
-            )
-            scope.select_setting = (setting) ->
-                scope.settings.set_active(setting)
+        controller: "icswRrdGraphSettingCtrl"
     }
+]).controller("icswRrdGraphSettingCtrl",
+[
+    "$scope", "icswRRDGraphUserSettingService", "$compile", "icswComplexModalService",
+    "blockUI", "toaster", "icswToolsSimpleModalService", "icswRRDGraphSettingBackup", "$q",
+    "$templateCache",
+(
+    $scope, icswRRDGraphUserSettingService, $compile, icswComplexModalService,
+    blockUI, toaster, icswToolsSimpleModalService, icswRRDGraphSettingBackup, $q,
+    $templateCache,
+) ->
+    $scope.struct = {
+        # settings tree
+        settings: []
+        # current setting
+        current: undefined
+    }
+
+    load = () ->
+        icswRRDGraphUserSettingService.load($scope.$id).then(
+            (data) ->
+                $scope.struct.settings = data
+                $scope.struct.current = $scope.struct.settings.get_active()
+        )
+
+    load()
+    
+    $scope.select_setting = (setting) ->
+        $scope.struct.settings.set_active(setting)
+
+    $scope.edit_settings = () ->
+        sub_scope = $scope.$new()
+        sub_scope.base_setting = $scope.struct.settings.base
+        sub_scope.user_setting = $scope.struct.settings
+        sub_scope.vars = {
+            current: sub_scope.user_setting.get_active()
+            # previous (for changing)
+            prev: sub_scope.user_setting.get_active()
+        }
+        bu_obj = new icswRRDGraphSettingBackup()
+        bu_obj.create_backup(sub_scope.vars.current)
+
+        # flags for current changed and name is new (== new setting can be created)
+        sub_scope.current_changed = false
+        sub_scope.name_is_new = false
+
+        _check_changed = () ->
+            # update changed flag and name_is_new
+            sub_scope.current_changed = bu_obj.changed(sub_scope.vars.current)
+            all_names = (entry.name for entry in $scope.struct.settings.list when entry.idx != sub_scope.vars.current.idx)
+            if not bu_obj.attribute_changed(sub_scope.vars.current, "name")
+                sub_scope.name_is_new = false
+            else
+                sub_scope.name_is_new = sub_scope.vars.current.name not in all_names
+
+        sub_scope.create_setting = () ->
+            $scope.struct.settings.create_setting(sub_scope.vars.current).then(
+                (new_setting) ->
+                    $scope.select_setting(new_setting)
+                    # reset current
+                    bu_obj.restore_backup(sub_scope.vars.current)
+                    sub_scope.vars.current = new_setting
+                    sub_scope.vars.prev = new_setting
+                    # new backup
+                    bu_obj.create_backup(sub_scope.vars.current)
+                    _check_changed()
+            )
+
+        sub_scope.save_setting = () ->
+            $scope.struct.settings.get_active().save().then(
+                (ok) ->
+                    bu_obj.create_backup(sub_scope.vars.current)
+                    _check_changed()
+            )
+
+        sub_scope.delete_setting = () ->
+            cur = sub_scope.vars.current
+            icswToolsSimpleModalService("Really delete setting '#{cur.name}' ?").then(
+                (is_ok) ->
+                    $scope.struct.settings.delete_setting(sub_scope.vars.current).then(
+                        (done) ->
+                            $scope.struct.settings.ensure_active().then(
+                                (new_act) ->
+                                    $scope.select_setting(new_act)
+                                    sub_scope.vars.current = new_act
+                                    sub_scope.vars.prev = new_act
+                                    bu_obj.create_backup(sub_scope.vars.current)
+                            )
+                    )
+            )
+
+        sub_scope.select_setting = (a, b, c) ->
+            bu_obj.restore_backup(sub_scope.vars.prev)
+            bu_obj.create_backup(sub_scope.vars.current)
+            sub_scope.vars.prev = sub_scope.vars.current
+            $scope.select_setting(sub_scope.vars.current)
+            _check_changed()
+
+        sub_scope.$watch(
+            # track changes
+            "vars.current"
+            (new_val) ->
+                _check_changed()
+            true
+        )
+        sub_scope.$watch()
+
+        icswComplexModalService(
+            {
+                message: $compile($templateCache.get("icsw.rrd.graphsetting.modify"))(sub_scope)
+                title: "RRD graph settings"
+                ok_label: "Close"
+                ok_callback: (modal) ->
+                    d = $q.defer()
+                    _ld = $q.defer()
+                    if sub_scope.current_changed
+                        icswToolsSimpleModalService("Settings changed and not saved, really close ?").then(
+                            (ok) ->
+                                _ld.resolve("go ahead")
+                            (not_ok) ->
+                                _ld.reject("go back")
+                        )
+                    else
+                        _ld.resolve("not changed")
+                    _ld.promise.then(
+                        (ok) ->
+                            # reset current
+                            bu_obj.restore_backup(sub_scope.vars.current)
+                            d.resolve("Close")
+                        (not_ok) ->
+                            d.reject("no close")
+                    )
+                    return d.promise
+            }
+        ).then(
+            (fin) ->
+                sub_scope.$destroy()
+                $scope.struct.current = $scope.struct.settings.get_active()
+        )
 ]).directive("icswRrdGraphTimeFrame",
 [
     "$templateCache", "icswRRDGraphBaseSettingService", "$compile", "$timeout", "toaster",

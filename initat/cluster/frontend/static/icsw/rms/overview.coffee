@@ -242,9 +242,9 @@ rms_module = angular.module(
         
 ]).service("icswRMSIOStruct",
 [
-    "$q", "icswRMSTools",
+    "$q", "icswRMSTools", "$timeout",
 (
-    $q, icswRMSTools,
+    $q, icswRMSTools, $timeout,
 ) ->
     class icswRMSIOStruct
         constructor: (@full_job_id, @type) ->
@@ -270,6 +270,8 @@ rms_module = angular.module(
             # console.log "editor=", editor
             @editor = editor
             @editor.setReadOnly(true)
+            @editor.setShowPrintMargin(false)
+            @editor.$blockScrolling = Infinity
 
         editor_changed: () =>
             # console.log "EC", @follow_tail, @editor
@@ -279,8 +281,16 @@ rms_module = angular.module(
 
         toggle_follow_tail: () =>
             @follow_tail = !@follow_tail
+            @_check_follow_tail()
+
+        _check_follow_tail: () =>
             if @editor and @follow_tail
+                # move cursor to end of file
                 @editor.navigateFileEnd()
+                # scroll down
+                _session = @editor.getSession()
+                _row = _session.getLength()
+                @editor.scrollToRow(_row)
 
         get_file_info: () ->
             if @valid
@@ -307,8 +317,12 @@ rms_module = angular.module(
                 if @text != _new_text
                     @text = _new_text
                     @refresh++
-                if @editor and @follow_tail
-                    @editor.navigateFileEnd()
+                # use timeout to give ACE some time to update its internal structures
+                $timeout(
+                    () =>
+                        @_check_follow_tail()
+                    0
+                )
             else
                 @update = false
                 @refresh++

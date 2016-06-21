@@ -2,11 +2,11 @@
 
 <script type="text/ng-template" id="icsw.rrd.graphsetting.overview">
     <div class="input-group">
-        <ui-select ng-model="current" on-select="select_setting($item, $model)" theme="bootstrap">
+        <ui-select ng-model="struct.current" on-select="select_setting($item, $model)" theme="bootstrap">
             <ui-select-match class="ui-select-match" title="Stored RRD graphing settings">
                 {{ $select.selected.name }}&nbsp;&nbsp;&nbsp;
             </ui-select-match>
-            <ui-select-choices class="ui-select-choices" repeat="entry in settings.list">
+            <ui-select-choices class="ui-select-choices" repeat="entry in struct.settings.list">
                 <div ng-bind-html="entry.name"></div>
             </ui-select-choices>
         </ui-select>
@@ -18,7 +18,10 @@
 
 <script type="text/ng-template" id="icsw.rrd.graphsetting.modify">
     <form name="form_data">
-        <h3>Settings defined: {{ user_setting.list.length }}</h3>
+        <h3>
+            Settings defined: {{ user_setting.list.length }}
+            <span class="text-warning" ng-show="current_changed">, Settings changed</span>
+        </h3>
         <fieldset>
             <legend>
                 Graph Flags
@@ -204,8 +207,8 @@
                     <div class="input-group input-group-sm">
                         <input class="form-control" type="text" size="100" max_length="100" ng-model="vars.current.name"/>
                         <span class="input-group-addon">
-                            <icsw-tools-button type="create" size="sm" ng-click="create_setting()"></icsw-tools-button>
-                            <icsw-tools-button type="save" size="sm" ng-click="save_setting()"></icsw-tools-button>
+                            <icsw-tools-button type="create" size="sm" ng-show="name_is_new" ng-click="create_setting()"></icsw-tools-button>
+                            <icsw-tools-button type="save" size="sm" ng-show="current_changed" ng-click="save_setting()"></icsw-tools-button>
                         </span>
                     </div>
                 </div>
