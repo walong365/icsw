@@ -254,7 +254,16 @@ angular.module(
             error_string: "Init structures"
             # job mode
             job_mode: $scope.job_modes[0]
+            # custom setting
+            custom_setting: undefined
+            # custom settin set ?
+            custom_setting_set: false
         }
+        $scope.set_custom_setting = (setting) ->
+            $scope.struct.custom_setting_set = true
+            $scope.struct.custom_setting = setting
+            console.log "SET"
+
         $scope.new_devsel = (dev_list) ->
             # clear graphs
             $scope.graph_list = []
@@ -551,17 +560,21 @@ angular.module(
                 $scope.struct.is_drawing = true
                 $scope.struct.error_string = "Drawing graphs"
                 # console.log $scope.struct.job_mode
+                if $scope.struct.custom_setting_set
+                    _setting = $scope.struct.custom_setting
+                else
+                    _setting = $scope.struct.user_settings.get_active()
                 gfx = $q.defer()
                 icswSimpleAjaxCall(
                     url: ICSW_URLS.RRD_GRAPH_RRDS
                     data: {
-                        "keys": angular.toJson((get_node_keys($scope.lut[key]) for key in $scope.cur_selected))
-                        "pks": angular.toJson((dev.idx for dev in $scope.struct.devices))
-                        "start_time": moment($scope.timeframe.from_date_mom).format(DT_FORM)
-                        "end_time": moment($scope.timeframe.to_date_mom).format(DT_FORM)
-                        "job_mode": $scope.struct.job_mode.short
-                        "selected_job": $scope.selected_job
-                        "graph_setting": angular.toJson($scope.struct.user_settings.get_active_resolved())
+                        keys: angular.toJson((get_node_keys($scope.lut[key]) for key in $scope.cur_selected))
+                        pks: angular.toJson((dev.idx for dev in $scope.struct.devices))
+                        start_time: moment($scope.timeframe.from_date_mom).format(DT_FORM)
+                        end_time: moment($scope.timeframe.to_date_mom).format(DT_FORM)
+                        job_mode: $scope.struct.job_mode.short
+                        selected_job: $scope.selected_job
+                        graph_setting: angular.toJson($scope.struct.user_settings.resolve(_setting))
                     }
                 ).then(
                     (xml) ->
@@ -611,9 +624,10 @@ angular.module(
     $templateCache
 ) ->
     return {
-        scope: true
         restrict: "EA"
         template: $templateCache.get("icsw.rrd.graph.overview")
+        controller: "icswGraphOverviewCtrl"
+        scope: true
         link: (scope, el, attrs) ->
             # to be improved
             # console.log attrs
@@ -627,12 +641,11 @@ angular.module(
                 scope.job_mode = attrs["jobmode"]
             if attrs["selectedjob"]?
                 scope.selected_job = attrs["selectedjob"]
-            if attrs["icswGraphSize"]?
+            if attrs["icswGraphSetting"]?
                 # TODO, FixMe
                 # console.log attrs["icswGraphSize"]
-                true
+                scope.set_custom_setting(scope.$eval(attrs["icswGraphSetting"]))
             scope.struct.draw_on_init = attrs["draw"] ? false
-        controller: "icswGraphOverviewCtrl"
     }
 ]).service("icswRRDGraphTree",
 [

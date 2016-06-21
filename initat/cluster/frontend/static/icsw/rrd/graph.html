@@ -10,11 +10,11 @@
         <div>
             <h2>
                 Graphing,
-                <icsw-tools-yes-no icsw-yes="show settings" icsw-no="hide settings" flag="struct.show_settings"></icsw-tools-yes-no>
+                <icsw-tools-yes-no icsw-yes="show settings" icsw-no="hide settings" flag="struct.show_settings" ng-show="!struct.custom_setting_set"></icsw-tools-yes-no>
                 <icsw-tools-yes-no icsw-yes="show tree" icsw-no="hide tree" flag="struct.show_tree"></icsw-tools-yes-no>
             </h2>
         </div>
-        <table class="table table-condensed table-striped table-bordered" style="width:auto;"  ng-show="struct.vector_valid && struct.show_settings">
+        <table class="table table-condensed table-striped table-bordered" style="width:auto;" ng-show="struct.vector_valid && struct.show_settings && !struct.custom_setting_set">
             <tbody>
                 <tr>
                     <th>Vector Info</th>

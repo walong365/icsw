@@ -90,7 +90,7 @@ angular.module(
                 ["graph_setting_timeshift", "timeshift_lut"]
                 ["graph_setting_forecast", "forecast_lut"]
             ]
-                if setting[name]?
+                if setting[name]? and angular.isNumber(setting[name])
                     setting[name] = Restangular.stripRestangular(@[dict][setting[name]])
 
         link: () =>
@@ -176,6 +176,12 @@ angular.module(
             @base.enrich_default(_def)
             return _def
 
+        set_custom_size: (setting, w, h) =>
+            setting.graph_setting_size = {
+                width: w
+                height: h
+            }
+            
         build_luts: () =>
             for entry in @list
                 if not entry.$$synced?
@@ -193,9 +199,9 @@ angular.module(
         get_active: () =>
             return @_active
 
-        get_active_resolved: () =>
+        resolve: (setting) =>
             # returns active elemt with all subelements expanded
-            _act = Restangular.stripRestangular(@get_active())
+            _act = Restangular.stripRestangular(setting)
             @base.resolve(_act)
             return _act
 

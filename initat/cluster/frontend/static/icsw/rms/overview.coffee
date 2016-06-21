@@ -1011,6 +1011,7 @@ rms_module = angular.module(
     "icswRMSTools", "icswRMSHeaderStruct", "icswRMSSlotInfo", "icswRMSRunningStruct",
     "icswRMSWaitingStruct", "icswRMSDoneStruct", "icswRMSNodeStruct",
     "icswComplexModalService", "icswRMSJobVarStruct", "$window", "icswRMSSchedulerStruct",
+    "icswRRDGraphUserSettingService",
 (
     $scope, $compile, Restangular, ICSW_SIGNALS,
     $q, icswAcessLevelService, $timeout, ICSW_URLS,
@@ -1018,6 +1019,7 @@ rms_module = angular.module(
     icswRMSTools, icswRMSHeaderStruct, icswRMSSlotInfo, icswRMSRunningStruct,
     icswRMSWaitingStruct, icswRMSDoneStruct, icswRMSNodeStruct,
     icswComplexModalService, icswRMSJobVarStruct, $window, icswRMSSchedulerStruct,
+    icswRRDGraphUserSettingService,
 ) ->
         icswAcessLevelService.install($scope)
 
@@ -1053,16 +1055,26 @@ rms_module = angular.module(
             # set devices
             devices = ($scope.struct.device_tree.all_lut[_pk] for _pk in device_ids)
             # console.log "devs=", devices
-            icswSimpleAjaxCall(
-                url: ICSW_URLS.DEVICE_DEVICE_LIST_INFO
-                data:
-                    pk_list: angular.toJson(device_ids)
-                dataType: "json"
+            $q.all(
+                [
+                    icswSimpleAjaxCall(
+                        url: ICSW_URLS.DEVICE_DEVICE_LIST_INFO
+                        data:
+                            pk_list: angular.toJson(device_ids)
+                        dataType: "json"
+                    )
+                    icswRRDGraphUserSettingService.load($scope.$id)
+                ]
             ).then(
-                (result) ->
-                    _header = result.header
+                (data) ->
+                    _header = data[0].header
+                    _user_setting = data[1]
+                    console.log _user_setting
+                    local_settings = _user_setting.get_default()
+                    _user_setting.set_custom_size(local_settings, 400, 180)
                     sub_scope = $scope.$new(true)
                     sub_scope.devices = devices
+                    sub_scope.local_settings = local_settings
                     start_time = 0
                     end_time = 0
                     job_mode = 0
@@ -1074,7 +1086,7 @@ rms_module = angular.module(
     icsw-select-keys="load.*,net.all.*,mem.used.phys$,^swap.*"
     draw="1"
     mergedevices="0"
-    icsw-graph-size="240x100"
+    icsw-graph-setting="local_settings"
     <!-- fromdt="#{start_time}"
     # todt="#{end_time}"
     # jobmode="#{job_mode}"
@@ -1086,6 +1098,7 @@ rms_module = angular.module(
                             message: $compile(_template)(sub_scope)
                             title: "RRD for #{_header}"
                             cancel_label: "Close"
+                            css_class: "modal-wide"
                             cancel_callback: (modal) ->
                                 defer = $q.defer()
                                 defer.resolve("close")
