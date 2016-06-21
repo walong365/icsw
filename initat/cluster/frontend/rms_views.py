@@ -227,7 +227,11 @@ class get_rms_json(View):
         _host_names = node_list.xpath(".//node/host/text()")
         # memcache client
         _mcc = memcache.Client(["{}:{:d}".format(MC_ADDRESS, MC_PORT)])
-        h_dict = json.loads(_mcc.get("cc_hc_list"))
+        h_dict_raw = _mcc.get("cc_hc_list")
+        if h_dict_raw:
+            h_dict = json.loads(h_dict_raw)
+        else:
+            h_dict = {}
         # required keys
         req_keys = re.compile("^load\.(1|5|15)$")
         # resolve to full host names / dev_pks / uuids

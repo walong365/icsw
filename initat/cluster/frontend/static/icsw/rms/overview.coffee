@@ -1606,7 +1606,6 @@ rms_module = angular.module(
                         }
                     )
                 )
-                console.log _colors[_idx]
                 _idx++
                 _y += _diff_h
             _mean_load = _.mean(_lv)
@@ -1724,7 +1723,7 @@ rms_module = angular.module(
                             # at least one thread per core
                             _thread_list = [true]
                         _pinned = false
-                        for _t in _c.l
+                        for _t in _thread_list
                             # true if the current thread_number occurs in the pinning dict
                             if _num_threads of pinn_d
                                 _pinned = true
