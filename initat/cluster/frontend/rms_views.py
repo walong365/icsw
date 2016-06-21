@@ -221,6 +221,40 @@ class get_rms_json(View):
         if RMS_ADDONS:
             for change_obj in RMS_ADDONS:
                 change_obj.modify_nodes(my_sge_info, node_list)
+
+        # load values
+        # get name of all hosts
+        _host_names = node_list.xpath(".//node/host/text()")
+        # memcache client
+        _mcc = memcache.Client(["{}:{:d}".format(MC_ADDRESS, MC_PORT)])
+        h_dict_raw = _mcc.get("cc_hc_list")
+        if h_dict_raw:
+            h_dict = json.loads(h_dict_raw)
+        else:
+            h_dict = {}
+        # required keys
+        req_keys = re.compile("^load\.(1|5|15)$")
+        # resolve to full host names / dev_pks / uuids
+        _dev_dict = {
+            _name: {
+                "uuid": _uuid,
+                "values": {},
+                # core id -> job list
+                "pinning": {},
+                "idx": _idx,
+            } for _name, _uuid, _idx in device.objects.filter(
+                Q(name__in=_host_names)
+            ).values_list("name", "uuid", "idx")
+        }
+        # reverse lut (idx -> name)
+        _rev_lut = {_value["idx"]: _key for _key, _value in _dev_dict.iteritems()}
+        for _name, _struct in _dev_dict.iteritems():
+            if _struct["uuid"] in h_dict:
+                _value_list = json.loads(_mcc.get("cc_hc_{}".format(_struct["uuid"])))
+                for _list in _value_list:
+                    if req_keys.match(_list[1]):
+                        _struct["values"][_list[1]] = _list[5]
+
         fc_dict = {}
         cur_time = time.time()
         for file_el in my_sge_info.get_tree().xpath(".//job_list[master/text() = \"MASTER\"]", smart_strings=False):
@@ -243,6 +277,18 @@ class get_rms_json(View):
                             )
                         )
                 fc_dict[file_el.attrib["full_id"]] = list(reversed(sorted(cur_fcd, cmp=lambda x, y: cmp(x[3], y[3]))))
+        for job_el in my_sge_info.get_tree().xpath(".//job_list[master/text() = \"MASTER\"]", smart_strings=False):
+            job_id = job_el.attrib["full_id"]
+            pinning_el = job_el.find(".//pinning_info")
+            if pinning_el is not None and pinning_el.text:
+                # device_id -> process_id -> core_id
+                _pd = json.loads(pinning_el.text)
+                for _node_idx, _pin_dict in _pd.iteritems():
+                    if int(_node_idx) in _rev_lut:
+                        _dn = _rev_lut[int(_node_idx)]
+                        for _proc_id, _core_id in _pin_dict.iteritems():
+                            _dev_dict[_dn]["pinning"].setdefault(_core_id, []).append(job_id)
+        # pprint.pprint(pinning_dict)
         # todo: add jobvars to running (waiting for rescheduled ?) list
         # print dir(rms_info.run_job_list)
         done_jobs = rms_job_run.objects.all().exclude(
@@ -263,29 +309,6 @@ class get_rms_json(View):
             "-pk"
         )[0:100]
         _done_ser = rms_job_run_serializer(done_jobs, many=True).data
-        # get name of all hosts
-        _host_names = node_list.xpath(".//node/host/text()")
-        # memcache client
-        _mcc = memcache.Client(["{}:{:d}".format(MC_ADDRESS, MC_PORT)])
-        h_dict = json.loads(_mcc.get("cc_hc_list"))
-        # required keys
-        req_keys = re.compile("^load\.(1|5|15)$")
-        # resolve to full host names / dev_pks / uuids
-        _dev_dict = {
-            _name: {
-                "uuid": _uuid,
-                "values": {},
-            } for _name, _uuid in device.objects.filter(
-                Q(name__in=_host_names)
-            ).values_list("name", "uuid")
-        }
-        for _name, _struct in _dev_dict.iteritems():
-            if _struct["uuid"] in h_dict:
-                _value_list = json.loads(_mcc.get("cc_hc_{}".format(_struct["uuid"])))
-                for _list in _value_list:
-                    if req_keys.match(_list[1]):
-                        _struct["values"][_list[1]] = _list[5]
-
         # pprint.pprint(_done_ser)
         json_resp = {
             "run_table": _sort_list(rms_info.run_job_list, _post),

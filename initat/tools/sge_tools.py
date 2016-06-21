@@ -327,6 +327,17 @@ class SGEInfo(object):
                             file_info.remove(sub_el)
                         for _f_name, f_el in file_dict.iteritems():
                             file_info.append(f_el)
+        if "pinning_dict" in kwargs:
+            for job_id, _struct in kwargs["pinning_dict"].iteritems():
+                job_el = r_tree.xpath(
+                    ".//job_list[@full_id='{}' and master/text() = \"MASTER\"]".format(job_id),
+                    smart_strings=False
+                )
+                if len(job_el):
+                    job_el = job_el[0]
+                    pinning_info = job_el.find(".//pinning_info")
+                    if pinning_info is not None:
+                        pinning_info.text = json.dumps(_struct)
         return r_tree
 
     def get(self, key, def_value):
@@ -358,7 +369,7 @@ class SGEInfo(object):
             else:
                 # dummy pwd, FIXME
                 cur_pwd = "/tmp/"
-            ext_xml = E.job_ext_info(E.file_info())
+            ext_xml = E.job_ext_info(E.file_info(), E.pinning_info())
             for _std_type, _short in [("stdout", "o"), ("stderr", "e")]:
                 if job_xml.find(".//JB_{}_path_list".format(_std_type)) is not None:
                     _pn_path = job_xml.findtext(".//JB_{}_path_list/path_list/PN_path".format(_std_type))

@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -90,11 +90,16 @@ class RMSMonProcess(threading_tools.process_obj):
         self.__node_options = sge_tools.get_empty_node_options()
         self._init_network()
         self._init_sge_info()
+        # job content dict
         self.__job_content_dict = {}
+        # pinning dict
+        self.__job_pinning_dict = {}
         self.register_func("get_config", self._get_config)
         self.register_func("job_control", self._job_control)
         self.register_func("queue_control", self._queue_control)
         self.register_func("file_watch_content", self._file_watch_content)
+        self.register_func("affinity_info", self._affinity_info)
+        self.register_func("job_ended", self._job_ended)
         self.register_func("full_reload", self._full_reload)
         # job stop/start info
         self.register_timer(self._update_nodes, 30)
@@ -320,7 +325,10 @@ class RMSMonProcess(threading_tools.process_obj):
         # needed_dicts = opt_dict.get("needed_dicts", ["hostgroup", "queueconf", "qhost", "complexes"])
         # update_list = opt_dict.get("update_list", [])
         self.__sge_info.update(update_list=needed_dicts)
-        srv_com["sge"] = self.__sge_info.get_tree(file_dict=self.__job_content_dict)
+        srv_com["sge"] = self.__sge_info.get_tree(
+            file_dict=self.__job_content_dict,
+            pinning_dict=self.__job_pinning_dict,
+        )
         self.send_pool_message("remote_call_async_result", unicode(srv_com))
         del srv_com
 
@@ -395,13 +403,73 @@ class RMSMonProcess(threading_tools.process_obj):
             )
         self.send_pool_message("remote_call_async_result", unicode(srv_com))
 
+    def _affinity_info(self, *args, **kwargs):
+        srv_com = server_command.srv_command(source=args[0])
+        job_id = srv_com["*job_id"]
+        task_id = srv_com["*task_id"]
+        action = srv_com["*action"]
+        if task_id and task_id.lower().isdigit():
+            task_id = int(task_id)
+            full_job_id = "{}.{:d}".format(job_id, task_id)
+        else:
+            task_id = None
+            full_job_id = job_id
+        process_id = int(srv_com["*process_id"])
+        _source_host = srv_com["source"].attrib["host"]
+        _source_dev = self._get_device(_source_host)
+        if action == "add":
+            target_cpu = int(srv_com["*target_cpu"])
+            self.log(
+                "pinning process {:d} of job {} to CPU {:d} (host: {})".format(
+                    process_id,
+                    full_job_id,
+                    target_cpu,
+                    unicode(_source_dev),
+                )
+            )
+        else:
+            self.log(
+                "removing process {:d} of job {} (host: {})".format(
+                    process_id,
+                    full_job_id,
+                    unicode(_source_dev),
+                )
+            )
+        if _source_dev is not None:
+            if action == "add":
+                self.__job_pinning_dict.setdefault(
+                    full_job_id, {}
+                ).setdefault(
+                    _source_dev.idx, {}
+                )[process_id] = target_cpu
+            else:
+                if full_job_id in self.__job_pinning_dict:
+                    if _source_dev.idx in self.__job_pinning_dict[full_job_id]:
+                        if process_id in self.__job_pinning_dict[full_job_id][_source_dev.idx]:
+                            del self.__job_pinning_dict[full_job_id][_source_dev.idx][process_id]
+        # import pprint
+        # pprint.pprint(self.__job_pinning_dict)
+
+    def _job_ended(self, *args, **kwargs):
+        job_id, task_id = (args[0], args[1])
+        if task_id:
+            full_job_id = "{}.{}".format(job_id, task_id)
+        else:
+            full_job_id = "{}".format(job_id)
+        if full_job_id in self.__job_pinning_dict:
+            self.log("removed job {} from pinning dict".format(full_job_id))
+            del self.__job_pinning_dict[full_job_id]
+        if full_job_id in self.__job_content_dict:
+            self.log("removed job {} from job_content_dict".format(full_job_id))
+            del self.__job_content_dict[full_job_id]
+
     def _file_watch_content(self, *args, **kwargs):
         srv_com = server_command.srv_command(source=args[0])
-        job_id = srv_com["send_id"].text.split(":")[0]
-        file_name = srv_com["name"].text
+        job_id = srv_com["*send_id"].split(":")[0]
+        file_name = srv_com["*name"]
         # in case of empty file
         content = srv_com["content"].text or ""
-        last_update = int(float(srv_com["update"].text))
+        last_update = int(float(srv_com["*update"]))
         self.log(
             u"got content for '{}' (job {}), len {:d} bytes, update_ts {:d}".format(
                 file_name,
@@ -502,7 +570,6 @@ class RMSMonProcess(threading_tools.process_obj):
         )
         _float_re = re.compile("^\d+\.\d+")
         # headers
-        import pprint
         drop_com = server_command.srv_command(command="set_vector")
         _bldr = drop_com.builder()
         _rms_vector = _bldr("values")
@@ -537,7 +604,7 @@ class RMSMonProcess(threading_tools.process_obj):
                         ("share.actual", "actual_share", "actual share"),
                         ("shares", "shares", "configured shares"),
                         ("level", "level", "level"),
-                        ("totla", "total", "total"),
+                        ("total", "total", "total"),
                     ]:
                         _rms_vector.append(
                             hm_classes.mvect_entry(

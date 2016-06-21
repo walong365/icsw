@@ -50,6 +50,7 @@ class ServerProcess(
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.register_exception("hup_error", self._hup_error)
+        self.register_func("job_ended", self._job_ended)
         self._log_config()
         # dc.release()
         self._init_network_sockets()
@@ -109,6 +110,11 @@ class ServerProcess(
             pollin=self.remote_call,
         )
 
+    # internal commands
+    def _job_ended(self, *args, **kwargs):
+        job_id, task_id = (args[2], args[3])
+        self.send_to_process("rms_mon", "job_ended", job_id, task_id)
+
     @server_mixins.RemoteCall(target_process="rms_mon")
     def get_config(self, srv_com, **kwargs):
         return srv_com
@@ -145,6 +151,10 @@ class ServerProcess(
 
     @server_mixins.RemoteCall(target_process="rms_mon", send_async_return=False)
     def file_watch_content(self, srv_com, **kwargs):
+        return srv_com
+
+    @server_mixins.RemoteCall(target_process="rms_mon", send_async_return=False)
+    def affinity_info(self, srv_com, **kwargs):
         return srv_com
 
     @server_mixins.RemoteCall(target_process="accounting", send_async_return=False, target_process_func="job_ss_info")

@@ -31,7 +31,7 @@ import psutil
 from lxml.builder import E
 
 from initat.constants import VERSION_CS_NAME, INITAT_BASE
-from initat.tools import logging_tools, process_tools, config_store
+from initat.tools import logging_tools, process_tools, config_store, threading_tools
 from .constants import *
 
 
@@ -161,6 +161,9 @@ class Service(object):
                 for _conf_name in _conf_names:
                     try:
                         _cr = config_tools.server_check(server_type=_conf_name)
+                    except (threading_tools.int_error, threading_tools.term_error):
+                        self.log("got int or term error, reraising", logging_tools.LOG_LEVEL_ERROR)
+                        raise
                     except:
                         config_tools.close_db_connection()
                         try:
@@ -482,6 +485,7 @@ class Service(object):
             try:
                 _cmdline = _value.cmdline()
             except:
+                # can be ignored
                 pass
             else:
                 if _cmdline:

@@ -320,7 +320,7 @@ rms_module = angular.module(
     $q, icswRMSTools,
 ) ->
     class icswRMSQueue
-        constructor: (@name, @host, state_value, seqno, host_state, load_value, max_load, slot_info, topology) ->
+        constructor: (@name, @host, state_value, seqno, host_state, load_value, max_load, slot_info, topology, cl_info) ->
             @state = {
                 value: state_value
                 raw: host_state
@@ -344,6 +344,8 @@ rms_module = angular.module(
             @topology_raw = _raw
             # if @topology.
             _sv = @state.value
+            # complex load info, including current load values and pinning info
+            @cl_info = cl_info
             # display flags
             @$$enable_ok = if _sv.match(/d/g) then true else false
             @$$disable_ok = if not _sv.match(/d/g) then true else false
@@ -358,6 +360,7 @@ rms_module = angular.module(
                 _cls = "success"
             @$$queue_btn_class = "btn-#{_cls}"
             @$$queue_label_class = "label-#{_cls}"
+            @$$max_load = max_load
 
             if @load.value.match(icswRMSTools.load_re)
                 @$$load_is_valid = true
@@ -622,7 +625,6 @@ rms_module = angular.module(
             @check_jobvar_display()
             _running_slots = 0
             for entry in @list
-                console.log entry.nodelist
                 nodes = entry.nodelist.value.split(",")
                 r_list = []
                 _.forEach(_.countBy(nodes), (key, value) ->
@@ -880,10 +882,15 @@ rms_module = angular.module(
             # disable display of this headers
             @hidden_headers = ["state", "slots_reserved", "slots_total"]
 
-        feed_list : (simple_list) =>
+        feed_list : (simple_list, values_dict) =>
             @feed_xml_list(simple_list)
 
+            # simple loads
             valid_loads = (parseFloat(entry.load.value) for entry in @list when entry.load.value.match(icswRMSTools.load_re))
+            # load from devices via collectd
+            for key, value of values_dict
+                if value.values? and value.values["load.1"]?
+                    valid_loads = _.concat(valid_loads, (value.values["load.#{_idx}"] for _idx in [1, 5, 15]))
 
             if valid_loads.length
                 @max_load = _.max(valid_loads)
@@ -896,9 +903,9 @@ rms_module = angular.module(
 
             @set_rrd_flags()
             # build queue list
-            @build_queue_list()
+            @build_queue_list(values_dict)
 
-        build_queue_list: () =>
+        build_queue_list: (values_dict) =>
             {slot_info} = @struct
             i_split = (in_str, nq) ->
                 # one element per queue, if all elements are identical only one is reported
@@ -943,6 +950,10 @@ rms_module = angular.module(
                     entry.$$load_vector = _.zip(_total, _used, _reserved)
                     (slot_info.feed_vector(_lv) for _lv in entry.$$load_vector)
 
+                if entry.host.value of values_dict
+                    cl_info = values_dict[entry.host.value]
+                else
+                    cl_info = null
                 # parse job entry, see sge_tools.py
                 job_dict = n_split(entry.jobs.value)
                 _idx = 0
@@ -964,6 +975,7 @@ rms_module = angular.module(
                         # slots used / reserved / total
                         [_vals[7], _vals[8], _vals[9]]
                         entry.topology
+                        cl_info
                     )
                     queue.type = {value: _vals[4]}
                     queue.complex = {value: _vals[5]}
@@ -1199,7 +1211,7 @@ rms_module = angular.module(
                         # console.log json.wait_table
                         $scope.struct.rms.waiting.feed_list(json.wait_table)
                         $scope.struct.rms.done.feed_list(json.done_table)
-                        $scope.struct.rms.node.feed_list(json.node_table)
+                        $scope.struct.rms.node.feed_list(json.node_table, json.load_values)
 
                         $scope.struct.jv_struct.feed_end()
 
@@ -1540,6 +1552,122 @@ rms_module = angular.module(
             job: "=icswRmsJob"
         template: $templateCache.get("icsw.rms.file.info")
     }
+]).service("icswRmsLoadInfoReact",
+[
+    "$q",
+(
+    $q,
+) ->
+    {div, g, text, line, polyline, path, svg, h3, rect, span} = React.DOM
+    return React.createClass(
+        propTypes: {
+            # simple load
+            load: React.PropTypes.number
+            # max load
+            max_load: React.PropTypes.number
+            # complex load info
+            cl_info: React.PropTypes.object
+        }
+
+        render: () ->
+            _w = 120
+            _h = 21
+            if @props.cl_info? and @props.cl_info.values? and @props.cl_info.values["load.1"]?
+                _lv = (@props.cl_info.values[_key] for _key in ["load.1", "load.5", "load.15"])
+            else
+                _lv = [@props.load]
+            # build rect list
+            _rect_list = [
+                rect(
+                    {
+                        key: "load.border"
+                        x: 0
+                        y: 0
+                        rx: 6
+                        ry: 6
+                        width: "#{_w}px"
+                        height: "#{_h}px"
+                        style: {fill: "#ffffff", strokeWidth: "1px", stroke: "black"}
+                    }
+                )
+            ]
+            _idx = 0
+            _diff_h = _h / _lv.length
+            _colors = ["#44ff00", "#ddaa22", "#ff8888"]
+            _y = 0
+            for _load in _lv
+                _perc = _w * _load / @props.max_load
+                _rect_list.push(
+                    rect(
+                        {
+                            key: "load.#{_idx}"
+                            x: 0
+                            y: _y
+                            rx: 2
+                            ry: 2
+                            width: "#{_perc}px"
+                            height: "#{_diff_h}px"
+                            style: {fill: _colors[_idx], strokeWidth: "1px", stroke: "black"}
+                        }
+                    )
+                )
+                _idx++
+                _y += _diff_h
+            _mean_load = _.mean(_lv)
+            return div(
+                {
+                    key: "top"
+                }
+                [
+                    span(
+                        {
+                            key: "text"
+                            style: {minWidth: "48px", display: "inline-block", marginRight: "6px", textAlign: "right"}
+                        }
+                        _.round(_mean_load, 2)
+                    )
+                    svg(
+                        {
+                            key: "svg.top"
+                            width: "#{_w}px"
+                            height: "#{_h}px"
+                        }
+                        _rect_list
+                    )
+                ]
+
+            )
+    )
+]).directive("icswRmsLoadInfo",
+[
+    "$q", "icswRmsLoadInfoReact",
+(
+    $q, icswRmsLoadInfoReact,
+) ->
+    return {
+        restrict: "E"
+        link: (scope, element, attrs) ->
+            if scope.queue.$$load_is_valid
+                _load = parseFloat(scope.queue.load.value)
+            else
+                _load = 0.0
+            _el = ReactDOM.render(
+                React.createElement(
+                    icswRmsLoadInfoReact
+                    {
+                        load: _load
+                        max_load: scope.queue.$$max_load
+                        cl_info: scope.queue.cl_info
+                    }
+                )
+                element[0]
+            )
+            scope.$on(
+                "$destroy"
+                () ->
+                    ReactDOM.unmountComponentAtNode(element[0])
+            )
+    }
 ]).service("icswRmsTopologyInfoReact",
 [
     "$q",
@@ -1549,17 +1677,30 @@ rms_module = angular.module(
     {div, g, text, line, polyline, path, svg, h3, rect} = React.DOM
     return React.createClass(
         propTypes: {
+            # CPU topology
             topo: React.PropTypes.array
+            # slots info (used / reserved / free)
+            slots_info: React.PropTypes.object
+            # complex load info, current load values and pinning info
+            cl_info: React.PropTypes.object
         }
 
         render: () ->
-            get_color = (node) ->
-                if node.u
+            get_color = (node, pinned) ->
+                if pinned
+                    return "#ee9922"
+                else if node.u
                     return "#dd8888"
                 else
                     return "#f0f0f0"
 
+            # todo: show oversubscription, topology info
+            # console.log @props.slots_info
             if @props.topo
+                if @props.cl_info? and @props.cl_info.pinning?
+                    pinn_d = @props.cl_info.pinning
+                else
+                    pinn_d = {}
                 # baseline size
                 _bs = 10
                 _num_sockets = 0
@@ -1568,7 +1709,6 @@ rms_module = angular.module(
                 _rect_list = []
                 _x = 0
                 for _s in @props.topo
-                    _num_sockets++
                     _rect_list.push(
                         rect(
                             {
@@ -1582,7 +1722,17 @@ rms_module = angular.module(
                         )
                     )
                     for _c in _s.l
-                        _num_cores++
+                        if _c.l?
+                            _thread_list = _c.l
+                        else
+                            # at least one thread per core
+                            _thread_list = [true]
+                        _pinned = false
+                        for _t in _thread_list
+                            # true if the current thread_number occurs in the pinning dict
+                            if _num_threads of pinn_d
+                                _pinned = true
+                            _num_threads++
                         _rect_list.push(
                             rect(
                                 {
@@ -1591,17 +1741,13 @@ rms_module = angular.module(
                                     y: _bs
                                     width: _bs
                                     height: _bs
-                                    style: {fill: get_color(_c), strokeWidth: "1px", stroke: "black"}
+                                    style: {fill: get_color(_c, _pinned), strokeWidth: "1px", stroke: "black"}
                                 }
                             )
                         )
                         _x += _bs
-                        if _c.l?
-                            for _t in _c.l
-                                _num_threads++
-                        else
-                            # at least one thread per core
-                            _num_threads++
+                        _num_cores++
+                    _num_sockets++
                 _w = _num_cores * _bs
                 _h = 2 * _bs
 
@@ -1641,6 +1787,8 @@ rms_module = angular.module(
                     icswRmsTopologyInfoReact
                     {
                         topo: scope.queue.topology_raw
+                        slots_info: scope.queue.slots_info
+                        cl_info: scope.queue.cl_info
                     }
                 )
                 element[0]

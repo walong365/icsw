@@ -528,6 +528,8 @@ class AccountingProcess(threading_tools.process_obj):
                 _latest_run = _job.close_job_run()
                 if _latest_run:
                     self.log("closed job_run {} (ext)".format(unicode(_latest_run)))
+                self.send_pool_message("job_ended", _job.jobid, _job.taskid)
+
         else:
             _pe = self._get_object("rms_pe", _config["pe"])
             _job = self._get_job(
