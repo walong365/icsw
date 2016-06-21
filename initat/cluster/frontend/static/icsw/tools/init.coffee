@@ -1440,7 +1440,7 @@ angular.module(
                 return false
 
         # to be overridden
-        extra_calls: () =>
+        extra_calls: (client) =>
             return []
             
         # accessor functions
@@ -1474,7 +1474,7 @@ angular.module(
                 )
             _wait_list = _.concat(
                 _rest_calls
-                @extra_calls()
+                @extra_calls(client)
             )
             _start = new Date().getTime()
             @_load_defer = $q.defer()

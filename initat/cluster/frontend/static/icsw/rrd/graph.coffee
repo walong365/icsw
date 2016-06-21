@@ -277,13 +277,12 @@ angular.module(
                     $scope.struct.user_settings = data[4]
                     $scope.struct.devices.length = 0
                     for entry in dev_list
-                        if not entry.is_meta_device
-                            $scope.struct.devices.push(entry)
+                        $scope.struct.devices.push(entry)
                     hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, $scope.struct.devices)
                     $scope.struct.error_string = "Adding sensor info"
                     $scope.struct.device_tree.enrich_devices(hs, ["sensor_threshold_info"]).then(
                         (done) ->
-                            console.log $scope.struct
+                            # console.log $scope.struct
                             if $scope.struct.devices.length
                                 $scope.load_tree()
                             else
@@ -551,18 +550,18 @@ angular.module(
             if !$scope.struct.is_drawing
                 $scope.struct.is_drawing = true
                 $scope.struct.error_string = "Drawing graphs"
-                console.log $scope.struct.job_mode
+                # console.log $scope.struct.job_mode
                 gfx = $q.defer()
                 icswSimpleAjaxCall(
-                    url  : ICSW_URLS.RRD_GRAPH_RRDS
-                    data : {
+                    url: ICSW_URLS.RRD_GRAPH_RRDS
+                    data: {
                         "keys": angular.toJson((get_node_keys($scope.lut[key]) for key in $scope.cur_selected))
                         "pks": angular.toJson((dev.idx for dev in $scope.struct.devices))
                         "start_time": moment($scope.timeframe.from_date_mom).format(DT_FORM)
                         "end_time": moment($scope.timeframe.to_date_mom).format(DT_FORM)
                         "job_mode": $scope.struct.job_mode.short
                         "selected_job": $scope.selected_job
-                        "graph_setting": $scope.struct.user_settings.get_active().idx
+                        "graph_setting": angular.toJson($scope.struct.user_settings.get_active_resolved())
                     }
                 ).then(
                     (xml) ->
