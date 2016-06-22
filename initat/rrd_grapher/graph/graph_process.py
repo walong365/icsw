@@ -134,16 +134,13 @@ class GraphProcess(threading_tools.process_obj, server_mixins.OperationalErrorMi
             )
         LicenseUsage.log_usage(LicenseEnum.graphing, LicenseParameterTypeEnum.device, dev_pks)
         graph_keys = json.loads(srv_com["*graph_key_list"])
-        para_dict = {}
-        for para in srv_com.xpath(".//parameters", smart_strings=False)[0]:
-            para_dict[para.tag] = para.text
-        # cast to integer
-        para_dict = {key: int(value) if key in ["graph_setting"] else value for key, value in para_dict.iteritems()}
+        para_dict = {para.tag: para.text for para in srv_com.xpath(".//parameters", smart_strings=False)[0]}
         for key in ["start_time", "end_time"]:
             # cast to datetime
             para_dict[key] = dateutil.parser.parse(para_dict[key])
-        para_dict["graph_setting"] = GraphSetting.objects.get(Q(pk=para_dict["graph_setting"]))
-        para_dict["graph_setting"].to_enum()
+        para_dict["graph_setting"] = json.loads(para_dict["graph_setting"])
+        # import pprint
+        # pprint.pprint(para_dict["graph_setting"])
         for key, _default in [
             ("debug_mode", "0"),
         ]:

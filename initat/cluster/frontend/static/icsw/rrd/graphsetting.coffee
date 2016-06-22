@@ -23,11 +23,52 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
-).service("icswRRDGraphBaseSetting",
+).service("icswRRDGraphBasicSetting",
 [
-    "$q", "icswCachingCall", "ICSW_URLS", "Restangular",
+    "$q",
 (
-    $q, icswCachingCall, ICSW_URLS, Restangular
+    $q,
+) ->
+    class icswRRDGraphBasicSetting
+        constructor: () ->
+            # settings visable
+            @show_settings = true
+            # show tree
+            @show_tree = true
+            # draw on init
+            @draw_on_init = false
+            # search string, not used for seleciton on initial load 
+            @search_string = ""
+            # initial select keys, can be used for initial selection
+            @auto_select_keys = []
+            
+        clear_search_string: () =>
+            @search_string = ""
+            
+        get_search_re: () =>
+            if @search_string
+                try
+                    cur_re = new RegExp(@search_string, "gi")
+                catch
+                    cur_re = new RegExp("^$", "gi")
+            else
+                cur_re = new RegExp("^$", "gi")
+            return cur_re
+            
+        set_auto_select_re: () =>
+            if @auto_select_keys.length
+                try
+                    @auto_select_re = new RegExp(@auto_select_keys.join("|"))
+                catch
+                    @auto_select_re = null
+            else
+                @auto_select_re = null
+
+]).service("icswRRDGraphBaseSetting",
+[
+    "$q", "ICSW_URLS", "Restangular",
+(
+    $q, ICSW_URLS, Restangular
 ) ->
     class icswRRDGraphBaseSetting
         constructor: (size_list, timeshift_list, forecast_list, timeframe_list, sensor_action_list) ->
@@ -54,9 +95,13 @@ angular.module(
             ]
             
         update: (size_list, timeshift_list, forecast_list, timeframe_list, sensor_action_list) =>
-            for [attr_name, in_list] in [["size_list", size_list], ["timeshift_list", timeshift_list],
-            ["forecast_list", forecast_list], ["timeframe_list", timeframe_list],
-            ["sensor_action_list", sensor_action_list]]
+            for [attr_name, in_list] in [
+                ["size_list", size_list]
+                ["timeshift_list", timeshift_list]
+                ["forecast_list", forecast_list]
+                ["timeframe_list", timeframe_list]
+                ["sensor_action_list", sensor_action_list]
+            ]
                 @[attr_name].length = 0
                 for entry in in_list
                     @[attr_name].push(entry)
@@ -67,9 +112,9 @@ angular.module(
             ddict.graph_setting_size = (size for size in @size_list when size.default)[0].idx
             ddict.graph_setting_timeshift = null
             ddict.graph_setting_forecast = null
-            ddict.cf = "MIN"
-            ddict.legend_mode = "f"
-            ddict.scale_mode = "l"
+            ddict.cf = @cf_list[0].short
+            ddict.legend_mode = @legend_mode_list[0].short
+            ddict.scale_mode = @scale_mode_list[0].short
 
         build_luts: () =>
             @size_lut = _.keyBy(@size_list, "idx")
@@ -79,6 +124,16 @@ angular.module(
             @sensor_action_lut = _.keyBy(@sensor_action_list, "idx")
             @link()
 
+        resolve: (setting) =>
+            # replaces all idx with settings
+            for [name, dict] in [
+                ["graph_setting_size", "size_lut"]
+                ["graph_setting_timeshift", "timeshift_lut"]
+                ["graph_setting_forecast", "forecast_lut"]
+            ]
+                if setting[name]? and angular.isNumber(setting[name])
+                    setting[name] = Restangular.stripRestangular(@[dict][setting[name]])
+
         link: () =>
             # create info fields
             for size_e in @size_list
@@ -86,72 +141,39 @@ angular.module(
 
 ]).service("icswRRDGraphBaseSettingService",
 [
-    "$q", "icswCachingCall", "ICSW_URLS", "Restangular",
-    "icswRRDGraphBaseSetting",
+    "$q", "ICSW_URLS", "Restangular",
+    "icswRRDGraphBaseSetting", "icswTreeBase";
 (
-    $q, icswCachingCall, ICSW_URLS, Restangular,
-    icswRRDGraphBaseSetting,
+    $q, ICSW_URLS, Restangular,
+    icswRRDGraphBaseSetting, icswTreeBase,
 ) ->
     rest_map = [
-        [ICSW_URLS.REST_GRAPH_SETTING_SIZE_LIST, {}]
-        [ICSW_URLS.REST_GRAPH_SETTING_TIMESHIFT_LIST, {}]
-        [ICSW_URLS.REST_GRAPH_SETTING_FORECAST_LIST, {}]
-        [ICSW_URLS.REST_GRAPH_TIME_FRAME_LIST, {}]
-        [ICSW_URLS.REST_SENSOR_ACTION_LIST, {}]
+        ICSW_URLS.REST_GRAPH_SETTING_SIZE_LIST
+        ICSW_URLS.REST_GRAPH_SETTING_TIMESHIFT_LIST
+        ICSW_URLS.REST_GRAPH_SETTING_FORECAST_LIST
+        ICSW_URLS.REST_GRAPH_TIME_FRAME_LIST
+        ICSW_URLS.REST_SENSOR_ACTION_LIST
     ]
-    _fetch_dict = {}
-    _result = undefined
-    # load called
-    load_called = false
-
-    load_data = (client) ->
-        load_called = true
-        _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in rest_map)
-        _defer = $q.defer()
-        $q.all(_wait_list).then(
-            (data) ->
-                console.log "*** graphbasesetting loaded ***"
-                _result = new icswRRDGraphBaseSetting(data[0], data[1], data[2], data[3], data[4], data[5])
-                _defer.resolve(_result)
-                for client of _fetch_dict
-                    # resolve clients
-                    _fetch_dict[client].resolve(_result)
-                # reset fetch_dict
-                _fetch_dict = {}
-        )
-        return _defer
-
-    fetch_data = (client) ->
-        if client not of _fetch_dict
-            # register client
-            _defer = $q.defer()
-            _fetch_dict[client] = _defer
-        if _result
-            # resolve immediately
-            _fetch_dict[client].resolve(_result)
-        return _fetch_dict[client]
-
-    return {
-        "load": (client) ->
-            if load_called
-                # fetch when data is present (after sidebar)
-                return fetch_data(client).promise
-            else
-                return load_data(client).promise
-    }
+    return new icswTreeBase(
+        "RRDGraphBaseSetting"
+        icswRRDGraphBaseSetting
+        rest_map
+        ""
+    )
 
 ]).service("icswRRDGraphUserSetting",
 [
-    "$q", "icswCachingCall", "ICSW_URLS", "Restangular",
+    "$q", "ICSW_URLS", "Restangular",
 (
-    $q, icswCachingCall, ICSW_URLS, Restangular
+    $q, ICSW_URLS, Restangular
 ) ->
     class icswRRDGraphUserSetting
-        constructor: (s_list, th_list, @base, @user) ->
+        constructor: (s_list, th_list, @base, user) ->
+            @user = user.user
             @list = []
             @threshold_list = []
             @_active = undefined
-            @update(s_list, th_list)
+            @update((entry for entry in s_list when entry.user == @user.idx), th_list)
 
         update: (s_list, th_list) =>
             @list.length = 0
@@ -195,7 +217,16 @@ angular.module(
             @base.enrich_default(_def)
             return _def
 
+        set_custom_size: (setting, w, h) =>
+            setting.graph_setting_size = {
+                width: w
+                height: h
+            }
+            
         build_luts: () =>
+            for entry in @list
+                if not entry.$$synced?
+                    entry.$$synced = true
             @lut = _.keyBy(@list, "idx")
             @threshold_lut = _.keyBy(@threshold_list, "idx")
             _mv_lut = {}
@@ -208,6 +239,12 @@ angular.module(
 
         get_active: () =>
             return @_active
+
+        resolve: (setting) =>
+            # returns active elemt with all subelements expanded
+            _act = Restangular.stripRestangular(setting)
+            @base.resolve(_act)
+            return _act
 
         set_active: (act) =>
             @_active = act
@@ -234,6 +271,8 @@ angular.module(
             defer = $q.defer()
             Restangular.all(ICSW_URLS.REST_GRAPH_SETTING_LIST.slice(1)).post(new_set).then(
                 (created) =>
+                    # is always synced
+                    created.$$synced = true
                     @list.push(created)
                     @build_luts()
                     defer.resolve(created)
@@ -288,153 +327,177 @@ angular.module(
 
 ]).service("icswRRDGraphUserSettingService",
 [
-    "$q", "icswCachingCall", "ICSW_URLS", "icswUserService", "Restangular",
-    "icswRRDGraphBaseSettingService", "icswRRDGraphUserSetting",
+    "ICSW_URLS", "icswUserService",
+    "icswRRDGraphBaseSettingService", "icswRRDGraphUserSetting", "icswTreeBase",
 (
-    $q, icswCachingCall, ICSW_URLS, icswUserService, Restangular,
-    icswRRDGraphBaseSettingService, icswRRDGraphUserSetting,
+    ICSW_URLS, icswUserService, 
+    icswRRDGraphBaseSettingService, icswRRDGraphUserSetting, icswTreeBase,
 ) ->
     rest_map = [
-        [ICSW_URLS.REST_GRAPH_SETTING_LIST, {}]
-        [ICSW_URLS.REST_SENSOR_THRESHOLD_LIST, {}]
+        ICSW_URLS.REST_GRAPH_SETTING_LIST
+        ICSW_URLS.REST_SENSOR_THRESHOLD_LIST
     ]
-    _fetch_dict = {}
-    _result = undefined
-    # load called
-    load_called = false
+    class LocalTree extends icswTreeBase
+        extra_calls: (client) =>
+            return [
+                icswRRDGraphBaseSettingService.load(client)
+                icswUserService.load(client)
+            ]
 
-    load_data = (client) ->
-        load_called = true
-        _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in rest_map)
-        _wait_list.push(icswRRDGraphBaseSettingService.load(client))
-        _wait_list.push(icswUserService.load(client))
-        _defer = $q.defer()
-        $q.all(_wait_list).then(
-            (data) ->
-                console.log "*** graphusersetting loaded ***"
-                _result = new icswRRDGraphUserSetting((entry for entry in data[0] when entry.user == data[3].user.idx), data[1], data[2], data[3].user)
-                _result.ensure_active().then(
-                    (_act) =>
-                        _defer.resolve(_result)
-                        for client of _fetch_dict
-                            # resolve clients
-                            _fetch_dict[client].resolve(_result)
-                        # reset fetch_dict
-                        _fetch_dict = {}
-                )
-        )
-        return _defer
-
-    fetch_data = (client) ->
-        if client not of _fetch_dict
-            # register client
-            _defer = $q.defer()
-            _fetch_dict[client] = _defer
-        if _result
-            # resolve immediately
-            _fetch_dict[client].resolve(_result)
-        return _fetch_dict[client]
-
-    return {
-        "load": (client) ->
-            if load_called
-                # fetch when data is present (after sidebar)
-                return fetch_data(client).promise
-            else
-                return load_data(client).promise
-    }
+    return new LocalTree(
+        "RRDGraphUserSettings"
+        icswRRDGraphUserSetting
+        rest_map
+        ""
+    )
 
 ]).directive("icswRrdGraphSetting",
 [
-    "$templateCache", "icswRRDGraphUserSettingService", "$compile", "icswComplexModalService",
-    "blockUI", "toaster", "icswToolsSimpleModalService", "icswRRDGraphSettingBackup", "$q",
+    "$templateCache",
 (
-    $templateCache, icswRRDGraphUserSettingService, $compile, icswComplexModalService,
-    blockUI, toaster, icswToolsSimpleModalService, icswRRDGraphSettingBackup, $q,
+    $templateCache,
 ) ->
     return {
         scope: true
         restrict: "EA"
         template: $templateCache.get("icsw.rrd.graphsetting.overview")
-        link: (scope, el, attrs) ->
-            scope.settings = []
-            icswRRDGraphUserSettingService.load(scope.$id).then(
-                (data) ->
-                    scope.settings = data
-                    scope.current = scope.settings.get_active()
-                    scope.edit_settings = () ->
-                        sub_scope = scope.$new()
-                        sub_scope.base_setting = scope.settings.base
-                        sub_scope.user_setting = scope.settings
-                        sub_scope.vars = {
-                            current: sub_scope.user_setting.get_active()
-                            # previous (for changing)
-                            prev: sub_scope.user_setting.get_active()
-                        }
-                        bu_obj = new icswRRDGraphSettingBackup()
-                        bu_obj.create_backup(sub_scope.vars.current)
-
-                        sub_scope.create_setting = () ->
-                            scope.settings.create_setting(sub_scope.vars.current).then(
-                                (new_setting) ->
-                                    scope.select_setting(new_setting)
-                                    # reset current
-                                    bu_obj.restore_backup(sub_scope.vars.current)
-                                    sub_scope.vars.current = new_setting
-                                    sub_scope.vars.prev = new_setting
-                                    # new backup
-                                    bu_obj.create_backup(sub_scope.vars.current)
-                            )
-
-                        sub_scope.save_setting = () ->
-                            scope.settings.get_active().save().then(
-                                (ok) ->
-                                    bu_obj.create_backup(sub_scope.vars.current)
-                            )
-
-                        sub_scope.delete_setting = () ->
-                            cur = sub_scope.vars.current
-                            icswToolsSimpleModalService("Really delete setting '#{cur.name}' ?").then(
-                                (is_ok) ->
-                                    scope.settings.delete_setting(sub_scope.vars.current).then(
-                                        (done) ->
-                                            scope.settings.ensure_active().then(
-                                                (new_act) ->
-                                                    scope.select_setting(new_act)
-                                                    sub_scope.vars.current = new_act
-                                                    sub_scope.vars.prev = new_act
-                                                    bu_obj.create_backup(sub_scope.vars.current)
-                                            )
-                                    )
-                            )
-
-                        sub_scope.select_setting = (a, b, c) ->
-                            bu_obj.restore_backup(sub_scope.vars.prev)
-                            bu_obj.create_backup(sub_scope.vars.current)
-                            sub_scope.vars.prev = sub_scope.vars.current
-                            scope.select_setting(sub_scope.vars.current)
-
-                        icswComplexModalService(
-                            {
-                                message: $compile($templateCache.get("icsw.rrd.graphsetting.modify"))(sub_scope)
-                                title: "RRD graph settings"
-                                ok_label: "Close"
-                                ok_callback: (modal) ->
-                                    # reset current
-                                    bu_obj.restore_backup(sub_scope.vars.current)
-                                    d = $q.defer()
-                                    d.resolve("Close")
-                                    return d.promise
-                            }
-                        ).then(
-                            (fin) ->
-                                sub_scope.$destroy()
-                                scope.current = scope.settings.get_active()
-                        )
-            )
-            scope.select_setting = (setting) ->
-                scope.settings.set_active(setting)
+        controller: "icswRrdGraphSettingCtrl"
     }
+]).controller("icswRrdGraphSettingCtrl",
+[
+    "$scope", "icswRRDGraphUserSettingService", "$compile", "icswComplexModalService",
+    "blockUI", "toaster", "icswToolsSimpleModalService", "icswRRDGraphSettingBackup", "$q",
+    "$templateCache",
+(
+    $scope, icswRRDGraphUserSettingService, $compile, icswComplexModalService,
+    blockUI, toaster, icswToolsSimpleModalService, icswRRDGraphSettingBackup, $q,
+    $templateCache,
+) ->
+    $scope.struct = {
+        # settings tree
+        settings: []
+        # current setting
+        current: undefined
+    }
+
+    load = () ->
+        icswRRDGraphUserSettingService.load($scope.$id).then(
+            (data) ->
+                $scope.struct.settings = data
+                $scope.struct.current = $scope.struct.settings.get_active()
+        )
+
+    load()
+    
+    $scope.select_setting = (setting) ->
+        $scope.struct.settings.set_active(setting)
+
+    $scope.save_current = () ->
+        current = $scope.struct.current
+        if not current.$$synced
+            blockUI.start()
+            $scope.struct.current.save().then(
+                (ok) ->
+                    blockUI.stop()
+                    # only save sets synced to true
+                    $scope.struct.current.$$synced = true
+                (notok) ->
+                    blockUI.stop()
+            )
+
+    $scope.edit_settings = () ->
+        sub_scope = $scope.$new()
+        sub_scope.base_setting = $scope.struct.settings.base
+        sub_scope.user_setting = $scope.struct.settings
+        sub_scope.vars = {
+            current: sub_scope.user_setting.get_active()
+            # previous (for changing)
+            prev: sub_scope.user_setting.get_active()
+        }
+        # to check for changes
+        bu_obj = new icswRRDGraphSettingBackup()
+        bu_obj.create_backup(sub_scope.vars.current)
+
+        # flags for current changed and name is new (== new setting can be created)
+        sub_scope.name_is_new = false
+
+        _check_changed = () ->
+            # update changed flag and name_is_new
+            if bu_obj.changed(sub_scope.vars.current)
+                sub_scope.vars.current.$$synced = false
+            all_names = (entry.name for entry in $scope.struct.settings.list when entry.idx != sub_scope.vars.current.idx)
+            if not bu_obj.attribute_changed(sub_scope.vars.current, "name")
+                sub_scope.name_is_new = false
+            else
+                sub_scope.name_is_new = sub_scope.vars.current.name not in all_names
+
+        sub_scope.create_setting = () ->
+            $scope.struct.settings.create_setting(sub_scope.vars.current).then(
+                (new_setting) ->
+                    $scope.select_setting(new_setting)
+                    sub_scope.vars.current = new_setting
+                    sub_scope.vars.prev = new_setting
+                    # new backup
+                    bu_obj.create_backup(sub_scope.vars.current)
+                    _check_changed()
+            )
+
+        sub_scope.save_setting = () ->
+            $scope.struct.settings.get_active().save().then(
+                (ok) ->
+                    bu_obj.create_backup(sub_scope.vars.current)
+                    # only save sets synced to true
+                    sub_scope.vars.current.$$synced = true
+                    _check_changed()
+            )
+
+        sub_scope.delete_setting = () ->
+            cur = sub_scope.vars.current
+            icswToolsSimpleModalService("Really delete setting '#{cur.name}' ?").then(
+                (is_ok) ->
+                    $scope.struct.settings.delete_setting(sub_scope.vars.current).then(
+                        (done) ->
+                            $scope.struct.settings.ensure_active().then(
+                                (new_act) ->
+                                    $scope.select_setting(new_act)
+                                    sub_scope.vars.current = new_act
+                                    sub_scope.vars.prev = new_act
+                                    bu_obj.create_backup(sub_scope.vars.current)
+                            )
+                    )
+            )
+
+        sub_scope.select_setting = (a, b, c) ->
+            bu_obj.create_backup(sub_scope.vars.current)
+            sub_scope.vars.prev = sub_scope.vars.current
+            $scope.select_setting(sub_scope.vars.current)
+            _check_changed()
+
+        sub_scope.$watch(
+            # track changes
+            "vars.current"
+            (new_val) ->
+                _check_changed()
+            true
+        )
+        sub_scope.$watch()
+
+        icswComplexModalService(
+            {
+                message: $compile($templateCache.get("icsw.rrd.graphsetting.modify"))(sub_scope)
+                title: "RRD graph settings"
+                ok_label: "Close"
+                ok_callback: (modal) ->
+                    d = $q.defer()
+                    # reset current
+                    d.resolve("Close")
+                    return d.promise
+            }
+        ).then(
+            (fin) ->
+                sub_scope.$destroy()
+                $scope.struct.current = $scope.struct.settings.get_active()
+        )
 ]).directive("icswRrdGraphTimeFrame",
 [
     "$templateCache", "icswRRDGraphBaseSettingService", "$compile", "$timeout", "toaster",

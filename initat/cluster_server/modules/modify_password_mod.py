@@ -1,4 +1,4 @@
-# Copyright (C) 2015 Andreas Lang-Nevyjel
+# Copyright (C) 2015-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -20,12 +20,12 @@
 import base64
 import bz2
 
-from django.db.models import Q
 from django.contrib.auth import authenticate
-from initat.cluster.backbone.models import user
-from initat.tools import server_command
+from django.db.models import Q
 
 import cs_base_class
+from initat.cluster.backbone.models import user
+from initat.tools import server_command
 
 
 class modify_password(cs_base_class.server_com):

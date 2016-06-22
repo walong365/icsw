@@ -98,9 +98,11 @@ class graph_rrds(View):
         else:
             start_time = datetime.datetime.now(dateutil.tz.tzutc()) - datetime.timedelta(4 * 3600)
             end_time = datetime.datetime.now(dateutil.tz.tzutc())
+        print settings.DEBUG
         srv_com["parameters"] = E.parameters(
             E.debug_mode("1" if settings.DEBUG else "0"),
-            E.graph_setting("{:d}".format(int(_post["graph_setting"]))),
+            # graph_setting is jsonified dict
+            E.graph_setting(_post["graph_setting"]),
             E.start_time(unicode(start_time)),
             E.end_time(unicode(end_time)),
             E.job_mode(_post.get("job_mode", "none")),

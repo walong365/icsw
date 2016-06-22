@@ -59,6 +59,21 @@ angular.module(
                 delete obj.$$_ICSW_backup_data
                 delete obj.$$_ICSW_backup_def
         
+        attribute_changed: (obj, attr_name) ->
+            if obj.$$_ICSW_backup_data?
+                _bu = obj.$$_ICSW_backup_data
+                if attr_name in @simple_attributes
+                    _changed = obj[attr_name] != _bu[attr_name]
+                else if attr_name in @list_attributes
+                    _attr_name = "compare_#{attr_name}"
+                    if @[_attr_name]
+                        _changed = not @[_attr_name](obj[entry], _bu[entry])
+                    else
+                        _changed = not _.isEqual(obj[entry], _bu[entry])
+                else
+                    _changed = false 
+                return _changed
+                
         changed: (obj) =>
             if obj.$$_ICSW_backup_data?
                 _bu = obj.$$_ICSW_backup_data

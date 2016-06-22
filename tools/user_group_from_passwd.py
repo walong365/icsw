@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (C) 2015 Andreas Lang-Nevyjel
+# Copyright (C) 2015-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -28,9 +28,6 @@ django.setup()
 
 from django.db.models import Q
 from initat.cluster.backbone.models import group, user, home_export_list
-from lxml import etree  # @UnresolvedImport
-import codecs
-from initat.tools import logging_tools
 import sys
 import pprint
 import argparse
