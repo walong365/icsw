@@ -136,7 +136,9 @@ class GraphProcess(threading_tools.process_obj, server_mixins.OperationalErrorMi
             )
         LicenseUsage.log_usage(LicenseEnum.graphing, LicenseParameterTypeEnum.device, dev_pks)
         graph_keys = json.loads(srv_com["*graph_key_list"])
-        para_dict = {para.tag: para.text for para in srv_com.xpath(".//parameters", smart_strings=False)[0]}
+        para_dict = {
+            para.tag: para.text for para in srv_com.xpath(".//parameters", smart_strings=False)[0]
+        }
         for key in ["start_time", "end_time"]:
             # cast to datetime
             para_dict[key] = dateutil.parser.parse(para_dict[key])

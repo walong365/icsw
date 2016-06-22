@@ -58,7 +58,7 @@ class RRDGraph(object):
         for key_dict in graph_keys:
             s_key, v_key = (key_dict["struct_key"], key_dict["value_key"])
             # to be improved
-            if key_dict.get("build_info", "") not in ["", None, [""]]:
+            if key_dict.get("build_info", "") not in ["", None, [""], ["", ""]]:
                 # is a compound (has build info)
                 g_key_dict.setdefault(full_graph_key(key_dict), []).append((s_key, v_key))
             else:
@@ -252,13 +252,14 @@ class RRDGraph(object):
                 "all": sum(s_graph_key_dict.values(), [])
             }
         self.log(
-            "graph keys: {}".format(
+            "{}: {}".format(
+                logging_tools.get_plural("graph key", len(graph_keys)),
                 ", ".join([full_graph_key(_v) for _v in graph_keys])
             )
         )
         self.log(
-            "top level keys: {:d}; {}".format(
-                len(s_graph_key_dict),
+            "{}: {}".format(
+                logging_tools.get_plural("top level key", len(s_graph_key_dict)),
                 ", ".join(sorted(s_graph_key_dict)),
             )
         )
@@ -290,7 +291,8 @@ class RRDGraph(object):
         if self.para_dict["graph_setting"].merge_graphs:
             # set header
             [_gt.set_header("all") for _gt in sum(graph_key_list, [])]
-        self.log("number of graphs to create: {:d}".format(len(graph_key_list)))
+        _num_g = sum([len(_graph_line) for _graph_line in graph_key_list])
+        self.log("number of graphs to create: {:d}".format(_num_g))
         graph_list = E.graph_list()
         _job_add_dict = self._get_jobs(dev_dict)
         for _graph_line in graph_key_list:
