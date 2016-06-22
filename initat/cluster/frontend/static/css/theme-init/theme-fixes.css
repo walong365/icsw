@@ -78,8 +78,6 @@ span.fancytree-node:hover {
 .nav-tabs > li > a {
     height:31px;
 }
-.ui-select-match > .ui-select-toggle > i.caret { right:2px; }
-.ui-select-match > .ui-select-toggle > .ui-select-match-text { margin-right:6px;}
 
 ::-webkit-scrollbar-track { background-color: #999999; }
 ::-webkit-scrollbar{ width: 13px; }
@@ -118,5 +116,10 @@ pre {
 table.rotateheaders th {
     background-color: #313131;
 }
+.modal-body table.rotateheaders th {
+    background-color: #555555;
+}
 
-
+.input-group-addon {
+    background-color: #d5d5d5;
+}

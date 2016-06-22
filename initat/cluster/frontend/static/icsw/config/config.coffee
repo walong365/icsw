@@ -298,9 +298,9 @@ config_module = angular.module(
 
         get_filter_class: (name) ->
             if _filter_settings[name]
-                return "btn btn-sm btn-success"
+                return "btn btn-success"
             else
-                return "btn btn-sm btn-default"
+                return "btn btn-default"
 
         change_filter_setting: (name) ->
             _filter_settings[name] = ! _filter_settings[name]

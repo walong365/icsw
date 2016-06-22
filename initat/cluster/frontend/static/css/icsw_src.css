@@ -171,6 +171,7 @@ del {
 .ace_editor {
     height: 200px;
 }
+.input-group .form-control-inline,
 .form-control-inline {
     min-width: 0;
     width: auto;
@@ -195,4 +196,27 @@ ul.fancytree-container {
 }
 .fancytree-checkbox{
     margin-top:2px;
+}
+.label-group>.label:first-child {
+	border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    margin-right: 0;
+    border-right: 1px solid #cccccc;
+}
+.label-group>.label:not(.label:first-child):not(.label:last-child)   {
+    border-radius: 0;
+    margin-right: 0;
+    margin-left: 0;
+    border-right: 1px solid #cccccc;
+ }
+.label-group>.label:last-child {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    margin-left: 0;
+}
+.ui-select-match > .ui-select-toggle > i.caret { right: 2px; }
+.ui-select-match > .ui-select-toggle > .ui-select-match-text { margin-right: 6px;}
+
+.input-group-addon-button {
+    padding: 0 4px;
 }

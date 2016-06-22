@@ -3,7 +3,7 @@
         <span ng-if="pages.length > 0">
             <div class="form-group">
                 <!-- small pager -->
-                <ul class="pagination pagination-sm" ng-if="numPages > 1 && numPages < 11"  style="margin-top:4px; margin-bottom:0px;">
+                <ul class="pagination pagination-sm" ng-if="numPages > 1 && numPages < 11"  style="margin-top:0px; margin-bottom:0px;">
                     <li ng-repeat="pag_num in pages" ng-class="{active: pag_num==currentPage}">
                         <a ng-click="selectPage(pag_num)">{{ pag_num }}</a>
                     </li>
