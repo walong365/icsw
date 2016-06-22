@@ -579,7 +579,7 @@ angular.module(
                         graph_list = []
                         # graph matrix
                         graph_mat = {}
-                        if icswParseXMLResponseService(xml)
+                        if icswParseXMLResponseService(xml, 40, false)
                             num_graph = 0
                             for graph in $(xml).find("graph_list > graph")
                                 graph = $(graph)

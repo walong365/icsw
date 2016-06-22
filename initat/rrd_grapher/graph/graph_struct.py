@@ -55,7 +55,7 @@ class GraphVar(object):
         self.scale_y_factor = 1
         self.y_scaled = False
         self.graph_target = graph_target
-        if self.rrd_graph.para_dict["graph_setting"]["legend_mode"] in [GraphLegendModeEnum.full_with_values.value]:
+        if self.rrd_graph.para_dict["graph_setting"].legend_mode in [GraphLegendModeEnum.full_with_values]:
             self.max_info_width = max(2, 60 + int((self.rrd_graph.width - 800) / 8))
         else:
             self.max_info_width = self.rrd_graph.width / 7
@@ -142,7 +142,7 @@ class GraphVar(object):
         # unique_id = device pk
         timeshift = kwargs.get("timeshift", 0)
         self.get_color_and_style()
-        src_cf = self.rrd_graph.para_dict["graph_setting"]["cf"]
+        src_cf = self.rrd_graph.para_dict["graph_setting"].cf.value
         if self.mvs_entry.se_type in ["pde", "mvl"]:
             # pde entry
             _src_str = "{}:{}:{}".format(self.mvs_entry.file_name, self.mvv_entry.name or self.mvv_entry.key, src_cf)
@@ -161,7 +161,7 @@ class GraphVar(object):
             draw_type = draw_type[:-5]
         # plot forecast ?
         if draw_type.startswith("LINE") or (draw_type.startswith("AREA") and not _stacked):
-            show_forecast = True if self.rrd_graph.para_dict["graph_setting"]["graph_setting_forecast"] else False
+            show_forecast = True if self.rrd_graph.para_dict["graph_setting"].graph_setting_forecast else False
         else:
             show_forecast = False
         # area: modes area (pure are), area{1,2,3} (area with lines)
@@ -172,8 +172,8 @@ class GraphVar(object):
             ).format(
                 self.info(timeshift, show_forecast)
             )[:self.max_info_width],
-        ) if self.rrd_graph.para_dict["graph_setting"]["legend_mode"] in [
-            GraphLegendModeEnum.full_with_values.value, GraphLegendModeEnum.only_text.value
+        ) if self.rrd_graph.para_dict["graph_setting"].legend_mode in [
+            GraphLegendModeEnum.full_with_values, GraphLegendModeEnum.only_text
         ] else ""
         if draw_type.startswith("AREA"):
             # support area with outline style
@@ -288,7 +288,7 @@ class GraphVar(object):
             _sum_unit = _sum_unit[:-2]
             if _sum_unit == "1":
                 _sum_unit = ""
-        if self.rrd_graph.para_dict["graph_setting"]["legend_mode"] in [GraphLegendModeEnum.full_with_values.value]:
+        if self.rrd_graph.para_dict["graph_setting"].legend_mode in [GraphLegendModeEnum.full_with_values]:
             c_lines.append(
                 "COMMENT:<tt>{}</tt>".format(
                     "{:>4s}".format(
@@ -316,7 +316,7 @@ class GraphVar(object):
                     ),
                 ]
             )
-            if self.rrd_graph.para_dict["graph_setting"]["legend_mode"] in [GraphLegendModeEnum.full_with_values.value]:
+            if self.rrd_graph.para_dict["graph_setting"].legend_mode in [GraphLegendModeEnum.full_with_values]:
                 c_lines.extend(
                     [
                         "GPRINT:{}{}:<tt>%6.1lf%s{}</tt>{}".format(
@@ -408,9 +408,9 @@ class GraphVar(object):
 
     @property
     def header_line(self):
-        _lm = self.rrd_graph.para_dict["graph_setting"]["legend_mode"]
-        if _lm in [GraphLegendModeEnum.full_with_values.value, GraphLegendModeEnum.only_text.value]:
-            _sv = _lm in [GraphLegendModeEnum.full_with_values.value]
+        _lm = self.rrd_graph.para_dict["graph_setting"].legend_mode
+        if _lm in [GraphLegendModeEnum.full_with_values, GraphLegendModeEnum.only_text]:
+            _sv = _lm in [GraphLegendModeEnum.full_with_values]
             if _sv:
                 _l_list = self.get_legend_list()
             else:

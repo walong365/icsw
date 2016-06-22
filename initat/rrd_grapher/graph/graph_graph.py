@@ -23,19 +23,18 @@ import datetime
 import os
 import rrdtool
 import stat
-import pprint
-from lxml import etree
 
-from django.db.models import Q
-from lxml.builder import E
 import dateutil.parser
+from django.db.models import Q
+from lxml import etree
+from lxml.builder import E
 
-from initat.cluster.backbone.models.license import License
 from initat.cluster.backbone.models import device, rms_job_run, GraphScaleModeEnum
+from initat.cluster.backbone.models.license import License
 from initat.tools import logging_tools, process_tools
-from ..config import global_config
 from .base_functions import FLOAT_FMT, full_graph_key, rrd_escape, strftime
 from .graph_struct import GraphVar, GraphTarget, DataSource
+from ..config import global_config
 
 
 class RRDGraph(object):
@@ -212,18 +211,18 @@ class RRDGraph(object):
         # end time with forecast
         local_ds = DataSource(self.log_com, dev_pks, graph_keys, self.colorizer)
         self.para_dict["end_time_fc"] = self.para_dict["end_time"]
-        if self.para_dict["graph_setting"]["graph_setting_forecast"]:
-            _fc = self.para_dict["graph_setting"]["graph_setting_forecast"]
-            if _fc["seconds"]:
+        if self.para_dict["graph_setting"].graph_setting_forecast:
+            _fc = self.para_dict["graph_setting"].graph_setting_forecast
+            if _fc.seconds:
                 # add seconds
-                self.para_dict["end_time_fc"] += datetime.timedelta(seconds=_fc["seconds"])
+                self.para_dict["end_time_fc"] += datetime.timedelta(seconds=_fc.seconds)
             else:
                 # add timeframe
                 self.para_dict["end_time_fc"] += self.para_dict["end_time"] - self.para_dict["start_time"]
         timeframe = abs((self.para_dict["end_time_fc"] - self.para_dict["start_time"]).total_seconds())
         graph_width, graph_height = (
-            self.para_dict["graph_setting"]["graph_setting_size"]["width"],
-            self.para_dict["graph_setting"]["graph_setting_size"]["height"],
+            self.para_dict["graph_setting"].graph_setting_size.width,
+            self.para_dict["graph_setting"].graph_setting_size.height,
         )
         self.log(
             "width / height : {:d} x {:d}, timeframe {}".format(
@@ -247,7 +246,7 @@ class RRDGraph(object):
                 )
             )
         )
-        if self.para_dict["graph_setting"]["merge_graphs"]:
+        if self.para_dict["graph_setting"].merge_graphs:
             # reorder all graph_keys into one graph_key_dict
             s_graph_key_dict = {
                 "all": sum(s_graph_key_dict.values(), [])
@@ -269,7 +268,7 @@ class RRDGraph(object):
                 _pk
             ) for _idx, _pk in enumerate(dev_pks)
         ]
-        if self.para_dict["graph_setting"]["merge_devices"]:
+        if self.para_dict["graph_setting"].merge_devices:
             # one device per graph
             graph_key_list = [
                 [
@@ -288,7 +287,7 @@ class RRDGraph(object):
                         ) for dev_id, dev_pk in enumerated_dev_pks
                     ]
                 )
-        if self.para_dict["graph_setting"]["merge_graphs"]:
+        if self.para_dict["graph_setting"].merge_graphs:
             # set header
             [_gt.set_header("all") for _gt in sum(graph_key_list, [])]
         self.log("number of graphs to create: {:d}".format(len(graph_key_list)))
@@ -372,8 +371,8 @@ class RRDGraph(object):
                         draw_it = True
                         removed_keys = set()
                         while draw_it:
-                            if self.para_dict["graph_setting"]["graph_setting_timeshift"]:
-                                timeshift = self.para_dict["graph_setting"]["graph_setting_timeshift"]["seconds"]
+                            if self.para_dict["graph_setting"].graph_setting_timeshift:
+                                timeshift = self.para_dict["graph_setting"].graph_setting_timeshift.seconds
                                 if timeshift == 0:
                                     timeshift = self.abs_end_time - self.abs_start_time
                             else:
@@ -438,14 +437,14 @@ class RRDGraph(object):
                                         val_dict.setdefault(_key, {})[_xml.get("cf")] = (value, _xml)
                                 # list of empty (all none or 0.0 values) keys
                                 _zero_keys = [key for key, value in val_dict.iteritems() if all([_v[0] in [0.0, None] for _k, _v in value.iteritems()])]
-                                if _zero_keys and self.para_dict["graph_setting"]["hide_empty"]:
+                                if _zero_keys and self.para_dict["graph_setting"].hide_empty:
                                     # remove all-zero structs
                                     val_dict = {key: value for key, value in val_dict.iteritems() if key not in _zero_keys}
                                 for key, value in val_dict.iteritems():
                                     _graph_target.feed_draw_result(key, value)
                                 # check if the graphs shall always include y=0
                                 draw_it = False
-                                if self.para_dict["graph_setting"]["include_zero"]:
+                                if self.para_dict["graph_setting"].include_zero:
                                     if "value_min" in draw_result and "value_max" in draw_result:
                                         if draw_result["value_min"] > 0.0:
                                             _graph_target.set_post_arg("-l", "0")
@@ -455,7 +454,7 @@ class RRDGraph(object):
                                             draw_it = True
                                 # check for empty graphs
                                 empty_keys = set(_graph_target.draw_keys) - set(val_dict.keys())
-                                if empty_keys and self.para_dict["graph_setting"]["hide_empty"]:
+                                if empty_keys and self.para_dict["graph_setting"].hide_empty:
                                     self.log(
                                         u"{}: {}".format(
                                             logging_tools.get_plural("empty key", len(empty_keys)),
@@ -475,11 +474,11 @@ class RRDGraph(object):
                         self.log("no DEFs for graph_key_dict {}".format(_graph_target.graph_key), logging_tools.LOG_LEVEL_ERROR)
                 _iterate_line = False
                 _valid_graphs = [_entry for _entry in _graph_line if _entry.valid]
-                if _line_iteration == 0 and self.para_dict["graph_setting"]["scale_mode"] in [
-                    GraphScaleModeEnum.level.value, GraphScaleModeEnum.to100.value
-                ] and (len(_valid_graphs) > 1 or self.para_dict["graph_setting"]["scale_mode"] == GraphScaleModeEnum.to100.value):
+                if _line_iteration == 0 and self.para_dict["graph_setting"].scale_mode in [
+                    GraphScaleModeEnum.level.value, GraphScaleModeEnum.to100
+                ] and (len(_valid_graphs) > 1 or self.para_dict["graph_setting"].scale_mode == GraphScaleModeEnum.to100):
                     _line_iteration += 1
-                    if self.para_dict["graph_setting"]["scale_mode"] == GraphScaleModeEnum.level.value:
+                    if self.para_dict["graph_setting"].scale_mode == GraphScaleModeEnum.level:
                         _vmin_v, _vmax_v = (
                             [_entry.draw_result["value_min"] for _entry in _valid_graphs],
                             [_entry.draw_result["value_max"] for _entry in _valid_graphs],

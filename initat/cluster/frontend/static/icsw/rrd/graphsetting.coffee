@@ -133,6 +133,8 @@ angular.module(
             ]
                 if setting[name]? and angular.isNumber(setting[name])
                     setting[name] = Restangular.stripRestangular(@[dict][setting[name]])
+                if not setting[name]?
+                    delete setting[name]
 
         link: () =>
             # create info fields
