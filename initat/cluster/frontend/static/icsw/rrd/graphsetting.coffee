@@ -23,7 +23,48 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
-).service("icswRRDGraphBaseSetting",
+).service("icswRRDGraphBasicSetting",
+[
+    "$q",
+(
+    $q,
+) ->
+    class icswRRDGraphBasicSetting
+        constructor: () ->
+            # settings visable
+            @show_settings = true
+            # show tree
+            @show_tree = true
+            # draw on init
+            @draw_on_init = false
+            # search string, not used for seleciton on initial load 
+            @search_string = ""
+            # initial select keys, can be used for initial selection
+            @auto_select_keys = []
+            
+        clear_search_string: () =>
+            @search_string = ""
+            
+        get_search_re: () =>
+            if @search_string
+                try
+                    cur_re = new RegExp(@search_string, "gi")
+                catch
+                    cur_re = new RegExp("^$", "gi")
+            else
+                cur_re = new RegExp("^$", "gi")
+            return cur_re
+            
+        set_auto_select_re: () =>
+            if @auto_select_keys.length
+                try
+                    @auto_select_re = new RegExp(@auto_select_keys.join("|"))
+                catch
+                    @auto_select_re = null
+            else
+                @auto_select_re = null
+
+]).service("icswRRDGraphBaseSetting",
 [
     "$q", "ICSW_URLS", "Restangular",
 (

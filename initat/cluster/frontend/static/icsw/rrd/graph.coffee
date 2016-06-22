@@ -168,21 +168,6 @@ angular.module(
 
         toggle_expand: () ->
             @active = !@active
-]).service("icswGraphBaseSetting",
-[
-    "$q",
-(
-    $q,
-) ->
-    class icswGraphBaseSetting
-        constructor: () ->
-            # settings visable
-            @show_settings = true
-            # show tree
-            @show_tree = true
-            # draw on init
-            @draw_on_init = false
-
 ]).controller("icswGraphOverviewCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular",
@@ -190,20 +175,18 @@ angular.module(
     "icswParseXMLResponseService", "toaster", "icswCachingCall", "icswUserService",
     "icswSavedSelectionService", "icswRRDGraphUserSettingService", "icswDeviceTreeService",
     "icswUserGroupTreeService", "icswDeviceTreeHelperService", "icswRRDDisplayGraph",
-    "icswGraphBaseSetting",
+    "icswRRDGraphBasicSetting",
 (
     $scope, $compile, $filter, $templateCache, Restangular,
     $q, $uibModal, $timeout, ICSW_URLS, icswRRDGraphTree, icswSimpleAjaxCall,
     icswParseXMLResponseService, toaster, icswCachingCall, icswUserService,
     icswSavedSelectionService, icswRRDGraphUserSettingService, icswDeviceTreeService,
     icswUserGroupTreeService,  icswDeviceTreeHelperService, icswRRDDisplayGraph,
-    icswGraphBaseSetting,
+    icswRRDGraphBasicSetting,
 ) ->
         moment().utc()
         $scope.timeframe = undefined
         $scope.cur_selected = []
-        # to be set by directive
-        $scope.auto_select_keys = []
         $scope.graph_list = []
         # none, all or selected
         $scope.job_modes = [
@@ -224,8 +207,6 @@ angular.module(
             }
         $scope.selected_job = 0
         $scope.struct = {
-            # search string
-            searchstr: ""
             # is drawing
             is_drawing: false
             # user
@@ -265,7 +246,7 @@ angular.module(
             # job mode
             job_mode: $scope.job_modes[0]
             # base settings
-            base_setting: new icswGraphBaseSetting()
+            base_setting: new icswRRDGraphBasicSetting()
             # custom setting
             custom_setting: undefined
             # custom settin set ?
@@ -349,10 +330,7 @@ angular.module(
                 toaster.pop("error", "", json["error"])
                 $scope.struct.error_string = "Error loading tree"
             else
-                if $scope.auto_select_keys.length
-                    $scope.auto_select_re = new RegExp($scope.auto_select_keys.join("|"))
-                else
-                    $scope.auto_select_re = null
+                $scope.struct.base_setting.set_auto_select_re()
                 # to machine vector
                 root_node = $scope.init_machine_vector()
                 for dev in json
@@ -366,7 +344,7 @@ angular.module(
                 $scope.struct.vector_valid = if $scope.struct.vectordata.num_struct then true else false
                 if $scope.struct.vector_valid
                     $scope.struct.error_string = ""
-                    if $scope.auto_select_re or $scope.cur_selected.length
+                    if $scope.struct.base_setting.auto_select_re or $scope.cur_selected.length
                         # recalc tree when an autoselect_re is present
                         $scope.struct.g_tree.show_selected(false)
                         $scope.selection_changed()
@@ -439,8 +417,8 @@ angular.module(
                 g_key = top.key
             if $scope.cur_selected.length
                 _sel = g_key in $scope.cur_selected
-            else if $scope.auto_select_re
-                _sel = $scope.auto_select_re.test(g_key)
+            else if $scope.struct.base_setting.auto_select_re
+                _sel = $scope.struct.base_setting.auto_select_re.test(g_key)
             else
                 _sel = false
             if g_key of lut
@@ -509,7 +487,7 @@ angular.module(
             $scope.cur_search_to = $timeout($scope.set_search_filter, 500)
 
         $scope.clear_selection = () =>
-            $scope.struct.searchstr = ""
+            $scope.struct.base_setting.clear_search_string()
             $scope.set_search_filter()
 
         $scope.select_with_sensor = () =>
@@ -523,13 +501,8 @@ angular.module(
             $scope.selection_changed()
 
         $scope.set_search_filter = () =>
-            if $scope.struct.searchstr
-                try
-                    cur_re = new RegExp($scope.struct.searchstr, "gi")
-                catch
-                    cur_re = new RegExp("^$", "gi")
-            else
-                cur_re = new RegExp("^$", "gi")
+            cur_re = $scope.struct.base_setting.get_search_re()
+            console.log "*", cur_re
             $scope.struct.g_tree.toggle_tree_state(undefined, -1, false)
             $scope.struct.g_tree.iter(
                 (entry, cur_re) ->
@@ -645,8 +618,6 @@ angular.module(
         link: (scope, el, attrs) ->
             # to be improved
             # console.log attrs
-            if attrs["icswSelectKeys"]?
-                scope.auto_select_keys = attrs["icswSelectKeys"].split(",")
             if attrs["fromdt"]? and parseInt(attrs["fromdt"])
                 scope.from_date_mom = moment.unix(parseInt(attrs["fromdt"]))
             if attrs["todt"]? and parseInt(attrs["todt"])
@@ -659,7 +630,6 @@ angular.module(
                 scope.set_custom_setting(scope.$eval(attrs["icswGraphSetting"]))
             if attrs["icswBaseSetting"]?
                 scope.set_base_setting(scope.$eval(attrs["icswBaseSetting"]))
-            # scope.struct.base_settings.draw_on_init = attrs["draw"] ? false
     }
 ]).service("icswRRDGraphTree",
 [

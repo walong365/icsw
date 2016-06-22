@@ -1011,7 +1011,7 @@ rms_module = angular.module(
     "icswRMSTools", "icswRMSHeaderStruct", "icswRMSSlotInfo", "icswRMSRunningStruct",
     "icswRMSWaitingStruct", "icswRMSDoneStruct", "icswRMSNodeStruct",
     "icswComplexModalService", "icswRMSJobVarStruct", "$window", "icswRMSSchedulerStruct",
-    "icswRRDGraphUserSettingService", "icswGraphBaseSetting",
+    "icswRRDGraphUserSettingService", "icswRRDGraphBasicSetting",
 (
     $scope, $compile, Restangular, ICSW_SIGNALS,
     $q, icswAcessLevelService, $timeout, ICSW_URLS,
@@ -1019,7 +1019,7 @@ rms_module = angular.module(
     icswRMSTools, icswRMSHeaderStruct, icswRMSSlotInfo, icswRMSRunningStruct,
     icswRMSWaitingStruct, icswRMSDoneStruct, icswRMSNodeStruct,
     icswComplexModalService, icswRMSJobVarStruct, $window, icswRMSSchedulerStruct,
-    icswRRDGraphUserSettingService, icswGraphBaseSetting,
+    icswRRDGraphUserSettingService, icswRRDGraphBasicSetting,
 ) ->
         icswAcessLevelService.install($scope)
 
@@ -1071,9 +1071,10 @@ rms_module = angular.module(
                     _user_setting = data[1]
                     console.log _user_setting
                     local_settings = _user_setting.get_default()
-                    base_setting = new icswGraphBaseSetting()
+                    base_setting = new icswRRDGraphBasicSetting()
                     base_setting.draw_on_init = true
                     base_setting.show_tree = false
+                    base_setting.auto_select_keys = ["compound.load", "^net.all.*", "mem.used.phys$", "^swap"]
                     _user_setting.set_custom_size(local_settings, 400, 180)
                     sub_scope = $scope.$new(true)
                     sub_scope.devices = devices
@@ -1087,7 +1088,6 @@ rms_module = angular.module(
 <icsw-rrd-graph
     icsw-sel-man="1"
     icsw-device-list="devices"
-    icsw-select-keys="load.*,net.all.*,mem.used.phys$,^swap.*"
     icsw-graph-setting="local_settings"
     icsw-base-setting="base_setting"
     <!-- fromdt="#{start_time}"
