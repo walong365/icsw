@@ -67,6 +67,10 @@ menu_module = angular.module(
         window.location = "http://www.initat.org"
         return false
 
+    $scope.device_quickselection = (onoff) ->
+        console.log "***"
+        icswLayoutSelectionDialogService.quick_dialog(onoff)
+
     $scope.handbook_url = "/"
     $scope.handbook_url_valid = false
 
@@ -143,7 +147,12 @@ menu_module = angular.module(
     # $scope.device_selection = () ->
     #    console.log "SHOW_DIALOG"
     #     icswLayoutSelectionDialogService.show_dialog()
-]).directive("icswLayoutMenubar", ["$templateCache", ($templateCache) ->
+]).directive("icswLayoutMenubar",
+[
+    "$templateCache",
+(
+    $templateCache,
+) ->
     return {
         restrict: "EA"
         template: $templateCache.get("icsw.layout.menubar")
@@ -180,8 +189,6 @@ menu_module = angular.module(
             scope.num_gauges = 0
             scope.progress_iters = 0
             scope.cur_gauges = {}
-            scope.device_quickselection = (onoff) ->
-                icswLayoutSelectionDialogService.quick_dialog(onoff)
             $rootScope.$on(ICSW_SIGNALS("ICSW_MENU_PROGRESS_BAR_CHANGED"), (event, settings) ->
                 scope.update_progress_bar()
             )

@@ -9,8 +9,16 @@
         <icsw-menu-progress-bars user="struct.current_user"></icsw-menu-progress-bars>
 
         <ul class="nav navbar-nav" ng-if="struct.current_user">
+            <li ng-click="device_quickselection()">
+                <a>
+                    <span class="fa fa-desktop fa-lg" title="Device Selection">
+                    </span>
+                </a>
+            </li>
             <li>
-                <a ui-sref="main.dashboard"><span class="fa fa-home fa-lg" title="Dashboard"></span></a>
+                <a ui-sref="main.dashboard">
+                    <span class="fa fa-home fa-lg" title="Dashboard"></span>
+                </a>
             </li>
         </ul>
 
@@ -72,12 +80,12 @@
 
 <script type="text/ng-template" id="icsw.layout.menubar.progress">
     <ul class="nav navbar-nav">
-        <li class="active" ng-if="num_gauges" ng-click="device_quickselection()">
+        <li class="active" ng-if="num_gauges">
             <div ng-repeat="(key, obj) in cur_gauges" class="progress" style="width:200px; margin-top:10px;">
                 <uib-progressbar animate="true" value="obj.value" type="success"><span>{{ obj.value }} %</span></uib-progressbar>
             </div>
         </li>
-        <li class="active" ng-if="num_gauges == 0" ng-click="device_quickselection()">
+        <li class="active" ng-if="num_gauges == 0">
             <img height="42px" ng-attr-src="{{ initProduct.menu_gfx_url }}" ng-click="redirect_to_init()" style="cursor: pointer" title="{{ initProduct.name }}" alt="{{ initProduct.name }}"/>
         </li>
     </ul>

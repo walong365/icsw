@@ -208,7 +208,36 @@ def _fetch_rms_info(request):
         return namedtuple("RmsInfo", ["run_job_list", "wait_job_list"])([], [])
 
 
-class get_rms_json(View):
+class get_rms_done_json(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        _post = request.POST
+        done_jobs = rms_job_run.objects.all().exclude(
+            Q(end_time=None)
+        ).prefetch_related(
+            "rms_pe_info_set"
+        ).select_related(
+            "rms_queue",
+            "rms_department",
+            "rms_job",
+            "rms_project",
+            "rms_pe",
+        ).prefetch_related(
+            "rmsjobvariable_set",
+        ).order_by(
+            "-rms_job__jobid",
+            "rms_job__taskid",
+            "-pk"
+        )[0:100]
+        _done_ser = rms_job_run_serializer(done_jobs, many=True).data
+        # pprint.pprint(_done_ser)
+        json_resp = {
+            "done_table": _done_ser,
+        }
+        return HttpResponse(json.dumps(json_resp), content_type="application/json")
+
+
+class get_rms_current_json(View):
     @method_decorator(login_required)
     def post(self, request):
         _post = request.POST
@@ -291,30 +320,11 @@ class get_rms_json(View):
         # pprint.pprint(pinning_dict)
         # todo: add jobvars to running (waiting for rescheduled ?) list
         # print dir(rms_info.run_job_list)
-        done_jobs = rms_job_run.objects.all().exclude(
-            Q(end_time=None)
-        ).prefetch_related(
-            "rms_pe_info_set"
-        ).select_related(
-            "rms_queue",
-            "rms_department",
-            "rms_job",
-            "rms_project",
-            "rms_pe",
-        ).prefetch_related(
-            "rmsjobvariable_set",
-        ).order_by(
-            "-rms_job__jobid",
-            "rms_job__taskid",
-            "-pk"
-        )[0:100]
-        _done_ser = rms_job_run_serializer(done_jobs, many=True).data
         # pprint.pprint(_done_ser)
         json_resp = {
             "run_table": _sort_list(rms_info.run_job_list, _post),
             "wait_table": _sort_list(rms_info.wait_job_list, _post),
             "node_table": _sort_list(node_list, _post),
-            "done_table": _done_ser,
             "sched_conf": sge_tools.build_scheduler_info(my_sge_info),
             "files": fc_dict,
             "load_values": _dev_dict,

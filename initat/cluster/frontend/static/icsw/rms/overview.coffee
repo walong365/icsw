@@ -1119,7 +1119,9 @@ rms_module = angular.module(
         $scope.struct = {
             # loading flag
             loading: false
-            # updating flag
+            # do fetch ? (for running data)
+            do_fetch: true
+            # updating flag (for running data)
             updating: false
             # device tree
             device_tree: undefined
@@ -1145,9 +1147,9 @@ rms_module = angular.module(
             # JobVar Struct (for Job variables, referencing jobs)
             jv_struct: new icswRMSJobVarStruct()
             # fetch timeout
-            fetch_timeout: undefined
-            # do fetch ?
-            do_fetch: true
+            fetch_current_timeout: undefined
+            # fetch done timeout
+            fetch_done_timeout: undefined
             # slot info
             slot_info: new icswRMSSlotInfo()
             # draw RRD overlay, not beautifull but working ...
@@ -1203,30 +1205,49 @@ rms_module = angular.module(
                             $scope.struct.rms[key].set_user_disabled(_value)
                     # initial data is now present
                     $scope.struct.initial_data_present = true
-                    # start reload cycle
-                    fetch_data()
+                    # start reload cycles
+                    fetch_current_data()
+                    fetch_done_data()
             )
 
         $scope.$on("$destroy", () ->
-            if $scope.struct.fetch_timeout
-                $timeout.cancel($scope.struct.fetch_timeout)
+            if $scope.struct.fetch_current_timeout
+                $timeout.cancel($scope.struct.fetch_current_timeout)
+            if $scope.struct.fetch_done_timeout
+                $timeout.cancel($scope.struct.fetch_done_timeout)
         )
 
         $scope.initial_load()
 
         $scope.$on(ICSW_SIGNALS("_ICSW_RMS_UPDATE_DATA"), () ->
             if not $scope.struct.updating
-                fetch_data()
+                fetch_current_data()
         )
 
-        fetch_data = () ->
-            if $scope.struct.fetch_timeout
-                $timeout.cancel($scope.struct.fetch_timeout)
+
+        fetch_done_data = () ->
+            if $scope.struct.fetch_done_timeout
+                $timeout.cancel($scope.struct.fetch_done_timeout)
+            if true
+                icswSimpleAjaxCall(
+                    url: ICSW_URLS.RMS_GET_RMS_DONE_JSON
+                    dataType: "json"
+                ).then(
+                    (json) ->
+                        $scope.struct.rms.done.feed_list(json.done_table)
+                        $scope.struct.fetch_done_timeout = $timeout(fetch_done_data, 60000)
+                    (error) ->
+                        $scope.struct.fetch_done_timeout = $timeout(fetch_done_data, 15000)
+            )
+
+        fetch_current_data = () ->
+            if $scope.struct.fetch_current_timeout
+                $timeout.cancel($scope.struct.fetch_current_timeout)
             if $scope.struct.do_fetch and not $scope.struct.updating
                 # only one update
                 $scope.struct.updating = true
                 icswSimpleAjaxCall(
-                    url: ICSW_URLS.RMS_GET_RMS_JSON
+                    url: ICSW_URLS.RMS_GET_RMS_CURRENT_JSON
                     dataType: "json"
                 ).then(
                     (json) ->
@@ -1240,7 +1261,6 @@ rms_module = angular.module(
                         $scope.struct.rms.running.feed_list(json.run_table, json.files)
                         # console.log json.wait_table
                         $scope.struct.rms.waiting.feed_list(json.wait_table)
-                        $scope.struct.rms.done.feed_list(json.done_table)
                         $scope.struct.rms.node.feed_list(json.node_table, json.load_values)
 
                         $scope.struct.jv_struct.feed_end()
@@ -1265,10 +1285,10 @@ rms_module = angular.module(
                                         struct.file_read_error()
                             )
                         $scope.struct.updating = false
-                        $scope.struct.fetch_timeout = $timeout(fetch_data, 15000)
+                        $scope.struct.fetch_current_timeout = $timeout(fetch_current_data, 15000)
                     (error) ->
                         $scope.struct.updating = false
-                        $scope.struct.fetch_timeout = $timeout(fetch_data, 15000)
+#                        $scope.struct.fetch_current_timeout = $timeout(fetch_current_data, 15000)
             )
 
         $scope.close_io = (io_struct) ->
