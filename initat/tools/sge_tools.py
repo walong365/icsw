@@ -1254,7 +1254,7 @@ def build_fstree_info(s_info):
         }
     # build hierarchical fstree info (transcript from XML to dict)
     _fstree = s_info.fstree
-    if _fstree is not None:
+    if _fstree is not None and len(_fstree):
         r_dict = _build_node(_fstree[0])
     else:
         r_dict = {}
