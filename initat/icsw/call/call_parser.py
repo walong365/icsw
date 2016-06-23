@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2015-2016 Andreas Lang-Nevyjel (lang-nevyjel@init.at)
+# Copyright (C) 2016 Andreas Lang-Nevyjel (lang-nevyjel@init.at)
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -19,11 +19,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" show command helps """
-
-import argparse
-import os
-import re
+""" call subsystem commands """
 
 from initat.tools import process_tools
 
@@ -34,8 +30,8 @@ class Parser(object):
 
     def _add_info_parser(self, sub_parser, server_mode):
         _mach_name = process_tools.get_machine_name(short=True)
-        parser = sub_parser.add_parser("info", help="show command help")
-        parser.set_defaults(subcom="info", execute=self._execute)
+        parser = sub_parser.add_parser("call", help="call subsystems")
+        parser.set_defaults(subcom="call", execute=self._execute)
         _choices = ["host-monitoring"]
         if server_mode:
             _choices.extend(
@@ -44,7 +40,7 @@ class Parser(object):
                 ]
             )
         parser.add_argument("--subsys", type=str, default=_choices[0], choices=_choices, help="show command info for given subsystem [%(default)s]")
-        parser.add_argument("args", nargs="*")
+        parser.add_argument("args", nargs="+")
 
         return parser
 

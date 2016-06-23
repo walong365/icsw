@@ -103,8 +103,6 @@ angular.module(
     Restangular, icswSavedSelectionService, ICSW_SIGNALS
 ) ->
 
-    SEL_VAR_NAME = "$$saved_selection"
-
     class icswSelection
         # only instantiated once (for now), also handles saved selections
         constructor: (@cat_sel, @devg_sel, @dev_sel, @tot_dev_sel) ->
@@ -115,14 +113,16 @@ angular.module(
             @tree = undefined
             @sync_with_db(undefined)
             @user = undefined
+            @sel_var_name = "$$saved_selection__$$SESSIONID$$"
             @__user_var_used = false
             $rootScope.$on(ICSW_SIGNALS("ICSW_USER_CHANGED"), ($event, user) =>
                 @user = user
                 if @user?
-                    if user.has_var(SEL_VAR_NAME)
+                    @sel_var_name = @user.expand_var(@sel_var_name)
+                    if user.has_var(@sel_var_name)
                         if not @__user_var_used
                             @__user_var_used = true
-                            @_last_stored = user.get_var(SEL_VAR_NAME).json_value
+                            @_last_stored = user.get_var(@sel_var_name).json_value
                             _stored = angular.fromJson(@_last_stored)
                             @dev_sel = _stored.dev_sel
                             @tot_dev_sel = _stored.tot_dev_sel
@@ -145,7 +145,7 @@ angular.module(
                 if _new_store != @_last_stored
                     @_last_stored = _new_store
                     @user.set_json_var(
-                        SEL_VAR_NAME
+                        @sel_var_name
                         @_last_stored
                     )
 
@@ -362,9 +362,9 @@ angular.module(
         select_parent: () ->
             defer = $q.defer()
             icswSimpleAjaxCall(
-                "url": ICSW_URLS.DEVICE_SELECT_PARENTS
-                "data": {
-                    "angular_sel" : angular.toJson(@tot_dev_sel)
+                url: ICSW_URLS.DEVICE_SELECT_PARENTS
+                data: {
+                    angular_sel: angular.toJson(@tot_dev_sel)
                 }
                 dataType: "json"
             ).then(

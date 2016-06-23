@@ -32,15 +32,18 @@ from django.http.response import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from lxml.builder import E
+from rest_framework import viewsets
 from rest_framework.generics import RetrieveAPIView
 from rest_framework.response import Response
+from rest_framework.routers import DefaultRouter
 
 from initat.cluster.backbone import routing
 from initat.cluster.backbone.license_file_reader import LicenseFileReader
 from initat.cluster.backbone.models import group, user, user_variable, csw_permission, \
     csw_object_permission, group_object_permission, user_object_permission, device, License, device_variable
 from initat.cluster.backbone.models.functions import db_t2000_limit
-from initat.cluster.backbone.serializers import group_object_permission_serializer, user_object_permission_serializer
+from initat.cluster.backbone.serializers import group_object_permission_serializer, user_object_permission_serializer, \
+    user_variable_serializer
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.frontend.license_views import login_required_rest
 from initat.cluster.frontend.rest_views import rest_logging
@@ -48,6 +51,9 @@ from initat.server_version import VERSION_STRING, VERSION_MAJOR, BUILD_MACHINE
 from initat.tools import config_tools, server_command
 
 logger = logging.getLogger("cluster.user")
+
+# local router for local REST urls
+local_router = DefaultRouter()
 
 
 class get_num_quota_servers(View):
@@ -385,3 +391,19 @@ class GetInitProduct(RetrieveAPIView):
                 "build_machine": BUILD_MACHINE,
             }
         )
+
+
+class UserVariableViewSet(viewsets.ModelViewSet):
+    queryset = user_variable.objects.all()
+    serializer_class = user_variable_serializer
+
+    def post(self, request):
+        print "-" * 20
+        cur_var = self.get_object()
+        print "**", cur_var
+        print "*", request.data
+        _var = user_variable.objects.get(pk=1)
+        serializer = user_variable_serializer(_var)
+        return Response(serializer.data)
+
+local_router.register("user_variable_new", UserVariableViewSet)

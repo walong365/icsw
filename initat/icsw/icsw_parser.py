@@ -63,8 +63,9 @@ SC_MAPPING = {
     "relay": ".relay.relay_parser",
     "cstore": ".cstore.cstore_parser",
     "logwatch": ".logwatch.logwatch_parser",
-    #"server": ".service.service_parser",
+    # "server": ".service.service_parser",
     "config": ".config.config_parser",
+    "call": ".call.call_parser",
 }
 
 

@@ -452,15 +452,16 @@ class export_assetbatch_to_xlsx(View):
 
 
 def _generate_csv_entry_for_assetrun(ar, row_writer_func):
-    base_header = ['Asset Type',
-                   'Batch Id',
-                   'Start Time',
-                   'End Time',
-                   'Total Run Time',
-                   'device',
-                   'status',
-                   'result']
-
+    base_header = [
+        'Asset Type',
+        'Batch Id',
+        'Start Time',
+        'End Time',
+        'Total Run Time',
+        'device',
+        'status',
+        'result'
+    ]
 
     if ar.run_start_time and ar.run_end_time:
         ar_run_time = str((ar.run_end_time - ar.run_start_time).total_seconds())
@@ -516,11 +517,13 @@ def _generate_csv_entry_for_assetrun(ar, row_writer_func):
 
             row_writer_func(row)
 
-
     elif ar.run_type == AssetType.LICENSE:
-        base_header.extend([
-            'license_name',
-            'license_key'])
+        base_header.extend(
+            [
+                'license_name',
+                'license_key'
+            ]
+        )
 
         row_writer_func(base_header)
 
@@ -648,7 +651,6 @@ def _generate_csv_entry_for_assetrun(ar, row_writer_func):
                     row.append(value)
 
                     row_writer_func(row)
-
 
     elif ar.run_type == AssetType.PRETTYWINHW:
         row_writer_func(base_header)

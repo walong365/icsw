@@ -36,7 +36,7 @@ def run_code(options):
     server_process(options).loop()
 
 
-def main():
+def main(opt_args=None):
     long_host_name, mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
     global_config.add_config_entries(
@@ -75,6 +75,7 @@ def main():
         ]
     )
     options = global_config.handle_commandline(
+        *opt_args or [],
         description="{}, version is {}".format(
             prog_name,
             VERSION_STRING
