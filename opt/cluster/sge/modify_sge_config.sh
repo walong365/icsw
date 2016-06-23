@@ -102,9 +102,11 @@ qconf -mconf global
 
 # generate scheduler config file
 # generate general config file
+# halftime equals 2 days
 cat > /tmp/.qconf_config << EOF
 flush_submit_sec 1
 flush_finish_sec 1
+halftime 48
 EOF
 
 echo "Modifying SGE schedulerconfig, storing old one in /tmp/.sge_sconf_old ..."

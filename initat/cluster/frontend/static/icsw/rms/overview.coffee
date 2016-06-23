@@ -1005,7 +1005,7 @@ rms_module = angular.module(
 
 ]).controller("icswRMSOverviewCtrl",
 [
-    "$scope", "$compile", "Restangular", "ICSW_SIGNALS",
+    "$scope", "$compile", "Restangular", "ICSW_SIGNALS", "$templateCache",
     "$q", "icswAcessLevelService", "$timeout", "ICSW_URLS",
     "icswSimpleAjaxCall", "icswDeviceTreeService", "icswUserService",
     "icswRMSTools", "icswRMSHeaderStruct", "icswRMSSlotInfo", "icswRMSRunningStruct",
@@ -1013,7 +1013,7 @@ rms_module = angular.module(
     "icswComplexModalService", "icswRMSJobVarStruct", "$window", "icswRMSSchedulerStruct",
     "icswRRDGraphUserSettingService", "icswRRDGraphBasicSetting",
 (
-    $scope, $compile, Restangular, ICSW_SIGNALS,
+    $scope, $compile, Restangular, ICSW_SIGNALS, $templateCache,
     $q, icswAcessLevelService, $timeout, ICSW_URLS,
     icswSimpleAjaxCall, icswDeviceTreeService, icswUserService,
     icswRMSTools, icswRMSHeaderStruct, icswRMSSlotInfo, icswRMSRunningStruct,
@@ -1069,11 +1069,11 @@ rms_module = angular.module(
                 (data) ->
                     _header = data[0].header
                     _user_setting = data[1]
-                    console.log _user_setting
                     local_settings = _user_setting.get_default()
                     base_setting = new icswRRDGraphBasicSetting()
                     base_setting.draw_on_init = true
                     base_setting.show_tree = false
+                    base_setting.show_settings = false
                     base_setting.auto_select_keys = ["compound.load", "^net.all.*", "mem.used.phys$", "^swap"]
                     _user_setting.set_custom_size(local_settings, 400, 180)
                     sub_scope = $scope.$new(true)
@@ -1084,21 +1084,9 @@ rms_module = angular.module(
                     end_time = 0
                     job_mode = 0
                     selected_job = 0
-                    _template = """
-<icsw-rrd-graph
-    icsw-sel-man="1"
-    icsw-device-list="devices"
-    icsw-graph-setting="local_settings"
-    icsw-base-setting="base_setting"
-    <!-- fromdt="#{start_time}"
-    # todt="#{end_time}"
-    # jobmode="#{job_mode}"
-    # selectedjob="#{selected_job}" -->
-></icsw-rrd-graph>
-"""
                     icswComplexModalService(
                         {
-                            message: $compile(_template)(sub_scope)
+                            message: $compile($templateCache.get("icsw.rms.node.rrd"))(sub_scope)
                             title: "RRD for #{_header}"
                             cancel_label: "Close"
                             css_class: "modal-wide"
@@ -1112,7 +1100,7 @@ rms_module = angular.module(
                             sub_scope.$destroy()
                             $scope.struct.do_fetch = true
                             # trigger fetch
-                            fetch_data()
+                            fetch_current_data()
                     )
             )
 
@@ -1156,6 +1144,10 @@ rms_module = angular.module(
             draw_rrd: $scope.draw_rrd
             # header_line
             header_line: "RMS Overview"
+            # has fairshare tree
+            fstree_present: false
+            # fairshare tree
+            fstree: undefined
         }
 
         $scope.initial_load = () ->
@@ -1251,7 +1243,6 @@ rms_module = angular.module(
                     dataType: "json"
                 ).then(
                     (json) ->
-                        # console.log "json=", json
                         # feed scheduler at first
                         $scope.struct.rms.sched.feed_list(json.sched_conf)
                         # reset counter
@@ -1259,10 +1250,11 @@ rms_module = angular.module(
                         $scope.struct.jv_struct.feed_start()
 
                         $scope.struct.rms.running.feed_list(json.run_table, json.files)
-                        # console.log json.wait_table
                         $scope.struct.rms.waiting.feed_list(json.wait_table)
                         $scope.struct.rms.node.feed_list(json.node_table, json.load_values)
 
+                        $scope.struct.fstree = json.fstree
+                        $scope.struct.fstree_present = _.keys(json.fstree).length > 0
                         $scope.struct.jv_struct.feed_end()
 
                         # fetch file ids
@@ -1849,4 +1841,70 @@ rms_module = angular.module(
                     ReactDOM.unmountComponentAtNode(element[0])
             )
     }
+]).directive("icswRmsFairShareTree",
+[
+    "$q", "$templateCache",
+(
+    $q, $templateCache,
+) ->
+    return {
+        restrict: "E"
+        controller: "icswRmsFairShareTreeCtrl"
+        template: $templateCache.get("icsw.rms.fairshare.tree")
+        scope: true
+    }
+]).controller("icswRmsFairShareTreeCtrl",
+[
+    "$scope", "icswRRDGraphUserSettingService", "icswRRDGraphBasicSetting", "$q", "icswAcessLevelService"
+    "icswDeviceTreeService",
+(
+    $scope, icswRRDGraphUserSettingService, icswRRDGraphBasicSetting, $q, icswAcessLevelService,
+    icswDeviceTreeService,
+) ->
+    # ???
+    moment().utc()
+    $scope.struct = {
+        # base data set
+        base_data_set: false
+        # base settings
+        base_setting: undefined
+        # graph setting
+        local_setting: undefined
+        # from and to date
+        from_date: undefined
+        to_date: undefined
+        # devices
+        devices: []
+    }
+    _load = () ->
+        $q.all(
+            [
+                icswRRDGraphUserSettingService.load($scope.$id)
+                icswDeviceTreeService.load($scope.$id)
+            ]
+        ).then(
+            (data) ->
+                _user_setting = data[0]
+                local_setting = _user_setting.get_default()
+                _user_setting.set_custom_size(local_setting, 1024, 400)
+                _dt = data[1]
+                base_setting = new icswRRDGraphBasicSetting()
+                base_setting.draw_on_init = true
+                base_setting.show_tree = false
+                base_setting.show_settings = false
+                base_setting.display_tree_switch = false
+                base_setting.auto_select_keys = ["rms.fairshare\\..*\\.dcpu$", "rms.fairshare\\..*\.share.actual"]
+                $scope.struct.local_setting = local_setting
+                $scope.struct.base_setting = base_setting
+                $scope.struct.base_data_set = true
+                _routes = icswAcessLevelService.get_routing_info().routing
+                $scope.struct.to_date = moment()
+                $scope.struct.from_date = moment().subtract(moment.duration(1, "week"))
+                if "rms-server" of _routes
+                    _server = _routes["rms-server"][0]
+                    _device = _dt.all_lut[_server[2]]
+                    if _device?
+                        $scope.struct.devices.push(_device)
+        )
+    _load()
 ])

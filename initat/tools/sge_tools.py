@@ -1116,10 +1116,15 @@ class SGEInfo(object):
                         else:
                             hosts_el.append(E.host(hg_name))
         self.__scheduler_conf = self.__tree.find("sconf")
+        self.__fstree = self.__tree.find("fstree")
 
     @property
     def scheduler_conf(self):
         return self.__scheduler_conf
+
+    @property
+    def fstree(self):
+        return self.__fstree
 
 
 def get_running_headers(options):
@@ -1233,6 +1238,26 @@ def build_scheduler_info(s_info):
                 ", ".join(_els)
             )
         )
+    return r_dict
+
+
+def build_fstree_info(s_info):
+    def _build_node(in_el):
+        return {
+            "id": int(in_el.attrib["id"]),
+            "shares": int(in_el.attrib["shares"]),
+            "name": in_el.attrib["name"],
+            "type": int(in_el.attrib["type"]),
+            "childs": [
+                _build_node(sub_el) for sub_el in in_el.find("childs")
+            ]
+        }
+    # build hierarchical fstree info (transcript from XML to dict)
+    _fstree = s_info.fstree
+    if _fstree is not None:
+        r_dict = _build_node(_fstree[0])
+    else:
+        r_dict = {}
     return r_dict
 
 

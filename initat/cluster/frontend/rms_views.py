@@ -327,6 +327,7 @@ class get_rms_current_json(View):
             "node_table": _sort_list(node_list, _post),
             "sched_conf": sge_tools.build_scheduler_info(my_sge_info),
             "files": fc_dict,
+            "fstree": sge_tools.build_fstree_info(my_sge_info),
             "load_values": _dev_dict,
         }
         return HttpResponse(json.dumps(json_resp), content_type="application/json")

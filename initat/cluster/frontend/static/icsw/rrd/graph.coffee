@@ -175,17 +175,17 @@ angular.module(
     "icswParseXMLResponseService", "toaster", "icswCachingCall", "icswUserService",
     "icswSavedSelectionService", "icswRRDGraphUserSettingService", "icswDeviceTreeService",
     "icswUserGroupTreeService", "icswDeviceTreeHelperService", "icswRRDDisplayGraph",
-    "icswRRDGraphBasicSetting",
+    "icswRRDGraphBasicSetting", "icswTimeFrameService",
 (
     $scope, $compile, $filter, $templateCache, Restangular,
     $q, $uibModal, $timeout, ICSW_URLS, icswRRDGraphTree, icswSimpleAjaxCall,
     icswParseXMLResponseService, toaster, icswCachingCall, icswUserService,
     icswSavedSelectionService, icswRRDGraphUserSettingService, icswDeviceTreeService,
     icswUserGroupTreeService,  icswDeviceTreeHelperService, icswRRDDisplayGraph,
-    icswRRDGraphBasicSetting,
+    icswRRDGraphBasicSetting, icswTimeFrameService,
 ) ->
         moment().utc()
-        $scope.timeframe = undefined
+        $scope.timeframe = new icswTimeFrameService()
         $scope.cur_selected = []
         $scope.graph_list = []
         # none, all or selected
@@ -258,6 +258,9 @@ angular.module(
 
         $scope.set_base_setting = (setting) ->
             $scope.struct.base_setting = setting
+
+        $scope.set_from_and_to_date = (from_dt, to_dt) ->
+            $scope.timeframe.set_from_to_mom(from_dt, to_dt)
 
         $scope.new_devsel = (dev_list) ->
             # clear graphs
@@ -502,7 +505,7 @@ angular.module(
 
         $scope.set_search_filter = () =>
             cur_re = $scope.struct.base_setting.get_search_re()
-            console.log "*", cur_re
+            # console.log "*", cur_re
             $scope.struct.g_tree.toggle_tree_state(undefined, -1, false)
             $scope.struct.g_tree.iter(
                 (entry, cur_re) ->
@@ -526,8 +529,7 @@ angular.module(
         $scope.$on("cropSet", (event, graph) ->
             event.stopPropagation()
             if graph.crop_width > 600
-                $scope.timeframe.from_date_mom = graph.cts_start_mom
-                $scope.timeframe.to_date_mom = graph.cts_end_mom
+                $scope.timeframe.set_from_to_mom(graph.cts_start_mom, graph.cts_end_mom)
                 $scope.draw_graph()
             else
                 _mins = parseInt(graph.crop_width / 60)
@@ -604,7 +606,7 @@ angular.module(
         $scope.$on("$destroy", () ->
             #console.log "dest"
         )                
-]).directive("icswRrdGraph",
+]).directive("icswRrdGraphNormal",
 [
     "$templateCache",
 (
@@ -614,22 +616,37 @@ angular.module(
         restrict: "EA"
         template: $templateCache.get("icsw.rrd.graph.overview")
         controller: "icswGraphOverviewCtrl"
-        scope: true
+    }
+]).directive("icswRrdGraphRemote",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.rrd.graph.overview")
+        controller: "icswGraphOverviewCtrl"
+        scope: {
+            icsw_graph_setting: "=icswGraphSetting"
+            icsw_base_setting: "=icswBaseSetting"
+            devices: "=icswDeviceList"
+            to_date: "=icswToDate"
+            from_date: "=icswFromDate"
+        }
         link: (scope, el, attrs) ->
-            # to be improved
-            # console.log attrs
-            if attrs["fromdt"]? and parseInt(attrs["fromdt"])
-                scope.from_date_mom = moment.unix(parseInt(attrs["fromdt"]))
-            if attrs["todt"]? and parseInt(attrs["todt"])
-                scope.to_date_mom = moment.unix(parseInt(attrs["todt"]))
-            if attrs["jobmode"]?
-                scope.job_mode = attrs["jobmode"]
-            if attrs["selectedjob"]?
-                scope.selected_job = attrs["selectedjob"]
-            if attrs["icswGraphSetting"]?
-                scope.set_custom_setting(scope.$eval(attrs["icswGraphSetting"]))
-            if attrs["icswBaseSetting"]?
-                scope.set_base_setting(scope.$eval(attrs["icswBaseSetting"]))
+            #if attrs["jobmode"]?
+            #    scope.job_mode = attrs["jobmode"]
+            #if attrs["selectedjob"]?
+            #    scope.selected_job = attrs["selectedjob"]
+            if scope.icsw_graph_setting?
+                scope.set_custom_setting(scope.icsw_graph_setting)
+            if scope.icsw_base_setting?
+                scope.set_base_setting(scope.icsw_base_setting)
+            if scope.devices?
+                scope.new_devsel(scope.devices)
+            if scope.from_date?
+                scope.set_from_and_to_date(scope.from_date, scope.to_date)
     }
 ]).service("icswRRDGraphTree",
 [
@@ -670,7 +687,6 @@ angular.module(
                 return ""
 
         handle_click: ($event, entry) =>
-            console.log entry._node_type, entry.expand
             if entry._node_type == "s"
                 entry.set_expand(!entry.expand)
             else if entry._node_type == "e"
@@ -1001,7 +1017,6 @@ angular.module(
                     num_sensors: React.PropTypes.number.isRequired
                 }
                 render: () ->
-                    console.log @props
                     {div, span, strong} = React.DOM
                     _show_list = []
                     if @props.num_devices
