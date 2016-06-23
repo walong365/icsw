@@ -1893,13 +1893,13 @@ rms_module = angular.module(
                 base_setting.show_tree = false
                 base_setting.show_settings = false
                 base_setting.display_tree_switch = false
-                base_setting.auto_select_keys = ["rms.fairshare\\..*\\.dcpu$", "rms.fairshare\\..*\.share.actual"]
+                base_setting.auto_select_keys = ["rms.fairshare\\..*\\.cpu$", "rms.fairshare\\..*\.share.actual"]
                 $scope.struct.local_setting = local_setting
                 $scope.struct.base_setting = base_setting
                 $scope.struct.base_data_set = true
                 _routes = icswAcessLevelService.get_routing_info().routing
                 $scope.struct.to_date = moment()
-                $scope.struct.from_date = moment().subtract(moment.duration(1, "week"))
+                $scope.struct.from_date = moment().subtract(moment.duration(4, "week"))
                 if "rms-server" of _routes
                     _server = _routes["rms-server"][0]
                     _device = _dt.all_lut[_server[2]]
