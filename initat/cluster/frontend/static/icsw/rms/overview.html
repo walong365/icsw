@@ -21,6 +21,12 @@
         <uib-tab heading="{{ struct.rms.node.info }}">
             <icsw-rms-queue-table icsw-rms-struct="struct.rms.node" icsw-rms-global="struct"></icsw-rms-queue-table>
         </uib-tab>
+        <uib-tab ng-if="struct.fstree_present">
+            <uib-tab-heading>
+                FairShare tree
+            </uib-tab-heading>
+            <icsw-rms-fair-share-tree></icsw-rms-fair-share-tree>
+        </uib-tab>
         <uib-tab ng-repeat="(key, io_struct) in struct.io_dict" active="io_struct.active">
             <uib-tab-heading>
                 {{ key }}
@@ -731,4 +737,27 @@
             </tbody>
         </table>
     </div>
+</script>
+
+<script type="text/ng-template" id="icsw.rms.node.rrd">
+    <icsw-rrd-graph-remote
+        icsw-device-list="devices"
+        icsw-graph-setting="local_settings"
+        icsw-base-setting="base_setting"
+        <!-- fromdt="#{start_time}"
+        # todt="#{end_time}"
+        # jobmode="#{job_mode}"
+        # selectedjob="#{selected_job}" -->
+    ></icsw-rrd-graph>
+</script>
+
+<script type="text/ng-template" id="icsw.rms.fairshare.tree">
+    <icsw-rrd-graph-remote
+        ng-if="struct.base_data_set"
+        icsw-device-list="struct.devices"
+        icsw-graph-setting="struct.local_setting"
+        icsw-base-setting="struct.base_setting"
+        icsw-from-date="struct.from_date"
+        icsw-to-date="struct.to_date"
+    ></icsw-rrd-graph-remote>
 </script>

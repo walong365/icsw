@@ -31,8 +31,12 @@ angular.module(
 ) ->
     class icswRRDGraphBasicSetting
         constructor: () ->
-            # settings visable
+            # settings switch visible
+            @display_settings_switch = true
+            # show settings
             @show_settings = true
+            # tree switch visible
+            @display_tree_switch = true
             # show tree
             @show_tree = true
             # draw on init
@@ -133,6 +137,8 @@ angular.module(
             ]
                 if setting[name]? and angular.isNumber(setting[name])
                     setting[name] = Restangular.stripRestangular(@[dict][setting[name]])
+                if not setting[name]?
+                    delete setting[name]
 
         link: () =>
             # create info fields
@@ -498,6 +504,58 @@ angular.module(
                 sub_scope.$destroy()
                 $scope.struct.current = $scope.struct.settings.get_active()
         )
+]).service("icswTimeFrameService",
+[
+    "$q",
+(
+    $q,
+) ->
+    class icswTimeFrame
+        constructor: (minimum_diff=60000) ->
+            @current = undefined
+            @from_date_mom = undefined
+            @to_date_mom = undefined
+            @valid = false
+            @external_set = false
+            @changed = 0
+            # to be valid
+            @minimum_diff = minimum_diff
+
+        date_to_mom: () =>
+            console.log @from_date, @to_date
+            @from_date_mom = moment(@from_date)
+            @to_date_mom = moment(@to_date)
+
+        mom_to_date: () =>
+            @from_date = @from_date_mom.toDate()
+            @to_date = @to_date_mom.toDate()
+
+        check_validity: () =>
+            @valid = @from_date_mom.isValid() and @to_date_mom.isValid()
+            return @valid
+
+        check_for_exchange: () =>
+            # check if from < to
+            diff = @to_date - @from_date
+            _exc = false
+            if diff < 0
+                [@from_date_mom, @to_date_mom] = [@to_date_mom, @from_date_mom]
+                @mom_to_date()
+                _exc = true
+            return _exc
+
+        check_for_minimum_diff: () =>
+            diff = @to_date - @from_date
+            if diff < @minimum_diff
+                @valid = false
+            return @valid
+
+        set_from_to_mom: (from_mom, to_mom) =>
+            @external_set = true
+            @from_date_mom = from_mom
+            @to_date_mom = to_mom
+            @mom_to_date()
+
 ]).directive("icswRrdGraphTimeFrame",
 [
     "$templateCache", "icswRRDGraphBaseSettingService", "$compile", "$timeout", "toaster",
@@ -518,16 +576,8 @@ angular.module(
                 scope.show_detail = false
             moment().utc()
 
-            _mom_to_date = () ->
-                scope.val.from_date = scope.val.from_date_mom.toDate()
-                scope.val.to_date = scope.val.to_date_mom.toDate()
-
             scope.timeframes = []
-            scope.val =
-                current: undefined
-                from_date_mom: undefined
-                to_date_mom: undefined
-                valid: false
+            scope.val = scope.timeframe
 
             scope.button_bar = {
                 show: true
@@ -591,17 +641,17 @@ angular.module(
             scope.open_calendar = ($event, picker) ->
                 scope[picker].open = true
 
-            # set timeframe from parent scope
-            scope.timeframe = scope.val
             icswRRDGraphBaseSettingService.load(scope.$id).then(
                 (base) ->
                     scope.timeframes = base.timeframe_list
                     scope.val.current = scope.timeframes[0]
-                    scope.change_tf()
+                    if not scope.val.external_set
+                        scope.change_tf()
                     scope.$watch(
                         () ->
                             return scope.val.from_date
                         (new_val) ->
+                            scope.val.from_date_mom = moment(scope.val.from_date)
                             if scope.change_dt_to
                                 $timeout.cancel(scope.change_dt_to)
                             scope.change_dt_to = $timeout(scope.update_dt, 2000)
@@ -610,6 +660,7 @@ angular.module(
                         () ->
                             return scope.val.to_date
                         (new_val) ->
+                            scope.val.to_date_mom = moment(scope.val.to_date)
                             if scope.change_dt_to
                                 $timeout.cancel(scope.change_dt_to)
                             scope.change_dt_to = $timeout(scope.update_dt, 2000)
@@ -620,27 +671,21 @@ angular.module(
                 _timeframe = moment.duration(scope.val.to_date_mom.unix() - scope.val.from_date_mom.unix(), "seconds")
                 scope.val.from_date_mom = moment().subtract(_timeframe)
                 scope.val.to_date_mom = moment()
-                _mom_to_date()
+                scope.val.mom_to_date()
 
             scope.set_to_now = () ->
                 # set to_date to now
                 scope.val.to_date_mom = moment()
-                _mom_to_date()
+                scope.val.mom_to_date()
 
             scope.update_dt = () ->
                 # force moment
-                from_date = moment(scope.val.from_date)
-                to_date = moment(scope.val.to_date)
-                scope.val.valid = from_date.isValid() and to_date.isValid()
-                [scope.val.from_date_mom, scope.val.to_date_mom] = [from_date, to_date]
-                if scope.val.valid
-                    diff = to_date - from_date
-                    if diff < 0
+                scope.val.date_to_mom()
+                if scope.val.check_validity()
+                    if scope.val.check_for_exchange()
                         toaster.pop("warning", "", "exchanged from with to date")
-                        [scope.val.from_date, scope.val.to_date] = [scope.val.to_date, scope.val.from_date]
-                        [scope.val.from_date_mom, scope.val.to_date_mom] = [scope.val.to_date_mom, scope.val.from_date_mom]
-                    else if diff < 60000
-                        scope.val.valid = false
+                    if not scope.val.check_for_minimum_diff()
+                        toaster.pop("error", "", "timespan is too small")
 
             scope.change_tf = () ->
                 get_time_string = (short) ->
@@ -671,6 +716,6 @@ angular.module(
                             _start = _start.subtract(-_tf.timeframe_offset, tfs)
                     scope.val.from_date_mom = _start
                     scope.val.to_date_mom = moment(_start).add(_tf.seconds, "seconds")
-                _mom_to_date()
+                scope.val.mom_to_date()
     }
 ])

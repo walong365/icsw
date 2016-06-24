@@ -131,6 +131,15 @@ class user_serializer(serializers.ModelSerializer):
     info = serializers.CharField(source="get_info", read_only=True)
     login_name = serializers.SerializerMethodField()
     user_variable_set = user_variable_serializer(many=True, read_only=True)
+    session_id = serializers.SerializerMethodField()
+
+    def get_session_id(self, obj):
+        _req = self.context["request"]
+        if hasattr(_req, "session"):
+            _key = _req.session.session_key
+        else:
+            _key = ""
+        return _key
 
     def get_login_name(self, obj):
         _req = self.context["request"]
@@ -148,7 +157,7 @@ class user_serializer(serializers.ModelSerializer):
             "allowed_device_groups", "aliases", "db_is_auth_for_password", "is_superuser",
             "home_dir_created", "user_quota_setting_set", "info", "scan_user_home", "scan_depth",
             "only_webfrontend", "home", "user_scan_run_set", "login_name", "create_rms_user",
-            "user_variable_set",
+            "user_variable_set", "session_id",
         )
 
 

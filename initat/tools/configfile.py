@@ -38,9 +38,9 @@ class config_proxy(BaseProxy):
     def add_config_entries(self, ce_list, **kwargs):
         return self._callmethod("add_config_entries", (ce_list,), kwargs)
 
-    def handle_commandline(self, **kwargs):
+    def handle_commandline(self, *args, **kwargs):
         kwargs["proxy_call"] = True
-        ret_value, exit_code = self._callmethod("handle_commandline", [], kwargs)
+        ret_value, exit_code = self._callmethod("handle_commandline", list(args), kwargs)
         # handle exit code
         if exit_code is not None:
             sys.exit(exit_code)
@@ -698,7 +698,11 @@ class configuration(object):
             "arg_list": self.positional_arguments + self.other_arguments
         }
 
-    def handle_commandline(self, **kwargs):
+    def handle_commandline(self, *opt_args, **kwargs):
+        if len(opt_args):
+            opt_args = list(opt_args)
+        else:
+            opt_args = None
         proxy_call = kwargs.pop("proxy_call", False)
         pos_arguments = kwargs.pop("positional_arguments", False)
         pos_arguments_optional = kwargs.pop("positional_arguments_optional", False)
@@ -726,7 +730,7 @@ class configuration(object):
                 if partial:
                     options, rest_args = my_parser.parse_known_args()
                 else:
-                    options, rest_args = (my_parser.parse_args(), [])
+                    options, rest_args = (my_parser.parse_args(opt_args), [])
             except:
                 # catch parse errors
                 if self.exit_code is not None:

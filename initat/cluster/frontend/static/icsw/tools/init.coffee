@@ -461,9 +461,11 @@ angular.module(
 
                     if parseInt(attrs.icswSelMan)
                         # popup mode, watch for changes (i.e. tab activation)
-                        scope.$watch(attrs["icswDeviceList"], (new_val) ->
-                            if new_val?
-                                _new_sel(new_val)
+                        scope.$watch(
+                            attrs["icswDeviceList"]
+                            (new_val) ->
+                                if new_val?
+                                    _new_sel(new_val)
                         )
                     else
                         # register get_selection when selection changes

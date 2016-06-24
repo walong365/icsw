@@ -47,7 +47,7 @@ from initat.tools import configfile, logging_tools, process_tools, config_store
 try:
     from initat.cluster.backbone.models import ICSWVersion, VERSION_NAME_LIST
 except ImportError:
-    # when doing an update from an ICSW-Version without ICSWVersion model
+    # when doing an update from an older ICSW-Version without ICSWVersion model
     pass
 
 
@@ -311,7 +311,11 @@ class TopologyObject(object):
             value[0]: value[1] for value in netdevice.objects.all().values_list("pk", "device")
         }
         ip_dict = {
-            value[0]: (value[1], value[2]) for value in net_ip.objects.all().values_list("pk", "netdevice", "network")
+            value[0]: (value[1], value[2]) for value in net_ip.objects.all().values_list(
+                "pk",
+                "netdevice",
+                "network",
+            )
         }
         # reorder ip_dict
         nd_lut = {}
@@ -538,18 +542,36 @@ class server_check(object):
                 if self.device:
                     _co = config.objects  # @UndefinedVariable
                     try:
+                        # search config in system_catalog
                         self.config = _co.get(
-                            Q(name=self.__server_type) & Q(device_config__device=self.device) & Q(config_catalog__system_catalog=True)
+                            Q(name=self.__server_type) &
+                            Q(device_config__device=self.device) &
+                            Q(config_catalog__system_catalog=True)
                         )
                     except config.DoesNotExist:  # @UndefinedVariable
                         try:
+                            # search config in non-system_catalog
                             self.config = _co.get(
                                 Q(name=self.__server_type) &
-                                Q(device_config__device__is_meta_device=True) &
-                                Q(device_config__device__device_group=self.device.device_group_id)
+                                Q(device_config__device=self.device) &
+                                Q(config_catalog__system_catalog=False)
                             )
                         except config.DoesNotExist:  # @UndefinedVariable
-                            self.config = None
+                            try:
+                                self.config = _co.get(
+                                    Q(name=self.__server_type) &
+                                    Q(device_config__device__is_meta_device=True) &
+                                    Q(device_config__device__device_group=self.device.device_group_id)
+                                )
+                            except config.DoesNotExist:  # @UndefinedVariable
+                                self.config = None
+                            else:
+                                self.effective_device = device.objects.select_related(
+                                    "domain_tree_node"
+                                ).get(
+                                    Q(device_group=self.device.device_group_id) &
+                                    Q(is_meta_device=True)
+                                )
                         else:
                             self.effective_device = device.objects.select_related(
                                 "domain_tree_node"

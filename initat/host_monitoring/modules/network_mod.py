@@ -33,14 +33,17 @@ from initat.tools import logging_tools, process_tools, server_command
 
 # name of total-device
 TOTAL_DEVICE_NAME = "all"
-# names of netdevices to ignore for total
-TOTAL_IGNORE_LIST = ["lo"]
+# name of maximum device
+MAX_DEVICE_NAME = "max"
+# names of netdevices to ignore for total / max
+TOTAL_IGNORE_LIST = {"lo"}
+MAX_IGNORE_LIST = {"lo"}
 # devices to check
-NET_DEVICES = ["eth", "lo", "myr", "ib", "xenbr", "vmnet", "tun", "tap", TOTAL_DEVICE_NAME]
+NET_DEVICES = {"eth", "lo", "myr", "ib", "xenbr", "vmnet", "tun", "tap", TOTAL_DEVICE_NAME, MAX_DEVICE_NAME}
 # devices for detailed statistics
-DETAIL_DEVICES = ["eth", "tun", "tap"]
+DETAIL_DEVICES = {"eth", "tun", "tap"}
 # devices for ethtool
-ETHTOOL_DEVICES = ["eth", "peth", "tun", "tap", "en"]
+ETHTOOL_DEVICES = {"eth", "peth", "tun", "tap", "en"}
 # devices for ibv_devinfo
 IBV_DEVICES = ["ib"]
 # devices to check for xen-host
@@ -469,14 +472,19 @@ class _general(hm_classes.hm_module):
         nd_dict = self.act_nds.make_speed_dict()
         # pprint.pprint(nd_dict)
         if nd_dict:
-            # add total info
+            # add total and maximum info
             total_dict = {}
+            max_dict = {}
             for key, stuff in nd_dict.iteritems():
                 for s_key, s_value in stuff.iteritems():
                     if s_key not in TOTAL_IGNORE_LIST:
                         total_dict.setdefault(s_key, 0)
                         total_dict[s_key] += s_value
-            nd_dict[TOTAL_DEVICE_NAME] = total_dict
+                    if s_key not in MAX_IGNORE_LIST:
+                        max_dict.setdefault(s_key, 0)
+                        max_dict[s_key] = max(max_dict[s_key], s_value)
+        nd_dict[TOTAL_DEVICE_NAME] = total_dict
+        nd_dict[MAX_DEVICE_NAME] = max_dict
         for key in [_key for _key in self.dev_dict.keys() if _key not in nd_dict]:
             _pf = "net.{}".format(key)
             mvect.unregister_entry("{}.rx".format(key))

@@ -137,6 +137,10 @@ user_module = angular.module(
         
         has_var: (name) =>
             return name of @var_lut
+
+        expand_var: (name) =>
+            name = _.replace(name, "$$SESSIONID$$", @user.session_id)
+            return name
             
         get_var: (name, def_val=null) =>
             if @has_var(name)

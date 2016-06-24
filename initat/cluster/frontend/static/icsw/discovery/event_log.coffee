@@ -46,8 +46,10 @@ angular.module(
 ]).controller("icswDiscoveryEventCtrl",
 [
     "$scope", 'Restangular', 'ICSW_URLS', '$timeout', '$q', 'icswSimpleAjaxCall', 'toaster',
+    "icswTimeFrameService",
 (
-    $scope, Restangular, ICSW_URLS, $timeout, $q, icswSimpleAjaxCall, toaster
+    $scope, Restangular, ICSW_URLS, $timeout, $q, icswSimpleAjaxCall, toaster,
+    icswTimeFrameService,
 ) ->
     # this special pk is translated to mean all devices
 
@@ -104,7 +106,7 @@ angular.module(
         entries_is_loading: false
         entries_reload_observable: 0
         # timeframe from rrd-graph-timeframe
-        timeframe: undefined
+        timeframe: new icswTimeFrameService()
     }
 
     $scope.new_devsel = (sel) ->
