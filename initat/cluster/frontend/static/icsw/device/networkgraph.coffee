@@ -781,11 +781,13 @@ angular.module(
                     svg = @d3_element.append("svg")
                     .attr('class', 'draggable')
                     # viewBox not viewbox
-                    .attr("viewBox", "0 0 1200 760")
-                    .attr("preserveAspectRatio", "xMidYMin slice")
+                    .attr("viewBox", "0 0 widthOfContainer 760")
+                    .attr("preserveAspectRatio", "xMidYMin meet")
                     .attr("version", "1.1")
                     .attr("onStart", @_drag_start)
                     .attr("pointer-events", "all")
+                    .attr("width", "100%")
+                    .attr("height", 760) #$(window).height()-140)
                     $(element).on("mouseclick", (event) =>
                         drag_el = _find_element($(event.target))
                         # console.log "DRAG_EL=", drag_el
@@ -1370,6 +1372,7 @@ angular.module(
         restrict: "EA"
         replace: true
         link: (scope, element, attrs) ->
+
             scope.size = undefined
             scope.$watch("size", (new_val) ->
                 # hm, not working

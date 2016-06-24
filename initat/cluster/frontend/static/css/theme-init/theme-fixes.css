@@ -123,3 +123,8 @@ table.rotateheaders th {
 .input-group-addon {
     background-color: #d5d5d5;
 }
+.btn-group > input:not(:first-child) {
+    -webkit-box-shadow: -1px 0px 0px 0px rgba(0,0,0,0.5);
+    -moz-box-shadow: -1px 0px 0px 0px rgba(0,0,0,0.5);
+    box-shadow: -1px 0px 0px 0px rgba(0,0,0,0.5);
+}
