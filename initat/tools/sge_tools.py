@@ -842,7 +842,6 @@ class SGEInfo(object):
         cur_fs_tree = E.fstree()
         if "0" in id_lut:
             cur_fs_tree.append(id_lut["0"])
-        # print etree.tostring(cur_fs_tree, pretty_print=True)
         return cur_fs_tree
 
     def _check_complexes_dict(self):

@@ -531,7 +531,7 @@ class RMSMonProcess(threading_tools.process_obj):
             log_com=self.log
         )
         _users = [line.strip() for line in cur_out.split("\n")]
-        _fs_tree = self.__sge_info.get_tree().find("fairshare_tree")
+        _fs_tree = self.__sge_info.get_tree().find("fstree")
         if _fs_tree is not None:
             # fairshare tree found
             # check if all users are present
