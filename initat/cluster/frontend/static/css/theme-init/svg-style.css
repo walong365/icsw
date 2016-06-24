@@ -1,6 +1,6 @@
 .sb_lines { stroke: #313131; stroke-width: 0.5; }
 .pieSegment { stroke-width: 0.5; stroke-miterlimit: 2; stroke: #fff; }
-.default_text { fill: black; font-size: 11px; }
+.default_text { fill: #dddddd; font-size: 12px; }
 
 .svg_ok { fill: #92aa00; }  /* sources.coffee */
 .svg_up { fill: #92aa00; }  /* status_history_utils.coffee */

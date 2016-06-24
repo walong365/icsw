@@ -53,7 +53,7 @@ plumber = require("gulp-plumber")
 preprocess = require("gulp-preprocess")
 
 
-use_theme = "default"
+use_theme = "init"
 
 themes =
     default : ["frontend/static/css/theme-default/bootstrap-dialog.css",

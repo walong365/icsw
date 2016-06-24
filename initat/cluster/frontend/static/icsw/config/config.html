@@ -159,7 +159,7 @@
 
 <script type="text/ng-template" id="icsw.config.uploader">
     <div class="input-group">
-        <span class="input-group-addon"><label class="control-label">Upload configuration</label></span>
+        <label class="control-label">Upload configuration</label><br/>
         <input type="file" class="btn btn-sm btn-primary form-control-inline" nv-file-select="" uploader="uploader"/>
         <icsw-tools-button type="upload" ng-show="uploader.queue.length" size="sm" value="upload" ng-click="uploader.uploadAll()"></icsw-tools-button>
     </div>
