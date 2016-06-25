@@ -204,6 +204,7 @@
 <script type="text/ng-template" id="icsw.rms.queue.line">
     <td ng-show="struct.toggle['host']">
         {{ queue.host.host.value }}&nbsp;
+        <icsw-tools-button type="info" size="xs" ng-click="click_node($evvent, queue.host.$$device)" ng-show="queue.host.$$device"></icsw-tools-button>
         <span class="pull-right">
             <icsw-tools-button type="draw" size="xs" ng-show="queue.host.$$has_rrd" ng-click="gstruct.draw_rrd($event, queue.host.$$rrd_device_ids)">
             </icsw-tools-button>

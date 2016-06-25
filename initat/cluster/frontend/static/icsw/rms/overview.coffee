@@ -1015,6 +1015,8 @@ rms_module = angular.module(
                 else
                     cl_info = null
                 # parse job entry, see sge_tools.py
+                if entry.host.value of @struct.name_lut
+                    entry.$$device = @struct.name_lut[entry.host.value]
                 job_dict = n_split(entry.jobs.value)
                 _idx = 0
                 for _vals in _.zip(
@@ -1067,302 +1069,249 @@ rms_module = angular.module(
     icswComplexModalService, icswRMSJobVarStruct, $window, icswRMSSchedulerStruct,
     icswRRDGraphUserSettingService, icswRRDGraphBasicSetting,
 ) ->
-        icswAcessLevelService.install($scope)
+    icswAcessLevelService.install($scope)
 
-        #    scope.show_done_rrd = (event, data) ->
-        #        if data.rms_pe_info.length
-        #            nodelist = (entry.device for entry in data.rms_pe_info)
-        #        else
-        #            nodelist = [data.device]
-        #        rrd_nodes = scope.get_rrd_nodes(nodelist)
-        #        job_id = data.rms_job.jobid
-        #        if data.rms_job.taskid
-        #            job_id = "#{job_id}.#{data.rms_job.taskid}"
-        #        if rrd_nodes.length > 1
-        #            rrd_title = "finished job #{job_id} on nodes " + rrd_nodes.join(",")
-        #        else
-        #            rrd_title = "finished job #{job_id} on node " + rrd_nodes[0]
-        #        scope.show_rrd(event, rrd_nodes, data.start_time, data.end_time, rrd_title, "selected", job_id)
-
-        #        scope.show_job_rrd = (event, job) ->
-        #        rrd_nodes = scope.get_rrd_nodes(job.nodelist.raw)
-        #        job_id = job.job_id.value
-        #        if job.task_id.value
-        #            job_id = "#{job_id}.#{job.task_id.value}"
-        #        if rrd_nodes.length > 1
-        #            rrd_title = "running job #{job_id} on nodes " + rrd_nodes.join(",")
-        #        else
-        #            rrd_title = "running job #{job_id} on node " + rrd_nodes[0]
-        #        scope.show_rrd(event, rrd_nodes, job.start_time.raw, undefined, rrd_title, "selected", job_id)
-
-        $scope.draw_rrd = (event, device_ids) ->
-            # disable fetching
-            $scope.struct.do_fetch = false
-            # set devices
-            devices = ($scope.struct.device_tree.all_lut[_pk] for _pk in device_ids)
-            # console.log "devs=", devices
-            $q.all(
-                [
-                    icswSimpleAjaxCall(
-                        url: ICSW_URLS.DEVICE_DEVICE_LIST_INFO
-                        data:
-                            pk_list: angular.toJson(device_ids)
-                        dataType: "json"
-                    )
-                    icswRRDGraphUserSettingService.load($scope.$id)
-                ]
-            ).then(
-                (data) ->
-                    _header = data[0].header
-                    _user_setting = data[1]
-                    local_settings = _user_setting.get_default()
-                    base_setting = new icswRRDGraphBasicSetting()
-                    base_setting.draw_on_init = true
-                    base_setting.show_tree = false
-                    base_setting.show_settings = false
-                    base_setting.auto_select_keys = ["compound.load", "^net.all.*", "mem.used.phys$", "^swap"]
-                    _user_setting.set_custom_size(local_settings, 400, 180)
-                    sub_scope = $scope.$new(true)
-                    sub_scope.devices = devices
-                    sub_scope.local_settings = local_settings
-                    sub_scope.base_setting = base_setting
-                    start_time = 0
-                    end_time = 0
-                    job_mode = 0
-                    selected_job = 0
-                    icswComplexModalService(
-                        {
-                            message: $compile($templateCache.get("icsw.rms.node.rrd"))(sub_scope)
-                            title: "RRD for #{_header}"
-                            cancel_label: "Close"
-                            css_class: "modal-wide"
-                            cancel_callback: (modal) ->
-                                defer = $q.defer()
-                                defer.resolve("close")
-                                return defer.promise
-                        }
-                    ).then(
-                        (fin) ->
-                            sub_scope.$destroy()
-                            $scope.struct.do_fetch = true
-                            # trigger fetch
-                            fetch_current_data()
-                    )
-            )
-
-        $scope.struct = {
-            # loading flag
-            loading: false
-            # do fetch ? (for running data)
-            do_fetch: true
-            # updating flag (for running data)
-            updating: false
-            # device tree
-            device_tree: undefined
-            # is rms operator
-            rms_operator: false
-            # current user (db entry)
-            user: undefined
-            # current user (icsUser entry)
-            icsw_user: undefined
-            # initial data present
-            initial_data_present: false
-            # search fields
-            search: {
-                running: ""
-                waiting: ""
-                done: ""
-                node: ""
-            }
-            # rms structs
-            rms: {}
-            # IO dict (for stdout / stderr display)
-            io_dict: {}
-            # JobVar Struct (for Job variables, referencing jobs)
-            jv_struct: new icswRMSJobVarStruct()
-            # fetch timeout
-            fetch_current_timeout: undefined
-            # fetch done timeout
-            fetch_done_timeout: undefined
-            # slot info
-            slot_info: new icswRMSSlotInfo()
-            # draw RRD overlay, not beautifull but working ...
-            draw_rrd: $scope.draw_rrd
-            # header_line
-            header_line: "RMS Overview"
-            # has fairshare tree
-            fstree_present: false
-            # fairshare tree
-            fstree: undefined
-        }
-
-        $scope.initial_load = () ->
-            $scope.struct.loading = true
-            $scope.struct.initial_data_present = false
-            # init io-dict
-            $scope.struct.io_dict = {}
-            # init jv-dict
-            $scope.struct.jv_struct.reset()
-            $q.all(
-                [
-                    icswDeviceTreeService.load($scope.$id)
-                    icswUserService.load($scope.$id)
-                    icswSimpleAjaxCall(
-                        url: ICSW_URLS.RMS_GET_HEADER_DICT
-                        dataType: "json"
-                    )
-                ]
-            ).then(
-                (data) ->
-                    $scope.struct.device_tree = data[0]
-                    # build name lookup dict
-                    _dt_name_lut = {}
-                    for entry in $scope.struct.device_tree.all_list
-                        _dt_name_lut[entry.idx] = entry
-                        _dt_name_lut[entry.name] = entry
-                        _dt_name_lut[entry.full_name] = entry
-                    $scope.struct.name_lut = _dt_name_lut
-                    $scope.struct.icsw_user = data[1]
-                    $scope.struct.user = data[1].user
-                    $scope.struct.rms_operator = $scope.acl_modify(null, "backbone.user.rms_operator")
-                    $scope.struct.loading = false
-                    $scope.struct.rms = {
-                        running: new icswRMSRunningStruct(data[2].running_headers, $scope.struct)
-                        waiting: new icswRMSWaitingStruct(data[2].waiting_headers, $scope.struct)
-                        done: new icswRMSDoneStruct(data[2].done_headers, $scope.struct)
-                        node: new icswRMSNodeStruct(data[2].node_headers, $scope.struct)
-                        sched: new icswRMSSchedulerStruct($scope.struct)
+    $scope.draw_rrd = (event, device_ids) ->
+        # disable fetching
+        $scope.struct.do_fetch = false
+        # set devices
+        devices = ($scope.struct.device_tree.all_lut[_pk] for _pk in device_ids)
+        # console.log "devs=", devices
+        $q.all(
+            [
+                icswSimpleAjaxCall(
+                    url: ICSW_URLS.DEVICE_DEVICE_LIST_INFO
+                    data:
+                        pk_list: angular.toJson(device_ids)
+                    dataType: "json"
+                )
+                icswRRDGraphUserSettingService.load($scope.$id)
+            ]
+        ).then(
+            (data) ->
+                _header = data[0].header
+                _user_setting = data[1]
+                local_settings = _user_setting.get_default()
+                base_setting = new icswRRDGraphBasicSetting()
+                base_setting.draw_on_init = true
+                base_setting.show_tree = false
+                base_setting.show_settings = false
+                base_setting.auto_select_keys = ["compound.load", "^net.all.*", "mem.used.phys$", "^swap"]
+                _user_setting.set_custom_size(local_settings, 400, 180)
+                sub_scope = $scope.$new(true)
+                sub_scope.devices = devices
+                sub_scope.local_settings = local_settings
+                sub_scope.base_setting = base_setting
+                start_time = 0
+                end_time = 0
+                job_mode = 0
+                selected_job = 0
+                icswComplexModalService(
+                    {
+                        message: $compile($templateCache.get("icsw.rms.node.rrd"))(sub_scope)
+                        title: "RRD for #{_header}"
+                        cancel_label: "Close"
+                        css_class: "modal-wide"
+                        cancel_callback: (modal) ->
+                            defer = $q.defer()
+                            defer.resolve("close")
+                            return defer.promise
                     }
-                    # apply user settings
-                    _u = $scope.struct.icsw_user
-                    for key of $scope.struct.rms
-                        _var_name = "_rms_wf_#{key}"
-                        # console.log key, _var_name
-                        if _u.has_var(_var_name)
-                            _value = _u.get_var(_var_name).value.split(",")
-                            $scope.struct.rms[key].set_user_disabled(_value)
-                    # initial data is now present
-                    $scope.struct.initial_data_present = true
-                    # start reload cycles
-                    fetch_current_data()
-                    fetch_done_data()
-            )
-
-        $scope.$on("$destroy", () ->
-            if $scope.struct.fetch_current_timeout
-                $timeout.cancel($scope.struct.fetch_current_timeout)
-            if $scope.struct.fetch_done_timeout
-                $timeout.cancel($scope.struct.fetch_done_timeout)
+                ).then(
+                    (fin) ->
+                        sub_scope.$destroy()
+                        $scope.struct.do_fetch = true
+                        # trigger fetch
+                        fetch_current_data()
+                )
         )
 
-        $scope.initial_load()
+    $scope.struct = {
+        # loading flag
+        loading: false
+        # do fetch ? (for running data)
+        do_fetch: true
+        # updating flag (for running data)
+        updating: false
+        # device tree
+        device_tree: undefined
+        # is rms operator
+        rms_operator: false
+        # current user (db entry)
+        user: undefined
+        # current user (icsUser entry)
+        icsw_user: undefined
+        # initial data present
+        initial_data_present: false
+        # search fields
+        search: {
+            running: ""
+            waiting: ""
+            done: ""
+            node: ""
+        }
+        # rms structs
+        rms: {}
+        # IO dict (for stdout / stderr display)
+        io_dict: {}
+        # JobVar Struct (for Job variables, referencing jobs)
+        jv_struct: new icswRMSJobVarStruct()
+        # fetch timeout
+        fetch_current_timeout: undefined
+        # fetch done timeout
+        fetch_done_timeout: undefined
+        # slot info
+        slot_info: new icswRMSSlotInfo()
+        # draw RRD overlay, not beautifull but working ...
+        draw_rrd: $scope.draw_rrd
+        # header_line
+        header_line: "RMS Overview"
+        # has fairshare tree
+        fstree_present: false
+        # fairshare tree
+        fstree: undefined
+    }
 
-        $scope.$on(ICSW_SIGNALS("_ICSW_RMS_UPDATE_DATA"), () ->
-            if not $scope.struct.updating
+    $scope.initial_load = () ->
+        $scope.struct.loading = true
+        $scope.struct.initial_data_present = false
+        # init io-dict
+        $scope.struct.io_dict = {}
+        # init jv-dict
+        $scope.struct.jv_struct.reset()
+        $q.all(
+            [
+                icswDeviceTreeService.load($scope.$id)
+                icswUserService.load($scope.$id)
+                icswSimpleAjaxCall(
+                    url: ICSW_URLS.RMS_GET_HEADER_DICT
+                    dataType: "json"
+                )
+            ]
+        ).then(
+            (data) ->
+                $scope.struct.device_tree = data[0]
+                # build name lookup dict
+                _dt_name_lut = {}
+                for entry in $scope.struct.device_tree.all_list
+                    _dt_name_lut[entry.idx] = entry
+                    _dt_name_lut[entry.name] = entry
+                    _dt_name_lut[entry.full_name] = entry
+                $scope.struct.name_lut = _dt_name_lut
+                $scope.struct.icsw_user = data[1]
+                $scope.struct.user = data[1].user
+                $scope.struct.rms_operator = $scope.acl_modify(null, "backbone.user.rms_operator")
+                $scope.struct.loading = false
+                $scope.struct.rms = {
+                    running: new icswRMSRunningStruct(data[2].running_headers, $scope.struct)
+                    waiting: new icswRMSWaitingStruct(data[2].waiting_headers, $scope.struct)
+                    done: new icswRMSDoneStruct(data[2].done_headers, $scope.struct)
+                    node: new icswRMSNodeStruct(data[2].node_headers, $scope.struct)
+                    sched: new icswRMSSchedulerStruct($scope.struct)
+                }
+                # apply user settings
+                _u = $scope.struct.icsw_user
+                for key of $scope.struct.rms
+                    _var_name = "_rms_wf_#{key}"
+                    # console.log key, _var_name
+                    if _u.has_var(_var_name)
+                        _value = _u.get_var(_var_name).value.split(",")
+                        $scope.struct.rms[key].set_user_disabled(_value)
+                # initial data is now present
+                $scope.struct.initial_data_present = true
+                # start reload cycles
                 fetch_current_data()
+                fetch_done_data()
         )
 
+    $scope.$on("$destroy", () ->
+        if $scope.struct.fetch_current_timeout
+            $timeout.cancel($scope.struct.fetch_current_timeout)
+        if $scope.struct.fetch_done_timeout
+            $timeout.cancel($scope.struct.fetch_done_timeout)
+    )
 
-        fetch_done_data = () ->
-            if $scope.struct.fetch_done_timeout
-                $timeout.cancel($scope.struct.fetch_done_timeout)
-            if true
-                icswSimpleAjaxCall(
-                    url: ICSW_URLS.RMS_GET_RMS_DONE_JSON
-                    dataType: "json"
-                ).then(
-                    (json) ->
-                        $scope.struct.rms.done.feed_list(json.done_table)
-                        $scope.struct.fetch_done_timeout = $timeout(fetch_done_data, 60000)
-                    (error) ->
-                        $scope.struct.fetch_done_timeout = $timeout(fetch_done_data, 15000)
-            )
+    $scope.initial_load()
 
-        fetch_current_data = () ->
-            if $scope.struct.fetch_current_timeout
-                $timeout.cancel($scope.struct.fetch_current_timeout)
-            if $scope.struct.do_fetch and not $scope.struct.updating
-                # only one update
-                $scope.struct.updating = true
-                icswSimpleAjaxCall(
-                    url: ICSW_URLS.RMS_GET_RMS_CURRENT_JSON
-                    dataType: "json"
-                ).then(
-                    (json) ->
-                        # feed scheduler at first
-                        $scope.struct.rms.sched.feed_list(json.sched_conf)
-                        # reset counter
-                        $scope.struct.slot_info.reset()
-                        $scope.struct.jv_struct.feed_start()
+    $scope.$on(ICSW_SIGNALS("_ICSW_RMS_UPDATE_DATA"), () ->
+        if not $scope.struct.updating
+            fetch_current_data()
+    )
 
-                        $scope.struct.rms.running.feed_list(json.run_table, json.files)
-                        $scope.struct.rms.waiting.feed_list(json.wait_table)
-                        $scope.struct.rms.node.feed_list(json.node_table, json.load_values)
 
-                        $scope.struct.fstree = json.fstree
-                        $scope.struct.fstree_present = _.keys(json.fstree).length > 0
-                        $scope.struct.jv_struct.feed_end()
+    fetch_done_data = () ->
+        if $scope.struct.fetch_done_timeout
+            $timeout.cancel($scope.struct.fetch_done_timeout)
+        if true
+            icswSimpleAjaxCall(
+                url: ICSW_URLS.RMS_GET_RMS_DONE_JSON
+                dataType: "json"
+            ).then(
+                (json) ->
+                    $scope.struct.rms.done.feed_list(json.done_table)
+                    $scope.struct.fetch_done_timeout = $timeout(fetch_done_data, 60000)
+                (error) ->
+                    $scope.struct.fetch_done_timeout = $timeout(fetch_done_data, 15000)
+        )
 
-                        # fetch file ids
-                        fetch_list = (struct.id for key, struct of $scope.struct.io_dict when struct.update)
-                        if fetch_list.length
-                            is_ie_below_eleven = /MSIE/.test($window.navigator.userAgent)
-                            icswSimpleAjaxCall(
-                                url: ICSW_URLS.RMS_GET_FILE_CONTENT
-                                data:
-                                    file_ids: angular.toJson(fetch_list)
-                                    is_ie: if is_ie_below_eleven then 1 else 0
-                            ).then(
-                                (xml) ->
-                                    xml = $(xml)
-                                    for key, struct of $scope.struct.io_dict
-                                        struct.feed(xml)
-                                (error) ->
-                                    # mark all io_structs with an update stop
-                                    for key, struct of $scope.struct.io_dict
-                                        struct.file_read_error()
-                            )
-                        $scope.struct.updating = false
-                        $scope.struct.fetch_current_timeout = $timeout(fetch_current_data, 15000)
-                    (error) ->
-                        $scope.struct.updating = false
+    fetch_current_data = () ->
+        if $scope.struct.fetch_current_timeout
+            $timeout.cancel($scope.struct.fetch_current_timeout)
+        if $scope.struct.do_fetch and not $scope.struct.updating
+            # only one update
+            $scope.struct.updating = true
+            icswSimpleAjaxCall(
+                url: ICSW_URLS.RMS_GET_RMS_CURRENT_JSON
+                dataType: "json"
+            ).then(
+                (json) ->
+                    # feed scheduler at first
+                    $scope.struct.rms.sched.feed_list(json.sched_conf)
+                    # reset counter
+                    $scope.struct.slot_info.reset()
+                    $scope.struct.jv_struct.feed_start()
+
+                    $scope.struct.rms.running.feed_list(json.run_table, json.files)
+                    $scope.struct.rms.waiting.feed_list(json.wait_table)
+                    $scope.struct.rms.node.feed_list(json.node_table, json.load_values)
+
+                    $scope.struct.fstree = json.fstree
+                    $scope.struct.fstree_present = _.keys(json.fstree).length > 0
+                    $scope.struct.jv_struct.feed_end()
+
+                    # fetch file ids
+                    fetch_list = (struct.id for key, struct of $scope.struct.io_dict when struct.update)
+                    if fetch_list.length
+                        is_ie_below_eleven = /MSIE/.test($window.navigator.userAgent)
+                        icswSimpleAjaxCall(
+                            url: ICSW_URLS.RMS_GET_FILE_CONTENT
+                            data:
+                                file_ids: angular.toJson(fetch_list)
+                                is_ie: if is_ie_below_eleven then 1 else 0
+                        ).then(
+                            (xml) ->
+                                xml = $(xml)
+                                for key, struct of $scope.struct.io_dict
+                                    struct.feed(xml)
+                            (error) ->
+                                # mark all io_structs with an update stop
+                                for key, struct of $scope.struct.io_dict
+                                    struct.file_read_error()
+                        )
+                    $scope.struct.updating = false
+                    $scope.struct.fetch_current_timeout = $timeout(fetch_current_data, 15000)
+                (error) ->
+                    $scope.struct.updating = false
 #                        $scope.struct.fetch_current_timeout = $timeout(fetch_current_data, 15000)
-            )
+        )
 
-        $scope.close_io = (io_struct) ->
-            # delay closing
-            $timeout(
-                () ->
-                    delete $scope.struct.io_dict[io_struct.id]
-                5
-            )
-
-        $scope.show_rrd = (event, name_list, start_time, end_time, title, job_mode, selected_job) ->
-            dev_pks = ($scope.device_dict[name].pk for name in name_list).join(",")
-            start_time = if start_time then start_time else 0
-            end_time = if end_time then end_time else 0
-            job_mode = if job_mode then job_mode else "none"
-            selected_job = if selected_job then selected_job else "0"
-            rrd_txt = """
-<div class="panel panel-default">
-    <div class="panel-body">
-        <h2>#{title}</h2>
-        <icsw-rrd-graph
-            icsw-sel-man="0"
-            devicepk='#{dev_pks}'
-            selectkeys="load.*,net.all.*,mem.used.phys$,^swap.*"
-            draw="1"
-            mergedevices="0"
-            graphsize="240x100"
-            fromdt="#{start_time}"
-            todt="#{end_time}"
-            jobmode="#{job_mode}"
-            selectedjob="#{selected_job}"
-        >
-        </icsw-rrd-graph>
-    </div>
-</div>
-"""
+    $scope.close_io = (io_struct) ->
+        # delay closing
+        $timeout(
+            () ->
+                delete $scope.struct.io_dict[io_struct.id]
+            5
+        )
 
 ]).directive("icswRmsJobRunningTable",
 [
@@ -1423,9 +1372,15 @@ rms_module = angular.module(
 ]).controller("icswRmsJobDoneCtrl",
 [
     "$scope", "icswRMSIOStruct", "ICSW_SIGNALS",
+    "DeviceOverviewSelection", "DeviceOverviewService",
 (
     $scope, icswRMSIOStruct, ICSW_SIGNALS,
+    DeviceOverviewSelection, DeviceOverviewService,
 ) ->
+    $scope.click_node = ($event, device) ->
+        DeviceOverviewSelection.set_selection([device])
+        DeviceOverviewService($event)
+
 ]).directive("icswRmsQueueTable",
 [
     "$templateCache",
@@ -1438,7 +1393,20 @@ rms_module = angular.module(
         scope:
             struct: "=icswRmsStruct"
             gstruct: "=icswRmsGlobal"
+        controller: "icswRmsQueueTableCtrl",
     }
+]).controller("icswRmsQueueTableCtrl",
+[
+    "$scope", "icswRMSIOStruct", "ICSW_SIGNALS",
+    "DeviceOverviewSelection", "DeviceOverviewService",
+(
+    $scope, icswRMSIOStruct, ICSW_SIGNALS,
+    DeviceOverviewSelection, DeviceOverviewService,
+) ->
+    $scope.click_node = ($event, device) ->
+        DeviceOverviewSelection.set_selection([device])
+        DeviceOverviewService($event)
+
 ]).directive("icswRmsIoStruct",
 [
     "$templateCache",

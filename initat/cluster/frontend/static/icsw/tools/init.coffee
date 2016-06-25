@@ -409,10 +409,10 @@ angular.module(
     }
 ]).directive("icswSelMan",
 [
-    "$rootScope", "ICSW_SIGNALS", "DeviceOverviewSelection", "DeviceOverviewSettings",
+    "$rootScope", "ICSW_SIGNALS", "DeviceOverviewSettings",
     "icswActiveSelectionService", "icswDeviceTreeService",
 (
-    $rootScope, ICSW_SIGNALS, DeviceOverviewService, DeviceOverviewSettings,
+    $rootScope, ICSW_SIGNALS, DeviceOverviewSettings,
     icswActiveSelectionService, icswDeviceTreeService
 ) ->
     # important: for icsw-sel-man to work the controller has to be specified separatedly (and not via overloading the link-function)

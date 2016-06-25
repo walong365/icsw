@@ -967,7 +967,7 @@ angular.module(
                     }
                 ]
     return {
-        "quick_dialog": () ->
+        quick_dialog: () ->
             return quick_dialog()
     }
 ]).service("icswLayoutSelectionTreeService",
