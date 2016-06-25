@@ -438,6 +438,8 @@ rms_module = angular.module(
 
             # list of entries
             @list = []
+            # for incremental builds
+            @obj_cache = {}
 
             @build_cache()
 
@@ -538,11 +540,31 @@ rms_module = angular.module(
                         entry.$$waittime = "---"
 
         feed_xml_list: (simple_list) =>
-            # source is XML (running, waiting, node)
-            @list.length = 0
-            for entry in (_.zipObject(@headers, _line) for _line in simple_list)
-                # console.log entry
-                @list.push(entry)
+            if @build_key?
+                _new_keys = []
+                # incremental build
+                for entry in (_.zipObject(@headers, _line) for _line in simple_list)
+                    _key = @build_key(entry)
+                    _new_keys.push(_key)
+                    if _key of @obj_cache
+                        # update
+                        _.assign(@obj_cache[_key], entry)
+                    else
+                        # new entry
+                        @obj_cache[_key] = entry
+                        @list.push(entry)
+                _old_keys = (_key for _key of @obj_cache when _key not in _new_keys)
+                if _old_keys
+                    for _key in _old_keys
+                        delete @obj_cache[_key]
+                    _.remove(@list, (entry) -> return entry.$$key in _old_keys)
+                @sort_list()
+            else
+                # source is XML (running, waiting, node)
+                @list.length = 0
+                for entry in (_.zipObject(@headers, _line) for _line in simple_list)
+                    # console.log entry
+                    @list.push(entry)
 
         feed_json_list: (simple_list) =>
             # source is json (done)
@@ -620,10 +642,10 @@ rms_module = angular.module(
 ]).service("icswRMSRunningStruct",
 [
     "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswRMSTools",
-    "icswRMSHeaderStruct",
+    "icswRMSHeaderStruct", "icswTools",
 (
     $q, ICSW_URLS, icswSimpleAjaxCall, icswRMSTools,
-    icswRMSHeaderStruct,
+    icswRMSHeaderStruct, icswTools,
 ) ->
     class icswRMSRunningStruct extends icswRMSHeaderStruct
         constructor: (h_struct, struct) ->
@@ -631,7 +653,19 @@ rms_module = angular.module(
             # to save settings after reloads
             @file_info_dict = {}
 
-        feed_list : (simple_list, file_dict) =>
+        build_key: (entry) ->
+            if not entry.$$key?
+                entry.$$key = "#{entry.job_id.value}:#{entry.task_id.value}"
+            return entry.$$key
+
+        sort_list: () ->
+            icswTools.order_in_place(
+                @list
+                ["job_id.value", "task_id.value"]
+                ["asc", "asc"]
+            )
+
+        feed_list: (simple_list, file_dict) =>
             {io_dict} = @struct
             @feed_xml_list(simple_list)
             @set_alter_job_flags()
@@ -685,15 +719,27 @@ rms_module = angular.module(
 
 ]).service("icswRMSWaitingStruct",
 [
-    "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswRMSTools",
+    "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswRMSTools", "icswTools",
     "icswRMSHeaderStruct", "$templateCache", "$compile", "$rootScope", "$timeout",
 (
-    $q, ICSW_URLS, icswSimpleAjaxCall, icswRMSTools,
+    $q, ICSW_URLS, icswSimpleAjaxCall, icswRMSTools, icswTools,
     icswRMSHeaderStruct, $templateCache, $compile, $rootScope, $timeout,
 ) ->
     class icswRMSWaitingStruct extends icswRMSHeaderStruct
         constructor: (h_struct, struct) ->
             super("waiting", h_struct, struct)
+
+        build_key: (entry) ->
+            if not entry.$$key?
+                entry.$$key = "#{entry.job_id.value}:#{entry.task_id.value}"
+            return entry.$$key
+
+        sort_list: () ->
+            icswTools.order_in_place(
+                @list
+                ["prioritiy.value"]
+                ["desc"]
+            )
 
         feed_list: (simple_list) =>
             # get list of currently open popovers
@@ -784,7 +830,7 @@ rms_module = angular.module(
         constructor: (h_struct, struct) ->
             super("done", h_struct, struct)
 
-        feed_list : (simple_list) =>
+        feed_list: (simple_list) =>
             @feed_json_list(simple_list)
             @salt_datetimes()
             @set_full_ids()
@@ -896,7 +942,7 @@ rms_module = angular.module(
             # disable display of this headers
             @hidden_headers = ["state", "slots_reserved", "slots_total"]
 
-        feed_list : (simple_list, values_dict) =>
+        feed_list: (simple_list, values_dict) =>
             @feed_xml_list(simple_list)
 
             # simple loads
@@ -1893,7 +1939,10 @@ rms_module = angular.module(
                 base_setting.show_tree = false
                 base_setting.show_settings = false
                 base_setting.display_tree_switch = false
-                base_setting.auto_select_keys = ["rms.fairshare\\..*\\.cpu$", "rms.fairshare\\..*\.share.actual"]
+                base_setting.auto_select_keys = [
+                    "rms.fairshare\\..*\\.cpu$"
+                    "rms.fairshare\\..*\.share.actual"
+                ]
                 $scope.struct.local_setting = local_setting
                 $scope.struct.base_setting = base_setting
                 $scope.struct.base_data_set = true
