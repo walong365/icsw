@@ -544,6 +544,8 @@ angular.module(
         ICSW_ROUTE_RIGHTS_VALID: "icsw.route.rights.valid"
         # route rights updated, user and acls are valid
         ICSW_ROUTE_RIGHTS_INVALID: "icsw.route.rights.invalid"
+        # send when fair-share tree is selected
+        ICSW_RMS_FAIR_SHARE_TREE_SELECTED: "icsw.rms.fair.share.tree.selected"
 
         # local signals (for local $emit / $on)
 

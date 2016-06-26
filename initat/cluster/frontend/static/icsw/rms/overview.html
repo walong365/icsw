@@ -21,7 +21,7 @@
         <uib-tab heading="{{ struct.rms.node.info }}">
             <icsw-rms-queue-table icsw-rms-struct="struct.rms.node" icsw-rms-global="struct"></icsw-rms-queue-table>
         </uib-tab>
-        <uib-tab ng-if="struct.fstree_present">
+        <uib-tab ng-if="struct.fstree_present" select="select_fairshare_tree()">
             <uib-tab-heading>
                 FairShare tree
             </uib-tab-heading>

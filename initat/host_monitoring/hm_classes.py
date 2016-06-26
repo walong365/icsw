@@ -480,14 +480,16 @@ class mvect_entry(object):
     def _get_val_str(self, val):
         act_pf = ""
         pf_list = ["k", "M", "G", "T", "E", "P"]
+        _div = False
         if self.base != 1:
             while val > self.base * 4:
+                _div = True
                 act_pf = pf_list.pop(0)
                 val = float(val) / self.base
-        if self.v_type == "i":
-            val_str = "{:>10d}    ".format(int(val))
-        elif self.v_type == "f":
+        if self.v_type == "f" or _div:
             val_str = "{:>14.3f}".format(val)
+        elif self.v_type == "i":
+            val_str = "{:>10d}    ".format(int(val))
         else:
             val_str = "{:<14s}".format(str(val))
         return act_pf, val_str

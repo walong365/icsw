@@ -1054,7 +1054,7 @@ rms_module = angular.module(
 ]).controller("icswRMSOverviewCtrl",
 [
     "$scope", "$compile", "Restangular", "ICSW_SIGNALS", "$templateCache",
-    "$q", "icswAcessLevelService", "$timeout", "ICSW_URLS",
+    "$q", "icswAcessLevelService", "$timeout", "ICSW_URLS", "$rootScope",
     "icswSimpleAjaxCall", "icswDeviceTreeService", "icswUserService",
     "icswRMSTools", "icswRMSHeaderStruct", "icswRMSSlotInfo", "icswRMSRunningStruct",
     "icswRMSWaitingStruct", "icswRMSDoneStruct", "icswRMSNodeStruct",
@@ -1062,7 +1062,7 @@ rms_module = angular.module(
     "icswRRDGraphUserSettingService", "icswRRDGraphBasicSetting",
 (
     $scope, $compile, Restangular, ICSW_SIGNALS, $templateCache,
-    $q, icswAcessLevelService, $timeout, ICSW_URLS,
+    $q, icswAcessLevelService, $timeout, ICSW_URLS, $rootScope,
     icswSimpleAjaxCall, icswDeviceTreeService, icswUserService,
     icswRMSTools, icswRMSHeaderStruct, icswRMSSlotInfo, icswRMSRunningStruct,
     icswRMSWaitingStruct, icswRMSDoneStruct, icswRMSNodeStruct,
@@ -1172,6 +1172,9 @@ rms_module = angular.module(
         fstree: undefined
     }
 
+    $scope.select_fairshare_tree = () ->
+        $rootScope.$emit(ICSW_SIGNALS("ICSW_RMS_FAIR_SHARE_TREE_SELECTED"))
+
     $scope.initial_load = () ->
         $scope.struct.loading = true
         $scope.struct.initial_data_present = false
@@ -1273,7 +1276,7 @@ rms_module = angular.module(
 
                     $scope.struct.rms.running.feed_list(json.run_table, json.files)
                     $scope.struct.rms.waiting.feed_list(json.wait_table)
-                    $scope.struct.rms.node.feed_list(json.node_table, json.load_values)
+                    $scope.struct.rms.node.feed_list(json.node_table, json.node_values)
 
                     $scope.struct.fstree = json.fstree
                     $scope.struct.fstree_present = _.keys(json.fstree).length > 0
@@ -1870,10 +1873,10 @@ rms_module = angular.module(
 ]).controller("icswRmsFairShareTreeCtrl",
 [
     "$scope", "icswRRDGraphUserSettingService", "icswRRDGraphBasicSetting", "$q", "icswAcessLevelService"
-    "icswDeviceTreeService",
+    "icswDeviceTreeService", "$rootScope", "ICSW_SIGNALS",
 (
     $scope, icswRRDGraphUserSettingService, icswRRDGraphBasicSetting, $q, icswAcessLevelService,
-    icswDeviceTreeService,
+    icswDeviceTreeService, $rootScope, ICSW_SIGNALS,
 ) ->
     # ???
     moment().utc()
@@ -1889,8 +1892,11 @@ rms_module = angular.module(
         to_date: undefined
         # devices
         devices: []
+        # load_called
+        load_called: false
     }
     _load = () ->
+        $scope.struct.load_called = true
         $q.all(
             [
                 icswRRDGraphUserSettingService.load($scope.$id)
@@ -1923,5 +1929,8 @@ rms_module = angular.module(
                     if _device?
                         $scope.struct.devices.push(_device)
         )
-    _load()
+    $rootScope.$on(ICSW_SIGNALS("ICSW_RMS_FAIR_SHARE_TREE_SELECTED"), () ->
+        if not $scope.struct.load_called
+            _load()
+    )
 ])

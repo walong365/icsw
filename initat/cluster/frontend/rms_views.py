@@ -262,7 +262,7 @@ class get_rms_current_json(View):
         else:
             h_dict = {}
         # required keys
-        req_keys = re.compile("^load\.(1|5|15)$")
+        req_keys = re.compile("^(load\.(1|5|15)$)|(mem\.(avail|free|used)\..*)$")
         # resolve to full host names / dev_pks / uuids
         _dev_dict = {
             _name: {
@@ -328,7 +328,7 @@ class get_rms_current_json(View):
             "sched_conf": sge_tools.build_scheduler_info(my_sge_info),
             "files": fc_dict,
             "fstree": sge_tools.build_fstree_info(my_sge_info),
-            "load_values": _dev_dict,
+            "node_values": _dev_dict,
         }
         return HttpResponse(json.dumps(json_resp), content_type="application/json")
 
