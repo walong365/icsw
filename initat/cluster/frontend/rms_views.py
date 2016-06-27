@@ -118,7 +118,7 @@ def get_job_options(request):
 
 
 def get_node_options(request):
-    return sge_tools.get_empty_node_options(merge_node_queue=True, show_type=True, show_seq=True)
+    return sge_tools.get_empty_node_options(merge_node_queue=True, show_type=True, show_seq=True, show_memory=True)
 
 
 class get_header_dict(View):
@@ -262,7 +262,7 @@ class get_rms_current_json(View):
         else:
             h_dict = {}
         # required keys
-        req_keys = re.compile("^load\.(1|5|15)$")
+        req_keys = re.compile("^(load\.(1|5|15)$)|(mem\.(avail|free|used)\..*)$")
         # resolve to full host names / dev_pks / uuids
         _dev_dict = {
             _name: {
@@ -282,7 +282,7 @@ class get_rms_current_json(View):
                 _value_list = json.loads(_mcc.get("cc_hc_{}".format(_struct["uuid"])))
                 for _list in _value_list:
                     if req_keys.match(_list[1]):
-                        _struct["values"][_list[1]] = _list[5]
+                        _struct["values"][_list[1]] = _list[5] * _list[7]
 
         fc_dict = {}
         cur_time = time.time()
@@ -328,7 +328,7 @@ class get_rms_current_json(View):
             "sched_conf": sge_tools.build_scheduler_info(my_sge_info),
             "files": fc_dict,
             "fstree": sge_tools.build_fstree_info(my_sge_info),
-            "load_values": _dev_dict,
+            "node_values": _dev_dict,
         }
         return HttpResponse(json.dumps(json_resp), content_type="application/json")
 

@@ -91,7 +91,7 @@ angular.module(
             @value_max = parseFloat(@xml.attr("value_max"))
             # complete graphic
             @img_width = parseInt(@xml.attr("image_width"))
-            @img_height = parseInt(@xml.attr("imageheight"))
+            @img_height = parseInt(@xml.attr("image_height"))
             # relevant part, coordinates in pixel
             @gfx_width = parseInt(@xml.attr("graph_width"))
             @gfx_height = parseInt(@xml.attr("graph_height"))
@@ -152,8 +152,8 @@ angular.module(
             @cropped = true
             ts_range = @ts_end - @ts_start
             new_start = @ts_start + parseInt((sel.x - @gfx_left) * ts_range / @gfx_width)
-            new_end = @ts_start + parseInt((sel.x2 - @gfx_left) * ts_range / @gfx_width)
-            @crop_width = parseInt((sel.x2 - sel.x) * ts_range / @gfx_width)
+            new_end = @ts_start + parseInt((sel.x + sel.width - @gfx_left) * ts_range / @gfx_width)
+            @crop_width = parseInt((sel.width) * ts_range / @gfx_width)
             @cts_start_mom = moment.unix(new_start)
             @cts_end_mom = moment.unix(new_end)
 
@@ -384,12 +384,12 @@ angular.module(
                     # structural
                     cur_node = $scope.struct.g_tree.create_node(
                         {
-                            folder : true,
-                            expand : false
+                            folder: true,
+                            expand: false
                             _display_name: if (entry.ti and _last) then entry.ti else _part
-                            _mult : 1
-                            _dev_pks : [$scope.mv_dev_pk]
-                            _node_type : "s"
+                            _mult: 1
+                            _dev_pks:  [$scope.mv_dev_pk]
+                            _node_type: "s"
                             show_select: false
                             build_info: []
                             # marker: this is not an mve entry
@@ -581,7 +581,7 @@ angular.module(
                         graph_list = []
                         # graph matrix
                         graph_mat = {}
-                        if icswParseXMLResponseService(xml, 40, false)
+                        if icswParseXMLResponseService(xml, 40, false, true)
                             num_graph = 0
                             for graph in $(xml).find("graph_list > graph")
                                 graph = $(graph)
@@ -790,27 +790,33 @@ angular.module(
                     myImg = angular.element("<img/>")
                     img_div.append(myImg)
                     myImg.attr("src", _graph.src)
-                    $(myImg).Jcrop({
-                        trackDocument: true
-                        onSelect: (sel) ->
-                            if not _graph.cropped
-                                crop_span.show()
-                            _graph.set_crop(sel)
-                            crop_span.find("span").text(
-                                "cropped timerange: " +
-                                _graph.get_tv(_graph.cts_start_mom) +
-                                " to " +
-                                _graph.get_tv(_graph.cts_end_mom)
-                            )
-                            scope.$digest()
-                        onRelease: () ->
-                            if _graph.cropped
-                                crop_span.hide()
-                            _graph.clear_crop()
-                            scope.$digest()
-                    }, () ->
-                        # not needed ?
-                        bounds = this.getBounds()
+                    $(myImg).load(
+                        () ->
+                            $(myImg).cropper(
+                                {
+                                    # set MinContainer to fixed values in case of hidden load
+                                    minContainerWidth: _graph.img_width
+                                    minContainerHeight: _graph.img_height
+                                    autoCrop: false
+                                    rotatable: false
+                                    zoomable: false
+                                    guides: true
+                                    cropend: (event) ->
+                                        if not _graph.cropped
+                                            crop_span.show()
+                                        _graph.set_crop($(myImg).cropper("getData"))
+                                        crop_span.find("span").text(
+                                            "cropped timerange: " +
+                                            _graph.get_tv(_graph.cts_start_mom) +
+                                            " to " +
+                                            _graph.get_tv(_graph.cts_end_mom)
+                                        )
+                                        scope.$digest()
+                                }
+                    )
+                    # ).on("cropstart.cropper", (event) ->
+                    #     if event.action not in ["crop", "move", "e", "w", "all"]
+                    #        event.preventDefault()
                     )
                     myImg.bind("error", (event) ->
                         _graph.error = true

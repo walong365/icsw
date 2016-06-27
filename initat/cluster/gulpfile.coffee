@@ -80,8 +80,8 @@ sources = {
         "icsw.css"
         [
             "frontend/static/css/ui.fancytree.css",
-            #"frontend/static/css/codemirror.css",
-            "frontend/static/css/jquery.Jcrop.min.css",
+            # "frontend/static/css/luna.css",
+            "frontend/static/css/cropper.css",
             "frontend/static/css/angular-datetimepicker.css",
             "frontend/static/css/angular-block-ui.css",
             "frontend/static/css/select.css",
@@ -89,7 +89,6 @@ sources = {
             "frontend/static/css/smart-table.css",
             "frontend/static/css/font-awesome.min.css",  #before theme
             "frontend/static/css/toaster.css",
-            #"frontend/static/css/bootstrap-dialog.css", part of theme!!!!
             "frontend/static/css/angular-gridster.min.css",
             "frontend/static/css/hotkeys.css",
             # not needed right now, not working with tree-code
@@ -132,7 +131,7 @@ sources = {
             "frontend/static/js/jquery.color.js",
             "frontend/static/js/jquery.blockUI.js",
             "frontend/static/js/moment-with-locales.js",
-            "frontend/static/js/jquery.Jcrop.min.js",
+            "frontend/static/js/cropper.js",
             "frontend/static/js/spin.js",
             "frontend/static/js/ladda.js",
             "frontend/static/js/angular-ladda.js",

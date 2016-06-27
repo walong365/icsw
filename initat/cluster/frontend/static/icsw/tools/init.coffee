@@ -409,10 +409,10 @@ angular.module(
     }
 ]).directive("icswSelMan",
 [
-    "$rootScope", "ICSW_SIGNALS", "DeviceOverviewSelection", "DeviceOverviewSettings",
+    "$rootScope", "ICSW_SIGNALS", "DeviceOverviewSettings",
     "icswActiveSelectionService", "icswDeviceTreeService",
 (
-    $rootScope, ICSW_SIGNALS, DeviceOverviewService, DeviceOverviewSettings,
+    $rootScope, ICSW_SIGNALS, DeviceOverviewSettings,
     icswActiveSelectionService, icswDeviceTreeService
 ) ->
     # important: for icsw-sel-man to work the controller has to be specified separatedly (and not via overloading the link-function)
@@ -544,6 +544,8 @@ angular.module(
         ICSW_ROUTE_RIGHTS_VALID: "icsw.route.rights.valid"
         # route rights updated, user and acls are valid
         ICSW_ROUTE_RIGHTS_INVALID: "icsw.route.rights.invalid"
+        # send when fair-share tree is selected
+        ICSW_RMS_FAIR_SHARE_TREE_SELECTED: "icsw.rms.fair.share.tree.selected"
 
         # local signals (for local $emit / $on)
 

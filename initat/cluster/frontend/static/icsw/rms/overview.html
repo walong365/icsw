@@ -21,7 +21,7 @@
         <uib-tab heading="{{ struct.rms.node.info }}">
             <icsw-rms-queue-table icsw-rms-struct="struct.rms.node" icsw-rms-global="struct"></icsw-rms-queue-table>
         </uib-tab>
-        <uib-tab ng-if="struct.fstree_present">
+        <uib-tab ng-if="struct.fstree_present" select="select_fairshare_tree()">
             <uib-tab-heading>
                 FairShare tree
             </uib-tab-heading>
@@ -205,6 +205,8 @@
     <td ng-show="struct.toggle['host']">
         {{ queue.host.host.value }}&nbsp;
         <span class="pull-right">
+            <icsw-tools-button type="info" size="xs" ng-click="click_node($evvent, queue.host.$$device)" ng-show="queue.host.$$device">
+            </icsw-tools-button>
             <icsw-tools-button type="draw" size="xs" ng-show="queue.host.$$has_rrd" ng-click="gstruct.draw_rrd($event, queue.host.$$rrd_device_ids)">
             </icsw-tools-button>
         </span>
@@ -230,14 +232,8 @@
     <td ng-show="struct.toggle['pe_list']">
         {{ queue.pe_list.value }}
     </td>
-    <td ng-show="struct.toggle['load']">
-        <!-- <div class="row" ng-show="queue.$$load_is_valid">
-            <div class="col-sm-3"><b>{{ queue.load.value }}</b>&nbsp;</div>
-            <div class="col-sm-9" style="width:140px; height:20px;">
-                <uib-progressbar value="queue.$$load_percentage" animate="false"></uib-progressbar>
-            </div>
-        </div>
-        <b ng-show="!queue.$$load_is_valid">{{ queue.load.value }}</b>-->
+    <td ng-show="struct.toggle['memory']">
+        <icsw-rms-memory-info></icsw-rms-memory-info>
     </td>
     <td ng-show="struct.toggle['load']">
         <icsw-rms-load-info></icsw-rms-load-info>

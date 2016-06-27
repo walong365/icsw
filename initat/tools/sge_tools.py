@@ -1138,8 +1138,7 @@ def get_running_headers(options):
     if options.show_memory:
         cur_job.extend(
             [
-                E.virtual_total(),
-                E.virtual_free()
+                E.memory(),
             ]
         )
     cur_job.extend(
@@ -1308,12 +1307,7 @@ def build_running_list(s_info, options, **kwargs):
         )
         if options.show_memory:
             master_h = s_info.get_host(act_job.findtext("queue_name").split("@")[-1])
-            cur_job.extend(
-                [
-                    E.virtual_total(master_h.findtext("resourcevalue[@name='virtual_total']")),
-                    E.virtual_free(master_h.findtext("resourcevalue[@name='virtual_free']"))
-                ]
-            )
+            cur_job.extend(_get_node_memory(master_h))
         cur_job.extend(
             [
                 getattr(E, "complex")(",".join(sorted(i_reqs)) or "---"),
@@ -1599,14 +1593,14 @@ def get_node_headers(options):
     if options.show_memory:
         cur_node.extend(
             [
-                E.virtual_tot(),
-                E.virtual_free()
+                E.memory(),
             ]
         )
     if options.merge_node_queue:
         cur_node.extend(
             [
-                E.load(span="2"),
+                # span was 2, is no longer needed
+                E.load(span="1"),
                 E.slots_used(),
                 E.slots_reserved(),
                 E.slots_total(),
@@ -1678,6 +1672,53 @@ def _get_topology_node(act_h):
             "-"
         )
     return _node
+
+
+def _get_node_memory(act_h):
+    def _parse_mem(in_str):
+        if in_str and len(in_str) > 1 and not in_str[-1].isdigit():
+            return int(
+                float(in_str[:-1]) * {
+                    "k": 1024,
+                    "m": 1024 * 1024,
+                    "g": 1024 * 1024 * 1024,
+                    "t": 1024 * 1024 * 1024 * 1024,
+                }[in_str[-1].lower()]
+            )
+        else:
+            return 0
+
+    def _get_perc(key, pfix):
+        _total = m_dict["{}_total".format(key)]
+        _used = m_dict["{}_used".format(key)]
+        if _total:
+            return "{:.2f} % used of {} {}".format(
+                100. * _used / _total,
+                logging_tools.get_size_str(_total),
+                pfix,
+            )
+        else:
+            return "{} unused".format(pfix)
+
+    # build dict
+    _keys = sum(
+        [
+            ["{}_{}".format(_a, _b) for _a in ["mem", "swap", "virtual"]] for _b in ["used", "total", "free"]
+        ],
+        []
+    )
+    m_dict = {
+        key: _parse_mem(act_h.findtext("resourcevalue[@name='{}']".format(key))) for key in _keys
+    }
+    return [
+        E.memory(
+            "{} / {}".format(
+                _get_perc("mem", "phys"),
+                _get_perc("swap", "swap"),
+            ),
+            raw=json.dumps(m_dict)
+        ),
+    ]
 
 
 def build_node_list(s_info, options):
@@ -1870,12 +1911,7 @@ def build_node_list(s_info, options):
                     )
                 )
             if options.show_memory:
-                cur_node.extend(
-                    [
-                        E.virtual_tot(act_h.findtext("resourcevalue[@name='virtual_total']") or ""),
-                        E.virtual_free(act_h.findtext("resourcevalue[@name='virtual_free']") or "")
-                    ]
-                )
+                cur_node.extend(_get_node_memory(act_h))
             cur_node.extend(
                 [
                     E.load(
@@ -2062,12 +2098,7 @@ def build_node_list(s_info, options):
                     )
                 )
             if options.show_memory:
-                cur_node.extend(
-                    [
-                        E.virtual_tot(act_h.findtext("resourcevalue[@name='virtual_total']") or ""),
-                        E.virtual_free(act_h.findtext("resourcevalue[@name='virtual_free']") or "")
-                    ]
-                )
+                cur_node.extend(_get_node_memory(act_h))
             # print etree.tostring(act_h, pretty_print=True)
             cur_node.extend(
                 [
