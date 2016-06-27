@@ -1626,11 +1626,14 @@ rms_module = angular.module(
             max_load: React.PropTypes.number
             # complex load info
             cl_info: React.PropTypes.object
+            # size, not used right now
+            width: React.PropTypes.number
+            height: React.PropTypes.number
         }
 
         render: () ->
-            _w = 120
-            _h = 21
+            _w = @props.width
+            _h = @props.height
             if @props.cl_info? and @props.cl_info.values? and @props.cl_info.values["load.1"]?
                 _lv = (@props.cl_info.values[_key] for _key in ["load.1", "load.5", "load.15"])
             else
@@ -1717,6 +1720,8 @@ rms_module = angular.module(
                         load: _load
                         max_load: scope.queue.$$max_load
                         cl_info: scope.queue.cl_info
+                        width: 96
+                        height: 18
                     }
                 )
                 element[0]
@@ -1742,6 +1747,9 @@ rms_module = angular.module(
             slots_info: React.PropTypes.object
             # complex load info, current load values and pinning info
             cl_info: React.PropTypes.object
+            # size, width not used right now
+            width: React.PropTypes.number
+            height: React.PropTypes.number
         }
 
         render: () ->
@@ -1761,7 +1769,7 @@ rms_module = angular.module(
                 else
                     pinn_d = {}
                 # baseline size
-                _bs = 10
+                _bs = @props.height / 2
                 _num_sockets = 0
                 _num_cores = 0
                 _num_threads = 0
@@ -1808,7 +1816,7 @@ rms_module = angular.module(
                         _num_cores++
                     _num_sockets++
                 _w = _num_cores * _bs
-                _h = 2 * _bs
+                _h = @props.height
 
                 # console.log @props.topo, _num_sockets, _num_cores, _num_threads
                 return svg(
@@ -1848,6 +1856,8 @@ rms_module = angular.module(
                         topo: scope.queue.topology_raw
                         slots_info: scope.queue.slots_info
                         cl_info: scope.queue.cl_info
+                        height: 16
+                        width: 100
                     }
                 )
                 element[0]

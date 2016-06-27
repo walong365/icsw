@@ -91,7 +91,7 @@ angular.module(
             @value_max = parseFloat(@xml.attr("value_max"))
             # complete graphic
             @img_width = parseInt(@xml.attr("image_width"))
-            @img_height = parseInt(@xml.attr("imageheight"))
+            @img_height = parseInt(@xml.attr("image_height"))
             # relevant part, coordinates in pixel
             @gfx_width = parseInt(@xml.attr("graph_width"))
             @gfx_height = parseInt(@xml.attr("graph_height"))
@@ -794,6 +794,9 @@ angular.module(
                         () ->
                             $(myImg).cropper(
                                 {
+                                    # set MinContainer to fixed values in case of hidden load
+                                    minContainerWidth: _graph.img_width
+                                    minContainerHeight: _graph.img_height
                                     autoCrop: false
                                     rotatable: false
                                     zoomable: false
