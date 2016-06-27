@@ -334,7 +334,7 @@ rms_module = angular.module(
     $q, icswRMSTools,
 ) ->
     class icswRMSQueue
-        constructor: (@name, @host, state_value, seqno, host_state, load_value, max_load, slot_info, topology, cl_info) ->
+        constructor: (@name, @host, state_value, seqno, host_state, load_value, max_load, slot_info, topology, memory, cl_info) ->
             @state = {
                 value: state_value
                 raw: host_state
@@ -347,6 +347,9 @@ rms_module = angular.module(
                 reserved: slot_info[1]
                 total: slot_info[2]
             }
+
+            # topology handling
+
             if topology.value.length
                 _use = topology.value
                 _raw = angular.fromJson(topology.raw)
@@ -360,6 +363,12 @@ rms_module = angular.module(
             _sv = @state.value
             # complex load info, including current load values and pinning info
             @cl_info = cl_info
+
+            # memory handling
+            @memory_sge = memory.raw
+            # pick all memory keys
+            @memory_icsw = _.pickBy(cl_info.values, (value, key) -> return key.match(/^mem./))
+
             # display flags
             @$$enable_ok = if _sv.match(/d/g) then true else false
             @$$disable_ok = if not _sv.match(/d/g) then true else false
@@ -1037,6 +1046,7 @@ rms_module = angular.module(
                         # slots used / reserved / total
                         [_vals[7], _vals[8], _vals[9]]
                         entry.topology
+                        entry.memory
                         cl_info
                     )
                     queue.type = {value: _vals[4]}
@@ -1856,6 +1866,139 @@ rms_module = angular.module(
                         topo: scope.queue.topology_raw
                         slots_info: scope.queue.slots_info
                         cl_info: scope.queue.cl_info
+                        height: 16
+                        width: 100
+                    }
+                )
+                element[0]
+            )
+            scope.$on(
+                "$destroy"
+                () ->
+                    ReactDOM.unmountComponentAtNode(element[0])
+            )
+    }
+]).service("icswRmsMemoryInfoReact",
+[
+    "$q",
+(
+    $q,
+) ->
+    {div, g, text, line, polyline, path, svg, h3, rect} = React.DOM
+    return React.createClass(
+        propTypes: {
+            # memory from SGE
+            memory_sge: React.PropTypes.object
+            # memory from ICSW
+            memory_icsw: React.PropTypes.object
+            # size, width not used right now
+            width: React.PropTypes.number
+            height: React.PropTypes.number
+        }
+
+        render: () ->
+            if @props.memory_icsw? and @props.memory_icsw["mem.avail.phys"]?
+                # full icsw-memory info present
+                _icsw = @props.memory_icsw
+            else if @props.memory_sge? and @props.memory_sge["swap_used"]?
+                # memory from sge qhost
+                _sge = @props.memory_sge
+                # map from sge to icsw keys
+                _icsw = {
+                    "mem.used.phys": _sge["mem_used"]
+                    "mem.used.buffers": 0
+                    "mem.used.cached": 0
+                    "mem.free.phys": _sge["mem_free"]
+                    "mem.used.swap": _sge["swap_used"]
+                    "mem.avail.phys": _sge["mem_total"]
+                    "mem.avail.swap": _sge["swap_total"]
+                }
+            else
+                _icsw = null
+                _total = 0
+            if _icsw
+                _total = _.max([_icsw["mem.avail.phys"], _icsw["mem.avail.swap"]])
+            if _icsw and _total > 0
+                # draw list
+                draw_list = [
+                    # for color definitions see compound.xml
+                    ["mem.used.phys", "#eeeeee"]
+                    ["mem.used.buffers", "#66aaff"]
+                    ["mem.used.cached", "#eeee44"]
+                    ["mem.free.phys", "#44ff44"]
+                ]
+                _rect_list = []
+                _x = 0
+                for [_key, _color] in draw_list
+                    if _icsw[_key]?
+                        _w = @props.width * _icsw[_key] / _total
+                        _rect_list.push(
+                            rect(
+                                {
+                                    key: "m#{_key}"
+                                    x: _x
+                                    y: 0
+                                    width: _w
+                                    height: @props.height
+                                    style: {fill: _color, strokeWidth: "0.5px", stroke: "black"}
+                                }
+                            )
+                        )
+                        _x += _w
+                if _icsw["mem.used.swap"]?
+                    _sx = @props.width * _icsw["mem.used.swap"] / _total
+                    _rect_list.push(
+                        rect(
+                            {
+                                key: "m.swap"
+                                x: _sx - 2
+                                y: 0
+                                width: 4
+                                height: @props.height
+                                style: {fill: "#ff4444"}
+                            }
+                        )
+                    )
+
+                _w = @props.width
+                _h = @props.height
+
+                return svg(
+                    {
+                        key: "svg.top"
+                        width: "#{_w}px"
+                        height: "#{_h}px"
+                    }
+                    g(
+                        {
+                            key: "svg.g"
+                        }
+                        _rect_list
+                    )
+                )
+            else
+                return div(
+                    {
+                        key: "top"
+                    }
+                    "N/A"
+                )
+    )
+]).directive("icswRmsMemoryInfo",
+[
+    "$q", "icswRmsMemoryInfoReact",
+(
+    $q, icswRmsMemoryInfoReact,
+) ->
+    return {
+        restrict: "E"
+        link: (scope, element, attrs) ->
+            _el = ReactDOM.render(
+                React.createElement(
+                    icswRmsMemoryInfoReact
+                    {
+                        memory_sge: scope.queue.memory_sge
+                        memory_icsw: scope.queue.memory_icsw
                         height: 16
                         width: 100
                     }

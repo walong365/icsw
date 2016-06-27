@@ -118,7 +118,7 @@ def get_job_options(request):
 
 
 def get_node_options(request):
-    return sge_tools.get_empty_node_options(merge_node_queue=True, show_type=True, show_seq=True)
+    return sge_tools.get_empty_node_options(merge_node_queue=True, show_type=True, show_seq=True, show_memory=True)
 
 
 class get_header_dict(View):
@@ -282,7 +282,7 @@ class get_rms_current_json(View):
                 _value_list = json.loads(_mcc.get("cc_hc_{}".format(_struct["uuid"])))
                 for _list in _value_list:
                     if req_keys.match(_list[1]):
-                        _struct["values"][_list[1]] = _list[5]
+                        _struct["values"][_list[1]] = _list[5] * _list[7]
 
         fc_dict = {}
         cur_time = time.time()

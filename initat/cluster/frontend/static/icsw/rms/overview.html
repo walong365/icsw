@@ -232,14 +232,8 @@
     <td ng-show="struct.toggle['pe_list']">
         {{ queue.pe_list.value }}
     </td>
-    <td ng-show="struct.toggle['load']">
-        <!-- <div class="row" ng-show="queue.$$load_is_valid">
-            <div class="col-sm-3"><b>{{ queue.load.value }}</b>&nbsp;</div>
-            <div class="col-sm-9" style="width:140px; height:20px;">
-                <uib-progressbar value="queue.$$load_percentage" animate="false"></uib-progressbar>
-            </div>
-        </div>
-        <b ng-show="!queue.$$load_is_valid">{{ queue.load.value }}</b>-->
+    <td ng-show="struct.toggle['memory']">
+        <icsw-rms-memory-info></icsw-rms-memory-info>
     </td>
     <td ng-show="struct.toggle['load']">
         <icsw-rms-load-info></icsw-rms-load-info>
