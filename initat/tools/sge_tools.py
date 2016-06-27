@@ -1676,7 +1676,7 @@ def _get_topology_node(act_h):
 
 def _get_node_memory(act_h):
     def _parse_mem(in_str):
-        if in_str:
+        if in_str and len(in_str) > 1 and not in_str[-1].isdigit():
             return int(
                 float(in_str[:-1]) * {
                     "k": 1024,
