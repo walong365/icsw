@@ -1655,8 +1655,8 @@ rms_module = angular.module(
                         key: "load.border"
                         x: 0
                         y: 0
-                        rx: 6
-                        ry: 6
+                        # rx: 6
+                        # ry: 6
                         width: "#{_w}px"
                         height: "#{_h}px"
                         style: {fill: "#ffffff", strokeWidth: "1px", stroke: "black"}
@@ -1675,8 +1675,8 @@ rms_module = angular.module(
                             key: "load.#{_idx}"
                             x: 0
                             y: _y
-                            rx: 2
-                            ry: 2
+                            # rx: 2
+                            # ry: 2
                             width: "#{_perc}px"
                             height: "#{_diff_h}px"
                             style: {fill: _colors[_idx], strokeWidth: "1px", stroke: "black"}
