@@ -333,7 +333,7 @@
     <h4>
         {{ scan_run_info() }}
         <span ng-show="current_scan_run">,</span>
-        <input ng-show="current_scan_run" type="button" class="btn btn-xs" ng-class="show_dots && 'btn-success'" value="show dot dirs" ng-click="toggle_dots()"/>
+        <input ng-show="current_scan_run" type="button" class="btn btn-xs btn-default" ng-class="show_dots && 'btn-success'" value="show dot dirs" ng-click="toggle_dots()"/>
     </h4>
     <div ng-if="current_scan_run">
         <icsw-react-tree icsw-tree-config="du_tree"></icsw-react-tree>

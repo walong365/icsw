@@ -4,7 +4,7 @@
 
 <script type="text/ng-template" id="config.catalog.form">
     <form name="form_data" class="form-horizontal">
-        <h2>Config catalog '{{ edit_obj.name }}'</h2>
+        <h2>Configuration catalog '{{ edit_obj.name }}'</h2>
         <fieldset>
             <legend>Basic settings</legend>
             <div class="form-group  ng-class:form_error('name')">
@@ -102,7 +102,7 @@
                     </div>
                     <div class="form-group">
                         <label class="control-label col-sm-3 requiredField">
-                            Config catalog<span class="asteriskField">*</span>
+                            Configuration catalog<span class="asteriskField">*</span>
                         </label>
                         <div class="controls col-sm-7">
                             <ui-select ng-model="edit_obj.config_catalog" style="max-width:400px; min-width:240px;">
@@ -141,10 +141,10 @@
         <uib-tab heading="Monitoring categories">
             <icsw-config-category-tree-edit mode="mon"></icsw-config-category-tree-edit>
         </uib-tab>
-        <uib-tab heading="Config categories">
+        <uib-tab heading="Configuration categories">
             <icsw-config-category-tree-edit mode="config"></icsw-config-category-tree-edit>
         </uib-tab>
-        <uib-tab heading="Config Catalogs">
+        <uib-tab heading="Configuration catalogs">
             <icsw-config-catalog-table></icsw-config-catalog-table>
         </uib-tab>
         <uib-tab heading="Uploads ({{ config_tree.uploaded_configs.length }})" ng-if="config_tree.uploaded_configs.length">
@@ -159,7 +159,8 @@
 
 <script type="text/ng-template" id="icsw.config.uploader">
     <div class="input-group">
-        <input type="file" class="btn btn-sm btn-primary" nv-file-select="" uploader="uploader"/>
+        <label class="control-label">Upload configuration</label><br/>
+        <input type="file" class="btn btn-sm btn-primary form-control-inline" nv-file-select="" uploader="uploader"/>
         <icsw-tools-button type="upload" ng-show="uploader.queue.length" size="sm" value="upload" ng-click="uploader.uploadAll()"></icsw-tools-button>
     </div>
 </script>
@@ -242,7 +243,7 @@
                 <tr>
                     <td colspan="99">
                         <div class="row">
-                            <div class="col-sm-4">
+                            <div class="col-sm-3">
                                 <div class="input-group">
                                     <input st-search="search_str" class="form-control" placeholder="filter">
                                     </input>
@@ -311,10 +312,10 @@
     </td>
     <td class="text-right">{{ config.priority }}</td>
     <td class="text-center">
-        <div class="btn-group btn-group-xs">
+        <div class="label-group">
             <!-- tooltips not working right now -->
-            <input type="button" class="btn disabled" ng-class="config.server_config && 'btn-success'" value="S" data-toggle="tooltip" title="is server config"/>
-            <input type="button" class="btn disabled" ng-class="config.system_config && 'btn-success'" value="Y" data-toggle="tooltip" title="is system config" data-placement="bottom"/>
+            <span class="label" ng-class="config.server_config && 'label-success' || 'label-default'" uib-tooltip="is server config" >S</span><!--
+            --><span class="label" ng-class="config.system_config && 'label-success' || 'label-default'" uib-tooltip="is system config">Y</span>
         </div>
     </td>
     <td>{{ get_config_catalog_name(config) }}</td>
@@ -340,7 +341,7 @@
     </td>
     <td class="text-center">{{ get_num_cats(config) }}</td>
     <td>
-        <input type="button" ng-class="config.$selected && 'btn btn-primary btn-xs' || 'btn btn-xs'" value="select" ng-click="config_service.select(config)"/>
+        <input type="button" ng-class="config.$selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="select" ng-click="config_service.select(config)"/>
     </td>
     <td>
         <icsw-tools-button-static type="modify" value="modify" ng-click="edit($event, config)" size="xs"/>
@@ -415,7 +416,7 @@
                     <td>{{ config_service.get_value(obj) }}</td>
                     <td>{{ obj.description }}</td>
                     <td class="text-center">{{ obj.v_type }}</td>
-                    <td><input type="button" ng-class="obj.$selected && 'btn btn-primary btn-xs' || 'btn btn-xs'" value="sel" ng-click="config_service.select(obj)"/>
+                    <td><input type="button" ng-class="obj.$selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="sel" ng-click="config_service.select(obj)"/>
                     <td><icsw-tools-button-static type="modify" value="modify" ng-click="edit($event, obj)" size="xs"/></td>
                     <td><icsw-tools-button-static type="delete" value="delete" ng-click="delete($event, obj)" size="xs"/></td>
                 </tr>
@@ -467,7 +468,7 @@
                     <td>{{ obj.description }}</td>
                     <td>{{ obj.priority }}</td>
                     <td>{{ obj.enabled | yesno1 }}</td>
-                    <td><input type="button" ng-class="obj.$selected && 'btn btn-primary btn-xs' || 'btn btn-xs'" value="sel" ng-click="config_service.select(obj)"/></td>
+                    <td><input type="button" ng-class="obj.$selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="sel" ng-click="config_service.select(obj)"/></td>
                     <td><icsw-tools-button-static type="modify" value="modify" ng-click="edit($event, obj)" size="xs"></icsw-tools-button-static></td>
                     <td><icsw-tools-button-static type="delete" value="delete" ng-click="delete($event, obj)" size="xs"></icsw-tools-button-static></td>
                 </tr>
@@ -542,7 +543,7 @@
                     <td>{{ config_service.get_event_handler(obj.event_handler) }}</td>
                     <td>{{ obj.event_handler_enabled }}</td>
                     <td>{{ obj.categories.length || '-' }}</td>
-                    <td><input type="button" ng-class="obj.$selected && 'btn btn-primary btn-xs' || 'btn btn-xs'" value="sel" ng-click="config_service.select(obj)"/>
+                    <td><input type="button" ng-class="obj.$selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="sel" ng-click="config_service.select(obj)"/>
                     <td><icsw-tools-button-static type="modify" value="modify" ng-click="edit($event, obj)" size="xs"></icsw-tools-button-static></td>
                     <td><input type="button" class="btn btn-warning btn-xs" ng-click="duplicate($event, obj, config)" value="duplicate"/></td>
                     <td><icsw-tools-button-static type="delete" value="delete" ng-click="delete($event, obj)" size="xs"></icsw-tools-button-static></td>
@@ -554,7 +555,7 @@
 
 <script type="text/ng-template" id="icsw.config.generate.config">
     <div ng-show="has_valid_license('netboot')">
-        <input type="button" class="btn btn-info btn-sm" value="show device config" ng-show="devsel_list.length" ng-click="generate_config()"/>
+        <br/ ><input type="button" class="btn btn-info btn-sm" value="show device config" ng-show="devsel_list.length" ng-click="generate_config()"/>
         <span ng-show="devsel_list.length">
             <!--for {{ dev_names() }}-->
         </span>
@@ -986,7 +987,7 @@
                     <div class="form-group">
                         <label class="control-label col-sm-3">Value</label>
                         <div class="controls col-sm-7">
-                            <input type="button" ng-class='edit_obj.value &amp;&amp; "btn btn-sm btn-success" || "btn btn-sm"' ng-click="edit_obj.value = 1 - edit_obj.value" ng-value='edit_obj.value &amp;&amp; "true" || "false"'/>
+                            <input type="button" ng-class='edit_obj.value &amp;&amp; "btn btn-sm btn-success" || "btn btn-sm btn-default"' ng-click="edit_obj.value = 1 - edit_obj.value" ng-value='edit_obj.value &amp;&amp; "true" || "false"'/>
                         </div>
                     </div>
                 </fieldset>

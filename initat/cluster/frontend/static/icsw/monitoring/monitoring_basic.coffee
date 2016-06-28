@@ -152,6 +152,7 @@ monitoring_basic_module = angular.module(
         "main.monitorb2", {
             url: "/monitorb2"
             icswData: icswRouteExtensionProvider.create
+                redirect_to_from_on_error: true
                 menuEntry:
                     menukey: "mon"
                     name: "rebuild config refresh"

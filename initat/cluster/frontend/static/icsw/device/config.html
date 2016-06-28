@@ -10,11 +10,11 @@
         Device config ({{ helper.devices.length }} devices), {{ configs.length }} configurations ({{ helper.active_configs.length }} shown)
     </h2>
     <div class="form-inline">
-        <input class="form-control" ng-model="name_filter" placeholder="filter"/>,
+        <input class="form-control" ng-model="name_filter" placeholder="filter"/>
         <icsw-tools-button type="show" is-show="struct.only_selected" show-value="only selected" hide-value="all" ng-click="toggle_only_selected()"></icsw-tools-button>
         <icsw-tools-button type="show" is-show="struct.with_system" show-value="with system" hide-value="without system" ng-click="toggle_with_system()"></icsw-tools-button>
         <div class="form-group" ng-show="acl_create(null, 'backbone.config.modify_config') && helper.config_tree.catalog_list.length > 0">
-            <input placeholder="new config" ng-model="new_config_name" class="form-control input-sm"/>
+            <input placeholder="new config" ng-model="new_config_name" class="form-control"/>
             <div class="btn-group" ng-show="new_config_name">
                 <button type="button" class="btn btn-sm btn-success dropdown-toggle" data-toggle="dropdown">
                     Create in catalog <span class="caret"></span>
@@ -31,7 +31,7 @@
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': matrix, 'glyphicon-chevron-right': !matrix}"></i>
                 Config matrix
             </uib-accordion-heading>
-            <table ng-show="helper.devices.length" class="table table-condensed table-hover" style="width:auto;">
+            <table ng-show="helper.devices.length" class="table rotateheaders table-condensed table-hover colhover" style="width:auto;">
                 <thead>
                     <tr>
                         <th colspan="3">&nbsp;</th>

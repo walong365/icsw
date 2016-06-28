@@ -13,7 +13,7 @@
                 <div ng-bind-html="entry.name"></div>
             </ui-select-choices>
         </ui-select>
-        <span class="input-group-addon">
+        <span class="input-group-addon input-group-addon-button">
             <icsw-tools-button type="modify" size="xs" value="" ng-click="edit_settings()" title="RRD graphing settings"></icsw-tools-button>
         </span>
     </div>
@@ -139,7 +139,7 @@
                     Timeshift:
                 </label>
                 <div class="col-xs-9">
-                    <div class="input-group input-group-sm">
+                    <div class="input-group">
                         <ui-select ng-model="vars.current.graph_setting_timeshift">
                             <ui-select-match
                                 class="ui-select-match"
@@ -151,8 +151,8 @@
                                 <div ng-bind-html="sh.name"></div>
                             </ui-select-choices>
                         </ui-select>
-                        <span class="input-group-addon">
-                            <icsw-tools-button type="delete" value="" ng-click="vars.current.graph_setting_timeshift=null"></icsw-tools-button>
+                        <span class="input-group-addon input-group-addon-button">
+                            <icsw-tools-button type="delete" size="xs" value="" ng-click="vars.current.graph_setting_timeshift=null"></icsw-tools-button>
                         </span>
                     </div>
                 </div>
@@ -163,7 +163,7 @@
                     Forecast:
                 </label>
                 <div class="col-xs-9">
-                    <div class="input-group input-group-sm">
+                    <div class="input-group">
                         <ui-select ng-model="vars.current.graph_setting_forecast">
                             <ui-select-match class="ui-select-match" placeholder="Forecast">
                                 {{ $select.selected.name }}
@@ -172,8 +172,8 @@
                                 <div ng-bind-html="fc.name"></div>
                             </ui-select-choices>
                         </ui-select>
-                        <span class="input-group-addon">
-                            <icsw-tools-button type="delete" value="" ng-click="vars.current.graph_setting_forecast=null"></icsw-tools-button>
+                        <span class="input-group-addon input-group-addon-button">
+                            <icsw-tools-button type="delete" size="xs" value="" ng-click="vars.current.graph_setting_forecast=null"></icsw-tools-button>
                         </span>
                     </div>
                 </div>
@@ -189,7 +189,7 @@
                     Select:
                 </label>
                 <div class="col-xs-9">
-                    <div class="input-group input-group-sm">
+                    <div class="input-group">
                         <ui-select ng-model="vars.current" on-select="select_setting($item, $model)">
                             <ui-select-match>
                                 {{ $select.selected.name }}
@@ -198,8 +198,8 @@
                                 <div ng-bind-html="entry.name"></div>
                             </ui-select-choices>
                         </ui-select>
-                        <span class="input-group-addon">
-                            <icsw-tools-button type="delete" value="" ng-click="delete_setting()"></icsw-tools-button>
+                        <span class="input-group-addon input-group-addon-button">
+                            <icsw-tools-button  size="xs" type="delete" value="" ng-click="delete_setting()"></icsw-tools-button>
                         </span>
                     </div>
                 </div>
@@ -207,11 +207,11 @@
             <div class="row">
                 <label class="col-xs-3 control-label">Name:</label>
                 <div class="col-xs-9">
-                    <div class="input-group input-group-sm">
+                    <div class="input-group">
                         <input class="form-control" type="text" size="100" max_length="100" ng-model="vars.current.name"/>
-                        <span class="input-group-addon">
-                            <icsw-tools-button type="create" size="sm" ng-show="name_is_new" ng-click="create_setting()"></icsw-tools-button>
-                            <icsw-tools-button type="save" size="sm" ng-show="!vars.current.$$synced" ng-click="save_setting()"></icsw-tools-button>
+                        <span class="input-group-addon input-group-addon-button">
+                            <icsw-tools-button type="create" size="xs" ng-show="name_is_new" ng-click="create_setting()"></icsw-tools-button>
+                            <icsw-tools-button type="save" size="xs" ng-show="!vars.current.$$synced" ng-click="save_setting()"></icsw-tools-button>
                         </span>
                     </div>
                 </div>
@@ -245,10 +245,10 @@
             </div>
         </div>&nbsp;
         <div class="input-group" ng-if="show_detail">
-            <span class="input-group-addon">
-                 from
-            </span>
             <span class="input-group">
+                <span class="input-group-addon">
+                 from
+                </span>
                 <input type="text"
                     class="form-control"
                     ng-model="val.from_date"
@@ -269,10 +269,10 @@
             </span>
         </div>
         <div class="input-group" ng-if="show_detail">
-            <span class="input-group-addon">
-                 to
-            </span>
             <span class="input-group">
+                <span class="input-group-addon">
+                 to
+                </span>
                 <input type="text"
                     class="form-control"
                     ng-model="val.to_date"

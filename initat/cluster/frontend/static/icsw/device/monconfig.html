@@ -46,7 +46,7 @@
                                             <button
                                                 type="button"
                                                 ng-repeat="attr in table.attr_list"
-                                                class="btn btn-xs"
+                                                class="btn btn-xs btn-default"
                                                 ng-click="table.toggle_column(attr)"
                                                 ng-class="table.columns_enabled[attr] && 'btn-success' || 'btn-default'"
                                                 title="{{ table.attr_dict[attr].long }}"
@@ -193,7 +193,7 @@
         <icsw-tools-button type="delete" ng-click="delete_hint($event, hint)" size="xs"></icsw-tools-button>
     </td>
     <td class="text-center">
-        <input type="button" class="btn btn-xs" ng-class="hint.enabled && 'btn-success' || 'btn-warning'" ng-value="hint.enabled && 'disable' || 'enable'" ng-click="toggle_enabled($event, hint)"/></input>
+        <input type="button" class="btn btn-xs btn-default" ng-class="hint.enabled && 'btn-success' || 'btn-warning'" ng-value="hint.enabled && 'disable' || 'enable'" ng-click="toggle_enabled($event, hint)"/></input>
     </td>
     <td class="text-center">
         <icsw-tools-button type="modify" ng-show="hint.$$show_modify" ng-click="edit_hint($event, hint)" size="xs"></icsw-tools-button>

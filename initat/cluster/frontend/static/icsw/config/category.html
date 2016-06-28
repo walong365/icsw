@@ -54,8 +54,18 @@
                     </div>
                     <div class="col-sm-8">
                         <h3>Table view</h3>
-                        <table st-table="tree_nodes_displayed" st-safe-src="tree_nodes" class="table table-condensed table-hover" style="width:auto;">
+                        <table st-table="tree_nodes_displayed" st-safe-src="tree_nodes" class="table table-condensed table-hover table-striped" style="width:auto;">
                             <thead>
+                                <tr>
+                                    <td colspan="99">
+                                        <div
+                                            icsw-tools-pagination
+                                            st-items-by-page="15"
+                                            st-displayed-pages="11"
+                                            possible-items-by-page="15,30,100,200"
+                                        ></div>
+                                    </td>
+                                </tr>
                                 <tr>
                                     <th>Name</th>
                                     <th>Full name</th>
@@ -68,16 +78,6 @@
                                     <th ng-if="mode_is_location">type</th>
                                     <th ng-if="mode_is_location">#gfx</th>
                                     <th colspan="2">Action</th>
-                                </tr>
-                                <tr>
-                                    <td colspan="99">
-                                        <div
-                                            icsw-tools-pagination
-                                            st-items-by-page="15"
-                                            st-displayed-pages="11"
-                                            possible-items-by-page="15,30,100,200"
-                                        ></div>
-                                    </td>
                                 </tr>
                             </thead>
                             <tbody>

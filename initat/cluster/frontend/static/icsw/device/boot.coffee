@@ -571,7 +571,7 @@ angular.module(
             return @enabled
 
         set_class: () =>
-            @$$input_class = if @enabled then "btn btn-sm btn-success" else "btn btn-sm"
+            @$$input_class = if @enabled then "btn btn-sm btn-success" else "btn btn-sm btn-default"
 
 ]).service("icswBootDisplayOptions",
 [

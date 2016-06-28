@@ -481,6 +481,12 @@ angular.module(
             # special state 
             3: "#dddddd"
         }[entry.state]
+        entry.className = {
+            0: "svg_ok"
+            1: "svg_warn"
+            2: "svg_crit"
+            3: "svg_danger"
+        }[entry.state]
         _r_str = {
             0: "success"
             1: "danger"
@@ -503,6 +509,12 @@ angular.module(
                 1: "warning"
                 2: "danger"
                 3: "danger"
+            }[entry.state]
+            entry.className = {
+                0: "svg_ok"
+                1: "svg_warn"
+                2: "svg_crit"
+                3: "svg_danger"
             }[entry.state]
             entry.$$burst_fill_color = {
                 0: "#66dd66"

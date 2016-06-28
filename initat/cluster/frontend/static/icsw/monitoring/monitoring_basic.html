@@ -126,7 +126,7 @@
                             </td>
                         </tr>
                         <tr>
-                            <th st-sort="loginname" st-sort-default="true">Name</th>
+                            <th st-sort="name" st-sort-default="true">Name</th>
                             <th st-sort="volatile">volatile</th>
                             <th st-sort="getters.nsc_period">Service:</th>
                             <th st-sort="max_attempts">att</th>
@@ -154,7 +154,7 @@
                     </thead>
                     <tbody>
                         <tr ng-repeat="obj in entries_displayed">
-                            <td>{{ obj.loginname }}</td>
+                            <td>{{ obj.name }}</td>
                             <td>{{ obj.volatile | yesno1 }}</td>
                             <td>{{ basic_tree.mon_period_lut[obj.nsc_period].name }}</td>
                             <td>{{ obj.max_attempts }}</td>

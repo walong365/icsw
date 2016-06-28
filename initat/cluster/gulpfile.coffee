@@ -29,6 +29,7 @@ cache = require("gulp-memory-cache")
 rev = require("gulp-rev")
 coffee = require("gulp-coffee")
 cssnano = require("gulp-cssnano")
+cssimport = require("gulp-cssimport")
 htmlmin = require("gulp-htmlmin")
 gzip = require("gulp-gzip")
 ng_annotate = require('gulp-ng-annotate')
@@ -51,6 +52,21 @@ fs = require("fs")
 plumber = require("gulp-plumber")
 preprocess = require("gulp-preprocess")
 
+
+use_theme = "default"
+
+themes =
+    default : ["frontend/static/css/theme-default/bootstrap-dialog.css",
+               "frontend/static/css/theme-default/bootstrap.css",
+               "frontend/static/css/icsw_src.css",
+               "frontend/static/css/theme-default/theme-fixes.css"]
+    init : ["frontend/static/css/theme-init/bootstrap.css",
+            "frontend/static/css/icsw_src.css",
+            "frontend/static/css/theme-init/theme-fixes.css"]
+
+svg_style = "frontend/static/css/theme-#{use_theme}/svg-style.css"
+
+
 class SourceMap
     constructor: (@name, @dest, @sources, @type, @static) ->
         for f in @sources
@@ -64,7 +80,6 @@ sources = {
         "icsw.css"
         [
             "frontend/static/css/ui.fancytree.css",
-            "frontend/static/css/bootstrap.css",
             # "frontend/static/css/luna.css",
             "frontend/static/css/cropper.css",
             "frontend/static/css/angular-datetimepicker.css",
@@ -72,15 +87,20 @@ sources = {
             "frontend/static/css/select.css",
             "frontend/static/css/ladda-themeless.min.css",
             "frontend/static/css/smart-table.css",
-            "frontend/static/css/font-awesome.min.css",
+            "frontend/static/css/font-awesome.min.css",  #before theme
             "frontend/static/css/toaster.css",
-            "frontend/static/css/bootstrap-dialog.css",
             "frontend/static/css/angular-gridster.min.css",
             "frontend/static/css/hotkeys.css",
-            "frontend/static/css/icsw_src.css",
             # not needed right now, not working with tree-code
             # "frontend/static/css/awesome-bootstrap-checkbox.css",
         ]
+        "css"
+        true
+    )
+    css_theme: new SourceMap(
+        "css_theme"
+        "theme.css"
+        themes[use_theme]
         "css"
         true
     )
@@ -434,7 +454,8 @@ gulp.task("deploy-d3", () ->
 
 gulp.task("deploy-images", () ->
     return gulp.src(
-        [
+        [   
+            "frontend/static/images/*.jpg"
             "frontend/static/images/product/*.png"
             "frontend/static/css/*.gif"
         ]
@@ -443,7 +464,14 @@ gulp.task("deploy-images", () ->
     )
 )
 
-gulp.task("deploy-media", gulp.parallel("deploy-fonts", "deploy-images", "deploy-d3"))
+gulp.task("deploy-svgcss", () ->
+    return gulp.src(svg_style)
+        .pipe(rename("svgstyle.css"))
+        .pipe(gulp.dest(DEPLOY_DIR + "/static/")
+    )
+)
+
+gulp.task("deploy-media", gulp.parallel("deploy-fonts", "deploy-images", "deploy-d3", "deploy-svgcss"))
 
 gulp.task("transform-main", (cb) ->
     return gulp.src(
@@ -531,8 +559,14 @@ gulp.task("inject-addons-to-main", (cb) ->
     )
 )
 
+gulp.task("import_css", () ->
+    gulp.src("#{COMPILE_DIR}/main.html")
+        .pipe(cssimport({}))
+        .pipe(gulp.dest(COMPILE_DIR))
+)
+
 gulp.task("copy-main", (cb) ->
-    # add addon-javascript to main.htmlk
+    # add addon-javascript to main.html
     gulp.src(
         "#{COMPILE_DIR}/main.html",
     ).pipe(
@@ -554,13 +588,13 @@ gulp.task("reload-main", (cb) ->
 if options.addons
     gulp.task("modify-app-js", gulp.series("create-all-urls", "inject-urls-to-app", "inject-addons-to-app"))
     gulp.task("deploy-all", gulp.parallel("deploy-css", "deploy-js", "deploy-html", "deploy-addons"))
-    gulp.task("setup-main", gulp.series("modify-app-js", "transform-main", "fix-main-import-path"))
+    gulp.task("setup-main", gulp.series("modify-app-js", "transform-main", "fix-main-import-path", "import_css"))
     gulp.task("deploy-and-transform-all", gulp.series("deploy-all", "setup-main", "inject-addons-to-main", "copy-main"))
     gulp.task("rebuild-after-watch", gulp.series("deploy-all", "transform-main", "fix-main-import-path", "inject-addons-to-main", "copy-main", "reload-main"))
 else
     gulp.task("modify-app-js", gulp.series("create-all-urls", "inject-urls-to-app"))
     gulp.task("deploy-all", gulp.parallel("deploy-css", "deploy-js", "deploy-html"))
-    gulp.task("setup-main", gulp.series("modify-app-js", "transform-main", "fix-main-import-path"))
+    gulp.task("setup-main", gulp.series("modify-app-js", "transform-main", "fix-main-import-path", "import_css"))
     gulp.task("deploy-and-transform-all", gulp.series("deploy-all", "setup-main", "copy-main"))
     gulp.task("rebuild-after-watch", gulp.series("deploy-all", "transform-main", "fix-main-import-path", "copy-main", "reload-main"))
 
