@@ -211,7 +211,7 @@
             </icsw-tools-button>
         </span>
     </td>
-    <td ng-show="struct.toggle['queues']">
+    <td ng-if="struct.toggle['queues']">
         <icsw-rms-queue-state icsw-rms-queue="queue" ng-if="gstruct.rms_operator"></icsw-rms-queue-state>
         <span
             ng-if="!gstruct.rms_operator"
@@ -220,22 +220,22 @@
             {{ queue.name }} : {{ queue.state.value }}
         </span>
     </td>
-    <td ng-show="struct.toggle['seqno']">
-        {{ queue.seqno.value }}
+    <td ng-if="struct.toggle['seqno']">
+        {{ :: queue.seqno.value }}
     </td>
-    <td ng-show="struct.toggle['type']">
-        {{ queue.type.value }}
+    <td ng-if="struct.toggle['type']">
+        {{ ::queue.type.value }}
     </td>
-    <td ng-show="struct.toggle['complex']">
-        {{ queue.complex.value }}
+    <td ng-if="struct.toggle['complex']">
+        {{ ::queue.complex.value }}
     </td>
-    <td ng-show="struct.toggle['pe_list']">
-        {{ queue.pe_list.value }}
+    <td ng-if="struct.toggle['pe_list']">
+        {{ ::queue.pe_list.value }}
     </td>
-    <td ng-show="struct.toggle['memory']">
+    <td ng-if="struct.toggle['memory']">
         <icsw-rms-memory-info></icsw-rms-memory-info>
     </td>
-    <td ng-show="struct.toggle['load']">
+    <td ng-if="struct.toggle['load']">
         <icsw-rms-load-info></icsw-rms-load-info>
         <!-- <div ng-repeat="entry in queue.load_vector" class="row">
              <div class="col-sm-12" style="width:140px; height:20px;">
@@ -243,13 +243,13 @@
              </div>
         </div> -->
     </td>
-    <td ng-show="struct.toggle['slots_used']" class="text-center">
+    <td ng-if="struct.toggle['slots_used']" class="text-center">
         <tt>{{ queue.slots_info.used }}  / {{ queue.slots_info.reserved }} / {{ queue.slots_info.total }}</tt>
     </td>
-    <td ng-show="struct.toggle['topology']" class="text-center">
+    <td ng-if="struct.toggle['topology']" class="text-center">
         <icsw-rms-topology-info></icsw-rms-topology-info>
     </td>
-    <td ng-show="struct.toggle['jobs']">
+    <td ng-if="struct.toggle['jobs']">
         {{ queue.jobs.value }}
     </td>
 </script>
