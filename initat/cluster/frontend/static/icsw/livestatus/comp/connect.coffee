@@ -251,7 +251,7 @@ angular.module(
                 }
                 draggable: {
                    enabled: true
-                   handle: '.my-class'
+                   handle: '.icsw-draggable'
                    stop: (event, element, options) =>
                        @ps_changed()
                 }

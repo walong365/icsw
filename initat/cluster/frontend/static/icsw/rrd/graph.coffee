@@ -719,11 +719,10 @@ angular.module(
             scope.$watch("graphList", (new_val) ->
                 element.children().remove()
                 if new_val.length
+                    scope.$$graph_keys = (key for key of scope.graphMatrix)
                     # console.log "id=", scope.$id
                     element.append($compile($templateCache.get("icsw.rrd.graph.list.header"))(scope))
             )
-            scope.get_graph_keys = () ->
-                return (key for key of scope.graphMatrix)
     }
 ]).service("icswRrdGraphDisplayReact",
 [
@@ -762,6 +761,7 @@ angular.module(
                             key: "info"
                             className: "label label-default"
                             onClick: (event) =>
+                                _graph.clear_crop()
                                 @setState({open: !@state.open, cropped: false})
                         }
                         [

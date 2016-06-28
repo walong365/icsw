@@ -284,7 +284,7 @@ dashboard_module = angular.module(
         }
         draggable: {
            enabled: true
-           handle: '.my-class'
+           handle: '.icsw-draggable'
            stop: (event, element, options) ->
                options.ps_changed()
         }

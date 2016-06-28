@@ -37,6 +37,7 @@ class Parser(object):
         parser.set_defaults(childcom="show")
         parser.add_argument("-s", dest="full_strip", default=False, action="store_true", help="strip all empty lines from file [%(default)s]")
         parser.add_argument("-c", dest="remove_hashes", default=False, action="store_true", help="remove all lines starting with hashes from file [%(default)s]")
+        parser.add_argument("-b", dest="binary", default=False, action="store_true", help="treat files as binaries [%(default)s]")
         parser.add_argument("--short-path", dest="short_path", default=False, action="store_true", help="use short path for file objects [%(default)s]")
         parser.add_argument("files", nargs="+", help="files to operate on")
         return parser
