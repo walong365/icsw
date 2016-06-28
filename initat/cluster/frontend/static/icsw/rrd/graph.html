@@ -4,14 +4,15 @@
 
 <script type="text/ng-template" id="icsw.rrd.graph.overview">
     <div class="container-fluid">
-        <div ng-if="struct.error_string">
+<!--        <div ng-if="struct.error_string">
             <uib-alert type="warning">{{ struct.error_string }}</uib-alert>
-        </div>
+        </div>-->
         <div>
             <h2>
                 Graphing,
                 <icsw-tools-yes-no icsw-yes="show settings" icsw-no="hide settings" flag="struct.base_setting.show_settings" ng-show="struct.base_setting.display_settings_switch"></icsw-tools-yes-no>
                 <icsw-tools-yes-no icsw-yes="show tree" icsw-no="hide tree" flag="struct.base_setting.show_tree" ng-show="struct.base_setting.display_tree_switch"></icsw-tools-yes-no>
+                <span ng-show="struct.error_string" class="text-warning">{{ struct.error_string }}</span>
             </h2>
         </div>
         <table class="table table-condensed table-striped table-bordered" style="width:auto;" ng-show="struct.vector_valid && struct.base_setting.show_settings">
@@ -82,17 +83,9 @@
                 <icsw-react-tree icsw-tree-config="struct.g_tree"></icsw-react-tree>
             </div>
             <div ng-class="struct.base_setting.show_tree && 'col-md-9' || 'col-md-12'" ng-show="graph_list.length">
-                <icsw-rrd-graph-list graph-list="graph_list" graph-matrix="graph_mat"></icsw-rrd-graph-list>
+                <icsw-rrd-graph-list icsw-graph-list="graph_list" icsw-graph-matrix="graph_mat"></icsw-rrd-graph-list>
             </div>
         </div>
-    </div>
-</script>
-
-<script type="text/ng-template" id="icsw.rrd.graph.list.graph">
-    <div>
-        <span ng-show="graph.cropped && graph.active">cropped timerange: {{ graph.get_tv(graph.cts_start_mom) }} to {{ graph.get_tv(graph.cts_end_mom) }}
-            <input type="button" class="btn btn-xs btn-warning" value="apply" ng-click="use_crop(graph)"/>
-        </span>
     </div>
 </script>
 
@@ -103,22 +96,10 @@
     <table class="table-condensed">
         <tr ng-repeat="gkey in get_graph_keys()">
             <td ng-repeat="(dkey, graph) in graphMatrix[gkey]" style="vertical-align:top;">
-                <icsw-rrd-graph-list-graph graph="graph"></icsw-rrd-graph-list-graph>
+                <icsw-rrd-graph-list-graph icsw-graph="graph"></icsw-rrd-graph-list-graph>
             </td>
         </tr>
     </table>
-</script>
-
-
-<script type="text/ng-template" id="icsw.rrd.graph.list.graph.header">
-    <h4>
-        <span class="label label-default" ng-click="graph.toggle_expand()">
-            <span ng-class="graph.get_expand_class()"></span>
-            graph #{{ graph.num }}
-        </span>&nbsp;
-        <ng-pluralize count="graph.num_devices" when="{'one' : '1 device', 'other' : '{} devices'}"></ng-pluralize>: {{ graph.get_devices() }}
-        <icsw-tools-button type="modify" size="xs" ng-show="graph.src && graph.num_sensors" value="Sensors" ng-click="modify_sensors()"></icsw-tools-button>
-    </h4>
 </script>
 
 <script type="text/ng-template" id="icsw.rrd.graph.sensor">
