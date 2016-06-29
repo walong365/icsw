@@ -117,6 +117,24 @@ angular.module(
                 $scope.init_login()
         )
 
+    $scope.switch_theme = (theme) ->
+        head = angular.element.find("head")[0]
+
+        css_theme_default = '<link rel="stylesheet" href="static/theme_default.css">'
+        css_theme_init = '<link rel="stylesheet" href="static/theme_init.css">'
+
+        if theme == "init"
+            theme_to_use = css_theme_init
+        else if theme == "default"
+            theme_to_use = css_theme_default
+
+        for node in head.childNodes
+            if node.outerHTML == css_theme_default
+                node.outerHTML = theme_to_use
+            if node.outerHTML == css_theme_init
+                node.outerHTML = theme_to_use
+
+
     $scope.init_login()
 ]).directive("icswLoginForm",
 [

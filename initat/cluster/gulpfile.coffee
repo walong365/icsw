@@ -97,10 +97,17 @@ sources = {
         "css"
         true
     )
-    css_theme: new SourceMap(
-        "css_theme"
-        "theme.css"
-        themes[use_theme]
+    css_theme_default: new SourceMap(
+        "css_theme_default"
+        "theme_default.css"
+        themes["default"]
+        "css"
+        true
+    )
+    css_theme_init: new SourceMap(
+        "css_theme_init"
+        "theme_init.css"
+        themes["init"]
         "css"
         true
     )
@@ -484,6 +491,7 @@ gulp.task("transform-main", (cb) ->
                     "!ext_*.js",
                     "!app.js",
                     "static/*.css",
+                    "!static/theme_init.css",
                     "*.html",
                     "!main.html",
                 ]
