@@ -90,6 +90,9 @@ angular.module(
                                 {
                                     "icswLivestatusTabularDisplay": []
                                 }
+                                {
+                                    "icswLivestatusFullBurst": []
+                                }
                             ]
                         }
                         {

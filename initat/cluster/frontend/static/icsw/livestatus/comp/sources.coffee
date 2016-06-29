@@ -1075,9 +1075,9 @@ angular.module(
         # autorotate
         autorotate: false
         # page idx for autorotate
-        page_idx: 0
+        page_idx: 1
         # page idx set by uib-tab
-        cur_page_idx: 0
+        cur_page_idx: 1
         # notifier for maps
         notifier: $q.defer()
         # current device idxs
@@ -1105,17 +1105,18 @@ angular.module(
             $scope.struct.device_idxs = dev_idxs
             # check for valid maps for current device selection
             $scope.struct.loc_gfx_list.length = 0
-            $scope.struct.page_idx = 0
+            $scope.struct.page_idx = 1
             _deactivate_rotation()
             loc_idx_used = []
             for gfx in $scope.struct.cat_tree.gfx_list
                 gfx.$$filtered_dml_list = []
                 for dml in gfx.$dml_list
-                    if dml.device in dev_idxs and dml.location_gfx not in loc_idx_used
-                        loc_idx_used.push(gfx.idx)
-                        $scope.struct.loc_gfx_list.push(gfx)
+                    if dml.device in dev_idxs
+                        if dml.location_gfx not in loc_idx_used
+                            loc_idx_used.push(gfx.idx)
+                            $scope.struct.loc_gfx_list.push(gfx)
+                            gfx.$$page_idx = $scope.struct.loc_gfx_list.length
                         gfx.$$filtered_dml_list.push(dml)
-                        gfx.$$page_idx = $scope.struct.loc_gfx_list.length
             $scope.struct.maps_present = $scope.struct.loc_gfx_list.length > 0
         $scope.struct.notifier.notify()
 
@@ -1249,6 +1250,7 @@ angular.module(
             if _gfx.comment
                 _header = "#{_header} (#{_gfx.comment})"
             _header = "#{_header} (#{_gfx_width} x #{_gfx_height}) * scale (#{_.round(_scale, 3)}) = (#{_.round(_gfx_width * _scale, 3)} x #{_.round(_gfx_height * _scale, 3)})"
+            _header = "#{_header}, #{_gfx.$$filtered_dml_list.length} devices"
 
             _dml_list = [
                 image(

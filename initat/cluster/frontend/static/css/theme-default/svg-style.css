@@ -12,6 +12,8 @@
 .svg_unknown { fill: #c7c7c7; }  /* status_history_utils.coffee */
 .svg_undetermined { fill: #c7c7c7; }  /* status_history_utils.coffee */
 .svg_unreach { fill: #f0ad4e; }  /* status_history_utils.coffee */
+.svg_sel { opacity: 0.7; }
+.svg_clicked { stroke-width: 2px !important; }
 
 .svg_d3link { stroke: #ff7788; stroke-width: 4px; opacity: 1; }
 .svg_d3circle { stroke-width: 2px; stroke: grey; fill: white; }

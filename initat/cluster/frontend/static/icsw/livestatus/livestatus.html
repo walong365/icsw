@@ -233,7 +233,7 @@
             <icsw-tools-button type="modify" size="xs" ng-click="show_settings()"></icsw-tools-button>
         </h3>
         <uib-tabset ng-if="struct.maps_present" active="struct.page_idx">
-            <uib-tab ng-repeat="loc_gfx in struct.loc_gfx_list" select="set_page_idx(loc_gfx)">
+            <uib-tab ng-repeat="loc_gfx in struct.loc_gfx_list track by $index" select="set_page_idx(loc_gfx)" index="$index + 1">
                 <uib-tab-heading>
                     {{ loc_gfx.name }} (<ng-pluralize count="loc_gfx.$$filtered_dml_list.length" when="{'1': '1 device', 'other' : '{} devices'}"></ng-pluralize>)
                 </uib-tab-heading>

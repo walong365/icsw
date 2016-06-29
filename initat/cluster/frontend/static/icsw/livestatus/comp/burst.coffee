@@ -194,8 +194,7 @@ angular.module(
         propTypes: {
             element: React.PropTypes.object
             draw_parameters: React.PropTypes.object
-            set_focus: React.PropTypes.func
-            clear_focus: React.PropTypes.func
+            focus_cb: React.PropTypes.func
         }
 
         render: () ->
@@ -204,23 +203,31 @@ angular.module(
             # if @state.focus
             #    _color = "#445566"
             # focus element
+            _bn = @props.element.$$segment
+            _cls = _path_el.className
+            if _bn.sel_by_child or _bn.sel_by_parent
+                _cls = "#{_cls} svg_sel"
+            if _bn.clicked
+                _cls = "#{_cls} svg_clicked"
             _g_list = []
             _segment = {
                 key: _path_el.key
                 d: _path_el.d
                 #fill: _color
-                className: _path_el.className
+                className: _cls
                 #stroke: _path_el.stroke
                 #strokeWidth: _path_el.strokeWidth
                 onMouseEnter: @on_mouse_enter
                 onMouseLeave: @on_mouse_leave
+                onClick: (event) =>
+                    if @props.element.$$segment
+                        @props.focus_cb("click", @props.element.$$segment)
             }
             return path(_segment)
 
         on_mouse_enter: (event) ->
-            # console.log "me"
             if @props.element.$$segment?
-                @props.set_focus(@props.element.$$segment)
+                @props.focus_cb("enter", @props.element.$$segment)
 
         on_mouse_leave: (event) ->
             # @props.clear_focus()
@@ -302,7 +309,7 @@ angular.module(
 ) ->
     # Network topology container, including selection and redraw button
     react_dom = ReactDOM
-    {div, g, text, line, polyline, path, svg, h3} = React.DOM
+    {div, g, text, line, polyline, path, svg, h3, span} = React.DOM
     return React.createClass(
         propTypes: {
             # required types
@@ -315,8 +322,11 @@ angular.module(
 
         getInitialState: () ->
             @export_result = new icswMonitoringResult()
+            @export_timeout = undefined
             @focus_name = ""
+            @clicked_focus = ""
             if @props.install_emit_data?
+                console.log "emit", @export_result
                 @props.install_emit_data(@export_result)
             return {
                 # to trigger redraw
@@ -325,10 +335,10 @@ angular.module(
             }
 
         new_monitoring_data_result: () ->
+            console.log "NMD", @props.monitoring_data
             # force recalc of burst, todo: incremental root_node update
             @root_node = undefined
             # not very elegant
-            # @clear_focus()
             @trigger_redraw()
 
         trigger_redraw: () ->
@@ -338,22 +348,48 @@ angular.module(
                 }
             )
 
-        set_focus: (ring_el) ->
-            @clear_focus()
+        # update timeout handling
+        clear_timeout: () ->
+            if @export_timeout?
+                $timeout.cancel(@export_timeout)
+                @export_timeout = undefined
+
+        focus_cb: (action, ring_el) ->
+            if action == "enter"
+                if not @clicked_focus or @clicked_focus == ring_el.name
+                    @_set_focus(ring_el)
+            else if action == "click"
+                if ring_el.clicked
+                    ring_el.clear_clicked()
+                    @clicked_focus = ""
+                else
+                    ring_el.set_clicked()
+                    @clicked_focus = ring_el.name
+                @_set_focus(ring_el)
+
+        _set_focus: (ring_el) ->
+            @_clear_focus(false)
             ring_el.set_focus()
             # store focus name
             @focus_name = ring_el.name
-            _services = (el.check for el in ring_el.get_self_and_childs() when el.check.$$ct == "service")
-            console.log "UPDATE"
-            @export_result.update([], _services, [])
+            @clear_timeout()
+            # delay export by 200 milliseconds
+            @export_timeout = $timeout(
+                () =>
+                    # console.log "UPDATE"
+                    _services = (el.check for el in ring_el.get_self_and_childs() when el.check.$$ct == "service")
+                    @export_result.update([], _services, [])
+                if @clicked_focus then 0 else 200
+            )
             # console.log _services
             @setState({focus_element: ring_el})
 
-        clear_focus: () ->
+        _clear_focus: (do_export) ->
             if @root_node?
-                @root_node.clear_foci()
+                @root_node.clear_focus()
             @focus_name = ""
-            @export_result.update([], [], [])
+            if do_export
+                @export_result.update([], [], [])
             @setState({focus_element: undefined})
 
         render: () ->
@@ -362,24 +398,31 @@ angular.module(
                 [_outer_width, _outer_height] = [@burst_element.width(), @burst_element.height()]
             # check if burst is interactive
             _ia = @props.draw_parameters.is_interactive
-            if not @root_node?
+            if not @root_node? and @props.monitoring_data?
                 @root_node = icswDeviceLivestatusFunctions.build_structured_burst(@props.monitoring_data, @props.draw_parameters)
                 _focus_el = undefined
+                if @clicked_focus
+                    # persistent when new monitoring data arrives
+                    @focus_name = @clicked_focus
                 if @focus_name
                     @root_node.iter_childs(
                         (node) =>
                             if node.name == @focus_name
                                 _focus_el = node
                     )
+                    if @clicked_focus and _focus_el?
+                        _focus_el.set_clicked()
+                # delay to avoid React Error
                 $timeout(
                     () =>
                         if _focus_el
-                            @set_focus(_focus_el)
+                            @focus_cb("enter", _focus_el)
                         else
-                            @clear_focus()
+                            @_clear_focus(true)
                     0
                 )
-
+            if not @props.monitoring_data?
+                return div({key: "top"}, "D")
             # console.log _outer_width, _outer_height
             root_node = @root_node
             # if _outer_width
@@ -396,8 +439,7 @@ angular.module(
                         {
                             key: _element.key
                             element: _element
-                            set_focus: @set_focus
-                            clear_focus: @clear_focus
+                            focus_cb: @focus_cb
                             draw_parameters: @props.draw_parameters
                         }
                     ) for _element in root_node.element_list
@@ -460,7 +502,9 @@ angular.module(
                             [
                                 h3(
                                     {key: "graph.header"}
-                                    "Burst graph (" + @props.draw_parameters.get_segment_info() + ")"
+                                    "Burst graph (" + @props.draw_parameters.get_segment_info()
+                                    if @clicked_focus then span({key: "sel.span", className: "text-warning"}, ", clicked") else ""
+                                    ")"
                                 )
                                 _svg
                             ]

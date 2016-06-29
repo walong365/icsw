@@ -1000,7 +1000,7 @@ angular.module(
         if dev
             dev_pk_list = [dev.idx]
         else
-            dev_pk_list = (dev.idx for dev in $scope.devices when dev.$$boot_selected)
+            dev_pk_list = (dev.idx for dev in $scope.struct.devices when dev.$$boot_selected)
         blockUI.start("Sending soft control command #{command}...")
         icswSimpleAjaxCall(
             url: ICSW_URLS.BOOT_SOFT_CONTROL
