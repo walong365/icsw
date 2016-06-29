@@ -329,8 +329,10 @@ class _general(hm_classes.hm_module):
             mv.register_entry("proc.{}".format(key), 0, value)
 
     def close_module(self):
-        if self.af_struct:
-            self.af_struct.close()
+        if self.feed_affinity:
+            # af_struct is only set when feed_affinity is enabled
+            if self.af_struct:
+                self.af_struct.close()
 
     def update_machine_vector(self, mv):
         pdict = process_tools.get_proc_list()

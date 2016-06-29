@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2001-2006,2014 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2006,2014-2016 Andreas Lang-Nevyjel
 #
 # this file is part of cluster-backbone
 #
@@ -22,8 +22,11 @@
 """ show config script for simple use in CSW """
 
 import datetime
+import base64
 import os
 import stat
+import sys
+import bz2
 
 from initat.tools import logging_tools, process_tools
 
@@ -37,7 +40,8 @@ def show_command(options):
             _obj_name = _obj_name[1:]
         obj_name = "{}_object".format(_obj_name)
         try:
-            f_lines = [_line.rstrip() for _line in file(f_name).read().split("\n")]
+            f_stat = os.stat(f_name)
+            content = file(f_name).read()
         except:
             print(
                 "error reading file '{}': {}".format(
@@ -46,38 +50,64 @@ def show_command(options):
                 )
             )
         else:
-            f_stat = os.stat(f_name)
-            if options.full_strip:
-                f_lines = [_line.strip() for _line in f_lines if _line.strip()]
-            if options.remove_hashes:
-                f_lines = [_line for _line in f_lines if (not _line.startswith("#") or _line.startswith("#!"))]
-            p_line = " " * 4
-            print(
-                "# from {} ({}, host {}, size was {} in {})".format(
+            if not options.binary:
+                f_lines = content.split("\n")
+                _f_info = logging_tools.get_plural("line", f_lines)
+            else:
+                _f_info = "binary"
+            out_lines = [
+                "",
+                "# from {} ({}, host {}, size was {}, {})".format(
                     f_name,
                     datetime.datetime.now(),
                     process_tools.get_machine_name(short=False),
                     logging_tools.get_size_str(f_stat[stat.ST_SIZE]),
-                    logging_tools.get_plural("line", len(f_lines)),
+                    _f_info,
+                ),
+                "",
+                "{} = config.add_file_object('{}')".format(obj_name, f_name),
+            ]
+            if options.binary:
+                out_lines.extend(
+                    [
+                        "import bz2",
+                        "import base64",
+                        "",
+                        u"{} += bz2.decompress(base.b64decode('{}'))".format(
+                            obj_name,
+                            base64.b64encode(bz2.compress(content)),
+                        )
+                    ]
                 )
-            )
-            print("{} = config.add_file_object('{}')".format(obj_name, f_name))
-            print(
-                u"{} += [\n{}]\n".format(
-                    obj_name,
-                    "".join(
-                        [
-                            "{}'{}',\n".format(p_line, _line.replace("'", '"').replace("\\", "\\\\")) for _line in f_lines
-                        ]
+            else:
+                if options.full_strip:
+                    f_lines = [_line.strip() for _line in f_lines if _line.strip()]
+                if options.remove_hashes:
+                    f_lines = [_line for _line in f_lines if (not _line.startswith("#") or _line.startswith("#!"))]
+                p_line = " " * 4
+                try:
+                    out_lines.append(
+                        u"{} += [\n{}]\n".format(
+                            obj_name,
+                            "".join(
+                                [
+                                    u"{}'{}',\n".format(p_line, _line.replace("'", '"').replace("\\", "\\\\")) for _line in f_lines
+                                ]
+                            )
+                        )
                     )
-                )
-            )
-            print(
+                except UnicodeDecodeError:
+                    print
+                    print("'{}' seems to be a binary file, please use -b switch".format(f_name))
+                    print
+                    sys.exit(3)
+            out_lines.append(
                 u"{}.mode = 0{:o}".format(
                     obj_name,
                     stat.S_IMODE(f_stat[stat.ST_MODE])
                 )
             )
+            print "\n".join(out_lines)
 
 
 def main(opt_ns):

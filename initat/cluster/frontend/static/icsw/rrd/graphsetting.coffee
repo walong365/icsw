@@ -486,7 +486,6 @@ angular.module(
                 _check_changed()
             true
         )
-        sub_scope.$watch()
 
         icswComplexModalService(
             {
