@@ -63,37 +63,31 @@ angular.module(
             "test"
             angular.toJson(
                 {
-                    "icswLivestatusDataSource": [
-                        {
-                            "icswLivestatusFilterService": [
-                                {
-                                    "icswLivestatusLocationDisplay": []
-                                }
-                                {
-                                    "icswLivestatusCategoryFilter": [
-                                        {
-                                            "icswLivestatusMapDisplay": []
-                                        }
-                                    ]
-                                }
-                                {
-                                    "icswLivestatusFilterService": [
-                                        {
-                                            "icswLivestatusTabularDisplay": []
-                                        }
-                                    ]
-                                }
-                            ]
+                    "icswLivestatusDataSource": [{
+                        "icswLivestatusFilterService": [{
+                            "icswLivestatusLocationDisplay": []
+                        }
+                            {
+                                "icswLivestatusCategoryFilter": [{
+                                    "icswLivestatusMapDisplay": []
+                                }]
+                            }
+                            {
+                                "icswLivestatusFilterService": [{
+                                    "icswLivestatusTabularDisplay": []
+                                }]
+                            }]
                         }
                         {
-                            "icswLivestatusFullBurst": [
-                                {
+                            "icswLivestatusFilterService": [{
+                                "icswLivestatusFullBurst": [{
                                     "icswLivestatusTabularDisplay": []
                                 }
-                                {
-                                    "icswLivestatusFullBurst": []
-                                }
-                            ]
+                                    {
+                                        "icswLivestatusFullBurst": []
+                                    }]
+
+                            }]
                         }
                         {
                             "icswLivestatusFilterService": [

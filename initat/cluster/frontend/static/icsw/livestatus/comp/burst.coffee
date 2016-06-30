@@ -315,19 +315,15 @@ angular.module(
             # required types
             monitoring_data: React.PropTypes.object
             draw_parameters: React.PropTypes.object
-            install_emit_data: React.PropTypes.func
+            return_data: React.PropTypes.object
         }
 
         componentDidMount: () ->
 
         getInitialState: () ->
-            @export_result = new icswMonitoringResult()
             @export_timeout = undefined
             @focus_name = ""
             @clicked_focus = ""
-            if @props.install_emit_data?
-                console.log "emit", @export_result
-                @props.install_emit_data(@export_result)
             return {
                 # to trigger redraw
                 draw_counter: 0
@@ -335,9 +331,9 @@ angular.module(
             }
 
         new_monitoring_data_result: () ->
-            console.log "NMD", @props.monitoring_data
             # force recalc of burst, todo: incremental root_node update
             @root_node = undefined
+            console.log "nd"
             # not very elegant
             @trigger_redraw()
 
@@ -378,7 +374,14 @@ angular.module(
                 () =>
                     # console.log "UPDATE"
                     _services = (el.check for el in ring_el.get_self_and_childs() when el.check.$$ct == "service")
-                    @export_result.update([], _services, [])
+                    _hosts = []
+                    _host_idxs = []
+                    for _service in _services
+                        if not _service.$$dummy
+                            if _service.$$host_mon_result.$$icswDevice.idx not in _host_idxs
+                                _host_idxs.push(_service.$$host_mon_result.$$icswDevice.idx)
+                                _hosts.push(_service.$$host_mon_result)
+                    @props.return_data.update(_hosts, _services, [])
                 if @clicked_focus then 0 else 200
             )
             # console.log _services
@@ -389,7 +392,7 @@ angular.module(
                 @root_node.clear_focus()
             @focus_name = ""
             if do_export
-                @export_result.update([], [], [])
+                @props.return_data.update([], [], [])
             @setState({focus_element: undefined})
 
         render: () ->
@@ -398,7 +401,7 @@ angular.module(
                 [_outer_width, _outer_height] = [@burst_element.width(), @burst_element.height()]
             # check if burst is interactive
             _ia = @props.draw_parameters.is_interactive
-            if not @root_node? and @props.monitoring_data?
+            if not @root_node?
                 @root_node = icswDeviceLivestatusFunctions.build_structured_burst(@props.monitoring_data, @props.draw_parameters)
                 _focus_el = undefined
                 if @clicked_focus
@@ -421,8 +424,6 @@ angular.module(
                             @_clear_focus(true)
                     0
                 )
-            if not @props.monitoring_data?
-                return div({key: "top"}, "D")
             # console.log _outer_width, _outer_height
             root_node = @root_node
             # if _outer_width
@@ -526,10 +527,10 @@ angular.module(
 
 ]).controller("icswDeviceLivestatusBurstReactContainerCtrl",
 [
-    "$scope", "icswDeviceTreeService", "$q",
+    "$scope", "icswDeviceTreeService", "$q", "icswMonitoringResult",
     "icswDeviceLivestatusFunctions", "icswDeviceLivestatusBurstReactContainer",
 (
-    $scope, icswDeviceTreeService, $q,
+    $scope, icswDeviceTreeService, $q, icswMonitoringResult,
     icswDeviceLivestatusFunctions, icswDeviceLivestatusBurstReactContainer,
 ) ->
     $scope.struct = {
@@ -537,24 +538,27 @@ angular.module(
         loop_started: false
         # react element
         react_element: undefined
+        # return data
+        return_data: new icswMonitoringResult()
+        # mounted
+        mounted: false
     }
 
-    _mount_burst = (element, new_data, draw_params, install_emit_data) ->
+    _mount_burst = (element, new_data, draw_params) ->
         $scope.struct.react_element = ReactDOM.render(
             React.createElement(
                 icswDeviceLivestatusBurstReactContainer
                 {
                     monitoring_data: new_data
                     draw_parameters: draw_params
-                    install_emit_data: install_emit_data
+                    return_data: $scope.struct.return_data
                 }
             )
             element
         )
 
 
-    _mounted = false
-    $scope.set_notifier = (notify, element, draw_params, install_emit_data) ->
+    $scope.set_notifier = (notify, element, draw_params) ->
         notify.promise.then(
             (ok) ->
                 # console.log "ok"
@@ -562,12 +566,13 @@ angular.module(
                 # stop processing
                 # console.log "notok"
             (new_data) ->
-                if not _mounted
-                    _mounted = true
-                    _mount_burst(element, new_data, draw_params, install_emit_data)
+                if not $scope.struct.mounted
+                    $scope.struct.mounted = true
+                    _mount_burst(element, new_data, draw_params)
                 else
                     $scope.struct.react_element.new_monitoring_data_result()
         )
+        return $scope.struct.return_data
 
 ]).service('icswLivestatusFullBurst',
 [
@@ -585,22 +590,11 @@ angular.module(
                 10
             )
             @new_data_notifier = $q.defer()
+            @__dp_async_emit = true
 
         new_data_received: (new_data) ->
+            # this must return undefined
             @new_data_notifier.notify(new_data)
-
-        emit_selection: (new_data) =>
-            # selection from fullburst
-            emit_data = new_data
-            @emit_data_downstream(new_data)
-            new_data.result_notifier.promise.then(
-                (resolved) ->
-                (rejected) ->
-                    # call on exit
-                (generation) =>
-                    @emit_data_downstream(new_data)
-            )
-            # console.log "*", new_data
 
         pipeline_reject_called: (reject) ->
             @new_data_notifier.reject("stop")
@@ -628,7 +622,7 @@ angular.module(
                     omit_small_segments: true
                 }
             )
-            scope.set_notifier(scope.con_element.new_data_notifier, element[0], draw_params, scope.con_element.emit_selection)
+            scope.con_element.set_async_emit_data(scope.set_notifier(scope.con_element.new_data_notifier, element[0], draw_params))
             # console.log "+++", scope.con_element
             # omitted segments
             scope.width = parseInt(attrs["initialWidth"] or "600")
@@ -689,7 +683,6 @@ angular.module(
                             my_not.notify(data[0])
                     )
             )
-            # scope.set_notifier(scope.con_element.new_data_notifier, element[0], draw_params)
     }
 
 ])
