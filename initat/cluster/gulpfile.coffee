@@ -262,7 +262,7 @@ create_task = (key) ->
             changed(COMPILE_DIR)
         ).pipe(
             gulpif(
-                (_is_coffee or _is_js),
+                (_is_coffee or _is_js or _is_html),
                 preprocess({context: {DEBUG: not _is_prod}})
             )
         ).pipe(
