@@ -123,16 +123,20 @@ angular.module(
         css_theme_default = '<link rel="stylesheet" href="static/theme_default.css">'
         css_theme_init = '<link rel="stylesheet" href="static/theme_init.css">'
 
+        css_theme_default_match = 'static/theme_default'
+        css_theme_init_match = 'static/theme_init'
+
         if theme == "init"
             theme_to_use = css_theme_init
         else if theme == "default"
             theme_to_use = css_theme_default
 
         for node in head.childNodes
-            if node.outerHTML == css_theme_default
-                node.outerHTML = theme_to_use
-            if node.outerHTML == css_theme_init
-                node.outerHTML = theme_to_use
+            if node.outerHTML != undefined
+                if node.outerHTML.indexOf(css_theme_default_match) > -1
+                    node.outerHTML = theme_to_use
+                if node.outerHTML.indexOf(css_theme_init_match) > -1
+                    node.outerHTML = theme_to_use
 
 
     $scope.init_login()

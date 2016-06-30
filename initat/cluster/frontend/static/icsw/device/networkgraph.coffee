@@ -238,33 +238,88 @@ angular.module(
     $q,
 ) ->
     class icswStructuredBurstNode
-        constructor: (@name, @idx, @check, @filter=false, @placeholder=false) ->
+        constructor: (@parent, @name, @idx, @check, @filter=false, @placeholder=false) ->
+            # attributes:
+            # o root (top level element)
+            # o parent (parent element)
             # name
             # check (may also be a dummy dict)
             @value = 1
-            @root = @
             # childre lookup table
             @lut = {}
             @children = []
             @depth = 0
             # show legend
             @show_legend = false
-            @show = true
+            # selection flags
+            @sel_by_parent = false
+            @sel_by_child = false
+            # no longer used
+            # @show = true
             @clicked = false
             if @depth == 0
                 # only for root-nodes
                 # flag, not in use right now
                 @balanced = false
+            # parent linking
+            if @parent?
+                @parent.add_child(@)
+            else
+                @root = @
 
-        clear_foci: () ->
+        clear_focus: () ->
             # clear all show_legend flags downwards
             @show_legend = false
-            (_el.clear_foci() for _el in @children)
+            @sel_by_parent = false
+            @sel_by_child = false
+            (_el.clear_focus() for _el in @children)
 
+        # iterator functions
+        iterate_upward: (cb_func) ->
+            cb_func(@)
+            if @parent?
+                @parent.iterate_upward(cb_func)
+
+        iterate_downward: (cb_func) ->
+            cb_func(@)
+            (_child.iterate_downward(cb_func) for _child in @children)
+
+        set_clicked: () ->
+            @root.iter_childs((node) -> node.clicked = false)
+            @clicked = true
+            
         set_focus: () ->
+            @iterate_upward((node) -> node.sel_by_child = true)
+            @iterate_downward((node) -> node.sel_by_parent = true)
+
             @show_legend = true
             for _el in @children
                 _el.show_legend = true
+
+
+        clear_clicked: () ->
+            # clear all clicked flags
+            @root.iter_childs((node) -> node.clicked = false)
+
+        any_clicked: () ->
+            res = @clicked
+            if not res
+                for _entry in @children
+                    res = res || _entry.any_clicked()
+            return res
+
+        handle_clicked: () ->
+            # find clicked entry
+            _clicked = @get_childs((obj) -> return obj.clicked)[0]
+            @iter_childs(
+                (obj) ->
+                    obj.show = false
+            )
+            parent = _clicked
+            while parent?
+                parent.show = true
+                parent = parent.parent
+            _clicked.iter_childs((obj) -> obj.show = true)
 
         balance: () ->
             # balance down to all visible childnodes
@@ -306,7 +361,6 @@ angular.module(
         add_child: (entry) ->
             entry.root = @root
             entry.depth = @depth + 1
-            entry.parent = @
             @children.push(entry)
             @lut[entry.idx] = entry
 
@@ -327,32 +381,6 @@ angular.module(
             for _entry in @children
                 _field = _field.concat(_entry.get_childs(filter_f))
             return _field
-
-        clear_clicked: () ->
-            # clear all clicked flags
-            @clicked = false
-            @show = true
-            (_entry.clear_clicked() for _entry in @children)
-
-        any_clicked: () ->
-            res = @clicked
-            if not res
-                for _entry in @children
-                    res = res || _entry.any_clicked()
-            return res
-
-        handle_clicked: () ->
-            # find clicked entry
-            _clicked = @get_childs((obj) -> return obj.clicked)[0]
-            @iter_childs(
-                (obj) ->
-                    obj.show = false
-            )
-            parent = _clicked
-            while parent?
-                parent.show = true
-                parent = parent.parent
-            _clicked.iter_childs((obj) -> obj.show = true)
 
 ]).service("icswDeviceLivestatusFunctions",
 [
@@ -469,8 +497,17 @@ angular.module(
             )
         return _result
 
+    build_empty_structured_burst = (draw_params) ->
+        _root_node = new icswStructuredBurstNode(
+            null
+            "System"
+            0
+            icswSaltMonitoringResultService.get_system_entry("System")
+        )
+        
     build_structured_burst = (mon_data, draw_params) ->
         _root_node = new icswStructuredBurstNode(
+            null
             "System"
             0
             icswSaltMonitoringResultService.get_system_entry("System")
@@ -490,34 +527,33 @@ angular.module(
                 if devg.idx not of _root_node.lut
                     # add device group ring
                     _devg = new icswStructuredBurstNode(
+                        _root_node
                         devg.name
                         devg.idx
                         icswSaltMonitoringResultService.get_device_group_entry(devg.name)
                     )
-                    _root_node.add_child(_devg)
                 else
                     _devg = _root_node.lut[devg.idx]
                 # _devg holds now the structured node for the device group
                 _dev = new icswStructuredBurstNode(
+                    _devg
                     dev.name
                     dev.idx
                     host
                 )
-                _devg.add_child(_dev)
                 for service in host.$$service_list
                     # check for filter
                     if service.$$idx in _sts
-                        _dev.add_child(new icswStructuredBurstNode(service.description, service.$$idx, service, true))
+                        new icswStructuredBurstNode(_dev, service.description, service.$$idx, service, true)
                 if not _dev.children.length
                     # add dummy service for devices without services
-                    _dev.add_child(
-                        new icswStructuredBurstNode(
-                            ""
-                            0
-                            icswSaltMonitoringResultService.get_dummy_service_entry("---")
-                            false
-                            true
-                        )
+                    new icswStructuredBurstNode(
+                        _dev
+                        ""
+                        0
+                        icswSaltMonitoringResultService.get_dummy_service_entry("---")
+                        false
+                        true
                     )
 
         # balance nodes, set width of each segment, create ring lut

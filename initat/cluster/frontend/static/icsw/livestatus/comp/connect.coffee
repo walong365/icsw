@@ -37,6 +37,7 @@ angular.module(
             @__dp_has_template = false
             # parent element
             @__dp_parent = undefined
+            @__dp_async_emit = false
             # notifier for downstream elements
             if @is_emitter
                 @notifier = $q.defer()
@@ -49,6 +50,9 @@ angular.module(
                 @pipeline_pre_close()
             @notifier.reject("pipeline stop")
 
+        log: (what) ->
+            console.log "Element #{@name} (#{@__dp_element_id}@#{@__dp_depth}): #{what}"
+            
         # set template
         set_template: (template, title, size_x=4, size_y=4) =>
             @__dp_has_template = true
@@ -118,9 +122,25 @@ angular.module(
                 (recv_data) =>
                     emit_data = @new_data_received(recv_data)
                     if @is_emitter
-                        @emit_data_downstream(emit_data)
+                        if @__dp_async_emit
+                            # asynchronous emitter, emit_data must be none
+                            if emit_data?
+                                console.error "async emitter #{@name} is emitting synchronous data:", emit_data
+                        else
+                            if emit_data?
+                                @emit_data_downstream(emit_data)
+                            else
+                                console.error "emitter #{@name} is emitting none ..."
             )
-
+        
+        set_async_emit_data: (result) =>
+            result.result_notifier.promise.then(
+                (resolved) ->
+                (rejected) ->
+                (generation) =>
+                    @emit_data_downstream(result)
+            )
+            
         emit_data_downstream: (emit_data) ->
             @notifier.notify(emit_data)
 
