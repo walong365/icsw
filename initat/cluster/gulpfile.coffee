@@ -491,7 +491,7 @@ gulp.task("transform-main", (cb) ->
                     "!ext_*.js",
                     "!app.js",
                     "static/*.css",
-                    "!static/theme_init.css",
+                    "!static/theme_init*.css",
                     "*.html",
                     "!main.html",
                 ]
@@ -540,6 +540,22 @@ gulp.task("transform-main", (cb) ->
         gulp.dest(COMPILE_DIR)
     )
 )
+
+gulp.task("deploy-theme_init", () ->
+    return gulp.src("static/theme_init*css")
+        .pipe(rename("theme_init.css"))
+        .pipe(gulp.dest(DEPLOY_DIR + "/static/")
+    )
+)
+
+gulp.task("deploy-theme_default", () ->
+    return gulp.src("static/theme_default*css")
+        .pipe(rename("theme_default.css"))
+        .pipe(gulp.dest(DEPLOY_DIR + "/static/")
+    )
+)
+
+gulp.task("copy-themes", gulp.parallel("deploy-theme_init", "deploy-theme_default"))
 
 gulp.task("fix-main-import-path", (cb) ->
     # fix relative import path in main.html
@@ -684,6 +700,7 @@ gulp.task(
         ),
         "dynamicbuild",
         "deploy-and-transform-all",
+        "copy-themes"
     )
 )
 
