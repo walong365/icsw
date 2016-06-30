@@ -65,8 +65,9 @@ class create_config(View):
             command="rebuild_host_config",
             cache_mode=request.POST.get("cache_mode", "DYNAMIC")
         )
-        result = contact_server(request, "md-config", srv_com, connection_id="wf_mdrc")
+        result = contact_server(request, "laser", srv_com)#, connection_id="wf_mdrc")
         if result:
+            print result.get_result()
             request.xml_response["result"] = E.devices()
 
 

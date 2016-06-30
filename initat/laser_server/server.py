@@ -21,8 +21,7 @@
 
 import zmq
 
-from initat.cluster.backbone import db_tools
-from initat.new_md_config_server.config import global_config
+from initat.laser_server.config import global_config
 from initat.tools import configfile, logging_tools, process_tools, threading_tools, server_mixins
 from initat.tools.server_mixins import RemoteCall
 
@@ -35,15 +34,14 @@ class server_process(
 ):
     def __init__(self):
         threading_tools.process_pool.__init__(self, "main", zmq=True)
-        self.CC.init("new-md-config-server", global_config)
-        self.CC.check_config()
+        self.CC.init("laser-server", global_config)
+        self.CC.check_config(client=True)
         self.__pid_name = global_config["PID_NAME"]
         self._init_msi_block()
-        db_tools.close_connection()
         # re-insert config
         # log config
         self.CC.log_config()
-        self.CC.re_insert_config()
+        #self.CC.re_insert_config()
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.register_exception("hup_error", self._hup_error)
@@ -64,11 +62,11 @@ class server_process(
         process_tools.save_pid(self.__pid_name, mult=3)
         process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=5)
         self.log("Initialising meta-server-info block")
-        msi_block = process_tools.meta_server_info("new-md-config-server")
+        msi_block = process_tools.meta_server_info("laser-server")
         msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
         msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=2, process_name="manager")
-        msi_block.start_command = "/etc/init.d/new-md-config-server start"
-        msi_block.stop_command = "/etc/init.d/new-md-config-server force-stop"
+        msi_block.start_command = "/etc/init.d/laser-server start"
+        msi_block.stop_command = "/etc/init.d/laser-server force-stop"
         msi_block.kill_pids = True
         msi_block.save_block()
         self.__msi_block = msi_block
@@ -78,7 +76,7 @@ class server_process(
             need_all_binds=False,
             bind_port=global_config["COM_PORT"],
             bind_to_localhost=True,
-            server_type="new-md-config-server",
+            client_type="laser-server",
             simple_server_bind=True,
             pollin=self.remote_call,
         )
@@ -94,6 +92,14 @@ class server_process(
     @RemoteCall()
     def status(self, srv_com, **kwargs):
         return self.server_status(srv_com, self.__msi_block, global_config)
+
+    @RemoteCall()
+    def rebuild_host_config(self, srv_com, **kwargs):
+        print "pew pew"
+        # pretend to be synchronous call such that reply is sent right away
+        #self.send_to_process("build", "rebuild_config", cache_mode=srv_com.get("cache_mode", "DYNAMIC"))
+        srv_com.set_result("pew pew")
+        return srv_com
 
     def loop_end(self):
         process_tools.delete_pid(self.__pid_name)

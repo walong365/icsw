@@ -261,10 +261,9 @@
         </config_names>
         <required-license>discovery_server</required-license>
     </instance>
-    <instance check_type="meta" name="new-md-config-server" pid_file_name="new-md-config-server/new-md-config-server.pid" has_force_stop="1" reload="1" uuid-postfix="new-md-config-server">
+    <instance check_type="meta" name="laser-server" alias="laser" pid_file_name="laser-server/laser-server.pid" has_force_stop="1" reload="1" uuid-postfix="laser-server">
         <config_names>
-            <config_name>monitor_server</config_name>
-            <config_name>monitor_master</config_name>
+            <config_name>monitor_slave</config_name>
         </config_names>
         <network>
             <ports>
