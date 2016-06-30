@@ -339,7 +339,7 @@ angular.module(
                 @log_btn_class = "btn btn-xs btn-success"
                 @log_btn_value = "hide"
             else
-                @log_btn_class = "btn btn-xs"
+                @log_btn_class = "btn btn-xs btn-default"
                 @log_btn_value = "show"
 
         feed: (data) =>
@@ -420,7 +420,7 @@ angular.module(
                         else
                             [_d_flag, _class] = [true, "btn btn-danger btn-xs dropdown-toggle"]
                     else
-                        [_d_flag, _class] = [false, "btn btn-xs dropdown-toggle"]
+                        [_d_flag, _class] = [false, "btn btn-xs btn-default dropdown-toggle"]
                     entry.$$disabled = _d_flag
                     entry.$$btn_class = _class
 
@@ -862,7 +862,7 @@ angular.module(
         if dev.$$boot_selected
             dev.$$boot_selection_class = "btn btn-xs btn-success"
         else
-            dev.$$boot_selection_class = "btn btn-xs"
+            dev.$$boot_selection_class = "btn btn-xs btn-default"
 
         # build info fields
         out_list = []
