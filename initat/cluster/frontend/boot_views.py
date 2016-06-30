@@ -142,7 +142,7 @@ class update_device(View):
     def post(self, request):
         _post = request.POST
         dev_data = json.loads(_post["boot"])
-        pprint.pprint(dev_data)
+        # pprint.pprint(dev_data)
         _change_lut = {
             "b": "change_dhcp_mac",
             "t": "change_target_state",
@@ -161,8 +161,8 @@ class update_device(View):
         _en = {key: False for key in _change_lut.iterkeys()}
         for short_key in _en.iterkeys():
             _en[short_key] = dev_data["bo_enabled"].get(short_key, False) and dev_data["change"].get(short_key, False)
-        print _en
-        print pk_list
+        # print _en
+        # print pk_list
         with transaction.atomic():
             all_devs = list(
                 device.objects.filter(
@@ -176,7 +176,7 @@ class update_device(View):
                     "name"
                 )
             )
-            print all_devs
+            # print all_devs
             for cur_dev in all_devs:
                 # print "**", cur_dev
                 update_list = set()
@@ -225,7 +225,7 @@ class update_device(View):
                         if new_driver != cur_dev.bootnetdevice.driver or new_macaddr != cur_dev.bootnetdevice.macaddr:
                             cur_dev.bootnetdevice.driver = new_driver
                             # ignore empty macaddr (for many changes)
-                            if new_macaddr.strip():
+                            if dev_data["change_macaddr"]:
                                 cur_dev.bootnetdevice.macaddr = new_macaddr
                             _bc = True
                     if _bc:

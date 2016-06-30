@@ -42,6 +42,7 @@ angular.module(
             if @is_emitter
                 @notifier = $q.defer()
                 @__dp_childs = []
+            @show_content = true
             console.log "init #{@name} (recv: #{@is_receiver}, emit: #{@is_emitter})"
 
         close: () =>
@@ -73,6 +74,10 @@ angular.module(
 
         hide_element: ($event) =>
             @__dp_connector.hide_element(@)
+            
+        
+        toggle_element: ($event) ->
+            @__dp_connector.toggle_element(@)
             
         # santify checks
         check_for_emitter: () =>
@@ -230,6 +235,14 @@ angular.module(
             @running = true
             @setup_ok = true
 
+        toggle_element: (cur_el) =>
+            if cur_el.show_content
+                cur_el.__dp_saved_sizeY = cur_el.sizeY
+                cur_el.sizeY = 1
+            else
+                cur_el.sizeY = cur_el.__dp_saved_sizeY
+            cur_el.show_content = !cur_el.show_content
+            
         hide_element: (hide_el) =>
             @hidden_elements.push(hide_el)
             _.remove(@display_elements, (entry) -> return entry.__dp_element_id == hide_el.__dp_element_id)
@@ -249,7 +262,7 @@ angular.module(
                 width: 'auto'
                 colWidth: 'auto'
                 rowHeight: '40'
-                margins: [4, 4]
+                margins: [1, 1]
                 outerMargin: true
                 isMobile: true
                 mobileBreakPoint: 600
@@ -315,5 +328,6 @@ angular.module(
 ) ->
     $scope.close = () ->
         $scope.con_element.close()
+        
 
 ])
