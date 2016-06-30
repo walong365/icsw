@@ -1021,10 +1021,10 @@ angular.module(
         else
             cd_pk_list = []
             for dev in $scope.struct.devices
-                if dev.selected and dev.slave_connections.length
-                    for slave_con in dev.slave_connections
+                if dev.$$boot_selected and dev.$$boot_helper.slave_connections.length
+                    for slave_con in dev.$$boot_helper.slave_connections
                         cd_pk_list.push(slave_con.idx)
-        blockUI.start("Sending hard control command #{command}...")
+        blockUI.start("Sending hard control command #{command} for #{cd_pk_list.length} devices ...")
         icswSimpleAjaxCall(
             url: ICSW_URLS.BOOT_HARD_CONTROL
             data: {
