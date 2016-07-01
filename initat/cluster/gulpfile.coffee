@@ -64,8 +64,8 @@ themes =
             "frontend/static/css/icsw_src.css",
             "frontend/static/css/theme-init/theme-fixes.css"]
 
-svg_style = "frontend/static/css/theme-#{use_theme}/svg-style.css"
-
+svg_style_default = "frontend/static/css/theme-default/svg-style.css"
+svg_style_init = "frontend/static/css/theme-init/svg-style.css"
 
 class SourceMap
     constructor: (@name, @dest, @sources, @type, @static) ->
@@ -381,8 +381,8 @@ gulp.task("deploy-css", () ->
         ["#{COMPILE_DIR}/*.css"],
     # ).pipe(
     #     gzip()
-    ).pipe(
-        gulpif(_is_prod, rev())
+    #).pipe(
+    #    gulpif(_is_prod, rev())
     ).pipe(
         gulp.dest(DEPLOY_DIR + "/static/")
     ).pipe(
@@ -471,14 +471,21 @@ gulp.task("deploy-images", () ->
     )
 )
 
-gulp.task("deploy-svgcss", () ->
-    return gulp.src(svg_style)
-        .pipe(rename("svgstyle.css"))
+gulp.task("deploy-svgcss-default", () ->
+    return gulp.src(svg_style_default)
+        .pipe(rename("svgstyle_default.css"))
         .pipe(gulp.dest(DEPLOY_DIR + "/static/")
     )
 )
 
-gulp.task("deploy-media", gulp.parallel("deploy-fonts", "deploy-images", "deploy-d3", "deploy-svgcss"))
+gulp.task("deploy-svgcss-init", () ->
+    return gulp.src(svg_style_init)
+        .pipe(rename("svgstyle_init.css"))
+        .pipe(gulp.dest(DEPLOY_DIR + "/static/")
+    )
+)
+
+gulp.task("deploy-media", gulp.parallel("deploy-fonts", "deploy-images", "deploy-d3", "deploy-svgcss-default", "deploy-svgcss-init"))
 
 gulp.task("transform-main", (cb) ->
     return gulp.src(
@@ -492,6 +499,7 @@ gulp.task("transform-main", (cb) ->
                     "!app.js",
                     "static/*.css",
                     "!static/theme_init*.css",
+                    "!static/svgstyle_init*css",
                     "*.html",
                     "!main.html",
                 ]
