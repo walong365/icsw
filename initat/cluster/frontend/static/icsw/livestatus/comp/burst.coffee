@@ -230,6 +230,8 @@ angular.module(
                 @props.focus_cb("enter", @props.element.$$segment)
 
         on_mouse_leave: (event) ->
+            if @props.element.$$segment?
+                @props.focus_cb("leave", @props.element.$$segment)
             # @props.clear_focus()
             # console.log "ml"
             # @setState({focus: false})
@@ -322,6 +324,7 @@ angular.module(
 
         getInitialState: () ->
             @export_timeout = undefined
+            @leave_timeout = undefined
             @focus_name = ""
             @clicked_focus = ""
             return {
@@ -354,6 +357,18 @@ angular.module(
             if action == "enter"
                 if not @clicked_focus or @clicked_focus == ring_el.name
                     @_set_focus(ring_el)
+            else if action == "leave"
+                if @leave_timeout?
+                    $timeout.cancel(@leave_timeout)
+                _cur_focus = @focus_name
+                @leave_timeout = $timeout(
+                    () =>
+                        if _cur_focus == @focus_name
+                            # focus_name not changed -> moved outside burst
+                            @_clear_focus(true)
+                            @clear_timeout()
+                    2
+                )
             else if action == "click"
                 if ring_el.clicked
                     ring_el.clear_clicked()
@@ -382,7 +397,7 @@ angular.module(
                                 _host_idxs.push(_service.$$host_mon_result.$$icswDevice.idx)
                                 _hosts.push(_service.$$host_mon_result)
                     @props.return_data.update(_hosts, _services, [])
-                if @clicked_focus then 0 else 200
+                if @clicked_focus then 0 else 50
             )
             # console.log _services
             @setState({focus_element: ring_el})
