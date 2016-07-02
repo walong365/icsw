@@ -336,7 +336,6 @@ angular.module(
         new_monitoring_data_result: () ->
             # force recalc of burst, todo: incremental root_node update
             @root_node = undefined
-            console.log "nd"
             # not very elegant
             @trigger_redraw()
 
@@ -360,15 +359,16 @@ angular.module(
             else if action == "leave"
                 if @leave_timeout?
                     $timeout.cancel(@leave_timeout)
-                _cur_focus = @focus_name
-                @leave_timeout = $timeout(
-                    () =>
-                        if _cur_focus == @focus_name
-                            # focus_name not changed -> moved outside burst
-                            @_clear_focus(true)
-                            @clear_timeout()
-                    2
-                )
+                if not @clicked_focus
+                    _cur_focus = @focus_name
+                    @leave_timeout = $timeout(
+                        () =>
+                            if _cur_focus == @focus_name
+                                # focus_name not changed -> moved outside burst
+                                @_clear_focus(true)
+                                @clear_timeout()
+                        2
+                    )
             else if action == "click"
                 if ring_el.clicked
                     ring_el.clear_clicked()

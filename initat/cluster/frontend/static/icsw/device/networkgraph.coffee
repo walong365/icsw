@@ -548,7 +548,6 @@ angular.module(
 
         _root_node.balance()
 
-        console.log "*", _root_node.ring_lut
         # set states in ring 1 and 0
         for _ring_idx in [1, 0]
             if _ring_idx of _root_node.ring_lut

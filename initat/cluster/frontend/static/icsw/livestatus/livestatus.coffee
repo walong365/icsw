@@ -75,6 +75,9 @@ angular.module(
                             {
                                 "icswLivestatusFilterService": [{
                                     "icswLivestatusTabularDisplay": []
+                                }
+                                {
+                                    "icswLivestatusTabularDisplay": []
                                 }]
                             }]
                         }
