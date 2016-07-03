@@ -23,7 +23,7 @@ import zmq
 from django.db.models import Q
 
 from initat.cluster.backbone import db_tools
-from initat.cluster.backbone.models import device
+from initat.cluster.backbone.models import device, DeviceScanLock
 from initat.discovery_server.event_log.event_log_poller import EventLogPollerProcess
 from initat.discovery_server.generate_assets_process import GenerateAssetsProcess
 from initat.snmp.process import snmp_process_container
@@ -69,14 +69,11 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
             self._test()
 
     def clear_pending_scans(self):
-        print "CHECK CLEAR_PENDING_SCANS"
-        return
-        _pdevs = device.objects.exclude(Q(active_scan=""))
-        if len(_pdevs):
-            self.log("clearing active_scan of {}".format(logging_tools.get_plural("device", len(_pdevs))))
-            for _dev in _pdevs:
-                _dev.active_scan = ""
-                _dev.save(update_fields=["active_scan"])
+        pending_locks = DeviceScanLock.objects.filter(Q(server=global_config["SERVER_IDX"]) & Q(active=True))
+        if pending_locks.count():
+            self.log("clearing {}".format(logging_tools.get_plural("active scan", pending_locks.count())))
+            for _lock in pending_locks:
+                [self.log(_what, _level) for _what, _level in _lock.close()]
 
     def _int_error(self, err_cause):
         if not self.__snmp_running:

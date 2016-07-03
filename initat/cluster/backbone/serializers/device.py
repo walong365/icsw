@@ -131,8 +131,6 @@ class device_serializer(serializers.ModelSerializer):
             # "monitor_type",
             # uuid
             "uuid",
-            # active_scan
-            "active_scan",
         )
         read_only_fields = ("uuid",)
 

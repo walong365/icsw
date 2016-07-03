@@ -24,12 +24,14 @@
 import crypt
 import logging
 import random
+import datetime
 from enum import Enum
 import time
 import uuid
 
 from django.core.exceptions import ValidationError
 from django.db.models import signals, CASCADE
+from initat.cluster.backbone.models.functions import cluster_timezone
 from django.dispatch import receiver
 from django.utils.crypto import get_random_string
 from lxml.builder import E
@@ -362,14 +364,6 @@ class device(models.Model):
     is_meta_device = models.BooleanField(default=False, blank=True)
     # active snmp scheme
     snmp_schemes = models.ManyToManyField("backbone.snmp_scheme")
-    # scan active, can be one of
-    # ... base (base scan)
-    # ... com_capability_matchcode
-    active_scan = models.CharField(
-        max_length=16,
-        default=u"",
-        blank=True,
-    )
 
     @classmethod
     def get_com_caps_for_lock(cls, lock_type):
@@ -384,7 +378,9 @@ class device(models.Model):
     def lock_possible(self, lock_type, device_obj, server_obj, config_obj):
         # check if the a given lock collides with the new lock_type
         # return the new lock or None and a list of (what, level) log entries
-        print "+", lock_type, server_obj, config_obj
+        # print device
+        current = self.devicescanlock_set.filter(Q(active=True))
+        print len(current), current
         new_lock = DeviceScanLock(
             device=device_obj,
             server=server_obj,
@@ -587,12 +583,17 @@ class DeviceScanLock(models.Model):
     config = models.ForeignKey("backbone.config", on_delete=CASCADE, related_name="config_lock")
     # active, will be set to False after lock removal
     active = models.BooleanField(default=True)
+    # run_time in milliseconds
+    run_time = models.IntegerField(default=0)
     # creation date
     date = models.DateTimeField(auto_now_add=True)
 
     def close(self):
+        _run_time = cluster_timezone.localize(datetime.datetime.now()) - cluster_timezone.normalize(self.date)
+        _run_time = _run_time.microseconds / 1000 + 1000 * _run_time.seconds
         self.active = False
-        self.close()
+        self.run_time = _run_time
+        self.save()
         # close current lock and return a list of (what, level) lines
         return [("closed {}".format(unicode(self)), logging_tools.LOG_LEVEL_OK)]
 

@@ -151,31 +151,6 @@ class DiscoveryProcess(threading_tools.process_obj, HostMonitoringMixin, BaseSca
         _new_lock, _log_lines = dev.lock_possible(lock_type, dev, self._server, self._config)
         [self.log(_what, _log_level) for _what, _log_level in _log_lines]
         return _new_lock
-        if dev.active_scan and new_scan != "base":
-            self.log(
-                "device {} has an active scan running: '{}', cannot start new scan '{}'".format(
-                    unicode(dev),
-                    dev.active_scan,
-                    new_scan,
-                ),
-                logging_tools.LOG_LEVEL_ERROR
-            )
-            _idle = False
-        else:
-            dev.active_scan = new_scan
-            dev.save(update_fields=["active_scan"])
-            self.log(
-                "device {} has now the active scan '{}'".format(
-                    unicode(dev),
-                    new_scan,
-                )
-            )
-        return _idle
-
-    # def clear_scan(self, dev):
-    #    self.log("clearing active_scan '{}' of device {}".format(dev.active_scan, unicode(dev)))
-    #    dev.active_scan = ""
-    #    dev.save(update_fields=["active_scan"])
 
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(lev, what)
