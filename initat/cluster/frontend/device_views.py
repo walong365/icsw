@@ -41,7 +41,7 @@ from initat.cluster.backbone.models import device_group, device, \
     partition_table, monitoring_hint, DeviceSNMPInfo, snmp_scheme, \
     domain_name_tree, net_ip, peer_information, mon_ext_host, device_variable, \
     SensorThreshold, package_device_connection, DeviceDispatcherLink, AssetRun, \
-    AssetBatch
+    AssetBatch, DeviceScanLock
 from initat.cluster.backbone.models.functions import can_delete_obj
 from initat.cluster.backbone.render import permission_required_mixin
 from initat.cluster.backbone.serializers import netdevice_serializer, ComCapabilitySerializer, \
@@ -482,6 +482,10 @@ class ScanSerializer(serializers.Serializer):
 
 class ScanEnrichment(object):
     def fetch(self, pk_list):
+        _dict = {}
+        for _pk, _scan in DeviceScanLock.objects.filter(Q(active=True) & Q(device__in=pk_list)).values_list("device__pk", "description"):
+            _dict.setdefault(_pk, []).append(_scan)
+        print _dict
         _res = device.objects.filter(Q(pk__in=pk_list)).values("pk", "active_scan")
         return ScanSerializer(_res, many=True).data
 

@@ -32,6 +32,7 @@ import uuid
 from django.core.exceptions import ValidationError
 from django.db.models import signals, CASCADE
 from initat.cluster.backbone.models.functions import cluster_timezone
+from django.utils.lru_cache import lru_cache
 from django.dispatch import receiver
 from django.utils.crypto import get_random_string
 from lxml.builder import E
@@ -57,6 +58,8 @@ __all__ = [
     "DeviceScanLock",
     "DeviceLogEntry",
     "ActiveDeviceScanEnum",
+    "LogLevel",
+    "LogSource",
 ]
 
 
@@ -380,7 +383,7 @@ class device(models.Model):
         # return the new lock or None and a list of (what, level) log entries
         # print device
         current = self.devicescanlock_set.filter(Q(active=True))
-        print len(current), current
+        # TODO, FIXME
         new_lock = DeviceScanLock(
             device=device_obj,
             server=server_obj,
@@ -870,6 +873,82 @@ def device_group_post_save(sender, **kwargs):
             # always enable cluster device group
             cur_inst.enabled = True
             cur_inst.save()
+
+
+class LogLevel(models.Model):
+    idx = models.AutoField(primary_key=True)
+    identifier = models.CharField(max_length=2, unique=True)
+    level = models.IntegerField(default=logging_tools.LOG_LEVEL_OK)
+    name = models.CharField(max_length=32, unique=True)
+    date = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return "{} ({:d})".format(self.name, self.level)
+
+
+@lru_cache()
+def log_level_lookup(key):
+    if isinstance(key, basestring):
+        return LogLevel.objects.get(Q(identifier=key))
+    else:
+        return LogLevel.objects.get(Q(level=key))
+
+
+class LogSource(models.Model):
+    idx = models.AutoField(primary_key=True)
+    # server_type or user
+    identifier = models.CharField(max_length=192)
+    # link to device or None
+    device = models.ForeignKey("device", null=True)
+    # long description
+    description = models.CharField(max_length=765, default="")
+    date = models.DateTimeField(auto_now_add=True)
+
+    @staticmethod
+    def new(identifier, **kwargs):
+        ls_dev = kwargs.get("device", None)
+        sources = LogSource.objects.filter(Q(identifier=identifier) & Q(device=ls_dev))
+        if len(sources) > 1:
+            print(
+                "Too many LogSources present for identifier '{}': {}, exiting".format(
+                    identifier,
+                    ", ".join([unicode(_src) for _src in sources])
+                )
+            )
+            cur_source = None
+        elif not len(sources):
+            if ls_dev is not None:
+                new_source = LogSource(
+                    identifier=identifier,
+                    description=u"{} on {}".format(identifier, unicode(ls_dev)),
+                    device=ls_dev,
+                )
+                new_source.save()
+            else:
+                new_source = LogSource(
+                    identifier=identifier,
+                    description=kwargs.get("description", "no description for {}".format(identifier))
+                )
+                new_source.save()
+            cur_source = new_source
+        else:
+            cur_source = sources[0]
+        return cur_source
+
+    def __unicode__(self):
+        return "{} ({})".format(
+            self.identifier,
+            self.description)
+
+
+@lru_cache()
+def log_source_lookup(identifier, device=None):
+    if type(identifier) in [int, long]:
+        return LogSource.objects.get(Q(pk=identifier))
+    elif device is not None:
+        return LogSource.objects.get(Q(identifier=identifier) & Q(device=device))
+    else:
+        return LogSource.objects.get(Q(identifier=identifier))
 
 
 class DeviceLogEntry(models.Model):

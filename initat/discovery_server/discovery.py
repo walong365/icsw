@@ -128,6 +128,7 @@ class DiscoveryProcess(threading_tools.process_obj, HostMonitoringMixin, BaseSca
         # lock_type is an ActiveDeviceScanEnum
         req_caps = device.get_com_caps_for_lock(lock_type)
         if req_caps:
+            req_caps = [_value.name for _value in req_caps]
             _cap = dev.com_capability_list.filter(Q(matchcode__in=req_caps))
             if len(_cap):
                 _cont = True

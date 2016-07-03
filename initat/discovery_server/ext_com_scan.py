@@ -80,8 +80,7 @@ class ScanBatch(object):
         raise NotImplementedError()
 
     def finish(self):
-        if self.device.active_scan:
-            self.__class__.process.clear_scan(self.device)
+        # TODO: add locking
         self.end_time = time.time()
         self.log("finished in {}".format(logging_tools.get_diff_time_str(self.end_time - self.start_time)))
         self.__class__.remove_batch(self)
