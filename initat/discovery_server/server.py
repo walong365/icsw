@@ -25,6 +25,7 @@ from django.db.models import Q
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device
 from initat.discovery_server.event_log.event_log_poller import EventLogPollerProcess
+from initat.discovery_server.generate_assets_process import GenerateAssetsProcess
 from initat.snmp.process import snmp_process_container
 from initat.tools import cluster_location, configfile, logging_tools, process_tools, \
     server_command, server_mixins, threading_tools
@@ -49,8 +50,10 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         self.__msi_block = self._init_msi_block()
         self.add_process(DiscoveryProcess("discovery"), start=True)
         self.add_process(EventLogPollerProcess(EventLogPollerProcess.PROCESS_NAME), start=True)
+        self.add_process(GenerateAssetsProcess("generate_assets"), start=True)
         self._init_network_sockets()
         self.register_func("snmp_run", self._snmp_run)
+        self.register_func("generate_assets", self._generate_assets)
         # self.add_process(build_process("build"), start=True)
         db_tools.close_connection()
         self.__max_calls = global_config["MAX_CALLS"] if not global_config["DEBUG"] else 5
@@ -145,11 +148,11 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
 
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=4)
-        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=4)
+        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=5)
         self.log("Initialising meta-server-info block")
         msi_block = process_tools.meta_server_info("discovery-server")
         msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4)
-        msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=4)
+        msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=5)
         msi_block.kill_pids = True
         msi_block.save_block()
         return msi_block
@@ -225,3 +228,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         # ignore src specs
         _src_proc, _src_pid = args[0:2]
         self.spc.start_batch(*args[2:], **kwargs)
+
+    def _generate_assets(self, *args, **kwargs):
+        # send to generate_assets process
+        self.send_to_process("generate_assets", "process_assets", args[2])

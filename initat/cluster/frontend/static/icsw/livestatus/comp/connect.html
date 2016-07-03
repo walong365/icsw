@@ -27,7 +27,7 @@
                         </ui-select>
                     </span>
                     <icsw-tools-button type="enable" is-enable="struct.connector.running" ng-click="struct.connector.toggle_running()"></icsw-tools-button>
-                    <icsw-tools-button type="underscore" ng-click="struct.connector.toggle_global_hide()"></icsw-tools-button>
+                    <icsw-tools-button type="underscore" ng-click="struct.connector.toggle_global_display_state()"></icsw-tools-button>
                 </div>
             </h4>
         </div>
@@ -47,7 +47,7 @@
 <script type="text/ng-template" id="icsw.connect.element">
     <!-- the margin-bottom entry fixes issues with scrollbars appearing on the right side of panels -->
     <div class="panel panel-success" style="height:100%; margin-bottom:0px !important;">
-        <div class="panel-heading icsw-draggable">
+        <div class="panel-heading icsw-draggable" ng-show="con_element.$$show_header">
             <span class="badge" uib-tooltip="{{ con_element.__dp_title }}" tooltip-placement="right">
                 {{ con_element.__dp_element_id }}@{{ con_element.__dp_depth }}
             </span>

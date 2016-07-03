@@ -46,8 +46,10 @@ angular.module(
                 @__dp_childs = []
             # for internal data
             @show_content = true
-            # for frontend
+            # for frontend / content
             @$$show_content = true
+            # for frontend / header
+            @$$show_header = true
             console.log "init #{@name} (recv: #{@is_receiver}, emit: #{@is_emitter})"
 
         close: () =>
@@ -127,10 +129,11 @@ angular.module(
             else
                 @__dp_saved_sizeY = @sizeY
                 @sizeY = 1
-            if @__dp_connector.global_hide
+            if @__dp_connector.global_display_state in [1]
                 @$$show_content = false
             else
                 @$$show_content = @show_content
+            @$$show_header = @__dp_connector.global_display_state in [0, 1]
 
         # link with connector
         link_with_connector: (connector, id, depth) =>
@@ -138,6 +141,22 @@ angular.module(
             @__dp_element_id = id
             @__dp_depth = depth
             @display_name = "#{@name} ##{@__dp_element_id}"
+
+        remove_child: (child) ->
+            @close_child(child)
+            if not @__dp_childs.length
+                @__dp_is_leaf_node = true
+            console.log "rc", child.__dp_element_id
+            _.remove(@__dp_childs, (entry) -> return entry.__dp_element_id == child.__dp_element_id)
+            @build_title()
+
+        close_child: (child) ->
+            if @is_emitter
+                child.__dp_parent_notifier.reject("reject #{child.__dp_element_id}")
+
+        remove_from_parent: () ->
+            # delete child via calling remove_child on parent
+            @__dp_parent.remove_child(@)
 
         link_to_parent: (parent) ->
             @__dp_parent = parent
@@ -166,21 +185,6 @@ angular.module(
                                 console.error "emitter #{@name} is emitting none ..."
             )
 
-        remove_child: (child) ->
-            @close_child(child)
-            if not @__dp_childs.length
-                @__dp_is_leaf_node = true
-            console.log "rc", child.__dp_element_id
-            _.remove(@__dp_childs, (entry) -> return entry.__dp_element_id == child.__dp_element_id)
-            @build_title()
-
-        close_child: (child) ->
-            if @is_emitter
-                child.__dp_parent_notifier.reject("reject #{child.__dp_element_id}")
-
-        remove_from_parent: () ->
-            @__dp_parent.remove_child(@)
-
         set_async_emit_data: (result) =>
             result.result_notifier.promise.then(
                 (resolved) ->
@@ -208,7 +212,10 @@ angular.module(
             @spec_src = spec
             console.log "Connector #{@name} (spec: #{@spec_src})"
             @root_element = undefined
-            @global_hide = false
+            # 0 ... show all
+            # 1 ... no content
+            # 2 ... no header
+            @global_display_state = 0
             @build_structure()
 
         close: () =>
@@ -221,8 +228,10 @@ angular.module(
             @running = !@running
             @root_element.set_running_flag(@running)
 
-        toggle_global_hide: () =>
-            @global_hide = !@global_hide
+        toggle_global_display_state: () =>
+            @global_display_state++
+            if @global_display_state > 2
+                @global_display_state =0
             (_element.set_display_flags() for _element in @all_elements)
             
         get_panel_class: () =>

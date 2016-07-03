@@ -22,6 +22,7 @@ angular.module(
     "icsw.tools",
     [
         "toaster"
+        "uiGmapgoogle-maps"
     ],
 ).service("icswBaseMixinClass", [() ->
     # hm, not really needed ... ?
@@ -159,11 +160,41 @@ angular.module(
         clear_token: () ->
             csrf_token = undefined
     }
-
-]).config(["toasterConfig", (toasterConfig) ->
+]).config([
+    "uiGmapGoogleMapApiProvider",
+(
+    uiGmapGoogleMapApiProvider,
+) ->
+    uiGmapGoogleMapApiProvider.configure(
+        {
+            #  key: 'your api key'
+            v: '3.23'  # defaults to latest 3.X anyhow
+            libraries: 'weather,geometry,visualization'
+        }
+    )
+]).config([
+    "blockUIConfig",
+(
+    blockUIConfig
+) ->
+    blockUIConfig.delay = 0
+    blockUIConfig.message = "Loading, please wait ..."
+    blockUIConfig.autoBlock = false
+    blockUIConfig.autoInjectBodyBlock = false
+]).config([
+    "hotkeysProvider",
+(
+    hotkeysProvider,
+) ->
+    hotkeysProvider.templateHeader = "<h1>ICSW Key help</h1>"
+    hotkeysProvider.includeCheatSheet = true
+]).config([
+    "toasterConfig",
+(
+    toasterConfig
+) ->
     # close on click
     toasterConfig["tap-to-dismiss"] = true
-
 ]).config([
     "$httpProvider",
 (
