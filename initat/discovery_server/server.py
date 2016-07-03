@@ -69,6 +69,8 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
             self._test()
 
     def clear_pending_scans(self):
+        print "CHECK CLEAR_PENDING_SCANS"
+        return
         _pdevs = device.objects.exclude(Q(active_scan=""))
         if len(_pdevs):
             self.log("clearing active_scan of {}".format(logging_tools.get_plural("device", len(_pdevs))))
@@ -103,6 +105,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         process_tools.remove_pids(self.__pid_name, kwargs["pid"], mult=kwargs.get("mult", 3))
 
     def _re_insert_config(self):
+        # print global_config["SERVER_IDX"], global_config["CONFIG_IDX"]
         cluster_location.write_config("discovery_server", global_config)
 
     def _init_processes(self):
