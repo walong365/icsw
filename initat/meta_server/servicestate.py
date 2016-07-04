@@ -344,7 +344,7 @@ class ServiceState(object):
     def _sync_system_states(self):
         # ignore when in shutdown mode
         if not self.__shutdown:
-            # sync system states with internal target states for meta-server and logging-server
+            # sync system states with internal target states for meta-server
             _sys_state = self._parse_system_state()
             if _sys_state is not None:
                 _meta_s = True if self.__target_dict["meta-server"] == 1 else False

@@ -60,6 +60,7 @@ __all__ = [
     "ActiveDeviceScanEnum",
     "LogLevel",
     "LogSource",
+    "DeviceBootHistory",
 ]
 
 
