@@ -231,9 +231,11 @@ angular.module(
                 @device.device_connection_set = []
             if not @device.sensor_threshold_set?
                 @device.sensor_threshold_set = []
+            if not @device.devicescanlock_set?
+                @device.devicescanlock_set = []
 
         is_scalar: (req) =>
-            return req in ["scan_info"]
+            return req in []
 
         is_element: (req) =>
             return req in ["disk_info", "snmp_info"]
@@ -242,16 +244,11 @@ angular.module(
             return req in @loaded
 
         get_setter_name: (req) =>
-            _lut = {
-                scan_info: "set_scan_info"
-            }
+            _lut = {}
             if req of _lut
                 return _lut[req]
             else
                 throw new Error("Unknown EnrichmentKey in get_setter_name(): #{req}")
-
-        set_scan_info: (dev, scan_object) =>
-            dev.active_scan = scan_object.active_scan
 
         get_attr_name: (req) =>
             _lut = {
@@ -261,7 +258,7 @@ angular.module(
                 com_info: "com_capability_list"
                 snmp_info: "devicesnmpinfo"
                 snmp_schemes_info: "snmp_schemes"
-                scan_info: "active_scan"
+                scan_lock_info: "devicescanlock_set"
                 variable_info: "device_variable_set"
                 device_connection_info: "device_connection_set"
                 sensor_threshold_info: "sensor_threshold_set"
@@ -820,8 +817,8 @@ angular.module(
         # device scan functions
 
         init_device_scans: () =>
-            # devices with scans running (pk => scan)
-            @scans_running = {}
+            # devices with scans running (pk list)
+            @scans_running = []
             @scans_promise = {}
             @scan_timeout = undefined
 
@@ -830,11 +827,10 @@ angular.module(
 
             # register scan mode
 
-            @set_device_scan(dev, scan_settings.scan_mode)
+            @set_device_scan(dev, true)
 
-            if scan_settings.scan_mode != "base"
-                # save defer function for later reference
-                @scans_promise[dev.idx] = defer
+            # save defer function for later reference
+            @scans_promise[dev.idx] = defer
 
             # start scan on server
             icswSimpleAjaxCall(
@@ -845,57 +841,43 @@ angular.module(
                 (xml) =>
                     # scan startet (or already done for base-scan because base-scan is synchronous)
                     @check_scans_running()
-                    if scan_settings.scan_mode == "base"
-                        defer.resolve("scan done")
+                    defer.resolve("scan started")
                 (error) ->
+                    @check_scans_running()
                     defer.reject("scan not ok")
             )
 
             return defer.promise
 
-        set_device_scan: (dev, scan_type) =>
-            _changed = false
-            dev.active_scan = scan_type
-            if dev.idx not of @scans_running
-                prev_mode = ""
-                _changed = true
-                @scans_running[dev.idx] = scan_type
-            else
-                prev_mode = @scans_running[dev.idx]
-                if @scans_running[dev.idx] != scan_type
-                    @scans_running[dev.idx] = scan_type
-                    _changed = true
-            if not @scans_running[dev.idx]
-                # send no signal
-                if prev_mode == "base"
-                    _changed = false
-                    # force update of com_info
-                    @enrich_devices(new icswDeviceTreeHelper(@, [dev]), ["com_info"], true).then(
-                        (result) =>
-                            $rootScope.$emit(ICSW_SIGNALS("ICSW_DEVICE_SCAN_CHANGED"), dev.idx, "")
-                    )
-                else if @scans_promise[dev.idx]?
-                    # rescan device network
-                    @enrich_devices(new icswDeviceTreeHelper(@, [dev]), ["network_info"], true).then(
-                        (result) =>
-                            @scans_promise[dev.idx].resolve("scan done")
-                            delete @scans_promise[dev.idx]
-                    )
-                delete @scans_running[dev.idx]
-            if _changed
-                # send signal if required
-                $rootScope.$emit(ICSW_SIGNALS("ICSW_DEVICE_SCAN_CHANGED"), dev.idx, scan_type)
+        activate_device_scan: (dev) =>
+            if dev.idx not in @scans_running
+                @scans_running.push(dev.idx)
+                
+        set_device_scan: (dev, to_add) =>
+            if to_add and dev.idx not in @scans_running
+                @scans_running.push(dev.idx)
+            else if not to_add and dev.idx in @scans_running
+                _.remove(@scans_running, (entry) -> return entry == dev.idx)
 
         check_scans_running: () =>
-            if not _.isEmpty(@scans_running)
-                Restangular.all(ICSW_URLS.NETWORK_GET_ACTIVE_SCANS.slice(1)).getList(
-                    {
-                        pks: angular.toJson(@scans_running)
-                    }
+            if @scans_running.length
+                if @scan_timeout
+                    $timeout.cancel(@scan_timeout)
+                @enrich_devices(
+                    new icswDeviceTreeHelper(@, (@all_lut[_pk] for _pk in @scans_running)),
+                    ["scan_lock_info"]
+                    true
                 ).then(
                     (result) =>
-                        for _res in result
-                            @set_device_scan(@all_lut[_res.pk], _res.active_scan)
+                        for _dev in result
+                            if _dev.devicescanlock_set.length == 0
+                                # no more locks, remove from list and trigger enrichment
+                                @set_device_scan(_dev, false)
+                                @enrich_devices(new icswDeviceTreeHelper(@, [_dev]), ["com_info", "network_info"], true).then(
+                                    (result) =>
+                                        $rootScope.$emit(ICSW_SIGNALS("ICSW_DEVICE_SCAN_CHANGED"), _dev.idx)
+                                )
+                            $rootScope.$emit(ICSW_SIGNALS("ICSW_DEVICE_SCAN_CHANGED"), _dev.idx)
                         @scan_timeout = $timeout(@check_scans_running, 1000)
                 )
 

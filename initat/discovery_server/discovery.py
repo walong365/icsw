@@ -20,12 +20,13 @@
 """ discovery-server, discovery part """
 
 import time
+import copy
 
 from django.db.models import Q
 
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
-from initat.cluster.backbone.models import device, ComCapability, net_ip, ActiveDeviceScanEnum, config
+from initat.cluster.backbone.models import device, net_ip, ActiveDeviceScanEnum, config
 from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListDeviceService
 from initat.snmp.snmp_struct import ResultNode
 from initat.tools import logging_tools, process_tools, server_command, config_tools, threading_tools
@@ -51,6 +52,8 @@ class DiscoveryProcess(threading_tools.process_obj, HostMonitoringMixin, BaseSca
         self._server = device.objects.get(Q(pk=global_config["SERVER_IDX"]))
         self._config = config.objects.get(Q(pk=global_config["CONFIG_IDX"]))
         self.__run_idx = 0
+        # global job list
+        self.__job_list = []
         self.__pending_commands = {}
         self._init_subsys()
 
@@ -58,31 +61,37 @@ class DiscoveryProcess(threading_tools.process_obj, HostMonitoringMixin, BaseSca
         srv_com = server_command.srv_command(source=args[0])
         self._iterate(srv_com, "scan_system_info", ActiveDeviceScanEnum.HM)
         self.send_pool_message("remote_call_async_result", unicode(srv_com))
+        self._check_for_pending_jobs()
 
     def _fetch_partition_info(self, *args, **kwargs):
         srv_com = server_command.srv_command(source=args[0])
         self._iterate(srv_com, "fetch_partition_info", ActiveDeviceScanEnum.HM)
         self.send_pool_message("remote_call_async_result", unicode(srv_com))
+        self._check_for_pending_jobs()
 
     def _scan_network_info(self, *args, **kwargs):
         srv_com = server_command.srv_command(source=args[0])
         self._iterate(srv_com, "scan_network_info", ActiveDeviceScanEnum.HM)
         self.send_pool_message("remote_call_async_result", unicode(srv_com))
+        self._check_for_pending_jobs()
 
     def _base_scan(self, *args, **kwargs):
         srv_com = server_command.srv_command(source=args[0])
         self._iterate(srv_com, "base_scan", ActiveDeviceScanEnum.BASE)
         self.send_pool_message("remote_call_async_result", unicode(srv_com))
+        self._check_for_pending_jobs()
 
     def _wmi_scan(self, *args, **kwargs):
         srv_com = server_command.srv_command(source=args[0])
         self._iterate(srv_com, "wmi_scan", ActiveDeviceScanEnum.BASE)
         self.send_pool_message("remote_call_async_result", unicode(srv_com))
+        self._check_for_pending_jobs()
 
     def _nrpe_scan(self, *args, **kwargs):
         srv_com = server_command.srv_command(source=args[0])
         self._iterate(srv_com, "nrpe_scan", ActiveDeviceScanEnum.BASE)
         self.send_pool_message("remote_call_async_result", unicode(srv_com))
+        self._check_for_pending_jobs()
 
     def _iterate(self, srv_com, c_name, scan_type_enum):
         total_result = ResultNode()
@@ -96,11 +105,9 @@ class DiscoveryProcess(threading_tools.process_obj, HostMonitoringMixin, BaseSca
                     res_node = ResultNode(error="device not available: {}".format(process_tools.get_except_info()))
                 else:
                     LicenseUsage.log_usage(LicenseEnum.discovery_server, LicenseParameterTypeEnum.device, _dev)
-
-                    s_time = time.time()
                     if not self.device_is_capable(_dev, scan_type_enum):
                         res_node = ResultNode(
-                            error="device {} is missing the required ComCapability '{}'".format(
+                            error=u"device {} is missing the required ComCapability '{}'".format(
                                 unicode(_dev),
                                 scan_type_enum,
                             ),
@@ -108,21 +115,34 @@ class DiscoveryProcess(threading_tools.process_obj, HostMonitoringMixin, BaseSca
                     else:
                         _new_lock = self.device_is_idle(_dev, scan_type_enum)
                         if _new_lock:
-                            try:
-                                res_node = getattr(self, c_name)(_dev_xml, _dev)
-                            except:
-                                _exc_info = process_tools.exception_info()
-                                for _line in _exc_info.log_lines:
-                                    self.log("   {}".format(_line), logging_tools.LOG_LEVEL_ERROR)
-                                res_node = ResultNode(error="device {}: error calling {}: {}".format(unicode(_dev), c_name, process_tools.get_except_info()))
-                            finally:
-                                [self.log(_what, _level) for _what, _level in _new_lock.close()]
-                    e_time = time.time()
-                    self.log(u"calling {} for device {} took {}".format(c_name, unicode(_dev), logging_tools.get_diff_time_str(e_time - s_time)))
+                            self.__job_list.append(
+                                (c_name, _dev, scan_type_enum, _new_lock, copy.deepcopy(_dev_xml))
+                            )
+                            res_node = ResultNode(ok=u"starting scan for device {}".format(unicode(_dev)))
+                        else:
+                            res_node = ResultNode(warning=u"lock not possible for device {}".format(unicode(_dev)))
                 total_result.merge(res_node)
             srv_com.set_result(*total_result.get_srv_com_result())
         else:
             srv_com.set_result("no devices given", server_command.SRV_REPLY_STATE_ERROR)
+
+        # start calls
+    def _check_for_pending_jobs(self):
+        for c_name, _dev, scan_type_enum, _new_lock, _dev_xml in self.__job_list:
+            # todo: make calls parallel
+            s_time = time.time()
+            time.sleep(5)
+            try:
+                getattr(self, c_name)(_dev_xml, _dev)
+            except:
+                _exc_info = process_tools.exception_info()
+                for _line in _exc_info.log_lines:
+                    self.log("   {}".format(_line), logging_tools.LOG_LEVEL_ERROR)
+            finally:
+                [self.log(_what, _level) for _what, _level in _new_lock.close()]
+            e_time = time.time()
+            self.log(u"calling {} for device {} took {}".format(c_name, unicode(_dev), logging_tools.get_diff_time_str(e_time - s_time)))
+        self.__job_list = []
 
     def device_is_capable(self, dev, lock_type):
         # lock_type is an ActiveDeviceScanEnum

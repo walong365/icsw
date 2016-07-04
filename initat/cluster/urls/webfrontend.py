@@ -166,7 +166,6 @@ network_patterns = [
     url("^json_network$", network_views.json_network.as_view(), name="json_network"),
     # url("^cdnt$", network_views.get_domain_name_tree.as_view(), name="domain_name_tree"),
     url("^get_clusters$", network_views.get_network_clusters.as_view(), name="get_clusters"),
-    url("^get_scans", network_views.get_active_scans.as_view(), name="get_active_scans"),
     url("^get_free_ip$", network_views.get_free_ip.as_view(), name="get_free_ip"),
     url("^rescan_networks", network_views.rescan_networks.as_view(), name="rescan_networks"),
 ]

@@ -48,7 +48,7 @@ from initat.cluster.backbone.serializers import netdevice_serializer, ComCapabil
     partition_table_serializer, monitoring_hint_serializer, DeviceSNMPInfoSerializer, \
     snmp_scheme_serializer, device_variable_serializer, cd_connection_serializer, \
     SensorThresholdSerializer, package_device_connection_serializer, DeviceDispatcherLinkSerializer, \
-    AssetRunSimpleSerializer, ShallowPastAssetBatchSerializer
+    AssetRunSimpleSerializer, ShallowPastAssetBatchSerializer, DeviceScanLockSerializer
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from initat.tools import logging_tools, server_command, process_tools
 
@@ -475,19 +475,17 @@ class DeviceConnectionEnrichment(object):
         return _data
 
 
-class ScanSerializer(serializers.Serializer):
-    device = serializers.IntegerField(source="pk")
-    active_scan = serializers.CharField()
-
-
-class ScanEnrichment(object):
+class ScanLockEnrichment(object):
     def fetch(self, pk_list):
-        _dict = {}
-        for _pk, _scan in DeviceScanLock.objects.filter(Q(active=True) & Q(device__in=pk_list)).values_list("device__pk", "description"):
-            _dict.setdefault(_pk, []).append(_scan)
-        print _dict
-        _res = device.objects.filter(Q(pk__in=pk_list)).values("pk", "active_scan")
-        return ScanSerializer(_res, many=True).data
+        _res = DeviceScanLock.objects.filter(
+            Q(device__in=pk_list) & Q(active=True)
+        )
+        _data = [
+            DeviceScanLockSerializer(
+                _sl,
+            ).data for _sl in _res
+        ]
+        return _data
 
 
 class SensorThresholdEnrichment(object):
@@ -519,7 +517,7 @@ class EnrichmentHelper(object):
         self._all["snmp_info"] = EnrichmentObject(DeviceSNMPInfo, DeviceSNMPInfoSerializer)
         self._all["snmp_schemes_info"] = SNMPSchemeEnrichment()
         self._all["monitoring_hint_info"] = EnrichmentObject(monitoring_hint, monitoring_hint_serializer)
-        self._all["scan_info"] = ScanEnrichment()
+        self._all["scan_lock_info"] = ScanLockEnrichment()
         self._all["variable_info"] = EnrichmentObject(device_variable, device_variable_serializer)
         self._all["device_connection_info"] = DeviceConnectionEnrichment()
         self._all["sensor_threshold_info"] = SensorThresholdEnrichment()

@@ -111,7 +111,7 @@ class SNMPBatch(object):
                 server_command.log_level_to_srv_reply(log_level)
             )
 
-    def new_run(self, dev_lock, flag, timeout, *oid_list, **kwargs):
+    def new_run(self, flag, timeout, *oid_list, **kwargs):
         if self.batch_valid:
             _run_id = SNMPBatch.next_snmp_run_id(self.id)
             self.__snmp_results[_run_id] = None

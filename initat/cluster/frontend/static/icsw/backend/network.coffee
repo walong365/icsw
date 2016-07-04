@@ -44,11 +44,11 @@ angular.module(
             # overwrite all entries
             # console.log "Overwrite all networktree entries"
             _dict = {
-                "nw_list": nw_list
-                "nw_speed_list": nw_speed_list
-                "nw_type_list": nw_type_list
-                "nw_device_type_list": nw_device_type_list
-                "nw_snmp_type_list": nw_snmp_type_list
+                nw_list: nw_list
+                nw_speed_list: nw_speed_list
+                nw_type_list: nw_type_list
+                nw_device_type_list: nw_device_type_list
+                nw_snmp_type_list: nw_snmp_type_list
             }
             for key, val of _dict
                 @[key].length = 0
@@ -59,6 +59,10 @@ angular.module(
         build_luts: () =>
             for entry in ["nw", "nw_speed", "nw_type", "nw_device_type", "nw_snmp_type"]
                 @["#{entry}_lut"] = icswTools.build_lut(@["#{entry}_list"])
+            # add description and identifier lut
+            for entry in @nw_type_list
+                @nw_type_lut[entry.description] = entry
+                @nw_type_lut[entry.identifier] = entry
             @link()
 
         reorder: () =>
