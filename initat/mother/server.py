@@ -371,7 +371,8 @@ class server_process(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixi
         if syslog_srvcs:
             self.__syslog_type = syslog_srvcs[0]
             self.log("syslog type found: {}".format(self.__syslog_type))
-            if self.__syslog_type.count("rsys"):
+            # hack for old sles11sp3 (liebherr)
+            if self.__syslog_type.count("rsys") or (self.__syslog_type in ["syslog"] and process_tools.get_machine_name() in ["lwnsu62020"]):
                 self._enable_rsyslog()
             else:
                 self.log("syslog-type {} not supported".format(self.__syslog_type), logging_tools.LOG_LEVEL_ERROR)
