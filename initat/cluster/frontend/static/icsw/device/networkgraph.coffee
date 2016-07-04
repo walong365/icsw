@@ -635,7 +635,7 @@ angular.module(
                     transform: "translate(#{node.x}, #{node.y})"
                 }
                 (
-                    path(_path) for _path in root_node.element_list
+                    path(_.pickBy(_path, (value, key) -> return not key.match(/\$/))) for _path in root_node.element_list
                 )
             )
     )

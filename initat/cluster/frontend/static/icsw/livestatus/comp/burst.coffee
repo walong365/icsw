@@ -484,8 +484,8 @@ angular.module(
                     key: "svg.top"
                     width: "#{@props.draw_parameters.total_width}px"
                     height: "#{@props.draw_parameters.total_height}px"
-                    "font-family": "'Open-Sans', sans-serif"
-                    "font-size": "10pt"
+                    fontFamily: "'Open-Sans', sans-serif"
+                    fontSize: "10pt"
                 }
                 [
                     g(
