@@ -345,10 +345,10 @@ class ServiceState(object):
         # ignore when in shutdown mode
         if not self.__shutdown:
             # sync system states with internal target states for meta-server and logging-server
-            _sys_states = self._parse_system_states()
-            if None not in _sys_states:
+            _sys_state = self._parse_system_state()
+            if None != _sys_state:
                 _meta_s = True if self.__target_dict["meta-server"] == 1 else False
-                if _meta_s != _sys_states:
+                if _meta_s != _sys_state:
                     if _meta_s:
                         # enable logging and meta server
                         self.log("enabling meta-server for system startup")
@@ -394,7 +394,7 @@ class ServiceState(object):
             for _l_num, _line in enumerate(_lines, 1):
                 self.log("  {:3d} {}".format(_l_num, _line))
 
-    def _parse_system_states(self):
+    def _parse_system_state(self):
         # parse runlevel, for transition from meta-server to icsw-client
         t_dirs = [_dir for _dir in ["/etc/rc3.d/", "/etc/init.d/rc3.d", "/etc/rc.d/rc3.d"] if os.path.isdir(_dir)]
         _start_m = None
