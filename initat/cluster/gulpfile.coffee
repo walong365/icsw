@@ -381,12 +381,12 @@ gulp.task("deploy-css", () ->
         ["#{COMPILE_DIR}/*.css"],
     # ).pipe(
     #     gzip()
-    #).pipe(
-    #    gulpif(_is_prod, rev())
+    ).pipe(
+        gulpif(_is_prod, rev())
     ).pipe(
         gulp.dest(DEPLOY_DIR + "/static/")
     ).pipe(
-        rev.manifest(merge: true)
+        rev.manifest(DEPLOY_DIR + '/rev-manifest.json', { merge: true, base: DEPLOY_DIR })
     ).pipe(
         gulp.dest(DEPLOY_DIR)
     )
@@ -403,7 +403,7 @@ gulp.task("deploy-js", () ->
     ).pipe(
         gulp.dest(DEPLOY_DIR)
     ).pipe(
-        rev.manifest(merge: true)
+        rev.manifest(DEPLOY_DIR + '/rev-manifest.json', { merge: true, base: DEPLOY_DIR })
     ).pipe(
         gulp.dest(DEPLOY_DIR)
     )
@@ -420,7 +420,7 @@ gulp.task("deploy-html", () ->
     ).pipe(
         gulp.dest(DEPLOY_DIR)
     ).pipe(
-        rev.manifest(merge: true)
+        rev.manifest(DEPLOY_DIR + '/rev-manifest.json', { merge: true, base: DEPLOY_DIR })
     ).pipe(
         gulp.dest(DEPLOY_DIR)
     )
@@ -619,13 +619,13 @@ gulp.task("reload-main", (cb) ->
 
 if options.addons
     gulp.task("modify-app-js", gulp.series("create-all-urls", "inject-urls-to-app", "inject-addons-to-app"))
-    gulp.task("deploy-all", gulp.parallel("deploy-css", "deploy-js", "deploy-html", "deploy-addons"))
+    gulp.task("deploy-all", gulp.series("deploy-css", "deploy-js", "deploy-html", "deploy-addons"))
     gulp.task("setup-main", gulp.series("modify-app-js", "transform-main", "fix-main-import-path", "import_css"))
     gulp.task("deploy-and-transform-all", gulp.series("deploy-all", "setup-main", "inject-addons-to-main", "copy-main"))
     gulp.task("rebuild-after-watch", gulp.series("deploy-all", "transform-main", "fix-main-import-path", "inject-addons-to-main", "copy-main", "reload-main"))
 else
     gulp.task("modify-app-js", gulp.series("create-all-urls", "inject-urls-to-app"))
-    gulp.task("deploy-all", gulp.parallel("deploy-css", "deploy-js", "deploy-html"))
+    gulp.task("deploy-all", gulp.series("deploy-css", "deploy-js", "deploy-html"))
     gulp.task("setup-main", gulp.series("modify-app-js", "transform-main", "fix-main-import-path", "import_css"))
     gulp.task("deploy-and-transform-all", gulp.series("deploy-all", "setup-main", "copy-main"))
     gulp.task("rebuild-after-watch", gulp.series("deploy-all", "transform-main", "fix-main-import-path", "copy-main", "reload-main"))

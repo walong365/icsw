@@ -150,52 +150,56 @@ menu_module = angular.module(
 
     $scope.current_theme = "default"
     $scope.switch_theme = () ->
-        if $scope.current_theme == "init"
-            theme = "default"
-            $scope.current_theme = "default"
-        else
-            theme = "init"
-            $scope.current_theme = "init"
+        $.get('/icsw/rev-manifest.json', (data) ->
+            if $scope.current_theme == "init"
+                theme = "default"
+                $scope.current_theme = "default"
+            else
+                theme = "init"
+                $scope.current_theme = "init"
 
-        head = angular.element.find("head")[0]
+            if data.hasOwnProperty("theme_default.css")
+                css_theme_default = '<link rel="stylesheet" href="static/' + data['theme_default.css'] + '">'
+            else
+                css_theme_default = '<link rel="stylesheet" href="static/theme_default.css">'
 
-        css_theme_default = '<link rel="stylesheet" href="static/theme_default.css">'
-        css_theme_init = '<link rel="stylesheet" href="static/theme_init.css">'
-        svgstyle_default = '<link rel="stylesheet" href="static/svgstyle_default.css">'
-        svgstyle_init = '<link rel="stylesheet" href="static/svgstyle_init.css">'
+            if data.hasOwnProperty("theme_init.css")
+                css_theme_init = '<link rel="stylesheet" href="static/' + data['theme_init.css'] + '">'
+            else
+                css_theme_init = '<link rel="stylesheet" href="static/theme_init.css">'
 
-        css_theme_default_match = 'static/theme_default'
-        css_theme_init_match = 'static/theme_init'
-
-        if theme == "init"
-            theme_to_use = css_theme_init
-            svg_style_to_use = svgstyle_init
-            svg_style_name = "svgstyle_init.css"
-        else if theme == "default"
-            theme_to_use = css_theme_default
-            svg_style_to_use = svgstyle_default
-            svg_style_name = "svgstyle_default.css"
-
-        for node in head.childNodes
-            if node.outerHTML != undefined
-                if node.outerHTML == css_theme_default
-                    node.outerHTML = theme_to_use
-                else if node.outerHTML == css_theme_init
-                    node.outerHTML = theme_to_use
-                else if node.outerHTML == svgstyle_default
-                    node.outerHTML = svg_style_to_use
-                else if node.outerHTML == svgstyle_init
-                    node.outerHTML = svg_style_to_use
-
-        $.get('/icsw/static/' + svg_style_name, (data) ->
             head = angular.element.find("head")[0]
-            console.log(head)
+
+            svgstyle_default = '<link rel="stylesheet" href="static/svgstyle_default.css">'
+            svgstyle_init = '<link rel="stylesheet" href="static/svgstyle_init.css">'
+
+            if theme == "init"
+                theme_to_use = css_theme_init
+                svg_style_to_use = svgstyle_init
+                svg_style_name = "svgstyle_init.css"
+            else if theme == "default"
+                theme_to_use = css_theme_default
+                svg_style_to_use = svgstyle_default
+                svg_style_name = "svgstyle_default.css"
+
             for node in head.childNodes
                 if node.outerHTML != undefined
-                    if node.outerHTML.indexOf(".sb_lines") > -1
-                        console.log(node.outerHTML)
-                        node.outerHTML = "<style>" + data + "</style>"
-                        console.log(node.outerHTML)
+                    if node.outerHTML == css_theme_default
+                        node.outerHTML = theme_to_use
+                    else if node.outerHTML == css_theme_init
+                        node.outerHTML = theme_to_use
+                    else if node.outerHTML == svgstyle_default
+                        node.outerHTML = svg_style_to_use
+                    else if node.outerHTML == svgstyle_init
+                        node.outerHTML = svg_style_to_use
+
+            $.get('/icsw/static/' + svg_style_name, (data) ->
+                head = angular.element.find("head")[0]
+                for node in head.childNodes
+                    if node.outerHTML != undefined
+                        if node.outerHTML.indexOf(".sb_lines") > -1
+                            node.outerHTML = "<style>" + data + "</style>"
+            )
         )
 ]).directive("icswLayoutMenubar",
 [
