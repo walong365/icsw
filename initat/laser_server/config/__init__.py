@@ -1,8 +1,8 @@
-# Copyright (C) 2008-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2016 Gregor Kaufmann, init.at
 #
-# this file is part of md-config-server
+# this file is part of laser-server
 #
-# Send feedback to: <lang-nevyjel@init.at>
+# Send feedback to: <kaufmann@init.at>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -17,7 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" config part of md-config-server """
+""" config part of laser-server """
 
 from initat.tools import configfile, process_tools
 
