@@ -179,11 +179,9 @@ install: install_webcontent
 	${INSTALL} ${INSTALL_OPTS} init_scripts/init-license-server.rc ${DESTDIR}/${INIT}/init-license-server
 	${INSTALL} ${INSTALL_OPTS} init_scripts/hoststatus.rc ${DESTDIR}/${INIT}/hoststatus
 	${INSTALL} ${INSTALL_OPTS} init_scripts/meta-server ${DESTDIR}/${INIT}/meta-server
-	${INSTALL} ${INSTALL_OPTS} init_scripts/logging-server ${DESTDIR}/${INIT}/logging-server
 	# /usr/sbin (mostly rc* files)
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}${USRSBIN}
 	${LN} -s ${INIT}/meta-server ${DESTDIR}${USRSBIN}/rcmeta-server
-	${LN} -s ${INIT}/logging-server ${DESTDIR}${USRSBIN}/rclogging-server
 	${LN} -s ${INIT}/hoststatus ${DESTDIR}${USRSBIN}/rchoststatus
 	${LN} -s ${INIT}/loadmodules ${DESTDIR}${USRSBIN}/rcloadmodules
 	${LN} -s ${INIT}/init-license-server ${DESTDIR}${USRSBIN}/rcinit-license-server

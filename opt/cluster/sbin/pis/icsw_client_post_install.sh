@@ -36,7 +36,7 @@ move_log_dir
 # purge debian packages
 if [ -f /etc/debian_version ] ; then
 
-    for service in host-monitoring package-client ; do
+    for service in host-monitoring package-client logging-server ; do
         if [ -f /etc/init.d/${service} ] ; then
             aptitude purge ${service}
         fi
@@ -58,7 +58,7 @@ for client in meta-server loadmodules hoststatus ; do
 done
 
 # deactivate most client services (now handled via meta-server)
-for client in host-monitoring package-client memcached ; do
+for client in host-monitoring package-client memcached logging-server ; do
     if [ -f /etc/init.d/${client} ] ; then
         ${ICSW_PIS}/modify_service.sh deactivate ${client}
     fi
