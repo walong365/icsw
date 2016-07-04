@@ -61,6 +61,7 @@ __all__ = [
     "LogLevel",
     "LogSource",
     "DeviceBootHistory",
+    "log_source_lookup",
 ]
 
 
