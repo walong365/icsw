@@ -8,6 +8,7 @@
 .svg_warn { fill: #dddd88; }  /* sources.coffee *//* f0ad4e status_history_utils.coffee??*/
 .svg_crit { fill: #ff7777; } /* sources.coffee */
 .svg_danger { fill: #ff0000; } /* sources.coffee */
+.svg_unknown { fill: #dddddd; } /* sources.coffee */
 .svg_plandown { fill: #5bc0de; }   /* status_history_utils.coffee */
 .svg_unknown { fill: #c7c7c7; }  /* status_history_utils.coffee */
 .svg_undetermined { fill: #c7c7c7; }  /* status_history_utils.coffee */

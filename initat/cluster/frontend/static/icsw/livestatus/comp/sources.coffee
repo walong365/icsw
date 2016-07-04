@@ -485,7 +485,7 @@ angular.module(
             0: "svg_ok"
             1: "svg_warn"
             2: "svg_crit"
-            3: "svg_danger"
+            3: "svg_unknown"
         }[entry.state]
         _r_str = {
             0: "success"
