@@ -103,17 +103,6 @@ class config_proxy(BaseProxy):
     def help_string(self, key):
         return self._callmethod("help_string", (key,))
 
-    def set_uid_gid(self, uid, gid):
-        if isinstance(uid, basestring):
-            uid = pwd.getpwnam(uid)[2]
-        if isinstance(gid, basestring):
-            gid = grp.getgrnam(gid)[2]
-        cur_address = self._manager.address
-        addr_path = os.path.dirname(cur_address)
-        os.chown(addr_path, uid, gid)
-        os.chown(cur_address, uid, gid)
-        return self._callmethod("set_uid_gid", (uid, gid))
-
 
 class _conf_var(object):
     argparse_type = None
@@ -435,16 +424,6 @@ class configuration(object):
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_array.append((what, log_level))
-    # def copy_flags(self, var_dict):
-    #    # copy flags (right now only global / local) for given var_names
-    #    for var_name, var_value in var_dict.iteritems():
-    #        self.__c_dict[var_name].is_global = var_value.is_global()
-
-    def set_uid_gid(self, new_uid, new_gid):
-        os.setgid(new_gid)
-        os.setegid(new_gid)
-        os.setuid(new_uid)
-        os.seteuid(new_uid)
 
     def single_process_mode(self):
         return self.__spm
@@ -824,7 +803,7 @@ config_manager.register(
     configuration,
     config_proxy,
     exposed=[
-        "parse_file", "add_config_entries", "set_uid_gid",
+        "parse_file", "add_config_entries",
         "single_process_mode", "help_string",
         "get_log", "handle_commandline", "keys", "get_type", "get", "get_source",
         "is_global", "database", "is_global", "set_global",
@@ -868,12 +847,6 @@ class gc_proxy(object):
         if key not in self.__dict:
             self.__dict[key] = self.global_config[key]
         return self.__dict[key]
-
-
-def enable_config_access(user_name, group_name):
-    address = cur_manager.address
-    process_tools.change_user_group_path(address, user_name, group_name)
-    process_tools.change_user_group_path(os.path.dirname(address), user_name, group_name)
 
 
 def get_manager_pid():

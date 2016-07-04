@@ -78,16 +78,6 @@
             <dir value="/opt/cluster/system/rrd" user="idrrd" group="idg" create="1"/>
         </access-rights>
     </instance>
-    <instance name="memcached" check_type="simple" pid_file_name="memcached/memcached.pid" any_threads_ok="1" runs_on="system">
-        <config_names>
-            <config_name contact='0'>server</config_name>
-        </config_names>
-        <network>
-            <ports>
-                <port type="command">8001</port>
-            </ports>
-        </network>
-    </instance>
     <instance name="nginx" check_type="simple" pid_file_name="nginx.pid" any_threads_ok="1" runs_on="system">
         <config_names>
             <config_name contact='0'>server</config_name>

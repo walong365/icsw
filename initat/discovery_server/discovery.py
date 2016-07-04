@@ -167,7 +167,6 @@ class DiscoveryProcess(threading_tools.process_obj, HostMonitoringMixin, BaseSca
     def device_is_idle(self, dev, lock_type):
         # lock_type is an ActiveDeviceScanEnum
         # check if device dev is idle (no scans running)
-        _idle = True
         _new_lock, _log_lines = dev.lock_possible(lock_type, dev, self._server, self._config)
         [self.log(_what, _log_level) for _what, _log_level in _log_lines]
         return _new_lock
