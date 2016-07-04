@@ -148,15 +148,22 @@ menu_module = angular.module(
     #    console.log "SHOW_DIALOG"
     #     icswLayoutSelectionDialogService.show_dialog()
 
-    $scope.current_theme = "default"
-    $scope.switch_theme = () ->
+    $scope.switch_theme = (theme_selection) ->
         $.get('/icsw/rev-manifest.json', (data) ->
-            if $scope.current_theme == "init"
-                theme = "default"
-                $scope.current_theme = "default"
+            if theme_selection == undefined
+
+                current_theme = $window.sessionStorage.getItem('current_theme')
+                if current_theme == null
+                    current_theme = "default"
+
+                if current_theme == "init"
+                    theme = "default"
+                    $window.sessionStorage.setItem('current_theme', 'default');
+                else
+                    theme = "init"
+                    $window.sessionStorage.setItem('current_theme', 'init');
             else
-                theme = "init"
-                $scope.current_theme = "init"
+                theme = theme_selection
 
             if data.hasOwnProperty("theme_default.css")
                 css_theme_default = '<link rel="stylesheet" href="static/' + data['theme_default.css'] + '">'
@@ -201,6 +208,12 @@ menu_module = angular.module(
                             node.outerHTML = "<style>" + data + "</style>"
             )
         )
+
+    # apply selected theme if theme is set in session
+    current_theme = $window.sessionStorage.getItem('current_theme')
+    if current_theme != null
+        $scope.switch_theme(current_theme)
+
 ]).directive("icswLayoutMenubar",
 [
     "$templateCache",
