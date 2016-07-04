@@ -131,7 +131,6 @@ class DiscoveryProcess(threading_tools.process_obj, HostMonitoringMixin, BaseSca
         for c_name, _dev, scan_type_enum, _new_lock, _dev_xml in self.__job_list:
             # todo: make calls parallel
             s_time = time.time()
-            time.sleep(5)
             try:
                 getattr(self, c_name)(_dev_xml, _dev)
             except:
