@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2001-2009,2011-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2009,2011-2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #
@@ -166,6 +166,13 @@ class InstanceXML(object):
             del _tree_dict[_key]
         _inst_keys = list(set(_inst_keys) - set(_to_remove))
         _overlay_keys = list(set(_overlay_keys) - set(_to_remove))
+        _first_instance = "client.xml"
+        _inst_keys = [
+            _entry for _entry in _inst_keys if _entry == _first_instance
+        ] + [
+            _entry for _entry in _inst_keys if _entry != _first_instance
+        ]
+        _IGNORE_DUPS = ["memcached"]
         for _inst_key in _inst_keys:
             for sub_inst in _tree_dict[_inst_key].findall("instance"):
                 _add_list = [sub_inst.attrib["name"]]
@@ -175,7 +182,11 @@ class InstanceXML(object):
                         self.__alias_lut[_an] = sub_inst.attrib["name"]
                 for _name in _add_list:
                     if _name in self.__lut:
-                        raise KeyError("name {} already present in instance lut".format(_name))
+                        if _name in _IGNORE_DUPS:
+                            # ignore
+                            pass
+                        else:
+                            raise KeyError("name {} already present in instance lut".format(_name))
                     else:
                         self.__lut[_name] = sub_inst
                 self.tree.append(sub_inst)
