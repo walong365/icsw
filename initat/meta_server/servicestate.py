@@ -346,7 +346,7 @@ class ServiceState(object):
         if not self.__shutdown:
             # sync system states with internal target states for meta-server and logging-server
             _sys_state = self._parse_system_state()
-            if None != _sys_state:
+            if _sys_state is not None:
                 _meta_s = True if self.__target_dict["meta-server"] == 1 else False
                 if _meta_s != _sys_state:
                     if _meta_s:
