@@ -115,5 +115,4 @@ def main():
     # late load after population of global_config
     from initat.collectd.server import server_process
     server_process().loop()
-    configfile.terminate_manager()
     os._exit(0)

@@ -58,6 +58,5 @@ def main():
     )
     process_tools.ALLOW_MULTIPLE_INSTANCES = False
     run_code()
-    configfile.terminate_manager()
     # exit
     os._exit(0)

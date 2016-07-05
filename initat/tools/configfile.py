@@ -356,6 +356,18 @@ class timedelta_c_var(_conf_var):
 CONFIG_PREFIX = "__ICSW__$conf$__"
 
 
+class InMemoryProxy(object):
+    # simple proxy for md-config-server
+    def __init__(self, g_config):
+        self.global_config = g_config
+        self.__dict = {}
+
+    def __getitem__(self, key):
+        if key not in self.__dict:
+            self.__dict[key] = self.global_config[key]
+        return self.__dict[key]
+
+
 class MemCacheBasedDict(object):
     def __init__(self, mc_client, prefix, single_process_mode):
         self.__spm = single_process_mode
