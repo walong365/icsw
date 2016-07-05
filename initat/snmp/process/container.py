@@ -20,9 +20,9 @@
 import os
 import time
 
-from initat.tools import logging_tools
 import zmq
 
+from initat.tools import logging_tools
 from .config import DEFAULT_RETURN_NAME
 from .process import snmp_process
 
@@ -42,8 +42,17 @@ class snmp_process_container(object):
         self.__used_proc_ids = set()
         self.__buffer = []
         self._socket = None
-        self.log("init with a maximum of {:d} processes ({:d} jobs per process)".format(self.max_procs, self.max_snmp_jobs))
-        self.log("{} in default config dict:".format(logging_tools.get_plural("key", len(self.conf_dict))))
+        self.log(
+            "init with a maximum of {:d} processes ({:d} jobs per process)".format(
+                self.max_procs,
+                self.max_snmp_jobs
+            )
+        )
+        self.log(
+            "{} in default config dict:".format(
+                logging_tools.get_plural("key", len(self.conf_dict))
+            )
+        )
         for _key in sorted(self.conf_dict):
             self.log("  {}={}".format(_key, self.conf_dict[_key]))
 

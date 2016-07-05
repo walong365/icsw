@@ -453,7 +453,7 @@ class MemCacheBasedDict(object):
                     raise
                 _is_blob = _json["descr"] in ["Blob"]
                 if _is_blob:
-                    _json["kwargs"]["default_value"] = bz2.decompress(base64.b64decode(_json["kwargs"]["default_value"]))
+                    _json["default_value"] = bz2.decompress(base64.b64decode(_json["default_value"]))
                 # print _raw
                 _obj = {
                     "Timedelta": timedelta_c_var,
