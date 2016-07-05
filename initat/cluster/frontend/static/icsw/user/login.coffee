@@ -28,10 +28,10 @@ angular.module(
 ).controller("icswLoginCtrl",
 [
     "$scope", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswParseXMLResponseService", "blockUI",
-    "initProduct", "icswSystemLicenseDataService", "$q", "$state", "icswCSRFService", "icswUserService",
+    "initProduct", "icswSystemLicenseDataService", "$q", "$state", "icswCSRFService", "icswUserService", "$rootScope"
 (
     $scope, $window, ICSW_URLS, icswSimpleAjaxCall, icswParseXMLResponseService, blockUI,
-    initProduct, icswSystemLicenseDataService, $q, $state, icswCSRFService, icswUserService
+    initProduct, icswSystemLicenseDataService, $q, $state, icswCSRFService, icswUserService, $rootScope
 ) ->
     $scope.initProduct = initProduct
     $scope.license_tree = undefined
@@ -108,6 +108,7 @@ angular.module(
                         (data) ->
                             csrf_token = data[0]
                             _user = data[1].user
+                            $rootScope.switch_theme(_user.ui_theme_selection)
                             blockUI.stop()
                             console.log "STATE=", _val
                             $state.go(_val)
@@ -116,7 +117,6 @@ angular.module(
                 blockUI.stop()
                 $scope.init_login()
         )
-
     $scope.init_login()
 ]).directive("icswLoginForm",
 [

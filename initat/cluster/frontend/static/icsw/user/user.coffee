@@ -265,7 +265,9 @@ user_module = angular.module(
             return @logout()
 
         update: () =>
-            return @get_result().update_user()
+            result = @get_result()
+            $rootScope.switch_theme(result.user.ui_theme_selection)
+            return result.update_user()
 
     return new icswUserService(
         "User"
