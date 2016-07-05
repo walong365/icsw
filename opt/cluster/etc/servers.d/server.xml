@@ -10,6 +10,10 @@
             <config_name>syslog_server</config_name>
             <config_name>logcheck_server</config_name>
         </config_names>
+        <dependencies>
+            <needed-for-start symmetrical="1">logging-server</needed-for-start>
+            <needed-for-start symmetrical="1">memcached</needed-for-start>
+        </dependencies>
         <network>
             <ports>
                 <port type="command">8014</port>
@@ -29,6 +33,10 @@
         <required-license>package_install</required-license>
         <module-name>initat.package_install.server.main</module-name>
         <old-binary>package-server</old-binary>
+        <dependencies>
+            <needed-for-start symmetrical="1">logging-server</needed-for-start>
+            <needed-for-start symmetrical="1">memcached</needed-for-start>
+        </dependencies>
         <network>
             <ports>
                 <port type="command">8007</port>
@@ -43,6 +51,10 @@
             <config_name>mother_server</config_name>
         </config_names>
         <node-split/>
+        <dependencies>
+            <needed-for-start symmetrical="1">logging-server</needed-for-start>
+            <needed-for-start symmetrical="1">memcached</needed-for-start>
+        </dependencies>
         <network>
             <ports>
                 <port type="command">8000</port>
@@ -55,6 +67,10 @@
             <config_name>rrd_server</config_name>
             <config_name>rrd_collector</config_name>
         </config_names>
+        <dependencies>
+            <needed-for-start symmetrical="1">logging-server</needed-for-start>
+            <needed-for-start symmetrical="1">memcached</needed-for-start>
+        </dependencies>
         <network>
             <ports>
                 <port type="command">8008</port>
@@ -105,6 +121,10 @@
             <config_name>rrd_grapher</config_name>
             <config_name>rrd_server</config_name>
         </config_names>
+        <dependencies>
+            <needed-for-start symmetrical="1">logging-server</needed-for-start>
+            <needed-for-start symmetrical="1">memcached</needed-for-start>
+        </dependencies>
         <network>
             <ports>
                 <port type="command">8003</port>
@@ -135,6 +155,10 @@
             <arg key="group">sge</arg>
             <arg key="groups">idg</arg>
         </start-argument>
+        <dependencies>
+            <needed-for-start symmetrical="1">logging-server</needed-for-start>
+            <needed-for-start symmetrical="1">memcached</needed-for-start>
+        </dependencies>
         <network>
             <ports>
                 <port type="command">8009</port>
@@ -148,6 +172,10 @@
         </access-rights>
     </instance>
     <instance check_type="meta" name="cluster-server" alias="server" has_force_stop="1" uuid-postfix="cluster-server">
+        <dependencies>
+            <needed-for-start symmetrical="1">logging-server</needed-for-start>
+            <needed-for-start symmetrical="1">memcached</needed-for-start>
+        </dependencies>
         <network>
             <ports>
                 <port type="command">8004</port>
@@ -161,6 +189,10 @@
         <config_names>
             <config_name>discovery_server</config_name>
         </config_names>
+        <dependencies>
+            <needed-for-start symmetrical="1">logging-server</needed-for-start>
+            <needed-for-start symmetrical="1">memcached</needed-for-start>
+        </dependencies>
         <network>
             <ports>
                 <port type="command">8006</port>
@@ -177,6 +209,10 @@
         <config_names>
             <config_name>config_server</config_name>
         </config_names>
+        <dependencies>
+            <needed-for-start symmetrical="1">logging-server</needed-for-start>
+            <needed-for-start symmetrical="1">memcached</needed-for-start>
+        </dependencies>
         <network>
             <ports>
                 <port type="command">8005</port>
@@ -204,6 +240,10 @@
         <programm-name>collrelay</programm-name>
         <module-name>initat.host_monitoring.main</module-name>
         <old-binary>collrelay</old-binary>
+        <dependencies>
+            <needed-for-start symmetrical="1">logging-server</needed-for-start>
+            <needed-for-start symmetrical="1">memcached</needed-for-start>
+        </dependencies>
         <network>
             <ports>
                 <port type="command">2004</port>
@@ -211,6 +251,10 @@
         </network>
     </instance>
     <instance check_type="meta" name="snmp-relay" pid_file_name="snmp-relay/snmp-relay.pid" has_force_stop="1" uuid-postfix="snmp-relay">
+        <dependencies>
+            <needed-for-start symmetrical="1">logging-server</needed-for-start>
+            <needed-for-start symmetrical="1">memcached</needed-for-start>
+        </dependencies>
         <config_names>
             <config_name contact='0'>monitor_server</config_name>
             <config_name contact='0'>monitor_master</config_name>
@@ -229,6 +273,10 @@
             <arg key="user">idnagios</arg>
             <arg key="group">idg</arg>
         </start-argument>
+        <dependencies>
+            <needed-for-start symmetrical="1">logging-server</needed-for-start>
+            <needed-for-start symmetrical="1">memcached</needed-for-start>
+        </dependencies>
         <network>
             <ports>
                 <port type="command">8010</port>

@@ -184,7 +184,7 @@ class InstanceXML(object):
                     if _name in self.__lut:
                         if _name in _IGNORE_DUPS:
                             # ignore
-                            pass
+                            print("duplicate entry '{}' found, ignoring".format(_name))
                         else:
                             raise KeyError("name {} already present in instance lut".format(_name))
                     else:
@@ -204,6 +204,33 @@ class InstanceXML(object):
                     # simply append, fixme todo: intelligent merge
                     for _el in sub_inst:
                         _main_inst.append(_el)
+        self._build_dependency_dict()
+
+    def _build_dependency_dict(self):
+        self.__needed_for_start = {}
+        self.__needed_for_stop = {}
+        # build dependencies
+        for _iwd in self.tree.xpath("instance[.//dependencies]"):
+            _inst_name = _iwd.attrib["name"]
+            _needed = _iwd.xpath(".//dependencies/needed-for-start")
+            for _need_el in _needed:
+                _need = _need_el.text
+                _sym = True if int(_need_el.get("symmetrical", "0")) else False
+                if self.tree.find(".//instance[@name='{}']".format(_need)) is None:
+                    raise KeyError("dependency '{}' for instance '{}' not found".format(_need, _inst_name))
+                if _need == _inst_name:
+                    raise KeyError("cannot depend on myself ({})".format(_inst_name))
+                self.__needed_for_start.setdefault(_inst_name, []).append(_need)
+                if _sym:
+                    self.__needed_for_stop.setdefault(_need, []).append(_inst_name)
+
+    def get_start_dependencies(self, inst_name):
+        # return list of required started instances for given instance name
+        return self.__needed_for_start.get(inst_name, [])
+
+    def get_stop_dependencies(self, inst_name):
+        # return list of required stopped instances for given instance name
+        return self.__needed_for_stop.get(inst_name, [])
 
     def __contains__(self, name):
         return name in self.__lut

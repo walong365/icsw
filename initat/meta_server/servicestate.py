@@ -141,8 +141,9 @@ class ServiceStateTranstaction(object):
 
 
 class ServiceState(object):
-    def __init__(self, log_com):
+    def __init__(self, log_com, instance):
         self.__log_com = log_com
+        self.instance = instance
         self.log("init")
         self._path = global_config["STATE_DIR"]
         if not os.path.isdir(self._path):
@@ -155,6 +156,8 @@ class ServiceState(object):
         self.__shutdown = False
         # for throtteling
         self.__throttle_dict = {}
+        # to flag unfullfilled dependencies, el_name -> (start_prob, end_prob)
+        self.__dependency_problems = {}
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com("[SrvState] {}".format(what), log_level)
@@ -510,8 +513,20 @@ class ServiceState(object):
                     # compare record for SERVICE_OK_LIST
                     c_rec = (self.__target_dict[name], _first[0], _first[1], _first[2])
                     # print _first, c_rec
-                    if not self._check_current_state(c_rec)[0] and _first[3] < MIN_STATE_TIME:
-                        service.log("state is not OK", logging_tools.LOG_LEVEL_WARN)
+                    if name in self.__dependency_problems and any(self.__dependency_problems[name].values()):
+                        # reduce time to wait
+                        _min_state_time = 2.0
+                    else:
+                        _min_state_time = MIN_STATE_TIME
+                    if not self._check_current_state(c_rec)[0] and _first[3] < _min_state_time:
+                        # todo: in case of a dependency problem we should reduce the min_state_time
+                        service.log(
+                            "state is not OK ({:.2f} < {:.2f})".format(
+                                _first[3],
+                                _min_state_time,
+                            ),
+                            logging_tools.LOG_LEVEL_WARN
+                        )
                         _stable = False
                     elif _first[3] < MIN_STATE_TIME:
                         service.log(
@@ -530,7 +545,7 @@ class ServiceState(object):
         if name in self.__transition_lock_dict and self.__transition_lock_dict[name] + LOCK_TIMEOUT > cur_time:
             lock_to = abs(cur_time - self.__transition_lock_dict[name])
             self.log(
-                "transition lock still valid for {} ({:.2f} > {:.2f})".format(
+                "transition lock still active for {} ({:.2f} > {:.2f})".format(
                     name,
                     lock_to,
                     LOCK_TIMEOUT,
@@ -599,10 +614,11 @@ class ServiceState(object):
         force = kwargs.get("force", False)
         # list of instances which should be throttled
         throttle_dict = {key: delay for key, delay in kwargs.get("throttle", [])}
-        # return a transition list
-        t_list = []
+        # action list, tuple of (instance_element, action_str)
+        act_list = []
         # time
         cur_time = time.time()
+        # print "upd", cur_time, len(res_list)
         for _el in res_list:
             if int(_el.entry.attrib["startstop"]):
                 # ignore entries without startstop == 1
@@ -615,10 +631,10 @@ class ServiceState(object):
                     _proc_info_str = _res.find("process_state_info").get("proc_info_str", "")
                     _is_ok, _action = self._update_state(_el.name, _p_state, _c_state, _lic_state, _proc_info_str)
                     if not _is_ok:
+                        _gen_trans = False
                         if self.__shutdown:
-                            if _el.name not in exclude:
-                                if not self._check_for_throttle(_el, cur_time, throttle_dict):
-                                    t_list.extend(self._generate_transition(_el, _action))
+                            # create transition
+                            _gen_trans = True
                         else:
                             _stable = self._check_for_stable_state(_el)
                             _el.log(
@@ -634,11 +650,19 @@ class ServiceState(object):
                                 logging_tools.LOG_LEVEL_WARN
                             )
                             if _stable or force:
-                                if _el.name not in exclude:
-                                    if not self._check_for_throttle(_el, cur_time, throttle_dict):
-                                        t_list.extend(self._generate_transition(_el, _action))
+                                _gen_trans = True
+                        if _gen_trans:
+                            # create transition
+                            if _el.name not in exclude:
+                                if not self._check_for_throttle(_el, cur_time, throttle_dict):
+                                    act_list.append((_el, _action))
                 else:
                     _el.log("no result entry found", logging_tools.LOG_LEVEL_WARN)
+        # return a transition list
+        t_list = []
+        for _el, _action in act_list:
+            if self._check_dependencies(_el.name, _action):
+                t_list.extend(self._generate_transition(_el, _action))
         self.conn.commit()
         # sync system states with target states (for meta-server)
         self._sync_system_states()
@@ -659,6 +683,64 @@ class ServiceState(object):
             )
         return t_list
         # print _res, etree.tostring(_el.entry, pretty_print=True)
+
+    @property
+    def dependency_problem(self):
+        # return two flags, Dependency issues when starting and Dependency issues when stopping
+        _start, _stop = (False, False)
+        for _key, _struct in self.__dependency_problems.iteritems():
+            if _struct["start"]:
+                _start = True
+            if _struct["stop"]:
+                _stop = True
+            if _start and _stop:
+                break
+        return (_start, _stop)
+
+    def _check_dependencies(self, inst_name, action):
+        def _filter_list(in_deps):
+            # filter out unknown dependencies or stopped ones
+            _ret = []
+            for _dep in in_deps:
+                if _dep in self.__state_dict:
+                    _state = self.__state_dict[_dep]
+                    _c_state = constants.CONF_STATE_DICT[_state[1]]
+                    if _c_state != "run":
+                        # ignore dependency
+                        self.log(
+                            "ignoring dependency for service '{}' (target state is {})".format(
+                                _dep,
+                                _c_state,
+                            ),
+                            logging_tools.LOG_LEVEL_WARN,
+                        )
+                    else:
+                        _ret.append(_dep)
+            return _ret
+
+        self.__dependency_problems.setdefault(inst_name, {"start": False, "stop": False})
+
+        _deps_ok = True
+        if action == "start":
+            _dep_list = self.instance.get_start_dependencies(inst_name)
+            if len(_dep_list):
+                for _dep in _filter_list(_dep_list):
+                    _state = self.__state_dict[_dep]
+                    if constants.STATE_DICT[_state[0]] != "ok":
+                        _deps_ok = False
+        elif action == "stop":
+            _dep_list = self.instance.get_stop_dependencies(inst_name)
+            for _dep in _filter_list(_dep_list):
+                _state = self.__state_dict[_dep]
+                if constants.STATE_DICT[_state[0]] == "ok":
+                    _deps_ok = False
+        if not _deps_ok:
+            self.log(
+                "dependencies for action {} on instance {} not fullfilled".format(action, inst_name),
+                logging_tools.LOG_LEVEL_WARN
+            )
+        self.__dependency_problems[inst_name][action] = not _deps_ok
+        return _deps_ok
 
     def get_mail_text(self, trans_list):
         critical = any([entry.repeat > 0 for entry in trans_list])

@@ -87,8 +87,8 @@ class main_process(ICSWBasePoolClient):
     def _init_statemachine(self):
         self.__transitions = []
         self.def_ns = service_parser.Parser.get_default_ns(meta_server=True)
-        self.service_state = ServiceState(self.log)
         self.server_instance = instance.InstanceXML(self.log)
+        self.service_state = ServiceState(self.log, self.server_instance)
         self.container = container.ServiceContainer(self.log)
         self.service_state.sync_with_instance(self.server_instance)
         self.__watcher.add_watcher(
@@ -182,7 +182,7 @@ class main_process(ICSWBasePoolClient):
                 )
             )
             self.__exit_process = True
-            if not (self.__next_stop_is_restart): #  or global_config["DEBUG"]):
+            if not (self.__next_stop_is_restart):  # or global_config["DEBUG"]):
                 self.service_state.enable_shutdown_mode()
                 _res_list = self.container.check_system(self.def_ns, self.server_instance)
                 trans_list = self.service_state.update(
@@ -317,9 +317,15 @@ class main_process(ICSWBasePoolClient):
                 self.service_state.transition_finished(_trans)
         self.__transitions = new_list
         if not self.__transitions:
-            self.log("all transitions finished")
             self._disable_transition_timer()
-            if self.__exit_process:
+            _start_probs, _stop_probs = self.service_state.dependency_problem
+            if _start_probs or _stop_probs:
+                self.log("all transitions finished, triggering check because of dependency problems", logging_tools.LOG_LEVEL_WARN)
+                self._check_processes(force=True)
+            else:
+                self.log("all transitions finished")
+            if self.__exit_process and not _stop_probs:
+                # exit as long as there are not dependency issues for stopping
                 self["exit_requested"] = True
 
     def _new_transitions(self, trans_list):

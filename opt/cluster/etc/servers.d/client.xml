@@ -30,6 +30,9 @@
             <arg key="group">idg</arg>
         </start-argument>
         <nice-level>15</nice-level>
+        <dependencies>
+            <needed-for-start symmetrical="1">memcached</needed-for-start>
+        </dependencies>
         <network>
             <ports>
                 <port type="command">8011</port>
@@ -80,6 +83,10 @@
         <programm-title>icsw.collserver</programm-title>
         <old-binary>collserver.py</old-binary>
         <nice-level>15</nice-level>
+        <dependencies>
+            <needed-for-start symmetrical="1">logging-server</needed-for-start>
+            <needed-for-start symmetrical="1">memcached</needed-for-start>
+        </dependencies>
         <network>
             <ports>
                 <port type="command">2001</port>
@@ -97,6 +104,10 @@
         <module-name>initat.package_install.client.main</module-name>
         <old-binary>package-client</old-binary>
         <nice-level>15</nice-level>
+        <dependencies>
+            <needed-for-start symmetrical="1">logging-server</needed-for-start>
+            <needed-for-start symmetrical="1">memcached</needed-for-start>
+        </dependencies>
         <network>
             <ports>
                 <port type="command">2003</port>
