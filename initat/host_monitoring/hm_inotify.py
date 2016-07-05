@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -20,17 +20,18 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-""" host-monitoring, inotify thread """
+""" host-monitoring, inotify process """
 
 import fnmatch
 import os
 import stat
 import time
 
+import zmq
+
 from initat.host_monitoring.config import global_config
 from initat.tools import inotify_tools, logging_tools, process_tools, server_command, \
     threading_tools, uuid_tools
-import zmq
 
 
 class HMFileWatcher(object):
@@ -589,5 +590,4 @@ class HMInotifyProcess(threading_tools.process_obj):
         for targ_str, targ_sock in self.__target_dict.iteritems():
             self.log("closing socket to {}".format(targ_str))
             targ_sock.close()
-        print global_config["LOG_NAME"]
         self.__log_template.close()

@@ -17,7 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" module for handling config files """
+""" module for handling config files, now implemented using MemCache """
 
 import argparse
 import datetime
@@ -385,7 +385,19 @@ class MemCacheBasedDict(object):
         self._keys = []
         # version tag
         self._version = None
+        # update mode, used for faster updates
+        self.__update_mode = False
         self._check_mc()
+
+    @property
+    def update_mode(self):
+        return self.__update_mode
+
+    @update_mode.setter
+    def update_mode(self, mode):
+        self.__update_mode = mode
+        if not self.__update_mode:
+            self._store_full_dict()
 
     def _mc_key(self, key):
         return "{}_{}".format(self.prefix, key)
@@ -498,7 +510,8 @@ class MemCacheBasedDict(object):
         if key not in self._keys:
             self._keys.append(key)
         self._dict[key] = value
-        self._key_modified(key)
+        if not self.__update_mode:
+            self._key_modified(key)
 
     def __getitem__(self, key):
         self._check_mc()
@@ -568,6 +581,7 @@ class configuration(object):
     def add_config_entries(self, entries, **kwargs):
         if type(entries) == dict:
             entries = sorted([(key, value) for key, value in entries.iteritems()])
+        self.__c_dict.update_mode = True
         for key, value in entries:
             # check for override of database flag
             if not value._database_set and "database" in kwargs:
@@ -579,6 +593,7 @@ class configuration(object):
             self.__c_dict[key] = value
             if self.__verbose:
                 self.log("Setting config for key {} to {}".format(key, value))
+        self.__c_dict.update_mode = False
 
     def pretty_print(self, key):
         if key in self.__c_dict:
@@ -866,35 +881,6 @@ class configuration(object):
 
 def get_global_config(c_name, single_process=False):
     return configuration(c_name, single_process_mode=single_process)
-
-
-# type:
-# 0 ... only read the file,  strip empty- and comment lines
-# 1 ... parse the lines according to VAR = ARG,  return dictionary
-def readconfig(name, c_type=0, in_array=[]):
-    ret_code, ret_array = (False, [])
-    try:
-        rcf = [y for y in [x.strip() for x in file(name, "r").read().split("\n")] if y and not re.match("^\s*#.*$", y)]
-    except:
-        pass
-    else:
-        if c_type == 0:
-            ret_code, ret_array = (True, rcf)
-        elif c_type == 1:
-            cd = {_key: [] for _key in in_array}
-            for line in rcf:
-                lm = re.match("^\s*(?P<key>[^=]+)\s*=\s*(?P<value>\S+)\s*$", line)
-                if lm:
-                    act_k = lm.group("key").strip()
-                    arg = lm.group("value").strip()
-                    if act_k in in_array:
-                        cd[act_k].append(arg)
-                    else:
-                        cd[act_k] = arg
-            ret_code, ret_array = (True, cd)
-        else:
-            print("Unknown type {:d} for readconfig".format(c_type))
-    return (ret_code, ret_array)
 
 
 def check_str_config(in_dict, name, default):
