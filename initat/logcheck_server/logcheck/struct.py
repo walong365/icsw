@@ -487,123 +487,127 @@ class Machine(object):
             lsd_len = len(log_start_dir)
             self.log("starting walk for rotate_logs() in {}".format(log_start_dir))
             # directories processed
-            for root_dir, sub_dirs, files in scandir.walk(str(log_start_dir)):
-                _res["dirs_found"] += 1
-                if root_dir.startswith(log_start_dir):
-                    root_dir_p = [int(entry) for entry in root_dir[lsd_len:].split("/") if entry.isdigit()]
-                    if len(root_dir_p) in [1, 2]:
-                        # check for deletion of empty month-dirs
-                        if not sub_dirs:
-                            if len(root_dir_p) == 1:
-                                host_info_str = "(dir {:04d})".format(
-                                    root_dir_p[0]
-                                )
-                            else:
-                                host_info_str = "(dir {:04d}/{:02d})".format(
+            try:
+                for root_dir, sub_dirs, files in scandir.walk(str(log_start_dir)):
+                    _res["dirs_found"] += 1
+                    if root_dir.startswith(log_start_dir):
+                        root_dir_p = [int(entry) for entry in root_dir[lsd_len:].split("/") if entry.isdigit()]
+                        if len(root_dir_p) in [1, 2]:
+                            # check for deletion of empty month-dirs
+                            if not sub_dirs:
+                                if len(root_dir_p) == 1:
+                                    host_info_str = "(dir {:04d})".format(
+                                        root_dir_p[0]
+                                    )
+                                else:
+                                    host_info_str = "(dir {:04d}/{:02d})".format(
+                                        root_dir_p[0],
+                                        root_dir_p[1]
+                                    )
+                                err_files, ok_files = ([], [])
+                                for file_name in files:
+                                    old_file = os.path.join(root_dir, file_name)
+                                    try:
+                                        os.unlink(old_file)
+                                    except IOError:
+                                        err_files.append(old_file)
+                                    else:
+                                        ok_files.append(old_file)
+                                if err_files:
+                                    self.log(
+                                        "had problems deleting {} {}: {}".format(
+                                            logging_tools.get_plural("file", len(err_files)),
+                                            host_info_str,
+                                            ", ".join(err_files)
+                                        )
+                                    )
+                                    _res["files_error"] += len(err_files)
+                                else:
+                                    # try to delete directory
+                                    try:
+                                        os.rmdir(root_dir)
+                                    except:
+                                        pass
+                                    else:
+                                        _res["dirs_del"] += 1
+                                if ok_files:
+                                    self.log(
+                                        "Deleted {} {}: {}".format(
+                                            logging_tools.get_plural("file", len(ok_files)),
+                                            host_info_str,
+                                            ", ".join(ok_files)
+                                        )
+                                    )
+                                    _res["files_del"] += len(ok_files)
+                        elif len(root_dir_p) == 3:
+                            dir_time = time.mktime(
+                                [
                                     root_dir_p[0],
-                                    root_dir_p[1]
-                                )
-                            err_files, ok_files = ([], [])
-                            for file_name in files:
-                                old_file = os.path.join(root_dir, file_name)
-                                try:
-                                    os.unlink(old_file)
-                                except IOError:
-                                    err_files.append(old_file)
-                                else:
-                                    ok_files.append(old_file)
-                            if err_files:
-                                self.log(
-                                    "had problems deleting {} {}: {}".format(
-                                        logging_tools.get_plural("file", len(err_files)),
-                                        host_info_str,
-                                        ", ".join(err_files)
-                                    )
-                                )
-                                _res["files_error"] += len(err_files)
-                            else:
-                                # try to delete directory
-                                try:
-                                    os.rmdir(root_dir)
-                                except:
-                                    pass
-                                else:
-                                    _res["dirs_del"] += 1
-                            if ok_files:
-                                self.log(
-                                    "Deleted {} {}: {}".format(
-                                        logging_tools.get_plural("file", len(ok_files)),
-                                        host_info_str,
-                                        ", ".join(ok_files)
-                                    )
-                                )
-                                _res["files_del"] += len(ok_files)
-                    elif len(root_dir_p) == 3:
-                        dir_time = time.mktime(
-                            [
+                                    root_dir_p[1],
+                                    root_dir_p[2],
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0
+                                ]
+                            )
+                            day_diff = int((start_time - dir_time) / (3600 * 24))
+                            host_info_str = "(dir {:04d}/{:02d}/{:02d})".format(
                                 root_dir_p[0],
                                 root_dir_p[1],
-                                root_dir_p[2],
-                                0,
-                                0,
-                                0,
-                                0,
-                                0,
-                                0
-                            ]
-                        )
-                        day_diff = int((start_time - dir_time) / (3600 * 24))
-                        host_info_str = "(dir {:04d}/{:02d}/{:02d})".format(
-                            root_dir_p[0],
-                            root_dir_p[1],
-                            root_dir_p[2]
-                        )
-                        if day_diff > max(1, global_config["KEEP_LOGS_TOTAL"]):
-                            err_files, ok_files = ([], [])
-                            for file_name in [x for x in files]:
-                                old_file = os.path.join(root_dir, file_name)
-                                try:
-                                    os.unlink(old_file)
-                                except IOError:
-                                    err_files.append(old_file)
-                                else:
-                                    ok_files.append(old_file)
-                            if err_files:
-                                self.log(
-                                    "had problems deleting {} {}: {}".format(
-                                        logging_tools.get_plural(
-                                            "file",
-                                            len(err_files)
-                                        ),
-                                        host_info_str,
-                                        ", ".join(err_files)
+                                root_dir_p[2]
+                            )
+                            if day_diff > max(1, global_config["KEEP_LOGS_TOTAL"]):
+                                err_files, ok_files = ([], [])
+                                for file_name in [x for x in files]:
+                                    old_file = os.path.join(root_dir, file_name)
+                                    try:
+                                        os.unlink(old_file)
+                                    except IOError:
+                                        err_files.append(old_file)
+                                    else:
+                                        ok_files.append(old_file)
+                                if err_files:
+                                    self.log(
+                                        "had problems deleting {} {}: {}".format(
+                                            logging_tools.get_plural(
+                                                "file",
+                                                len(err_files)
+                                            ),
+                                            host_info_str,
+                                            ", ".join(err_files)
+                                        )
                                     )
-                                )
-                                _res["files_error"] += len(err_files)
-                            else:
-                                # try to delete directory
-                                try:
-                                    os.rmdir(root_dir)
-                                except:
-                                    pass
+                                    _res["files_error"] += len(err_files)
                                 else:
-                                    _res["dirs_del"] += 1
-                            if ok_files:
-                                self.log(
-                                    "Deleted {} {}: {}".format(
-                                        logging_tools.get_plural("file", len(ok_files)),
-                                        host_info_str,
-                                        ", ".join(ok_files)
+                                    # try to delete directory
+                                    try:
+                                        os.rmdir(root_dir)
+                                    except:
+                                        pass
+                                    else:
+                                        _res["dirs_del"] += 1
+                                if ok_files:
+                                    self.log(
+                                        "Deleted {} {}: {}".format(
+                                            logging_tools.get_plural("file", len(ok_files)),
+                                            host_info_str,
+                                            ", ".join(ok_files)
+                                        )
                                     )
-                                )
-                                _res["files_del"] += len(ok_files)
-                        elif day_diff > max(1, global_config["KEEP_LOGS_UNCOMPRESSED"]):
-                            _res["dirs_proc"] += 1
-                            err_files, ok_files = ([], [])
-                            old_size, new_size = (0, 0)
-                            for file_name in [entry for entry in files if entry.split(".")[-1] not in ["gz", "bz2", "xz"]]:
-                                old_file = os.path.join(root_dir, file_name)
-                                _res.compress_list.append(old_file)
+                                    _res["files_del"] += len(ok_files)
+                            elif day_diff > max(1, global_config["KEEP_LOGS_UNCOMPRESSED"]):
+                                _res["dirs_proc"] += 1
+                                err_files, ok_files = ([], [])
+                                old_size, new_size = (0, 0)
+                                for file_name in [entry for entry in files if entry.split(".")[-1] not in ["gz", "bz2", "xz"]]:
+                                    old_file = os.path.join(root_dir, file_name)
+                                    _res.compress_list.append(old_file)
+            except UnicodeDecodeError:
+                self.log(u"got a UnicodeDecodeError for dir {}".format(log_start_dir), logging_tools.LOG_LEVEL_CRITICAL)
+                raise
             _res.stop()
             self.log(_res.info_str())
         else:
