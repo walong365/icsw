@@ -34,6 +34,7 @@ from initat.tools import logging_tools, process_tools, server_command, \
 
 class StatusProcess(threading_tools.process_obj):
     def process_init(self):
+        global_config.close()
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],

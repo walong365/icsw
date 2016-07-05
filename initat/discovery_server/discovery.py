@@ -38,6 +38,7 @@ from .snmp_functions import SNMPBatch
 
 class DiscoveryProcess(threading_tools.process_obj, HostMonitoringMixin, BaseScanMixin, WmiScanMixin, NRPEScanMixin):
     def process_init(self):
+        global_config.close()
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         # self.add_process(build_process("build"), start=True)
         db_tools.close_connection()

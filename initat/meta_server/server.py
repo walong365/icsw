@@ -158,14 +158,9 @@ class main_process(ICSWBasePoolClient):
         # store pid name because global_config becomes unavailable after SIGTERM
         self.__pid_name = global_config["PID_NAME"]
         process_tools.save_pids(self.__pid_name, mult=3)
-        _spm = global_config.single_process_mode()
-        if not _spm:
-            process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=2)
         self.log("Initialising meta-server-info block")
         msi_block = process_tools.meta_server_info("meta-server")
         msi_block.add_actual_pid(mult=3, fuzzy_ceiling=7, process_name="main")
-        if not _spm:
-            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=2, process_name="manager")
         msi_block.kill_pids = True
         msi_block.save_block()
         self.__msi_block = msi_block

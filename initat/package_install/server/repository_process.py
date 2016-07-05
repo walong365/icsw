@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2001-2009,2012-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2009,2012-2016 Andreas Lang-Nevyjel
 #
 # this file is part of package-server
 #
@@ -34,6 +34,7 @@ from .structs import RepoTypeRpmYum, RepoTypeRpmZypper, SubprocessStruct, RepoTy
 
 class RepoProcess(threading_tools.process_obj):
     def process_init(self):
+        global_config.close()
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],

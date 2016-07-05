@@ -409,6 +409,7 @@ class HMFileWatcher(object):
 
 class HMInotifyProcess(threading_tools.process_obj):
     def process_init(self):
+        global_config.close()
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], context=self.zmq_context)
         self.__watcher = inotify_tools.InotifyWatcher()
         # was INOTIFY_IDLE_TIMEOUT in global_config, now static
@@ -588,4 +589,5 @@ class HMInotifyProcess(threading_tools.process_obj):
         for targ_str, targ_sock in self.__target_dict.iteritems():
             self.log("closing socket to {}".format(targ_str))
             targ_sock.close()
+        print global_config["LOG_NAME"]
         self.__log_template.close()

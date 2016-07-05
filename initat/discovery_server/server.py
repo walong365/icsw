@@ -54,7 +54,6 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         self._init_network_sockets()
         self.register_func("snmp_run", self._snmp_run)
         self.register_func("generate_assets", self._generate_assets)
-        # self.add_process(build_process("build"), start=True)
         db_tools.close_connection()
         self.__max_calls = global_config["MAX_CALLS"] if not global_config["DEBUG"] else 5
         self.__snmp_running = True
@@ -148,11 +147,9 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
 
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=4)
-        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=5)
         self.log("Initialising meta-server-info block")
         msi_block = process_tools.meta_server_info("discovery-server")
         msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4)
-        msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=5)
         msi_block.kill_pids = True
         msi_block.save_block()
         return msi_block

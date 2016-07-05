@@ -31,7 +31,13 @@ from .config import global_config
 
 class GenerateAssetsProcess(threading_tools.process_obj):
     def process_init(self):
-        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
+        global_config.close()
+        self.__log_template = logging_tools.get_logger(
+            global_config["LOG_NAME"],
+            global_config["LOG_DESTINATION"],
+            zmq=True,
+            context=self.zmq_context,
+        )
         # self.add_process(build_process("build"), start=True)
         db_tools.close_connection()
         self.register_func("process_assets", self._process_assets)

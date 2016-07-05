@@ -141,7 +141,6 @@ class server_process(threading_tools.process_pool):
     def _log_config(self):
         self.log("Basic turnaround-time is %d seconds" % (global_config["MAIN_TIMER"]))
         self.log("basedir_name is '%s'" % (global_config["BASEDIR_NAME"]))
-        self.log("manager PID is %d" % (configfile.get_manager_pid()))
         self.log("Config info:")
         for line, log_level in global_config.get_log(clear=True):
             self.log(" - clf: [%d] %s" % (log_level, line))
@@ -154,11 +153,9 @@ class server_process(threading_tools.process_pool):
         self.__pid_name = global_config["PID_NAME"]
         process_tools.save_pids(global_config["PID_NAME"], mult=3)
         cf_pids = 2  # + global_config["SNMP_PROCESSES"]
-        process_tools.append_pids(global_config["PID_NAME"], pid=configfile.get_manager_pid(), mult=cf_pids)
         self.log("Initialising meta-server-info block")
         msi_block = process_tools.meta_server_info("snmp-relay")
         msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
-        msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=cf_pids, process_name="manager")
         msi_block.kill_pids = True
         # msi_block.heartbeat_timeout = 120
         msi_block.save_block()

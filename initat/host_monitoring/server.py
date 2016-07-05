@@ -90,6 +90,7 @@ class server_code(ICSWBasePool, HMHRMixin):
         self.register_func("callback_result", self._callback_result)
         if not self.CC.CS["hm.disable.inotify.process"]:
             self.add_process(HMInotifyProcess("inotify", busy_loop=True, kill_myself=True), start=True)
+        global_config["LOG_NAME"] = "bla"
         self._show_config()
         self.__debug = global_config["DEBUG"]
         if self.objgraph:
@@ -335,11 +336,9 @@ class server_code(ICSWBasePool, HMHRMixin):
         # store pid name because global_config becomes unavailable after SIGTERM
         self.__pid_name = global_config["PID_NAME"]
         process_tools.save_pids(global_config["PID_NAME"], mult=3)
-        process_tools.append_pids(global_config["PID_NAME"], pid=configfile.get_manager_pid(), mult=4 if self.CC.CS["hm.disable.inotify.process"] else 5)
         self.log("Initialising meta-server-info block")
         msi_block = process_tools.meta_server_info("collserver")
         msi_block.add_actual_pid(mult=3, fuzzy_ceiling=7, process_name="main")
-        msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=4 if self.CC.CS["hm.disable.inotify.process"] else 5, process_name="manager")
         msi_block.kill_pids = True
         # msi_block.heartbeat_timeout = 60
         msi_block.save_block()
@@ -801,6 +800,7 @@ class server_code(ICSWBasePool, HMHRMixin):
                     _init_ok = False
 
     def loop_post(self):
+        print global_config["LOG_NAME"]
         self._close_modules()
         for cur_sock in self.socket_list:
             cur_sock.close()

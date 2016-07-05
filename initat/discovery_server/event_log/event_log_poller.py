@@ -1,4 +1,4 @@
-# Copyright (C) 2015 Bernhard Mallinger, init.at
+# Copyright (C) 2015-2016 Bernhard Mallinger, Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <mallinger@init.at>
 #
@@ -16,6 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
 import collections
 import datetime
 import traceback
@@ -40,7 +41,8 @@ class EventLogPollerProcess(threading_tools.process_obj):
 
     MAX_CONCURRENT_JOBS = 5
 
-    def process_init(self):
+    def process_init(self):#
+        global_config.close()
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],
