@@ -1151,6 +1151,7 @@ user_module = angular.module(
             (data) ->
                 $scope.struct.data_valid = true
                 $scope.struct.user = data[0].user
+                $scope.struct.user.ui_theme_selection = $scope.struct.user.ui_theme_selection.toString()
                 $scope.struct.settings_tree = data[1]
                 $scope.perm_tree = data[2]
                 # hack, to be improved, FIXME, ToDo

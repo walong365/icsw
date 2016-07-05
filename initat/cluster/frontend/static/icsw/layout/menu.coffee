@@ -95,10 +95,12 @@ menu_module = angular.module(
                         node.outerHTML = svg_style_to_use
 
             $.get('/icsw/static/' + svg_style_name, (data) ->
+                style_token_1 =  ".sb_lines"
+                style_token_2 = '@import "../icsw/static/svgstyle_default.css";'
                 head = angular.element.find("head")[0]
                 for node in head.childNodes
                     if node.outerHTML != undefined
-                        if node.outerHTML.indexOf(".sb_lines") > -1
+                        if node.outerHTML.indexOf(style_token_1) > -1 || node.outerHTML.indexOf(style_token_2) > -1
                             node.outerHTML = "<style>" + data + "</style>"
             )
         )
