@@ -24,6 +24,8 @@ import datetime
 import json
 import os
 import re
+import base64
+import bz2
 import uuid
 
 import memcache
@@ -69,14 +71,20 @@ class _conf_var(object):
             )
 
     def serialize(self):
+        if self.descr in ["Blob"]:
+            _val = base64.b64encode(bz2.compress(self.value))
+            _def_val = base64.b64encode(bz2.compress(self.__default_val))
+        else:
+            _val = self.value
+            _def_val = self.__default_val
         return json.dumps(
             {
                 # to determine type
                 "descr": self.descr,
                 # first argument
-                "default_value": self.__default_val,
+                "default_value": _def_val,
                 # current value
-                "value": self.value,
+                "value": _val,
                 # kwargs
                 "kwargs": {
                     "info": self.__info,
@@ -443,6 +451,9 @@ class MemCacheBasedDict(object):
                 except:
                     # print os.getpid(), "JSON", _key, _raw, "*"
                     raise
+                _is_blob = _json["descr"] in ["Blob"]
+                if _is_blob:
+                    _json["kwargs"]["default_value"] = bz2.decompress(base64.b64decode(_json["kwargs"]["default_value"]))
                 # print _raw
                 _obj = {
                     "Timedelta": timedelta_c_var,
@@ -455,7 +466,10 @@ class MemCacheBasedDict(object):
                     "Float": float_c_var,
                     "Integer": int_c_var,
                 }[_json["descr"]](_json["default_value"], **_json["kwargs"])
-                _obj.value = _json["value"]
+                if _is_blob:
+                    _obj.value = bz2.decompress(base64.b64decode(_json["value"]))
+                else:
+                    _obj.value = _json["value"]
                 self._dict[_key] = _obj
         except:
             print(
