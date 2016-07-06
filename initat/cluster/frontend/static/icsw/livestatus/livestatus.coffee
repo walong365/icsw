@@ -27,7 +27,7 @@ angular.module(
     $stateProvider.state(
         "main.livestatus", {
             url: "/livestatus/all"
-            template: '<icsw-device-livestatus icsw-sel-man="0"></icsw-device-livestatus>'
+            template: '<icsw-device-livestatus icsw-livestatus-view="\'test\'"></icsw-device-livestatus>'
             icswData: icswRouteExtensionProvider.create
                 pageTitle: "Monitoring dashboard"
                 licenses: ["monitoring_dashboard"]
@@ -55,61 +55,87 @@ angular.module(
 ) ->
     # top level controller of monitoring dashboard
 
-    $scope.struct = {
-        # connector
-        # connector: new icswMonLivestatusPipeConnector("test", angular.toJson({"icswLivestatusDataSource": [{"icswLivestatusFilterService": [{"icswLivestatusCategoryFilter": [{"icswLivestatusFullBurst": []}]}]}]}))
-        # connector: new icswMonLivestatusPipeConnector("test", angular.toJson({"icswLivestatusDataSource": [{"icswLivestatusFullBurst": []}]}))
-        connector: new icswMonLivestatusPipeConnector(
-            "test"
-            angular.toJson(
-                {
-                    "icswLivestatusDataSource": [{
-                        "icswLivestatusFilterService": [{
-                            "icswLivestatusLocationDisplay": []
-                        }
-                            {
-                                "icswLivestatusCategoryFilter": [{
-                                    "icswLivestatusMapDisplay": []
-                                }]
-                            }
-                            {
-                                "icswLivestatusFilterService": [{
-                                    "icswLivestatusTabularDisplay": []
-                                }
-                                {
-                                    "icswLivestatusTabularDisplay": []
-                                }]
+    _cd = {
+        "test": {
+            "icswLivestatusSelDevices": [{
+                "icswLivestatusDataSource": [{
+                    "icswLivestatusFilterService": [{
+                        "icswLivestatusTabularDisplay": []
+                    }]
+                }]
+            }]
+        }
+        "btest": {
+            "icswLivestatusSelDevices": [{
+                "icswLivestatusDataSource": [{
+                    "icswLivestatusFilterService": [{
+                        "icswLivestatusLocationDisplay": []
+                    }
+                        {
+                            "icswLivestatusCategoryFilter": [{
+                                "icswLivestatusMapDisplay": []
                             }]
                         }
                         {
                             "icswLivestatusFilterService": [{
-                                "icswLivestatusFullBurst": [{
-                                    "icswLivestatusTabularDisplay": []
-                                }
-                                    {
-                                        "icswLivestatusFullBurst": []
-                                    }]
-
-                            }]
-                        }
-                        {
-                            "icswLivestatusFilterService": [
+                                "icswLivestatusTabularDisplay": []
+                            }
                                 {
-                                    "icswLivestatusLocationDisplay": []
-                                }
-                            ]
-                        }
-                    ]
+                                    "icswLivestatusTabularDisplay": []
+                                }]
+                        }]
                 }
-            )
-        )
+                    {
+                        "icswLivestatusFilterService": [{
+                            "icswLivestatusFullBurst": [{
+                                "icswLivestatusTabularDisplay": []
+                            }
+                                {
+                                    "icswLivestatusFullBurst": []
+                                }]
+                        }]
+                    }
+                    {
+                        "icswLivestatusFilterService": [{
+                            "icswLivestatusLocationDisplay": []
+                        }]
+                    }]
+            }]
+        }
+        "nettop": {
+            "icswLivestatusSelDevices": [{
+                "icswLivestatusDataSource": [{
+                    "icswLivestatusFilterService": [{
+                        "icswLivestatusLocationDisplay": []
+                    }]
+                }]
+            }]
+        }
     }
 
+    $scope.struct = {
+        connector: null
+        connector_set: false
+    }
+
+    $scope.unset_connector = () ->
+        if $scope.struct.connector_set
+            $scope.struct.connector.close()
+            $scope.struct.connector_set = false
+
+    $scope.set_connector = (c_name) ->
+        $scope.unset_connector()
+        console.log "cact"
+        $scope.struct.connector = new icswMonLivestatusPipeConnector(c_name, angular.toJson(_cd[c_name]))
+        $scope.struct.connector_set = true
+
     $scope.new_devsel = (_dev_sel) ->
+        console.log "nds"
         $scope.struct.connector.new_devsel(_dev_sel)
 
     $scope.$on("$destroy", () ->
-        $scope.struct.connector.close()
+        if $scope.struct.connector
+            $scope.struct.connector.close()
     )
 
 ]).directive("icswDeviceLivestatus",
@@ -122,6 +148,17 @@ angular.module(
         restrict : "EA"
         template : $templateCache.get("icsw.livestatus.connect.overview")
         controller: "icswDeviceLiveStatusCtrl"
+        scope:
+            active_view: "=icswLivestatusView"
+        link: (scope, element, attrs) ->
+            scope.$watch(
+                "active_view"
+                (new_val) ->
+                    if new_val?
+                        scope.set_connector(new_val)
+                    else
+                        scope.unset_connector()
+            )
     }
 ]).service('icswLivestatusTabularDisplay',
 [

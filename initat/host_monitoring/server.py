@@ -800,7 +800,6 @@ class server_code(ICSWBasePool, HMHRMixin):
                     _init_ok = False
 
     def loop_post(self):
-        print global_config["LOG_NAME"]
         self._close_modules()
         for cur_sock in self.socket_list:
             cur_sock.close()

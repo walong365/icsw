@@ -86,15 +86,6 @@ angular.module(
                 $element.unbind("mouseup", mouse_up)
     }
 ])
-# no longer needed, handled via ReactJS
-# .directive('icswMouseCapture', () ->
-#    return {
-#        restrict: "A"
-#        controller: ["$scope", "$element", "mouseCaptureFactory", ($scope, $element, mouseCaptureFactory) ->
-#            mouseCaptureFactory.register_element($element)
-#        ]
-#    }
-#)
 
 angular.module(
     "icsw.dragging",
@@ -805,7 +796,7 @@ angular.module(
                     svg = @d3_element.append("svg")
                     .attr('class', 'draggable')
                     # viewBox not viewbox
-                    .attr("viewBox", "0 0 widthOfContainer 760")
+                    .attr("viewBox", "0 0 1200 760")
                     .attr("preserveAspectRatio", "xMidYMin meet")
                     .attr("version", "1.1")
                     .attr("onStart", @_drag_start)
@@ -1095,7 +1086,7 @@ angular.module(
                         (generation) =>
                             @monitoring_data = result
                             # console.log "gen", @props.livestatus_filter, @monitoring_data
-                            @props.livestatus_filter.set_monitoring_data(@monitoring_data)
+                            # @props.livestatus_filter.set_monitoring_data(@monitoring_data)
                             @_draw_livestatus()
                     )
             )
@@ -1386,11 +1377,13 @@ angular.module(
                     )
             )
     )
-]).directive("icswDeviceNetworkTopology",
+]).directive("icswDeviceNetworkTopologyOld",
 [
     "ICSW_URLS", "icswDeviceTreeService", "icswNetworkTopologyReactContainer",
+    "icswMonLivestatusPipeConnector",
 (
     ICSW_URLS, icswDeviceTreeService, icswNetworkTopologyReactContainer,
+    icswMonLivestatusPipeConnector,
 ) ->
     return {
         restrict: "EA"

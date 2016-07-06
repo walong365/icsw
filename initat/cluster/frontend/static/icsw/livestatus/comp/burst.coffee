@@ -476,7 +476,7 @@ angular.module(
                             )
             else
                 # not interactive, simple list of graphs
-                _g_list = (path(_element) for _element in root_node.element_list)
+                _g_list = (path(_.pickBy(_element, (value, key) -> return not key.match(/\$/))) for _element in root_node.element_list)
             # _g_list = []
 
             _svg = svg(

@@ -31,7 +31,6 @@ angular.module(
 (
     $q, $rootScope, icswMonLivestatusPipeBase, icswMonitoringResult,
 ) ->
-    # ToDo: separate data / filtered data from filter
     running_id = 0
     class icswLivestatusFilter extends icswMonLivestatusPipeBase
         constructor: () ->
@@ -833,7 +832,7 @@ angular.module(
                             watch_dict[dev.idx].push(client)
 
                 if client not of result_dict
-                    # console.log "n", client
+                    console.log "new client", client
                     result_dict[client] = new icswMonitoringResult()
                 else
                     # console.log "k", client
@@ -866,6 +865,67 @@ angular.module(
             if not watchers_present()
                 stop_interval()
     }
+]).service("icswLivestatusSelDevices",
+[
+    "$q", "$rootScope", "icswMonLivestatusPipeBase", "$timeout", "ICSW_SIGNALS",
+    "icswDeviceTreeService", "icswDeviceLivestatusDataService", "icswTools",
+    "icswActiveSelectionService", "icswMonitoringResult",
+(
+    $q, $rootScope, icswMonLivestatusPipeBase, $timeout, ICSW_SIGNALS,
+    icswDeviceTreeService, icswDeviceLivestatusDataService, icswTools,
+    icswActiveSelectionService, icswMonitoringResult,
+) ->
+    class icswLivestatusSelDevices extends icswMonLivestatusPipeBase
+        constructor: () ->
+            super("icswLivestatusSelDevices", false, true)
+            # pipe flags
+            @__dp_async_emit = true
+
+            @struct = {
+                # local id
+                local_id: icswTools.get_unique_id()
+                # device list to emit
+                device_list: []
+                # device tree
+                device_tree: undefined
+                # raw selection
+                raw_selection: []
+                # monresult to emit
+                mon_result: new icswMonitoringResult()
+            }
+            # todo: get the current selection after the pipe is fully initialised
+            @dereg = $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"), (event) =>
+                @get_selection()
+            )
+            icswDeviceTreeService.load(@struct.local_id).then(
+                (tree) =>
+                    @struct.device_tree = tree
+                    @check_raw_selection()
+            )
+            @get_selection()
+            @set_async_emit_data(@struct.mon_result)
+
+        get_selection: () =>
+            @struct.raw_selection = icswActiveSelectionService.current().tot_dev_sel
+            @check_raw_selection()
+
+        check_raw_selection: () =>
+            if @struct.device_tree? and @struct.raw_selection.length
+                @struct.device_list.length = 0
+                for pk in @struct.raw_selection
+                    if @struct.device_tree.all_lut[pk]?
+                        _dev = @struct.device_tree.all_lut[pk]
+                        if not _dev.is_meta_device
+                            @struct.device_list.push(_dev)
+                # we use MonitoringResult as a container to send the device selection down the pipe
+                console.log "EMIT"
+                # here we go
+                @struct.mon_result.update(@struct.device_list, [], [])
+
+        pipeline_pre_close: () =>
+            console.log "PPC"
+            @dereg()
+
 ]).service("icswLivestatusDataSource",
 [
     "$q", "$rootScope", "icswMonLivestatusPipeBase", "$timeout",
@@ -876,9 +936,11 @@ angular.module(
 ) ->
     class icswLivestatusDataSource extends icswMonLivestatusPipeBase
         constructor: () ->
-            super("icswLivestatusDataSource", false, true)
-            @_my_id = icswTools.get_unique_id()
+            super("icswLivestatusDataSource", true, true)
+            @__dp_async_emit = true
             @struct = {
+                # local id
+                local_id: icswTools.get_unique_id()
                 # device list
                 devices: []
                 # is updating
@@ -890,50 +952,60 @@ angular.module(
                 # monitoring data
                 is_running: true
                 # monitoring_data: undefined
+                monitoring_data: undefined
             }
 
         set_running_flag: (flag) =>
             @struct.is_running = flag
-            
-        new_devsel: (devs) =>
+
+        new_data_received: (data) =>
             @struct.devices.length = 0
-            for dev in devs
+            for dev in data.hosts
                 if not dev.is_meta_device
                     @struct.devices.push(dev)
             @start()
+            # important because we are an asynchronous emitter
+            return null
 
         stop_update: () =>
             if @struct.fetch_timeout
                 $timeout.cancel(@struct.fetch_timeout)
                 @struct.fetch_timeout = undefined
+            if @struct.monitoring_data?
+                @struct.monitoring_data.stop_receive()
+                # destroy current fetcher
+                icswDeviceLivestatusDataService.destroy(@struct.local_id)
 
         pipeline_pre_close: () =>
-            icswDeviceLivestatusDataService.destroy(@_my_id)
+            if @struct.monitoring_data?
+                icswDeviceLivestatusDataService.destroy(@struct.local_id)
 
         start: () =>
             @stop_update()
             @struct.updating = true
             wait_list = [
-                icswDeviceTreeService.load(@_my_id)
-                icswDeviceLivestatusDataService.retain(@_my_id, @struct.devices)
+                icswDeviceTreeService.load(@struct.local_id)
+                icswDeviceLivestatusDataService.retain(@struct.local_id, @struct.devices)
             ]
             $q.all(wait_list).then(
                 (data) =>
                     @struct.device_tree = data[0]
                     @struct.updating = false
-                    monitoring_data = data[1]
-                    monitoring_data.result_notifier.promise.then(
-                        (ok) ->
-                            console.log "dr ok"
-                        (not_ok) ->
-                            # stop receiving
-                            # console.log "dr error"
-                        (generation) =>
-                            if @struct.is_running
-                                @feed_data(monitoring_data)
-                            else
-                                console.warn "is_running flag is false"
-                    )
+                    @struct.monitoring_data = data[1]
+                    @set_async_emit_data(@struct.monitoring_data)
+                    if false
+                        @struct.monitoring_data.result_notifier.promise.then(
+                            (ok) ->
+                                console.log "dr ok"
+                            (not_ok) ->
+                                # stop receiving
+                                # console.log "dr error"
+                            (generation) =>
+                                if @struct.is_running
+                                    @feed_data(monitoring_data)
+                                else
+                                    console.warn "is_running flag is false"
+                        )
             )
 ]).service('icswLivestatusCategoryFilter',
 [
