@@ -13,7 +13,7 @@
     <form class="form-inline">
         <div class="btn-group">
             <input
-                ng-repeat="entry in boot_options.list"
+                ng-repeat="entry in struct.boot_options.list"
                 type="button"
                 ng-class="entry.$$input_class"
                 value="{{ entry.name }}"
@@ -36,20 +36,20 @@
                 <th class="text-center">sel</th>
                 <th>state</th>
                 <th>network</th>
-                <th ng-repeat="entry in boot_options.list" ng-show="entry.display">
+                <th ng-repeat="entry in struct.boot_options.list" ng-show="entry.display">
                     {{ entry.name }}
                 </th>
-                <th ng-show="boot_options.any_type_1_selected">
+                <th ng-show="struct.boot_options.any_type_1_selected">
                     action
                 </th>
-                <th ng-show="boot_options.any_type_3_selected">
+                <th ng-show="struct.boot_options.any_type_3_selected">
                     log
                 </th>
             </tr>
         </thead>
         <tbody>
             <tr icsw-device-boot-row ng-repeat-start="dev in entries_displayed" ng-class="dev.$$row_class"></tr>
-            <tr ng-repeat-end ng-if="boot_options.is_enabled('l') && dev.$$boot_helper.show_logs && dev.$$boot_helper.logs_received">
+            <tr ng-repeat-end ng-if="struct.boot_options.is_enabled('l') && dev.$$boot_helper.show_logs && dev.$$boot_helper.logs_received">
                 <td colspan="100">
                     <icsw-device-boot-log-table icsw-device="dev"></icsw-device-boot-log-table>
                 </td>
@@ -68,7 +68,7 @@
                 <td></td>
                 <td></td>
                 <td ng-repeat="entry in type_1_options" ng-show="entry.enabled"></td>
-                <td ng-show="boot_options.is_enabled('s')">
+                <td ng-show="struct.boot_options.is_enabled('s')">
                     <div class="btn-group" ng-show="struct.num_selected">
                         <button type="button" class="btn btn-warning btn-xs dropdown-toggle" data-toggle="dropdown">
                             action ({{ struct.num_selected }})<span class="caret"></span>
@@ -80,7 +80,7 @@
                         </ul>
                     </div>
                 </td>
-                <td ng-show="boot_options.is_enabled('h')">
+                <td ng-show="struct.boot_options.is_enabled('h')">
                     <div class="btn-group" ng-show="struct.num_selected_hc">
                         <button type="button" class="btn btn-xs btn-warning" data-toggle="dropdown">
                             control ({{ struct.num_selected_hc }}) <span class="caret"></span>
@@ -96,7 +96,7 @@
                     <icsw-tools-button
                         type="modify"
                         size="xs"
-                        ng-show="struct.num_selected && boot_options.any_type_1_selected"
+                        ng-show="struct.num_selected && struct.boot_options.any_type_1_selected"
                         value="modify many"
                         ng-click="modify_many($event)"
                     ></icsw-tools-button>
@@ -126,7 +126,7 @@
         ng-bind-html="field.html"
     >
     </td>
-    <td ng-show="boot_options.is_enabled('s')">
+    <td ng-show="struct.boot_options.is_enabled('s')">
         <div class="btn-group" ng-show="dev.$$boot_helper.valid_net_state">
             <button type="button" class="btn btn-warning btn-xs dropdown-toggle" data-toggle="dropdown">
                 action <span class="caret"></span>
@@ -139,7 +139,7 @@
         </div>
         <span class='label label-danger' ng-show="!dev.$$boot_helper.valid_net_state"><span class='glyphicon glyphicon-ban-circle'></span></span>
     </td>
-    <td ng-show="boot_options.is_enabled('h')">
+    <td ng-show="struct.boot_options.is_enabled('h')">
         <div class="btn-group"
             ng-if="dev.$$boot_helper.slave_connections_valid"
             ng-repeat="cd_con in dev.$$boot_helper.slave_connections"
@@ -156,10 +156,10 @@
         </div>
         {{ dev.$$boot_helper.slave_connections_info }}
     </td>
-    <td ng-show="boot_options.any_type_1_selected">
+    <td ng-show="struct.boot_options.any_type_1_selected">
         <icsw-tools-button type="modify" size="xs" ng-click="modify_one($event, dev)"></icsw-tools-button>
     </td>
-    <td ng-show="boot_options.any_type_3_selected">
+    <td ng-show="struct.boot_options.any_type_3_selected">
         <form class="form-inline">
             <input
                 type="button"
@@ -240,7 +240,7 @@
 
 <script type="text/ng-template" id="icsw.boot.modify.form">
     <form class="form-horizontal" name="form_data">
-        <fieldset ng-if="boot_options.is_enabled('t')">
+        <fieldset ng-if="struct.boot_options.is_enabled('t')">
             <legend>basic settings <icsw-tools-yes-no-small flag="$$bs.change.t"></icsw-tools-yes-no-small></legend>
             <div ng-repeat="netstate in struct.boot_status_tree.network_states_list" class="form-group" ng-show="$$bs.change.t">
                 <label class="control-label col-sm-4">
@@ -279,7 +279,7 @@
                 </div>
             </div>
         </fieldset>
-        <fieldset ng-if="boot_options.is_enabled('k')">
+        <fieldset ng-if="struct.boot_options.is_enabled('k')">
             <legend>Kernel settings <icsw-tools-yes-no-small flag="$$bs.change.k"></icsw-tools-yes-no-small></legend>
             <div class="form-group" ng-show="$$bs.change.k">
                 <label class="control-label col-sm-4">
@@ -320,7 +320,7 @@
                 </div>
             </div>
         </fieldset>
-        <fieldset ng-if="boot_options.is_enabled('i')">
+        <fieldset ng-if="struct.boot_options.is_enabled('i')">
             <legend>Image settings <icsw-tools-yes-no-small flag="$$bs.change.i"></icsw-tools-yes-no-small></legend>
             <div class="form-group" ng-show="$$bs.change.i">
                 <label class="control-label col-sm-4">
@@ -338,7 +338,7 @@
                 </div>
             </div>
         </fieldset>
-        <fieldset ng-if="boot_options.is_enabled('p')">
+        <fieldset ng-if="struct.boot_options.is_enabled('p')">
             <legend>Partition settings <icsw-tools-yes-no-small flag="$$bs.change.p"></icsw-tools-yes-no-small></legend>
             <div ng-show="!struct.partition_table_tree.list.length" class="alert alert-danger">no valid partition tables found</div>
             <div class="form-group" ng-if="struct.partition_table_tree.list.length && $$bs.change.p">
@@ -357,7 +357,7 @@
                 </div>
             </div>
         </fieldset>
-        <fieldset ng-if="boot_options.is_enabled('b')">
+        <fieldset ng-if="struct.boot_options.is_enabled('b')">
             <legend>bootdevice settings <icsw-tools-yes-no-small flag="$$bs.change.b"></icsw-tools-yes-no-small></legend>
             <div class="form-group" ng-show="$$bs.change.b">
                 <label class="control-label col-sm-3">
@@ -378,7 +378,8 @@
                     Macaddr
                 </label>
                 <div class="controls col-sm-7">
-                    <input class="textinput textInput form-control" maxlength="177" name="macaddr" ng-model="$$bs.macaddr" type="text"/>
+                    <input class="textinput textInput form-control" maxlength="64" name="macaddr" ng-model="$$bs.macaddr" type="text"/>
+                    <button ng-if="$$multi" class="button" ng-class="$$change_macaddr && 'btn btn-xs btn-danger' || 'btn btn-default btn-xs'" ng-click="alter_change_macaddr()">Alter MacAddr</button>
                 </div>
             </div>
             <div class="form-group" ng-show="$$bs.bn_present && $$bs.change.b">

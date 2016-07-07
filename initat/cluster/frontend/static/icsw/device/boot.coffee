@@ -564,11 +564,14 @@ angular.module(
             @display = false
             @set_class()
 
-        toggle_enabled: () =>
-            @enabled = !@enabled
+        set_enabled: (flag) =>
+            @enabled = flag
             @display = @enabled && @type < 3
             @set_class()
             return @enabled
+
+        toggle_enabled: () =>
+            return @set_enabled(!@enabled)
 
         set_class: () =>
             @$$input_class = if @enabled then "btn btn-sm btn-success" else "btn btn-sm btn-default"
@@ -581,13 +584,21 @@ angular.module(
 ) ->
     class icswBootDisplayOptions
         constructor: (opts...) ->
+            @var_name = "$$icswBootOptions"
             @list = []
             @lut = {}
+            @user = undefined
             for entry in opts
                 @list.push(entry)
                 @lut[entry.short] = entry
             @type_1_options = (entry for entry in @list when entry.type == 1)
             @build_selected_info()
+
+        read_user_var: (user) =>
+            @user = user
+            if user.has_var(@var_name)
+                for key, value of angular.fromJson(user.get_var(@var_name).json_value)
+                    @lut[key].set_enabled(value)
 
         is_enabled: (short) =>
             return @lut[short].enabled
@@ -596,6 +607,8 @@ angular.module(
             if short of @lut
                 _ret = @lut[short].toggle_enabled()
                 @build_selected_info()
+                if @user
+                    @user.set_json_var(@var_name, angular.toJson(@get_bo_enabled()))
             else
                 console.error "unknown BootOptionType #{short}"
                 _ret = false
@@ -622,7 +635,7 @@ angular.module(
     "icswKernelTreeService", "icswImageTreeService", "icswUserGroupTreeService",
     "icswPartitionTableTreeService", "icswNetworkTreeService", "icswBootStatusTreeService",
     "icswGlobalBootHelper", "icswDeviceTreeHelperService", "icswBootDisplayOption",
-    "icswBootDisplayOptions", "blockUI", "icswComplexModalService",
+    "icswBootDisplayOptions", "blockUI", "icswComplexModalService", "icswUserService",
 (
     $scope, $compile, $filter, $templateCache, Restangular, ICSW_SIGNALS,
     $q, icswAcessLevelService, $timeout, $rootScope, toaster,
@@ -631,20 +644,9 @@ angular.module(
     icswKernelTreeService, icswImageTreeService, icswUserGroupTreeService,
     icswPartitionTableTreeService, icswNetworkTreeService, icswBootStatusTreeService,
     icswGlobalBootHelper, icswDeviceTreeHelperService, icswBootDisplayOption,
-    icswBootDisplayOptions, blockUI, icswComplexModalService,
+    icswBootDisplayOptions, blockUI, icswComplexModalService, icswUserService,
 ) ->
     icswAcessLevelService.install($scope)
-
-    $scope.boot_options = new icswBootDisplayOptions(
-        new icswBootDisplayOption("t", "target_state", 1)
-        new icswBootDisplayOption("k", "kernel", 1)
-        new icswBootDisplayOption("i", "image", 1)
-        new icswBootDisplayOption("p", "partition", 1)
-        new icswBootDisplayOption("b", "bootdevice", 1)
-        new icswBootDisplayOption("s", "soft control", 2)
-        new icswBootDisplayOption("h", "hard control", 2)
-        new icswBootDisplayOption("l", "devicelog", 3)
-    )
 
     $scope.struct = {
         # tree is valid
@@ -683,9 +685,20 @@ angular.module(
         # boot helper structur
         boot_helper: undefined
         # boot options, for icswGlobalBootHelper
-        boot_options: $scope.boot_options
+        boot_options: new icswBootDisplayOptions(
+            new icswBootDisplayOption("t", "target_state", 1)
+            new icswBootDisplayOption("k", "kernel", 1)
+            new icswBootDisplayOption("i", "image", 1)
+            new icswBootDisplayOption("p", "partition", 1)
+            new icswBootDisplayOption("b", "bootdevice", 1)
+            new icswBootDisplayOption("s", "soft control", 2)
+            new icswBootDisplayOption("h", "hard control", 2)
+            new icswBootDisplayOption("l", "devicelog", 3)
+        )
         # show macbootlog
         show_mbl: false
+        # current user
+        user: undefined
     }
 
     $scope.$on("$destroy", () ->
@@ -705,6 +718,7 @@ angular.module(
                 icswPartitionTableTreeService.load($scope.$id)
                 icswNetworkTreeService.load($scope.$id)
                 icswBootStatusTreeService.load($scope.$id)
+                icswUserService.load($scope.$id)
             ]
         ).then(
             (data) ->
@@ -717,6 +731,7 @@ angular.module(
                 $scope.struct.partition_table_tree = data[6]
                 $scope.struct.network_tree = data[7]
                 $scope.struct.boot_status_tree = data[8]
+                $scope.struct.user = data[9]
                 $scope.struct.devices.length = 0
                 for _dev in dev
                     if not _dev.is_meta_device
@@ -728,6 +743,7 @@ angular.module(
                         for _dc in config.device_config_set
                             if _dc.device not in _mother_list
                                 _mother_list.push(_dc.device)
+                $scope.struct.boot_options.read_user_var($scope.struct.user)
                 $scope.struct.mother_server_list = ($scope.struct.device_tree.all_lut[_dev] for _dev in _mother_list)
                 $scope.struct.mother_server_lut = _.keyBy($scope.struct.mother_server_list, "idx")
                 if $scope.struct.boot_helper?
@@ -866,7 +882,7 @@ angular.module(
 
         # build info fields
         out_list = []
-        for opt in $scope.boot_options.type_1_options
+        for opt in $scope.struct.boot_options.type_1_options
             _type = opt.short
             if opt.enabled
                 # default values
@@ -984,7 +1000,7 @@ angular.module(
     # toggle columns and addons
 
     $scope.toggle_boot_option = (short) ->
-        $scope.boot_options.toggle_enabled(short)
+        $scope.struct.boot_options.toggle_enabled(short)
         salt_devices()
 
     $scope.change_devlog_flag = (dev) ->
@@ -1066,7 +1082,7 @@ angular.module(
             {val: "cramfs", name: "CramFS"}
             {val: "lo", name: "ext2 via Loopback"}
         ]
-        sub_scope.boot_options = $scope.boot_options
+        sub_scope.boot_options = $scope.struct.boot_options
         sub_scope.struct = $scope.struct
         # create boot select entries, used to gather info from subelements
         sub_scope.$$bs = {
@@ -1113,11 +1129,17 @@ angular.module(
 
     $scope.modify_devices = ($event, devs) ->
 
+        sub_scope = create_subscope()
         if devs.length == 1
             title = "Boot settings for device #{devs[0].full_name}"
+            sub_scope.$$multi = false
         else
             title = "Boot settings for #{devs.length} devices"
-        sub_scope = create_subscope()
+            sub_scope.$$multi = true
+        if sub_scope.$$multi
+            sub_scope.$$change_macaddr = false
+        else
+            sub_scope.$$change_macaddr = true
         # set current value
         _bs = sub_scope.$$bs
 
@@ -1158,6 +1180,10 @@ angular.module(
             _bs.partition_table = dev.partition_table
         _bs.dhcp_write = dev.dhcp_write
         _bs.dhcp_mac = dev.dhcp_mac
+        
+        # functions
+        sub_scope.alter_change_macaddr = () ->
+            sub_scope.$$change_macaddr = !sub_scope.$$change_macaddr
         # sub_scope.edit_obj = dev
 
         icswComplexModalService(
@@ -1173,12 +1199,13 @@ angular.module(
                         d.reject("form not valid")
                     else
                         _bs.bo_enabled = $scope.struct.boot_options.get_bo_enabled()
+                        _bs.change_macaddr = sub_scope.$$change_macaddr
                         defer = $q.defer()
                         blockUI.start("Saving data...")
                         icswSimpleAjaxCall(
                             {
                                 url: ICSW_URLS.BOOT_UPDATE_DEVICE
-                                data: 
+                                data:
                                     boot:
                                         angular.toJson(_bs)
                             }

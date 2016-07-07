@@ -138,6 +138,10 @@ class ConfigCheckObject(object):
                             configfile.int_c_var(sql_info.device.pk, database=False, source="instance")
                         ),
                         (
+                            "CONFIG_IDX",
+                            configfile.int_c_var(sql_info.config.pk, database=False, source="instance")
+                        ),
+                        (
                             "EFFECTIVE_DEVICE_IDX",
                             configfile.int_c_var(sql_info.effective_device.pk, database=False, source="instance")
                         ),
@@ -155,6 +159,15 @@ class ConfigCheckObject(object):
                     ]
                 )
         self.global_config.add_config_entries(_opts)
+
+    # property functions to access device and config
+    @property
+    def server(self):
+        return self.__sql_info.device
+
+    @property
+    def config(self):
+        return self.__sql_info.config
 
     def close(self):
         if not self.__native_logging:

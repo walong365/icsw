@@ -42,6 +42,8 @@ from django.db.models import Q, signals
 from django.dispatch import receiver
 from django.utils.encoding import force_text
 
+from enum import IntEnum
+
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models.functions import check_empty_string, check_integer, \
     get_vnc_enc
@@ -665,6 +667,9 @@ class user_manager(models.Manager):
         )
         return new_admin
 
+class UIThemeEnum(IntEnum):
+    default = 1
+    init = 2
 
 class user(models.Model):
     objects = user_manager()
@@ -719,6 +724,8 @@ class user(models.Model):
     scan_user_home = models.BooleanField(default=False)
     # scan depth
     scan_depth = models.IntegerField(default=2)
+    #theme
+    ui_theme_selection = models.IntegerField(choices=[(pt.value, pt.name) for pt in UIThemeEnum], default=UIThemeEnum.default.value)
 
     @property
     def is_anonymous(self):

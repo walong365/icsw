@@ -1,4 +1,4 @@
-# Copyright (C) 2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2014,2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -20,10 +20,9 @@
 """ SNMP handler for MAC bridge info (basic routing info) """
 
 from initat.tools import logging_tools
-
+from ..base import SNMPHandler
 from ...functions import reorder_dict
 from ...snmp_struct import ResultNode
-from ..base import SNMPHandler
 
 try:
     from django.db.models import Q
@@ -51,16 +50,22 @@ class handler(SNMPHandler):
             my_nd_pks = set([_nd.pk for _nd in my_nds])
             my_nd_dict = {_nd.snmp_idx: _nd for _nd in my_nds if _nd.snmp_idx}
             self.log("found {}".format(logging_tools.get_plural("netdevice", len(my_nds))))
-            # reorder dict
-            _mac_dict = reorder_dict(result_dict.values()[0])
+            # reorder dict, interim dict
+            _mac_dict_ir = reorder_dict(result_dict.values()[0])
             # rewrite dict, only use entries where status == 3 (== learned)
-            _mac_dict = {
-                ":".join(
-                    [
-                        "{:02x}".format(_val) for _val in _key
-                    ]
-                ): _value[2] for _key, _value in _mac_dict.iteritems() if _value.get(3, None) == 3
-            }
+            _mac_dict = {}
+            for _key, _value in _mac_dict_ir.iteritems():
+                if set(_value.keys()) & {2, 3} == {2, 3}:
+                    if _value.get(3, None) == 3:
+                        _mac_dict[
+                            ":".join(
+                                [
+                                    "{:02x}".format(_val) for _val in _key
+                                ]
+                            )
+                        ] = _value[2]
+                else:
+                    self.log("some keys missing in {}".format(str(_value)), logging_tools.LOG_LEVEL_ERROR)
             # dict now has the form MAC Adress -> snmp idx
             self.log("MAC forward dict has {}".format(logging_tools.get_plural("entry", len(_mac_dict.keys()))))
             _nd_dict = {

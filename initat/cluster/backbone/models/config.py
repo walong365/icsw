@@ -19,15 +19,19 @@
 #
 # -*- coding: utf-8 -*-
 #
-""" model definitions, partitions """
+""" model definitions, configuration """
+
+import logging
 
 from django.apps import apps
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import Q, signals
+from django.db.models import Q, signals, CASCADE
+import collections
 from django.dispatch import receiver
 
 from initat.cluster.backbone.models.functions import check_integer, check_empty_string
+from initat.cluster.backbone.models.license import LicenseEnum, LicenseUsage, LicenseParameterTypeEnum
 
 __all__ = [
     "config_catalog",
@@ -37,7 +41,11 @@ __all__ = [
     "config_blob",
     "config_bool",
     "config_script",
+    "device_config",
 ]
+
+
+logger = logging.getLogger(__name__)
 
 
 class config_catalog(models.Model):
@@ -204,6 +212,32 @@ def config_post_save(sender, **kwargs):
             if not config_catalog.objects.all().count():
                 config_catalog.create_local_catalog()
             cur_inst.config_catalog = config_catalog.objects.all()[0]
+
+
+class device_config(models.Model):
+    idx = models.AutoField(db_column="device_config_idx", primary_key=True)
+    device = models.ForeignKey("device")
+    config = models.ForeignKey("backbone.config", db_column="new_config_id")
+    date = models.DateTimeField(auto_now_add=True)
+
+    def home_info(self):
+        return self.info_str
+
+    class Meta:
+        db_table = u'device_config'
+        verbose_name = "Device configuration"
+
+
+@receiver(signals.post_save, sender=device_config)
+def device_config_post_save(sender, instance, raw, **kwargs):
+    if not raw:
+        log_usage_data = collections.defaultdict(lambda: [])
+
+        for mcc in instance.config.mon_check_command_set.all().select_related("mon_service_templ"):
+            if mcc.mon_service_templ is not None and mcc.mon_service_templ.any_notification_enabled():
+                log_usage_data[instance.device_id].append(mcc)
+
+        LicenseUsage.log_usage(LicenseEnum.notification, LicenseParameterTypeEnum.service, log_usage_data)
 
 
 class config_str(models.Model):

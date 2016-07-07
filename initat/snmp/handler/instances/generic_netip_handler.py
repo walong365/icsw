@@ -1,4 +1,4 @@
-# Copyright (C) 2014-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2014-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -19,10 +19,10 @@
 #
 """ SNMP handler instances """
 
-from ...functions import simplify_dict
-from ...snmp_struct import ResultNode, ifSNMPIP
 from initat.tools import process_tools, logging_tools, ipvx_tools
 from ..base import SNMPHandler
+from ...functions import simplify_dict
+from ...snmp_struct import ResultNode, ifSNMPIP
 
 try:
     from django.db.models import Q
@@ -32,13 +32,17 @@ except:
     pass
 
 
+IP_ADDR_TABLE = "1.3.6.1.2.1.4.20"
+IP_NET_TO_MEDIA_TABLE = "1.3.6.1.2.1.4.22"
+
+
 class handler(SNMPHandler):
     class Meta:
         # oids = ["generic.netip"]
         description = "network settings (IP addresses)"
         vendor_name = "generic"
         name = "netip"
-        tl_oids = ["1.3.6.1.2.1.4.20", "1.3.6.1.2.1.4.22"]
+        tl_oids = [IP_ADDR_TABLE, IP_NET_TO_MEDIA_TABLE]
         initial = True
 
     def update(self, dev, scheme, result_dict, oid_list, flags):
@@ -47,53 +51,69 @@ class handler(SNMPHandler):
         # import pprint
         # pprint.pprint(result_dict)
         # pprint.pprint(simplify_dict(result_dict["1.3.6.1.2.1.4.22"], (1,)))
-        for key, struct in simplify_dict(result_dict["1.3.6.1.2.1.4.22"], (1,)).iteritems():
-            # check for static entries
-            if 4 in struct and struct[4] == 4:
-                # build snmp_ip struct
-                _ip = ipvx_tools.ipv4(".".join(["{:d}".format(_entry) for _entry in key[1:]]))
-                _networks = _ip.find_matching_network(network.objects.all())
-                if _networks:
-                    self.log(
-                        "found {} for {}: {}".format(
-                            logging_tools.get_plural("matching network", len(_networks)),
-                            unicode(_ip),
-                            ", ".join([unicode(_net) for _net in _networks]),
-                        )
-                    )
-                    _nw = _networks[0]
-                    _dict = {
-                        2: key[0],
-                        1: struct[3],
-                        3: "".join([chr(int(_value)) for _value in _nw[1].netmask.split(".")]),
-                    }
-                    try:
-                        _ip = ifSNMPIP(_dict)
-                    except:
+        if IP_NET_TO_MEDIA_TABLE in result_dict:
+            for key, struct in simplify_dict(result_dict[IP_NET_TO_MEDIA_TABLE], (1,)).iteritems():
+                # check for static entries
+                if 4 in struct and struct[4] == 4:
+                    # build snmp_ip struct
+                    _ip = ipvx_tools.ipv4(".".join(["{:d}".format(_entry) for _entry in key[1:]]))
+                    _networks = _ip.find_matching_network(network.objects.all())
+                    if _networks:
                         self.log(
-                            "error interpreting {} as IP: {}".format(
-                                str(value),
-                                process_tools.get_except_info()
-                            ),
-                            logging_tools.LOG_LEVEL_ERROR,
+                            "found {} for {}: {}".format(
+                                logging_tools.get_plural("matching network", len(_networks)),
+                                unicode(_ip),
+                                ", ".join([unicode(_net) for _net in _networks]),
+                            )
                         )
+                        _nw = _networks[0]
+                        _dict = {
+                            2: key[0],
+                            1: struct[3],
+                            3: "".join([chr(int(_value)) for _value in _nw[1].netmask.split(".")]),
+                        }
+                        try:
+                            _ip = ifSNMPIP(_dict)
+                        except:
+                            self.log(
+                                "error interpreting {} as IP: {}".format(
+                                    str(struct),
+                                    process_tools.get_except_info()
+                                ),
+                                logging_tools.LOG_LEVEL_ERROR,
+                            )
+                        else:
+                            _ip_dict[key[0]] = _ip
                     else:
-                        _ip_dict[key[0]] = _ip
+                        self.log("found no matching network for IP {}".format(unicode(_ip)), logging_tools.LOG_LEVEL_ERROR)
+        else:
+            self.log(
+                "table {} not found in result".format(
+                    IP_NET_TO_MEDIA_TABLE
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
+        if IP_ADDR_TABLE in result_dict:
+            for key, value in simplify_dict(result_dict[IP_ADDR_TABLE], (1,)).iteritems():
+                try:
+                    _ip = ifSNMPIP(value)
+                except:
+                    self.log(
+                        "error interpreting {} as IP: {}".format(
+                            str(value),
+                            process_tools.get_except_info()
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR,
+                    )
                 else:
-                    self.log("found no matching network for IP {}".format(unicode(_ip)), logging_tools.LOG_LEVEL_ERROR)
-        for key, value in simplify_dict(result_dict["1.3.6.1.2.1.4.20"], (1,)).iteritems():
-            try:
-                _ip = ifSNMPIP(value)
-            except:
-                self.log(
-                    "error interpreting {} as IP: {}".format(
-                        str(value),
-                        process_tools.get_except_info()
-                    ),
-                    logging_tools.LOG_LEVEL_ERROR,
-                )
-            else:
-                _ip_dict[key] = _ip
+                    _ip_dict[key] = _ip
+        else:
+            self.log(
+                "table {} not found in result".format(
+                    IP_ADDR_TABLE,
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
         if any([unicode(_value.address_ipv4) == "0.0.0.0" for _value in _ip_dict.itervalues()]):
             self.log("ignoring zero IP address", logging_tools.LOG_LEVEL_WARN)
             _ip_dict = {key: value for key, value in _ip_dict.iteritems() if unicode(value.address_ipv4) != "0.0.0.0"}

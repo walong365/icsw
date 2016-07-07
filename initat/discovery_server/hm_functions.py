@@ -417,7 +417,6 @@ class HostMonitoringMixin(object):
                         logging_tools.get_plural("logical volume", len(lvm_info.lv_dict.get("lv", {}).keys()))
                     )
                 )
-        self.clear_scan(scan_dev)
         return res_node
 
     def _interpret_lstopo(self, lstopo_dump):
@@ -530,7 +529,6 @@ class HostMonitoringMixin(object):
                 )
 
         res_node.ok("system scanned")
-        self.clear_scan(scan_dev)
         return res_node
 
     def scan_network_info(self, dev_com, scan_dev):
@@ -686,5 +684,4 @@ class HostMonitoringMixin(object):
             res_node.ok("{} taken".format(logging_tools.get_plural("netdevice", num_taken)))
         if num_ignored:
             res_node.ok("{} ignored".format(logging_tools.get_plural("netdevice", num_ignored)))
-        self.clear_scan(scan_dev)
         return res_node

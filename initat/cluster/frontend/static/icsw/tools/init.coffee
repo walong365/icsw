@@ -22,6 +22,7 @@ angular.module(
     "icsw.tools",
     [
         "toaster"
+        "uiGmapgoogle-maps"
     ],
 ).service("icswBaseMixinClass", [() ->
     # hm, not really needed ... ?
@@ -159,11 +160,41 @@ angular.module(
         clear_token: () ->
             csrf_token = undefined
     }
-
-]).config(["toasterConfig", (toasterConfig) ->
+]).config([
+    "uiGmapGoogleMapApiProvider",
+(
+    uiGmapGoogleMapApiProvider,
+) ->
+    uiGmapGoogleMapApiProvider.configure(
+        {
+            #  key: 'your api key'
+            v: '3.23'  # defaults to latest 3.X anyhow
+            libraries: 'weather,geometry,visualization'
+        }
+    )
+]).config([
+    "blockUIConfig",
+(
+    blockUIConfig
+) ->
+    blockUIConfig.delay = 0
+    blockUIConfig.message = "Loading, please wait ..."
+    blockUIConfig.autoBlock = false
+    blockUIConfig.autoInjectBodyBlock = false
+]).config([
+    "hotkeysProvider",
+(
+    hotkeysProvider,
+) ->
+    hotkeysProvider.templateHeader = "<h1>ICSW Key help</h1>"
+    hotkeysProvider.includeCheatSheet = true
+]).config([
+    "toasterConfig",
+(
+    toasterConfig
+) ->
     # close on click
     toasterConfig["tap-to-dismiss"] = true
-
 ]).config([
     "$httpProvider",
 (
@@ -649,30 +680,42 @@ angular.module(
                 @top_div.find("li##{xhr_id}").remove()
 ]).service("_icswCallAjaxService",
 [
-    "icswAjaxInfoService", "icswCSRFService", "$q",
+    "icswAjaxInfoService", "icswCSRFService", "$q", "icswInfoModalService", "$window",
 (
-    icswAjaxInfoService, icswCSRFService, $q
+    icswAjaxInfoService, icswCSRFService, $q, icswInfoModalService, $window,
 ) ->
     local_ajax_info = new icswAjaxInfoService("div#ajax_info")
+    error_info_open = false
     default_ajax_dict =
-        type       : "POST"
-        timeout    : 50000
-        dataType   : "xml"
-        headers    : {}
-        beforeSend : (xhr, settings) ->
+        type: "POST"
+        timeout: 50000
+        dataType: "xml"
+        headers: {}
+        beforeSend: (xhr, settings) ->
             if not settings.hidden
                 xhr.inituuid = local_ajax_info.new_connection(settings)
-        complete   : (xhr, textstatus) ->
+        complete: (xhr, textstatus) ->
             local_ajax_info.close_connection(xhr.inituuid)
-        dataFilter : (data, data_type) ->
+        dataFilter: (data, data_type) ->
             return data
-        error      : (xhr, status, except) ->
+        error: (xhr, status, except) ->
             if status == "timeout"
                 alert("timeout")
             else
                 if xhr.status
-                    # if status is != 0 an error has occured
-                    alert("*** #{status} ***\nxhr.status : #{xhr.status}\nxhr.statusText : #{xhr.statusText}")
+                    if not error_info_open
+                        error_info_open = true
+                        icswInfoModalService(
+                            "A critical error occured: #{xhr.statusText} (#{xhr.status})"
+                            # wait for ten seconds
+                            10000
+                        ).then(
+                            (done) ->
+                                error_info_open = false
+                                # reduce flicker
+                                $(document.body).hide()
+                                $window.location.reload()
+                        )
             return false
 
     return (in_dict) ->
@@ -999,11 +1042,13 @@ angular.module(
     )
 ]).service("icswInfoModalService",
 [
-    "$q",
+    "$q", "$timeout",
 (
-    $q,
+    $q, $timeout,
 ) ->
-    return (info) ->
+    return (info, timeout=0) ->
+        if timeout
+            info = "#{info}, closing in #{timeout / 1000} seconds"
         d = $q.defer()
         BootstrapDialog.show
             message: info
@@ -1022,6 +1067,14 @@ angular.module(
                         d.resolve()
                 },
             ]
+            onshow: (dialog) ->
+                if timeout
+                    $timeout(
+                        () ->
+                            dialog.close()
+                            d.resolve()
+                        timeout
+                    )
             iconshow: (modal) =>
                 height = $(window).height() - 100
                 modal.getModal().find(".modal-body").css("max-height", height)

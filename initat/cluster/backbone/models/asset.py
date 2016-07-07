@@ -1110,8 +1110,10 @@ class AssetRun(models.Model):
     )
     run_start_time = models.DateTimeField(null=True, blank=True)
     run_end_time = models.DateTimeField(null=True, blank=True)
-    # runtime in seconds
+    # runtime in seconds (for communication)
     run_duration = models.IntegerField(default=0)
+    # time needed to generate assets in db
+    generate_duration = models.FloatField(default=0.0)
     # error string
     error_string = models.TextField(default="")
     # interpret error

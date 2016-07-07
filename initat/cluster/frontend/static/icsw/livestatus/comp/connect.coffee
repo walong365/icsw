@@ -38,17 +38,27 @@ angular.module(
             # parent element
             @__dp_parent = undefined
             @__dp_async_emit = false
+            # is leaf (no childs)
+            @__dp_is_leaf_node = true
             # notifier for downstream elements
             if @is_emitter
-                @notifier = $q.defer()
+                # @notifier = $q.defer()
                 @__dp_childs = []
+            # for internal data
+            @show_content = true
+            # for frontend / content
+            @$$show_content = true
+            # for frontend / header
+            @$$show_header = true
             console.log "init #{@name} (recv: #{@is_receiver}, emit: #{@is_emitter})"
 
         close: () =>
             # called on destroy
             if @pipeline_pre_close?
                 @pipeline_pre_close()
-            @notifier.reject("pipeline stop")
+            if @is_emitter
+                for _child in @__dp_childs
+                    _child.__dp_parent_notifier.reject(_child.__dp_element_id)
 
         log: (what) ->
             console.log "Element #{@name} (#{@__dp_element_id}@#{@__dp_depth}): #{what}"
@@ -69,10 +79,19 @@ angular.module(
             if @is_emitter and @__dp_childs.length
                 # only for emitters
                 title = "#{title} to " + (entry.__dp_element_id for entry in @__dp_childs).join(", ")
+            if @__dp_is_leaf_node
+                title = "#{title}, leafnode"
             @__dp_title = title
 
         hide_element: ($event) =>
             @__dp_connector.hide_element(@)
+        
+        toggle_element: ($event) ->
+            @show_content = !@show_content
+            @set_display_flags()
+
+        delete_element: ($event) ->
+            @__dp_connector.delete_element(@)
             
         # santify checks
         check_for_emitter: () =>
@@ -82,13 +101,14 @@ angular.module(
         feed_data: (mon_data) ->
             # feed data, used to insert data into the pipeline
             # console.log "fd", mon_data
-            @notifier.notify(mon_data)
+            (_child.__dp_parent_notifier.notify(mon_data) for _child in @__dp_childs)
 
         add_child_node: (node) ->
+            @__dp_is_leaf_node = false
             if not @is_emitter
                 throw new error("Cannot add childs to non-emitting element")
             @__dp_childs.push(node)
-            node.link_to_parent(@, @notifier)
+            node.link_to_parent(@)
 
         new_data_received: (new_data) =>
             console.error "new data received, to be overwritten", new_data
@@ -100,6 +120,21 @@ angular.module(
         pipeline_reject_called: (rejected) =>
             console.error "reject called #{rejected} for #{@name}"
 
+        # display / hide / toggle functions
+        set_display_flags: () =>
+            if @show_content
+                # better: go to full state model
+                if @__dp_saved_sizeY?
+                    @sizeY = @__dp_saved_sizeY
+            else
+                @__dp_saved_sizeY = @sizeY
+                @sizeY = 1
+            if @__dp_connector.global_display_state in [1]
+                @$$show_content = false
+            else
+                @$$show_content = @show_content
+            @$$show_header = @__dp_connector.global_display_state in [0, 1]
+
         # link with connector
         link_with_connector: (connector, id, depth) =>
             @__dp_connector = connector
@@ -107,17 +142,34 @@ angular.module(
             @__dp_depth = depth
             @display_name = "#{@name} ##{@__dp_element_id}"
 
-        link_to_parent: (parent, parent_not) ->
+        remove_child: (child) ->
+            @close_child(child)
+            if not @__dp_childs.length
+                @__dp_is_leaf_node = true
+            console.log "rc", child.__dp_element_id
+            _.remove(@__dp_childs, (entry) -> return entry.__dp_element_id == child.__dp_element_id)
+            @build_title()
+
+        close_child: (child) ->
+            if @is_emitter
+                child.__dp_parent_notifier.reject("reject #{child.__dp_element_id}")
+
+        remove_from_parent: () ->
+            # delete child via calling remove_child on parent
+            @__dp_parent.remove_child(@)
+
+        link_to_parent: (parent) ->
             @__dp_parent = parent
-            parent_not.promise.then(
+            @__dp_parent_notifier = $q.defer()
+            @__dp_parent_notifier.promise.then(
                 (resolved) =>
                     if @is_emitter
-                        @notifier.resolve(resolved)
+                        (_child.__dp_parent_notifier.resolve(resolved) for _child in @__dp_childs)
                     @pipeline_resolve_called(resolved)
                 (rejected) =>
-                    # send it down the pipe
-                    if @is_emitter
-                        @notifier.reject(rejected)
+                    @log("rejected #{rejected}")
+                    @log("close")
+                    @close()
                     @pipeline_reject_called(rejected)
                 (recv_data) =>
                     emit_data = @new_data_received(recv_data)
@@ -132,7 +184,7 @@ angular.module(
                             else
                                 console.error "emitter #{@name} is emitting none ..."
             )
-        
+
         set_async_emit_data: (result) =>
             result.result_notifier.promise.then(
                 (resolved) ->
@@ -142,14 +194,14 @@ angular.module(
             )
             
         emit_data_downstream: (emit_data) ->
-            @notifier.notify(emit_data)
+            (_child.__dp_parent_notifier.notify(emit_data) for _child in @__dp_childs)
 
 
 ]).service("icswMonLivestatusPipeConnector",
 [
-    "$q", "$rootScope", "$injector",
+    "$q", "$rootScope", "$injector", "icswToolsSimpleModalService",
 (
-    $q, $rootScope, $injector,
+    $q, $rootScope, $injector, icswToolsSimpleModalService,
 ) ->
     # creates a DisplayPipeline
     class icswMonLivestatusPipeConnector
@@ -160,6 +212,10 @@ angular.module(
             @spec_src = spec
             console.log "Connector #{@name} (spec: #{@spec_src})"
             @root_element = undefined
+            # 0 ... show all
+            # 1 ... no content
+            # 2 ... no header
+            @global_display_state = 0
             @build_structure()
 
         close: () =>
@@ -171,6 +227,12 @@ angular.module(
         toggle_running: () =>
             @running = !@running
             @root_element.set_running_flag(@running)
+
+        toggle_global_display_state: () =>
+            @global_display_state++
+            if @global_display_state > 2
+                @global_display_state =0
+            (_element.set_display_flags() for _element in @all_elements)
             
         get_panel_class: () =>
             if @running
@@ -195,8 +257,10 @@ angular.module(
                     for _el in value
                         _resolve_iter(_el, depth+1)
 
+            @all_elements = []
             # list of display elements
             @display_elements = []
+            # list of hidden elements
             @hidden_elements = []
             @num_hidden_elements = 0
             @num_total_elements = 0
@@ -209,6 +273,7 @@ angular.module(
                     @num_total_elements++
                     node.link_with_connector(@, el_idx, depth)
                     if node.__dp_has_template
+                        @all_elements.push(node)
                         @display_elements.push(node)
                     if depth == 0
                         @root_element = node
@@ -240,6 +305,22 @@ angular.module(
             _.remove(@hidden_elements, (entry) -> return entry.__dp_element_id == $item.__dp_element_id)
             @num_hidden_elements--
 
+        delete_element: (element) =>
+            # delete element permanently
+            icswToolsSimpleModalService("Really delete DPE #{element.__dp_raw_title} ?").then(
+                (del_it) =>
+                    @_delete_element(element)
+            )
+
+        _delete_element: (element) =>
+            _.remove(@display_elements, (entry) -> return entry.__dp_element_id == element.__dp_element_id)
+            _.remove(@hidden_elements, (entry) -> return entry.__dp_element_id == element.__dp_element_id)
+            _.remove(@all_elements, (entry) -> return entry.__dp_element_id == element.__dp_element_id)
+            @num_total_elements--
+            @num_hidden_elements = @hidden_elements.length
+            @num_display_elements = @display_elements.length
+            element.remove_from_parent()
+
         init_gridster: () =>
             @gridsterOpts = {
                 columns: 20
@@ -249,7 +330,7 @@ angular.module(
                 width: 'auto'
                 colWidth: 'auto'
                 rowHeight: '40'
-                margins: [4, 4]
+                margins: [1, 1]
                 outerMargin: true
                 isMobile: true
                 mobileBreakPoint: 600
@@ -315,5 +396,6 @@ angular.module(
 ) ->
     $scope.close = () ->
         $scope.con_element.close()
+        
 
 ])

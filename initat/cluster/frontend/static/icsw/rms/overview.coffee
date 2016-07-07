@@ -367,7 +367,11 @@ rms_module = angular.module(
             # memory handling
             @memory_sge = memory.raw
             # pick all memory keys
-            @memory_icsw = _.pickBy(cl_info.values, (value, key) -> return key.match(/^mem./))
+            if cl_info?
+                @memory_icsw = _.pickBy(cl_info.values, (value, key) -> return key.match(/^mem./))
+            else
+                # collectd not running
+                @memory_icsw = {}
 
             # display flags
             @$$enable_ok = if _sv.match(/d/g) then true else false

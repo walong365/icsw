@@ -322,10 +322,6 @@ angular.module(
             _clicked.iter_childs((obj) -> obj.show = true)
 
         balance: () ->
-            # balance down to all visible childnodes
-            _local_width = @_get_width()
-
-        balance: () ->
             if @children.length
                 _width = _.sum(_child.balance() for _child in @children)
             else
@@ -497,14 +493,6 @@ angular.module(
             )
         return _result
 
-    build_empty_structured_burst = (draw_params) ->
-        _root_node = new icswStructuredBurstNode(
-            null
-            "System"
-            0
-            icswSaltMonitoringResultService.get_system_entry("System")
-        )
-        
     build_structured_burst = (mon_data, draw_params) ->
         _root_node = new icswStructuredBurstNode(
             null

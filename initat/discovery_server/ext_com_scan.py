@@ -23,13 +23,12 @@ import datetime
 import threading
 import time
 import traceback
-import os
 
 import pytz
 from django.core.exceptions import ValidationError
 from django.db.models import Q
-from lxml import etree
 from django.utils import timezone
+from lxml import etree
 
 from initat.cluster.backbone.models import ComCapability, netdevice, netdevice_speed, net_ip, network
 from initat.cluster.backbone.models.asset import AssetRun, RunStatus, AssetType, ScanType, \
@@ -40,7 +39,7 @@ from initat.discovery_server.wmi_struct import WmiUtils
 from initat.icsw.service.instance import InstanceXML
 from initat.snmp.snmp_struct import ResultNode
 from initat.tools import logging_tools, process_tools, server_command, net_tools, \
-    ipvx_tools, pci_database, dmi_tools
+    ipvx_tools
 from .discovery_struct import ExtCom
 
 
@@ -81,8 +80,7 @@ class ScanBatch(object):
         raise NotImplementedError()
 
     def finish(self):
-        if self.device.active_scan:
-            self.__class__.process.clear_scan(self.device)
+        # TODO: add locking
         self.end_time = time.time()
         self.log("finished in {}".format(logging_tools.get_diff_time_str(self.end_time - self.start_time)))
         self.__class__.remove_batch(self)
@@ -690,20 +688,7 @@ class PlannedRunState(object):
         self.generate_assets()
 
     def generate_assets(self):
-        s_time = time.time()
-        try:
-            self.run_db_obj.generate_assets()
-        except:
-            _err = process_tools.get_except_info()
-            self.log(
-                "error in generate_assets: {}".format(_err),
-                logging_tools.LOG_LEVEL_ERROR
-            )
-            self.run_db_obj.interpret_error_string = _err
-            self.run_db_obj.save()
-        finally:
-            e_time = time.time()
-            self.log("generate_asset_run took {}".format(logging_tools.get_diff_time_str(e_time - s_time)))
+        self.__pdrf.disp.discovery_process.send_pool_message("generate_assets", self.run_db_obj.idx)
 
 
 class PlannedRunsForDevice(object):
