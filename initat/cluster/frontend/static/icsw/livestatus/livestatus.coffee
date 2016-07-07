@@ -106,7 +106,10 @@ angular.module(
             "icswLivestatusSelDevices": [{
                 "icswLivestatusDataSource": [{
                     "icswLivestatusFilterService": [{
-                        "icswLivestatusLocationDisplay": []
+                        "icswLivestatusNetworkTopology": []
+                    }
+                    {
+                        "icswLivestatusNetworkTopology": []
                     }]
                 }]
             }]
@@ -125,7 +128,6 @@ angular.module(
 
     $scope.set_connector = (c_name) ->
         $scope.unset_connector()
-        console.log "cact"
         $scope.struct.connector = new icswMonLivestatusPipeConnector(c_name, angular.toJson(_cd[c_name]))
         $scope.struct.connector_set = true
 

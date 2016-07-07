@@ -203,9 +203,9 @@ angular.module(
 
 ]).service("icswMonLivestatusPipeConnector",
 [
-    "$q", "$rootScope", "$injector", "icswToolsSimpleModalService",
+    "$q", "$rootScope", "$injector", "icswToolsSimpleModalService", "$window",
 (
-    $q, $rootScope, $injector, icswToolsSimpleModalService,
+    $q, $rootScope, $injector, icswToolsSimpleModalService, $window,
 ) ->
     # creates a DisplayPipeline
     class icswMonLivestatusPipeConnector
@@ -230,7 +230,9 @@ angular.module(
 
         toggle_running: () =>
             @running = !@running
-            @root_element.set_running_flag(@running)
+            for el in @all_elements
+                if el.set_running_flag?
+                    el.set_running_flag(@running)
 
         toggle_global_display_state: () =>
             @global_display_state++
@@ -251,8 +253,9 @@ angular.module(
             # simple iteratee for resolving
 
             _resolve_iter = (in_obj, depth=0) =>
-                if _.keys(in_obj).length != 1
-                    console.error in_obj
+                if _.keys(in_obj).length == 0
+                    throw new Error("empty object found at depth #{depth}")
+                else if _.keys(in_obj).length != 1
                     throw new Error("Only one element allowed at any level")
                 for key, value of in_obj
                     if key not of elements
@@ -326,14 +329,17 @@ angular.module(
             element.remove_from_parent()
 
         init_gridster: () =>
+            NUM_COLUMS = 20
+            c_width = $window.innerWidth / NUM_COLUMS
+            r_height = c_width
             @gridsterOpts = {
-                columns: 20
+                columns: NUM_COLUMS
                 pushing: true
                 floating: true
                 swapping: false
                 width: 'auto'
                 colWidth: 'auto'
-                rowHeight: '40'
+                rowHeight: r_height
                 margins: [1, 1]
                 outerMargin: true
                 isMobile: true

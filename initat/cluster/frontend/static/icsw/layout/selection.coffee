@@ -483,7 +483,7 @@ angular.module(
         (ok) ->
         (error) ->
         (info) ->
-            console.log "info"
+            # console.log "info"
     )
     # treeconfig for devices
     $scope.tc_devices = new icswLayoutSelectionTreeService($scope, notifier_queue, {show_tree_expand_buttons: false, show_descendants: true})
@@ -531,7 +531,7 @@ angular.module(
     )
     stop_listen.push(
         $scope.$on("$destroy", (event) ->
-            console.log "Destroy", stop_listen
+            # console.log "Destroy", stop_listen
             notifier_queue.reject("exit")
             (stop_func() for stop_func in stop_listen)
         )
@@ -1053,6 +1053,7 @@ angular.module(
                 return @scope.tree.cat_tree.lut[t_entry.obj]
             else
                 return @scope.tree.all_lut[t_entry.obj]
+
         selection_changed: () =>
             @scope.selection_changed()
             @notifier.notify("go")

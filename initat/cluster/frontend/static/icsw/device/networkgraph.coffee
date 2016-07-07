@@ -746,7 +746,6 @@ angular.module(
             @id = icswTools.get_unique_id()
             @status_timeout = undefined
             @livestatus_state = false
-            @filter_state_str = ""
             @device_gen = new icswD3Device(@)
             @link_gen = new icswD3Link(@)
             # pipe for graph commands
@@ -755,6 +754,8 @@ angular.module(
             @monitoring_data = undefined
             # autoscale during initial force run
             @do_autoscale = false
+            # monitoring active (data retained from livestatusdataservice)
+            @monitoring_active = false
 
         create: (element, props, state) =>
             @element = element
@@ -1010,10 +1011,9 @@ angular.module(
             )
 
         destroy: (element) =>
-            console.log "destroy"
             if @force?
                 @force.stop()
-            icswDeviceLivestatusDataService.destroy(@id)
+            @stop_livestatus()
 
         graph_cmd_scale: () =>
             _n = @state.graph.nodes
@@ -1037,8 +1037,13 @@ angular.module(
             _width = parseInt(_vbox[2])
             _height = parseInt(_vbox[3])
 
-            _fact_x = _width / (_max_x - _min_x)
-            _fact_y = _height / (_max_y - _min_y)
+            if _size_x == 0 or _size_y == 0
+                # catch DivByZero
+                _fact_x = 6.0
+                _fact_y = 6.0
+            else
+                _fact_x = _width / (_max_x - _min_x)
+                _fact_y = _height / (_max_y - _min_y)
             if _fact_x < _fact_y
                 # x domain is wider than y domain
                 @state.settings.zoom.factor = _fact_x
@@ -1054,18 +1059,10 @@ angular.module(
                 }
             @_update_transform(@element, @state.settings, @props.update_scale_cb)
 
-        set_livestatus_filter: (filter) =>
-            state_str = filter.get_filter_state_str()
-            if state_str != @filter_state_str
-                @filter_state_str = state_str
-                if @monitoring_data
-                    @props.livestatus_filter.set_monitoring_data(@monitoring_data)
-                    @_draw_livestatus()
-
         set_livestatus_state: (new_state) =>
             # set state of livestatus display
             if new_state != @livestatus_state
-                # console.log "set state of livestatus to #{new_state}"
+                console.log "set state of livestatus to #{new_state}"
                 @livestatus_state = new_state
                 if @livestatus_state
                     @start_livestatus()
@@ -1074,20 +1071,25 @@ angular.module(
                     @_draw_livestatus()
 
         stop_livestatus: () =>
-            icswDeviceLivestatusDataService.stop(@id)
+            if @monitoring_active
+                icswDeviceLivestatusDataService.stop(@id)
+                @monitoring_active = false
             @monitoring_data = undefined
 
         start_livestatus: () =>
+            @monitoring_active = true
             icswDeviceLivestatusDataService.retain(@id, @state.graph.device_list).then(
                 (result) =>
                     result.result_notifier.promise.then(
                         () ->
                         () ->
                         (generation) =>
-                            @monitoring_data = result
-                            # console.log "gen", @props.livestatus_filter, @monitoring_data
-                            # @props.livestatus_filter.set_monitoring_data(@monitoring_data)
-                            @_draw_livestatus()
+                            if @livestatus_state
+                                # may have changed
+                                @monitoring_data = result
+                                # console.log "gen", @props.livestatus_filter, @monitoring_data
+                                # @props.livestatus_filter.set_monitoring_data(@monitoring_data)
+                                @_draw_livestatus()
                     )
             )
 
@@ -1108,7 +1110,6 @@ angular.module(
             settings: React.PropTypes.object
             scale_changed_cb: React.PropTypes.func
             with_livestatus: React.PropTypes.bool
-            livestatus_filter: React.PropTypes.object
             graph_command_cb: React.PropTypes.func
         }
         getInitialState: () ->
@@ -1118,7 +1119,6 @@ angular.module(
 
         componentDidMount: () ->
             @draw_service = new icswNetworkTopologyDrawService()
-            console.log "mount"
             el = ReactDOM.findDOMNode(@)
             @draw_service.create(
                 el
@@ -1127,7 +1127,6 @@ angular.module(
                     height: @props.settings.size.height
                     update_scale_cb: @update_scale
                     with_livestatus: @props.with_livestatus
-                    livestatus_filter: @props.livestatus_filter
                     graph_command_cb: @props.graph_command_cb
                 }
                 {
@@ -1148,7 +1147,6 @@ angular.module(
         componentDidUpdate: () ->
             # called when the props have changed
             @draw_service.set_livestatus_state(@props.with_livestatus)
-            @draw_service.set_livestatus_filter(@props.livestatus_filter)
 
         render: () ->
             return div({key: "div"})
@@ -1156,11 +1154,9 @@ angular.module(
 ]).factory("icswNetworkTopologyReactContainer",
 [
     "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswNetworkTopologyReactSVGContainer",
-    "icswLivestatusFilterService", "icswLivestatusFilterReactDisplay",
     "icswActiveSelectionService",
 (
     $q, ICSW_URLS, icswSimpleAjaxCall, icswNetworkTopologyReactSVGContainer,
-    icswLivestatusFilterService, icswLivestatusFilterReactDisplay,
     icswActiveSelectionService,
 ) ->
     # Network topology container, including selection and redraw button
@@ -1171,6 +1167,7 @@ angular.module(
         propTypes: {
             # required types
             device_tree: React.PropTypes.object
+            monitoring_data: React.PropTypes.object
         }
 
         getInitialState: () ->
@@ -1183,8 +1180,11 @@ angular.module(
                 settings: undefined
                 graph_id: 0
                 redraw_trigger: 0
-                livestatus_filter: new icswLivestatusFilterService()
+                div_pks: []
             }
+
+        componentWillMount: () ->
+            @current_dev_pks = []
 
         componentWillUnmount: () ->
             console.log "TopCont umount"
@@ -1279,7 +1279,7 @@ angular.module(
                     )
                 )
                 if false
-                    # no longer needed, too much details
+                    # disabled (too much disturbing details)
                     _top_list.push(
                         h4(
                             {key: "header"}
@@ -1296,18 +1296,7 @@ angular.module(
                             settings: @state.settings
                             scale_changed_cb: @scale_changed
                             with_livestatus: @state.with_livestatus
-                            livestatus_filter: @state.livestatus_filter
                             graph_command_cb: @graph_command_cb
-                        }
-                    )
-                )
-            if @state.with_livestatus
-                _list.push(
-                    React.createElement(
-                        icswLivestatusFilterReactDisplay
-                        {
-                            livestatus_filter: @state.livestatus_filter
-                            filter_changed_cb: @filter_changed
                         }
                     )
                 )
@@ -1326,31 +1315,36 @@ angular.module(
         graph_command_cb: (defer) ->
             @graph_command = defer
 
-        filter_changed: () ->
-            @setState({redraw_trigger: @state.redraw_trigger + 1})
-
         scale_changed: () ->
             @setState({redraw_trigger: @state.redraw_trigger + 1})
 
+        new_monitoring_data: () ->
+            # data received, check for any changes
+            _pks = (dev.$$icswDevice.idx for dev in @props.monitoring_data.hosts)
+            # check for new devices
+            if angular.toJson(_.sortBy(_pks)) != angular.toJson(@current_dev_pks)
+                # console.log "Pks=", _pks
+                @current_dev_pks = _.sortBy((entry for entry in _pks))
+                @load_data()
+
         load_data: () ->
-            _dt = @state.draw_type
-            if _dt.match(/^sel/)
-                _pks = icswActiveSelectionService.current().get_devsel_list()[1]
-            else
-                _pks = []
             icswSimpleAjaxCall(
                 url: ICSW_URLS.NETWORK_JSON_NETWORK
                 data:
-                    graph_sel: _dt
-                    devices: angular.toJson(_pks)
+                    graph_sel: @state.draw_type
+                    devices: angular.toJson(@current_dev_pks)
                 dataType: "json"
             ).then(
                 (json) =>
-                    # console.log json
+                    # pks actually found in json network
+                    _json_pks = (node.id for node in json.nodes)
+                    _diff_pks = _.difference(_json_pks, @current_dev_pks)
+                    console.log "diff=", _diff_pks
                     @setState(
                         {
                             loading: false
                             data_present: true
+                            div_pks: _diff_pks
                             graph_id: @state.graph_id + 1
                             graph: @props.device_tree.seed_network_graph(json.nodes, json.links)
                             settings: {
@@ -1377,7 +1371,33 @@ angular.module(
                     )
             )
     )
-]).directive("icswDeviceNetworkTopologyOld",
+]).service("icswLivestatusNetworkTopology",
+[
+    "$q", "$rootScope", "icswMonLivestatusPipeBase", "$timeout",
+    "icswDeviceTreeService", "icswDeviceLivestatusDataService", "icswTools",
+(
+    $q, $rootScope, icswMonLivestatusPipeBase, $timeout,
+    icswDeviceTreeService, icswDeviceLivestatusDataService, icswTools,
+) ->
+    class icswLivestatusNetworkTopology extends icswMonLivestatusPipeBase
+        constructor: () ->
+            super("icswLivestatusNetworkTopology", true, false)
+            @set_template(
+                '<icsw-device-network-topology icsw-connect-element="con_element"></icsw-device-network-topology>'
+                "NetworkTopology"
+                8
+                8
+            )
+
+            @new_data_notifier = $q.defer()
+
+        new_data_received: (data) ->
+            @new_data_notifier.notify(data)
+
+        pipeline_reject_called: (reject) ->
+            @new_data_notifier.reject("stop")
+
+]).directive("icswDeviceNetworkTopology",
 [
     "ICSW_URLS", "icswDeviceTreeService", "icswNetworkTopologyReactContainer",
     "icswMonLivestatusPipeConnector",
@@ -1388,30 +1408,49 @@ angular.module(
     return {
         restrict: "EA"
         replace: true
+        scope:
+            con_element: "=icswConnectElement"
         link: (scope, element, attrs) ->
-
-            scope.size = undefined
-            scope.$watch("size", (new_val) ->
-                # hm, not working
-                console.log "new size", new_val
-            )
+            struct = {
+                # react element
+                react_element: undefined
+                # monitoring data
+                mon_data: undefined
+                # device tree
+                device_tree: undefined
+            }
+            _create_element = () ->
+                if not struct.react_element?
+                    if struct.mon_data? and struct.device_tree?
+                        struct.react_element = ReactDOM.render(
+                            React.createElement(
+                                icswNetworkTopologyReactContainer
+                                {
+                                    device_tree: struct.device_tree
+                                    monitoring_data: struct.mon_data
+                                }
+                            )
+                            element[0]
+                        )
+                        scope.$on("$destroy", () ->
+                            ReactDOM.unmountComponentAtNode(element[0])
+                        )
             icswDeviceTreeService.load(scope.$id).then(
                 (tree) ->
-                    _load_graph(tree)
+                    struct.device_tree = tree
+                    _create_element()
             )
-            _load_graph = (tree) ->
-                ReactDOM.render(
-                    React.createElement(
-                        icswNetworkTopologyReactContainer
-                        {
-                            device_tree: tree
-                        }
-                    )
-                    element[0]
-                )
-                scope.$on("$destroy", () ->
-                    ReactDOM.unmountComponentAtNode(element[0])
-                )
+            scope.con_element.new_data_notifier.promise.then(
+                (resolved) ->
+                (rejected) ->
+                    # stop
+                (data) ->
+                    if not struct.mon_data?
+                        struct.mon_data = data
+                        _create_element()
+                    console.log "send down"
+                    struct.react_element.new_monitoring_data()
+            )
 
     }
 ])

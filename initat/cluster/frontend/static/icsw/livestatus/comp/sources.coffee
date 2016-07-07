@@ -844,7 +844,7 @@ angular.module(
                 schedule_load()
             else
                 _defer.reject("client in destroyed list")
-                console.warn "client #{client} in destroyed_list"
+                throw new Error("client #{client} in destroyed_list")
             # the promise resolves always immediately
             return _defer.promise
 
@@ -889,7 +889,7 @@ angular.module(
                 # device tree
                 device_tree: undefined
                 # raw selection
-                raw_selection: []
+                raw_selection: undefined
                 # monresult to emit
                 mon_result: new icswMonitoringResult()
             }
@@ -910,7 +910,7 @@ angular.module(
             @check_raw_selection()
 
         check_raw_selection: () =>
-            if @struct.device_tree? and @struct.raw_selection.length
+            if @struct.device_tree? and @struct.raw_selection?
                 @struct.device_list.length = 0
                 for pk in @struct.raw_selection
                     if @struct.device_tree.all_lut[pk]?
@@ -918,7 +918,7 @@ angular.module(
                         if not _dev.is_meta_device
                             @struct.device_list.push(_dev)
                 # we use MonitoringResult as a container to send the device selection down the pipe
-                console.log "EMIT"
+                # console.log "EMIT"
                 # here we go
                 @struct.mon_result.update(@struct.device_list, [], [])
 
@@ -939,16 +939,14 @@ angular.module(
             super("icswLivestatusDataSource", true, true)
             @__dp_async_emit = true
             @struct = {
-                # local id
-                local_id: icswTools.get_unique_id()
+                # local id, created for every call to start()
+                local_id: undefined
                 # device list
                 devices: []
                 # is updating
                 updating: false
                 # data fetch timeout
                 fetch_timeout: undefined
-                # device tree, really needed here ?
-                device_tree: undefined
                 # monitoring data
                 is_running: true
                 # monitoring_data: undefined
@@ -983,15 +981,14 @@ angular.module(
         start: () =>
             @stop_update()
             @struct.updating = true
+            @struct.local_id = icswTools.get_unique_id()
             wait_list = [
-                icswDeviceTreeService.load(@struct.local_id)
                 icswDeviceLivestatusDataService.retain(@struct.local_id, @struct.devices)
             ]
             $q.all(wait_list).then(
                 (data) =>
-                    @struct.device_tree = data[0]
                     @struct.updating = false
-                    @struct.monitoring_data = data[1]
+                    @struct.monitoring_data = data[0]
                     @set_async_emit_data(@struct.monitoring_data)
                     if false
                         @struct.monitoring_data.result_notifier.promise.then(
