@@ -31,7 +31,6 @@ from django.db.models import Q
 from django.http.response import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from lxml.builder import E
 from rest_framework import viewsets
 from rest_framework.generics import RetrieveAPIView
 from rest_framework.response import Response
@@ -88,63 +87,6 @@ class sync_users(View):
         if config_tools.server_check(server_type="monitor_server").effective_device:
             srv_com = server_command.srv_command(command="sync_http_users")
             _result = contact_server(request, "md-config", srv_com)
-
-
-class set_user_var(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        user_vars = request.session["user_vars"]
-        key, value = (_post["key"], _post["value"])
-        v_type = _post.get("type", "unicode")
-        if v_type == "unicode":
-            value = unicode(value)
-        elif v_type == "str":
-            value = str(value)
-        elif v_type == "int":
-            value = int(value)
-        elif v_type == "bool":
-            value = True if value.lower() in ["true"] else False
-        logger.info(
-            "setting user_var '{}' to '{}' (type {})".format(
-                key,
-                str(value),
-                v_type,
-            )
-        )
-        if key in user_vars:
-            if user_vars[key].value != value:
-                user_vars[key].value = value
-                user_vars[key].save()
-        else:
-            user_vars[key] = user_variable.objects.create(
-                user=request.user,
-                name=key,
-                value=value
-            )
-        request.session.save()
-
-
-class get_user_var(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        var_name = request.POST["var_name"]
-        if var_name.endswith("*"):
-            found_uv = [key for key in request.session["user_vars"] if key.startswith(var_name[:-1])]
-        else:
-            found_uv = [key for key in request.session["user_vars"] if key == var_name]
-        user_vars = [request.session["user_vars"][key] for key in found_uv]
-        request.xml_response["result"] = E.user_variables(
-            *[
-                E.user_variable(
-                    unicode(cur_var.value),
-                    name=cur_var.name,
-                    type=cur_var.var_type
-                ) for cur_var in user_vars
-            ]
-        )
 
 
 class change_object_permission(View):

@@ -23,6 +23,7 @@
 
 import glob
 import os
+import base64
 import sys
 import hashlib
 
@@ -102,6 +103,8 @@ if _cs["password.hash.function"] not in ["SHA1", "CRYPT"]:
     raise ImproperlyConfigured("password hash function '{}' not known".format(_cs["password.hash.function"]))
 
 SECRET_KEY = _cs["django.secret.key"]
+# create a somehow shorter key
+SECRET_KEY_SHORT = base64.b64encode(SECRET_KEY)[0:10]
 
 _c_key = hashlib.new("md5")
 

@@ -100,7 +100,7 @@ def show_database_calls(*args, **kwargs):
                     tot_time,
                 )
             )
-        if len(connection.queries) > 1 and cur_width:
+        if len(connection.queries) > 1 and cur_width and False:
             for act_sql in connection.queries:
                 sql_str = act_sql["sql"].replace("\n", "<NL>")
                 if full:

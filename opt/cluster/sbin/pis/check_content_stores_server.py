@@ -159,6 +159,8 @@ def main():
         new_store["create.default.network"] = True
     if "create.network.device.types" not in new_store:
         new_store["create.network.device.types"] = True
+    if "session.multiple.per.user.allowed" not in new_store:
+        new_store["session.multiple.per.user.allowed"] = False
     new_store.write()
     remove_file(LS_OLD_FILE)
     migrate_uuid()

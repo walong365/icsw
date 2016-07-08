@@ -25,9 +25,12 @@
 import base64
 import json
 import logging
+from importlib import import_module
 
 import django
+from django.conf import settings
 from django.contrib.auth import login, logout, authenticate
+from django.contrib.sessions.backends.cache import KEY_PREFIX
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.db.models import Q
@@ -77,9 +80,44 @@ def _get_login_hints():
     return _hints
 
 
+class SessionHelper(object):
+    def __init__(self):
+        self._sn_key = "{}_$icsw$_skeys".format(settings.SECRET_KEY_SHORT)
+        self._read()
+
+    def add(self, session_key):
+        self._sessions.append(session_key)
+        self._write()
+
+    def remove(self, session_key):
+        if session_key in self._sessions:
+            self._sessions.remove(session_key)
+            self._write()
+
+    def get_full_key(self, session):
+        return "{}{}".format(KEY_PREFIX, session.session_key)
+
+    def _read(self):
+        _cur_vals = cache.get(self._sn_key)
+        if _cur_vals is None:
+            _cur_vals = []
+        else:
+            _cur_vals = json.loads(_cur_vals)
+        self._sessions = _cur_vals
+
+    def _write(self):
+        cache.set(self._sn_key, json.dumps(self._sessions))
+
+    @property
+    def session_keys(self):
+        return self._sessions
+
+
 class session_logout(View):
     def post(self, request):
         from_logout = request.user.is_authenticated()
+        my_sh = SessionHelper()
+        my_sh.remove(my_sh.get_full_key(request.session))
         logout(request)
         return HttpResponse(
             json.dumps(
@@ -100,12 +138,27 @@ def _failed_login(request, user_name):
         _user.save(update_fields=["login_count", "login_fail_count"])
 
 
+def _check_for_multiple_session(current_session):
+    _dup_session_keys = []
+    cur_user_id = current_session["_auth_user_id"]
+    my_sh = SessionHelper()
+    _c_key = my_sh.get_full_key(current_session)
+    for _key in my_sh.session_keys:
+        _content = cache.get(_key)
+        if _content is not None and _key != _c_key:
+            if _content["_auth_user_id"] == cur_user_id:
+                _dup_session_keys.append(_key)
+    return _dup_session_keys, [_key[len(KEY_PREFIX):] for _key in _dup_session_keys]
+
+
 def _login(request, _user_object, login_credentials=None):
     login(request, _user_object)
     login_history.login_attempt(_user_object, request, True)
-    request.session["user_vars"] = {
-        user_var.name: user_var for user_var in _user_object.user_variable_set.all()
-    }
+    # session names
+    my_sh = SessionHelper()
+    my_sh.add(my_sh.get_full_key(request.session))
+    # check for multiple session
+    _dup_keys, _short_keys = _check_for_multiple_session(request.session)
     # for alias logins login_name != login
     if login_credentials is not None:
         real_user_name, login_password, login_name = login_credentials
@@ -115,6 +168,13 @@ def _login(request, _user_object, login_credentials=None):
         request.session["login_name"] = _user_object.login
     _user_object.login_count += 1
     _user_object.save(update_fields=["login_count"])
+    _cs = config_store.ConfigStore(GEN_CS_NAME, quiet=True)
+    _mult_ok = _cs.get("session.multiple.per.user.allowed", False)
+    if _mult_ok:
+        # multiple sessions ok, report NO multiple sessions
+        return False
+    else:
+        return len(_dup_keys) > 0
 
 
 class login_addons(View):
@@ -137,6 +197,22 @@ class login_addons(View):
         request.xml_response["password_character_count"] = "{:d}".format(_cs["password.character.count"])
 
 
+class session_expel(View):
+    def post(self, request):
+        _dup_keys, _short_keys = _check_for_multiple_session(request.session)
+        if _dup_keys:
+            engine = import_module(settings.SESSION_ENGINE)
+            ss = engine.SessionStore()
+            for _dup_key in _short_keys:
+                ss.delete(_dup_key)
+        return HttpResponse(
+            json.dumps(
+                {"deleted": len(_dup_keys)}
+            ),
+            content_type="application/json"
+        )
+
+
 class session_login(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
@@ -154,7 +230,8 @@ class session_login(View):
             _failed_login(request, real_user_name)
         else:
             login_credentials = (real_user_name, login_password, login_name)
-            _login(request, db_user, login_credentials)
+            dup_sessions = _login(request, db_user, login_credentials)
+            request.xml_response["duplicate_sessions"] = "1" if dup_sessions else "0"
             if _post.get("next_url", "").strip():
                 request.xml_response["redirect"] = _post["next_url"]
             else:
