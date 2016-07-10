@@ -437,6 +437,8 @@ angular.module(
                     # $$segment is the pointer to the StructuredBurstNode and holds important flags and
                     #    structural information
                     # $$service is the pointer to the linked service check (may be a dummy check)
+                    if not srvc.className?
+                        console.log srvc
                     _el = {
                         key: "path.#{key_prefix}.#{_idx}"
                         d: _path
@@ -750,8 +752,6 @@ angular.module(
             @link_gen = new icswD3Link(@)
             # pipe for graph commands
             @graph_command_pipe = undefined
-            # current monitoring data
-            @monitoring_data = undefined
             # autoscale during initial force run
             @do_autoscale = false
             # monitoring active (data retained from livestatusdataservice)
@@ -912,9 +912,10 @@ angular.module(
                         )
                     @update(element, state)
                     if draw_settings.force? and draw_settings.force.enabled?
-                        force.stop()
-                        force.nodes(state.graph.nodes).links(state.graph.links)
-                        force.start()
+                        if state.graph.nodes.length
+                            force.stop()
+                            force.nodes(state.graph.nodes).links(state.graph.links)
+                            force.start()
                     @do_autoscale = true
                     @_draw_points()
                     @_draw_links()
@@ -922,6 +923,17 @@ angular.module(
                     # for correct initial handling of livestatus display
                     @set_livestatus_state(props.with_livestatus)
 
+            )
+            # start reacting on monitoring_data changes
+            @props.monitoring_data.result_notifier.promise.then(
+                (resolve) ->
+                    console.log "res", resolve
+                (reject) ->
+                    console.log "recj", reject
+                (gen) =>
+                    # force redraw of graph
+                    # console.log "gen", gen
+                    @_draw_livestatus()
             )
 
         set_fixed: (dom_node, device, flag) ->
@@ -974,7 +986,7 @@ angular.module(
             x = @d3.scale.linear().range([0, width]).domain(domain.x)
             y = @d3.scale.linear().range([height, 0]).domain(domain.y)
             z = @d3.scale.linear().range([5, 20]).domain([1, 10])
-            console.log x, y, z
+            # console.log x, y, z
             return {x: x, y: y, z: z}
 
         _update_transform: (element, settings, update_scale_cb) =>
@@ -1004,7 +1016,7 @@ angular.module(
                     {
                         nodes: @state.graph.nodes
                         show_livestatus: @livestatus_state
-                        monitoring_data: @monitoring_data
+                        monitoring_data: @props.monitoring_data
                     }
                 )
                 g[0][0]
@@ -1017,6 +1029,8 @@ angular.module(
 
         graph_cmd_scale: () =>
             _n = @state.graph.nodes
+            if not _n.length
+                return
             _xs = (d.x for d in _n)
             _ys = (d.y for d in _n)
             [_min_x, _max_x] = [_.min(_xs), _.max(_xs)]
@@ -1062,7 +1076,7 @@ angular.module(
         set_livestatus_state: (new_state) =>
             # set state of livestatus display
             if new_state != @livestatus_state
-                console.log "set state of livestatus to #{new_state}"
+                # console.log "set state of livestatus to #{new_state}"
                 @livestatus_state = new_state
                 if @livestatus_state
                     @start_livestatus()
@@ -1072,26 +1086,12 @@ angular.module(
 
         stop_livestatus: () =>
             if @monitoring_active
-                icswDeviceLivestatusDataService.stop(@id)
+                # icswDeviceLivestatusDataService.stop(@id)
                 @monitoring_active = false
-            @monitoring_data = undefined
 
         start_livestatus: () =>
             @monitoring_active = true
-            icswDeviceLivestatusDataService.retain(@id, @state.graph.device_list).then(
-                (result) =>
-                    result.result_notifier.promise.then(
-                        () ->
-                        () ->
-                        (generation) =>
-                            if @livestatus_state
-                                # may have changed
-                                @monitoring_data = result
-                                # console.log "gen", @props.livestatus_filter, @monitoring_data
-                                # @props.livestatus_filter.set_monitoring_data(@monitoring_data)
-                                @_draw_livestatus()
-                    )
-            )
+            @_draw_livestatus()
 
 ]).factory("icswNetworkTopologyReactSVGContainer",
 [
@@ -1111,6 +1111,7 @@ angular.module(
             scale_changed_cb: React.PropTypes.func
             with_livestatus: React.PropTypes.bool
             graph_command_cb: React.PropTypes.func
+            monitoring_data: React.PropTypes.object
         }
         getInitialState: () ->
             return {
@@ -1128,6 +1129,7 @@ angular.module(
                     update_scale_cb: @update_scale
                     with_livestatus: @props.with_livestatus
                     graph_command_cb: @props.graph_command_cb
+                    monitoring_data: @props.monitoring_data
                 }
                 {
                     graph: @props.graph
@@ -1140,7 +1142,7 @@ angular.module(
             @props.scale_changed_cb()
 
         componentWillUnmount: () ->
-            console.log "main_umount"
+            # console.log "main_umount"
             el = react_dom.findDOMNode(@)
             @draw_service.destroy(el)
 
@@ -1154,10 +1156,8 @@ angular.module(
 ]).factory("icswNetworkTopologyReactContainer",
 [
     "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswNetworkTopologyReactSVGContainer",
-    "icswActiveSelectionService",
 (
     $q, ICSW_URLS, icswSimpleAjaxCall, icswNetworkTopologyReactSVGContainer,
-    icswActiveSelectionService,
 ) ->
     # Network topology container, including selection and redraw button
     react_dom = ReactDOM
@@ -1172,7 +1172,6 @@ angular.module(
 
         getInitialState: () ->
             return {
-                draw_type: "all_with_peers"
                 loading: false
                 with_livestatus: false
                 data_present: false
@@ -1180,14 +1179,13 @@ angular.module(
                 settings: undefined
                 graph_id: 0
                 redraw_trigger: 0
-                div_pks: []
             }
 
         componentWillMount: () ->
             @current_dev_pks = []
 
         componentWillUnmount: () ->
-            console.log "TopCont umount"
+            # console.log "TopCont umount"
             if @graph_command?
                 @graph_command.reject("exit")
             el = react_dom.findDOMNode(@)
@@ -1197,45 +1195,7 @@ angular.module(
                 @setState({loading: true})
                 @load_data()
 
-            _draw_options = [
-                ["none", "None"]
-                ["all_with_peers", "All peered"]
-                ["all", "All devices"]
-                ["sel", "selected devices"]
-                ["selp1", "selected devices + 1 (next ring)"]
-                ["selp2", "selected devices + 2"]
-                ["selp3", "selected devices + 3"]
-                ["core", "Core network"]
-            ]
-            _opts = (
-                option(
-                    {
-                        key: "sel_#{key}"
-                        value: key
-                    }
-                    info
-                ) for [key, info] in _draw_options
-            )
             _list = [
-                "Show network topology for "
-                select(
-                    {
-                        key: "inpsel"
-                        className: "form-control"
-                        defaultValue: "#{@state.draw_type}"
-                        style: {width: "200px"}
-                        onChange: (event) =>
-                            _cur_dt = @state.draw_type
-                            _new_dt = event.target.value
-                            @setState({draw_type: event.target.value}, () =>
-                                if _cur_dt != _new_dt
-                                    _load_data()
-                            )
-
-                    }
-                    _opts
-                )
-                ", "
                 button(
                     {
                         key: "b.redraw"
@@ -1297,6 +1257,7 @@ angular.module(
                             scale_changed_cb: @scale_changed
                             with_livestatus: @state.with_livestatus
                             graph_command_cb: @graph_command_cb
+                            monitoring_data: @props.monitoring_data
                         }
                     )
                 )
@@ -1320,31 +1281,25 @@ angular.module(
 
         new_monitoring_data: () ->
             # data received, check for any changes
-            _pks = (dev.$$icswDevice.idx for dev in @props.monitoring_data.hosts)
-            # check for new devices
-            if angular.toJson(_.sortBy(_pks)) != angular.toJson(@current_dev_pks)
-                # console.log "Pks=", _pks
-                @current_dev_pks = _.sortBy((entry for entry in _pks))
-                @load_data()
+            @current_dev_pks = _.sortBy((dev.$$icswDevice.idx for dev in @props.monitoring_data.hosts))
+            @load_data()
 
         load_data: () ->
+            # fetch the network again because we receive no network
+            # connection info from the parent pipe element, to be
+            # improved, FIXME, ToDo
             icswSimpleAjaxCall(
                 url: ICSW_URLS.NETWORK_JSON_NETWORK
                 data:
-                    graph_sel: @state.draw_type
+                    graph_sel: "sel"
                     devices: angular.toJson(@current_dev_pks)
                 dataType: "json"
             ).then(
                 (json) =>
-                    # pks actually found in json network
-                    _json_pks = (node.id for node in json.nodes)
-                    _diff_pks = _.difference(_json_pks, @current_dev_pks)
-                    console.log "diff=", _diff_pks
                     @setState(
                         {
                             loading: false
                             data_present: true
-                            div_pks: _diff_pks
                             graph_id: @state.graph_id + 1
                             graph: @props.device_tree.seed_network_graph(json.nodes, json.links)
                             settings: {
@@ -1358,10 +1313,6 @@ angular.module(
                                 force: {
                                     enabled: true
                                 }
-                                # domain: {
-                                #     x: [0, 10]
-                                #     y: [0, 20]
-                                # }
                                 size: {
                                     width: "95%"
                                     height: "600px"
@@ -1373,11 +1324,9 @@ angular.module(
     )
 ]).service("icswLivestatusNetworkTopology",
 [
-    "$q", "$rootScope", "icswMonLivestatusPipeBase", "$timeout",
-    "icswDeviceTreeService", "icswDeviceLivestatusDataService", "icswTools",
+    "$q", "$rootScope", "icswMonLivestatusPipeBase",
 (
-    $q, $rootScope, icswMonLivestatusPipeBase, $timeout,
-    icswDeviceTreeService, icswDeviceLivestatusDataService, icswTools,
+    $q, $rootScope, icswMonLivestatusPipeBase,
 ) ->
     class icswLivestatusNetworkTopology extends icswMonLivestatusPipeBase
         constructor: () ->
@@ -1389,6 +1338,7 @@ angular.module(
                 8
             )
 
+            @__dp_notify_only_on_devchange = true
             @new_data_notifier = $q.defer()
 
         new_data_received: (data) ->
@@ -1400,10 +1350,8 @@ angular.module(
 ]).directive("icswDeviceNetworkTopology",
 [
     "ICSW_URLS", "icswDeviceTreeService", "icswNetworkTopologyReactContainer",
-    "icswMonLivestatusPipeConnector",
 (
     ICSW_URLS, icswDeviceTreeService, icswNetworkTopologyReactContainer,
-    icswMonLivestatusPipeConnector,
 ) ->
     return {
         restrict: "EA"
@@ -1448,7 +1396,258 @@ angular.module(
                     if not struct.mon_data?
                         struct.mon_data = data
                         _create_element()
-                    console.log "send down"
+                    struct.react_element.new_monitoring_data()
+            )
+
+    }
+]).service("icswLivestatusTopologySelector",
+[
+    "$q", "$rootScope", "icswMonLivestatusPipeBase",
+(
+    $q, $rootScope, icswMonLivestatusPipeBase,
+) ->
+    class icswLivestatusTopologySelector extends icswMonLivestatusPipeBase
+        constructor: () ->
+            super("icswLivestatusTopologySelector", true, true)
+            @set_template(
+                '<icsw-device-topology-selector icsw-connect-element="con_element"></icsw-device-topology-selector>'
+                "TopologySelector"
+                8
+                8
+            )
+
+            @__dp_notify_only_on_devchange = true
+            @__dp_async_emit = true
+            @new_data_notifier = $q.defer()
+
+        new_data_received: (data) ->
+            @new_data_notifier.notify(data)
+
+        pipeline_reject_called: (reject) ->
+            @new_data_notifier.reject("stop")
+
+]).factory("icswDeviceTopologyReactContainer",
+[
+    "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswDeviceLivestatusDataService",
+    "$timeout", "icswTools",
+(
+    $q, ICSW_URLS, icswSimpleAjaxCall, icswDeviceLivestatusDataService,
+    $timeout, icswTools,
+) ->
+    # Network topology container, including selection and redraw button
+    react_dom = ReactDOM
+    {div, h4, select, option, p, input, span, button} = React.DOM
+
+    return React.createClass(
+        propTypes: {
+            # required types
+            device_tree: React.PropTypes.object
+            monitoring_data: React.PropTypes.object
+            export_data: React.PropTypes.object
+        }
+
+        getInitialState: () ->
+            return {
+                draw_type: "sel"
+                loading: false
+                data_present: false
+            }
+
+        componentWillMount: () ->
+            @struct = {
+                # local id, created for every call to start()
+                local_id: undefined
+                # current fetch pks
+                current_json_pks: []
+                # data fetch timeout
+                fetch_timeout: undefined
+                # monitoring_data: undefined
+                monitoring_data: undefined
+            }
+
+        componentWillUmount: () ->
+            @stop_update()
+
+        render: () ->
+            _load_data = () =>
+                @setState({loading: true})
+                @load_data()
+
+            _draw_options = [
+                ["none", "None"]
+                ["all_with_peers", "All peered"]
+                ["all", "All devices"]
+                ["sel", "selected devices"]
+                ["selp1", "selected devices + 1 (next ring)"]
+                ["selp2", "selected devices + 2"]
+                ["selp3", "selected devices + 3"]
+                ["core", "Core network"]
+            ]
+            _opts = (
+                option(
+                    {
+                        key: "sel_#{key}"
+                        value: key
+                    }
+                    info
+                ) for [key, info] in _draw_options
+            )
+            _list = [
+                "Show network topology for "
+                select(
+                    {
+                        key: "inpsel"
+                        className: "form-control"
+                        defaultValue: "#{@state.draw_type}"
+                        style: {width: "200px"}
+                        onChange: (event) =>
+                            _cur_dt = @state.draw_type
+                            _new_dt = event.target.value
+                            @setState({draw_type: event.target.value}, () =>
+                                if _cur_dt != _new_dt
+                                    _load_data()
+                            )
+
+                    }
+                    _opts
+                )
+            ]
+            _top_list = [
+                div(
+                    {key: "div0", className: "form-group form-inline"}
+                    _list
+                )
+            ]
+            if @state.loading
+                _list.push(
+                    span(
+                        {className: "text-danger", key: "infospan"}
+                        " Fetching data from server..."
+                    )
+                )
+            return div(
+                {key: "top"}
+                _top_list
+            )
+
+        scale_changed: () ->
+            @setState({redraw_trigger: @state.redraw_trigger + 1})
+
+        new_monitoring_data: () ->
+            # data received, check for any changes
+            @load_data()
+
+        stop_update: () ->
+            if @struct.fetch_timeout
+                $timeout.cancel(@struct.fetch_timeout)
+                @struct.fetch_timeout = undefined
+            if @struct.monitoring_data?
+                @struct.monitoring_data.stop_receive()
+                # destroy current fetcher
+                icswDeviceLivestatusDataService.destroy(@struct.local_id)
+
+        start_update: () ->
+            @stop_update()
+            @struct.local_id = icswTools.get_unique_id()
+            wait_list = [
+                icswDeviceLivestatusDataService.retain(
+                    @struct.local_id
+                    (@props.device_tree.all_lut[_idx] for _idx in @struct.current_json_pks)
+                )
+            ]
+            $q.all(
+                wait_list
+            ).then(
+                (data) =>
+                    @struct.monitoring_data = data[0]
+                    @setState({loading: false})
+                    @struct.monitoring_data.result_notifier.promise.then(
+                        (resolved) ->
+                            console.log "Res"
+                        (rejected) ->
+                            console.log "Rej"
+                        (gen) =>
+                            @props.export_data.copy_from(@struct.monitoring_data)
+                    )
+            )
+            
+        load_data: () ->
+            _fetch_pks = (dev.$$icswDevice.idx for dev in @props.monitoring_data.hosts)
+            icswSimpleAjaxCall(
+                url: ICSW_URLS.NETWORK_JSON_NETWORK
+                data:
+                    graph_sel: @state.draw_type
+                    devices: angular.toJson(_fetch_pks)
+                dataType: "json"
+            ).then(
+                (json) =>
+                    json_pks = _.sortBy((node.id for node in json.nodes))
+                    # console.log "json", json_pks.length
+                    if angular.toJson(json_pks) != angular.toJson(@struct.current_json_pks)
+                        @struct.current_json_pks = (_id for _id in json_pks)
+                        @start_update()
+                    else
+                        @setState({loading: false})
+
+                    # icswDeviceLivestatusDataService.retain(@struct.local_id, @struct.devices)
+                    # console.log "got", json
+            )
+    )
+]).directive("icswDeviceTopologySelector",
+[
+    "ICSW_URLS", "icswDeviceTreeService", "icswDeviceTopologyReactContainer",
+    "icswMonitoringResult",
+(
+    ICSW_URLS, icswDeviceTreeService, icswDeviceTopologyReactContainer,
+    icswMonitoringResult,
+) ->
+    return {
+        restrict: "EA"
+        replace: true
+        scope:
+            con_element: "=icswConnectElement"
+        link: (scope, element, attrs) ->
+            struct = {
+                # react element
+                react_element: undefined
+                # monitoring data
+                mon_data: undefined
+                # export data
+                export_data: new icswMonitoringResult()
+                # device tree
+                device_tree: undefined
+            }
+            _create_element = () ->
+                if not struct.react_element?
+                    if struct.mon_data? and struct.device_tree?
+                        struct.react_element = ReactDOM.render(
+                            React.createElement(
+                                icswDeviceTopologyReactContainer
+                                {
+                                    device_tree: struct.device_tree
+                                    monitoring_data: struct.mon_data
+                                    export_data: struct.export_data
+                                }
+                            )
+                            element[0]
+                        )
+                        scope.$on("$destroy", () ->
+                            ReactDOM.unmountComponentAtNode(element[0])
+                        )
+            icswDeviceTreeService.load(scope.$id).then(
+                (tree) ->
+                    struct.device_tree = tree
+                    _create_element()
+            )
+            scope.con_element.new_data_notifier.promise.then(
+                (resolved) ->
+                (rejected) ->
+                    # stop
+                (data) =>
+                    if not struct.mon_data?
+                        struct.mon_data = data
+                        _create_element()
+                        scope.con_element.set_async_emit_data(struct.export_data)
                     struct.react_element.new_monitoring_data()
             )
 

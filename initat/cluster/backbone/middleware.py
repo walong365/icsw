@@ -81,6 +81,7 @@ def show_database_calls(*args, **kwargs):
         DB_DEBUG = settings.DATABASE_DEBUG
     else:
         DB_DEBUG = settings.DEBUG
+    DB_CALL_LIMIT = 10
     if DB_DEBUG:
         from django.db import connection  # @Reimport
         _path = kwargs.get("path", "/unknown")
@@ -93,14 +94,15 @@ def show_database_calls(*args, **kwargs):
             # no regular TTY, ignore
             cur_width = None
         else:
-            # only output if stdout is a regular TTY
-            output(
-                "queries: {:d} in {:.2f} seconds".format(
-                    len(connection.queries),
-                    tot_time,
+            if len(connection.queries) > DB_CALL_LIMIT:
+                # only output if stdout is a regular TTY
+                output(
+                    "queries: {:d} in {:.2f} seconds".format(
+                        len(connection.queries),
+                        tot_time,
+                    )
                 )
-            )
-        if len(connection.queries) > 1 and cur_width and False:
+        if len(connection.queries) > DB_CALL_LIMIT and cur_width:
             for act_sql in connection.queries:
                 sql_str = act_sql["sql"].replace("\n", "<NL>")
                 if full:

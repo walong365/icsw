@@ -106,10 +106,14 @@ angular.module(
             "icswLivestatusSelDevices": [{
                 "icswLivestatusDataSource": [{
                     "icswLivestatusFilterService": [{
-                        "icswLivestatusNetworkTopology": []
-                    }
-                    {
-                        "icswLivestatusNetworkTopology": []
+                        "icswLivestatusTopologySelector": [{
+                            "icswLivestatusFilterService": [{
+                                "icswLivestatusNetworkTopology": []
+                            }]
+                        }
+                        {
+                            "icswLivestatusNetworkTopology": []
+                        }]
                     }]
                 }]
             }]

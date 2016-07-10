@@ -37,7 +37,10 @@ angular.module(
             @__dp_has_template = false
             # parent element
             @__dp_parent = undefined
+            # is an asynchronous emitter
             @__dp_async_emit = false
+            # only get notified when the devicelist changes
+            @__dp_notify_only_on_devchange = false
             # is leaf (no childs)
             @__dp_is_leaf_node = true
             # notifier for downstream elements
@@ -60,11 +63,17 @@ angular.module(
                 for _child in @__dp_childs
                     _child.__dp_parent_notifier.reject(_child.__dp_element_id)
 
+        prefix: () ->
+            return "Element #{@name} (#{@__dp_element_id}@#{@__dp_depth})"
+
         log: (what) ->
-            console.log "Element #{@name} (#{@__dp_element_id}@#{@__dp_depth}): #{what}"
+            console.log "#{@prefix()}: #{what}"
+
+        warn: (what) ->
+            console.warn "#{@prefix()}: #{what}"
 
         error: (what) ->
-            console.error "Element #{@name} (#{@__dp_element_id}@#{@__dp_depth}): #{what}"
+            console.error "#{@prefix()}: #{what}"
 
         # set template
         set_template: (template, title, size_x=4, size_y=4) =>
@@ -175,24 +184,44 @@ angular.module(
                     @close()
                     @pipeline_reject_called(rejected)
                 (recv_data) =>
-                    emit_data = @new_data_received(recv_data)
-                    if @is_emitter
-                        if @__dp_async_emit
-                            # asynchronous emitter, emit_data must be none
-                            if emit_data?
-                                @error "async emitter is emitting synchronous data:", emit_data
-                        else
-                            if emit_data?
-                                @emit_data_downstream(emit_data)
+                    if @__dp_notify_only_on_devchange
+                        _cur_dl = angular.toJson(_.sortBy((dev.$$icswDevice.idx for dev in recv_data.hosts)))
+                        if not @__dp_prev_device_list?
+                            _notify = true
+                        else 
+                            _notify = @__dp_prev_device_list != _cur_dl
+                        @__dp_prev_device_list = _cur_dl
+                    else 
+                        _notify = true
+                    if _notify
+                        emit_data = @new_data_received(recv_data)
+                        if @is_emitter
+                            if @__dp_async_emit
+                                # asynchronous emitter, emit_data must be none
+                                if emit_data?
+                                    @error "async emitter is emitting synchronous data:", emit_data
                             else
-                                @error "emitter is emitting none ..."
+                                if emit_data?
+                                    @_check_emit_id("sync", emit_data)
+                                    @emit_data_downstream(emit_data)
+                                else
+                                    @error "emitter is emitting none ..."
             )
 
+        _check_emit_id: (etype, result) =>
+            if @__dp_current_data_id? and result.id != @__dp_current_data_id
+                @warn "id of #{etype} emit data changed from #{@__dp_current_data_id} to #{result.id}"
+            @__dp_current_data_id = result.id
+
         set_async_emit_data: (result) =>
+            if !@__dp_async_emit
+                @error "synchronous emitter is emitting asynchronous data"
+            @_check_emit_id("async", result)
             result.result_notifier.promise.then(
                 (resolved) =>
+                    @log "async data resolve: #{resolved}"
                 (rejected) =>
-                    @log "async data stop"
+                    @log "async data reject: #{rejected}"
                 (generation) =>
                     @emit_data_downstream(result)
             )

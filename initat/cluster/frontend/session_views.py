@@ -24,6 +24,7 @@
 
 import base64
 import json
+import datetime
 import logging
 from importlib import import_module
 
@@ -81,9 +82,15 @@ def _get_login_hints():
 
 
 class SessionHelper(object):
+    SESSION_IDLE_TIME = 10
+
     def __init__(self):
         self._sn_key = "{}_$icsw$_skeys".format(settings.SECRET_KEY_SHORT)
         self._read()
+        # session store
+        self._sstore = None
+        # multiple sessions
+        self._multiple_session_keys = []
 
     def add(self, session_key):
         self._sessions.append(session_key)
@@ -107,6 +114,41 @@ class SessionHelper(object):
 
     def _write(self):
         cache.set(self._sn_key, json.dumps(self._sessions))
+
+    def _ensure_session_store(self):
+        if self._sstore is None:
+            engine = import_module(settings.SESSION_ENGINE)
+            self._sstore = engine.SessionStore()
+
+    def delete_session(self, session_key):
+        self._ensure_session_store()
+        if session_key.startswith(KEY_PREFIX):
+            self._sstore.delete(session_key[len(KEY_PREFIX):])
+        else:
+            self._sstore.delete(session_key)
+
+    def check_for_multiple_session(self, current_session):
+        _now = datetime.datetime.now()
+        _dup_session_keys = []
+        cur_user_id = current_session["_auth_user_id"]
+        _c_key = self.get_full_key(current_session)
+        for _key in self.session_keys:
+            _content = cache.get(_key)
+            if _content is not None and _key != _c_key:
+                if _content["_auth_user_id"] == cur_user_id:
+                    if "latest_contact" in _content:
+                        # check for stale session
+                        _diff = (_now - _content["latest_contact"]).total_seconds()
+                        if _diff < self.SESSION_IDLE_TIME * 60:
+                            _dup_session_keys.append(_key)
+                        else:
+                            # session is idle for more than SESSION_IDLE_TIME minutes, delete it
+                            self.delete_session(_key)
+                    else:
+                        # old format, always add
+                        _dup_session_keys.append(_key)
+        self._multiple_session_keys = _dup_session_keys
+        return self._multiple_session_keys
 
     @property
     def session_keys(self):
@@ -138,19 +180,6 @@ def _failed_login(request, user_name):
         _user.save(update_fields=["login_count", "login_fail_count"])
 
 
-def _check_for_multiple_session(current_session):
-    _dup_session_keys = []
-    cur_user_id = current_session["_auth_user_id"]
-    my_sh = SessionHelper()
-    _c_key = my_sh.get_full_key(current_session)
-    for _key in my_sh.session_keys:
-        _content = cache.get(_key)
-        if _content is not None and _key != _c_key:
-            if _content["_auth_user_id"] == cur_user_id:
-                _dup_session_keys.append(_key)
-    return _dup_session_keys, [_key[len(KEY_PREFIX):] for _key in _dup_session_keys]
-
-
 def _login(request, _user_object, login_credentials=None):
     login(request, _user_object)
     login_history.login_attempt(_user_object, request, True)
@@ -158,7 +187,7 @@ def _login(request, _user_object, login_credentials=None):
     my_sh = SessionHelper()
     my_sh.add(my_sh.get_full_key(request.session))
     # check for multiple session
-    _dup_keys, _short_keys = _check_for_multiple_session(request.session)
+    _dup_keys = my_sh.check_for_multiple_session(request.session)
     # for alias logins login_name != login
     if login_credentials is not None:
         real_user_name, login_password, login_name = login_credentials
@@ -172,9 +201,9 @@ def _login(request, _user_object, login_credentials=None):
     _mult_ok = _cs.get("session.multiple.per.user.allowed", False)
     if _mult_ok:
         # multiple sessions ok, report NO multiple sessions
-        return False
+        return 0
     else:
-        return len(_dup_keys) > 0
+        return len(_dup_keys)
 
 
 class login_addons(View):
@@ -199,12 +228,10 @@ class login_addons(View):
 
 class session_expel(View):
     def post(self, request):
-        _dup_keys, _short_keys = _check_for_multiple_session(request.session)
+        my_sh = SessionHelper()
+        _dup_keys = my_sh.check_for_multiple_session(request.session)
         if _dup_keys:
-            engine = import_module(settings.SESSION_ENGINE)
-            ss = engine.SessionStore()
-            for _dup_key in _short_keys:
-                ss.delete(_dup_key)
+            [my_sh.delete_session(_dup_key) for _dup_key in _dup_keys]
         return HttpResponse(
             json.dumps(
                 {"deleted": len(_dup_keys)}
@@ -230,8 +257,8 @@ class session_login(View):
             _failed_login(request, real_user_name)
         else:
             login_credentials = (real_user_name, login_password, login_name)
-            dup_sessions = _login(request, db_user, login_credentials)
-            request.xml_response["duplicate_sessions"] = "1" if dup_sessions else "0"
+            _num_dup_sessions = _login(request, db_user, login_credentials)
+            request.xml_response["duplicate_sessions"] = "{:d}".format(_num_dup_sessions)
             if _post.get("next_url", "").strip():
                 request.xml_response["redirect"] = _post["next_url"]
             else:
@@ -272,7 +299,9 @@ class session_login(View):
         all_aliases = [
             (
                 login_name,
-                [_entry for _entry in al_list.strip().split() if _entry not in [None, "None"]]
+                [
+                    _entry for _entry in al_list.strip().split() if _entry not in [None, "None"]
+                ]
             ) for login_name, al_list in _all_users.values_list(
                 "login", "aliases"
             ) if al_list is not None and al_list.strip()

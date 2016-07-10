@@ -177,7 +177,7 @@ class get_node_status(View):
             *[
                 E.device(
                     pk="{:d}".format(int(cur_pk))
-                ) for cur_pk in pk_list if cur_pk
+                ) for cur_pk in pk_list if cur_pk and cur_pk.isdigit()
             ]
         )
         result = contact_server(request, "md-config", srv_com, timeout=30)
