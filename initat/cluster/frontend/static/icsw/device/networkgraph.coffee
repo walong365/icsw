@@ -1412,8 +1412,8 @@ angular.module(
             @set_template(
                 '<icsw-device-topology-selector icsw-connect-element="con_element"></icsw-device-topology-selector>'
                 "TopologySelector"
-                8
-                8
+                3
+                1
             )
 
             @__dp_notify_only_on_devchange = true

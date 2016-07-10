@@ -35,7 +35,12 @@ angular.module(
     class icswLivestatusFilter extends icswMonLivestatusPipeBase
         constructor: () ->
             super("icswLivestatusFilter", true, true)
-            @set_template('<icsw-livestatus-filter-display icsw-livestatus-filter="con_element"></icsw-livestatus-filter-display>', "BaseFilter")
+            @set_template(
+                '<icsw-livestatus-filter-display icsw-livestatus-filter="con_element"></icsw-livestatus-filter-display>'
+                "BaseFilter"
+                3
+                1
+            )
             running_id++
             @id = running_id
             @_latest_data = undefined

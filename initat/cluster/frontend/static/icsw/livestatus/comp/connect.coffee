@@ -385,7 +385,7 @@ angular.module(
                 maxSizeY: null
                 resizable: {
                    enabled: true,
-                   handles: ["n", 'w', 'ne', 'se', 'sw', 'nw']
+                   handles: ['w', 'ne', 'se', 'sw', 'nw']
                    stop: (event, element, options) =>
                        @ps_changed()
                 }
