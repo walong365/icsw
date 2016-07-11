@@ -190,81 +190,11 @@ angular.module(
         stop_notifying: () ->
             @change_notifier.reject("stop")
 
-]).factory("icswLivestatusCircleInfo",
-[
-    "$q", "icswDeviceLivestatusFunctions",
-(
-    $q, icswDeviceLivestatusFunctions,
-) ->
-    {div, svg, g, rect, path} = React.DOM
-    return React.createClass(
-        propTypes: {
-            size: React.PropTypes.number
-            # list of (size, color) tuples
-            data: React.PropTypes.array
-        }
-        render: () ->
-            _w = @props.size
-            _d = @props.data
-            if _d.length == 0
-                return div(
-                    {
-                        key: "top"
-                    }
-                    "No data"
-                )
-            _total = _.sum((_el[0] for _el in _d))
-            _idx = 0
-            _end_arc = - Math.PI * 0.5
-            _cur_size = 0
-            _p_list = []
-            _outer = _w / 2.0 * 0.95
-            _inner = _w / 2.0 * 0.5
-            for [d_size, color] in _d
-                _idx++
-                if d_size
-                    _cur_size += d_size
-                    _start_arc = _end_arc
-                    _end_arc = Math.PI * 2.0 * _cur_size / _total - Math.PI * 0.5
-                    if d_size == _total
-                        _call = icswDeviceLivestatusFunctions.ring_path
-                    else
-                        _call = icswDeviceLivestatusFunctions.ring_segment_path
-                    _p_list.push(
-                        path(
-                            {
-                                key: "sge.#{_idx}"
-                                d: _call(_inner, _outer, _start_arc, _end_arc)
-                                fill: color
-                                style: {stroke: "#000000", strokeWidth: "0.5px"}
-                            }
-                        )
-                    )
-            return svg(
-                {
-                    key: "svg.top"
-                    width: "#{_w}px"
-                    height: "#{_w}px"
-                }
-                g(
-                    {
-                        key: "main"
-                    }
-                    g(
-                        {
-                            key: "content"
-                            transform: "translate(#{_w/2}, #{_w/2})"
-                        }
-                        _p_list
-                    )
-                )
-            )
-    )
 ]).factory("icswLivestatusFilterReactDisplay",
 [
-    "$q", "icswLivestatusCircleInfo",
+    "$q", "icswLivestatusCircleInfoReact",
 (
-    $q, icswLivestatusCircleInfo,
+    $q, icswLivestatusCircleInfoReact,
 ) ->
     # display of livestatus filter
     react_dom = ReactDOM
@@ -426,7 +356,7 @@ angular.module(
                             td(
                                 {key: "t4", rowSpan: "2"}
                                 React.createElement(
-                                    icswLivestatusCircleInfo
+                                    icswLivestatusCircleInfoReact
                                     {
                                         key: "c0"
                                         size: 44
@@ -437,7 +367,7 @@ angular.module(
                             td(
                                 {key: "t5", rowSpan: "2"}
                                 React.createElement(
-                                    icswLivestatusCircleInfo
+                                    icswLivestatusCircleInfoReact
                                     {
                                         key: "c0"
                                         size: 44

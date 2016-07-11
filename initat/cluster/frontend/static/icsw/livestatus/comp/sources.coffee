@@ -166,16 +166,49 @@ angular.module(
         entry.custom_variables = "DEVICE_PK|#{dev.idx},UUID|#{dev.uuid}"
         return entry
 
+    _device_lut = {
+        0: {
+            color: "#66dd66"
+        }
+        1: {
+            color: "#ff7777"
+        }
+        2: {
+            color: "#ff0000"
+        }
+        3: {
+            color: "#dddddd"
+        }
+        4: {
+            color: "#888888"
+        }
+    }
+
+    _service_lut = {
+        0: {
+            color: "#66dd66"
+        }
+        1: {
+            color: "#dddd88"
+        }
+        2: {
+            color: "#ff7777"
+        }
+        3: {
+            color: "#ff0000"
+        }
+        4: {
+            color: "#888888"
+        }
+    }
+    _struct = {
+        device_lut: _device_lut
+        service_lut: _service_lut
+        device_states: [0, 1, 2, 3, 4]
+        service_states: [0, 1, 2, 3, 4]
+    }
     salt_device_state = (entry) ->
-        entry.$$burst_fill_color = {
-            0: "#66dd66"
-            1: "#ff7777"
-            2: "#ff0000"
-            # special state
-            3: "#dddddd"
-            # special state: unmonitored
-            4: "#888888"
-        }[entry.state]
+        entry.$$burst_fill_color = _device_lut[entry.state].color
         entry.className = {
             0: "svg_ok"
             1: "svg_warn"
@@ -217,13 +250,7 @@ angular.module(
             3: "svg_danger"
             4: "svg_unknown"
         }[entry.state]
-        entry.$$burst_fill_color = {
-            0: "#66dd66"
-            1: "#dddd88"
-            2: "#ff7777"
-            3: "#ff0000"
-            4: "#888888"
-        }[entry.state]
+        entry.$$burst_fill_color = _service_lut[entry.state].color
         entry.$$icswStateLabelClass = "label-#{_r_str}"
         entry.$$icswStateTextClass = "text-#{_r_str}"
         entry.$$icswStateString = {
@@ -268,6 +295,17 @@ angular.module(
                 entry.$$icswCategories = "---"
         return entry
 
+    build_circle_info = (in_type, in_dict) ->
+        # transform a device or service dict (state -> num) to an array
+        # which is usable for device_circle_info
+        _r_list = []
+        _lut = _struct["#{in_type}_lut"]
+        for _state in _struct["#{in_type}_states"]
+            if _state of in_dict
+                _count = in_dict[_state]
+                _r_list.push([_count, _lut[_state].color])
+        return _r_list
+
     return {
         get_unmonitore_device_entry: get_unmonitored_device_entry
 
@@ -282,12 +320,14 @@ angular.module(
         salt_host: salt_host
 
         salt_service: salt_service
+
+        build_circle_info: build_circle_info
     }
 ]).service("icswMonitoringResult",
 [
-    "$q", "icswTools",
+    "$q", "icswTools", "icswSaltMonitoringResultService",
 (
-    $q, icswTools,
+    $q, icswTools, icswSaltMonitoringResultService,
 ) ->
     class icswMonitoringResult
         constructor: () ->
@@ -301,6 +341,7 @@ angular.module(
             @hosts = []
             @services = []
             @used_cats = []
+            @__luts_set = false
 
         new_selection: () =>
             # hm, not needed ... ?
@@ -315,6 +356,7 @@ angular.module(
             
         update: (hosts, services, used_cats) =>
             @generation++
+            @__luts_set = false
             @hosts.length = 0
             for entry in hosts
                 @hosts.push(entry)
@@ -330,6 +372,7 @@ angular.module(
 
         apply_base_filter: (filter, src_data) =>
             # apply base livestatus filter
+            @__luts_set = false
             @hosts.length = 0
             for entry in src_data.hosts
                 if filter.host_types[entry.state_type] and filter.host_states[entry.state]
@@ -349,6 +392,7 @@ angular.module(
             @generation++
 
         apply_category_filter: (cat_list, src_data) =>
+            @__luts_set = false
             @hosts.length = 0
             for entry in src_data.hosts
                 @hosts.push(entry)
@@ -371,7 +415,24 @@ angular.module(
                     @used_cats.push(entry)
             # bump generation counter
             @generation++
-
+            
+        build_luts: () =>
+            if @__luts_set
+                return
+            # lookup tables
+            @__luts_set = true
+            _srv_lut = {}
+            for srv in @services
+                if srv.state not of _srv_lut
+                    _srv_lut[srv.state] = 0
+                _srv_lut[srv.state]++
+            _host_lut = {}
+            for host in @hosts
+                if host.state not of _host_lut
+                    _host_lut[host.state] = 0
+                _host_lut[host.state]++
+            @service_circle_data = icswSaltMonitoringResultService.build_circle_info("service", _srv_lut)
+            @device_circle_data = icswSaltMonitoringResultService.build_circle_info("device", _host_lut)
 
 ]).service("icswDeviceLivestatusDataService",
 [

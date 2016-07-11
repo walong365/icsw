@@ -99,6 +99,8 @@ icsw_app = angular.module(
         "icsw.livestatus.comp.basefilter",
         "icsw.livestatus.comp.functions",
         "icsw.livestatus.comp.topology",
+        "icsw.livestatus.comp.tabular",
+        "icsw.livestatus.comp.elements",
         "icsw.device.monconfig",
         "icsw.device.location",
         "icsw.device.status_history",
