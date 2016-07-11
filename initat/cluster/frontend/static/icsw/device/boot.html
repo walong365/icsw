@@ -244,7 +244,7 @@
             <legend>basic settings <icsw-tools-yes-no-small flag="$$bs.change.t"></icsw-tools-yes-no-small></legend>
             <div ng-repeat="netstate in struct.boot_status_tree.network_states_list" class="form-group" ng-show="$$bs.change.t">
                 <label class="control-label col-sm-4">
-                    network {{ netstate.info }}
+                    Target state
                 </label>
                 <div class="col-sm-6">
                     <ui-select ng-model="$$bs.target_state[netstate.network]" ng-change="$$bs.ts_mode = netstate.network">
