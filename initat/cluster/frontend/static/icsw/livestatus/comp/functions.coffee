@@ -451,9 +451,13 @@ angular.module(
         return _root_node
         
     return {
+
         build_structured_burst: (mon_data, draw_params) ->
             # mon_data is a filtered instance of icswMonitoringResult
             return build_structured_burst(mon_data, draw_params)
+
+        ring_segment_path: ring_segment_path
+        ring_path: ring_path
     }
 
 ])
