@@ -60,7 +60,7 @@
             <span class="pull-right">
                 <icsw-tools-button size="xs" type="underscore" value="" ng-click="con_element.toggle_element($event)"></icsw-tools-button>
                 <icsw-tools-button size="xs" type="close" value="" ng-click="con_element.hide_element($event)"></icsw-tools-button>
-                <icsw-tools-button size="xs" type="create" value="" ng-click="con_element.create_element($event)"></icsw-tools-button>
+                <icsw-tools-button size="xs" type="create" value="" ng-if="con_element.is_emitter" ng-click="con_element.create_element($event)"></icsw-tools-button>
                 <icsw-tools-button size="xs" type="delete" ng-if="con_element.__dp_is_leaf_node" value="" ng-click="con_element.delete_element($event)"></icsw-tools-button>
             </span>
         </div>
