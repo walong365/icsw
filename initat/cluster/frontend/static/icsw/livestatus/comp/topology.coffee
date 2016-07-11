@@ -59,20 +59,8 @@ angular.module(
                 @props.monitoring_data
                 @props.draw_parameters
             )
-            #if root_node.element_list.length
-            #    console.log "EL=", node.id, root_node.element_list.length
-            #else
-            #    console.log "empty", node.id
-            # console.log "rn=", root_node, @props.monitoring_data
-            # reset
-            @props.draw_parameters.device_idx_filter = undefined
-            # srvc_data = (entry for entry in @props.monitoring_data.services when entry.host.host_name  == node.$$device.full_name)
 
-            # console.log host_data, srvc_data
-            # if host_data and srvc_data.length
-            # _pathes = icswDeviceLivestatusFunctions.build_single_device_burst(host_data, srvc_data)
-            # else
-            #    _pathes = []
+            @props.draw_parameters.device_idx_filter = undefined
 
             return g(
                 {
@@ -103,9 +91,6 @@ angular.module(
             show_livestatus: React.PropTypes.bool
             monitoring_data: React.PropTypes.object
         }
-        #shouldComponentUpdate: (next_props, next_state) ->
-        #    console.log "*", next_props, @props
-        #    return _redraw
 
         render: () ->
             _draw_params = new icswBurstDrawParameters({inner_radius: 20, outer_radius: 30})
@@ -258,13 +243,6 @@ angular.module(
                     .attr("pointer-events", "all")
                     .attr("width", "100%")
                     .attr("height", 760) #$(window).height()-140)
-                    $(element).on("mouseclick", (event) =>
-                        drag_el = _find_element($(event.target))
-                        # console.log "DRAG_EL=", drag_el
-                        if drag_el? and drag_el.length
-                            drag_el = $(drag_el[0])
-                            # console.log "d=", drag_el
-                    )
                     $(element).mousedown(
                         (event) =>
                             mouseCaptureFactory.register_element(element)
@@ -307,14 +285,15 @@ angular.module(
                                             node = drag_dev
                                             node.x = cur_point.x
                                             node.y = cur_point.y
-                                            # the p-coordiantes are important for moving (dragging) nodes
-                                            node.px = cur_point.x
-                                            node.py = cur_point.y
+                                            # fixed positions
+                                            node.fx = cur_point.x
+                                            node.fy = cur_point.y
+                                            # the velocity-components are important for moving (dragging) nodes
+                                            node.vx = 0.0
+                                            node.vy = 0.0
                                             @tick()
-                                            if @force?
-                                                # restart moving
-                                                @force.start()
-                                        dragEnded: () =>
+                                            @reheat_simulation()
+                                        dragEnded: (a, b, c, d) =>
                                             @set_fixed(drag_node, drag_dev, false)
                                     })
                     )
@@ -353,23 +332,16 @@ angular.module(
 
                     force = undefined
                     if draw_settings.force? and draw_settings.force.enabled?
-                        force = d3.layout.force().charge(-220).gravity(0.01).linkDistance(100).size(
-                            [
-                                400
-                                400
-                            ]
-                        ).linkDistance(
-                            (d) ->
-                                return 100
+                        force = d3.forceSimulation().force(
+                            "charge", d3.forceManyBody().strength(-220)
                         ).on("tick", () =>
                             @tick()
                         )
                     @update(element, state)
                     if draw_settings.force? and draw_settings.force.enabled?
                         if state.graph.nodes.length
-                            force.stop()
-                            force.nodes(state.graph.nodes).links(state.graph.links)
-                            force.start()
+                            force.nodes(state.graph.nodes).force("link", d3.forceLink(state.graph.links).distance(100))
+                            @reheat_simulation()
                     @do_autoscale = true
                     @_draw_points()
                     @_draw_links()
@@ -390,10 +362,25 @@ angular.module(
                     @_draw_livestatus()
             )
 
+        reheat_simulation: () ->
+            if @force?
+                @force.alpha(0.2)
+                @force.restart()
+
         set_fixed: (dom_node, device, flag) ->
             device.fixed = flag
             cssclass = if flag then "svg_d3circle_selected" else "svg_d3circle"
             $(dom_node).find("circle").attr("class", cssclass)
+            device.vx = 0.0
+            device.vy = 0.0
+            if device.fixed
+                # clear fixed coordinates
+                device.fx = device.x
+                device.fy = device.y
+            else
+                device.fx = null
+                device.fy = null
+                @reheat_simulation()
 
         tick: () =>
             # updates all coordinates, attention: not very effective for dragging
@@ -463,7 +450,7 @@ angular.module(
 
         _draw_livestatus: () =>
             # select g
-            g = @d3_element.select(".d3-livestati")
+            g = @d3_element.select(".d3-livestati").nodes()
             ReactDOM.render(
                 React.createElement(
                     icswD3DeviceLivestatiReactBurst
@@ -473,7 +460,7 @@ angular.module(
                         monitoring_data: @props.monitoring_data
                     }
                 )
-                g[0][0]
+                g[0]
             )
 
         destroy: (element) =>
