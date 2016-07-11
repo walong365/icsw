@@ -759,6 +759,30 @@ device_asset_module = angular.module(
         selected_assetrun: undefined
     }
 
+    $scope.downloadPdf = ->
+        if $scope.struct.selected_assetrun != undefined
+            icswSimpleAjaxCall({
+                url: ICSW_URLS.ASSET_EXPORT_ASSETBATCH_TO_PDF
+                data:
+                    pk: $scope.struct.selected_assetrun.asset_batch
+                dataType: 'json'
+            }
+            ).then(
+                (result) ->
+                    console.log "result: ", result
+
+                    uri = 'data:application/pdf;base64,' + result.pdf
+                    downloadLink = document.createElement("a")
+                    downloadLink.href = uri
+                    downloadLink.download = "assetbatch" + $scope.struct.selected_assetrun.asset_batch + ".pdf"
+
+                    document.body.appendChild(downloadLink)
+                    downloadLink.click()
+                    document.body.removeChild(downloadLink)
+                (not_ok) ->
+                    console.log not_ok
+            )
+
     $scope.downloadXlsx = ->
         console.log($scope.struct.selected_assetrun)
         if $scope.struct.selected_assetrun != undefined

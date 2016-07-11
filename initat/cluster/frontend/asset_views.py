@@ -25,6 +25,7 @@ import csv
 import datetime
 import json
 import tempfile
+import reportlab
 
 import pytz
 from django.contrib.auth.decorators import login_required
@@ -42,6 +43,7 @@ from initat.cluster.backbone.models import device, AssetPackage, AssetRun, \
 from initat.cluster.backbone.models.dispatch import ScheduleItem
 from initat.cluster.backbone.serializers import AssetRunDetailSerializer, ScheduleItemSerializer, \
     AssetPackageSerializer, AssetRunOverviewSerializer, StaticAssetTemplateSerializer
+
 
 try:
     from openpyxl import Workbook
@@ -451,6 +453,171 @@ class export_assetbatch_to_xlsx(View):
         )
 
 
+def addPageNumber(canvas, doc):
+    from reportlab.lib.units import mm
+
+    page_num = canvas.getPageNumber()
+    text = "Page %s" % page_num
+    canvas.drawRightString(285*mm, 4*mm, text)
+
+
+class export_assetbatch_to_pdf(View):
+    rows = []
+    row_info = []
+    _asset_type = None
+
+    # def addHeader(self, _canvas, doc):
+    #     from reportlab.lib.units import mm
+    #     from reportlab.lib.pagesizes import A4
+    #
+    #     heigth, width = A4
+    #
+    #     text = "run_type:{}, batch_id:{}, scanned_device:{}".format(self.row_info[0], self.row_info[1],
+    #                                                                 self.row_info[5])
+    #     _canvas.drawString(10 * mm, heigth - 8 * mm, text)
+
+
+    def _row_collector(self, _row):
+        self.row_info = _row[0:8]
+
+
+        if self._asset_type == AssetType.UPDATE:
+            update_name = str(_row[8])
+            install_date = str(_row[12])
+            update_status = str(_row[13])
+            self.rows.append([update_name, install_date, update_status])
+
+        elif self._asset_type == AssetType.LICENSE:
+            license_name = str(_row[8])
+            license_key = str(_row[9])
+            self.rows.append((license_name, license_key))
+
+        elif self._asset_type == AssetType.PENDING_UPDATE:
+            update_name = str(_row[8])
+            update_version = str(_row[9])
+            update_release = str(_row[10])
+            update_kb_idx = str(_row[11])
+            update_install_date = str(_row[12])
+            update_status = str(_row[13])
+            update_optional = str(_row[14])
+            update_installed = str(_row[15])
+            self.rows.append((update_name, update_version, update_release, update_kb_idx, update_install_date,
+                              update_status, update_optional, update_installed))
+
+        elif self._asset_type == AssetType.PROCESS:
+            process_name = str(_row[8])
+            process_id = str(_row[9])
+            self.rows.append((process_name, process_id))
+
+        elif self._asset_type == AssetType.HARDWARE:
+            hardware_node_type = str(_row[8])
+            hardware_depth = str(_row[9])
+            hardware_attributes = str(_row[10])
+            self.rows.append((hardware_node_type, hardware_depth, hardware_attributes))
+
+        elif self._asset_type == AssetType.PACKAGE:
+            package_name = str(_row[8])
+            package_version = str(_row[9])
+            package_release = str(_row[10])
+            package_size = str(_row[11])
+            package_install_date = str(_row[12])
+            package_type = str(_row[13])
+            self.rows.append((package_name, package_version, package_release, package_size,
+                              package_install_date, package_type))
+
+        elif self._asset_type == AssetType.PRETTYWINHW:
+            _entry = str(_row[8])
+            self.rows.append([_entry])
+
+        elif self._asset_type == AssetType.DMI:
+            handle = str(_row[8])
+            dmi_type = str(_row[9])
+            header = str(_row[10])
+            key = str(_row[11])
+            value = str(_row[12])
+            self.rows.append((handle, dmi_type, header, key, value))
+
+        else:
+            self.rows.append([str(item) for item in _row])
+
+
+
+
+    @method_decorator(login_required)
+    def post(self, request):
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import A4, inch, landscape
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, PageBreak
+        from reportlab.lib.styles import getSampleStyleSheet
+        from io import BytesIO
+
+        ab = AssetBatch.objects.get(idx=int(request.POST["pk"]))
+
+        elements = []
+        buffer = BytesIO()
+
+        doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=30,
+                                bottomMargin=18)
+        doc.pagesize = landscape(A4)
+
+
+        assetruns = ab.assetrun_set.all()
+        for ar in assetruns:
+            self.rows = []
+            self._asset_type = AssetType(ar.run_type)
+
+            _generate_csv_entry_for_assetrun(ar, self._row_collector)
+
+            data = self.rows
+
+            style = TableStyle([('ALIGN', (1, 1), (-2, -2), 'RIGHT'),
+                                ('TEXTCOLOR', (1, 1), (-2, -2), colors.red),
+                                ('VALIGN', (0, 0), (0, -1), 'TOP'),
+                                ('TEXTCOLOR', (0, 0), (0, -1), colors.blue),
+                                ('ALIGN', (0, -1), (-1, -1), 'CENTER'),
+                                ('VALIGN', (0, -1), (-1, -1), 'MIDDLE'),
+                                ('TEXTCOLOR', (0, -1), (-1, -1), colors.green),
+                                ('INNERGRID', (0, 0), (-1, -1), 0.25, colors.black),
+                                ('BOX', (0, 0), (-1, -1), 0.25, colors.black),
+                                ])
+
+            # Configure style and word wrap
+            s = getSampleStyleSheet()
+            s = s["BodyText"]
+            s.wordWrap = 'CJK'
+            data2 = [[Paragraph(cell, s) for cell in row] for row in data]
+            t = Table(data2)
+            t.setStyle(style)
+
+            # Send the data and build the file
+            elements.append(Paragraph("Run Type: " + str(self.row_info[0]), s))
+            elements.append(Paragraph("Batch ID: " + str(self.row_info[1]), s))
+            elements.append(Paragraph("Run Start Time: " + str(self.row_info[2]), s))
+            elements.append(Paragraph("Run End Time: " + str(self.row_info[3]), s))
+            elements.append(Paragraph("Total Run Time: " + str(self.row_info[4]), s))
+            elements.append(Paragraph("Scanned Device: " + str(self.row_info[5]), s))
+            elements.append(Paragraph("Scan Status: " + str(self.row_info[6]), s))
+            elements.append(Paragraph("Scan Status: " + str(self.row_info[7]), s))
+            elements.append(PageBreak())
+
+            elements.append(t)
+            elements.append(PageBreak())
+
+        doc.build(elements, onFirstPage=addPageNumber, onLaterPages=addPageNumber)
+
+        pdf = buffer.getvalue()
+        buffer.close()
+
+        pdf_b64 = base64.b64encode(pdf)
+
+        return HttpResponse(
+            json.dumps(
+                {
+                    'pdf': pdf_b64
+                }
+            )
+        )
+
 def _generate_csv_entry_for_assetrun(ar, row_writer_func):
     base_header = [
         'Asset Type',
@@ -653,6 +820,10 @@ def _generate_csv_entry_for_assetrun(ar, row_writer_func):
                     row_writer_func(row)
 
     elif ar.run_type == AssetType.PRETTYWINHW:
+        base_header.extend([
+            'entry'
+        ])
+
         row_writer_func(base_header)
 
         for cpu in ar.cpus.all():
