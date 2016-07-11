@@ -25,7 +25,6 @@ import csv
 import datetime
 import json
 import tempfile
-import reportlab
 
 import pytz
 from django.contrib.auth.decorators import login_required
