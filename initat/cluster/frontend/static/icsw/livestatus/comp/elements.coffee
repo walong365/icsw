@@ -31,12 +31,18 @@ angular.module(
 (
     $q, icswDeviceLivestatusFunctions,
 ) ->
-    {div, svg, g, rect, path} = React.DOM
+    {div, svg, g, rect, path, span, title, text} = React.DOM
     return React.createClass(
         propTypes: {
             size: React.PropTypes.number
             # list of (size, color) tuples
             data: React.PropTypes.array
+            # title, optional
+            title: React.PropTypes.string
+            # titleSize, optional
+            titleSize: React.PropTypes.number
+            # text for center, optional
+            text: React.PropTypes.string
         }
         render: () ->
             _w = @props.size
@@ -75,22 +81,64 @@ angular.module(
                             }
                         )
                     )
-            return svg(
-                {
-                    key: "svg.top"
-                    width: "#{_w}px"
-                    height: "#{_w}px"
-                }
-                g(
+            if @props.title?
+                _text_height = if @props.titleSize? then @props.titleSize else 10
+                _title_el = text(
                     {
-                        key: "main"
+                        x: "#{_w/2}px"
+                        y: "#{_text_height/2}px"
+                        key: "svg.title"
+                        textAnchor: "middle"
+                        fontSize: "#{_text_height}px"
+                        fill: "#000000"
+                        alignmentBaseline: "middle"
+
+                    }
+                    @props.title
+                )
+            else
+                _text_height = 0
+                _title_el = null
+            if @props.text?
+                _text_el = text(
+                    {
+                        x: 0
+                        y: 0
+                        key: "svg.text"
+                        textAnchor: "middle"
+                        fontSize: "12px"
+                        style: {stroke: "#000000", strokeWidth: "1px", fill: "#ffffff"}
+                        alignmentBaseline: "middle"
+                        paintOrder: "stroke"
+                    }
+                    @props.text
+                )
+            else
+                _text_el = null
+            return span(
+                {
+                    key: "div.top"
+
+                }
+                svg(
+                    {
+                        key: "svg.top"
+                        width: "#{_w}px"
+                        height: "#{_w + _text_height}px"
                     }
                     g(
                         {
-                            key: "content"
-                            transform: "translate(#{_w/2}, #{_w/2})"
+                            key: "main"
                         }
-                        _p_list
+                        _title_el
+                        g(
+                            {
+                                key: "content"
+                                transform: "translate(#{_w/2}, #{_w/2 + _text_height})"
+                            }
+                            _p_list
+                            _text_el
+                        )
                     )
                 )
             )
@@ -112,8 +160,10 @@ angular.module(
                     React.createElement(
                         icswLivestatusCircleInfoReact
                         {
-                            size: 24
+                            size: 26
                             data: scope.mon_data.service_circle_data
+                            title: "Services"
+                            titleSize: 5
                         }
                     )
                     element[0]
@@ -143,8 +193,10 @@ angular.module(
                     React.createElement(
                         icswLivestatusCircleInfoReact
                         {
-                            size: 24
+                            size: 26
                             data: scope.mon_data.device_circle_data
+                            title: "Devices"
+                            titleSize: 5
                         }
                     )
                     element[0]

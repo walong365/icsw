@@ -242,13 +242,13 @@ angular.module(
             # console.log "r", @props.livestatus_filter
             _lf = @props.livestatus_filter
             if _lf.f_hosts != _lf.n_hosts
-                _host_text = "#{_lf.f_hosts} of #{_lf.n_hosts}"
+                _host_text = "#{_lf.f_hosts} / #{_lf.n_hosts}"
                 _host_data = [[_lf.f_hosts, _active_color], [_lf.n_hosts - _lf.f_hosts, _inact_color]]
             else
                 _host_text = "#{_lf.n_hosts}"
                 _host_data = [[_lf.n_hosts, _active_color]] 
             if _lf.f_services != _lf.n_services
-                _service_text = "#{_lf.f_services} of #{_lf.n_services}"
+                _service_text = "#{_lf.f_services} / #{_lf.n_services}"
                 _service_data = [[_lf.f_services, _active_color], [_lf.n_services - _lf.f_services, _inact_color]]
             else
                 _service_text = "#{_lf.n_services}"
@@ -358,9 +358,9 @@ angular.module(
                                 React.createElement(
                                     icswLivestatusCircleInfoReact
                                     {
-                                        key: "c0"
                                         size: 44
                                         data: _host_data
+                                        text: _host_text
                                     }
                                 )
                             )
@@ -369,15 +369,11 @@ angular.module(
                                 React.createElement(
                                     icswLivestatusCircleInfoReact
                                     {
-                                        key: "c0"
                                         size: 44
                                         data: _service_data
+                                        text: _service_text
                                     }
                                 )
-                            )
-                            td(
-                                {key: "t3", className: "text-center"}
-                                _host_text
                             )
                         )
                         tr(
@@ -399,10 +395,6 @@ angular.module(
                                     {key: "t2g", className: "btn-group"}
                                     _s_type_buttons
                                 )
-                            )
-                            td(
-                                {key: "t3", className: "text-center"}
-                                _service_text
                             )
                         )
                     )
