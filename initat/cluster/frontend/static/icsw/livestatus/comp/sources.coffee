@@ -693,6 +693,7 @@ angular.module(
             @dereg = $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"), (event) =>
                 @get_selection()
             )
+            icswActiveSelectionService.register_receiver()
             icswDeviceTreeService.load(@struct.local_id).then(
                 (tree) =>
                     @struct.device_tree = tree
@@ -719,7 +720,8 @@ angular.module(
                 @struct.mon_result.update(@struct.device_list, [], [])
 
         pipeline_pre_close: () =>
-            console.log "PPC"
+            icswActiveSelectionService.unregister_receiver()
+            # console.log "PPC"
             @dereg()
 
 ]).service("icswLivestatusDataSource",
