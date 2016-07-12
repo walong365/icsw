@@ -243,16 +243,26 @@ angular.module(
             _lf = @props.livestatus_filter
             if _lf.f_hosts != _lf.n_hosts
                 _host_text = "#{_lf.f_hosts} / #{_lf.n_hosts}"
-                _host_data = [[_lf.f_hosts, _active_color], [_lf.n_hosts - _lf.f_hosts, _inact_color]]
+                _host_data = [
+                    [_lf.f_hosts, _active_color, null]
+                    [_lf.n_hosts - _lf.f_hosts, _inact_color, null]
+                ]
             else
                 _host_text = "#{_lf.n_hosts}"
-                _host_data = [[_lf.n_hosts, _active_color]] 
+                _host_data = [
+                    [_lf.n_hosts, _active_color, null]
+                ] 
             if _lf.f_services != _lf.n_services
                 _service_text = "#{_lf.f_services} / #{_lf.n_services}"
-                _service_data = [[_lf.f_services, _active_color], [_lf.n_services - _lf.f_services, _inact_color]]
+                _service_data = [
+                    [_lf.f_services, _active_color, null]
+                    [_lf.n_services - _lf.f_services, _inact_color, null]
+                ]
             else
                 _service_text = "#{_lf.n_services}"
-                _service_data = [[_lf.n_services, _active_color]]
+                _service_data = [
+                    [_lf.n_services, _active_color, null]
+                ]
             _service_buttons = []
             for entry in _lf.service_state_list
                 _service_buttons.push(

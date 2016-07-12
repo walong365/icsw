@@ -27,7 +27,7 @@ angular.module(
     $stateProvider.state(
         "main.livestatus", {
             url: "/livestatus/all"
-            template: '<icsw-device-livestatus icsw-livestatus-view="\'btest\'"></icsw-device-livestatus>'
+            template: '<icsw-device-livestatus icsw-livestatus-view="\'test\'"></icsw-device-livestatus>'
             icswData: icswRouteExtensionProvider.create
                 pageTitle: "Monitoring dashboard"
                 licenses: ["monitoring_dashboard"]
@@ -61,7 +61,11 @@ angular.module(
                 "icswLivestatusDataSource": [{
                     "icswLivestatusFilterService": [{
                         "icswLivestatusTabularDisplay": []
-                    }]
+                    }
+                    {
+                        "icswLivestatusInfoDisplay": []
+                    }
+                    ]
                 }]
             }]
         }

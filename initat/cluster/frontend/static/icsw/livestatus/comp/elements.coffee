@@ -35,7 +35,7 @@ angular.module(
     return React.createClass(
         propTypes: {
             size: React.PropTypes.number
-            # list of (size, color) tuples
+            # list of (size, color, info) tuples
             data: React.PropTypes.array
             # title, optional
             title: React.PropTypes.string
@@ -61,7 +61,7 @@ angular.module(
             _p_list = []
             _outer = _w / 2.0 * 0.95
             _inner = _w / 2.0 * 0.5
-            for [d_size, color] in _d
+            for [d_size, color, _info] in _d
                 _idx++
                 if d_size
                     _cur_size += d_size
@@ -71,6 +71,15 @@ angular.module(
                         _call = icswDeviceLivestatusFunctions.ring_path
                     else
                         _call = icswDeviceLivestatusFunctions.ring_segment_path
+                    if _info? and _info
+                        _title_el = title(
+                            {
+                                key: "title.#{_idx}"
+                            }
+                            _info
+                        )
+                    else
+                        _title_el = null
                     _p_list.push(
                         path(
                             {
@@ -79,6 +88,7 @@ angular.module(
                                 fill: color
                                 style: {stroke: "#000000", strokeWidth: "0.5px"}
                             }
+                            _title_el
                         )
                     )
             if @props.title?
@@ -107,7 +117,7 @@ angular.module(
                         key: "svg.text"
                         textAnchor: "middle"
                         fontSize: "12px"
-                        style: {stroke: "#000000", strokeWidth: "1px", fill: "#ffffff"}
+                        style: {stroke: "#ffffff", strokeWidth: "1px", fill: "#000000"}
                         alignmentBaseline: "middle"
                         paintOrder: "stroke"
                     }

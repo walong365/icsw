@@ -169,36 +169,46 @@ angular.module(
     _device_lut = {
         0: {
             color: "#66dd66"
+            info: "Up"
         }
         1: {
             color: "#ff7777"
+            info: "Down"
         }
         2: {
             color: "#ff0000"
+            info: "Unreachable"
         }
         3: {
             color: "#dddddd"
+            info: "Unknown"
         }
         4: {
             color: "#888888"
+            info: "not monitored"
         }
     }
 
     _service_lut = {
         0: {
             color: "#66dd66"
+            info: "OK"
         }
         1: {
             color: "#dddd88"
+            info: "Warning"
         }
         2: {
             color: "#ff7777"
+            info: "Critical"
         }
         3: {
             color: "#ff0000"
+            info: "Unknown"
         }
         4: {
             color: "#888888"
+            info: "not monitored"
         }
     }
     _struct = {
@@ -241,7 +251,7 @@ angular.module(
             2: "danger"
             3: "danger"
             # special state: unmonitored
-            4: "#888888"
+            4: "danger"
         }[entry.state]
         entry.className = {
             0: "svg_ok"
@@ -303,7 +313,8 @@ angular.module(
         for _state in _struct["#{in_type}_states"]
             if _state of in_dict
                 _count = in_dict[_state]
-                _r_list.push([_count, _lut[_state].color])
+                _ps = if _count > 1 then "s" else ""
+                _r_list.push([_count, _lut[_state].color, "#{_count} #{in_type}#{_ps} #{_lut[_state].info}"])
         return _r_list
 
     return {
