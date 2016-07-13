@@ -83,6 +83,7 @@ angular.module(
                         data: _md.service_circle_data
                         title: "#{_md.services.length} Services"
                         titleSize: 14
+                        focusMode: "simple"
                     }
                 )
                 React.createElement(

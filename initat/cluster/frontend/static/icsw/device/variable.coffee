@@ -290,7 +290,7 @@ device_variable_module = angular.module(
                             Restangular.restangularizeElement(
                                 null
                                 sub_scope.edit_obj
-                                ICSW_URLS.REST_DEVICE_VARIABLE_DETAIL.slice(1).slice(0, -2)
+                                ICSW_URLS.DEVICE_DEVICE_VARIABLE_DETAIL.slice(1).slice(0, -2)
                             )
                             sub_scope.edit_obj.put().then(
                                 (ok) ->

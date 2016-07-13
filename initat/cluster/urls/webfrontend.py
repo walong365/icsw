@@ -151,6 +151,16 @@ device_patterns = [
     url("^GetMatchingDevices$", device_views.GetMatchingDevices.as_view(), name="GetMatchingDevices"),
     url("^create_device", device_views.create_device.as_view(), name="create_device"),
     url("^device_list_info$", device_views.DeviceListInfo.as_view(), name="device_list_info"),
+    url(
+        "^device_variable_call$",
+        device_views.DeviceVariableViewSet.as_view({"post": "create", "get": "get"}),
+        name="device_variable_list",
+    ),
+    url(
+        "^device_variable_call/(?P<pk>[0-9]+)$",
+        device_views.DeviceVariableViewSet.as_view({"delete": "delete", "put": "store"}),
+        name="device_variable_detail",
+    ),
 ]
 
 

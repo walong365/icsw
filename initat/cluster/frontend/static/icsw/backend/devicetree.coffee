@@ -706,7 +706,7 @@ angular.module(
         create_device_variable: (new_var) =>
             # create new netIP
             defer = $q.defer()
-            Restangular.all(ICSW_URLS.REST_DEVICE_VARIABLE_LIST.slice(1)).post(new_var).then(
+            Restangular.all(ICSW_URLS.DEVICE_DEVICE_VARIABLE_LIST.slice(1)).post(new_var).then(
                 (new_obj) =>
                     @_fetch_device_variable(new_obj.idx, defer, "created variable")
                 (not_ok) ->
@@ -716,7 +716,7 @@ angular.module(
 
         delete_device_variable: (del_var) =>
             # ensure REST hooks
-            Restangular.restangularizeElement(null, del_var, ICSW_URLS.REST_DEVICE_VARIABLE_DETAIL.slice(1).slice(0, -2))
+            Restangular.restangularizeElement(null, del_var, ICSW_URLS.DEVICE_DEVICE_VARIABLE_DETAIL.slice(1).slice(0, -2))
             defer = $q.defer()
             del_var.remove().then(
                 (ok) =>
@@ -731,9 +731,8 @@ angular.module(
             return defer.promise
 
         _fetch_device_variable: (pk, defer, msg) =>
-            Restangular.one(ICSW_URLS.REST_DEVICE_VARIABLE_LIST.slice(1)).get({idx: pk}).then(
+            Restangular.one(ICSW_URLS.DEVICE_DEVICE_VARIABLE_LIST.slice(1)).get({pk: pk}).then(
                 (new_var) =>
-                    new_var = new_var[0]
                     dev = @all_lut[new_var.device]
                     dev.device_variable_set.push(new_var)
                     defer.resolve(msg)

@@ -73,7 +73,14 @@ class get_devices_for_asset(View):
     def post(self, request, *args, **kwargs):
         apv = AssetPackageVersion.objects.get(pk=int(request.POST['pk']))
 
-        return HttpResponse(json.dumps({'devices': list(set([ar.device.pk for ar in apv.assetrun_set.all()]))}), content_type="application/json")
+        return HttpResponse(
+            json.dumps(
+                {
+                    'devices': list(set([ar.device.pk for ar in apv.assetrun_set.all()]))
+                }
+            ),
+            content_type="application/json"
+        )
 
 
 class get_assetrun_diffs(View):

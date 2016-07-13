@@ -34,7 +34,11 @@ from django.http import HttpResponse
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.generic import View
+from rest_framework import status
+
 from rest_framework import serializers
+from rest_framework import viewsets
+from rest_framework.response import Response
 
 from initat.cluster.backbone.models import device_group, device, \
     cd_connection, domain_tree_node, category, netdevice, ComCapability, \
@@ -685,3 +689,45 @@ class create_device(permission_required_mixin, View):
                     except:
                         request.xml_response.error(u"cannot create IP: {}".format(process_tools.get_except_info()), logger=logger)
                         cur_ip = None
+
+
+class DeviceVariableViewSet(viewsets.ViewSet):
+    @method_decorator(login_required)
+    def create(self, request):
+        new_obj = device_variable_serializer(data=request.data)
+        if new_obj.is_valid():
+            new_obj.save()
+        else:
+            raise ValidationError("New Variable not valid")
+        return Response(new_obj.data)
+
+    @method_decorator(login_required)
+    def get(self, request):
+        return Response(
+            device_variable_serializer(
+                device_variable.objects.get(Q(pk=request.query_params["pk"]))
+            ).data
+        )
+
+    @method_decorator(login_required)
+    def delete(self, request, *args, **kwargs):
+        device_variable.objects.get(Q(pk=kwargs["pk"])).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @method_decorator(login_required)
+    def store(self, request, *args, **kwargs):
+        from initat.cluster.backbone.models import get_change_reset_list
+        _prev_var = device_variable.objects.get(Q(pk=kwargs["pk"]))
+        _cur_ser = device_variable_serializer(
+            device_variable.objects.get(Q(pk=kwargs["pk"])),
+            data=request.data
+        )
+        if _cur_ser.is_valid():
+            _new_var = _cur_ser.save()
+        resp = _cur_ser.data
+        c_list, r_list = get_change_reset_list(_prev_var, _new_var, request.data)
+        resp = Response(resp)
+        # print c_list, r_list
+        resp.data["_change_list"] = c_list
+        resp.data["_reset_list"] = r_list
+        return resp

@@ -43,7 +43,15 @@ angular.module(
             titleSize: React.PropTypes.number
             # text for center, optional
             text: React.PropTypes.string
+            # focus mode, one of
+            # none ..... no focus mode
+            # simple ... other mode
+            focusMode: React.PropTypes.string
         }
+
+        handle_mouse_enter: (event, focus_mode) ->
+            console.log "me", event, focus_mode
+
         render: () ->
             _w = @props.size
             _d = @props.data
@@ -54,14 +62,27 @@ angular.module(
                     }
                     "No data"
                 )
+
+            # check FocusMode
+
+            if @props.focusMode?
+                _fm = @props.focusMode
+            else
+                _fm = "none"
             _total = _.sum((_el[0] for _el in _d))
             _idx = 0
             _end_arc = - Math.PI * 0.5
             _cur_size = 0
             _p_list = []
-            _outer = _w / 2.0 * 0.95
+            if _d[0].length == 3
+                # no detailed info
+                _outer = _w / 2.0 * 0.95
+            else
+                # detailed info present, draw extra arcs
+                _outer = _w / 2.0 * 0.80
+                _outer_detail = _w / 2.0 * 0.95
             _inner = _w / 2.0 * 0.5
-            for [d_size, color, _info] in _d
+            for [d_size, color, _info, _detail] in _d
                 _idx++
                 if d_size
                     _cur_size += d_size
@@ -87,10 +108,47 @@ angular.module(
                                 d: _call(_inner, _outer, _start_arc, _end_arc)
                                 fill: color
                                 style: {stroke: "#000000", strokeWidth: "0.5px"}
+                                onMouseEnter: (event) =>
+                                    if _fm != "none"
+                                        @handle_mouse_enter(event, _fm)
                             }
                             _title_el
                         )
                     )
+                    if _detail
+                        _sub_sum = _.sum((_value for _key, _value of _detail))
+                        if _sub_sum
+                            _sub_idx = 0
+                            _sub_end_arc = _start_arc
+                            _cur_sum = 0
+                            for _key, _value of _detail
+                                _sub_idx++
+                                _cur_sum += _value
+                                _sub_start_arc = _sub_end_arc
+                                _sub_end_arc = _start_arc + (_end_arc - _start_arc) * _cur_sum / _sub_sum
+                                _p_list.push(
+                                    path(
+                                        {
+                                            key: "sge.#{_idx}.#{_sub_idx}"
+                                            d: _call(_outer, _outer_detail, _sub_start_arc, _sub_end_arc)
+                                            fill: "#eeeeee"
+                                            style: {stroke: "#000000", strokeWidth: "0.5px"}
+                                        }
+                                    )
+                                )
+                        else
+                            # detail is empty (no categories used)
+                            _p_list.push(
+                                path(
+                                    {
+                                        key: "sge.#{_idx}.none"
+                                        d: _call(_outer, _outer_detail, _start_arc, _end_arc)
+                                        fill: "#ffffff"
+                                        style: {stroke: "#000000", strokeWidth: "0.5px"}
+                                    }
+                                )
+                            )
+
             if @props.title?
                 _text_height = if @props.titleSize? then @props.titleSize else 10
                 _title_el = text(

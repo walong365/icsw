@@ -305,8 +305,9 @@ angular.module(
                 entry.$$icswCategories = "---"
         return entry
 
-    build_circle_info = (in_type, in_dict) ->
+    build_circle_info = (in_type, in_dict, detail_dict) ->
         # transform a device or service dict (state -> num) to an array
+        # detail_dict: to add detailed info (categories, location, ...)
         # which is usable for device_circle_info
         _r_list = []
         _lut = _struct["#{in_type}_lut"]
@@ -314,7 +315,10 @@ angular.module(
             if _state of in_dict
                 _count = in_dict[_state]
                 _ps = if _count > 1 then "s" else ""
-                _r_list.push([_count, _lut[_state].color, "#{_count} #{in_type}#{_ps} #{_lut[_state].info}"])
+                _info = [_count, _lut[_state].color, "#{_count} #{in_type}#{_ps} #{_lut[_state].info}"]
+                if detail_dict?
+                    _info.push(detail_dict[_state])
+                _r_list.push(_info)
         return _r_list
 
     return {
@@ -433,17 +437,34 @@ angular.module(
             # lookup tables
             @__luts_set = true
             _srv_lut = {}
+            _srv_cat_lut = {}
             for srv in @services
                 if srv.state not of _srv_lut
                     _srv_lut[srv.state] = 0
+                    _srv_cat_lut[srv.state] = {}
                 _srv_lut[srv.state]++
+                if srv.custom_variables? and srv.custom_variables.cat_pks?
+                    _cats = srv.custom_variables.cat_pks
+                else
+                    # no category
+                    _cats = [0]
+                for _cat in _cats
+                    if _cat not of _srv_cat_lut[srv.state]
+                        _srv_cat_lut[srv.state][_cat] = 0
+                    _srv_cat_lut[srv.state][_cat]++
             _host_lut = {}
+            _host_cat_lut = {}
             for host in @hosts
                 if host.state not of _host_lut
                     _host_lut[host.state] = 0
+                    _host_cat_lut[host.state] = {}
                 _host_lut[host.state]++
-            @service_circle_data = icswSaltMonitoringResultService.build_circle_info("service", _srv_lut)
-            @device_circle_data = icswSaltMonitoringResultService.build_circle_info("device", _host_lut)
+                for _cat in host.$$icswDevice.categories
+                    if _cat not of _host_cat_lut[host.state]
+                        _host_cat_lut[host.state][_cat] = 0
+                    _host_cat_lut[host.state][_cat]++
+            @service_circle_data = icswSaltMonitoringResultService.build_circle_info("service", _srv_lut, _srv_cat_lut)
+            @device_circle_data = icswSaltMonitoringResultService.build_circle_info("device", _host_lut, _host_cat_lut)
 
 ]).service("icswDeviceLivestatusDataService",
 [

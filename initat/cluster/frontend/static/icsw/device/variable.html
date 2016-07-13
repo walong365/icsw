@@ -41,6 +41,7 @@
         <thead>
             <tr>
                 <th>Name</th>
+                <th>Prefix</th>
                 <th>Type</th>
                 <th>Value</th>
                 <th>Public</th>
@@ -52,6 +53,7 @@
         <tbody>
             <tr ng-repeat="obj in device.device_variables_filtered">
                 <td>{{ obj.name }}</td>
+                <td>{{ obj.prefix }}</td>
                 <td class="text-center"><span class="badge">{{ obj.$var_type }}</span></td>
                 <td>{{ obj.$var_value }}</td>
                 <td>{{ obj.is_public|yesno1 }}</td>
