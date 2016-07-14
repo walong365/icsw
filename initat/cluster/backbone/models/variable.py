@@ -24,6 +24,7 @@
 import datetime
 import logging
 import uuid
+import json
 
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -39,13 +40,8 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "device_variable",
-    "DeviceVariablePrefixEnum",
+    "device_variable_scope",
 ]
-
-
-class DeviceVariablePrefixEnum(Enum):
-    normal = ""
-    inventar = "__$$ICSW_INV$$__"
 
 
 class DeviceVariableManager(models.Manager):
@@ -79,15 +75,23 @@ class DeviceVariableManager(models.Manager):
         return var_value
 
 
-# flag sets
-_flags = {
-    DeviceVariablePrefixEnum.normal: {
-    },
-    DeviceVariablePrefixEnum.inventar: {
-        "inherit": False,
-        "local_copy_ok": False,
-    }
-}
+# class DeviceVariableTypeManager(models.Manager):
+#     def get_by_natural_key(self, name):
+#        return self.get(name=name)
+
+
+class device_variable_scope(models.Model):
+    # objects = DeviceVariableTypeManager()
+    idx = models.AutoField(primary_key=True)
+    name = models.CharField(
+        max_length=32,
+        unique=True,
+    )
+    # variable prefix
+    prefix = models.CharField(max_length=127, default="")
+    # forced flags, json-encoded flags
+    forced_flags = models.CharField(max_length=127, default="")
+    date = models.DateTimeField(auto_now_add=True)
 
 
 class device_variable(models.Model):
@@ -97,12 +101,7 @@ class device_variable(models.Model):
     device = models.ForeignKey("device")
     is_public = models.BooleanField(default=True)
     name = models.CharField(max_length=765)
-    # prefix
-    prefix = models.CharField(
-        max_length=32,
-        default="",
-        choices=[(_en.name, _en.name) for _en in DeviceVariablePrefixEnum]
-    )
+    device_variable_scope = models.ForeignKey("backbone.device_variable_scope")
     description = models.CharField(max_length=765, default="", blank=True)
     # can be copied to a group or device ? There is no sense in making the cluster_name a local instance
     local_copy_ok = models.BooleanField(default=True)
@@ -191,7 +190,7 @@ class device_variable(models.Model):
 
     class Meta:
         db_table = u'device_variable'
-        unique_together = ("name", "device", "prefix",)
+        unique_together = ("name", "device", "device_variable_scope",)
         ordering = ("name",)
         verbose_name = "Device variable"
 
@@ -201,18 +200,11 @@ def device_variable_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         if cur_inst.device_id:
-            if not cur_inst.prefix:
-                cur_inst.prefix = DeviceVariablePrefixEnum.normal.name
-            if cur_inst.prefix not in [_entry.name for _entry in DeviceVariablePrefixEnum]:
-                raise ValidationError(
-                    "unknown variable prefix '{}' (var {})".format(
-                        cur_inst.prefix,
-                        cur_inst.name,
-                    )
-                )
-            # set flags
-            for _f_name, _f_value in _flags[DeviceVariablePrefixEnum[cur_inst.prefix]]:
-                setattr(cur_inst, _f_name, _f_value)
+            _dvt = cur_inst.device_variable_type
+            if _dvt.forced_flags:
+                # set flags
+                for _f_name, _f_value in json.loads(_dvt.forced_flags):
+                    setattr(cur_inst, _f_name, _f_value)
             check_empty_string(cur_inst, "name")
             if cur_inst.var_type == "?":
                 # guess type

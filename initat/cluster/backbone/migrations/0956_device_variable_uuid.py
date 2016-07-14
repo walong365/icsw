@@ -11,7 +11,7 @@ def add_device_variable_uuids(apps, schema_editor):
     device_variable = apps.get_model("backbone", "device_variable")
     for entry in device_variable.objects.all():
         # create uuid (signals not working here)
-        entry.prefix = "normal"
+        # entry.prefix = "normal"
         entry.uuid = str(uuid.uuid4())
         entry.save()
 
@@ -27,6 +27,16 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.CreateModel(
+            name='device_variable_scope',
+            fields=[
+                ('idx', models.AutoField(primary_key=True, serialize=False)),
+                ('name', models.CharField(max_length=32, unique=True)),
+                ('prefix', models.CharField(default=b'', max_length=127)),
+                ('forced_flags', models.CharField(default=b'', max_length=127)),
+                ('date', models.DateTimeField(auto_now_add=True)),
+            ],
+        ),
         migrations.AddField(
             model_name='device_variable',
             name='uuid',
@@ -34,12 +44,11 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name='device_variable',
-            name='prefix',
-            field=models.CharField(choices=[(b'normal', b'normal'), (b'inventar', b'inventar')], default=b'', max_length=32),
+            name='device_variable_scope',
+            field=models.ForeignKey(null=True, on_delete=models.deletion.CASCADE, to='backbone.device_variable_scope'),
         ),
         migrations.AlterUniqueTogether(
             name='device_variable',
-            unique_together=set([('name', 'device', 'prefix')]),
+            unique_together=set([('name', 'device', "device_variable_scope")]),
         ),
-        migrations.RunPython(add_device_variable_uuids, reverse_code=dummy_reverse)
     ]

@@ -695,9 +695,12 @@ class DeviceVariableViewSet(viewsets.ViewSet):
     @method_decorator(login_required)
     def create(self, request):
         new_obj = device_variable_serializer(data=request.data)
+        print new_obj
+        # print new_obj.device_variable_scope
         if new_obj.is_valid():
             new_obj.save()
         else:
+            print new_obj
             raise ValidationError("New Variable not valid")
         return Response(new_obj.data)
 
@@ -718,10 +721,13 @@ class DeviceVariableViewSet(viewsets.ViewSet):
     def store(self, request, *args, **kwargs):
         from initat.cluster.backbone.models import get_change_reset_list
         _prev_var = device_variable.objects.get(Q(pk=kwargs["pk"]))
+        print _prev_var
         _cur_ser = device_variable_serializer(
             device_variable.objects.get(Q(pk=kwargs["pk"])),
             data=request.data
         )
+        print "*" * 20
+        print _cur_ser.device_variable_type
         if _cur_ser.is_valid():
             _new_var = _cur_ser.save()
         resp = _cur_ser.data
