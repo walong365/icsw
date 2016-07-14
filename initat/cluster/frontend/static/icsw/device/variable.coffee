@@ -83,7 +83,7 @@ device_variable_module = angular.module(
             )
 
     $scope.set_tree_content = (in_xml) ->
-        console.log "in_xml=", in_xml[0]
+        # console.log "in_xml=", in_xml[0]
         for dev_xml in in_xml.find("device")
             dev_xml = $(dev_xml)
             dev_entry = $scope.devvar_tree.create_node({folder: true, expand:true, obj:{"name" : dev_xml.attr("name"), "info_str": dev_xml.attr("info_str"), "state_level" : parseInt(dev_xml.attr("state_level"))}, _node_type:"d"})
@@ -104,8 +104,8 @@ device_variable_module = angular.module(
                         $scope.devvar_tree.create_node(
                             folder: false
                             obj:
-                                "key": _sv.attr("key")
-                                "value": _sv.attr("value")
+                                key: _sv.attr("key")
+                                value: _sv.attr("value")
                             _node_type: "v"
                         )
                     )
@@ -183,6 +183,7 @@ device_variable_module = angular.module(
     $compile, $templateCache, icswDeviceVariableBackup, toaster, blockUI,
 ) ->
     create_or_edit = (scope, event, create, obj_or_parent) ->
+        _dvst = scope.device_variable_scope_tree
         if create
             single_create = true
             if obj_or_parent
@@ -199,6 +200,7 @@ device_variable_module = angular.module(
                     var_type: "s"
                     _mon_var: null
                     inherit: true
+                    device_variable_scope: _dvst.list[0].idx
                 }
             else
                 single_create = false
@@ -208,23 +210,25 @@ device_variable_module = angular.module(
                     var_type: "s"
                     _mon_var: null
                     inherit: true
+                    device_variable_scope: _dvst.list[0].idx
                 }
         else
             single_create = false
             dbu = new icswDeviceVariableBackup()
             dbu.create_backup(obj_or_parent)
-        sub_scope = scope.$new(false)
+        sub_scope = scope.$new(true)
         sub_scope.create = create
+        sub_scope.device_variable_scope_tree = _dvst
         sub_scope.single_create = single_create
         sub_scope.mon_vars = []
         if single_create
             # fetch mon_vars
             icswSimpleAjaxCall(
-                url : ICSW_URLS.MON_GET_MON_VARS
-                data : {
-                    device_pk : device.idx
+                url: ICSW_URLS.MON_GET_MON_VARS
+                data: {
+                    device_pk: device.idx
                 }
-                dataType : "json"
+                dataType: "json"
             ).then(
                 (json) ->
                     for entry in json
@@ -293,7 +297,8 @@ device_variable_module = angular.module(
                                 ICSW_URLS.DEVICE_DEVICE_VARIABLE_DETAIL.slice(1).slice(0, -2)
                             )
                             sub_scope.edit_obj.put().then(
-                                (ok) ->
+                                (new_var) ->
+                                    scope.helper.replace_device_variable(new_var)
                                     scope.helper.filter_device_variables()
                                     d.resolve("updated")
                                 (not_ok) ->
@@ -320,6 +325,7 @@ device_variable_module = angular.module(
             scope.helper = scope.icsw_config_object.helper
             scope.devices = scope.icsw_config_object.devices
             scope.device_tree = scope.icsw_config_object.device_tree
+            scope.device_variable_scope_tree = scope.icsw_config_object.device_variable_scope_tree
 
             _list_defer = $q.defer()
             _list_defer.resolve(scope.devices)
@@ -387,11 +393,11 @@ device_variable_module = angular.module(
 ]).controller("icswDeviceVariableCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "blockUI",
-    "icswTools", "icswDeviceVariableListService",
+    "icswTools", "icswDeviceVariableListService", "icswDeviceVariableScopeTreeService",
     "icswDeviceTreeService", "icswDeviceTreeHelperService",
 (
     $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI,
-    icswTools, icswDeviceVariableListService,
+    icswTools, icswDeviceVariableListService, icswDeviceVariableScopeTreeService,
     icswDeviceTreeService, icswDeviceTreeHelperService,
 ) ->
     $scope.vars = {
@@ -401,6 +407,10 @@ device_variable_module = angular.module(
     $scope.struct = {
         # devices
         devices: []
+        # device tree
+        device_tree: undefined
+        # device variable scope tree
+        device_variable_scope_tree: undefined
     }
     $scope.dataLoaded = false
 
@@ -408,10 +418,12 @@ device_variable_module = angular.module(
         $q.all(
             [
                 icswDeviceTreeService.load($scope.$id)
+                icswDeviceVariableScopeTreeService.load($scope.$id)
             ]
         ).then(
             (data) ->
                 device_tree = data[0]
+                $scope.struct.device_variable_scope_tree = data[1]
                 trace_devices =  device_tree.get_device_trace(devs)
                 hs = icswDeviceTreeHelperService.create(device_tree, trace_devices)
                 device_tree.enrich_devices(hs, ["variable_info"]).then(

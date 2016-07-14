@@ -75,6 +75,7 @@ icsw_app = angular.module(
         "icsw.backend.backup",
         "icsw.backend.network",
         "icsw.backend.config",
+        "icsw.backend.variable",
         "icsw.rrd.graph",
         "icsw.system.background",
         "icsw.server.info",

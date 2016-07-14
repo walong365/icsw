@@ -41,6 +41,7 @@ logger = logging.getLogger(__name__)
 __all__ = [
     "device_variable",
     "device_variable_scope",
+    "dvs_allowed_names",
 ]
 
 
@@ -91,6 +92,19 @@ class device_variable_scope(models.Model):
     prefix = models.CharField(max_length=127, default="")
     # forced flags, json-encoded flags
     forced_flags = models.CharField(max_length=127, default="")
+    # is default scope
+    default_scope = models.BooleanField(default=False)
+    date = models.DateTimeField(auto_now_add=True)
+
+
+class dvs_allowed_names(models.Model):
+    idx = models.AutoField(primary_key=True)
+    device_variable_scope = models.ForeignKey("backbone.device_variable_scope")
+    name = models.CharField(
+        max_length=127,
+        default="",
+        unique=True,
+    )
     date = models.DateTimeField(auto_now_add=True)
 
 
@@ -200,10 +214,12 @@ def device_variable_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         if cur_inst.device_id:
-            _dvt = cur_inst.device_variable_type
-            if _dvt.forced_flags:
+            if not cur_inst.device_variable_scope_id:
+                cur_inst.device_variable_scope = device_variable_scope.objects.get(Q(default_scope=True))
+            _dvs = cur_inst.device_variable_scope
+            if _dvs.forced_flags:
                 # set flags
-                for _f_name, _f_value in json.loads(_dvt.forced_flags):
+                for _f_name, _f_value in json.loads(_dvs.forced_flags).iteritems():
                     setattr(cur_inst, _f_name, _f_value)
             check_empty_string(cur_inst, "name")
             if cur_inst.var_type == "?":

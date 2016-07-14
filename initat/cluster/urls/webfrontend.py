@@ -161,6 +161,11 @@ device_patterns = [
         device_views.DeviceVariableViewSet.as_view({"delete": "delete", "put": "store"}),
         name="device_variable_detail",
     ),
+    url(
+        "^device_variable_scope_call$",
+        device_views.DeviceVariableScopeViewSet.as_view({"get": "list"}),
+        name="device_variable_scope_list",
+    ),
 ]
 
 
