@@ -548,7 +548,7 @@ angular.module(
                     @mode_entries.push(entry)
 
         hide_unused_entries: (useable_idxs, cat_tree) =>
-            _full_list = []
+            _full_list = (entry.idx for entry in @mode_entries when entry.depth < 2)
             # mark all used up to parent
             for _idx in useable_idxs
                 # speedup
@@ -735,6 +735,12 @@ angular.module(
             )
 
         else if $scope.struct.mode == "filter"
+            if $scope.sub_tree == "mon"
+                $scope.cat_name = "used_mon_cats"
+            else if $scope.sub_tree == "device"
+                $scope.cat_name = "used_device_cats"
+            else
+                assert "Invalid sub_tree '#{$scope.sub_tree}' for filter mode"
             # available cats, used to automatically select new cats (from mon-data reload)
             $scope.$$available_cats = []
             $scope.con_element.new_data_notifier.promise.then(
@@ -796,16 +802,16 @@ angular.module(
             # icswLivestatusFilter set, only some categories selectable und those are preselected
             if $scope.$$previous_filter?
                 if $scope.struct.mon_data?
-                    _new_cats = _.difference($scope.struct.mon_data.used_cats, $scope.$$available_cats)
+                    _new_cats = _.difference($scope.struct.mon_data[$scope.cat_name], $scope.$$available_cats)
                     # store
-                    $scope.$$available_cats = (entry for entry in $scope.struct.mon_data.used_cats)
+                    $scope.$$available_cats = (entry for entry in $scope.struct.mon_data[$scope.cat_name])
                     if _new_cats.length
                         # autoselect new categories and send to filter
                         send_selection_to_filter(_.uniq(_.union($scope.$$previous_filter, _new_cats)))
                 sel_cat = $scope.$$previous_filter
             else
                 if $scope.struct.mon_data?
-                    sel_cat = $scope.struct.mon_data.used_cats.concat([0])
+                    sel_cat = $scope.struct.mon_data[$scope.cat_name].concat([0])
                     # push category selection list
                     send_selection_to_filter(sel_cat)
                 else
@@ -813,7 +819,7 @@ angular.module(
                     sel_cat = []
             # useable are only the categories present in the current dataset
             if $scope.struct.mon_data?
-                _useable_idxs = _.intersection(_useable_idxs, $scope.struct.mon_data.used_cats)
+                _useable_idxs = _.intersection(_useable_idxs, $scope.struct.mon_data[$scope.cat_name])
                 # further reduce mode entries by filtering non-useable entries
                 _dct.hide_unused_entries(_useable_idxs, $scope.struct.cat_tree)
 
@@ -882,7 +888,7 @@ angular.module(
                 if dummy_entry?
                     # add dummy at first (if defined)
                     _dct.lut[entry.idx].add_child(dummy_entry)
-        # console.log "*", $scope.cat_tree.lut
+
         _dct.show_selected(true)
 
     $scope.new_selection = (t_entry, new_sel) ->

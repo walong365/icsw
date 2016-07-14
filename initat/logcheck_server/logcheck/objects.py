@@ -428,14 +428,18 @@ class InotifyRoot(object):
             )
             self.log("added dir {} (watching: {:d})".format(in_dir, len(self._dir_dict.keys())))
             if recursive:
-                for sub_dir, _dirs, _files in scandir.walk(str(in_dir)):
-                    if sub_dir != in_dir:
-                        self.register_dir(sub_dir, recursive=False)
-                    _found_files = InotifyRoot.FILES_TO_SCAN & set(_files)
-                    if _found_files:
-                        [
-                            self.register_file(os.path.join(sub_dir, _file)) for _file in _found_files
-                        ]
+                try:
+                    for sub_dir, _dirs, _files in scandir.walk(str(in_dir)):
+                        if sub_dir != in_dir:
+                            self.register_dir(sub_dir, recursive=False)
+                        _found_files = InotifyRoot.FILES_TO_SCAN & set(_files)
+                        if _found_files:
+                            [
+                                self.register_file(os.path.join(sub_dir, _file)) for _file in _found_files
+                            ]
+                except UnicodeDecodeError:
+                    self.log(u"got a UnicodeDecodeError for dir {}".format(in_dir), logging_tools.LOG_LEVEL_CRITICAL)
+                    raise
         else:
             self.log("dir {} already in watch_dict".format(in_dir), logging_tools.LOG_LEVEL_ERROR)
 

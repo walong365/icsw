@@ -1251,6 +1251,7 @@ class hm_icmp_protocol(icmp_class.icmp_protocol):
 
 class ICMPProcess(threading_tools.process_obj):
     def process_init(self):
+        global_config.close()
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],
@@ -1283,6 +1284,7 @@ class ICMPProcess(threading_tools.process_obj):
 
 class NodeControlProcess(threading_tools.process_obj):
     def process_init(self):
+        global_config.close()
         # check log type (queue or direct)
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],

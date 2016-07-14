@@ -25,330 +25,7 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.router",
     ]
-).service("icswLivestatusFilterService",
-[
-    "$q", "$rootScope", "icswMonLivestatusPipeBase", "icswMonitoringResult",
-(
-    $q, $rootScope, icswMonLivestatusPipeBase, icswMonitoringResult,
-) ->
-    # ToDo: separate data / filtered data from filter
-    running_id = 0
-    class icswLivestatusFilter extends icswMonLivestatusPipeBase
-        constructor: () ->
-            super("icswLivestatusFilter", true, true)
-            @set_template('<icsw-livestatus-filter-display icsw-livestatus-filter="con_element"></icsw-livestatus-filter-display>', "BaseFilter")
-            running_id++
-            @id = running_id
-            @_latest_data = undefined
-            # emit data
-            @_emit_data = new icswMonitoringResult()
-            @_local_init()
-
-        filter_changed: () ->
-            # callback from React
-            if @_latest_data?
-                @emit_data_downstream(@new_data_received(@_latest_data))
-
-        new_data_received: (data) =>
-            @_latest_data = data
-            @n_hosts = data.hosts.length
-            @n_services = data.services.length
-            @categories = data.categories
-
-            @_emit_data.apply_base_filter(@, @_latest_data)
-            @f_hosts = @_emit_data.hosts.length
-            @f_services = @_emit_data.services.length
-            @react_notifier.notify()
-            return @_emit_data
-            # @change_notifier.notify()
-
-        pipeline_reject_called: (reject) ->
-            # ignore, stop processing
-
-        _local_init: () =>
-            # console.log "new LivestatusFilter with id #{@id}"
-            @categories = []
-            # number of entries
-            @n_hosts = 0
-            @n_services = 0
-            # filtered entries
-            @f_hosts = 0
-            @f_services = 0
-            # possible service states
-            @service_state_list = [
-                [0, "O", true, "show OK states", "btn-success"]
-                [1, "W", true, "show warning states", "btn-warning"]
-                [2, "C", true, "show critical states", "btn-danger"]
-                [3, "U", true, "show unknown states", "btn-danger"]
-            ]
-            @service_state_lut = {}
-
-            # possible host states
-            @host_state_list = [
-                [0, "U", true, "show Up states", "btn-success"]
-                [1, "D", true, "show Down states", "btn-warning"]
-                [2, "?", true, "show unreachable states", "btn-danger"]
-            ]
-            @host_state_lut = {}
-
-            # possibel service type states
-            @service_type_list = [
-                [0, "S", true, "show soft states", "btn-primary"]
-                [1, "H", true, "show hard states", "btn-primary"]
-            ]
-            @service_type_lut = {}
-            
-            # default values for service states
-            @service_states = {}
-            for entry in @service_state_list
-                @service_state_lut[entry[0]] = entry
-                @service_state_lut[entry[1]] = entry
-                @service_states[entry[0]] = entry[2]
-
-            # default values for host states
-            @host_states = {}
-            for entry in @host_state_list
-                @host_state_lut[entry[0]] = entry
-                @host_state_lut[entry[1]] = entry
-                @host_states[entry[0]] = entry[2]
-                
-            # default values for service types
-            @service_types = {}
-            for entry in @service_type_list
-                @service_type_lut[entry[0]] = entry
-                @service_type_lut[entry[1]] = entry
-                @service_types[entry[0]] = entry[2]
-
-            @react_notifier = $q.defer()
-            @change_notifier = $q.defer()
-            # category filter settings
-            @cat_filter_installed = false
-
-        # install_category_filter: () =>
-        #     @cat_filter_installed = true
-        #     @cat_filter_list = undefined
-
-        toggle_service_state: (code) =>
-            _srvc_idx = @service_state_lut[code][0]
-            @service_states[_srvc_idx] = !@service_states[_srvc_idx]
-            # ensure that any service state is set, should be implemented as option
-            # if not _.some(_.values(@service_states))
-            #    @service_states[0] = true
-
-        toggle_host_state: (code) =>
-            _host_idx = @host_state_lut[code][0]
-            @host_states[_host_idx] = !@host_states[_host_idx]
-            # ensure that any host state is set, should be implemented as option
-            # if not _.some(_.values(@host_states))
-            #     @host_states[0] = true
-
-        toggle_service_type: (code) =>
-            _type_idx = @service_type_lut[code][0]
-            @service_types[_type_idx] = !@service_types[_type_idx]
-            # ensure that any service state is set, should be implemented as option
-            # if not _.some(_.values(@service_types))
-            #    @service_types[0] = true
-
-        # get state strings for ReactJS, a little hack ...
-        _get_service_state_str: () =>
-            return (entry[1] for entry in @service_state_list when @service_states[entry[0]]).join(":")
-
-        _get_host_state_str: () =>
-            return (entry[1] for entry in @host_state_list when @host_states[entry[0]]).join(":")
-            
-        _get_service_type_str: () =>
-            return (entry[1] for entry in @service_type_list when @service_types[entry[0]]).join(":")
-            
-        get_filter_state_str: () ->
-            return [
-                @_get_service_state_str()
-                @_get_host_state_str()
-                @_get_service_type_str()
-            ].join(";")
-
-        stop_notifying: () ->
-            @change_notifier.reject("stop")
-            
-]).factory("icswLivestatusFilterReactDisplay",
-[
-    "$q",
-(
-    $q
-) ->
-    # display of livestatus filter
-    react_dom = ReactDOM
-    {div, h4, select, option, p, input, span} = React.DOM
-
-    return React.createClass(
-        propTypes: {
-            livestatus_filter: React.PropTypes.object
-            # filter_changed_cb: React.PropTypes.func
-        }
-        getInitialState: () ->
-            return {
-                filter_state_str: @props.livestatus_filter.get_filter_state_str()
-                display_iter: 0
-            }
-
-        componentWillMount: () ->
-            # @umount_defer = $q.defer()
-            @props.livestatus_filter.react_notifier.promise.then(
-                () ->
-                () ->
-                    # will get called when the component unmounts
-                (c) =>
-                    @setState({display_iter: @state.display_iter + 1})
-            )
-
-        componentWillUnmount: () ->
-            @props.livestatus_filter.stop_notifying()
-
-        shouldComponentUpdate: (next_props, next_state) ->
-            _redraw = false
-            if next_state.display_iter != @state.display_iter
-                _redraw = true
-            else if next_state.filter_state_str != @state.filter_state_str
-                _redraw = true
-            return _redraw
-
-        render: () ->
-
-            _filter_changed = () =>
-                @props.livestatus_filter.filter_changed()
-
-            # console.log "r", @props.livestatus_filter
-            _lf = @props.livestatus_filter
-            _list = []
-            _text_f = []
-            _text_f.push(" hosts:")
-            if _lf.f_hosts != _lf.n_hosts
-                _text_f.push("#{_lf.f_hosts} of #{_lf.n_hosts}")
-            else
-                _text_f.push(" #{_lf.n_hosts}")
-            _text_f.push("services:")
-            if _lf.f_services != _lf.n_services
-                _text_f.push("#{_lf.f_services} of #{_lf.n_services}")
-            else
-                _text_f.push(" #{_lf.n_services}")
-            _list.push(
-                "filter options: "
-            )
-            _service_buttons = []
-            for entry in _lf.service_state_list
-                _service_buttons.push(
-                    input(
-                        {
-                            key: "srvc.#{entry[1]}"
-                            type: "button"
-                            className: "btn btn-xs " + if _lf.service_states[entry[0]] then entry[4] else "btn-default"
-                            value: entry[1]
-                            title: entry[3]
-                            onClick: (event) =>
-                                # _lf.toggle_md(event.target_value)
-                                _lf.toggle_service_state(event.target.value)
-                                # force redraw
-                                @setState({filter_state_str: _lf.get_filter_state_str()})
-                                _filter_changed()
-                        }
-                    )
-                )
-            _host_buttons = []
-            for entry in _lf.host_state_list
-                _host_buttons.push(
-                    input(
-                        {
-                            key: "host.#{entry[1]}"
-                            type: "button"
-                            className: "btn btn-xs " + if _lf.host_states[entry[0]] then entry[4] else "btn-default"
-                            value: entry[1]
-                            title: entry[3]
-                            onClick: (event) =>
-                                _lf.toggle_host_state(event.target.value)
-                                # force redraw
-                                @setState({filter_state_str: _lf.get_filter_state_str()})
-                                _filter_changed()
-                        }
-                    )
-                )
-            _type_buttons = []
-            for entry in _lf.service_type_list
-                _type_buttons.push(
-                    input(
-                        {
-                            key: "stype.#{entry[1]}"
-                            type: "button"
-                            className: "btn btn-xs " + if _lf.service_types[entry[0]] then entry[4] else "btn-default"
-                            value: entry[1]
-                            title: entry[3]
-                            onClick: (event) =>
-                                _lf.toggle_service_type(event.target.value)
-                                # force redraw
-                                @setState({filter_state_str: _lf.get_filter_state_str()})
-                                _filter_changed()
-                        }
-                    )
-                )
-            _list.push(
-                div(
-                    {
-                        key: "srvc.buttons"
-                        className: "btn-group"
-                    }
-                    _service_buttons
-                )
-            )
-            _list.push(" ")
-            _list.push(
-                div(
-                    {
-                        key: "host.buttons"
-                        className: "btn-group"
-                    }
-                    _host_buttons
-                )
-            )
-            _list.push(" ")
-            _list.push(
-                div(
-                    {
-                        key: "type.buttons"
-                        className: "btn-group"
-                    }
-                    _type_buttons
-                )
-            )
-            _list.push(
-                _text_f.join(" ")
-            )
-            return div(
-                {key: "top"}
-                _list
-            )
-    )
-]).directive("icswLivestatusFilterDisplay",
-[
-    "$q", "icswLivestatusFilterReactDisplay",
-(
-    $q, icswLivestatusFilterReactDisplay,
-) ->
-    return  {
-        restrict: "EA"
-        replace: true
-        scope:
-            filter: "=icswLivestatusFilter"
-        link: (scope, element, attr) ->
-            ReactDOM.render(
-                React.createElement(
-                    icswLivestatusFilterReactDisplay
-                    {
-                        livestatus_filter: scope.filter
-                    }
-                )
-                element[0]
-            )
-    }
-
-]).service("icswSaltMonitoringResultService", [() ->
+).service("icswSaltMonitoringResultService", [() ->
 
     _parse_custom_variables = (cvs) ->
         _cv = {}
@@ -463,6 +140,10 @@ angular.module(
         entry = _get_dummy_entry(display_name, "service")
         # is a dummy entry
         entry.$$dummy = true
+        entry.state = "4"
+        entry.state_type = "1"
+        entry.check_type = "0"
+        salt_service_state(entry)
         return entry
 
     get_device_group_entry = (display_name) ->
@@ -472,26 +153,85 @@ angular.module(
     get_system_entry = (display_name) ->
         entry = _get_dummy_entry(display_name, "system")
         return entry
-    
+
+    get_unmonitored_device_entry = (dev) ->
+        # dev ... device_tree device
+        entry = _get_dummy_entry(dev.full_name, "device")
+        entry.$$dummy = true
+        # important: state type is 1 (== hard state) and check_type is 0 (== active)
+        entry.state = "4"
+        entry.state_type = "1"
+        entry.check_type = "0"
+        # fake custom vars
+        entry.custom_variables = "DEVICE_PK|#{dev.idx},UUID|#{dev.uuid}"
+        return entry
+
+    _device_lut = {
+        0: {
+            color: "#66dd66"
+            info: "Up"
+        }
+        1: {
+            color: "#ff7777"
+            info: "Down"
+        }
+        2: {
+            color: "#ff0000"
+            info: "Unreachable"
+        }
+        3: {
+            color: "#dddddd"
+            info: "Unknown"
+        }
+        4: {
+            color: "#888888"
+            info: "not monitored"
+        }
+    }
+
+    _service_lut = {
+        0: {
+            color: "#66dd66"
+            info: "OK"
+        }
+        1: {
+            color: "#dddd88"
+            info: "Warning"
+        }
+        2: {
+            color: "#ff7777"
+            info: "Critical"
+        }
+        3: {
+            color: "#ff0000"
+            info: "Unknown"
+        }
+        4: {
+            color: "#888888"
+            info: "not monitored"
+        }
+    }
+    _struct = {
+        device_lut: _device_lut
+        service_lut: _service_lut
+        device_states: [0, 1, 2, 3, 4]
+        service_states: [0, 1, 2, 3, 4]
+    }
     salt_device_state = (entry) ->
-        entry.$$burst_fill_color = {
-            0: "#66dd66"
-            1: "#ff7777"
-            2: "#ff0000"
-            # special state 
-            3: "#dddddd"
-        }[entry.state]
+        entry.$$burst_fill_color = _device_lut[entry.state].color
         entry.className = {
             0: "svg_ok"
             1: "svg_warn"
             2: "svg_crit"
             3: "svg_unknown"
+            4: "svg_unknown"
         }[entry.state]
         _r_str = {
             0: "success"
             1: "danger"
             2: "danger"
             3: "warning"
+            4: "danger"
         }[entry.state]
         entry.$$icswStateClass = _r_str
         entry.$$icswStateLabelClass = "label-#{_r_str}"
@@ -501,35 +241,35 @@ angular.module(
             1: "Critical"
             2: "Unreachable"
             3: "Not set"
+            4: "Not monitored"
         }[entry.state]
 
     salt_service_state = (entry) ->
-            _r_str = {
-                0: "success"
-                1: "warning"
-                2: "danger"
-                3: "danger"
-            }[entry.state]
-            entry.className = {
-                0: "svg_ok"
-                1: "svg_warn"
-                2: "svg_crit"
-                3: "svg_danger"
-            }[entry.state]
-            entry.$$burst_fill_color = {
-                0: "#66dd66"
-                1: "#dddd88"
-                2: "#ff7777"
-                3: "#ff0000"
-            }[entry.state]
-            entry.$$icswStateLabelClass = "label-#{_r_str}"
-            entry.$$icswStateTextClass = "text-#{_r_str}"
-            entry.$$icswStateString = {
-                0: "OK"
-                1: "Warning"
-                2: "Critical"
-                3: "Unknown"
-            }[entry.state]
+        _r_str = {
+            0: "success"
+            1: "warning"
+            2: "danger"
+            3: "danger"
+            # special state: unmonitored
+            4: "danger"
+        }[entry.state]
+        entry.className = {
+            0: "svg_ok"
+            1: "svg_warn"
+            2: "svg_crit"
+            3: "svg_danger"
+            4: "svg_unknown"
+        }[entry.state]
+        entry.$$burst_fill_color = _service_lut[entry.state].color
+        entry.$$icswStateLabelClass = "label-#{_r_str}"
+        entry.$$icswStateTextClass = "text-#{_r_str}"
+        entry.$$icswStateString = {
+            0: "OK"
+            1: "Warning"
+            2: "Critical"
+            3: "Unknown"
+            4: "unmon"
+        }[entry.state]
 
     salt_host = (entry, device_tree) ->
         if not entry.$$icswSalted?
@@ -565,7 +305,29 @@ angular.module(
                 entry.$$icswCategories = "---"
         return entry
 
+    build_circle_info = (in_type, in_dict, detail_dict) ->
+        # transform a device or service dict (state -> num) to an array
+        # detail_dict: to add detailed info (categories, location, ...)
+        # which is usable for device_circle_info
+        _r_list = []
+        _lut = _struct["#{in_type}_lut"]
+        for _state in _struct["#{in_type}_states"]
+            if _state of in_dict
+                _count = in_dict[_state]
+                _ps = if _count > 1 then "s" else ""
+                _info_str = "#{_count} #{in_type}#{_ps} #{_lut[_state].info}"
+                if detail_dict?
+                    _sub_keys = _.keys(detail_dict[_state])
+                    _info_str = "#{_info_str}, #{_sub_keys.length} subelements"
+                _info = [_count, _lut[_state].color, _info_str]
+                if detail_dict?
+                    _info.push(detail_dict[_state])
+                _r_list.push(_info)
+        return _r_list
+
     return {
+        get_unmonitored_device_entry: get_unmonitored_device_entry
+
         get_dummy_service_entry: get_dummy_service_entry
 
         get_device_group_entry: get_device_group_entry
@@ -577,16 +339,18 @@ angular.module(
         salt_host: salt_host
 
         salt_service: salt_service
+
+        build_circle_info: build_circle_info
     }
 ]).service("icswMonitoringResult",
 [
-    "$q",
+    "$q", "icswTools", "icswSaltMonitoringResultService",
 (
-    $q,
+    $q, icswTools, icswSaltMonitoringResultService,
 ) ->
     class icswMonitoringResult
         constructor: () ->
-            # console.log "new MonRes"
+            @id = icswTools.get_unique_id("monres")
             # selection generation
             @sel_generation = 0
             # result generation
@@ -595,7 +359,11 @@ angular.module(
             @result_notifier = $q.defer()
             @hosts = []
             @services = []
-            @used_cats = []
+            # used monitoring categories
+            @used_mon_cats = []
+            # used device categories
+            @used_device_cats = []
+            @__luts_set = false
 
         new_selection: () =>
             # hm, not needed ... ?
@@ -604,62 +372,142 @@ angular.module(
         stop_receive: () =>
             @result_notifier.reject("stop")
 
-        update: (hosts, services, used_cats) =>
+        copy_from: (src) =>
+            # copy objects from src
+            @update(src.hosts, src.services, src.used_mon_cats, src.used_device_cats)
+            
+        update: (hosts, services, used_mon_cats, used_device_cats) =>
             @generation++
+            @__luts_set = false
             @hosts.length = 0
             for entry in hosts
                 @hosts.push(entry)
             @services.length = 0
             for entry in services
                 @services.push(entry)
-            @used_cats = used_cats
+            @used_mon_cats = used_mon_cats
+            @used_device_cats = used_device_cats
             # console.log "update", @generation
+            @notify()
+
+        notify: () =>
             @result_notifier.notify(@generation)
+
+        # helper functions
+        _copy_list: (attr_name, src_data) =>
+            @[attr_name].length = 0
+            for entry in src_data[attr_name]
+                @[attr_name].push(entry)
 
         apply_base_filter: (filter, src_data) =>
             # apply base livestatus filter
+            @__luts_set = false
+            _host_pks = []
             @hosts.length = 0
             for entry in src_data.hosts
-                if filter.service_types[entry.state_type] and filter.host_states[entry.state]
+                if filter.host_types[entry.state_type] and filter.host_states[entry.state]
                     @hosts.push(entry)
+                    _host_pks.push(entry.$$icswDevice.idx)
 
-            # category filtering ?
             @services.length = 0
             for entry in src_data.services
-                if filter.service_types[entry.state_type] and filter.service_states[entry.state]
+                if filter.linked and entry.$$host_mon_result.$$icswDevice.idx not in _host_pks
+                    true
+                else if filter.service_types[entry.state_type] and filter.service_states[entry.state]
                     @services.push(entry)
+
             # simply copy
-            @used_cats.length = 0
-            for entry in src_data.used_cats
-                @used_cats.push(entry)
+            for attr_name in ["used_mon_cats", "used_device_cats"]
+                @_copy_list(attr_name, src_data)
 
             # bump generation counter
             @generation++
 
-        apply_category_filter: (cat_list, src_data) =>
-            @hosts.length = 0
-            for entry in src_data.hosts
-                @hosts.push(entry)
+        apply_category_filter: (cat_list, src_data, filter_name) =>
+            # filter name is mon or device
+            @__luts_set = false
             # show uncategorized entries
             _zero_cf = 0 in cat_list
-            @services.length = 0
-            for entry in src_data.services
-                _add = true
-                if entry.custom_variables? and entry.custom_variables.cat_pks?
-                    if not _.intersection(cat_list, entry.custom_variables.cat_pks).length
+            if filter_name == "mon"
+                # copy hosts
+                @_copy_list("hosts", src_data)
+                # filter services
+                @services.length = 0
+                for entry in src_data.services
+                    _add = true
+                    if entry.custom_variables? and entry.custom_variables.cat_pks?
+                        if not _.intersection(cat_list, entry.custom_variables.cat_pks).length
+                            _add = false
+                    else if not _zero_cf
                         _add = false
-                else if not _zero_cf
-                    _add = false
-                if _add # entry.$$show
-                    @services.push(entry)
-            # simply copy
-            @used_cats.length = 0
-            for entry in src_data.used_cats
-                if entry in cat_list
-                    @used_cats.push(entry)
+                    if _add
+                        @services.push(entry)
+            else
+                _host_pks = []
+                # device filter
+                @hosts.length = 0
+                for entry in src_data.hosts
+                    _add = true
+                    if entry.$$device_categories.length
+                        if not _.intersection(cat_list, entry.$$device_categories).length
+                            _add = false
+                    else if not _zero_cf
+                        _add = false
+                    if _add
+                        @hosts.push(entry)
+                        _host_pks.push(entry.$$icswDevice.idx)
+                # only take services on a valid host
+                @services.length = 0
+                for entry in src_data.services
+                    if entry.$$host_mon_result.$$icswDevice.idx in _host_pks
+                        @services.push(entry)
+
+            for f_name in ["mon", "device"]
+                attr_name = "used_#{f_name}_cats"
+                # filter
+                @[attr_name].length = 0
+                for entry in src_data[attr_name]
+                    if entry in cat_list or f_name != filter_name
+                        @[attr_name].push(entry)
             # bump generation counter
             @generation++
-
+            
+        build_luts: () =>
+            if @__luts_set
+                return
+            # lookup tables
+            @__luts_set = true
+            _srv_lut = {}
+            _srv_cat_lut = {}
+            for srv in @services
+                if srv.state not of _srv_lut
+                    _srv_lut[srv.state] = 0
+                    _srv_cat_lut[srv.state] = {}
+                _srv_lut[srv.state]++
+                if srv.custom_variables? and srv.custom_variables.cat_pks?
+                    _cats = srv.custom_variables.cat_pks
+                else
+                    # no category
+                    _cats = [0]
+                for _cat in _cats
+                    if _cat not of _srv_cat_lut[srv.state]
+                        _srv_cat_lut[srv.state][_cat] = 0
+                    _srv_cat_lut[srv.state][_cat]++
+            _host_lut = {}
+            _host_cat_lut = {}
+            for host in @hosts
+                if host.state not of _host_lut
+                    _host_lut[host.state] = 0
+                    _host_cat_lut[host.state] = {}
+                _host_lut[host.state]++
+                for _cat in host.$$device_categories
+                    if _cat not of _host_cat_lut[host.state]
+                        _host_cat_lut[host.state][_cat] = 0
+                    _host_cat_lut[host.state][_cat]++
+            @service_circle_data = icswSaltMonitoringResultService.build_circle_info("service", _srv_lut)
+            @device_circle_data = icswSaltMonitoringResultService.build_circle_info("device", _host_lut)
+            @service_circle_data_details = icswSaltMonitoringResultService.build_circle_info("service", _srv_lut, _srv_cat_lut)
+            @device_circle_data_details = icswSaltMonitoringResultService.build_circle_info("device", _host_lut, _host_cat_lut)
 
 ]).service("icswDeviceLivestatusDataService",
 [
@@ -711,7 +559,7 @@ angular.module(
     remove_watchers_by_client = (client) ->
         remove_device_watchers_by_client(client)
         # remove from result list
-        console.log "RWBC", client.toString(), result_dict[client.toString()]
+        # console.log "RWBC", client.toString(), result_dict[client.toString()]
         result_dict[client.toString()].stop_receive()
         delete result_dict[client.toString()]
 
@@ -762,7 +610,8 @@ angular.module(
                         category_tree = result[2].value
                     service_entries = []
                     host_entries = []
-                    used_cats = []
+                    used_mon_cats = []
+                    used_device_cats = []
                     if result[0].state == "fulfilled"
                         # fill service and host_entries, used cats
                         xml = result[0].value
@@ -770,8 +619,23 @@ angular.module(
                             service_entries = service_entries.concat(angular.fromJson($(node).text()))
                         $(xml).find("value[name='host_result']").each (idx, node) =>
                             host_entries = host_entries.concat(angular.fromJson($(node).text()))
+                        _unknown_hosts = (parseInt(_idx) for _idx in watched_devs)
+                        # get all device cats
+                        _dev_cat_pks = (_entry.idx for _entry in category_tree.list when _entry.full_name.match(/\/device\//))
                         for entry in host_entries
                             icswSaltMonitoringResultService.salt_host(entry, device_tree)
+                            # should be in salt_host ?
+                            entry.$$device_categories = _.intersection(entry.$$icswDevice.categories, _dev_cat_pks)
+                            used_device_cats = _.union(entry.$$device_categories, used_device_cats)
+                            _.remove(_unknown_hosts, (_idx) -> return _idx == entry.$$icswDevice.idx)
+                        for _idx in _unknown_hosts
+                            if _idx of device_tree.all_lut
+                                dev = device_tree.all_lut[_idx]
+                                _um_entry = icswSaltMonitoringResultService.get_unmonitored_device_entry(dev)
+                                _um_entry.$$device_categories = _.intersection(dev.categories, _dev_cat_pks)
+                                used_device_cats = _.union(_um_entry.$$device_categories, used_device_cats)
+                                icswSaltMonitoringResultService.salt_host(_um_entry, device_tree)
+                                host_entries.push(_um_entry)
                         srv_id = 0
                         for entry in service_entries
                             srv_id++
@@ -783,7 +647,7 @@ angular.module(
                             h_m_result.$$service_list.push(entry)
                             entry.$$host_mon_result = h_m_result
                             if entry.custom_variables and entry.custom_variables.cat_pks?
-                                used_cats = _.union(used_cats, entry.custom_variables.cat_pks)
+                                used_mon_cats = _.union(used_mon_cats, entry.custom_variables.cat_pks)
                     else
                         # invalidate results
                         for dev_idx, watchers of watch_dict
@@ -802,7 +666,7 @@ angular.module(
                                     hosts_client.push(entry)
                                     for check in entry.$$service_list
                                         services_client.push(check)
-                        _result.update(hosts_client, services_client, used_cats)
+                        _result.update(hosts_client, services_client, used_mon_cats, used_device_cats)
             )
 
     return {
@@ -826,14 +690,17 @@ angular.module(
                 if dev_list.length
                     # console.log "w", dev_list
                     for dev in dev_list
-                        if not watch_dict[dev.idx]?
-                            watch_dict[dev.idx] = []
+                        if not angular.isObject(dev)
+                            console.error "device #{dev} for retain() is not an object"
+                        else
+                            if not watch_dict[dev.idx]?
+                                watch_dict[dev.idx] = []
 
-                        if client not in watch_dict[dev.idx]
-                            watch_dict[dev.idx].push(client)
+                            if client not in watch_dict[dev.idx]
+                                watch_dict[dev.idx].push(client)
 
                 if client not of result_dict
-                    # console.log "n", client
+                    console.log "new client", client
                     result_dict[client] = new icswMonitoringResult()
                 else
                     # console.log "k", client
@@ -845,7 +712,7 @@ angular.module(
                 schedule_load()
             else
                 _defer.reject("client in destroyed list")
-                console.warn "client #{client} in destroyed_list"
+                throw new Error("client #{client} in destroyed_list")
             # the promise resolves always immediately
             return _defer.promise
 
@@ -866,6 +733,69 @@ angular.module(
             if not watchers_present()
                 stop_interval()
     }
+]).service("icswLivestatusSelDevices",
+[
+    "$q", "$rootScope", "icswMonLivestatusPipeBase", "$timeout", "ICSW_SIGNALS",
+    "icswDeviceTreeService", "icswDeviceLivestatusDataService", "icswTools",
+    "icswActiveSelectionService", "icswMonitoringResult",
+(
+    $q, $rootScope, icswMonLivestatusPipeBase, $timeout, ICSW_SIGNALS,
+    icswDeviceTreeService, icswDeviceLivestatusDataService, icswTools,
+    icswActiveSelectionService, icswMonitoringResult,
+) ->
+    class icswLivestatusSelDevices extends icswMonLivestatusPipeBase
+        constructor: () ->
+            super("icswLivestatusSelDevices", false, true)
+            # pipe flags
+            @__dp_async_emit = true
+
+            @struct = {
+                # local id
+                local_id: icswTools.get_unique_id()
+                # device list to emit
+                device_list: []
+                # device tree
+                device_tree: undefined
+                # raw selection
+                raw_selection: undefined
+                # monresult to emit
+                mon_result: new icswMonitoringResult()
+            }
+            # todo: get the current selection after the pipe is fully initialised
+            @dereg = $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"), (event) =>
+                @get_selection()
+            )
+            icswActiveSelectionService.register_receiver()
+            icswDeviceTreeService.load(@struct.local_id).then(
+                (tree) =>
+                    @struct.device_tree = tree
+                    @check_raw_selection()
+            )
+            @get_selection()
+            @set_async_emit_data(@struct.mon_result)
+
+        get_selection: () =>
+            @struct.raw_selection = icswActiveSelectionService.current().tot_dev_sel
+            @check_raw_selection()
+
+        check_raw_selection: () =>
+            if @struct.device_tree? and @struct.raw_selection?
+                @struct.device_list.length = 0
+                for pk in @struct.raw_selection
+                    if @struct.device_tree.all_lut[pk]?
+                        _dev = @struct.device_tree.all_lut[pk]
+                        if not _dev.is_meta_device
+                            @struct.device_list.push(_dev)
+                # we use MonitoringResult as a container to send the device selection down the pipe
+                # console.log "EMIT"
+                # here we go
+                @struct.mon_result.update(@struct.device_list, [], [], [])
+
+        pipeline_pre_close: () =>
+            icswActiveSelectionService.unregister_receiver()
+            # console.log "PPC"
+            @dereg()
+
 ]).service("icswLivestatusDataSource",
 [
     "$q", "$rootScope", "icswMonLivestatusPipeBase", "$timeout",
@@ -876,98 +806,61 @@ angular.module(
 ) ->
     class icswLivestatusDataSource extends icswMonLivestatusPipeBase
         constructor: () ->
-            super("icswLivestatusDataSource", false, true)
-            @_my_id = icswTools.get_unique_id()
+            super("icswLivestatusDataSource", true, true)
+            @__dp_async_emit = true
             @struct = {
+                # local id, created for every call to start()
+                local_id: undefined
                 # device list
                 devices: []
                 # is updating
                 updating: false
                 # data fetch timeout
                 fetch_timeout: undefined
-                # device tree, really needed here ?
-                device_tree: undefined
                 # monitoring data
                 is_running: true
                 # monitoring_data: undefined
+                monitoring_data: undefined
             }
 
         set_running_flag: (flag) =>
             @struct.is_running = flag
-            
-        new_devsel: (devs) =>
+
+        new_data_received: (data) =>
             @struct.devices.length = 0
-            for dev in devs
+            for dev in data.hosts
                 if not dev.is_meta_device
                     @struct.devices.push(dev)
             @start()
+            # important because we are an asynchronous emitter
+            return null
 
         stop_update: () =>
             if @struct.fetch_timeout
                 $timeout.cancel(@struct.fetch_timeout)
                 @struct.fetch_timeout = undefined
+            if @struct.monitoring_data?
+                @struct.monitoring_data.stop_receive()
+                # destroy current fetcher
+                icswDeviceLivestatusDataService.destroy(@struct.local_id)
 
         pipeline_pre_close: () =>
-            icswDeviceLivestatusDataService.destroy(@_my_id)
+            if @struct.monitoring_data?
+                icswDeviceLivestatusDataService.destroy(@struct.local_id)
 
         start: () =>
             @stop_update()
             @struct.updating = true
+            @struct.local_id = icswTools.get_unique_id()
             wait_list = [
-                icswDeviceTreeService.load(@_my_id)
-                icswDeviceLivestatusDataService.retain(@_my_id, @struct.devices)
+                icswDeviceLivestatusDataService.retain(@struct.local_id, @struct.devices)
             ]
             $q.all(wait_list).then(
                 (data) =>
-                    @struct.device_tree = data[0]
                     @struct.updating = false
-                    monitoring_data = data[1]
-                    monitoring_data.result_notifier.promise.then(
-                        (ok) ->
-                            console.log "dr ok"
-                        (not_ok) ->
-                            # stop receiving
-                            # console.log "dr error"
-                        (generation) =>
-                            if @struct.is_running
-                                @feed_data(monitoring_data)
-                            else
-                                console.warn "is_running flag is false"
-                    )
+                    @struct.monitoring_data = data[0]
+                    @set_async_emit_data(@struct.monitoring_data)
             )
-]).service('icswLivestatusCategoryFilter',
-[
-    "$q", "icswMonLivestatusPipeBase", "icswMonitoringResult",
-(
-    $q, icswMonLivestatusPipeBase, icswMonitoringResult,
-) ->
-    class icswLivestatusCategoryFilter extends icswMonLivestatusPipeBase
-        constructor: () ->
-            super("icswLivestatusCategoryFilter", true, true)
-            @set_template(
-                '<icsw-config-category-tree-select icsw-mode="filter" icsw-sub-tree="\'mon\'" icsw-mode="filter" icsw-connect-element="con_element"></icsw-config-category-tree-select>'
-                "CategoryFilter"
-            )
-            @_emit_data = new icswMonitoringResult()
-            @_cat_filter = undefined
-            @_latest_data = undefined
-            @new_data_notifier = $q.defer()
-            #  @new_data_notifier = $q.defer()
-
-        set_category_filter: (sel_cat) ->
-            @_cat_filter = sel_cat
-            if @_latest_data?
-                @emit_data_downstream(@new_data_received(@_latest_data))
-
-        new_data_received: (data) ->
-            @_latest_data = data
-            if @_cat_filter?
-                @_emit_data.apply_category_filter(@_cat_filter, @_latest_data)
-            @new_data_notifier.notify(data)
-            return @_emit_data
-
-        pipeline_reject_called: (reject) ->
-            # ignore, stop processing
 ]).service("icswLivestatusLocationDisplay",
 [
     "$q", "icswMonLivestatusPipeBase", "icswMonitoringResult",
@@ -1373,7 +1266,6 @@ angular.module(
                         () ->
                         (generation) =>
                             # console.log "gen", @props.livestatus_filter, @monitoring_data
-                            console.log "new_gen", generation
                             react_el.force_redraw()
                     )
                     scope.$watch("gfx_size", (new_val) ->

@@ -35,6 +35,7 @@ from initat.cluster.frontend import rest_views, device_views, main_views, networ
 
 asset_patterns = [
     url("^export_assetbatch_to_xlsx$", asset_views.export_assetbatch_to_xlsx.as_view(), name="export_assetbatch_to_xlsx"),
+    url("^export_assetbatch_to_pdf$", asset_views.export_assetbatch_to_pdf.as_view(), name="export_assetbatch_to_pdf"),
     url("^export_scheduled_runs_to_csv$", asset_views.export_scheduled_runs_to_csv.as_view(), name="export_scheduled_runs_to_csv"),
     url("^export_packages_to_csv$", asset_views.export_packages_to_csv.as_view(), name="export_packages_to_csv"),
     url("^export_assetruns_to_csv$", asset_views.export_assetruns_to_csv.as_view(), name="export_assetruns_to_csv"),
@@ -58,6 +59,7 @@ asset_patterns = [
 session_patterns = [
     url(r"logout", session_views.session_logout.as_view(), name="logout"),
     url(r"login", session_views.session_login.as_view(), name="login"),
+    url(r"expel", session_views.session_expel.as_view(), name="expel"),
     url(r"log_addons$", session_views.login_addons.as_view(), name="login_addons"),
     url(r"get_authenticated_user$", session_views.UserView.as_view({"get": "get_user"}), name="get_authenticated_user"),
     url(r"get_csrf_token$", session_views.get_csrf_token.as_view(), name="get_csrf_token"),
@@ -149,6 +151,21 @@ device_patterns = [
     url("^GetMatchingDevices$", device_views.GetMatchingDevices.as_view(), name="GetMatchingDevices"),
     url("^create_device", device_views.create_device.as_view(), name="create_device"),
     url("^device_list_info$", device_views.DeviceListInfo.as_view(), name="device_list_info"),
+    url(
+        "^device_variable_call$",
+        device_views.DeviceVariableViewSet.as_view({"post": "create", "get": "get"}),
+        name="device_variable_list",
+    ),
+    url(
+        "^device_variable_call/(?P<pk>[0-9]+)$",
+        device_views.DeviceVariableViewSet.as_view({"delete": "delete", "put": "store"}),
+        name="device_variable_detail",
+    ),
+    url(
+        "^device_variable_scope_call$",
+        device_views.DeviceVariableScopeViewSet.as_view({"get": "list"}),
+        name="device_variable_scope_list",
+    ),
 ]
 
 
@@ -166,7 +183,6 @@ network_patterns = [
     url("^json_network$", network_views.json_network.as_view(), name="json_network"),
     # url("^cdnt$", network_views.get_domain_name_tree.as_view(), name="domain_name_tree"),
     url("^get_clusters$", network_views.get_network_clusters.as_view(), name="get_clusters"),
-    url("^get_scans", network_views.get_active_scans.as_view(), name="get_active_scans"),
     url("^get_free_ip$", network_views.get_free_ip.as_view(), name="get_free_ip"),
     url("^rescan_networks", network_views.rescan_networks.as_view(), name="rescan_networks"),
 ]
@@ -200,8 +216,6 @@ monitoring_patterns = [
 
 user_patterns = [
     url("sync$", user_views.sync_users.as_view(), name="sync_users"),
-    url("^set_user_var$", user_views.set_user_var.as_view(), name="set_user_var"),
-    url("^get_user_var$", user_views.get_user_var.as_view(), name="get_user_var"),
     url("^set_theme$", user_views.set_theme.as_view(), name="set_theme"),
     url("^change_obj_perm$", user_views.change_object_permission.as_view(), name="change_object_permission"),
     url("^upload_license_file$", user_views.upload_license_file.as_view(), name="upload_license_file"),

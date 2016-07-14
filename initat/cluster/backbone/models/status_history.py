@@ -1,8 +1,8 @@
-# Copyright (C) 2015-2016 Bernhard Mallinger, init.at
+# Copyright (C) 2015-2016 Bernhard Mallinger, Andreas Lang-Nevyjel, init.at
 #
 # this file is part of icsw-server
 #
-# Send feedback to: <mallinger@init.at>
+# Send feedback to: <mallinger@init.at>, <lang-nevyjel@init.at>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -60,10 +60,12 @@ class mon_icinga_log_raw_base(models.Model):
     STATE_UNDETERMINED_LONG = "UNDETERMINED"
     STATE_PLANNED_DOWN = "PD"  # state as well as state type
     STATE_PLANNED_DOWN_LONG = "PLANNED DOWN"
-    STATE_TYPES = [(STATE_TYPE_HARD, "HARD"),
-                   (STATE_TYPE_SOFT, "SOFT"),
-                   (STATE_UNDETERMINED, STATE_UNDETERMINED),
-                   (STATE_PLANNED_DOWN, STATE_PLANNED_DOWN_LONG)]
+    STATE_TYPES = [
+        (STATE_TYPE_HARD, "HARD"),
+        (STATE_TYPE_SOFT, "SOFT"),
+        (STATE_UNDETERMINED, STATE_UNDETERMINED),
+        (STATE_PLANNED_DOWN, STATE_PLANNED_DOWN_LONG)
+    ]
 
     START = "START"
     STOP = "STOP"
@@ -135,6 +137,10 @@ class mon_icinga_log_raw_host_alert_data(mon_icinga_log_raw_base):
 
 
 class raw_service_alert_manager(models.Manager):
+    @staticmethod
+    def init_service_name_cache(pk_list):
+        raw_service_alert_manager._sn_cache = {_val.pk: _val for _val in mon_check_command.objects.filter(Q(pk__in=pk_list))}
+
     def calc_alerts(self, start_time, end_time, additional_filter=None):
         # result is ordered by date
         service_alerts = defaultdict(lambda: [])
@@ -172,10 +178,7 @@ class raw_service_alert_manager(models.Manager):
 
     @staticmethod
     def calculate_service_name_for_client_tuple(service_id, service_info):
-        try:
-            service = mon_check_command.objects.get(pk=service_id)
-        except mon_check_command.DoesNotExist:
-            service = None
+        service = raw_service_alert_manager._sn_cache.get(service_id, None)
         return raw_service_alert_manager._do_calculate_service_name_for_client(service, service_info)
 
     @staticmethod
@@ -428,11 +431,15 @@ class mon_icinga_log_aggregated_service_data_manager(models.Manager):
 
             queryset = mon_icinga_log_aggregated_service_data.objects.filter(query_filter & Q(timespan__in=timespans))
 
-            data_per_device = {device_id: defaultdict(lambda: []) for device_id in device_ids}
-            used_device_services = {device_id: set() for device_id in device_ids}
+            data_per_device = {
+                device_id: defaultdict(lambda: []) for device_id in device_ids
+            }
+            used_device_services = {
+                device_id: set() for device_id in device_ids
+            }
             # can't do regular prefetch_related for queryset, this seems to work
             device_service_timespans = collections.defaultdict(lambda: collections.defaultdict(lambda: set()))
-            for entry in queryset.prefetch_related(Prefetch("service")):
+            for entry in queryset.prefetch_related(Prefetch("service"), Prefetch("timespan")):
 
                 if entry.service is not None:
                     locked = LicenseLockListDeviceService.objects.is_device_service_locked(
@@ -557,9 +564,9 @@ class mon_icinga_log_aggregated_service_data(models.Model):
 
 
 class StatusHistoryUtils(object):
-    """Misc functions used in this file mostly"""
+    """ Misc functions used in this file mostly """
     @staticmethod
-    def get_key_fun(is_host):
+    def get_key_func(is_host):
         if is_host:
             key_fun = lambda entry: entry.device_id
         else:
@@ -673,31 +680,65 @@ class StatusHistoryUtils(object):
 
         # NOTE: apparently, in django, if you use group_by, you can only select the elements you group_by and
         #       the annotated elements therefore we retrieve the extra parameters manually
+        # new code, reduces database queries to only one per call
+        _queries = []
         for k, v in last_service_alert_cache.iteritems():
             if any(key not in v[0] for key in additional_fields):
                 if is_host:
-                    additional_fields_query = obj_man.filter(
-                        device_id=k,
-                        date=v[1]
+                    _queries.append(
+                        Q(device_id=k) & Q(date=v[1])
                     )
                 else:
-                    additional_fields_query = obj_man.filter(
-                        device_id=k[0],
-                        service_id=k[1],
-                        service_info=k[2],
-                        date=v[1]
+                    _queries.append(
+                        Q(device_id=k[0]) & Q(service_id=k[1]) & Q(service_info=k[2]) & Q(date=v[1])
                     )
+        _queries = reduce(
+            operator.ior, _queries
+        )
+        if is_host:
+            _found = obj_man.filter(_queries).values("device_id", *additional_fields)
+        else:
+            _found = obj_man.filter(_queries).values("device_id", "service_id", "service_info", *additional_fields)
+        for k, v in last_service_alert_cache.iteritems():
+            if any(key not in v[0] for key in additional_fields):
+                if is_host:
+                    # filter
+                    _values = [_entry for _entry in _found if _entry["device_id"] == k and _entry["date"] == v[1]]
+                else:
+                    _values = [_entry for _entry in _found if _entry["device_id"] == k[0] and _entry["date"] == v[1] and _entry["service_id"] == k[1] and _entry["service_info"] == k[2]]
+                if not len(_values):
+                    _values = obj_man.filter(device_independent=True, date=v[1])
+                _first_value = _values[0]
+                # if _first_value["msg"] in {"(null)"}:
+                #     _first_value["msg"] = ""
+                v[0].update({key: _first_value[key] for key in additional_fields})
+        # old code
+        if False:
+            for k, v in last_service_alert_cache.iteritems():
+                if any(key not in v[0] for key in additional_fields):
+                    if is_host:
+                        additional_fields_query = obj_man.filter(
+                            device_id=k,
+                            date=v[1]
+                        )
+                    else:
+                        additional_fields_query = obj_man.filter(
+                            device_id=k[0],
+                            service_id=k[1],
+                            service_info=k[2],
+                            date=v[1]
+                        )
 
-                if len(additional_fields_query) == 0:  # must be dev independent
-                    additional_fields_query = obj_man.filter(device_independent=True, date=v[1])
-                v[0].update(additional_fields_query.values(*additional_fields)[0])
-
+                    if additional_fields_query.count() == 0:  # must be dev independent
+                        additional_fields_query = obj_man.filter(device_independent=True, date=v[1])
+                    v[0].update(additional_fields_query.values(*additional_fields)[0])
         # drop extreme date
         return {k: v[0] for (k, v) in last_service_alert_cache.iteritems()}
 
 
 class AlertList(object):
-    """Nice interface to a list of either host or service alerts.
+    """
+    Nice interface to a list of either host or service alerts.
     Includes handling of last before and first after state as well as downtimes.
     Log aggregation accesses this stuff directly as this here would be too slow (especially calc_limit_alerts).
     """
@@ -705,6 +746,7 @@ class AlertList(object):
         # self.is_host = is_host
         # self.alert_filter = alert_filter
 
+        # host or service alert data
         model = mon_icinga_log_raw_host_alert_data if is_host else mon_icinga_log_raw_service_alert_data
 
         self.alerts = model.objects.calc_alerts(
@@ -732,7 +774,7 @@ class AlertList(object):
             downtimes_qs = downtimes_qs.filter(alert_filter)
         downtimes = StatusHistoryUtils.preprocess_start_stop_data(
             downtimes_qs,
-            StatusHistoryUtils.get_key_fun(is_host),
+            StatusHistoryUtils.get_key_func(is_host),
             'downtime_state',
             start_time,
             end_time
@@ -744,7 +786,7 @@ class AlertList(object):
             if downtime_at_start_alert:
                 downtime_entry = {}
                 # create entry in "last before" format
-                for key in [
+                for key in {
                     'device_id',
                     'service_id',
                     'service_info',
@@ -752,7 +794,7 @@ class AlertList(object):
                     'msg',
                     'state',
                     'state_type'
-                ]:
+                }:
                     if hasattr(downtime_at_start_alert, key):
                         downtime_entry[key] = getattr(downtime_entry, key)
 
@@ -772,9 +814,11 @@ class AlertList(object):
         else:
             # filter alerts
             all_alerts = alerts
-            alerts = [alert for alert in alerts
-                      if not any(downtime.start <= alert.date < downtime.end
-                                 for downtime in downtime_list)]
+            alerts = [
+                alert for alert in alerts if not any(
+                    downtime.start <= alert.date < downtime.end for downtime in downtime_list
+                )
+            ]
             # add downtime state changing alerts
             for downtime in downtime_list:
                 # search last before entry

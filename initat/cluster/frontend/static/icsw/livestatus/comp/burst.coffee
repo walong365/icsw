@@ -23,167 +23,7 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.router",
     ]
-).factory("icswBurstServiceDetail",
-[
-    "$q",
-(
-    $q,
-) ->
-    {div, ul, li, h3, span} = React.DOM
-    return React.createClass(
-        propTypes: {
-            service: React.PropTypes.object
-        }
-
-        render: () ->
-            _srvc = @props.service
-            if _srvc
-                if _srvc.$$dummy
-                    _div_list = h3(
-                        {key: "header"}
-                        "Dummy segment"
-                    )
-                else
-                    _ul_list = []
-                    if _srvc.$$ct in ["system", "devicegroup"]
-                        if _srvc.$$ct == "system"
-                            _obj_name = "System"
-                        else
-                            _obj_name = _.capitalize(_srvc.$$ct) + " " + _srvc.display_name
-                        _ul_list.push(
-                            li(
-                                {key: "li.state", className: "list-group-item"}
-                                [
-                                    "State"
-                                    span(
-                                        {key: "state.span", className: "pull-right #{_srvc.$$icswStateTextClass}"}
-                                        _srvc.$$icswStateString
-                                    )
-                                ]
-                            )
-                        )
-                    if _srvc.$$ct in ["device", "service"]
-                        if _srvc.$$ct == "service"
-                            _host = _srvc.$$host_mon_result
-                            _obj_name = _.capitalize(_srvc.$$ct) + " " + _srvc.display_name
-                        else
-                            _host = _srvc
-                            _obj_name = _.capitalize(_srvc.$$ct) + " " + _host.$$icswDevice.full_name
-                        _path_span = [
-                            _host.$$icswDeviceGroup.name
-                            " "
-                            span(
-                                {key: "path.span2", className: "fa fa-arrow-right"}
-                            )
-                            " "
-                            _host.$$icswDevice.full_name
-                        ]
-                        if _srvc.$$ct == "service"
-                            _path_span = _path_span.concat(
-                                [
-                                    " "
-                                    span(
-                                        {key: "path.span3", className: "fa fa-arrow-right"}
-                                    )
-                                    " "
-                                    _srvc.display_name
-                                ]
-                            )
-                        _ul_list.push(
-                            li(
-                                {key: "li.path", className: "list-group-item"}
-                                [
-                                    "Path"
-                                    span(
-                                        {key: "path.span", className: "pull-right"}
-                                        _path_span
-                                    )
-                                ]
-                            )
-                        )
-                        # state li
-                        _ul_list.push(
-                            li(
-                                {key: "li.state2", className: "list-group-item"}
-                                [
-                                    "State"
-                                    span(
-                                        {key: "state.span", className: "pull-right"}
-                                        "#{_srvc.$$icswStateTypeString} #{_srvc.$$icswCheckTypeString}, "
-                                        span(
-                                            {key: "state.span2", className: _srvc.$$icswStateTextClass}
-                                            _srvc.$$icswStateString
-                                        )
-                                        ", "
-                                        span(
-                                            {key: "state.span3", className: "label #{_srvc.$$icswAttemptLabelClass}"}
-                                            _srvc.$$icswAttemptInfo
-                                        )
-                                    )
-                                ]
-                            )
-                        )
-                        # last check / last change
-                        _ul_list.push(
-                            li(
-                                {key: "li.lclc", className: "list-group-item"}
-                                [
-                                    "last check / last change"
-                                    span(
-                                        {key: "lclc.span", className: "pull-right"}
-                                        "#{_srvc.$$icswLastCheckString } / #{_srvc.$$icswLastStateChangeString}"
-                                    )
-                                ]
-                            )
-                        )
-                        if _srvc.$$ct == "service"
-                            # categories
-                            _ul_list.push(
-                                li(
-                                    {key: "li.cats", className: "list-group-item"}
-                                    [
-                                        "Categories"
-                                        span(
-                                            {key: "cats.span", className: "pull-right"}
-                                            "#{_srvc.$$icswCategories}"
-                                        )
-                                    ]
-                                )
-                            )
-                        # output
-                        _ul_list.push(
-                            li(
-                                {key: "li.output", className: "list-group-item"}
-                                [
-                                    "Output"
-                                    span(
-                                        {key: "output.span", className: "pull-right"}
-                                        _srvc.plugin_output or "N/A"
-                                    )
-                                ]
-                            )
-                        )
-                    _div_list = [
-                        h3(
-                            {key: "header"}
-                            _obj_name
-                        )
-                        ul(
-                            {key: "ul", className: "list-group"}
-                            _ul_list
-                        )
-                    ]
-            else
-                _div_list = h3(
-                    {key: "header"}
-                    "Nothing selected"
-                )
-            return div(
-                {key: "top"}
-                _div_list
-            )
-    )
-]).factory("icswBurstReactSegment",
+).factory("icswBurstReactSegment",
 [
     "$q",
 (
@@ -209,7 +49,6 @@ angular.module(
                 _cls = "#{_cls} svg_sel"
             if _bn.clicked
                 _cls = "#{_cls} svg_clicked"
-            _g_list = []
             _segment = {
                 key: _path_el.key
                 d: _path_el.d
@@ -301,12 +140,12 @@ angular.module(
 [
     "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswNetworkTopologyReactSVGContainer",
     "icswDeviceLivestatusFunctions", "icswBurstDrawParameters", "icswBurstReactSegment",
-    "icswBurstServiceDetail", "icswBurstReactSegmentText", "icswMonitoringResult",
+    "icswBurstReactSegmentText", "icswMonitoringResult",
     "$timeout",
 (
     $q, ICSW_URLS, icswSimpleAjaxCall, icswNetworkTopologyReactSVGContainer,
     icswDeviceLivestatusFunctions, icswBurstDrawParameters, icswBurstReactSegment,
-    icswBurstServiceDetail, icswBurstReactSegmentText, icswMonitoringResult,
+    icswBurstReactSegmentText, icswMonitoringResult,
     $timeout,
 ) ->
     # Network topology container, including selection and redraw button
@@ -396,7 +235,7 @@ angular.module(
                             if _service.$$host_mon_result.$$icswDevice.idx not in _host_idxs
                                 _host_idxs.push(_service.$$host_mon_result.$$icswDevice.idx)
                                 _hosts.push(_service.$$host_mon_result)
-                    @props.return_data.update(_hosts, _services, [])
+                    @props.return_data.update(_hosts, _services, [], [])
                 if @clicked_focus then 0 else 50
             )
             # console.log _services
@@ -407,7 +246,7 @@ angular.module(
                 @root_node.clear_focus()
             @focus_name = ""
             if do_export
-                @props.return_data.update([], [], [])
+                @props.return_data.update([], [], [], [])
             @setState({focus_element: undefined})
 
         render: () ->
@@ -476,7 +315,7 @@ angular.module(
                             )
             else
                 # not interactive, simple list of graphs
-                _g_list = (path(_element) for _element in root_node.element_list)
+                _g_list = (path(_.pickBy(_element, (value, key) -> return not key.match(/\$/))) for _element in root_node.element_list)
             # _g_list = []
 
             _svg = svg(
@@ -484,8 +323,8 @@ angular.module(
                     key: "svg.top"
                     width: "#{@props.draw_parameters.total_width}px"
                     height: "#{@props.draw_parameters.total_height}px"
-                    "font-family": "'Open-Sans', sans-serif"
-                    "font-size": "10pt"
+                    fontFamily: "'Open-Sans', sans-serif"
+                    fontSize: "10pt"
                 }
                 [
                     g(
@@ -519,19 +358,18 @@ angular.module(
                                 h3(
                                     {key: "graph.header"}
                                     "Burst graph (" + @props.draw_parameters.get_segment_info()
-                                    if @clicked_focus then span({key: "sel.span", className: "text-warning"}, ", clicked") else ""
+                                    if @clicked_focus then span(
+                                        {
+                                            key: "sel.span"
+                                            className: "text-warning"
+                                        }
+                                        ", clicked"
+                                    ) else ""
                                     ")"
                                 )
                                 _svg
                             ]
                         )
-                        #div(
-                        #    {
-                        #        key: "detail.div"
-                        #        className: "col-xs-6"
-                        #    }
-                        #    React.createElement(icswBurstServiceDetail, {service: _fe})
-                        #)
                     ]
                 )
             else

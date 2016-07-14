@@ -100,6 +100,5 @@ def main():
     # check modify_sge_global flag and set filesystem flag accordingly
     sge_license_tools.handle_license_policy(global_config["LICENSE_BASE"], global_config["MODIFY_SGE_GLOBAL"])
     ServerProcess().loop()
-    configfile.terminate_manager()
     # exit
     os._exit(0)

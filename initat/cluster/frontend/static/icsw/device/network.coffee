@@ -199,24 +199,37 @@ angular.module(
         sub_scope.network_type_names = network_type_names
 
         sub_scope.scan_settings = {
-            "manual_address": ""
+            manual_address: ""
             # set snmp / wmi names
-            "snmp_community": "public"
-            "snmp_version": "2c"
-            "wmi_username": "Administrator"
-            "wmi_password": ""
-            "wmi_discard_disabled_interfaces": true
-            "remove_not_found": false
-            "strict_mode": true
-            "modify_peering": false
-            "scan_mode": "NOT_SET"
-            "device": dev.idx
+            snmp_community: "public"
+            snmp_version: "2c"
+            wmi_username: "Administrator"
+            wmi_password: ""
+            wmi_discard_disabled_interfaces: true
+            remove_not_found: false
+            strict_mode: true
+            modify_peering: false
+            scan_mode: "NOT_SET"
+            device: dev.idx
         }
-        if Object.keys(ip_dict).length == 1
+        if _.keys(ip_dict).length == 1
             nw_ip_addresses = ip_dict[Object.keys(ip_dict)[0]]
             if nw_ip_addresses.length == 1
                 sub_scope.scan_settings.manual_address = nw_ip_addresses[0]
-
+            else if nw_ip_addresses.length > 1
+                # take last IP address
+                sub_scope.scan_settings.manual_address = nw_ip_addresses[-1]
+        else
+            # preferred ip addresses
+            _ip_to_use = ""
+            for _pref in ["p", "o", "s", "b"]
+                if _pref of $scope.network_tree.nw_type_lut
+                    _nwt = $scope.network_tree.nw_type_lut[_pref]
+                    if _nwt.description of ip_dict
+                        _ip_to_use = ip_dict[_nwt.description][0]
+                        break
+            if _ip_to_use
+                sub_scope.scan_settings.manual_address = _ip_to_use
 
         sub_scope.active_scan = {
             "base": false
@@ -279,7 +292,7 @@ angular.module(
                 $scope.peer_list.enrich_device_tree($scope.device_tree, $scope.local_helper_obj, $scope.remote_helper_obj)
                 $scope.device_tree.build_helper_luts(
                     ["network_info"]
-                    $scope.local_helper_ob
+                    $scope.local_helper_obj
                 )
         )
         return
@@ -320,11 +333,11 @@ angular.module(
                     else
                         blockUI.start()
                         icswSimpleAjaxCall(
-                            url     : ICSW_URLS.NETWORK_COPY_NETWORK
-                            data    : {
-                                "source_dev" : sub_scope.settings.src_device.idx
-                                "copy_coms"  : sub_scope.settings.copy_coms
-                                "all_devs"   : angular.toJson((dev.idx for dev in $scope.devices))
+                            url: ICSW_URLS.NETWORK_COPY_NETWORK
+                            data: {
+                                source_dev: sub_scope.settings.src_device.idx
+                                copy_coms: sub_scope.settings.copy_coms
+                                all_devs: angular.toJson((dev.idx for dev in $scope.devices))
                             }
                         ).then(
                             (xml) ->
@@ -814,7 +827,7 @@ angular.module(
             }[eth_opt]
 
     $scope.no_scan_running = (nd) ->
-        return if $scope.device_tree.all_lut[nd.device].active_scan then false else true
+        return $scope.device_tree.all_lut[nd.device].devicescanlock_set.length == 0
 
     $scope.get_num_peers_nd = (nd) ->
         if nd.idx of $scope.peer_list.nd_lut
@@ -963,62 +976,94 @@ angular.module(
         scope: false
         controller: "icswDeviceNetworkNetdeviceRowCtrl"
     }
+]).factory("icswDeviceComCapabilitiesReact",
+[
+    "$q",
+(
+    $q,
+) ->
+    {span, ul, i} = React.DOM
+    return React.createClass(
+        propTypes: {
+            device: React.PropTypes.object
+            detail: React.PropTypes.bool
+        }
+
+        getInitialState: () ->
+            # no state
+            return {}
+
+        render: () ->
+            caps = @props.device.com_capability_list
+            if caps.length
+                _cls = "success"
+                if @props.detail
+                    _text = (entry.name for entry in caps).join(", ")
+                else
+                    _text = (entry.matchcode for entry in caps).join(", ")
+            else
+                _text = "N/A"
+                _cls = "danger"
+            _span_list = [
+                _text
+            ]
+            if @props.device.devicescanlock_set.length
+                _span_list.push(" ")
+                _span_list.push(
+                    i(
+                        {
+                            key: "ladda"
+                            className: "fa fa-spinner fa-spin fa-3x fa-fw"
+                        }
+
+                    )
+                )
+                _span_list.push(
+                    @props.device.devicescanlock_set.length
+                )
+            return span(
+                {
+                    key: "top"
+                    className: "label label-#{_cls}"
+                }
+                _span_list
+            )
+    )
+
+
 ]).directive("icswDeviceComCapabilities",
 [
-    "$templateCache", "$compile", "icswCachingCall", "ICSW_URLS", "icswDeviceTreeService",
-    "icswDeviceTreeHelperService", "ICSW_SIGNALS", "$rootScope",
+    "icswDeviceTreeHelperService", "ICSW_SIGNALS", "$rootScope", "icswDeviceComCapabilitiesReact",
 (
-    $templateCache, $compile, icswCachingCall, ICSW_URLS, icswDeviceTreeService,
-    icswDeviceTreeHelperService, ICSW_SIGNALS, $rootScope
+    icswDeviceTreeHelperService, ICSW_SIGNALS, $rootScope, icswDeviceComCapabilitiesReact,
 ) ->
     return {
         restrict : "EA"
         scope:
-            device: "=device"
-            detail: "=detail"
+            device: "=icswDevice"
+            detail: "=icswDetail"
         link: (scope, element, attrs) ->
-            _current = icswDeviceTreeService.current()
-            element.children().remove()
-            new_el = $compile("<button type='button' class='btn btn-xs btn-warning' ladda='pending' data-style='expand-left'></button>")(scope)
-            element.append(new_el)
-
-            $rootScope.$on(ICSW_SIGNALS("ICSW_DEVICE_SCAN_CHANGED"), (event, pk, scan_mode) ->
-                if pk == scope.device.idx
-                    if scan_mode
-                        scope.pending = true
-                        # distinguish between base and other scans
-                        if scan_mode == "base"
-                            # base scan running
-                            update_button(scan_mode, "btn-warning")
-                        else
-                            # highlight running scan ?
-                            update_button(scan_mode, "btn-warning")
-                    else
-                        scope.pending = false
-                        update_com_cap()
+            _node = undefined
+            _node = ReactDOM.render(
+                React.createElement(
+                    icswDeviceComCapabilitiesReact
+                    {
+                        device: scope.device
+                        detail: if scope.detail? then true else false
+                    }
+                )
+                element[0]
             )
 
-            update_button = (text, cls) ->
-                new_el.removeClass("btn-warning btn-danger btn-success").addClass(cls)
-                new_el.find("span.ladda-label").text(text)
-
-            update_com_cap = () ->
-                hs = icswDeviceTreeHelperService.create(_current, [scope.device])
-                _current.enrich_devices(hs, ["com_info"]).then(
-                    (set) ->
-                        if scope.device.com_capability_list.length
-                            _class = "btn-success"
-                            if scope.detail?
-                                _text = (entry.name for entry in scope.device.com_capability_list).join(", ")
-                            else
-                                _text = (entry.matchcode for entry in scope.device.com_capability_list).join(", ")
-                        else
-                            _class = "btn-danger"
-                            _text = "N/A"
-                        update_button(_text, _class)
-                )
-
-            update_com_cap()
+            $rootScope.$on(ICSW_SIGNALS("ICSW_DEVICE_SCAN_CHANGED"), (event, pk) ->
+                # console.log "***", pk, scan_mode
+                if pk == scope.device.idx
+                    _node.forceUpdate()
+            )
+            scope.$on("$destroy", () ->
+                if _node?
+                    ReactDOM.unmountComponentAtNode(element[0])
+            )
     }
 ]).controller("icswDeviceNetworkIpRowCtrl", ["$scope", ($scope) ->
     $scope.get_netdevice_name_from_ip = (nd) ->
@@ -1033,7 +1078,7 @@ angular.module(
         return nd_name
 
     $scope.no_scan_running = (ip_obj) ->
-        return if $scope.device_tree.all_lut[$scope.local_helper_obj.netdevice_lut[ip_obj.netdevice].device].active_scan then false else true
+        return $scope.device_tree.all_lut[$scope.local_helper_obj.netdevice_lut[ip_obj.netdevice].device].devicescanlock_set.length == 0
 
     $scope.get_devname_from_ip = (ip_obj) ->
         return $scope.device_tree.all_lut[$scope.local_helper_obj.netdevice_lut[ip_obj.netdevice].device].full_name

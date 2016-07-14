@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2001-2009,2011-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2009,2011-2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #
@@ -166,6 +166,13 @@ class InstanceXML(object):
             del _tree_dict[_key]
         _inst_keys = list(set(_inst_keys) - set(_to_remove))
         _overlay_keys = list(set(_overlay_keys) - set(_to_remove))
+        _first_instance = "client.xml"
+        _inst_keys = [
+            _entry for _entry in _inst_keys if _entry == _first_instance
+        ] + [
+            _entry for _entry in _inst_keys if _entry != _first_instance
+        ]
+        _IGNORE_DUPS = ["memcached"]
         for _inst_key in _inst_keys:
             for sub_inst in _tree_dict[_inst_key].findall("instance"):
                 _add_list = [sub_inst.attrib["name"]]
@@ -175,7 +182,11 @@ class InstanceXML(object):
                         self.__alias_lut[_an] = sub_inst.attrib["name"]
                 for _name in _add_list:
                     if _name in self.__lut:
-                        raise KeyError("name {} already present in instance lut".format(_name))
+                        if _name in _IGNORE_DUPS:
+                            # ignore
+                            print("duplicate entry '{}' found, ignoring".format(_name))
+                        else:
+                            raise KeyError("name {} already present in instance lut".format(_name))
                     else:
                         self.__lut[_name] = sub_inst
                 self.tree.append(sub_inst)
@@ -193,6 +204,33 @@ class InstanceXML(object):
                     # simply append, fixme todo: intelligent merge
                     for _el in sub_inst:
                         _main_inst.append(_el)
+        self._build_dependency_dict()
+
+    def _build_dependency_dict(self):
+        self.__needed_for_start = {}
+        self.__needed_for_stop = {}
+        # build dependencies
+        for _iwd in self.tree.xpath("instance[.//dependencies]"):
+            _inst_name = _iwd.attrib["name"]
+            _needed = _iwd.xpath(".//dependencies/needed-for-start")
+            for _need_el in _needed:
+                _need = _need_el.text
+                _sym = True if int(_need_el.get("symmetrical", "0")) else False
+                if self.tree.find(".//instance[@name='{}']".format(_need)) is None:
+                    raise KeyError("dependency '{}' for instance '{}' not found".format(_need, _inst_name))
+                if _need == _inst_name:
+                    raise KeyError("cannot depend on myself ({})".format(_inst_name))
+                self.__needed_for_start.setdefault(_inst_name, []).append(_need)
+                if _sym:
+                    self.__needed_for_stop.setdefault(_need, []).append(_inst_name)
+
+    def get_start_dependencies(self, inst_name):
+        # return list of required started instances for given instance name
+        return self.__needed_for_start.get(inst_name, [])
+
+    def get_stop_dependencies(self, inst_name):
+        # return list of required stopped instances for given instance name
+        return self.__needed_for_stop.get(inst_name, [])
 
     def __contains__(self, name):
         return name in self.__lut

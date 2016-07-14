@@ -28,7 +28,7 @@ import time
 
 import zmq
 from django.db.models import Max, Min, Avg, Count
-from lxml.builder import E  # @UnresolvedImport @UnusedImport
+from lxml.builder import E
 
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import ext_license_site, ext_license, ext_license_check, \
@@ -62,6 +62,7 @@ def pairwise(iterable):
 
 class LicenseProcess(threading_tools.process_obj):
     def process_init(self):
+        global_config.close()
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],

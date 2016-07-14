@@ -125,6 +125,5 @@ def main():
         ]
     )
     run_code()
-    configfile.terminate_manager()
     # exit
     os._exit(0)

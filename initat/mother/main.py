@@ -85,5 +85,4 @@ def main():
     settings.DEBUG = global_config["DATABASE_DEBUG"]
     settings.DATABASE_DEBUG = global_config["DATABASE_DEBUG"]
     initat.mother.server.server_process().loop()
-    configfile.terminate_manager()
     sys.exit(0)

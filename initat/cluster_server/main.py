@@ -108,5 +108,4 @@ def main(opt_args=None):
     )
     settings.DATABASE_DEBUG = global_config["DATABASE_DEBUG"]
     run_code(options)
-    configfile.terminate_manager()
     return 0

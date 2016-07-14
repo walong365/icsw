@@ -1132,65 +1132,6 @@ def get_gid_from_name(group):
     return new_gid, new_gid_name
 
 
-def change_user_group(user, group, groups=[], **kwargs):
-    new_uid, new_uid_name = get_uid_from_name(user)
-    new_gid, new_gid_name = get_gid_from_name(group)
-    add_groups, add_group_names = ([], [])
-    for add_grp in groups:
-        try:
-            addgrp_stuff = grp.getgrnam(add_grp)
-            add_gid, add_gid_name = (addgrp_stuff[2], addgrp_stuff[0])
-        except KeyError:
-            add_gid, add_gid_name = (0, "root")
-            logging_tools.my_syslog("Cannot find group '{}', using {} ({:d})".format(add_grp, add_gid_name, add_gid))
-        if add_gid not in add_groups:
-            add_groups.append(add_gid)
-            add_group_names.append(add_gid_name)
-    act_uid, act_gid = (os.getuid(), os.getgid())
-    try:
-        act_uid_name = pwd.getpwuid(act_uid)[0]
-    except:
-        act_uid_name = "<unknown>"
-    try:
-        act_gid_name = grp.getgrgid(act_gid)[0]
-    except:
-        act_gid_name = "<unknown>"
-    if add_groups:
-        logging_tools.my_syslog(
-            "Trying to set additional groups to {} ({})".format(
-                ", ".join(add_group_names), ", ".join(["{:d}".format(x) for x in add_groups])
-            )
-        )
-        os.setgroups(add_groups)
-    logging_tools.my_syslog(
-        "Trying to drop pid {:d} from [{} ({:d}), {} ({:d})] to [{} ({:d}), {} ({:d})] ...".format(
-            os.getpid(),
-            act_uid_name,
-            act_uid,
-            act_gid_name,
-            act_gid,
-            new_uid_name,
-            new_uid,
-            new_gid_name,
-            new_gid
-        )
-    )
-    try:
-        if "global_config" in kwargs:
-            kwargs["global_config"].set_uid_gid(new_uid, new_gid)
-        os.setgid(new_gid)
-        os.setegid(new_gid)
-        os.setuid(new_uid)
-        os.seteuid(new_uid)
-    except:
-        logging_tools.my_syslog("error changing uid / gid: {}".format(get_except_info()))
-        ok = False
-    else:
-        ok = True
-    logging_tools.my_syslog("  ... actual uid/gid of {:d} is now ({:d}/{:d}) ...".format(os.getpid(), new_uid, new_gid))
-    return ok
-
-
 def change_user_group_path(path, user, group, **kwargs):
     if "log_com" in kwargs:
         log_com = kwargs["log_com"]

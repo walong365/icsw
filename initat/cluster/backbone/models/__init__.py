@@ -49,6 +49,7 @@ import time
 import uuid
 
 from initat.cluster.backbone.models.internal import *
+from initat.cluster.backbone.models.variable import *
 from initat.cluster.backbone.models.device import *
 from initat.cluster.backbone.models.capability import *
 from initat.cluster.backbone.models.domain import *

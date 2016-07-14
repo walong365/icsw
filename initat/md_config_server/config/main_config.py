@@ -439,8 +439,6 @@ class main_config(object):
 
     def _create_base_config_entries(self):
         # read sql info
-        sql_file = "/etc/sysconfig/cluster/mysql.cf"
-        sql_suc, sql_dict = configfile.readconfig(sql_file, 1)
         resource_cfg = base_config("resource", is_host_file=True)
         if os.path.isfile("/opt/%s/libexec/check_dns" % (global_config["MD_TYPE"])):
             resource_cfg["$USER1$"] = "/opt/%s/libexec" % (global_config["MD_TYPE"])
@@ -448,8 +446,10 @@ class main_config(object):
             resource_cfg["$USER1$"] = "/opt/%s/lib" % (global_config["MD_TYPE"])
         resource_cfg["$USER2$"] = "/opt/cluster/sbin/ccollclientzmq -t %d" % (global_config["CCOLLCLIENT_TIMEOUT"])
         resource_cfg["$USER3$"] = "/opt/cluster/sbin/csnmpclientzmq -t %d" % (global_config["CSNMPCLIENT_TIMEOUT"])
-        NDOMOD_NAME, NDO2DB_NAME = ("ndomod",
-                                    "ndo2db")
+        NDOMOD_NAME, NDO2DB_NAME = (
+            "ndomod",
+            "ndo2db"
+        )
         ndomod_cfg = base_config(
             NDOMOD_NAME,
             belongs_to_ndo=True,
@@ -468,50 +468,9 @@ class main_config(object):
                 ("debug_verbosity", 0),
                 ("debug_file", os.path.join(self.__r_dir_dict["var"], "ndomod.debug")),
                 ("data_processing_options", global_config["NDO_DATA_PROCESSING_OPTIONS"]),
-                ("config_output_options", 2)])
-        if not sql_suc:
-            self.log("error reading sql_file '%s', no ndo2b_cfg to write" % (sql_file),
-                     logging_tools.LOG_LEVEL_ERROR)
-            ndo2db_cfg = None
-        elif "monitor" not in settings.DATABASES:
-            self.log(
-                "no 'monitor' database defined in settings.py",
-                logging_tools.LOG_LEVEL_ERROR
-            )
-            ndo2db_cfg = None
-        else:
-            nag_engine = settings.DATABASES["monitor"]["ENGINE"]
-            db_server = "pgsql" if nag_engine.count("psycopg") else "mysql"
-            if db_server == "mysql":
-                sql_dict["PORT"] = 3306
-            else:
-                sql_dict["PORT"] = 5432
-            ndo2db_cfg = base_config(
-                NDO2DB_NAME,
-                belongs_to_ndo=True,
-                values=[
-                    ("ndo2db_user", "idnagios"),
-                    ("ndo2db_group", "idg"),
-                    ("socket_type", "unix"),
-                    ("socket_name", "%s/ido.sock" % (self.__r_dir_dict["var"])),
-                    ("tcp_port", 5668),
-                    ("db_servertype", db_server),
-                    ("db_host", sql_dict["MYSQL_HOST"]),
-                    ("db_port", sql_dict["PORT"]),
-                    ("db_name", sql_dict["NAGIOS_DATABASE"]),
-                    ("db_prefix", "%s_" % (global_config["MD_TYPE"])),
-                    ("db_user", sql_dict["MYSQL_USER"]),
-                    ("db_pass", sql_dict["MYSQL_PASSWD"]),
-                    # time limits one week
-                    ("max_timedevents_age", 1440),
-                    ("max_systemcommands_age", 1440),
-                    ("max_servicechecks_age", 1440),
-                    ("max_hostchecks_age", 1440),
-                    ("max_eventhandlers_age", 1440),
-                    ("debug_level", 0),
-                    ("debug_verbosity", 1),
-                    ("debug_file", "%s/ndo2db.debug" % (self.__r_dir_dict["var"])),
-                    ("max_debug_file_size", 1000000)])
+                ("config_output_options", 2)
+            ]
+        )
         main_values = [
             (
                 "log_file",
@@ -747,14 +706,8 @@ class main_config(object):
                 ("authorized_for_all_services", def_user),
                 ("authorized_for_all_service_commands", def_user)] +
             [("tac_show_only_hard_state", 1)] if (global_config["MD_TYPE"] == "icinga" and global_config["MD_RELEASE"] >= 6) else [])
-        if sql_suc:
-            pass
-        else:
-            self.log("Error reading SQL-config %s" % (sql_file), logging_tools.LOG_LEVEL_ERROR)
         self[main_cfg.get_name()] = main_cfg
         self[ndomod_cfg.get_name()] = ndomod_cfg
-        if ndo2db_cfg:
-            self[ndo2db_cfg.get_name()] = ndo2db_cfg
         self[cgi_config.get_name()] = cgi_config
         self[resource_cfg.get_name()] = resource_cfg
         if self.master:

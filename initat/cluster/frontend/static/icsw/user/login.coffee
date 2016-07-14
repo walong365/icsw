@@ -29,11 +29,11 @@ angular.module(
 [
     "$scope", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswParseXMLResponseService", "blockUI",
     "initProduct", "icswSystemLicenseDataService", "$q", "$state", "icswCSRFService", "icswUserService",
-    "setDefaultTheme",
+    "icswToolsSimpleModalService", "setDefaultTheme",
 (
     $scope, $window, ICSW_URLS, icswSimpleAjaxCall, icswParseXMLResponseService, blockUI,
     initProduct, icswSystemLicenseDataService, $q, $state, icswCSRFService, icswUserService,
-    setDefaultTheme
+    icswToolsSimpleModalService, setDefaultTheme
 ) ->
     $scope.initProduct = initProduct
     $scope.license_tree = undefined
@@ -102,18 +102,51 @@ angular.module(
                     _val = $(xml).find("value[name='redirect']").text()
                     # clear token
                     icswCSRFService.clear_token()
-                    $q.all(
-                        [
-                            icswCSRFService.get_token()
-                            icswUserService.load()
-                        ]
-                    ).then(
-                        (data) ->
-                            csrf_token = data[0]
-                            _user = data[1].user
-                            blockUI.stop()
-                            console.log "STATE=", _val
-                            $state.go(_val)
+                    dup_sessions = parseInt($(xml).find("value[name='duplicate_sessions']").text())
+                    _do_login = $q.defer()
+                    if dup_sessions
+                        blockUI.stop()
+                        icswToolsSimpleModalService("Another user is already using this account, continue ?").then(
+                            (doit) ->
+                                blockUI.start("expelling other users")
+                                icswSimpleAjaxCall(
+                                    url: ICSW_URLS.SESSION_EXPEL
+                                    dataType: "json"
+                                ).then(
+                                    (expelled) ->
+                                        console.log "expelled=", expelled
+                                        _do_login.resolve("login")
+                                )
+                            (nono) ->
+                                blockUI.start("logging out")
+                                _do_login.reject("nologin")
+                        )
+                    else
+                        _do_login.resolve("nodups")
+                    _do_login.promise.then(
+                        (login) ->
+                            $q.all(
+                                [
+                                    icswCSRFService.get_token()
+                                    icswUserService.load()
+                                ]
+                            ).then(
+                                (data) ->
+                                    csrf_token = data[0]
+                                    _user = data[1].user
+                                    blockUI.stop()
+                                    $state.go(_val)
+                            )
+                        (nologin) ->
+                            icswSimpleAjaxCall(
+                                url: ICSW_URLS.SESSION_LOGOUT
+                                dataType: "json"
+                            ).then(
+                                (logout) ->
+                                    _do_login.reject("login")
+                                    $scope.init_login()
+                                    blockUI.stop()
+                            )
                     )
             (error) ->
                 blockUI.stop()

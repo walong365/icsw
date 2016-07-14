@@ -379,14 +379,14 @@ angular.module(
                 data.$$allowed = _add
                 if data.$$allowed
                     _struct.allowed_states.push(state)
-                    if data.$$menuHeader
-                        _struct.menu_header_states.push(state)
                     if data.$$menuEntry
                         _struct.menu_states.push(state)
                     if data.valid_for_quicklink
                         _struct.quicklink_states.push(state)
                     if data.$$dashboardEntry
                         _struct.dashboard_states.push(state)
+                if data.$$menuHeader
+                    _struct.menu_header_states.push(state)
             # signal: we have changed the rights
         if _init and _user? and _acls_valid
             _struct.valid = true
@@ -459,8 +459,15 @@ angular.module(
                 pre: (scope, el, attrs) ->
                     # console.log "pre selman"
                     # console.log "link selman to scope", scope
+                    # is an active selection (listen to icswDeviceList) ß
+                    _active_selection = if parseInt(attrs.icswSelMan) then true else false
                     # store selection list
                     scope.$icsw_selman_list  = []
+
+                    scope.$on("$destroy", () ->
+                        if ! _active_selection
+                            icswActiveSelectionService.unregister_receiver()
+                    )
 
                     _new_sel = (sel) ->
                         if scope.new_devsel?
@@ -490,7 +497,7 @@ angular.module(
                                     (tree) ->
                                 )
 
-                    if parseInt(attrs.icswSelMan)
+                    if _active_selection
                         # popup mode, watch for changes (i.e. tab activation)
                         scope.$watch(
                             attrs["icswDeviceList"]
@@ -543,6 +550,7 @@ angular.module(
         ICSW_ACLS_CHANGED: "icsw.acls.changed"
         ICSW_USER_CHANGED: "icsw.user.changed"
         ICSW_DSR_REGISTERED: "icsw.dsr.registered"
+        ICSW_DSR_UNREGISTERED: "icsw.dsr.unregistered"
         ICSW_SELECTOR_SHOW: "icsw.selector.show"
         ICSW_DEVICE_TREE_LOADED: "icsw.device.tree.loaded"
         ICSW_CATEGORY_TREE_LOADED: "icsw.category.tree.loaded"
@@ -592,15 +600,15 @@ angular.module(
 ]).factory("icswTools", [() ->
     id_seed = parseInt(Math.random() * 10000)
 
-    get_unique_id = () ->
+    get_unique_id = (prefix) ->
         id_seed++
-        id = "unique-ID-#{id_seed}"
-        console.log "emited unique id #{id}"
+        id = "unique-ID-#{prefix}-#{id_seed}"
+        # console.log "emited unique id #{id}"
         return id
 
     return {
-        get_unique_id: () ->
-            return get_unique_id()
+        get_unique_id: (prefix="obj") ->
+            return get_unique_id(prefix)
 
         get_size_str: (size, factor, postfix) ->
             f_idx = 0

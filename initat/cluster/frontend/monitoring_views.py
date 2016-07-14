@@ -177,7 +177,7 @@ class get_node_status(View):
             *[
                 E.device(
                     pk="{:d}".format(int(cur_pk))
-                ) for cur_pk in pk_list if cur_pk
+                ) for cur_pk in pk_list if cur_pk and cur_pk.isdigit()
             ]
         )
         result = contact_server(request, "md-config", srv_com, timeout=30)
@@ -361,7 +361,6 @@ class _device_status_history_util(object):
     @staticmethod
     def get_timespan_db_from_request(request):
         start, end, duration_type = _device_status_history_util.get_timespan_tuple_from_request(request)
-
         try:
             return mon_icinga_log_aggregated_timespan.objects.get(
                 duration_type=duration_type.ID,
@@ -403,7 +402,12 @@ class _device_status_history_util(object):
 
         return_data = {}
 
+        # init mon_check_command cache
+        if not for_host:
+            mon_icinga_log_raw_service_alert_data.objects.init_service_name_cache([key[1] for key in alert_list.alerts.iterkeys()])
+
         for key, amended_list in alert_list.alerts.iteritems():
+            # print "*" * 20, key
             # only use dev/serv keys which have entries in the time frame (i.e. those from entries)
             # they might be active before and after, but not during the time frame, in which case
             # they are not relevant to us
@@ -417,6 +421,7 @@ class _device_status_history_util(object):
                 amended_list = amended_list + [entry_after]
 
             l = []
+            # pprint.pprint(amended_list)
             for entry in amended_list:
                 if isinstance(entry, dict):
                     l.append(
@@ -460,14 +465,17 @@ class get_hist_timespan(RetrieveAPIView):
             start, end, duration_type = _device_status_history_util.get_timespan_tuple_from_request(request)
             # return most recent data type if this type is not yet finished
             try:
-                latest_timespan_db = \
-                    mon_icinga_log_aggregated_timespan.objects.filter(duration_type=duration_type.ID).latest('start_date')
+                latest_timespan_db = mon_icinga_log_aggregated_timespan.objects.filter(duration_type=duration_type.ID).latest('start_date')
             except mon_icinga_log_aggregated_timespan.DoesNotExist:
                 pass  # no data at all, can't do anything useful
             else:
                 date = duration_utils.parse_date(request.GET["date"])
                 if latest_timespan_db.end_date < date:
-                    data = {'status': 'found earlier', 'start': latest_timespan_db.start_date, 'end': latest_timespan_db.end_date}
+                    data = {
+                        'status': 'found earlier',
+                        'start': latest_timespan_db.start_date,
+                        'end': latest_timespan_db.end_date
+                    }
 
         return Response(data)
 

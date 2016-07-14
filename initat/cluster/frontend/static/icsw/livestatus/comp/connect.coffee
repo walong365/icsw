@@ -37,7 +37,10 @@ angular.module(
             @__dp_has_template = false
             # parent element
             @__dp_parent = undefined
+            # is an asynchronous emitter
             @__dp_async_emit = false
+            # only get notified when the devicelist changes
+            @__dp_notify_only_on_devchange = false
             # is leaf (no childs)
             @__dp_is_leaf_node = true
             # notifier for downstream elements
@@ -60,9 +63,18 @@ angular.module(
                 for _child in @__dp_childs
                     _child.__dp_parent_notifier.reject(_child.__dp_element_id)
 
+        prefix: () ->
+            return "Element #{@name} (#{@__dp_element_id}@#{@__dp_depth})"
+
         log: (what) ->
-            console.log "Element #{@name} (#{@__dp_element_id}@#{@__dp_depth}): #{what}"
-            
+            console.log "#{@prefix()}: #{what}"
+
+        warn: (what) ->
+            console.warn "#{@prefix()}: #{what}"
+
+        error: (what) ->
+            console.error "#{@prefix()}: #{what}"
+
         # set template
         set_template: (template, title, size_x=4, size_y=4) =>
             @__dp_has_template = true
@@ -111,14 +123,14 @@ angular.module(
             node.link_to_parent(@)
 
         new_data_received: (new_data) =>
-            console.error "new data received, to be overwritten", new_data
+            @error "new data received, to be overwritten", new_data
             return new_data
             
         pipeline_resolve_called: (resolved) =>
-            console.error "resolve called #{resolved} for #{@name}"
+            @error "resolve called #{resolved} for #{@name}"
 
         pipeline_reject_called: (rejected) =>
-            console.error "reject called #{rejected} for #{@name}"
+            @error "reject called #{rejected} for #{@name}"
 
         # display / hide / toggle functions
         set_display_flags: () =>
@@ -172,23 +184,44 @@ angular.module(
                     @close()
                     @pipeline_reject_called(rejected)
                 (recv_data) =>
-                    emit_data = @new_data_received(recv_data)
-                    if @is_emitter
-                        if @__dp_async_emit
-                            # asynchronous emitter, emit_data must be none
-                            if emit_data?
-                                console.error "async emitter #{@name} is emitting synchronous data:", emit_data
-                        else
-                            if emit_data?
-                                @emit_data_downstream(emit_data)
+                    if @__dp_notify_only_on_devchange
+                        _cur_dl = angular.toJson(_.sortBy((dev.$$icswDevice.idx for dev in recv_data.hosts)))
+                        if not @__dp_prev_device_list?
+                            _notify = true
+                        else 
+                            _notify = @__dp_prev_device_list != _cur_dl
+                        @__dp_prev_device_list = _cur_dl
+                    else 
+                        _notify = true
+                    if _notify
+                        emit_data = @new_data_received(recv_data)
+                        if @is_emitter
+                            if @__dp_async_emit
+                                # asynchronous emitter, emit_data must be none
+                                if emit_data?
+                                    @error "async emitter is emitting synchronous data:", emit_data
                             else
-                                console.error "emitter #{@name} is emitting none ..."
+                                if emit_data?
+                                    @_check_emit_id("sync", emit_data)
+                                    @emit_data_downstream(emit_data)
+                                else
+                                    @error "emitter is emitting none ..."
             )
 
+        _check_emit_id: (etype, result) =>
+            if @__dp_current_data_id? and result.id != @__dp_current_data_id
+                @warn "id of #{etype} emit data changed from #{@__dp_current_data_id} to #{result.id}"
+            @__dp_current_data_id = result.id
+
         set_async_emit_data: (result) =>
+            if !@__dp_async_emit
+                @error "synchronous emitter is emitting asynchronous data"
+            @_check_emit_id("async", result)
             result.result_notifier.promise.then(
-                (resolved) ->
-                (rejected) ->
+                (resolved) =>
+                    @log "async data resolve: #{resolved}"
+                (rejected) =>
+                    @log "async data reject: #{rejected}"
                 (generation) =>
                     @emit_data_downstream(result)
             )
@@ -199,9 +232,9 @@ angular.module(
 
 ]).service("icswMonLivestatusPipeConnector",
 [
-    "$q", "$rootScope", "$injector", "icswToolsSimpleModalService",
+    "$q", "$rootScope", "$injector", "icswToolsSimpleModalService", "$window",
 (
-    $q, $rootScope, $injector, icswToolsSimpleModalService,
+    $q, $rootScope, $injector, icswToolsSimpleModalService, $window,
 ) ->
     # creates a DisplayPipeline
     class icswMonLivestatusPipeConnector
@@ -226,7 +259,9 @@ angular.module(
 
         toggle_running: () =>
             @running = !@running
-            @root_element.set_running_flag(@running)
+            for el in @all_elements
+                if el.set_running_flag?
+                    el.set_running_flag(@running)
 
         toggle_global_display_state: () =>
             @global_display_state++
@@ -247,8 +282,9 @@ angular.module(
             # simple iteratee for resolving
 
             _resolve_iter = (in_obj, depth=0) =>
-                if _.keys(in_obj).length != 1
-                    console.error in_obj
+                if _.keys(in_obj).length == 0
+                    throw new Error("empty object found at depth #{depth}")
+                else if _.keys(in_obj).length != 1
                     throw new Error("Only one element allowed at any level")
                 for key, value of in_obj
                     if key not of elements
@@ -322,14 +358,17 @@ angular.module(
             element.remove_from_parent()
 
         init_gridster: () =>
+            NUM_COLUMS = 20
+            c_width = $window.innerWidth / NUM_COLUMS
+            r_height = c_width
             @gridsterOpts = {
-                columns: 20
+                columns: NUM_COLUMS
                 pushing: true
                 floating: true
                 swapping: false
                 width: 'auto'
                 colWidth: 'auto'
-                rowHeight: '40'
+                rowHeight: r_height
                 margins: [1, 1]
                 outerMargin: true
                 isMobile: true
@@ -346,7 +385,7 @@ angular.module(
                 maxSizeY: null
                 resizable: {
                    enabled: true,
-                   handles: ["n", 'w', 'ne', 'se', 'sw', 'nw']
+                   handles: ['w', 'ne', 'se', 'sw', 'nw']
                    stop: (event, element, options) =>
                        @ps_changed()
                 }

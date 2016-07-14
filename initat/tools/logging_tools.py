@@ -33,6 +33,7 @@ import string
 import sys
 import syslog
 import time
+from pygments.token import Token
 
 LOG_LEVEL_OK = 20
 LOG_LEVEL_WARN = 30
@@ -564,10 +565,10 @@ class new_form_list(object):
                 return ""
         return self._format()
 
-    def urwid_encode(self):
-        return self._format(urwid=True)
+    def prompt_encode(self):
+        return self._format(prompt=True)
 
-    def _format(self, urwid=False):
+    def _format(self, prompt=False):
         # count number of rows
         row_count = [len(line) for line in self.__content]
         _min_rows, max_rows = (
@@ -619,11 +620,9 @@ class new_form_list(object):
             out_lines.append(
                 "-" * len(out_lines[-1])
             )
-        if urwid:
+        if prompt:
             # add one for CR
-            urwid_rlc = [
-                ("", len(_line) + 1) for _line in out_lines
-            ]
+            out_lines = [[(Token.String.ICSW.Header, _line)] for _line in out_lines]
             for line in self.__content:
                 _line = []
                 for _idx, (entry, max_len) in enumerate(zip(line, row_lens[:len(line)])):
@@ -631,23 +630,13 @@ class new_form_list(object):
                     _str = entry.format(max_len)
                     if last:
                         _str = _str.rstrip()
-                    _line.append(_str)
-                    urwid_rlc.append(
-                        (getattr(entry, "display_attribute", ""), len(_str))
-                    )
-                    if last:
-                        # for CR
-                        urwid_rlc.append(
-                            ("", 1)
+                    _line.append((getattr(Token.String.ICSW, getattr(entry, "display_attribute", "dummy").title() or "Dummy"), _str))
+                    if not last:
+                        _line.append(
+                            (Token.String.ICSW.Dummy, self.__col_sep)
                         )
-                    else:
-                        urwid_rlc.append(
-                            ("", len(self.__col_sep))
-                        )
-                out_lines.append(
-                    self.__col_sep.join(_line)
-                )
-            return ("\n".join(out_lines), urwid_rlc)
+                out_lines.append(_line)
+            return out_lines
         else:
             for line in self.__content:
                 out_lines.append(
@@ -669,6 +658,16 @@ class new_form_list(object):
 
     def __len__(self):
         return len(self.__content)
+
+
+def get_icsw_prompt_styles():
+    return {
+        Token.String.ICSW.Header: "bold",
+        Token.String.ICSW.Dummy: "",
+        Token.String.ICSW.Ok: "#00ff00",
+        Token.String.ICSW.Warning: "#ffff00 bold",
+        Token.String.ICSW.Critical: "#ff0000 bold",
+    }
 
 
 def compress_list(ql, **kwargs):

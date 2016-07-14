@@ -250,14 +250,6 @@ class ServerStatusMixin(object):
         _status = msi_block.check_block()
         _proc_info_dict = self.get_info_dict()
         # add configfile manager
-        _mpid = configfile.get_manager_pid()
-        if _mpid is not None:
-            # salt proc_info_dict
-            _proc_info_dict[_mpid] = {
-                "name": "manager",
-                "pid": _mpid,
-                "alive": True
-            }
         if spc is not None:
             spc.salt_proc_info_dict(_proc_info_dict)
         _pid_info = msi_block.pid_check_string(_proc_info_dict)

@@ -25,6 +25,7 @@
 import glob
 import json
 import logging
+import datetime
 import os
 
 from django.conf import settings
@@ -43,8 +44,14 @@ logger = logging.getLogger("cluster.main")
 
 
 class get_number_of_background_jobs(View):
+    @method_decorator(login_required)
     def post(self, request):
-        _return = {"background_jobs": background_job.objects.exclude(Q(state__in=["done", "timeout", "ended", "merged"])).count()}
+        request.session["latest_contact"] = datetime.datetime.now()
+        _return = {
+            "background_jobs": background_job.objects.exclude(
+                Q(state__in=["done", "timeout", "ended", "merged"])
+            ).count()
+        }
         return HttpResponse(json.dumps(_return), content_type="application/json")
 
 

@@ -230,7 +230,12 @@ menu_module = angular.module(
                             icswMenuProgressService.set_rebuilding(0)
                 )
     }
-]).directive("icswBackgroundJobInfo", ["$templateCache", "ICSW_URLS", "icswSimpleAjaxCall", "$timeout", "$state", ($templateCache, ICSW_URLS, icswSimpleAjaxCall, $timeout, $state) ->
+]).directive("icswBackgroundJobInfo",
+[
+    "$templateCache", "ICSW_URLS", "icswSimpleAjaxCall", "$timeout", "$state",
+(
+    $templateCache, ICSW_URLS, icswSimpleAjaxCall, $timeout, $state
+) ->
     return {
         restrict: "EA"
         template: '<button type="button" ng-click="redirect_to_bgj_info()" title="number of background jobs"></button>'

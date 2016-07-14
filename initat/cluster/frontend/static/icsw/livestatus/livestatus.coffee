@@ -27,7 +27,7 @@ angular.module(
     $stateProvider.state(
         "main.livestatus", {
             url: "/livestatus/all"
-            template: '<icsw-device-livestatus icsw-sel-man="0"></icsw-device-livestatus>'
+            template: '<icsw-device-livestatus icsw-livestatus-view="\'test\'"></icsw-device-livestatus>'
             icswData: icswRouteExtensionProvider.create
                 pageTitle: "Monitoring dashboard"
                 licenses: ["monitoring_dashboard"]
@@ -55,61 +55,100 @@ angular.module(
 ) ->
     # top level controller of monitoring dashboard
 
-    $scope.struct = {
-        # connector
-        # connector: new icswMonLivestatusPipeConnector("test", angular.toJson({"icswLivestatusDataSource": [{"icswLivestatusFilterService": [{"icswLivestatusCategoryFilter": [{"icswLivestatusFullBurst": []}]}]}]}))
-        # connector: new icswMonLivestatusPipeConnector("test", angular.toJson({"icswLivestatusDataSource": [{"icswLivestatusFullBurst": []}]}))
-        connector: new icswMonLivestatusPipeConnector(
-            "test"
-            angular.toJson(
-                {
-                    "icswLivestatusDataSource": [{
-                        "icswLivestatusFilterService": [{
-                            "icswLivestatusLocationDisplay": []
-                        }
-                            {
-                                "icswLivestatusCategoryFilter": [{
-                                    "icswLivestatusMapDisplay": []
-                                }]
+    _cd = {
+        "test": {
+            "icswLivestatusSelDevices": [{
+                "icswLivestatusDataSource": [{
+                    "icswLivestatusFilterService": [{
+                        "icswLivestatusMonCategoryFilter": [{
+                            "icswLivestatusDeviceCategoryFilter": [{
+                                "icswLivestatusTabularDisplay": []
                             }
-                            {
-                                "icswLivestatusFilterService": [{
-                                    "icswLivestatusTabularDisplay": []
-                                }
                                 {
-                                    "icswLivestatusTabularDisplay": []
+                                    "icswLivestatusInfoDisplay": []
                                 }]
+                        }]
+                    }]
+                }]
+            }]
+        }
+        "btest": {
+            "icswLivestatusSelDevices": [{
+                "icswLivestatusDataSource": [{
+                    "icswLivestatusFilterService": [{
+                        "icswLivestatusLocationDisplay": []
+                    }
+                        {
+                            "icswLivestatusMonCategoryFilter": [{
+                                "icswLivestatusMapDisplay": []
                             }]
                         }
                         {
                             "icswLivestatusFilterService": [{
-                                "icswLivestatusFullBurst": [{
+                                "icswLivestatusTabularDisplay": []
+                            }
+                                {
                                     "icswLivestatusTabularDisplay": []
-                                }
-                                    {
-                                        "icswLivestatusFullBurst": []
-                                    }]
-
+                                }]
+                        }]
+                }
+                    {
+                        "icswLivestatusFilterService": [{
+                            "icswLivestatusFullBurst": [{
+                                "icswLivestatusTabularDisplay": []
+                            }
+                                {
+                                    "icswLivestatusFullBurst": []
+                                }]
+                        }]
+                    }
+                    {
+                        "icswLivestatusFilterService": [{
+                            "icswLivestatusLocationDisplay": []
+                        }]
+                    }]
+            }]
+        }
+        "nettop": {
+            "icswLivestatusSelDevices": [{
+                "icswLivestatusDataSource": [{
+                    "icswLivestatusFilterService": [{
+                        "icswLivestatusTopologySelector": [{
+                            "icswLivestatusFilterService": [{
+                                "icswLivestatusNetworkTopology": []
                             }]
                         }
                         {
-                            "icswLivestatusFilterService": [
-                                {
-                                    "icswLivestatusLocationDisplay": []
-                                }
-                            ]
-                        }
-                    ]
-                }
-            )
-        )
+                            "icswLivestatusNetworkTopology": []
+                        }]
+                    }]
+                }]
+            }]
+        }
     }
 
+    $scope.struct = {
+        connector: null
+        connector_set: false
+    }
+
+    $scope.unset_connector = () ->
+        if $scope.struct.connector_set
+            $scope.struct.connector.close()
+            $scope.struct.connector_set = false
+
+    $scope.set_connector = (c_name) ->
+        $scope.unset_connector()
+        $scope.struct.connector = new icswMonLivestatusPipeConnector(c_name, angular.toJson(_cd[c_name]))
+        $scope.struct.connector_set = true
+
     $scope.new_devsel = (_dev_sel) ->
+        console.log "nds"
         $scope.struct.connector.new_devsel(_dev_sel)
 
     $scope.$on("$destroy", () ->
-        $scope.struct.connector.close()
+        if $scope.struct.connector
+            $scope.struct.connector.close()
     )
 
 ]).directive("icswDeviceLivestatus",
@@ -122,72 +161,16 @@ angular.module(
         restrict : "EA"
         template : $templateCache.get("icsw.livestatus.connect.overview")
         controller: "icswDeviceLiveStatusCtrl"
-    }
-]).service('icswLivestatusTabularDisplay',
-[
-    "$q", "icswMonLivestatusPipeBase", "icswMonitoringResult",
-(
-    $q, icswMonLivestatusPipeBase, icswMonitoringResult,
-) ->
-    class icswLivestatusTabularDisplay extends icswMonLivestatusPipeBase
-        constructor: () ->
-            super("icswLivestatusTabularDisplay", true, false)
-            @set_template(
-                '<icsw-device-livestatus-table-view icsw-connect-element="con_element"></icsw-device-livestatus-table-view>'
-                "TabularDisplay"
-                6
-                10
+        scope:
+            active_view: "=icswLivestatusView"
+        link: (scope, element, attrs) ->
+            scope.$watch(
+                "active_view"
+                (new_val) ->
+                    if new_val?
+                        scope.set_connector(new_val)
+                    else
+                        scope.unset_connector()
             )
-            @new_data_notifier = $q.defer()
-
-        new_data_received: (data) ->
-            @new_data_notifier.notify(data)
-
-        pipeline_reject_called: (reject) ->
-            @new_data_notifier.reject("end")
-
-]).directive("icswDeviceLivestatusTableView",
-[
-    "$templateCache",
-(
-    $templateCache,
-) ->
-        return {
-            restrict: "EA"
-            template: $templateCache.get("icsw.device.livestatus.table.view")
-            controller: "icswDeviceLivestatusTableCtrl"
-            scope: {
-                # connect element for pipelining
-                con_element: "=icswConnectElement"
-            }
-            link: (scope, element, attrs) ->
-                scope.link(scope.con_element.new_data_notifier)
-        }
-]).directive("icswDeviceLivestatusTableRow",
-[
-    "$templateCache",
-(
-    $templateCache,
-) ->
-    return {
-        restrict: "EA"
-        template: $templateCache.get("icsw.device.livestatus.table.row")
     }
-]).controller("icswDeviceLivestatusTableCtrl",
-[
-    "$scope",
-(
-    $scope,
-) ->
-    $scope.struct = {
-        # monitoring data
-        monitoring_data: undefined
-    }
-    $scope.link = (notifier) ->
-        notifier.promise.then(
-            (resolve) ->
-            (rejected) ->
-            (data) ->
-                $scope.struct.monitoring_data = data
-        )
 ])

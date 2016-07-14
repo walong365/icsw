@@ -24,22 +24,20 @@
 import crypt
 import logging
 import random
-import datetime
-from enum import Enum
 import time
-import uuid
 
 from django.core.exceptions import ValidationError
 from django.db.models import signals, CASCADE
-from initat.cluster.backbone.models.functions import cluster_timezone
-from django.utils.lru_cache import lru_cache
 from django.dispatch import receiver
 from django.utils.crypto import get_random_string
+from django.utils.lru_cache import lru_cache
+from enum import Enum
 from lxml.builder import E
 
 from initat.cluster.backbone.models.asset import *
-from initat.cluster.backbone.models.domain import *
+from initat.cluster.backbone.models.variable import device_variable
 from initat.cluster.backbone.models.capability import ComCapability
+from initat.cluster.backbone.models.domain import *
 from initat.cluster.backbone.models.functions import check_empty_string, \
     check_integer, to_system_tz, cluster_timezone
 from initat.cluster.backbone.signals import BootsettingsChanged
@@ -50,7 +48,6 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "device",
-    "device_variable",
     "device_group",
     "device_selection",
     "cd_connection",
@@ -60,169 +57,9 @@ __all__ = [
     "ActiveDeviceScanEnum",
     "LogLevel",
     "LogSource",
+    "DeviceBootHistory",
+    "log_source_lookup",
 ]
-
-
-class DeviceVariableManager(models.Manager):
-
-    def get_cluster_id(self):
-        try:
-            return self.get(name="CLUSTER_ID").val_str
-        except device_variable.DoesNotExist:
-            return None
-
-    def get_device_variable_value(self, device, var_name, default_val=None):
-        """ Returns variable considering inheritance. """
-        var_value = default_val
-        try:
-            cur_var = device.device_variable_set.get(Q(name=var_name))
-        except device_variable.DoesNotExist:
-            try:
-                cur_var = device.device_group.device.device_variable_set.get(
-                    Q(name=var_name)
-                )
-            except device_variable.DoesNotExist:
-                try:
-                    cur_var = device_variable.objects.get(
-                        Q(device__device_group__cluster_device_group=True) &
-                        Q(name=var_name)
-                    )
-                except device_variable.DoesNotExist:
-                    cur_var = None
-        if cur_var:
-            var_value = cur_var.value
-        return var_value
-
-
-class device_variable(models.Model):
-    objects = DeviceVariableManager()
-
-    idx = models.AutoField(db_column="device_variable_idx", primary_key=True)
-    device = models.ForeignKey("device")
-    is_public = models.BooleanField(default=True)
-    name = models.CharField(max_length=765)
-    description = models.CharField(max_length=765, default="", blank=True)
-    # can be copied to a group or device ? There is no sense in making the cluster_name a local instance
-    local_copy_ok = models.BooleanField(default=True)
-    # will the variable be inerited by lower levels (CDG -> DG -> D) ?
-    inherit = models.BooleanField(default=True)
-    # protected, not deletable by frontend
-    protected = models.BooleanField(default=False)
-    var_type = models.CharField(
-        max_length=3,
-        choices=[
-            ("i", "integer"),
-            ("s", "string"),
-            ("d", "datetime"),
-            ("t", "time"),
-            ("b", "blob"),
-            # only for posting a new dv
-            ("?", "guess")
-        ]
-    )
-    val_str = models.TextField(blank=True, null=True, default="")
-    val_int = models.IntegerField(null=True, blank=True, default=0)
-    # base64 encoded
-    val_blob = models.TextField(blank=True, null=True, default="")
-    val_date = models.DateTimeField(null=True, blank=True)
-    val_time = models.TextField(blank=True, null=True)  # This field type is a guess.
-    date = models.DateTimeField(auto_now_add=True)
-
-    def set_value(self, value):
-        if type(value) == datetime.datetime:
-            self.var_type = "d"
-            self.val_date = cluster_timezone.localize(value)
-        elif type(value) in [int, long] or (isinstance(value, basestring) and value.isdigit()):
-            self.var_type = "i"
-            self.val_int = int(value)
-        else:
-            self.var_type = "s"
-            self.val_str = value
-        self._clear()
-
-    def get_value(self):
-        if self.var_type == "i":
-            return self.val_int
-        elif self.var_type == "s":
-            return self.val_str
-        else:
-            return "get_value for {}".format(self.var_type)
-
-    def _clear(self):
-        # clear all values which are not used
-        for _short, _long in [
-            ("i", "int"),
-            ("s", "str"),
-            ("b", "blob"),
-            ("d", "date"),
-            ("t", "time")
-        ]:
-            if self.var_type != _short:
-                setattr(self, "val_{}".format(_long), None)
-    value = property(get_value, set_value)
-
-    def __unicode__(self):
-        return "{}[{}] = {}".format(
-            self.name,
-            self.var_type,
-            str(self.get_value())
-        )
-
-    def init_as_gauge(self, max_value, start=0):
-        self.__max, self.__cur = (max_value, start)
-        self._update_gauge()
-
-    def count(self, num=1):
-        self.__cur += num
-        self._update_gauge()
-
-    def _update_gauge(self):
-        new_val = min(100, int(float(100 * self.__cur) / float(max(1, self.__max))))
-        if self.pk:
-            if self.val_int != new_val:
-                self.val_int = new_val
-                device_variable.objects.filter(Q(pk=self.pk)).update(val_int=new_val)
-        else:
-            self.val_int = new_val
-            self.save()
-
-    class Meta:
-        db_table = u'device_variable'
-        unique_together = ("name", "device",)
-        ordering = ("name",)
-        verbose_name = "Device variable"
-
-
-@receiver(signals.pre_save, sender=device_variable)
-def device_variable_pre_save(sender, **kwargs):
-    if "instance" in kwargs:
-        cur_inst = kwargs["instance"]
-        if cur_inst.device_id:
-            check_empty_string(cur_inst, "name")
-            if cur_inst.var_type == "?":
-                # guess type
-                _val = cur_inst.val_str
-                cur_inst.val_str = ""
-                if len(_val.strip()) and _val.strip().isdigit():
-                    cur_inst.var_type = "i"
-                    cur_inst.val_int = int(_val.strip())
-                else:
-                    cur_inst.var_type = "s"
-                    cur_inst.val_str = _val
-            if cur_inst.var_type == "s":
-                check_empty_string(cur_inst, "val_str")
-            if cur_inst.var_type == "i":
-                check_integer(cur_inst, "val_int")
-            check_empty_string(cur_inst, "var_type")
-            all_var_names = device_variable.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(device=cur_inst.device)).values_list("name", flat=True)
-            if cur_inst.name in all_var_names:
-                raise ValidationError(
-                    "name '{}' already used for device '{}'".format(
-                        cur_inst.name,
-                        unicode(cur_inst.device)
-                    )
-                )
-            cur_inst._clear()
 
 
 class DeviceSNMPInfo(models.Model):
@@ -329,7 +166,7 @@ class device(models.Model):
     # not so clever here, better in extra table, FIXME
     # cpu_info = models.TextField(blank=True, null=True)
     # machine uuid, cannot be unique due to MySQL problems with unique TextFields
-    uuid = models.TextField(default="", max_length=64)  # , unique=True)
+    uuid = models.TextField(default="", max_length=64)
     date = models.DateTimeField(auto_now_add=True)
     # slaves
     master_connections = models.ManyToManyField("self", through="cd_connection", symmetrical=False, related_name="slave_connections")

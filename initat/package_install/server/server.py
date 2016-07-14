@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2001-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2016 Andreas Lang-Nevyjel
 #
 # this file is part of package-server
 #
@@ -73,12 +73,10 @@ class server_process(
 
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
-        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=3)
         if not global_config["DEBUG"] or True:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("package-server")
             msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
-            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3, process_name="manager")
             msi_block.kill_pids = True
             msi_block.save_block()
         else:

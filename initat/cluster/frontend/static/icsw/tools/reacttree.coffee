@@ -115,7 +115,8 @@ angular.module(
                             key: "selbutton"
                             className: "fancytree-checkbox"
                             type: "checkbox"
-                            checked: if _tn.selected then "checked" else null
+                            # defaultChecked: if _tn.selected then "checked" else null
+                            checked: if _tn.selected then "checked" else ""
                             disabled: if _tn.disable_select or _tc.disable_select then "disabled" else null
                             style: {marginLeft: "2px"}
                             onClick: (event) =>
@@ -338,7 +339,7 @@ angular.module(
             @props.tree_config.component_will_unmount()
 
         top_callback: () ->
-            console.log "top_cb called"
+            # console.log "top_cb called"
 
         render: () ->
             _tc = @props.tree_config
@@ -645,7 +646,6 @@ angular.module(
                     _doit.resolve("ok")
                 _doit.promise.then(
                     (ok) =>
-                        console.log "change"
                         node.set_selected(!node.selected)
                         if node.selected and @single_select
                             # remove all other selections

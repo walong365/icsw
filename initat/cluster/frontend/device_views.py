@@ -34,23 +34,29 @@ from django.http import HttpResponse
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.generic import View
+from rest_framework import status
+
 from rest_framework import serializers
+from rest_framework import viewsets
+from rest_framework.response import Response
 
 from initat.cluster.backbone.models import device_group, device, \
     cd_connection, domain_tree_node, category, netdevice, ComCapability, \
     partition_table, monitoring_hint, DeviceSNMPInfo, snmp_scheme, \
     domain_name_tree, net_ip, peer_information, mon_ext_host, device_variable, \
     SensorThreshold, package_device_connection, DeviceDispatcherLink, AssetRun, \
-    AssetBatch, DeviceScanLock
+    AssetBatch, DeviceScanLock, device_variable_scope
 from initat.cluster.backbone.models.functions import can_delete_obj
 from initat.cluster.backbone.render import permission_required_mixin
 from initat.cluster.backbone.serializers import netdevice_serializer, ComCapabilitySerializer, \
     partition_table_serializer, monitoring_hint_serializer, DeviceSNMPInfoSerializer, \
     snmp_scheme_serializer, device_variable_serializer, cd_connection_serializer, \
     SensorThresholdSerializer, package_device_connection_serializer, DeviceDispatcherLinkSerializer, \
-    AssetRunSimpleSerializer, ShallowPastAssetBatchSerializer
+    AssetRunSimpleSerializer, ShallowPastAssetBatchSerializer, DeviceScanLockSerializer, \
+    device_variable_scope_serializer
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from initat.tools import logging_tools, server_command, process_tools
+from initat.cluster.backbone.models import get_change_reset_list
 
 logger = logging.getLogger("cluster.device")
 
@@ -475,19 +481,17 @@ class DeviceConnectionEnrichment(object):
         return _data
 
 
-class ScanSerializer(serializers.Serializer):
-    device = serializers.IntegerField(source="pk")
-    active_scan = serializers.CharField()
-
-
-class ScanEnrichment(object):
+class ScanLockEnrichment(object):
     def fetch(self, pk_list):
-        _dict = {}
-        for _pk, _scan in DeviceScanLock.objects.filter(Q(active=True) & Q(device__in=pk_list)).values_list("device__pk", "description"):
-            _dict.setdefault(_pk, []).append(_scan)
-        print _dict
-        _res = device.objects.filter(Q(pk__in=pk_list)).values("pk", "active_scan")
-        return ScanSerializer(_res, many=True).data
+        _res = DeviceScanLock.objects.filter(
+            Q(device__in=pk_list) & Q(active=True)
+        )
+        _data = [
+            DeviceScanLockSerializer(
+                _sl,
+            ).data for _sl in _res
+        ]
+        return _data
 
 
 class SensorThresholdEnrichment(object):
@@ -519,7 +523,7 @@ class EnrichmentHelper(object):
         self._all["snmp_info"] = EnrichmentObject(DeviceSNMPInfo, DeviceSNMPInfoSerializer)
         self._all["snmp_schemes_info"] = SNMPSchemeEnrichment()
         self._all["monitoring_hint_info"] = EnrichmentObject(monitoring_hint, monitoring_hint_serializer)
-        self._all["scan_info"] = ScanEnrichment()
+        self._all["scan_lock_info"] = ScanLockEnrichment()
         self._all["variable_info"] = EnrichmentObject(device_variable, device_variable_serializer)
         self._all["device_connection_info"] = DeviceConnectionEnrichment()
         self._all["sensor_threshold_info"] = SensorThresholdEnrichment()
@@ -687,3 +691,59 @@ class create_device(permission_required_mixin, View):
                     except:
                         request.xml_response.error(u"cannot create IP: {}".format(process_tools.get_except_info()), logger=logger)
                         cur_ip = None
+
+
+class DeviceVariableViewSet(viewsets.ViewSet):
+    @method_decorator(login_required)
+    def create(self, request):
+        new_obj = device_variable_serializer(data=request.data)
+        # print new_obj.device_variable_scope
+        if new_obj.is_valid():
+            new_obj.save()
+        else:
+            raise ValidationError("New Variable not valid")
+        return Response(new_obj.data)
+
+    @method_decorator(login_required)
+    def get(self, request):
+        return Response(
+            device_variable_serializer(
+                device_variable.objects.get(Q(pk=request.query_params["pk"]))
+            ).data
+        )
+
+    @method_decorator(login_required)
+    def delete(self, request, *args, **kwargs):
+        device_variable.objects.get(Q(pk=kwargs["pk"])).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @method_decorator(login_required)
+    def store(self, request, *args, **kwargs):
+        _prev_var = device_variable.objects.get(Q(pk=kwargs["pk"]))
+        # print _prev_var
+        _cur_ser = device_variable_serializer(
+            device_variable.objects.get(Q(pk=kwargs["pk"])),
+            data=request.data
+        )
+        # print "*" * 20
+        # print _cur_ser.device_variable_type
+        if _cur_ser.is_valid():
+            _new_var = _cur_ser.save()
+        resp = _cur_ser.data
+        c_list, r_list = get_change_reset_list(_prev_var, _new_var, request.data)
+        resp = Response(resp)
+        # print c_list, r_list
+        resp.data["_change_list"] = c_list
+        resp.data["_reset_list"] = r_list
+        return resp
+
+
+class DeviceVariableScopeViewSet(viewsets.ViewSet):
+    @method_decorator(login_required)
+    def list(self, request):
+        return Response(
+            device_variable_scope_serializer(
+                device_variable_scope.objects.all().prefetch_related("dvs_allowed_names_set"),
+                many=True,
+            ).data
+        )

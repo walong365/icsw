@@ -58,6 +58,11 @@ angular.module(
         # console.log "registered receiver"
         $rootScope.$emit(ICSW_SIGNALS("ICSW_DSR_REGISTERED"))
 
+    unregister_receiver = () ->
+        _receivers -= 1
+        # console.log "registered receiver"
+        $rootScope.$emit(ICSW_SIGNALS("ICSW_DSR_UNREGISTERED"))
+
     sync_selection = (new_sel) ->
         cur_selection.update(new_sel.categories, new_sel.device_groups, new_sel.devices, [])
         cur_selection.sync_with_db(new_sel)
@@ -93,6 +98,10 @@ angular.module(
         register_receiver: () ->
             # register devsel receiver
             register_receiver()
+
+        unregister_receiver: () ->
+            # unregister devsel receiver
+            unregister_receiver()
     }
 ]).service("icswSelection",
 [
@@ -483,7 +492,7 @@ angular.module(
         (ok) ->
         (error) ->
         (info) ->
-            console.log "info"
+            # console.log "info"
     )
     # treeconfig for devices
     $scope.tc_devices = new icswLayoutSelectionTreeService($scope, notifier_queue, {show_tree_expand_buttons: false, show_descendants: true})
@@ -503,7 +512,13 @@ angular.module(
     stop_listen.push(
         $rootScope.$on(ICSW_SIGNALS("ICSW_DSR_REGISTERED"), (event) ->
             $scope.devsel_receivers = icswActiveSelectionService.num_receivers()
-            console.log "****", $scope.devsel_receivers, $scope
+            console.log "****+", $scope.devsel_receivers, $scope
+        )
+    )
+    stop_listen.push(
+        $rootScope.$on(ICSW_SIGNALS("ICSW_DSR_UNREGISTERED"), (event) ->
+            $scope.devsel_receivers = icswActiveSelectionService.num_receivers()
+            console.log "****-", $scope.devsel_receivers, $scope
         )
     )
     stop_listen.push(
@@ -531,7 +546,7 @@ angular.module(
     )
     stop_listen.push(
         $scope.$on("$destroy", (event) ->
-            console.log "Destroy", stop_listen
+            # console.log "Destroy", stop_listen
             notifier_queue.reject("exit")
             (stop_func() for stop_func in stop_listen)
         )
@@ -1053,6 +1068,7 @@ angular.module(
                 return @scope.tree.cat_tree.lut[t_entry.obj]
             else
                 return @scope.tree.all_lut[t_entry.obj]
+
         selection_changed: () =>
             @scope.selection_changed()
             @notifier.notify("go")

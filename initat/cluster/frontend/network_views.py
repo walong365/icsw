@@ -34,8 +34,7 @@ from django.utils.decorators import method_decorator
 from django.views.generic import View
 from networkx.readwrite import json_graph
 
-from initat.cluster.backbone.models import device, peer_information, network, network_type, \
-    DeviceScanLock
+from initat.cluster.backbone.models import device, peer_information, network, network_type
 from initat.cluster.backbone.render import permission_required_mixin
 from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.tools import config_tools, ipvx_tools, logging_tools
@@ -238,21 +237,6 @@ class get_network_clusters(permission_required_mixin, View):
     def post(self, request):
         r_obj = config_tools.router_object(self.log)
         return HttpResponse(json.dumps(r_obj.get_clusters()), content_type="application/json")
-
-
-class get_active_scans(permission_required_mixin, View):
-    all_required_permissions = []
-
-    def get(self, request):
-        _pks = json.loads(request.GET["pks"])
-        _dict = {_pk: [] for _pk in _pks}
-        for _pk, _scan in DeviceScanLock.objects.filter(Q(active=True) & Q(device__in=_pks)).values_list("device__pk", "description"):
-            _dict.setdefault(_pk, []).append(_scan)
-        _dev = [{"pk": _pk, "active_scan": ", ".join(_value)} for _pk, _value in _dict.iteritems()]
-        return HttpResponse(
-            json.dumps(_dev),
-            content_type="application/json"
-        )
 
 
 class get_free_ip(View):

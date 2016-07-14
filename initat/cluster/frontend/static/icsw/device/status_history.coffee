@@ -278,13 +278,13 @@ angular.module(
                     $q.all(
                         [
                             status_utils_functions.get_service_data(
-                                [scope.device.idx]
+                                [scope.device]
                                 time_frame.date_gui
                                 time_frame.duration_type
                             )
                             # also query for year currently
                             status_utils_functions.get_service_data(
-                                [scope.device.idx]
+                                [scope.device]
                                 time_frame.date_gui
                                 time_frame.duration_type
                                 0

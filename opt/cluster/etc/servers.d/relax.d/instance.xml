@@ -91,6 +91,18 @@
             </optional>
             <interleave>
                 <optional>
+                    <element name="dependencies">
+                        <zeroOrMore>
+                            <element name="needed-for-start">
+                                <optional>
+                                    <attribute name="symmetrical"/>
+                                </optional>
+                                <text/>
+                            </element>
+                        </zeroOrMore>
+                    </element>
+                </optional>
+                <optional>
                     <element name="network">
                         <element name="ports">
                             <oneOrMore>

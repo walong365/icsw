@@ -59,5 +59,4 @@ def main():
     # close DB connection
     db_tools.close_connection()
     run_code()
-    configfile.terminate_manager()
     os._exit(0)

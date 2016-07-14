@@ -274,10 +274,10 @@ angular.module(
         for d in new_data
             if d['state'] != "Flapping"  # can't display flapping in pie
                 pie_data.push {
-                    'title':    d['state']
-                    'value':    Math.round(d['value'] * 10000) / 100
-                    'color':    colors[d['state']]
-                    'cssclass': cssclass[d['state']]
+                    title: d['state']
+                    value: Math.round(d['value'] * 10000) / 100
+                    color: colors[d['state']]
+                    cssclass: cssclass[d['state']]
                 }
         return [final_data, pie_data]
 
@@ -316,11 +316,11 @@ angular.module(
     return {
         restrict: 'E'
         scope   : {
-            'data': '='
-            'forHost': '&'
-            'widthAttr': '&width'
-            'heightAttr': '&height'
-            'clickAttr': '&click'
+            data: '='
+            forHost: '&'
+            widthAttr: '&width'
+            heightAttr: '&height'
+            clickAttr: '&click'
         }
         require : "^icswDeviceStatusHistoryOverview"
         link: (scope, element, attrs) ->
@@ -384,8 +384,8 @@ angular.module(
                                         y: scope.height
                                         class: "default_text"
                                         # style: "font-size": "#{scope.fontSize}px"
-                                        "text-anchor": "middle"
-                                        "alignment-baseline": "baseline"
+                                        textAnchor: "middle"
+                                        alignmentBaseline: "baseline"
                                     }
                                 )
                                 _marker.text(marker)
@@ -415,8 +415,8 @@ angular.module(
                         _mousemove = (event) ->
                             entry = event.data
 
-                            _pos_x = event.pageX - _tooltip.width() / 2
-                            _pos_y = event.pageY - _tooltip.height() - 10
+                            _pos_x = event.clientX - _tooltip.width() / 2
+                            _pos_y = event.clientY - _tooltip.height() - 10
 
                             if _pos_x < 0
                                 _pos_x = 0
@@ -531,8 +531,8 @@ angular.module(
     return {
         restrict: 'E'
         scope: {
-            'data': '&'  # takes same data as line graph
-            'enabled': '&'
+            data: '&'  # takes same data as line graph
+            enabled: '&'
         }
         templateUrl: "icsw.tools.hist_log_viewer"
         link: (scope, element, attrs) ->
@@ -546,14 +546,18 @@ angular.module(
                             scope.actual_data = scope.data()
 
                         else if scope.view_mode == 'new'
-                            last_line = {'msg': undefined}
+                            last_line = {
+                                msg: undefined
+                            }
                             for line in scope.data()
                                 if line.msg != last_line.msg
                                     scope.actual_data.push(line)
                                 last_line = line
 
                         else if scope.view_mode == 'state_change'
-                            last_line = {'state': undefined}
+                            last_line = {
+                                state: undefined
+                            }
                             for line in scope.data()
                                 if line.state != last_line.state
                                     scope.actual_data.push(line)
