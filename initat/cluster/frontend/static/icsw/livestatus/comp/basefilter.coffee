@@ -117,6 +117,9 @@ angular.module(
             ]
             @host_type_lut = {}
 
+            # host / service filters are linke
+            @linked = false
+
             # default values for service states
             @service_states = {}
             for entry in @service_state_list
@@ -150,6 +153,9 @@ angular.module(
             # category filter settings
             @cat_filter_installed = false
 
+        toggle_link_state: () =>
+            @linked = !@linked
+
         toggle_service_state: (code) =>
             _srvc_idx = @service_state_lut[code][0]
             @service_states[_srvc_idx] = !@service_states[_srvc_idx]
@@ -179,12 +185,16 @@ angular.module(
         _get_host_type_str: () =>
             return (entry[1] for entry in @host_type_list when @host_types[entry[0]]).join(":")
 
+        _get_linked_str: () =>
+            return if @linked then "l" else "ul"
+
         get_filter_state_str: () ->
             return [
                 @_get_service_state_str()
                 @_get_host_state_str()
                 @_get_service_type_str()
                 @_get_host_type_str()
+                @_get_linked_str()
             ].join(";")
 
         stop_notifying: () ->
@@ -198,7 +208,7 @@ angular.module(
 ) ->
     # display of livestatus filter
     react_dom = ReactDOM
-    {div, h4, select, option, p, input, span, table, tr, td, tbody} = React.DOM
+    {div, h4, select, option, p, input, span, table, tr, td, tbody, span, button} = React.DOM
 
     return React.createClass(
         propTypes: {
@@ -337,6 +347,7 @@ angular.module(
                         }
                     )
                 )
+            _lock_class = if _lf.linked then "fa-lock" else "fa-unlock"
             return div(
                 {key: "top"}
                 table(
@@ -345,6 +356,26 @@ angular.module(
                         {key: "body"}
                         tr(
                             {key: "l0"}
+                            td(
+                                {key: "ltd", rowSpan: "2"}
+                                button(
+                                    {
+                                        type: "button"
+                                        className: "btn btn-default"
+                                        key: "linkbut"
+                                        onClick: (event) =>
+                                            _lf.toggle_link_state()
+                                            @setState({filter_state_str: _lf.get_filter_state_str()})
+                                            _filter_changed()
+                                    }
+                                    span(
+                                        {
+                                            key: "linkedspan"
+                                            className: "fa #{_lock_class} fa-4x fa-fw"
+                                        }
+                                    )
+                                )
+                            )
                             td(
                                 {key: "t0"}
                                 "Host"

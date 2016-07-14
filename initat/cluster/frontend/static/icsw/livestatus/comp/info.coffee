@@ -80,7 +80,7 @@ angular.module(
                     icswLivestatusCircleInfoReact
                     {
                         size: 80
-                        data: _md.service_circle_data
+                        data: _md.service_circle_data_details
                         title: "#{_md.services.length} Services"
                         titleSize: 14
                         focusMode: "simple"
@@ -90,7 +90,7 @@ angular.module(
                     icswLivestatusCircleInfoReact
                     {
                         size: 80
-                        data: _md.device_circle_data
+                        data: _md.device_circle_data_details
                         title: "#{_md.hosts.length} Devices"
                         titleSize: 14
                     }

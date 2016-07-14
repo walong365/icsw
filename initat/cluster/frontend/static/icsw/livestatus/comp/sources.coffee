@@ -315,14 +315,18 @@ angular.module(
             if _state of in_dict
                 _count = in_dict[_state]
                 _ps = if _count > 1 then "s" else ""
-                _info = [_count, _lut[_state].color, "#{_count} #{in_type}#{_ps} #{_lut[_state].info}"]
+                _info_str = "#{_count} #{in_type}#{_ps} #{_lut[_state].info}"
+                if detail_dict?
+                    _sub_keys = _.keys(detail_dict[_state])
+                    _info_str = "#{_info_str}, #{_sub_keys.length} subelements"
+                _info = [_count, _lut[_state].color, _info_str]
                 if detail_dict?
                     _info.push(detail_dict[_state])
                 _r_list.push(_info)
         return _r_list
 
     return {
-        get_unmonitore_device_entry: get_unmonitored_device_entry
+        get_unmonitored_device_entry: get_unmonitored_device_entry
 
         get_dummy_service_entry: get_dummy_service_entry
 
@@ -355,7 +359,10 @@ angular.module(
             @result_notifier = $q.defer()
             @hosts = []
             @services = []
-            @used_cats = []
+            # used monitoring categories
+            @used_mon_cats = []
+            # used device categories
+            @used_device_cats = []
             @__luts_set = false
 
         new_selection: () =>
@@ -367,9 +374,9 @@ angular.module(
 
         copy_from: (src) =>
             # copy objects from src
-            @update(src.hosts, src.services, src.used_cats)
+            @update(src.hosts, src.services, src.used_mon_cats, src.used_device_cats)
             
-        update: (hosts, services, used_cats) =>
+        update: (hosts, services, used_mon_cats, used_device_cats) =>
             @generation++
             @__luts_set = false
             @hosts.length = 0
@@ -378,56 +385,90 @@ angular.module(
             @services.length = 0
             for entry in services
                 @services.push(entry)
-            @used_cats = used_cats
+            @used_mon_cats = used_mon_cats
+            @used_device_cats = used_device_cats
             # console.log "update", @generation
             @notify()
 
         notify: () =>
             @result_notifier.notify(@generation)
 
+        # helper functions
+        _copy_list: (attr_name, src_data) =>
+            @[attr_name].length = 0
+            for entry in src_data[attr_name]
+                @[attr_name].push(entry)
+
         apply_base_filter: (filter, src_data) =>
             # apply base livestatus filter
             @__luts_set = false
+            _host_pks = []
             @hosts.length = 0
             for entry in src_data.hosts
                 if filter.host_types[entry.state_type] and filter.host_states[entry.state]
                     @hosts.push(entry)
+                    _host_pks.push(entry.$$icswDevice.idx)
 
-            # category filtering ?
             @services.length = 0
             for entry in src_data.services
-                if filter.service_types[entry.state_type] and filter.service_states[entry.state]
+                if filter.linked and entry.$$host_mon_result.$$icswDevice.idx not in _host_pks
+                    true
+                else if filter.service_types[entry.state_type] and filter.service_states[entry.state]
                     @services.push(entry)
+
             # simply copy
-            @used_cats.length = 0
-            for entry in src_data.used_cats
-                @used_cats.push(entry)
+            for attr_name in ["used_mon_cats", "used_device_cats"]
+                @_copy_list(attr_name, src_data)
 
             # bump generation counter
             @generation++
 
-        apply_category_filter: (cat_list, src_data) =>
+        apply_category_filter: (cat_list, src_data, filter_name) =>
+            # filter name is mon or device
             @__luts_set = false
-            @hosts.length = 0
-            for entry in src_data.hosts
-                @hosts.push(entry)
             # show uncategorized entries
             _zero_cf = 0 in cat_list
-            @services.length = 0
-            for entry in src_data.services
-                _add = true
-                if entry.custom_variables? and entry.custom_variables.cat_pks?
-                    if not _.intersection(cat_list, entry.custom_variables.cat_pks).length
+            if filter_name == "mon"
+                # copy hosts
+                @_copy_list("hosts", src_data)
+                # filter services
+                @services.length = 0
+                for entry in src_data.services
+                    _add = true
+                    if entry.custom_variables? and entry.custom_variables.cat_pks?
+                        if not _.intersection(cat_list, entry.custom_variables.cat_pks).length
+                            _add = false
+                    else if not _zero_cf
                         _add = false
-                else if not _zero_cf
-                    _add = false
-                if _add # entry.$$show
-                    @services.push(entry)
-            # simply copy
-            @used_cats.length = 0
-            for entry in src_data.used_cats
-                if entry in cat_list
-                    @used_cats.push(entry)
+                    if _add
+                        @services.push(entry)
+            else
+                _host_pks = []
+                # device filter
+                @hosts.length = 0
+                for entry in src_data.hosts
+                    _add = true
+                    if entry.$$device_categories.length
+                        if not _.intersection(cat_list, entry.$$device_categories).length
+                            _add = false
+                    else if not _zero_cf
+                        _add = false
+                    if _add
+                        @hosts.push(entry)
+                        _host_pks.push(entry.$$icswDevice.idx)
+                # only take services on a valid host
+                @services.length = 0
+                for entry in src_data.services
+                    if entry.$$host_mon_result.$$icswDevice.idx in _host_pks
+                        @services.push(entry)
+
+            for f_name in ["mon", "device"]
+                attr_name = "used_#{f_name}_cats"
+                # filter
+                @[attr_name].length = 0
+                for entry in src_data[attr_name]
+                    if entry in cat_list or f_name != filter_name
+                        @[attr_name].push(entry)
             # bump generation counter
             @generation++
             
@@ -459,12 +500,14 @@ angular.module(
                     _host_lut[host.state] = 0
                     _host_cat_lut[host.state] = {}
                 _host_lut[host.state]++
-                for _cat in host.$$icswDevice.categories
+                for _cat in host.$$device_categories
                     if _cat not of _host_cat_lut[host.state]
                         _host_cat_lut[host.state][_cat] = 0
                     _host_cat_lut[host.state][_cat]++
-            @service_circle_data = icswSaltMonitoringResultService.build_circle_info("service", _srv_lut, _srv_cat_lut)
-            @device_circle_data = icswSaltMonitoringResultService.build_circle_info("device", _host_lut, _host_cat_lut)
+            @service_circle_data = icswSaltMonitoringResultService.build_circle_info("service", _srv_lut)
+            @device_circle_data = icswSaltMonitoringResultService.build_circle_info("device", _host_lut)
+            @service_circle_data_details = icswSaltMonitoringResultService.build_circle_info("service", _srv_lut, _srv_cat_lut)
+            @device_circle_data_details = icswSaltMonitoringResultService.build_circle_info("device", _host_lut, _host_cat_lut)
 
 ]).service("icswDeviceLivestatusDataService",
 [
@@ -567,7 +610,8 @@ angular.module(
                         category_tree = result[2].value
                     service_entries = []
                     host_entries = []
-                    used_cats = []
+                    used_mon_cats = []
+                    used_device_cats = []
                     if result[0].state == "fulfilled"
                         # fill service and host_entries, used cats
                         xml = result[0].value
@@ -576,13 +620,20 @@ angular.module(
                         $(xml).find("value[name='host_result']").each (idx, node) =>
                             host_entries = host_entries.concat(angular.fromJson($(node).text()))
                         _unknown_hosts = (parseInt(_idx) for _idx in watched_devs)
+                        # get all device cats
+                        _dev_cat_pks = (_entry.idx for _entry in category_tree.list when _entry.full_name.match(/\/device\//))
                         for entry in host_entries
                             icswSaltMonitoringResultService.salt_host(entry, device_tree)
+                            # should be in salt_host ?
+                            entry.$$device_categories = _.intersection(entry.$$icswDevice.categories, _dev_cat_pks)
+                            used_device_cats = _.union(entry.$$device_categories, used_device_cats)
                             _.remove(_unknown_hosts, (_idx) -> return _idx == entry.$$icswDevice.idx)
                         for _idx in _unknown_hosts
                             if _idx of device_tree.all_lut
                                 dev = device_tree.all_lut[_idx]
-                                _um_entry = icswSaltMonitoringResultService.get_unmonitore_device_entry(dev)
+                                _um_entry = icswSaltMonitoringResultService.get_unmonitored_device_entry(dev)
+                                _um_entry.$$device_categories = _.intersection(dev.categories, _dev_cat_pks)
+                                used_device_cats = _.union(_um_entry.$$device_categories, used_device_cats)
                                 icswSaltMonitoringResultService.salt_host(_um_entry, device_tree)
                                 host_entries.push(_um_entry)
                         srv_id = 0
@@ -596,7 +647,7 @@ angular.module(
                             h_m_result.$$service_list.push(entry)
                             entry.$$host_mon_result = h_m_result
                             if entry.custom_variables and entry.custom_variables.cat_pks?
-                                used_cats = _.union(used_cats, entry.custom_variables.cat_pks)
+                                used_mon_cats = _.union(used_mon_cats, entry.custom_variables.cat_pks)
                     else
                         # invalidate results
                         for dev_idx, watchers of watch_dict
@@ -615,7 +666,7 @@ angular.module(
                                     hosts_client.push(entry)
                                     for check in entry.$$service_list
                                         services_client.push(check)
-                        _result.update(hosts_client, services_client, used_cats)
+                        _result.update(hosts_client, services_client, used_mon_cats, used_device_cats)
             )
 
     return {
@@ -738,7 +789,7 @@ angular.module(
                 # we use MonitoringResult as a container to send the device selection down the pipe
                 # console.log "EMIT"
                 # here we go
-                @struct.mon_result.update(@struct.device_list, [], [])
+                @struct.mon_result.update(@struct.device_list, [], [], [])
 
         pipeline_pre_close: () =>
             icswActiveSelectionService.unregister_receiver()
@@ -810,39 +861,6 @@ angular.module(
                     @struct.monitoring_data = data[0]
                     @set_async_emit_data(@struct.monitoring_data)
             )
-]).service('icswLivestatusCategoryFilter',
-[
-    "$q", "icswMonLivestatusPipeBase", "icswMonitoringResult",
-(
-    $q, icswMonLivestatusPipeBase, icswMonitoringResult,
-) ->
-    class icswLivestatusCategoryFilter extends icswMonLivestatusPipeBase
-        constructor: () ->
-            super("icswLivestatusCategoryFilter", true, true)
-            @set_template(
-                '<icsw-config-category-tree-select icsw-mode="filter" icsw-sub-tree="\'mon\'" icsw-mode="filter" icsw-connect-element="con_element"></icsw-config-category-tree-select>'
-                "CategoryFilter"
-            )
-            @_emit_data = new icswMonitoringResult()
-            @_cat_filter = undefined
-            @_latest_data = undefined
-            @new_data_notifier = $q.defer()
-            #  @new_data_notifier = $q.defer()
-
-        set_category_filter: (sel_cat) ->
-            @_cat_filter = sel_cat
-            if @_latest_data?
-                @emit_data_downstream(@new_data_received(@_latest_data))
-
-        new_data_received: (data) ->
-            @_latest_data = data
-            if @_cat_filter?
-                @_emit_data.apply_category_filter(@_cat_filter, @_latest_data)
-            @new_data_notifier.notify(data)
-            return @_emit_data
-
-        pipeline_reject_called: (reject) ->
-            # ignore, stop processing
 ]).service("icswLivestatusLocationDisplay",
 [
     "$q", "icswMonLivestatusPipeBase", "icswMonitoringResult",

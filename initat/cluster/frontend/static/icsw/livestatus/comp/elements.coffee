@@ -50,7 +50,7 @@ angular.module(
         }
 
         handle_mouse_enter: (event, focus_mode) ->
-            console.log "me", event, focus_mode
+            # console.log "me", event, focus_mode
 
         render: () ->
             _w = @props.size

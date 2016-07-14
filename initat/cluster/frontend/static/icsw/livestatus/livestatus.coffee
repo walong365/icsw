@@ -60,12 +60,15 @@ angular.module(
             "icswLivestatusSelDevices": [{
                 "icswLivestatusDataSource": [{
                     "icswLivestatusFilterService": [{
-                        "icswLivestatusTabularDisplay": []
-                    }
-                    {
-                        "icswLivestatusInfoDisplay": []
-                    }
-                    ]
+                        "icswLivestatusMonCategoryFilter": [{
+                            "icswLivestatusDeviceCategoryFilter": [{
+                                "icswLivestatusTabularDisplay": []
+                            }
+                                {
+                                    "icswLivestatusInfoDisplay": []
+                                }]
+                        }]
+                    }]
                 }]
             }]
         }
@@ -76,7 +79,7 @@ angular.module(
                         "icswLivestatusLocationDisplay": []
                     }
                         {
-                            "icswLivestatusCategoryFilter": [{
+                            "icswLivestatusMonCategoryFilter": [{
                                 "icswLivestatusMapDisplay": []
                             }]
                         }

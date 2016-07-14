@@ -379,14 +379,14 @@ angular.module(
                 data.$$allowed = _add
                 if data.$$allowed
                     _struct.allowed_states.push(state)
-                    if data.$$menuHeader
-                        _struct.menu_header_states.push(state)
                     if data.$$menuEntry
                         _struct.menu_states.push(state)
                     if data.valid_for_quicklink
                         _struct.quicklink_states.push(state)
                     if data.$$dashboardEntry
                         _struct.dashboard_states.push(state)
+                if data.$$menuHeader
+                    _struct.menu_header_states.push(state)
             # signal: we have changed the rights
         if _init and _user? and _acls_valid
             _struct.valid = true
