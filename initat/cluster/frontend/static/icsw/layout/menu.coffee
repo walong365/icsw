@@ -33,78 +33,6 @@ menu_module = angular.module(
     initProduct, icswLayoutSelectionDialogService, icswActiveSelectionService,
     $q, icswUserService, blockUI, $state, icswSystemLicenseDataService, $rootScope
 ) ->
-    $rootScope.switch_theme = (theme_selection) ->
-        $.get('/icsw/rev-manifest.json', (data) ->
-            # no theme selected -> toggle/switch between themes
-            if theme_selection == undefined
-
-                current_theme = $window.sessionStorage.getItem('current_theme')
-                if current_theme == null
-                    current_theme = "default"
-
-                if current_theme == "init"
-                    theme = "default"
-                else
-                    theme = "init"
-            else
-                if parseInt(theme_selection) == 1
-                    theme = "default"
-                else if parseInt(theme_selection) == 2
-                    theme = "init"
-                else
-                    theme = theme_selection
-
-            console.log("setting theme to: " + theme)
-            console.log("theme_selection is of: " + typeof theme_selection)
-
-            $window.sessionStorage.setItem('current_theme', theme)
-
-            if data.hasOwnProperty("theme_default.css")
-                css_theme_default = '<link rel="stylesheet" href="static/' + data['theme_default.css'] + '">'
-            else
-                css_theme_default = '<link rel="stylesheet" href="static/theme_default.css">'
-
-            if data.hasOwnProperty("theme_init.css")
-                css_theme_init = '<link rel="stylesheet" href="static/' + data['theme_init.css'] + '">'
-            else
-                css_theme_init = '<link rel="stylesheet" href="static/theme_init.css">'
-
-            head = angular.element.find("head")[0]
-
-            svgstyle_default = '<link rel="stylesheet" href="static/svgstyle_default.css">'
-            svgstyle_init = '<link rel="stylesheet" href="static/svgstyle_init.css">'
-
-            if theme == "init"
-                theme_to_use = css_theme_init
-                svg_style_to_use = svgstyle_init
-                svg_style_name = "svgstyle_init.css"
-            else if theme == "default"
-                theme_to_use = css_theme_default
-                svg_style_to_use = svgstyle_default
-                svg_style_name = "svgstyle_default.css"
-
-            for node in head.childNodes
-                if node.outerHTML != undefined
-                    if node.outerHTML == css_theme_default
-                        node.outerHTML = theme_to_use
-                    else if node.outerHTML == css_theme_init
-                        node.outerHTML = theme_to_use
-                    else if node.outerHTML == svgstyle_default
-                        node.outerHTML = svg_style_to_use
-                    else if node.outerHTML == svgstyle_init
-                        node.outerHTML = svg_style_to_use
-
-            $.get('/icsw/static/' + svg_style_name, (data) ->
-                style_token_1 =  ".sb_lines"
-                style_token_2 = '@import "../icsw/static/svgstyle_default.css";'
-                head = angular.element.find("head")[0]
-                for node in head.childNodes
-                    if node.outerHTML != undefined
-                        if node.outerHTML.indexOf(style_token_1) > -1 || node.outerHTML.indexOf(style_token_2) > -1
-                            node.outerHTML = "<style>" + data + "</style>"
-            )
-        )
-
     # init service types
     $scope.ICSW_URLS = ICSW_URLS
     $scope.initProduct = initProduct
@@ -221,10 +149,11 @@ menu_module = angular.module(
     #     icswLayoutSelectionDialogService.show_dialog()
 
     # apply selected theme if theme is set in session
+    ###
     current_theme = $window.sessionStorage.getItem('current_theme')
     if current_theme != null
         $rootScope.switch_theme(current_theme)
-
+    ###
 ]).directive("icswLayoutMenubar",
 [
     "$templateCache",

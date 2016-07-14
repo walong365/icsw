@@ -34,6 +34,7 @@ import string
 
 import django.core.serializers
 from django.apps import apps
+from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
 from django.core.exceptions import ValidationError, ImproperlyConfigured
@@ -41,8 +42,6 @@ from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
 from django.utils.encoding import force_text
-
-from enum import IntEnum
 
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models.functions import check_empty_string, check_integer, \
@@ -667,9 +666,6 @@ class user_manager(models.Manager):
         )
         return new_admin
 
-class UIThemeEnum(IntEnum):
-    default = 1
-    init = 2
 
 class user(models.Model):
     objects = user_manager()
@@ -725,7 +721,7 @@ class user(models.Model):
     # scan depth
     scan_depth = models.IntegerField(default=2)
     #theme
-    ui_theme_selection = models.IntegerField(choices=[(pt.value, pt.name) for pt in UIThemeEnum], default=UIThemeEnum.default.value)
+    ui_theme_selection = models.CharField(max_length=64, default=settings.THEME_DEFAULT)
 
     @property
     def is_anonymous(self):

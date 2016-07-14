@@ -23,15 +23,17 @@
 angular.module(
     "icsw.login",
     [
-        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "icsw.system.license",
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "icsw.system.license", "icsw.layout.theme"
     ]
 ).controller("icswLoginCtrl",
 [
     "$scope", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswParseXMLResponseService", "blockUI",
-    "initProduct", "icswSystemLicenseDataService", "$q", "$state", "icswCSRFService", "icswUserService", "$rootScope"
+    "initProduct", "icswSystemLicenseDataService", "$q", "$state", "icswCSRFService", "icswUserService",
+    "setDefaultTheme",
 (
     $scope, $window, ICSW_URLS, icswSimpleAjaxCall, icswParseXMLResponseService, blockUI,
-    initProduct, icswSystemLicenseDataService, $q, $state, icswCSRFService, icswUserService, $rootScope
+    initProduct, icswSystemLicenseDataService, $q, $state, icswCSRFService, icswUserService,
+    setDefaultTheme
 ) ->
     $scope.initProduct = initProduct
     $scope.license_tree = undefined
@@ -67,6 +69,7 @@ angular.module(
         ).then(
             (data) ->
                 xml = data[0]
+                setDefaultTheme($(xml).find("value[name='theme_default']").text())
                 $scope.login_hints = angular.fromJson($(xml).find("value[name='login_hints']").text())
                 $scope.django_version = $(xml).find("value[name='django_version']").text()
                 $scope.struct.disabled = false
@@ -108,7 +111,6 @@ angular.module(
                         (data) ->
                             csrf_token = data[0]
                             _user = data[1].user
-                            $rootScope.switch_theme(_user.ui_theme_selection)
                             blockUI.stop()
                             console.log "STATE=", _val
                             $state.go(_val)

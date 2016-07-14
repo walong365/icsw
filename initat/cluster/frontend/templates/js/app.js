@@ -60,6 +60,7 @@ icsw_app = angular.module(
         "cfp.hotkeys",
         "init.csw.filters",
         "icsw.tools.reacttree",
+        "icsw.layout.theme",
         "icsw.layout.menu",
         "icsw.tools",
         "icsw.login",

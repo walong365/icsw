@@ -1064,8 +1064,7 @@
                             </label>
                             <div class="controls col-sm-8">
                                 <select class="form-control" ng-model="struct.user.ui_theme_selection">
-                                    <option value="1" ng-selected="struct.user.ui_theme_selection == '1'">default</option>
-                                    <option value="2" ng-selected="struct.user.ui_theme_selection == '2'">init</option>
+                                    <option ng-repeat="(theme, themename) in themes" value="{{theme}}" ng-selected="struct.user.ui_theme_selection == '{{theme}}'">{{themename}}</option>
                                 </select>
                             </div>
                         </div>

@@ -21,7 +21,7 @@
 menu_module = angular.module(
     "icsw.layout.routing",
     [
-        "ui.router",
+        "ui.router"
     ]
 ).config([
     "$stateProvider", "$urlRouterProvider", "icswRouteExtensionProvider",

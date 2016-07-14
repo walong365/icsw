@@ -28,6 +28,7 @@ import logging
 
 import django
 from django.contrib.auth import login, logout, authenticate
+from django.conf import settings
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.db.models import Q
@@ -134,6 +135,7 @@ class login_addons(View):
         request.xml_response["login_hints"] = json.dumps(_get_login_hints())
         request.xml_response["django_version"] = ".".join(_vers)
         request.xml_response["next_url"] = _next_url or ""
+        request.xml_response["theme_default"] = settings.THEME_DEFAULT
         request.xml_response["password_character_count"] = "{:d}".format(_cs["password.character.count"])
 
 

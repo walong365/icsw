@@ -202,6 +202,7 @@ user_patterns = [
     url("sync$", user_views.sync_users.as_view(), name="sync_users"),
     url("^set_user_var$", user_views.set_user_var.as_view(), name="set_user_var"),
     url("^get_user_var$", user_views.get_user_var.as_view(), name="get_user_var"),
+    url("^set_theme$", user_views.set_theme.as_view(), name="set_theme"),
     url("^change_obj_perm$", user_views.change_object_permission.as_view(), name="change_object_permission"),
     url("^upload_license_file$", user_views.upload_license_file.as_view(), name="upload_license_file"),
     url("^chdc$", user_views.clear_home_dir_created.as_view(), name="clear_home_dir_created"),
