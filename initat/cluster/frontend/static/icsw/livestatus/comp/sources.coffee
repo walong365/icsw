@@ -303,6 +303,7 @@ angular.module(
                 entry.$$icswCategories = (cat_tree.lut[_cat].name for _cat in entry.custom_variables.cat_pks).join(", ")
             else
                 entry.$$icswCategories = "---"
+            entry.$$search_string = "#{entry.plugin_output} #{entry.description}" 
         return entry
 
     build_circle_info = (in_type, in_dict, detail_dict) ->
