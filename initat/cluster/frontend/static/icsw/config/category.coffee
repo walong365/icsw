@@ -581,6 +581,8 @@ angular.module(
                 r_info = "TOP"
             return r_info
 
+        node_search: (t_entry, s_re) =>
+            return s_re.test(t_entry.obj.name)
 
         get_selected_cat_pks: () =>
             return @get_selected(
@@ -704,7 +706,9 @@ angular.module(
         $scope.struct.disp_cat_tree = new icswCatSelectionTreeService(
             $scope
             {
-                show_selection_buttons: false
+                show_selection_buttons: $scope.struct.mode == "filter"
+                # search field enabled
+                search_field: $scope.struct.mode == "filter"
                 # show_icons: false
                 show_select: true
                 show_descendants: true

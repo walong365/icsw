@@ -402,23 +402,30 @@ angular.module(
         apply_base_filter: (filter, src_data) =>
             # apply base livestatus filter
             @__luts_set = false
+            # for linked mode
             _host_pks = []
+
             @hosts.length = 0
+            _device_cats = []
             for entry in src_data.hosts
                 if filter.host_types[entry.state_type] and filter.host_states[entry.state]
                     @hosts.push(entry)
+                    _device_cats = _.union(_device_cats, entry.$$device_categories)
                     _host_pks.push(entry.$$icswDevice.idx)
 
             @services.length = 0
+            _mon_cats = []
             for entry in src_data.services
                 if filter.linked and entry.$$host_mon_result.$$icswDevice.idx not in _host_pks
                     true
                 else if filter.service_types[entry.state_type] and filter.service_states[entry.state]
                     @services.push(entry)
+                    if entry.custom_variables? and entry.custom_variables.cat_pks?
+                        _mon_cats = _.union(_mon_cats, entry.custom_variables.cat_pks)
 
-            # simply copy
-            for attr_name in ["used_mon_cats", "used_device_cats"]
-                @_copy_list(attr_name, src_data)
+            # reduce mon and device cats
+            @used_device_cats = _device_cats
+            @used_mon_cats = _mon_cats
 
             # bump generation counter
             @generation++

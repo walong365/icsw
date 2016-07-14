@@ -26,9 +26,9 @@ angular.module(
     []
 ).factory("icswReactTreeDrawNode",
 [
-    "$q",
+    "$q", "$timeout",
 (
-    $q,
+    $q, $timeout,
 ) ->
     {div, input, span, ul, li} = React.DOM
     icswReactTreeDrawNode = React.createClass(
@@ -206,6 +206,31 @@ angular.module(
                             _top_spans
                         )
                     )
+                    if _tc.search_field
+                        _input_to = undefined
+                        _main_spans.push(
+                            input(
+                                {
+                                    type: "text"
+                                    key: "sfield"
+                                    onChange: (event) =>
+                                        if _input_to?
+                                            $timeout.cancel(_input_to)
+                                        cur_val = event.target.value
+                                        _input_to = $timeout(
+                                            () =>
+                                                _tc.do_search(cur_val)
+                                            10
+                                        )
+                                    onFocus: (event) =>
+                                        # focus event
+                                        # console.log "F"
+                                    onBlur: (event) =>
+                                        # blur (unfocus) event
+                                        # console.log "B"
+                                }
+                            )
+                        )
             _name_span_list = [
                 _tc.get_pre_view_element(_tn)
                 span(
@@ -540,6 +565,8 @@ angular.module(
             @show_total_descendants = true
             # only one element can be selected
             @single_select = false
+            # search field
+            @search_field = false
             # extra args for nodes
             @extra_args = []
             @root_nodes = []
@@ -789,6 +816,24 @@ angular.module(
                     show = entry.active
             return entry.set_expand(show)
 
+        # search function
+        do_search: (s_string) =>
+            if s_string.length
+                cur_re = new RegExp(s_string, "i")
+                @iter(
+                    (entry) =>
+                        entry.set_selected(@node_search(entry, cur_re))
+                )
+                @show_selected(keep=false)
+            else
+                # show top-level nodes (at least)
+                @iter(
+                    (entry) =>
+                        if entry._depth < 2
+                            entry.set_expand(true)
+                )
+                @new_generation()
+
         # clear all active nodes
         clear_active: () =>
             @iter(
@@ -832,6 +877,10 @@ angular.module(
 
         get_post_view_element: (entry) =>
             return null
+
+        node_search: (entry, s_re) =>
+            console.warn "node_search called with RE '#{s_re}' for #{entry}"
+            return true
 
         # selection changed callback
         selection_changed: (entry) =>
