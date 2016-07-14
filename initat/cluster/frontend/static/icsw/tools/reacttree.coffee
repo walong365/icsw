@@ -207,25 +207,35 @@ angular.module(
                         )
                     )
                     if _tc.search_field
+                        if not _tc.$$search_focus?
+                            _tc.$$search_focus = false
+                            _tc.$$search_string = ""
                         _input_to = undefined
                         _main_spans.push(
                             input(
                                 {
                                     type: "text"
                                     key: "sfield"
+                                    defaultValue: _tc.$$search_string
+                                    autoFocus: if _tc.$$search_focus then "1" else null
                                     onChange: (event) =>
                                         if _input_to?
                                             $timeout.cancel(_input_to)
                                         cur_val = event.target.value
+                                        # store search string
+                                        _tc.$$search_string = cur_val
                                         _input_to = $timeout(
                                             () =>
+                                                console.log "search", cur_val
                                                 _tc.do_search(cur_val)
                                             10
                                         )
                                     onFocus: (event) =>
+                                        _tc.$$search_focus = true
                                         # focus event
                                         # console.log "F"
                                     onBlur: (event) =>
+                                        _tc.$$search_focus = false
                                         # blur (unfocus) event
                                         # console.log "B"
                                 }
@@ -818,13 +828,24 @@ angular.module(
 
         # search function
         do_search: (s_string) =>
+            _get_sel_fp = () =>
+                return @get_selected(
+                    (node) ->
+                        if node.selected
+                            return [toString(node.obj.idx)]
+                        else
+                            return []
+                ).join(".")
             if s_string.length
+                _cur_sel = _get_sel_fp()
                 cur_re = new RegExp(s_string, "i")
                 @iter(
                     (entry) =>
                         entry.set_selected(@node_search(entry, cur_re))
                 )
                 @show_selected(keep=false)
+                if _cur_sel != _get_sel_fp()
+                    @selection_changed_by_search(undefined)
             else
                 # show top-level nodes (at least)
                 @iter(
@@ -885,6 +906,10 @@ angular.module(
         # selection changed callback
         selection_changed: (entry) =>
             console.warn "selection_changed not implemented for #{@name}"
+
+        # selection changed (by search string entry) callback
+        selection_changed_by_search: (entry) =>
+            console.warn "selection_changed_by_search not implemented for #{@name}"
 
         handle_click: (event, entry) =>
             console.warn "click not implemented"

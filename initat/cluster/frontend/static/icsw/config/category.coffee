@@ -597,7 +597,11 @@ angular.module(
             # console.log "SC"
             sel_list = @get_selected_cat_pks()
             @scope.new_selection(entry, sel_list)
-
+            
+        selection_changed_by_search: () =>
+            sel_list = @get_selected_cat_pks()
+            @scope.new_selection(undefined, sel_list)
+            
         handle_click: ($event, entry) =>
             if entry.obj.depth > 0
                 @scope.click_category(entry.obj)
