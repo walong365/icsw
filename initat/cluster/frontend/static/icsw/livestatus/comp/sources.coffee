@@ -271,7 +271,7 @@ angular.module(
             4: "unmon"
         }[entry.state]
 
-    salt_host = (entry, device_tree) ->
+    salt_host = (entry, device_tree, cat_tree, device_cat_pks) ->
         if not entry.$$icswSalted?
             entry.$$service_list = []
             entry.$$icswSalted = true
@@ -287,6 +287,11 @@ angular.module(
             # link back, highly usefull
             entry.$$icswDevice.$$host_mon_result = entry
             entry.$$icswDeviceGroup = device_tree.group_lut[entry.$$icswDevice.device_group]
+            entry.$$device_categories = _.intersection(entry.$$icswDevice.categories, device_cat_pks)
+            if entry.$$device_categories.length
+                entry.$$icswCategories = (cat_tree.lut[_cat].name for _cat in entry.$$device_categories).join(", ")
+            else
+                entry.$$icswCategories = "---"
         return entry
 
     salt_service = (entry, cat_tree) ->
@@ -303,6 +308,7 @@ angular.module(
                 entry.$$icswCategories = (cat_tree.lut[_cat].name for _cat in entry.custom_variables.cat_pks).join(", ")
             else
                 entry.$$icswCategories = "---"
+            entry.$$search_string = "#{entry.plugin_output} #{entry.description}" 
         return entry
 
     build_circle_info = (in_type, in_dict, detail_dict) ->
@@ -359,10 +365,10 @@ angular.module(
             @result_notifier = $q.defer()
             @hosts = []
             @services = []
-            # used monitoring categories
-            @used_mon_cats = []
-            # used device categories
-            @used_device_cats = []
+            # counter dicts
+            @mon_cat_counters = {}
+            @device_cat_counters = {}
+            @_create_used_fields()
             @__luts_set = false
 
         new_selection: () =>
@@ -374,9 +380,9 @@ angular.module(
 
         copy_from: (src) =>
             # copy objects from src
-            @update(src.hosts, src.services, src.used_mon_cats, src.used_device_cats)
+            @update(src.hosts, src.services, src.mon_cat_counters, src.device_cat_counters)
             
-        update: (hosts, services, used_mon_cats, used_device_cats) =>
+        update: (hosts, services, mon_cat_counters, device_cat_counters) =>
             @generation++
             @__luts_set = false
             @hosts.length = 0
@@ -385,8 +391,9 @@ angular.module(
             @services.length = 0
             for entry in services
                 @services.push(entry)
-            @used_mon_cats = used_mon_cats
-            @used_device_cats = used_device_cats
+            @mon_cat_counters = mon_cat_counters
+            @device_cat_counters = device_cat_counters
+            @_create_used_fields()
             # console.log "update", @generation
             @notify()
 
@@ -399,26 +406,44 @@ angular.module(
             for entry in src_data[attr_name]
                 @[attr_name].push(entry)
 
+        _copy_dict: (attr_name, src_data) =>
+            @[attr_name] = _.cloneDeep(src_data[attr_name])
+
+        _create_used_fields: () =>
+            # used monitoring categories
+            @used_mon_cats = (parseInt(_v) for _v in _.keys(@mon_cat_counters))
+            # used device categories
+            @used_device_cats = (parseInt(_v) for _v in _.keys(@device_cat_counters))
+
         apply_base_filter: (filter, src_data) =>
             # apply base livestatus filter
             @__luts_set = false
+            # for linked mode
             _host_pks = []
+
             @hosts.length = 0
+            device_cat_counters = {}
+            # _device_cats = []
             for entry in src_data.hosts
                 if filter.host_types[entry.state_type] and filter.host_states[entry.state]
                     @hosts.push(entry)
+                    device_cat_counters = icswTools.merge_count_dict(device_cat_counters, _.countBy(entry.$$device_categories))
                     _host_pks.push(entry.$$icswDevice.idx)
 
             @services.length = 0
+            mon_cat_counters = {}
             for entry in src_data.services
                 if filter.linked and entry.$$host_mon_result.$$icswDevice.idx not in _host_pks
                     true
                 else if filter.service_types[entry.state_type] and filter.service_states[entry.state]
                     @services.push(entry)
+                    if entry.custom_variables? and entry.custom_variables.cat_pks?
+                        mon_cat_counters = icswTools.merge_count_dict(mon_cat_counters, _.countBy(entry.custom_variables.cat_pks))
 
-            # simply copy
-            for attr_name in ["used_mon_cats", "used_device_cats"]
-                @_copy_list(attr_name, src_data)
+            # reduce mon and device cats
+            @device_cat_counters = device_cat_counters
+            @mon_cat_counters = mon_cat_counters
+            @_create_used_fields()
 
             # bump generation counter
             @generation++
@@ -431,8 +456,10 @@ angular.module(
             if filter_name == "mon"
                 # copy hosts
                 @_copy_list("hosts", src_data)
+                @_copy_dict("device_cat_counters", src_data)
                 # filter services
                 @services.length = 0
+                mon_cat_counters = {}
                 for entry in src_data.services
                     _add = true
                     if entry.custom_variables? and entry.custom_variables.cat_pks?
@@ -442,10 +469,13 @@ angular.module(
                         _add = false
                     if _add
                         @services.push(entry)
+                        mon_cat_counters = icswTools.merge_count_dict(mon_cat_counters, _.countBy(entry.custom_variables.cat_pks))
+                @mon_cat_counters = mon_cat_counters
             else
                 _host_pks = []
                 # device filter
                 @hosts.length = 0
+                device_cat_counters = {}
                 for entry in src_data.hosts
                     _add = true
                     if entry.$$device_categories.length
@@ -456,19 +486,18 @@ angular.module(
                     if _add
                         @hosts.push(entry)
                         _host_pks.push(entry.$$icswDevice.idx)
+                        device_cat_counters = icswTools.merge_count_dict(device_cat_counters, _.countBy(entry.$$device_categories))
+                @device_cat_counters = device_cat_counters
                 # only take services on a valid host
                 @services.length = 0
+                mon_cat_counters = {}
                 for entry in src_data.services
                     if entry.$$host_mon_result.$$icswDevice.idx in _host_pks
                         @services.push(entry)
+                        mon_cat_counters = icswTools.merge_count_dict(mon_cat_counters, _.countBy(entry.custom_variables.cat_pks))
+                @mon_cat_counters = mon_cat_counters
 
-            for f_name in ["mon", "device"]
-                attr_name = "used_#{f_name}_cats"
-                # filter
-                @[attr_name].length = 0
-                for entry in src_data[attr_name]
-                    if entry in cat_list or f_name != filter_name
-                        @[attr_name].push(entry)
+            @_create_used_fields()
             # bump generation counter
             @generation++
             
@@ -512,10 +541,10 @@ angular.module(
 ]).service("icswDeviceLivestatusDataService",
 [
     "ICSW_URLS", "$interval", "$timeout", "icswSimpleAjaxCall", "$q", "icswDeviceTreeService",
-    "icswMonitoringResult", "icswSaltMonitoringResultService", "icswCategoryTreeService",
+    "icswMonitoringResult", "icswSaltMonitoringResultService", "icswCategoryTreeService", "icswTools",
 (
     ICSW_URLS, $interval, $timeout, icswSimpleAjaxCall, $q, icswDeviceTreeService,
-    icswMonitoringResult, icswSaltMonitoringResultService, icswCategoryTreeService,
+    icswMonitoringResult, icswSaltMonitoringResultService, icswCategoryTreeService, icswTools,
 ) ->
     # dict: device.idx -> watcher ids
     watch_dict = {}
@@ -610,8 +639,8 @@ angular.module(
                         category_tree = result[2].value
                     service_entries = []
                     host_entries = []
-                    used_mon_cats = []
-                    used_device_cats = []
+                    mon_cat_counters = {}
+                    device_cat_counters = {}
                     if result[0].state == "fulfilled"
                         # fill service and host_entries, used cats
                         xml = result[0].value
@@ -623,18 +652,16 @@ angular.module(
                         # get all device cats
                         _dev_cat_pks = (_entry.idx for _entry in category_tree.list when _entry.full_name.match(/\/device\//))
                         for entry in host_entries
-                            icswSaltMonitoringResultService.salt_host(entry, device_tree)
-                            # should be in salt_host ?
-                            entry.$$device_categories = _.intersection(entry.$$icswDevice.categories, _dev_cat_pks)
-                            used_device_cats = _.union(entry.$$device_categories, used_device_cats)
+                            icswSaltMonitoringResultService.salt_host(entry, device_tree, category_tree, _dev_cat_pks)
+                            device_cat_counters = icswTools.merge_count_dict(device_cat_counters, _.countBy(entry.$$device_categories))
+                            # for _dc in entry.$$
                             _.remove(_unknown_hosts, (_idx) -> return _idx == entry.$$icswDevice.idx)
                         for _idx in _unknown_hosts
                             if _idx of device_tree.all_lut
                                 dev = device_tree.all_lut[_idx]
                                 _um_entry = icswSaltMonitoringResultService.get_unmonitored_device_entry(dev)
-                                _um_entry.$$device_categories = _.intersection(dev.categories, _dev_cat_pks)
-                                used_device_cats = _.union(_um_entry.$$device_categories, used_device_cats)
-                                icswSaltMonitoringResultService.salt_host(_um_entry, device_tree)
+                                icswSaltMonitoringResultService.salt_host(_um_entry, device_tree, category_tree, _dev_cat_pks)
+                                device_cat_counters = icswTools.merge_count_dict(device_cat_counters, _.countBy(_um_entry.$$device_categories))
                                 host_entries.push(_um_entry)
                         srv_id = 0
                         for entry in service_entries
@@ -647,7 +674,7 @@ angular.module(
                             h_m_result.$$service_list.push(entry)
                             entry.$$host_mon_result = h_m_result
                             if entry.custom_variables and entry.custom_variables.cat_pks?
-                                used_mon_cats = _.union(used_mon_cats, entry.custom_variables.cat_pks)
+                                mon_cat_counters = icswTools.merge_count_dict(mon_cat_counters, _.countBy(entry.custom_variables.cat_pks))
                     else
                         # invalidate results
                         for dev_idx, watchers of watch_dict
@@ -666,7 +693,7 @@ angular.module(
                                     hosts_client.push(entry)
                                     for check in entry.$$service_list
                                         services_client.push(check)
-                        _result.update(hosts_client, services_client, used_mon_cats, used_device_cats)
+                        _result.update(hosts_client, services_client, mon_cat_counters, device_cat_counters)
             )
 
     return {

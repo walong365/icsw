@@ -48,6 +48,8 @@ angular.module(
             @violation_list.length = 0
             for entry in violation_list
                 @violation_list.push(entry)
+            if @violation_list.length
+                console.error "add license_violation test", @violation_list
             @build_luts()
         
         build_luts: () =>
@@ -108,9 +110,9 @@ angular.module(
                     )
                     state = states[0][3]
 
-            if @violation_list.length
-                # FIXME, ToDo
-                console.error "add license_violation test"
+            # if @violation_list.length
+            #     # FIXME, ToDo
+            #     console.error "add license_violation test", @violation_list
             #if data.license_violations[license_id]? and data.license_violations[license_id].type == 'hard'
             #    if !state?
             #        state = {}

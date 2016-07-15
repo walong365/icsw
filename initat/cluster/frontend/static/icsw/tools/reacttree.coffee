@@ -26,9 +26,9 @@ angular.module(
     []
 ).factory("icswReactTreeDrawNode",
 [
-    "$q",
+    "$q", "$timeout",
 (
-    $q,
+    $q, $timeout,
 ) ->
     {div, input, span, ul, li} = React.DOM
     icswReactTreeDrawNode = React.createClass(
@@ -206,6 +206,41 @@ angular.module(
                             _top_spans
                         )
                     )
+                    if _tc.search_field
+                        if not _tc.$$search_focus?
+                            _tc.$$search_focus = false
+                            _tc.$$search_string = ""
+                        _input_to = undefined
+                        _main_spans.push(
+                            input(
+                                {
+                                    type: "text"
+                                    key: "sfield"
+                                    defaultValue: _tc.$$search_string
+                                    autoFocus: if _tc.$$search_focus then "1" else null
+                                    onChange: (event) =>
+                                        if _input_to?
+                                            $timeout.cancel(_input_to)
+                                        cur_val = event.target.value
+                                        # store search string
+                                        _tc.$$search_string = cur_val
+                                        _input_to = $timeout(
+                                            () =>
+                                                console.log "search", cur_val
+                                                _tc.do_search(cur_val)
+                                            10
+                                        )
+                                    onFocus: (event) =>
+                                        _tc.$$search_focus = true
+                                        # focus event
+                                        # console.log "F"
+                                    onBlur: (event) =>
+                                        _tc.$$search_focus = false
+                                        # blur (unfocus) event
+                                        # console.log "B"
+                                }
+                            )
+                        )
             _name_span_list = [
                 _tc.get_pre_view_element(_tn)
                 span(
@@ -540,6 +575,8 @@ angular.module(
             @show_total_descendants = true
             # only one element can be selected
             @single_select = false
+            # search field
+            @search_field = false
             # extra args for nodes
             @extra_args = []
             @root_nodes = []
@@ -789,6 +826,36 @@ angular.module(
                     show = entry.active
             return entry.set_expand(show)
 
+        # search function
+        do_search: (s_string) =>
+            _get_sel_fp = () =>
+                # generate fingerprint
+                return @get_selected(
+                    (node) ->
+                        if node.selected
+                            return ["#{node.obj.idx}"]
+                        else
+                            return []
+                ).join(".")
+            if s_string.length
+                _cur_sel = _get_sel_fp()
+                cur_re = new RegExp(s_string, "i")
+                @iter(
+                    (entry) =>
+                        entry.set_selected(@node_search(entry, cur_re))
+                )
+                @show_selected(keep=false)
+                if _cur_sel != _get_sel_fp()
+                    @selection_changed_by_search(undefined)
+            else
+                # show top-level nodes (at least)
+                @iter(
+                    (entry) =>
+                        if entry._depth < 2
+                            entry.set_expand(true)
+                )
+                @new_generation()
+
         # clear all active nodes
         clear_active: () =>
             @iter(
@@ -833,9 +900,17 @@ angular.module(
         get_post_view_element: (entry) =>
             return null
 
+        node_search: (entry, s_re) =>
+            console.warn "node_search called with RE '#{s_re}' for #{entry}"
+            return true
+
         # selection changed callback
         selection_changed: (entry) =>
             console.warn "selection_changed not implemented for #{@name}"
+
+        # selection changed (by search string entry) callback
+        selection_changed_by_search: (entry) =>
+            console.warn "selection_changed_by_search not implemented for #{@name}"
 
         handle_click: (event, entry) =>
             console.warn "click not implemented"
