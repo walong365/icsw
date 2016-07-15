@@ -38,10 +38,15 @@ angular.module(
             )
             return theme
 ]).service('setupTheme',
-    ["$http", "ICSW_URLS", ($http, ICSW_URLS) ->
+    ["$http", "ICSW_URLS", "themes", "$window",
+    ($http, ICSW_URLS, themes, $window) ->
         setup = (theme) ->
+            default_theme = $window.sessionStorage.getItem('default_theme')
             if theme == "init" then theme = "cora"
-            console.log("setup theme:", theme)
+            if not themes[theme]?
+                theme = default_theme
+                console.log("theme does not exist setting default theme:", theme)
+
             maintheme_tag = angular.element.find("link[icsw-layout-main-theme]")[0]
             maintheme_tag.setAttribute("href", "static/theme_#{theme}.css")
             $http.get("#{ICSW_URLS.STATIC_URL}/svgstyle_#{theme}.css").then((response) ->
