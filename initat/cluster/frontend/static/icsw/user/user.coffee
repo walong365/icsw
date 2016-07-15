@@ -120,7 +120,7 @@ user_module = angular.module(
                 _update_url = ICSW_URLS.REST_USER_DETAIL.slice(1).slice(0, -2)
                 Restangular.restangularizeElement(null, @user, _update_url)
                 @user.put().then(
-                    (ok) ->
+                    (ok) =>
                         @build_luts()
                         _defer.resolve("updated")
                     (not_ok) ->
