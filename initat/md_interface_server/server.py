@@ -41,8 +41,8 @@ class server_process(
     def __init__(self):
         threading_tools.process_pool.__init__(self, "main", zmq=True)
         self.CC.init("md-interface-server", global_config)
-        self.CC.check_config()
-        self.__enable_livestatus = global_config["ENABLE_LIVESTATUS"]
+        self.CC.check_config(client=True)
+        self.__enable_livestatus = True  # global_config["ENABLE_LIVESTATUS"]
         self.__pid_name = global_config["PID_NAME"]
         self.__verbose = global_config["VERBOSE"]
         self._init_msi_block()
@@ -52,11 +52,11 @@ class server_process(
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.register_exception("hup_error", self._hup_error)
-        self._check_notification()
-        self._check_special_commands()
+        # self._check_notification()
+        # self._check_special_commands()
         # from mixins
-        self._check_md_version()
-        self._check_relay_version()
+        # self._check_md_version()
+        # self._check_relay_version()
         self._init_network_sockets()
 
     def _check_for_redistribute(self):
@@ -182,9 +182,9 @@ class server_process(
     def _init_network_sockets(self):
         self.network_bind(
             need_all_binds=False,
-            bind_port=global_config["COM_PORT"],
+            bind_port=global_config["COMMAND_PORT"],
             bind_to_localhost=True,
-            server_type="md-config",
+            client_type="md-interface-server",
             simple_server_bind=True,
             pollin=self.remote_call,
         )
@@ -276,5 +276,4 @@ class server_process(
 
     def loop_post(self):
         self.network_unbind()
-        self.vector_socket.close()
         self.CC.close()

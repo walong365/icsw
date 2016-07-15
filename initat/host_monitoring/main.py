@@ -36,6 +36,7 @@ from initat.icsw.service.instance import InstanceXML
 
 COLLCLIENT = False
 
+
 def run_code(prog_name, global_config):
     if COLLCLIENT:
         prog_name = "collclient"
