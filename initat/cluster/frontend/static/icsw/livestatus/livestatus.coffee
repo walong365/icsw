@@ -62,11 +62,14 @@ angular.module(
                     "icswLivestatusFilterService": [{
                         "icswLivestatusMonCategoryFilter": [{
                             "icswLivestatusDeviceCategoryFilter": [{
-                                "icswLivestatusTabularDisplay": []
+                                "icswLivestatusMonTabularDisplay": []
                             }
-                                {
-                                    "icswLivestatusInfoDisplay": []
-                                }]
+                            {
+                                "icswLivestatusDeviceTabularDisplay": []
+                            }
+                            {
+                                "icswLivestatusInfoDisplay": []
+                            }]
                         }]
                     }]
                 }]
@@ -85,17 +88,17 @@ angular.module(
                         }
                         {
                             "icswLivestatusFilterService": [{
-                                "icswLivestatusTabularDisplay": []
+                                "icswLivestatusMonTabularDisplay": []
                             }
                                 {
-                                    "icswLivestatusTabularDisplay": []
+                                    "icswLivestatusMonTabularDisplay": []
                                 }]
                         }]
                 }
                     {
                         "icswLivestatusFilterService": [{
                             "icswLivestatusFullBurst": [{
-                                "icswLivestatusTabularDisplay": []
+                                "icswLivestatusMonTabularDisplay": []
                             }
                                 {
                                     "icswLivestatusFullBurst": []

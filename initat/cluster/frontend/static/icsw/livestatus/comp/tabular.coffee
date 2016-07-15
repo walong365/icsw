@@ -23,18 +23,18 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.router",
     ]
-).service('icswLivestatusTabularDisplay',
+).service('icswLivestatusMonTabularDisplay',
 [
     "$q", "icswMonLivestatusPipeBase", "icswMonitoringResult",
 (
     $q, icswMonLivestatusPipeBase, icswMonitoringResult,
 ) ->
-    class icswLivestatusTabularDisplay extends icswMonLivestatusPipeBase
+    class icswLivestatusMonTabularDisplay extends icswMonLivestatusPipeBase
         constructor: () ->
-            super("icswLivestatusTabularDisplay", true, false)
+            super("icswLivestatusMonTabularDisplay", true, false)
             @set_template(
-                '<icsw-device-livestatus-table-view icsw-connect-element="con_element"></icsw-device-livestatus-table-view>'
-                "TabularDisplay"
+                '<icsw-livestatus-mon-table-view icsw-connect-element="con_element"></icsw-livestatus-mon-table-view>'
+                "ServiceTabularDisplay"
                 10
                 10
             )
@@ -46,7 +46,7 @@ angular.module(
         pipeline_reject_called: (reject) ->
             @new_data_notifier.reject("end")
 
-]).directive("icswDeviceLivestatusTableView",
+]).directive("icswLivestatusMonTableView",
 [
     "$templateCache",
 (
@@ -54,8 +54,8 @@ angular.module(
 ) ->
         return {
             restrict: "EA"
-            template: $templateCache.get("icsw.device.livestatus.table.view")
-            controller: "icswDeviceLivestatusTableCtrl"
+            template: $templateCache.get("icsw.livestatus.mon.table.view")
+            controller: "icswLivestatusMonTableCtrl"
             scope: {
                 # connect element for pipelining
                 con_element: "=icswConnectElement"
@@ -63,17 +63,7 @@ angular.module(
             link: (scope, element, attrs) ->
                 scope.link(scope.con_element.new_data_notifier)
         }
-]).directive("icswDeviceLivestatusTableRow",
-[
-    "$templateCache",
-(
-    $templateCache,
-) ->
-    return {
-        restrict: "EA"
-        template: $templateCache.get("icsw.device.livestatus.table.row")
-    }
-]).controller("icswDeviceLivestatusTableCtrl",
+]).controller("icswLivestatusMonTableCtrl",
 [
     "$scope",
 (
@@ -90,4 +80,81 @@ angular.module(
             (data) ->
                 $scope.struct.monitoring_data = data
         )
+]).directive("icswLivestatusMonTableRow",
+[
+    "$templateCache",
+(
+    $templateCache,
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.livestatus.mon.table.row")
+    }
+]).service('icswLivestatusDeviceTabularDisplay',
+[
+    "$q", "icswMonLivestatusPipeBase", "icswMonitoringResult",
+(
+    $q, icswMonLivestatusPipeBase, icswMonitoringResult,
+) ->
+    class icswLivestatusDeviceTabularDisplay extends icswMonLivestatusPipeBase
+        constructor: () ->
+            super("icswLivestatusDeviceTabularDisplay", true, false)
+            @set_template(
+                '<icsw-livestatus-device-table-view icsw-connect-element="con_element"></icsw-livestatus-device-table-view>'
+                "DeviceTabularDisplay"
+                10
+                10
+            )
+            @new_data_notifier = $q.defer()
+
+        new_data_received: (data) ->
+            @new_data_notifier.notify(data)
+
+        pipeline_reject_called: (reject) ->
+            @new_data_notifier.reject("end")
+
+]).directive("icswLivestatusDeviceTableView",
+[
+    "$templateCache",
+(
+    $templateCache,
+) ->
+        return {
+            restrict: "EA"
+            template: $templateCache.get("icsw.livestatus.device.table.view")
+            controller: "icswLivestatusDeviceTableCtrl"
+            scope: {
+                # connect element for pipelining
+                con_element: "=icswConnectElement"
+            }
+            link: (scope, element, attrs) ->
+                scope.link(scope.con_element.new_data_notifier)
+        }
+]).controller("icswLivestatusDeviceTableCtrl",
+[
+    "$scope",
+(
+    $scope,
+) ->
+    $scope.struct = {
+        # monitoring data
+        monitoring_data: undefined
+    }
+    $scope.link = (notifier) ->
+        notifier.promise.then(
+            (resolve) ->
+            (rejected) ->
+            (data) ->
+                $scope.struct.monitoring_data = data
+        )
+]).directive("icswLivestatusDeviceTableRow",
+[
+    "$templateCache",
+(
+    $templateCache,
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.livestatus.device.table.row")
+    }
 ])
