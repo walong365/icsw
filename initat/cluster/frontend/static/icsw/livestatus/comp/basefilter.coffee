@@ -371,7 +371,7 @@ angular.module(
                                     span(
                                         {
                                             key: "linkedspan"
-                                            className: "fa #{_lock_class} fa-4x fa-fw"
+                                            className: "fa fa-4x #{_lock_class} fa-fw"
                                         }
                                     )
                                 )

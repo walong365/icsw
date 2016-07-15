@@ -292,7 +292,6 @@ angular.module(
                 entry.$$icswCategories = (cat_tree.lut[_cat].name for _cat in entry.$$device_categories).join(", ")
             else
                 entry.$$icswCategories = "---"
-            console.log "H", entry
         return entry
 
     salt_service = (entry, cat_tree) ->
