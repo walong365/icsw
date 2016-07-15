@@ -342,18 +342,18 @@ def rpmlist_int(rpm_root_dir, re_strs, is_debian):
             else:
                 ret_dict = ipl
     else:
-        namere = re.compile("^(?P<name>\S+)\s+(?P<version>\S+)\s+(?P<release>\S+)\s+(?P<size>\S+)\s+(?P<arch>\S+)\s+(?P<summary>.*)$")
+        namere = re.compile("^(?P<name>\S+)\s+(?P<version>\S+)\s+(?P<release>\S+)\s+(?P<size>\S+)\s+(?P<arch>\S+)\s+(?P<installtimestamp>\S+)\s+(?P<summary>.*)$")
         log_list = [
             "doing rpm-call in dir {}, mode is {}".format(rpm_root_dir, "via rpm-command")
         ]
         if rpm_root_dir:
             rpm_coms = [
-                'chroot %s rpm -qa --queryformat="%%{NAME} %%{VERSION} %%{RELEASE} %%{SIZE} %%{ARCH} %%{SUMMARY}\n" ' % (rpm_root_dir),
-                'rpm --root=%s -qa --queryformat="%%{NAME} %%{VERSION} %%{RELEASE} %%{SIZE} %%{ARCH} %%{SUMMARY}\n" ' % (rpm_root_dir)
+                'chroot %s rpm -qa --queryformat="%%{NAME} %%{VERSION} %%{RELEASE} %%{SIZE} %%{ARCH} %%{INSTALLTIME} %%{SUMMARY}\n" ' % (rpm_root_dir),
+                'rpm --root=%s -qa --queryformat="%%{NAME} %%{VERSION} %%{RELEASE} %%{SIZE} %%{ARCH} %%{INSTALLTIME} %%{SUMMARY}\n" ' % (rpm_root_dir)
             ]
         else:
             rpm_coms = [
-                'rpm -qa --queryformat="%{NAME} %{VERSION} %{RELEASE} %{SIZE} %{ARCH} %{SUMMARY}\n" '
+                'rpm -qa --queryformat="%{NAME} %{VERSION} %{RELEASE} %{SIZE} %{ARCH} %{INSTALLTIME} %{SUMMARY}\n" '
             ]
         for rpm_com in rpm_coms:
             log_list.append("  rpm-command is %s" % (rpm_com.strip()))
@@ -385,6 +385,7 @@ def rpmlist_int(rpm_root_dir, re_strs, is_debian):
                             valid = 0
                         arch = rfp.group("arch")
                         summary = rfp.group("summary")
+                        installtimestamp = rfp.group("installtimestamp")
                         if valid:
                             ret_dict.setdefault(name, []).append(
                                 {
@@ -392,6 +393,7 @@ def rpmlist_int(rpm_root_dir, re_strs, is_debian):
                                     "release": rel,
                                     "arch": arch,
                                     "size": size,
+                                    "installtimestamp": installtimestamp,
                                     "summary": summary
                                 }
                             )

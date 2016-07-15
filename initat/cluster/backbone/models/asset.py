@@ -39,6 +39,64 @@ from initat.tools import server_command, pci_database, dmi_tools
 # Functions
 ########################################################################################################################
 
+def sizeof_fmt(num, suffix='B'):
+    for unit in ['','Ki','Mi','Gi','Ti','Pi','Ei','Zi']:
+        if abs(num) < 1024.0:
+            return "%3.1f%s%s" % (num, unit, suffix)
+        num /= 1024.0
+    return "%.1f%s%s" % (num, 'Yi', suffix)
+
+def get_packages_for_ar(asset_run):
+    blob = asset_run.raw_result_str
+    runtype = asset_run.run_type
+    scantype = asset_run.scan_type
+
+    assets = []
+
+    if blob:
+        if runtype == AssetType.PACKAGE:
+            if scantype == ScanType.NRPE:
+                if blob.startswith("b'"):
+                    _data = bz2.decompress(base64.b64decode(blob[2:-2]))
+                else:
+                    _data = bz2.decompress(base64.b64decode(blob))
+                l = json.loads(_data)
+                for (name, version, size, date) in l:
+                    if size == "Unknown":
+                        size = 0
+                    assets.append(
+                        BaseAssetPackage(
+                            name,
+                            version=version,
+                            size=size,
+                            install_date=date,
+                            package_type=PackageTypeEnum.WINDOWS
+                        )
+                    )
+            elif scantype == ScanType.HM:
+                try:
+                    package_dict = server_command.decompress(blob, pickle=True)
+                except:
+                    raise
+                else:
+                    for package_name in package_dict:
+                        for versions_dict in package_dict[package_name]:
+                            installtimestamp = None
+                            if 'installtimestamp' in versions_dict:
+                                installtimestamp = versions_dict['installtimestamp']
+
+                            assets.append(
+                                BaseAssetPackage(
+                                    package_name,
+                                    version=versions_dict['version'],
+                                    size=versions_dict['size'],
+                                    release=versions_dict['release'],
+                                    install_date=installtimestamp,
+                                    package_type=PackageTypeEnum.LINUX
+                                )
+                            )
+
+    return assets
 
 def get_base_assets_from_raw_result(asset_run,):
     blob = asset_run.raw_result_str
@@ -596,7 +654,6 @@ def get_base_assets_from_raw_result(asset_run,):
 # Base Asset Classes
 ########################################################################################################################
 
-
 class BaseAssetPackage(object):
     def __init__(self, name, version=None, release=None, size=None, install_date=None, package_type=None):
         self.name = name
@@ -605,6 +662,58 @@ class BaseAssetPackage(object):
         self.size = size
         self.install_date = install_date
         self.package_type = package_type
+
+    def get_as_row(self):
+        _name = self.name
+        _version = self.version if self.version else "N/A"
+        _release = self.release if self.release else "N/A"
+
+        if self.package_type == PackageTypeEnum.LINUX:
+            if self.size:
+                try:
+                    _size = sizeof_fmt(self.size)
+                except:
+                    _size = "N/A"
+            else:
+                _size = "N/A"
+
+            if self.install_date:
+                try:
+                    _install_date = datetime.datetime.fromtimestamp(int(self.install_date)).isoformat(" ")
+                except:
+                    _install_date = "N/A"
+            else:
+                _install_date = "N/A"
+        else:
+            if self.size:
+                try:
+                    _size = sizeof_fmt(int(self.size) * 1024)
+                except:
+                    _size = "N/A"
+            else:
+                _size = "N/A"
+
+            _install_date = self.install_date if self.install_date else "N/A"
+            if _install_date == "Unknown":
+                _install_date = "N/A"
+
+            if _install_date != "N/A":
+                try:
+                    year = _install_date[0:4]
+                    month = _install_date[4:6]
+                    day = _install_date[6:8]
+
+                    _install_date = datetime.datetime(year=int(year), month=int(month), day=int(day)).isoformat(" ")
+                except:
+                    _install_date = "N/A"
+
+        o = {}
+        o['package_name'] = _name
+        o['package_version'] = _version
+        o['package_release'] = _release
+        o['package_size'] = _size
+        o['package_install_date'] = _install_date
+        return o
 
     def __repr__(self):
         s = "Name: %s" % self.name

@@ -35,7 +35,7 @@ device_asset_module = angular.module(
                 rights: ["device.assets"]
                 menuEntry:
                     menukey: "dev"
-                    icon: "fa-code"
+                    icon: "fa-diamond"
                     ordering: 30
                 dashboardEntry:
                     size_x: 3
