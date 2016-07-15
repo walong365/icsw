@@ -524,6 +524,7 @@ angular.module(
     icswReactTreeConfig
 ) ->
 
+    {span} = React.DOM
     class icswCatSelectionTree extends icswReactTreeConfig
         constructor: (@scope, args) ->
             @mode = args.mode
@@ -548,7 +549,7 @@ angular.module(
                     @mode_entries.push(entry)
 
         hide_unused_entries: (useable_idxs, cat_tree) =>
-            _full_list = []
+            _full_list = (entry.idx for entry in @mode_entries when entry.depth < 2)
             # mark all used up to parent
             for _idx in useable_idxs
                 # speedup
@@ -581,6 +582,8 @@ angular.module(
                 r_info = "TOP"
             return r_info
 
+        node_search: (t_entry, s_re) =>
+            return s_re.test(t_entry.obj.name)
 
         get_selected_cat_pks: () =>
             return @get_selected(
@@ -591,11 +594,28 @@ angular.module(
                         return []
             )
 
+        get_pre_view_element: (entry) =>
+            if entry._element_count
+                return span(
+                    {
+                        key: "_pve"
+                        className: "label label-default"
+                        title: "Devices selected"
+                    }
+                    "#{entry._element_count}"
+                )
+            else
+                return null
+
         selection_changed: (entry) =>
             # console.log "SC"
             sel_list = @get_selected_cat_pks()
             @scope.new_selection(entry, sel_list)
-
+            
+        selection_changed_by_search: () =>
+            sel_list = @get_selected_cat_pks()
+            @scope.new_selection(undefined, sel_list)
+            
         handle_click: ($event, entry) =>
             if entry.obj.depth > 0
                 @scope.click_category(entry.obj)
@@ -704,7 +724,9 @@ angular.module(
         $scope.struct.disp_cat_tree = new icswCatSelectionTreeService(
             $scope
             {
-                show_selection_buttons: false
+                show_selection_buttons: $scope.struct.mode == "filter"
+                # search field enabled
+                search_field: $scope.struct.mode == "filter"
                 # show_icons: false
                 show_select: true
                 show_descendants: true
@@ -735,6 +757,11 @@ angular.module(
             )
 
         else if $scope.struct.mode == "filter"
+            if $scope.sub_tree in ["mon", "device"]
+                $scope.count_dict_name = "#{$scope.sub_tree}_cat_counters"
+                $scope.cat_name = "used_#{$scope.sub_tree}_cats"
+            else
+                assert "Invalid sub_tree '#{$scope.sub_tree}' for filter mode"
             # available cats, used to automatically select new cats (from mon-data reload)
             $scope.$$available_cats = []
             $scope.con_element.new_data_notifier.promise.then(
@@ -796,16 +823,16 @@ angular.module(
             # icswLivestatusFilter set, only some categories selectable und those are preselected
             if $scope.$$previous_filter?
                 if $scope.struct.mon_data?
-                    _new_cats = _.difference($scope.struct.mon_data.used_cats, $scope.$$available_cats)
+                    _new_cats = _.difference($scope.struct.mon_data[$scope.cat_name], $scope.$$available_cats)
                     # store
-                    $scope.$$available_cats = (entry for entry in $scope.struct.mon_data.used_cats)
+                    $scope.$$available_cats = (entry for entry in $scope.struct.mon_data[$scope.cat_name])
                     if _new_cats.length
                         # autoselect new categories and send to filter
                         send_selection_to_filter(_.uniq(_.union($scope.$$previous_filter, _new_cats)))
                 sel_cat = $scope.$$previous_filter
             else
                 if $scope.struct.mon_data?
-                    sel_cat = $scope.struct.mon_data.used_cats.concat([0])
+                    sel_cat = $scope.struct.mon_data[$scope.cat_name].concat([0])
                     # push category selection list
                     send_selection_to_filter(sel_cat)
                 else
@@ -813,7 +840,7 @@ angular.module(
                     sel_cat = []
             # useable are only the categories present in the current dataset
             if $scope.struct.mon_data?
-                _useable_idxs = _.intersection(_useable_idxs, $scope.struct.mon_data.used_cats)
+                _useable_idxs = _.intersection(_useable_idxs, $scope.struct.mon_data[$scope.cat_name])
                 # further reduce mode entries by filtering non-useable entries
                 _dct.hide_unused_entries(_useable_idxs, $scope.struct.cat_tree)
 
@@ -842,6 +869,7 @@ angular.module(
                 }
                 selected: 0 in sel_cat
                 show_select: true
+                _element_count: 0
             )
             _dct.lut[dummy_entry.obj.idx] = dummy_entry
             # init
@@ -852,9 +880,13 @@ angular.module(
 
         # console.log "pks=", _obj_pks
         for entry in _dct.mode_entries
+            # number of element in related counter dict
+            _num_el = 0
             if $scope.struct.mode == "filter"
                 _sel = entry.idx in sel_cat
                 _match_pks = []
+                if $scope.struct.mon_data? and entry.idx of $scope.struct.mon_data[$scope.count_dict_name]
+                    _num_el = $scope.struct.mon_data[$scope.count_dict_name][entry.idx]
             else
                 if entry.idx of sel_cat
                     # only selected when all devices are selected
@@ -869,6 +901,7 @@ angular.module(
                 expand: entry.idx in _to_expand
                 selected: _sel
                 show_select: entry.idx in _useable_idxs and entry.depth > 1
+                _element_count: _num_el
             )
             # copy matching pks to tree entry (NOT entry because entry is global)
             t_entry.$match_pks = (_v for _v in _match_pks)
@@ -882,7 +915,7 @@ angular.module(
                 if dummy_entry?
                     # add dummy at first (if defined)
                     _dct.lut[entry.idx].add_child(dummy_entry)
-        # console.log "*", $scope.cat_tree.lut
+
         _dct.show_selected(true)
 
     $scope.new_selection = (t_entry, new_sel) ->

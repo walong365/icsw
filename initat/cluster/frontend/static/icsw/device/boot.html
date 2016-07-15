@@ -22,7 +22,7 @@
         </div>
         <input class="form-control" ng-model="struct.device_sel_filter" placeholder="selection..." ng-change="change_sel_filter()"/>
     </form>
-    <table st-table="entries_displayed" st-safe-src="struct.devices" ng-show="struct.devices.length" class="table table-condensed table-hover" style="width:auto;">
+    <table st-table="entries_displayed" st-safe-src="struct.devices" ng-show="struct.devices.length" class="table table-condensed" style="width:auto;">
         <thead>
             <tr>
                 <td colspan="99">
@@ -176,7 +176,7 @@
     <table
         st-table="entries_displayed"
         st-safe-src="device.$$boot_helper.logs"
-        class="table table-condensed table-hover table-striped"
+        class="table table-condensed table-striped"
         style="width:auto;"
     >
         <thead>
@@ -423,7 +423,7 @@
             </h4>
             <table
                 st-table="boot_displayed"
-                class="table table-condensed table-hover table-striped"
+                class="table table-condensed table-striped"
                 st-safe-src="struct.boot_list"
                 style="width:auto;"
             >
@@ -461,7 +461,7 @@
             </h4>
             <table
                 st-table="unique_displayed"
-                class="table table-condensed table-hover table-striped"
+                class="table table-condensed table-striped"
                 st-safe-src="struct.unique_list"
                 style="width:auto;"
             >

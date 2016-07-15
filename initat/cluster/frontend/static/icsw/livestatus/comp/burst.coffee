@@ -235,7 +235,7 @@ angular.module(
                             if _service.$$host_mon_result.$$icswDevice.idx not in _host_idxs
                                 _host_idxs.push(_service.$$host_mon_result.$$icswDevice.idx)
                                 _hosts.push(_service.$$host_mon_result)
-                    @props.return_data.update(_hosts, _services, [])
+                    @props.return_data.update(_hosts, _services, [], [])
                 if @clicked_focus then 0 else 50
             )
             # console.log _services
@@ -246,7 +246,7 @@ angular.module(
                 @root_node.clear_focus()
             @focus_name = ""
             if do_export
-                @props.return_data.update([], [], [])
+                @props.return_data.update([], [], [], [])
             @setState({focus_element: undefined})
 
         render: () ->

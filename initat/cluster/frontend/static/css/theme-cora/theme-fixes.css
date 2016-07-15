@@ -34,7 +34,15 @@ span.fancytree-node:hover span.fancytree-title {
 span.fancytree-node:hover {
     background-color: #313131;
 }
-
+span.fancytree-node > div.btn-group > input {
+    margin-left: 1px;
+}
+.fancytree-checkbox {
+    margin: 1px 1px 1px 2px!important;
+}
+span.fancytree-expander {
+    margin-top:0px;
+    }
 /**** Fancytree end ****/
 /**** Toaster start ****/
 .toast-success {
@@ -122,9 +130,40 @@ table.rotateheaders th {
 
 .input-group-addon {
     background-color: #d5d5d5;
+    line-height: 1.32857;
+}
+
+.input-group-btn {
+    line-height: 1;
 }
 .btn-group > input:not(:first-child) {
     -webkit-box-shadow: -1px 0px 0px 0px rgba(0,0,0,0.5);
     -moz-box-shadow: -1px 0px 0px 0px rgba(0,0,0,0.5);
     box-shadow: -1px 0px 0px 0px rgba(0,0,0,0.5);
+}
+.simple-border {
+    border: 1px solid #444444;
+}
+.table-pager-block {
+    margin-right:10px;
+}
+.table-pager {
+    height: 20px;
+    margin-top: 0px;
+}
+.table-paging-tools select {
+    height: 20px;
+}
+.table-pager .pagination {
+    margin: 0;
+}
+
+
+.has-success .form-control,
+.has-success .form-control:focus,
+.has-success .input-group-addon {
+  border: 0;
+}
+.input-group .form-control {
+    height: auto;
 }

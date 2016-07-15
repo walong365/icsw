@@ -60,7 +60,17 @@ angular.module(
             "icswLivestatusSelDevices": [{
                 "icswLivestatusDataSource": [{
                     "icswLivestatusFilterService": [{
-                        "icswLivestatusTabularDisplay": []
+                        "icswLivestatusMonCategoryFilter": [{
+                            "icswLivestatusDeviceCategoryFilter": [{
+                                "icswLivestatusMonTabularDisplay": []
+                            }
+                            {
+                                "icswLivestatusDeviceTabularDisplay": []
+                            }
+                            {
+                                "icswLivestatusInfoDisplay": []
+                            }]
+                        }]
                     }]
                 }]
             }]
@@ -72,23 +82,23 @@ angular.module(
                         "icswLivestatusLocationDisplay": []
                     }
                         {
-                            "icswLivestatusCategoryFilter": [{
+                            "icswLivestatusMonCategoryFilter": [{
                                 "icswLivestatusMapDisplay": []
                             }]
                         }
                         {
                             "icswLivestatusFilterService": [{
-                                "icswLivestatusTabularDisplay": []
+                                "icswLivestatusMonTabularDisplay": []
                             }
                                 {
-                                    "icswLivestatusTabularDisplay": []
+                                    "icswLivestatusMonTabularDisplay": []
                                 }]
                         }]
                 }
                     {
                         "icswLivestatusFilterService": [{
                             "icswLivestatusFullBurst": [{
-                                "icswLivestatusTabularDisplay": []
+                                "icswLivestatusMonTabularDisplay": []
                             }
                                 {
                                     "icswLivestatusFullBurst": []
@@ -166,71 +176,4 @@ angular.module(
                         scope.unset_connector()
             )
     }
-]).service('icswLivestatusTabularDisplay',
-[
-    "$q", "icswMonLivestatusPipeBase", "icswMonitoringResult",
-(
-    $q, icswMonLivestatusPipeBase, icswMonitoringResult,
-) ->
-    class icswLivestatusTabularDisplay extends icswMonLivestatusPipeBase
-        constructor: () ->
-            super("icswLivestatusTabularDisplay", true, false)
-            @set_template(
-                '<icsw-device-livestatus-table-view icsw-connect-element="con_element"></icsw-device-livestatus-table-view>'
-                "TabularDisplay"
-                6
-                10
-            )
-            @new_data_notifier = $q.defer()
-
-        new_data_received: (data) ->
-            @new_data_notifier.notify(data)
-
-        pipeline_reject_called: (reject) ->
-            @new_data_notifier.reject("end")
-
-]).directive("icswDeviceLivestatusTableView",
-[
-    "$templateCache",
-(
-    $templateCache,
-) ->
-        return {
-            restrict: "EA"
-            template: $templateCache.get("icsw.device.livestatus.table.view")
-            controller: "icswDeviceLivestatusTableCtrl"
-            scope: {
-                # connect element for pipelining
-                con_element: "=icswConnectElement"
-            }
-            link: (scope, element, attrs) ->
-                scope.link(scope.con_element.new_data_notifier)
-        }
-]).directive("icswDeviceLivestatusTableRow",
-[
-    "$templateCache",
-(
-    $templateCache,
-) ->
-    return {
-        restrict: "EA"
-        template: $templateCache.get("icsw.device.livestatus.table.row")
-    }
-]).controller("icswDeviceLivestatusTableCtrl",
-[
-    "$scope",
-(
-    $scope,
-) ->
-    $scope.struct = {
-        # monitoring data
-        monitoring_data: undefined
-    }
-    $scope.link = (notifier) ->
-        notifier.promise.then(
-            (resolve) ->
-            (rejected) ->
-            (data) ->
-                $scope.struct.monitoring_data = data
-        )
 ])

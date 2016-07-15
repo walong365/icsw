@@ -58,6 +58,11 @@ angular.module(
         # console.log "registered receiver"
         $rootScope.$emit(ICSW_SIGNALS("ICSW_DSR_REGISTERED"))
 
+    unregister_receiver = () ->
+        _receivers -= 1
+        # console.log "registered receiver"
+        $rootScope.$emit(ICSW_SIGNALS("ICSW_DSR_UNREGISTERED"))
+
     sync_selection = (new_sel) ->
         cur_selection.update(new_sel.categories, new_sel.device_groups, new_sel.devices, [])
         cur_selection.sync_with_db(new_sel)
@@ -93,6 +98,10 @@ angular.module(
         register_receiver: () ->
             # register devsel receiver
             register_receiver()
+
+        unregister_receiver: () ->
+            # unregister devsel receiver
+            unregister_receiver()
     }
 ]).service("icswSelection",
 [
@@ -503,7 +512,13 @@ angular.module(
     stop_listen.push(
         $rootScope.$on(ICSW_SIGNALS("ICSW_DSR_REGISTERED"), (event) ->
             $scope.devsel_receivers = icswActiveSelectionService.num_receivers()
-            console.log "****", $scope.devsel_receivers, $scope
+            console.log "****+", $scope.devsel_receivers, $scope
+        )
+    )
+    stop_listen.push(
+        $rootScope.$on(ICSW_SIGNALS("ICSW_DSR_UNREGISTERED"), (event) ->
+            $scope.devsel_receivers = icswActiveSelectionService.num_receivers()
+            console.log "****-", $scope.devsel_receivers, $scope
         )
     )
     stop_listen.push(

@@ -117,6 +117,9 @@ angular.module(
             ]
             @host_type_lut = {}
 
+            # host / service filters are linke
+            @linked = false
+
             # default values for service states
             @service_states = {}
             for entry in @service_state_list
@@ -150,6 +153,9 @@ angular.module(
             # category filter settings
             @cat_filter_installed = false
 
+        toggle_link_state: () =>
+            @linked = !@linked
+
         toggle_service_state: (code) =>
             _srvc_idx = @service_state_lut[code][0]
             @service_states[_srvc_idx] = !@service_states[_srvc_idx]
@@ -179,96 +185,30 @@ angular.module(
         _get_host_type_str: () =>
             return (entry[1] for entry in @host_type_list when @host_types[entry[0]]).join(":")
 
+        _get_linked_str: () =>
+            return if @linked then "l" else "ul"
+
         get_filter_state_str: () ->
             return [
                 @_get_service_state_str()
                 @_get_host_state_str()
                 @_get_service_type_str()
                 @_get_host_type_str()
+                @_get_linked_str()
             ].join(";")
 
         stop_notifying: () ->
             @change_notifier.reject("stop")
 
-]).factory("icswLivestatusCircleInfo",
-[
-    "$q", "icswDeviceLivestatusFunctions",
-(
-    $q, icswDeviceLivestatusFunctions,
-) ->
-    {div, svg, g, rect, path} = React.DOM
-    return React.createClass(
-        propTypes: {
-            size: React.PropTypes.number
-            # list of (size, color) tuples
-            data: React.PropTypes.array
-        }
-        render: () ->
-            _w = @props.size
-            _d = @props.data
-            if _d.length == 0
-                return div(
-                    {
-                        key: "top"
-                    }
-                    "No data"
-                )
-            _total = _.sum((_el[0] for _el in _d))
-            _idx = 0
-            _end_arc = - Math.PI * 0.5
-            _cur_size = 0
-            _p_list = []
-            _outer = _w / 2.0 * 0.95
-            _inner = _w / 2.0 * 0.5
-            for [d_size, color] in _d
-                _idx++
-                if d_size
-                    _cur_size += d_size
-                    _start_arc = _end_arc
-                    _end_arc = Math.PI * 2.0 * _cur_size / _total - Math.PI * 0.5
-                    if d_size == _total
-                        _call = icswDeviceLivestatusFunctions.ring_path
-                    else
-                        _call = icswDeviceLivestatusFunctions.ring_segment_path
-                    _p_list.push(
-                        path(
-                            {
-                                key: "sge.#{_idx}"
-                                d: _call(_inner, _outer, _start_arc, _end_arc)
-                                fill: color
-                                style: {stroke: "#000000", strokeWidth: "0.5px"}
-                            }
-                        )
-                    )
-            return svg(
-                {
-                    key: "svg.top"
-                    width: "#{_w}px"
-                    height: "#{_w}px"
-                }
-                g(
-                    {
-                        key: "main"
-                    }
-                    g(
-                        {
-                            key: "content"
-                            transform: "translate(#{_w/2}, #{_w/2})"
-                        }
-                        _p_list
-                    )
-                )
-            )
-    )
 ]).factory("icswLivestatusFilterReactDisplay",
 [
-    "$q", "icswLivestatusCircleInfo",
+    "$q", "icswLivestatusCircleInfoReact",
 (
-    $q, icswLivestatusCircleInfo,
+    $q, icswLivestatusCircleInfoReact,
 ) ->
     # display of livestatus filter
     react_dom = ReactDOM
-    {div, h4, select, option, p, input, span, table, tr, td, tbody} = React.DOM
+    {div, h4, select, option, p, input, span, table, tr, td, tbody, span, button} = React.DOM
 
     return React.createClass(
         propTypes: {
@@ -312,17 +252,27 @@ angular.module(
             # console.log "r", @props.livestatus_filter
             _lf = @props.livestatus_filter
             if _lf.f_hosts != _lf.n_hosts
-                _host_text = "#{_lf.f_hosts} of #{_lf.n_hosts}"
-                _host_data = [[_lf.f_hosts, _active_color], [_lf.n_hosts - _lf.f_hosts, _inact_color]]
+                _host_text = "#{_lf.f_hosts} / #{_lf.n_hosts}"
+                _host_data = [
+                    [_lf.f_hosts, _active_color, null]
+                    [_lf.n_hosts - _lf.f_hosts, _inact_color, null]
+                ]
             else
                 _host_text = "#{_lf.n_hosts}"
-                _host_data = [[_lf.n_hosts, _active_color]] 
+                _host_data = [
+                    [_lf.n_hosts, _active_color, null]
+                ] 
             if _lf.f_services != _lf.n_services
-                _service_text = "#{_lf.f_services} of #{_lf.n_services}"
-                _service_data = [[_lf.f_services, _active_color], [_lf.n_services - _lf.f_services, _inact_color]]
+                _service_text = "#{_lf.f_services} / #{_lf.n_services}"
+                _service_data = [
+                    [_lf.f_services, _active_color, null]
+                    [_lf.n_services - _lf.f_services, _inact_color, null]
+                ]
             else
                 _service_text = "#{_lf.n_services}"
-                _service_data = [[_lf.n_services, _active_color]]
+                _service_data = [
+                    [_lf.n_services, _active_color, null]
+                ]
             _service_buttons = []
             for entry in _lf.service_state_list
                 _service_buttons.push(
@@ -397,6 +347,7 @@ angular.module(
                         }
                     )
                 )
+            _lock_class = if _lf.linked then "fa-lock" else "fa-unlock"
             return div(
                 {key: "top"}
                 table(
@@ -405,6 +356,26 @@ angular.module(
                         {key: "body"}
                         tr(
                             {key: "l0"}
+                            td(
+                                {key: "ltd", rowSpan: "2"}
+                                button(
+                                    {
+                                        type: "button"
+                                        className: "btn btn-default"
+                                        key: "linkbut"
+                                        onClick: (event) =>
+                                            _lf.toggle_link_state()
+                                            @setState({filter_state_str: _lf.get_filter_state_str()})
+                                            _filter_changed()
+                                    }
+                                    span(
+                                        {
+                                            key: "linkedspan"
+                                            className: "fa fa-4x #{_lock_class} fa-fw"
+                                        }
+                                    )
+                                )
+                            )
                             td(
                                 {key: "t0"}
                                 "Host"
@@ -426,28 +397,24 @@ angular.module(
                             td(
                                 {key: "t4", rowSpan: "2"}
                                 React.createElement(
-                                    icswLivestatusCircleInfo
+                                    icswLivestatusCircleInfoReact
                                     {
-                                        key: "c0"
                                         size: 44
                                         data: _host_data
+                                        text: _host_text
                                     }
                                 )
                             )
                             td(
                                 {key: "t5", rowSpan: "2"}
                                 React.createElement(
-                                    icswLivestatusCircleInfo
+                                    icswLivestatusCircleInfoReact
                                     {
-                                        key: "c0"
                                         size: 44
                                         data: _service_data
+                                        text: _service_text
                                     }
                                 )
-                            )
-                            td(
-                                {key: "t3", className: "text-center"}
-                                _host_text
                             )
                         )
                         tr(
@@ -469,10 +436,6 @@ angular.module(
                                     {key: "t2g", className: "btn-group"}
                                     _s_type_buttons
                                 )
-                            )
-                            td(
-                                {key: "t3", className: "text-center"}
-                                _service_text
                             )
                         )
                     )

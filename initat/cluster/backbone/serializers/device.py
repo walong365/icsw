@@ -24,13 +24,12 @@
 
 from rest_framework import serializers
 
-from initat.cluster.backbone.models import device, device_selection, device_config, device_variable, \
-    device_group, cd_connection, DeviceSNMPInfo, DeviceScanLock
+from initat.cluster.backbone.models import device, device_selection, device_config, device_group, \
+    cd_connection, DeviceSNMPInfo, DeviceScanLock
 
 
 __all__ = [
     "DeviceScanLockSerializer",
-    "device_variable_serializer",
     "device_config_help_serializer",
     "device_selection_serializer",
     "device_group_serializer",
@@ -45,11 +44,6 @@ __all__ = [
 class DeviceScanLockSerializer(serializers.ModelSerializer):
     class Meta:
         model = DeviceScanLock
-
-
-class device_variable_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = device_variable
 
 
 class device_config_help_serializer(serializers.ModelSerializer):

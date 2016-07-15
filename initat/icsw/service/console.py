@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2001-2009,2011-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2009,2011-2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #
@@ -23,114 +23,106 @@
 
 import time
 
-import urwid
+from prompt_toolkit.application import Application
+from prompt_toolkit.interface import CommandLineInterface
+from prompt_toolkit.key_binding.manager import KeyBindingManager
+from prompt_toolkit.keys import Keys
+from prompt_toolkit.layout.containers import Window, HSplit
+from prompt_toolkit.layout.controls import FillControl, TokenListControl
+from prompt_toolkit.layout.dimension import LayoutDimension as D
+from prompt_toolkit.layout.screen import Char
+from prompt_toolkit.shortcuts import create_eventloop
+from prompt_toolkit.styles import style_from_dict
+from prompt_toolkit.token import Token
 
 from initat.tools import logging_tools
 
 
-class ServiceOutput(urwid.Text):
+class ServiceOutput(object):
     def __init__(self, opt_ns, srv_c, inst_xml):
         self.opt_ns = opt_ns
         self.srv_c = srv_c
         self.inst_xml = inst_xml
         self._srv_text = ("", [])
-        urwid.Text.__init__(self, "", align="left", wrap="clip")
 
     def update(self):
-        self.set_text("")
         self.srv_c.check_system(self.opt_ns, self.inst_xml)
-        self._srv_text = self.srv_c.instance_to_form_list(self.opt_ns, self.inst_xml.tree).urwid_encode()
+        self._srv_text = self.srv_c.instance_to_form_list(self.opt_ns, self.inst_xml.tree).prompt_encode()
 
     def get_text(self):
         return self._srv_text
 
 
-class HeaderText(urwid.Text):
-    def start_update(self):
-        self.set_text("updating...")
-
-    def update(self):
-        self.set_text("Service overview ({})".format(time.ctime(time.time())))
-
-
-class LogwatchView(urwid.GridFlow):
-    _sizing = frozenset(["box"])
-
-    def render(self, *args, **kwargs):
-        print args, kwargs
-
-
 class SrvController(object):
     def __init__(self, opt_ns, srv_c, inst_xml):
+        manager = KeyBindingManager()  # Start with the `KeyBindingManager`.
+
         self.srv_text = ServiceOutput(opt_ns, srv_c, inst_xml)
-        self.top_text = HeaderText("", align="left")
-        self.bottom_text = urwid.Text("bottom text", align="left")
-        self.main_text = urwid.Text("Wait please...", align="left")
-        # self.bottom_text = urwid.Text("bottom", align="left")
-        palette = [
-            ('banner', 'black', 'light gray', 'standout,underline'),
-            ("", "default", "default"),
-            ("ok", "dark green,bold", "black"),
-            ("warning", "yellow,bold", "black"),
-            ("critical", "dark red,bold", "black"),
-        ]
-        urwid_map = urwid.Frame(
-            urwid.ListBox(
-                [
-                    urwid.AttrMap(
-                        self.top_text,
-                        "banner"
-                    ),
-                    urwid.Columns(
-                        [
-                            ("weight", 80, self.srv_text),
-                            # ("weight", 40, urwid.AttrMap(
-                            #    self.main_text,
-                            #    "banner"
-                            # )),
-                        ],
-                    ),
-                    urwid.AttrMap(
-                        urwid.Pile(
-                            [
-                                self.bottom_text,
-                            ]
-                        ),
-                        "banner"
-                    ),
-                ]
-            )
+        layout = HSplit([
+            # One window that holds the BufferControl with the default buffer on the
+            # left.
+            Window(
+                height=D.exact(1),
+                content=TokenListControl(
+                    self.get_title_line, default_char=Char(" ", token=Token.String.ICSW.Header)
+                )
+            ),
+            Window(
+                height=D.exact(1),
+                content=FillControl('-', token=Token.Line)
+            ),
+            # Display the text 'Hello world' on the right.
+            Window(
+                content=TokenListControl(
+                    self.get_icsw_output,
+                )
+            ),
+        ])
+
+        @manager.registry.add_binding(Keys.ControlC, eager=True)
+        @manager.registry.add_binding("q", eager=True)
+        def _handler_data(event):
+            event.cli.set_return_value(0)
+
+        our_style = style_from_dict(logging_tools.get_icsw_prompt_styles())
+        application = Application(
+            layout=layout,
+            use_alternate_screen=True,
+            style=our_style,
+            on_input_timeout=self.input_timeout,
+            key_bindings_registry=manager.registry,
         )
-        self.mainloop = urwid.MainLoop(urwid_map, palette, unhandled_input=self._handler_data)
-        self.mainloop.set_alarm_in(10, self._alarm_callback)
-        self.mainloop.screen.clear()
-        self._update_screen()
-
-    def _handler_data(self, in_char):
-        if in_char == "q":
-            self.close()
-        elif in_char == " ":
-            self._update_screen()
-
-    def _update_screen(self):
-        self.top_text.start_update()
-        self.mainloop.draw_screen()
-        self.top_text.update()
-        self.srv_text.update()
-
-    def _alarm_callback(self, main_loop, user_data):
-        self._update_screen()
-        self.mainloop.set_alarm_in(10, self._alarm_callback)
+        event_loop = create_eventloop()
+        self.application = application
+        self.event_loop = event_loop
 
     def loop(self):
         try:
-            self.mainloop.run()
-        except KeyboardInterrupt:
-            # this is not what you are supposed to call, but it does the job:
-            self.mainloop.stop()
+            cli = CommandLineInterface(application=self.application, eventloop=self.event_loop)
+            cli.run()
+        finally:
+            self.event_loop.close()
 
-    def close(self):
-        raise urwid.ExitMainLoop()
+    def input_timeout(self, cli):
+        cli.request_redraw()
+
+    def get_title_line(self, cli):
+        return [
+            (Token.String.ICSW.Header, "Service overview ({})".format(time.ctime(time.time()))),
+        ]
+
+    def get_icsw_output(self, cli):
+        self.srv_text.update()
+        _r_list = []
+        for _line in self.srv_text.get_text():
+            _r_list.extend(
+                [
+                    (_token, _text) for _token, _text in _line
+                ] + [
+                    (Token.Text, "\n"),
+                ]
+            )
+        return _r_list
 
 
 def main(opt_ns, srv_c, inst_xml):

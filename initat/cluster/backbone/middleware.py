@@ -86,7 +86,6 @@ def show_database_calls(*args, **kwargs):
         from django.db import connection  # @Reimport
         _path = kwargs.get("path", "/unknown")
         _runtime = kwargs.get("runtime", 0.0)
-        full = kwargs.get("full", False)
         tot_time = sum([float(entry["time"]) for entry in connection.queries], 0.)
         try:
             cur_width = get_terminal_size()[0]
@@ -104,37 +103,15 @@ def show_database_calls(*args, **kwargs):
                 )
         if len(connection.queries) > DB_CALL_LIMIT and cur_width:
             for act_sql in connection.queries:
-                sql_str = act_sql["sql"].replace("\n", "<NL>")
-                if full:
-                    out_str = sql_str
-                else:
-                    if sql_str.count("FROM") and sql_str.count("WHERE"):
-                        oper_str = sql_str.split()[0]
-                        if sql_str.count("FROM") > 1 or sql_str.count("WHERE") > 1:
-                            output(
-                                "FROM / COUNT: {:d} / {:d}".format(
-                                    sql_str.count("FROM"),
-                                    sql_str.count("WHERE")
-                                )
-                            )
-                        # parse sql_str
-                        sub_str = sql_str[sql_str.index("FROM"):sql_str.index("WHERE")]
-                        for r_char in "(),=":
-                            sub_str = sub_str.replace(r_char, "")
-                        out_list = set()
-                        for cur_str in sub_str.split():
-                            if cur_str.startswith("[") and cur_str.endswith("]"):
-                                out_list.add(cur_str.split(".")[0])
-                        # print sql_str
-                        sql_str = u"{} FROM {} :: {}".format(
-                            oper_str,
-                            ", ".join(sorted(list(out_list))),
-                            sql_str
-                        )
-                    out_str = sql_str[0:cur_width - 8]
+                out_str = act_sql["sql"].replace("\n", "<NL>")
+                _len_pre = len(out_str)
+                out_str = out_str[0:cur_width - 21]
+                _len_post = len(out_str)
                 output(
-                    u"{:6.2f} {}".format(
+                    u"{:6.2f} [{:4d}/{:5d}] {}".format(
                         float(act_sql["time"]),
+                        _len_post,
+                        _len_pre,
                         out_str
                     )
                 )

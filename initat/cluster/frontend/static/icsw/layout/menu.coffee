@@ -27,11 +27,11 @@ menu_module = angular.module(
 [
     "$scope", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswAcessLevelService",
     "initProduct", "icswLayoutSelectionDialogService", "icswActiveSelectionService",
-    "$q", "icswUserService", "blockUI", "$state", "icswSystemLicenseDataService",
+    "$q", "icswUserService", "blockUI", "$state", "icswSystemLicenseDataService", "$rootScope"
 (
     $scope, $window, ICSW_URLS, icswSimpleAjaxCall, icswAcessLevelService,
     initProduct, icswLayoutSelectionDialogService, icswActiveSelectionService,
-    $q, icswUserService, blockUI, $state, icswSystemLicenseDataService,
+    $q, icswUserService, blockUI, $state, icswSystemLicenseDataService, $rootScope
 ) ->
     # init service types
     $scope.ICSW_URLS = ICSW_URLS
@@ -147,6 +147,13 @@ menu_module = angular.module(
     # $scope.device_selection = () ->
     #    console.log "SHOW_DIALOG"
     #     icswLayoutSelectionDialogService.show_dialog()
+
+    # apply selected theme if theme is set in session
+    ###
+    current_theme = $window.sessionStorage.getItem('current_theme')
+    if current_theme != null
+        $rootScope.switch_theme(current_theme)
+    ###
 ]).directive("icswLayoutMenubar",
 [
     "$templateCache",
@@ -223,7 +230,12 @@ menu_module = angular.module(
                             icswMenuProgressService.set_rebuilding(0)
                 )
     }
-]).directive("icswBackgroundJobInfo", ["$templateCache", "ICSW_URLS", "icswSimpleAjaxCall", "$timeout", "$state", ($templateCache, ICSW_URLS, icswSimpleAjaxCall, $timeout, $state) ->
+]).directive("icswBackgroundJobInfo",
+[
+    "$templateCache", "ICSW_URLS", "icswSimpleAjaxCall", "$timeout", "$state",
+(
+    $templateCache, ICSW_URLS, icswSimpleAjaxCall, $timeout, $state
+) ->
     return {
         restrict: "EA"
         template: '<button type="button" ng-click="redirect_to_bgj_info()" title="number of background jobs"></button>'

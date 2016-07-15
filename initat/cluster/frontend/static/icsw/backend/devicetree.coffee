@@ -26,7 +26,7 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap",
         "init.csw.filters", "restangular", "noVNC", "ui.select", "icsw.tools",
-        "icsw.device.info", "icsw.user",
+        "icsw.device.info", "icsw.user", "icsw.backend.variable",
     ]
 ).service("icswDeviceTreeHelper",
 [
@@ -106,11 +106,19 @@ angular.module(
             @var_name_filter = new_filter
             @filter_device_variables()
 
+        replace_device_variable: (new_var) =>
+            for dev in @devices
+                if dev.idx == new_var.device
+                    _.remove(dev.device_variable_set, (entry) -> return entry.idx == new_var.idx)
+                    dev.device_variable_set.push(new_var)
+                    
         filter_device_variables: () =>
             try
                 filter_re = new RegExp(@var_name_filter, "gi")
             catch
                 filter_re = new RegExp("^$", "gi")
+            # scope tree
+            _dvst = @tree.device_variable_scope_tree
             # step 1: filter variables
             for dev in @devices
                 dev.$var_filter_active = false
@@ -130,6 +138,7 @@ angular.module(
                 for d_var in dev.device_variable_set
                     if not d_var.$selected?
                         d_var.$selected = false
+                    d_var.$scope_name = _dvst.lut[d_var.device_variable_scope].name
                     # set var_type
                     if d_var.var_type == "s"
                         d_var.$var_type = "string"
@@ -194,6 +203,7 @@ angular.module(
             for dev in @devices
                 icswTools.order_in_place(
                     dev.device_variables_filtered
+                    ["$scope_name"]
                     ["name"]
                     ["asc"]
                 )
@@ -430,7 +440,7 @@ angular.module(
     ICSW_SIGNALS, icswDeviceTreeHelper, icswNetworkTreeService
 ) ->
     class icswDeviceTree
-        constructor: (full_list, group_list, domain_tree, cat_tree) ->
+        constructor: (full_list, group_list, domain_tree, cat_tree, device_variable_scope_tree) ->
             @group_list = group_list
             @all_list = []
             @enabled_list = []
@@ -441,6 +451,7 @@ angular.module(
             @disabled_list = []
             @domain_tree = domain_tree
             @cat_tree = cat_tree
+            @device_variable_scope_tree = device_variable_scope_tree
             @enricher = new icswEnrichmentInfo(@)
             @build_luts(full_list)
 
@@ -706,7 +717,7 @@ angular.module(
         create_device_variable: (new_var) =>
             # create new netIP
             defer = $q.defer()
-            Restangular.all(ICSW_URLS.REST_DEVICE_VARIABLE_LIST.slice(1)).post(new_var).then(
+            Restangular.all(ICSW_URLS.DEVICE_DEVICE_VARIABLE_LIST.slice(1)).post(new_var).then(
                 (new_obj) =>
                     @_fetch_device_variable(new_obj.idx, defer, "created variable")
                 (not_ok) ->
@@ -716,7 +727,7 @@ angular.module(
 
         delete_device_variable: (del_var) =>
             # ensure REST hooks
-            Restangular.restangularizeElement(null, del_var, ICSW_URLS.REST_DEVICE_VARIABLE_DETAIL.slice(1).slice(0, -2))
+            Restangular.restangularizeElement(null, del_var, ICSW_URLS.DEVICE_DEVICE_VARIABLE_DETAIL.slice(1).slice(0, -2))
             defer = $q.defer()
             del_var.remove().then(
                 (ok) =>
@@ -731,9 +742,8 @@ angular.module(
             return defer.promise
 
         _fetch_device_variable: (pk, defer, msg) =>
-            Restangular.one(ICSW_URLS.REST_DEVICE_VARIABLE_LIST.slice(1)).get({idx: pk}).then(
+            Restangular.one(ICSW_URLS.DEVICE_DEVICE_VARIABLE_LIST.slice(1)).get({pk: pk}).then(
                 (new_var) =>
-                    new_var = new_var[0]
                     dev = @all_lut[new_var.device]
                     dev.device_variable_set.push(new_var)
                     defer.resolve(msg)
@@ -1028,11 +1038,11 @@ angular.module(
 [
     "$q", "Restangular", "ICSW_URLS", "icswCachingCall",
     "icswTools", "icswDeviceTree", "$rootScope", "ICSW_SIGNALS",
-    "icswDomainTreeService", "icswCategoryTreeService",
+    "icswDomainTreeService", "icswCategoryTreeService", "icswDeviceVariableScopeTreeService",
 (
     $q, Restangular, ICSW_URLS, icswCachingCall,
     icswTools, icswDeviceTree, $rootScope, ICSW_SIGNALS,
-    icswDomainTreeService, icswCategoryTreeService
+    icswDomainTreeService, icswCategoryTreeService, icswDeviceVariableScopeTreeService,
 ) ->
     rest_map = [
         [
@@ -1060,11 +1070,12 @@ angular.module(
         _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in rest_map)
         _wait_list.push(icswDomainTreeService.load(client))
         _wait_list.push(icswCategoryTreeService.load(client))
+        _wait_list.push(icswDeviceVariableScopeTreeService.load(client))
         _defer = $q.defer()
         $q.all(_wait_list).then(
             (data) ->
                 console.log "*** device tree loaded ***"
-                _result = new icswDeviceTree(data[0], data[1], data[2], data[3])
+                _result = new icswDeviceTree(data[0], data[1], data[2], data[3], data[4])
                 _defer.resolve(_result)
                 for client of _fetch_dict
                     # resolve clients

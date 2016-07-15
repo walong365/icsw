@@ -151,6 +151,21 @@ device_patterns = [
     url("^GetMatchingDevices$", device_views.GetMatchingDevices.as_view(), name="GetMatchingDevices"),
     url("^create_device", device_views.create_device.as_view(), name="create_device"),
     url("^device_list_info$", device_views.DeviceListInfo.as_view(), name="device_list_info"),
+    url(
+        "^device_variable_call$",
+        device_views.DeviceVariableViewSet.as_view({"post": "create", "get": "get"}),
+        name="device_variable_list",
+    ),
+    url(
+        "^device_variable_call/(?P<pk>[0-9]+)$",
+        device_views.DeviceVariableViewSet.as_view({"delete": "delete", "put": "store"}),
+        name="device_variable_detail",
+    ),
+    url(
+        "^device_variable_scope_call$",
+        device_views.DeviceVariableScopeViewSet.as_view({"get": "list"}),
+        name="device_variable_scope_list",
+    ),
 ]
 
 
@@ -201,6 +216,7 @@ monitoring_patterns = [
 
 user_patterns = [
     url("sync$", user_views.sync_users.as_view(), name="sync_users"),
+    url("^set_theme$", user_views.set_theme.as_view(), name="set_theme"),
     url("^change_obj_perm$", user_views.change_object_permission.as_view(), name="change_object_permission"),
     url("^upload_license_file$", user_views.upload_license_file.as_view(), name="upload_license_file"),
     url("^chdc$", user_views.clear_home_dir_created.as_view(), name="clear_home_dir_created"),

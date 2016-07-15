@@ -34,6 +34,7 @@ import string
 
 import django.core.serializers
 from django.apps import apps
+from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
 from django.core.exceptions import ValidationError, ImproperlyConfigured
@@ -719,6 +720,8 @@ class user(models.Model):
     scan_user_home = models.BooleanField(default=False)
     # scan depth
     scan_depth = models.IntegerField(default=2)
+    #theme
+    ui_theme_selection = models.CharField(max_length=64, default=settings.THEME_DEFAULT)
 
     @property
     def is_anonymous(self):

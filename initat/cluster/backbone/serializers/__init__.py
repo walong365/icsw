@@ -26,6 +26,7 @@ from rest_framework import serializers
 from initat.cluster.backbone.models import LogSource, LogLevel, mac_ignore, \
     macbootlog, status, WrittenConfigFile, mon_dist_slave, mon_dist_master, quota_capable_blockdevice
 from initat.cluster.backbone.serializers.asset import *
+from initat.cluster.backbone.serializers.variable import *
 from initat.cluster.backbone.serializers.background import *
 from initat.cluster.backbone.serializers.capability import *
 from initat.cluster.backbone.serializers.config import *

@@ -359,7 +359,7 @@ angular.module(
 
         init_gridster: () =>
             NUM_COLUMS = 20
-            c_width = $window.innerWidth / NUM_COLUMS
+            c_width = _.max([80, $window.innerWidth / NUM_COLUMS])
             r_height = c_width
             @gridsterOpts = {
                 columns: NUM_COLUMS
