@@ -29,11 +29,11 @@ angular.module(
 [
     "$scope", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswParseXMLResponseService", "blockUI",
     "initProduct", "icswSystemLicenseDataService", "$q", "$state", "icswCSRFService", "icswUserService",
-    "icswToolsSimpleModalService", "setDefaultTheme",
+    "icswToolsSimpleModalService", "setDefaultTheme", "setCurrentTheme",
 (
     $scope, $window, ICSW_URLS, icswSimpleAjaxCall, icswParseXMLResponseService, blockUI,
     initProduct, icswSystemLicenseDataService, $q, $state, icswCSRFService, icswUserService,
-    icswToolsSimpleModalService, setDefaultTheme
+    icswToolsSimpleModalService, setDefaultTheme, setCurrentTheme
 ) ->
     $scope.initProduct = initProduct
     $scope.license_tree = undefined
@@ -134,6 +134,7 @@ angular.module(
                                 (data) ->
                                     csrf_token = data[0]
                                     _user = data[1].user
+                                    setCurrentTheme(_user.ui_theme_selection)
                                     blockUI.stop()
                                     $state.go(_val)
                             )
