@@ -829,10 +829,11 @@ angular.module(
         # search function
         do_search: (s_string) =>
             _get_sel_fp = () =>
+                # generate fingerprint
                 return @get_selected(
                     (node) ->
                         if node.selected
-                            return [toString(node.obj.idx)]
+                            return ["#{node.obj.idx}"]
                         else
                             return []
                 ).join(".")

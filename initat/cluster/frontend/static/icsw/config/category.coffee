@@ -524,6 +524,7 @@ angular.module(
     icswReactTreeConfig
 ) ->
 
+    {span} = React.DOM
     class icswCatSelectionTree extends icswReactTreeConfig
         constructor: (@scope, args) ->
             @mode = args.mode
@@ -592,6 +593,19 @@ angular.module(
                     else
                         return []
             )
+
+        get_pre_view_element: (entry) =>
+            if entry._element_count
+                return span(
+                    {
+                        key: "_pve"
+                        className: "label label-default"
+                        title: "Devices selected"
+                    }
+                    "#{entry._element_count}"
+                )
+            else
+                return null
 
         selection_changed: (entry) =>
             # console.log "SC"
@@ -743,10 +757,9 @@ angular.module(
             )
 
         else if $scope.struct.mode == "filter"
-            if $scope.sub_tree == "mon"
-                $scope.cat_name = "used_mon_cats"
-            else if $scope.sub_tree == "device"
-                $scope.cat_name = "used_device_cats"
+            if $scope.sub_tree in ["mon", "device"]
+                $scope.count_dict_name = "#{$scope.sub_tree}_cat_counters"
+                $scope.cat_name = "used_#{$scope.sub_tree}_cats"
             else
                 assert "Invalid sub_tree '#{$scope.sub_tree}' for filter mode"
             # available cats, used to automatically select new cats (from mon-data reload)
@@ -856,6 +869,7 @@ angular.module(
                 }
                 selected: 0 in sel_cat
                 show_select: true
+                _element_count: 0
             )
             _dct.lut[dummy_entry.obj.idx] = dummy_entry
             # init
@@ -866,9 +880,13 @@ angular.module(
 
         # console.log "pks=", _obj_pks
         for entry in _dct.mode_entries
+            # number of element in related counter dict
+            _num_el = 0
             if $scope.struct.mode == "filter"
                 _sel = entry.idx in sel_cat
                 _match_pks = []
+                if $scope.struct.mon_data? and entry.idx of $scope.struct.mon_data[$scope.count_dict_name]
+                    _num_el = $scope.struct.mon_data[$scope.count_dict_name][entry.idx]
             else
                 if entry.idx of sel_cat
                     # only selected when all devices are selected
@@ -883,6 +901,7 @@ angular.module(
                 expand: entry.idx in _to_expand
                 selected: _sel
                 show_select: entry.idx in _useable_idxs and entry.depth > 1
+                _element_count: _num_el
             )
             # copy matching pks to tree entry (NOT entry because entry is global)
             t_entry.$match_pks = (_v for _v in _match_pks)

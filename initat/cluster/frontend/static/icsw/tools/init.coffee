@@ -624,6 +624,16 @@ angular.module(
                 lut[value.idx] = value
             return lut
 
+        merge_count_dict: (src_dict, add_dict) ->
+            return _.mergeWith(
+                src_dict
+                add_dict
+                (x, y) ->
+                    if x?
+                        return x + y
+                    else
+                        return y
+            )
         order_in_place: (in_array, key_list, order_list) ->
             _tmp_list = _.orderBy(in_array, key_list, order_list)
             in_array.length = 0
