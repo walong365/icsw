@@ -17,45 +17,6 @@
                 </h2>-->
                 <div class="well">
                     <icsw-login-form></icsw-login-form>
-                    <!--<fieldset>
-                        <legend>
-                            Version Information
-                        </legend>
-                        <p class="text-right">{{ initProduct.family }} ({{ initProduct.version }}) on Django {{ django_version }}</p>
-                        <p class="text-right" ng-show="struct.cluster_data.CLUSTER_ID">
-                            ClusterID is {{ struct.cluster_data.CLUSTER_ID }}
-                        </p>
-                        <p class="text-right" ng-show="struct.cluster_data.DATABASE_VERSION">
-                            Version info is {{ struct.cluster_data.DATABASE_VERSION }}[D] {{ struct.cluster_data.SOFTWARE_VERSION }}[S] {{ struct.cluster_data.MODELS_VERSION }}[M]
-                        </p>
-                    </fieldset>-->
-                    <!--<fieldset>
-                        <legend>
-                            License Information
-                        </legend>
-                    <uib-alert type="warning" ng-show="!struct.fx_mode && struct.data_valid">
-                        <p class="text-right">
-                            Allegro is not licensed
-                            <span class="fa-stack fa-2x">
-                                <i class="fa fa-bolt fa-stack-2x"></i>
-                                <i class="fa fa-ban fa-stack-2x text-danger"></i>
-                            </span>
-                        </p>
-                    </uib-alert>
-                    <uib-alert type="success" ng-show="struct.fx_mode && struct.data_valid">
-                        <p class="text-right">
-                            Allegro licensed and activated
-                            <span class="fa fa-bolt fa-border fa-2x"></span>
-                        </p>
-                    </uib-alert>
-                    <uib-alert ng-show="license_tree.pack_list.length == 0" style="font-size: larger">
-                        You are running an <strong>unlicensed version</strong>.<br />
-                        Please contact <strong>support@init.at</strong> in order to obtain a license.
-                    </uib-alert>
-                    <uib-alert ng-show="disabled" style="font-size: larger">
-                        Awaiting license information ...
-                    </uib-alert>
-                    </fieldset>-->
                 </div>
             </div>
         </div>
@@ -77,6 +38,50 @@
                 </div>
             </div>
         </div>
+        <div class="panel panel-default" ng-show="showicswinfo" class="ng-cloak" style="position:absolute;right:0;bottom:0;">
+            <div class="panel-heading">
+                <h3 class="panel-title"><div class="bootstrap-dialog-close-button" style="display: block;"><button class="close" ng-click="showicswinfo=false">×</button></div>
+                    &nbsp;</h3>
+            </div>
+            <div class="panel-body" style="background-color:rgba(255, 255, 255, 0.1">
+                <fieldset>
+                    <legend>Version Information</legend>
+                    <p class="text-right">{{ initProduct.family }} ({{ initProduct.version }}) on Django {{ django_version }}</p>
+                    <p class="text-right" ng-show="struct.cluster_data.CLUSTER_ID">
+                        ClusterID is {{ struct.cluster_data.CLUSTER_ID }}
+                    </p>
+                    <p class="text-right" ng-show="struct.cluster_data.DATABASE_VERSION">
+                        Version info is {{ struct.cluster_data.DATABASE_VERSION }}[D] {{ struct.cluster_data.SOFTWARE_VERSION }}[S] {{ struct.cluster_data.MODELS_VERSION }}[M]
+                    </p>
+                </fieldset>
+                <fieldset>
+                    <legend>License Information</legend>
+                    <uib-alert type="warning" ng-show="!struct.fx_mode && struct.data_valid" style="margin:0;">
+                        <p class="text-right" style="margin:0;">
+                            FX-Mode is not licensed
+                            <span class="fa-stack fa-2x">
+                                <i class="fa fa-bolt fa-stack-2x"></i>
+                                <i class="fa fa-ban fa-stack-2x text-danger"></i>
+                            </span>
+                        </p>
+                    </uib-alert>
+                    <uib-alert type="success" ng-show="struct.fx_mode && struct.data_valid" style="margin:0;">
+                        <p class="text-right" style="margin:0px;">FX-Mode activated <span class="fa fa-bolt fa-border fa-1x"></span></p>
+                    </uib-alert>
+                    <uib-alert ng-show="license_tree.pack_list.length == 0" style="font-size: larger" style="margin:0;">
+                        You are running an <strong>unlicensed version</strong>.<br />
+                        Please contact <strong>support@init.at</strong> in order to obtain a license.
+                    </uib-alert>
+                    <uib-alert ng-show="disabled" style="font-size: larger" style="margin:0;">
+                        Awaiting license information ...
+                    </uib-alert>
+                </fieldset>
+            </div>
+        </div>
+        <div style="position:absolute;right:0;bottom:0;" ng-show="!showicswinfo" class="hidden-xs">
+            <button id="showicswinfobttn" ng-click="showicswinfo=true" class="btn btn-sm btn-info">
+                <i class="fa fa-info-circle" aria-hidden="true" style="font-size:20px;"></i></button>
+        </div>
     </div>
 </script>
 
@@ -87,7 +92,7 @@
                 Please enter your login credentials
             </legend>
             <div class="form-group row">
-                <label class="control-label col-sm-3 requiredField">
+                <label class="control-label col-sm-3 requiredField" style="margin-top:5px;">
                     Username<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-9">
@@ -95,7 +100,7 @@
                 </div>
             </div>
            <div class="form-group row">
-                <label class="control-label col-sm-3 requiredField">
+                <label class="control-label col-sm-3 requiredField" style="margin-top:5px;">
                     Password<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-9">
@@ -109,16 +114,4 @@
             </div>
         </div>
     </form>
-    <!-- @if DEBUG=true -->
-    <div class="dropdown">
-        <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">
-            Select Theme
-            <span class="caret"></span>
-        </button>
-        <ul class="dropdown-menu">
-            <li><a href="#" ng-click='switch_theme("default")'>Default</a></li>
-            <li><a href="#" ng-click='switch_theme("init")'>Init</a></li>
-        </ul>
-    </div>
-    <!-- @endif -->
 </script>

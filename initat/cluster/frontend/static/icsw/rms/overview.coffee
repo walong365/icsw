@@ -164,7 +164,7 @@ rms_module = angular.module(
             id = job.$$full_job_id
             _.remove(@job_list, (entry) -> return entry.$$full_job_id == id)
             job.$$jv_shown = false
-            job.$$jv_button_class = "btn btn-xs"
+            job.$$jv_button_class = "btn btn-xs btn-default"
             @build_luts()
             
         add: (job) =>
@@ -648,7 +648,7 @@ rms_module = angular.module(
                         entry.$$jv_button_class = "btn btn-xs btn-success"
                     else
                         entry.$$jv_shown = false
-                        entry.$$jv_button_class = "btn btn-xs"
+                        entry.$$jv_button_class = "btn btn-xs btn-default"
                 else
                     entry.$$jv_present = false
 
@@ -719,7 +719,7 @@ rms_module = angular.module(
                         if _io_id of io_dict
                             entry[_fc_name] = "btn btn-xs btn-success"
                         else
-                            entry[_fc_name] = "btn btn-xs"
+                            entry[_fc_name] = "btn btn-xs btn-default"
                 if entry.granted_pe.value == "-"
                     _running_slots++
                 else

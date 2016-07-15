@@ -23,17 +23,17 @@
 angular.module(
     "icsw.login",
     [
-        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "icsw.system.license",
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "icsw.system.license", "icsw.layout.theme"
     ]
 ).controller("icswLoginCtrl",
 [
     "$scope", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswParseXMLResponseService", "blockUI",
     "initProduct", "icswSystemLicenseDataService", "$q", "$state", "icswCSRFService", "icswUserService",
-    "icswToolsSimpleModalService",
+    "icswToolsSimpleModalService", "setDefaultTheme", "setCurrentTheme",
 (
     $scope, $window, ICSW_URLS, icswSimpleAjaxCall, icswParseXMLResponseService, blockUI,
     initProduct, icswSystemLicenseDataService, $q, $state, icswCSRFService, icswUserService,
-    icswToolsSimpleModalService,
+    icswToolsSimpleModalService, setDefaultTheme, setCurrentTheme
 ) ->
     $scope.initProduct = initProduct
     $scope.license_tree = undefined
@@ -69,6 +69,7 @@ angular.module(
         ).then(
             (data) ->
                 xml = data[0]
+                setDefaultTheme($(xml).find("value[name='theme_default']").text())
                 $scope.login_hints = angular.fromJson($(xml).find("value[name='login_hints']").text())
                 $scope.django_version = $(xml).find("value[name='django_version']").text()
                 $scope.struct.disabled = false
@@ -133,6 +134,7 @@ angular.module(
                                 (data) ->
                                     csrf_token = data[0]
                                     _user = data[1].user
+                                    setCurrentTheme(_user.ui_theme_selection)
                                     blockUI.stop()
                                     $state.go(_val)
                             )
@@ -151,29 +153,6 @@ angular.module(
                 blockUI.stop()
                 $scope.init_login()
         )
-
-    $scope.switch_theme = (theme) ->
-        head = angular.element.find("head")[0]
-
-        css_theme_default = '<link rel="stylesheet" href="static/theme_default.css">'
-        css_theme_init = '<link rel="stylesheet" href="static/theme_init.css">'
-
-        css_theme_default_match = 'static/theme_default'
-        css_theme_init_match = 'static/theme_init'
-
-        if theme == "init"
-            theme_to_use = css_theme_init
-        else if theme == "default"
-            theme_to_use = css_theme_default
-
-        for node in head.childNodes
-            if node.outerHTML != undefined
-                if node.outerHTML.indexOf(css_theme_default_match) > -1
-                    node.outerHTML = theme_to_use
-                if node.outerHTML.indexOf(css_theme_init_match) > -1
-                    node.outerHTML = theme_to_use
-
-
     $scope.init_login()
 ]).directive("icswLoginForm",
 [

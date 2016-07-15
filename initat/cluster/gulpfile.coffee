@@ -60,12 +60,16 @@ themes =
                "frontend/static/css/theme-default/bootstrap.css",
                "frontend/static/css/icsw_src.css",
                "frontend/static/css/theme-default/theme-fixes.css"]
-    init : ["frontend/static/css/theme-init/bootstrap.css",
+    cora : ["frontend/static/css/theme-cora/bootstrap.css",
             "frontend/static/css/icsw_src.css",
-            "frontend/static/css/theme-init/theme-fixes.css"]
+            "frontend/static/css/theme-cora/theme-fixes.css"]
+    sirocco : ["frontend/static/css/theme-sirocco/bootstrap.css",
+               "frontend/static/css/icsw_src.css",
+               "frontend/static/css/theme-sirocco/theme-fixes.css"]
 
-svg_style = "frontend/static/css/theme-#{use_theme}/svg-style.css"
-
+svg_style_default = "frontend/static/css/theme-default/svg-style.css"
+svg_style_cora = "frontend/static/css/theme-cora/svg-style.css"
+svg_style_sirocco = "frontend/static/css/theme-sirocco/svg-style.css"
 
 class SourceMap
     constructor: (@name, @dest, @sources, @type, @static) ->
@@ -104,10 +108,17 @@ sources = {
         "css"
         true
     )
-    css_theme_init: new SourceMap(
-        "css_theme_init"
-        "theme_init.css"
-        themes["init"]
+    css_theme_cora: new SourceMap(
+        "css_theme_cora"
+        "theme_cora.css"
+        themes["cora"]
+        "css"
+        true
+    )
+    css_theme_sirocco: new SourceMap(
+        "css_theme_sirocco"
+        "theme_sirocco.css"
+        themes["sirocco"]
         "css"
         true
     )
@@ -386,7 +397,7 @@ gulp.task("deploy-css", () ->
     ).pipe(
         gulp.dest(DEPLOY_DIR + "/static/")
     ).pipe(
-        rev.manifest(merge: true)
+        rev.manifest(DEPLOY_DIR + '/rev-manifest.json', { merge: true, base: DEPLOY_DIR })
     ).pipe(
         gulp.dest(DEPLOY_DIR)
     )
@@ -403,7 +414,7 @@ gulp.task("deploy-js", () ->
     ).pipe(
         gulp.dest(DEPLOY_DIR)
     ).pipe(
-        rev.manifest(merge: true)
+        rev.manifest(DEPLOY_DIR + '/rev-manifest.json', { merge: true, base: DEPLOY_DIR })
     ).pipe(
         gulp.dest(DEPLOY_DIR)
     )
@@ -420,7 +431,7 @@ gulp.task("deploy-html", () ->
     ).pipe(
         gulp.dest(DEPLOY_DIR)
     ).pipe(
-        rev.manifest(merge: true)
+        rev.manifest(DEPLOY_DIR + '/rev-manifest.json', { merge: true, base: DEPLOY_DIR })
     ).pipe(
         gulp.dest(DEPLOY_DIR)
     )
@@ -471,14 +482,27 @@ gulp.task("deploy-images", () ->
     )
 )
 
-gulp.task("deploy-svgcss", () ->
-    return gulp.src(svg_style)
-        .pipe(rename("svgstyle.css"))
+gulp.task("deploy-svgcss-default", () ->
+    return gulp.src(svg_style_default)
+        .pipe(rename("svgstyle_default.css"))
+        .pipe(gulp.dest(DEPLOY_DIR + "/static/")
+    )
+)
+gulp.task("deploy-svgcss-cora", () ->
+    return gulp.src(svg_style_cora)
+        .pipe(rename("svgstyle_cora.css"))
+        .pipe(gulp.dest(DEPLOY_DIR + "/static/")
+    )
+)
+gulp.task("deploy-svgcss-sirocco", () ->
+    return gulp.src(svg_style_sirocco)
+        .pipe(rename("svgstyle_sirocco.css"))
         .pipe(gulp.dest(DEPLOY_DIR + "/static/")
     )
 )
 
-gulp.task("deploy-media", gulp.parallel("deploy-fonts", "deploy-images", "deploy-d3", "deploy-svgcss"))
+gulp.task("deploy-media", gulp.parallel("deploy-fonts", "deploy-images", "deploy-d3",
+    "deploy-svgcss-default", "deploy-svgcss-cora", "deploy-svgcss-sirocco"))
 
 gulp.task("transform-main", (cb) ->
     return gulp.src(
@@ -491,7 +515,8 @@ gulp.task("transform-main", (cb) ->
                     "!ext_*.js",
                     "!app.js",
                     "static/*.css",
-                    "!static/theme_init*.css",
+                    "!static/theme_*.css",
+                    "!static/svgstyle_*css",
                     "*.html",
                     "!main.html",
                 ]
@@ -540,22 +565,6 @@ gulp.task("transform-main", (cb) ->
         gulp.dest(COMPILE_DIR)
     )
 )
-
-gulp.task("deploy-theme_init", () ->
-    return gulp.src("static/theme_init*css")
-        .pipe(rename("theme_init.css"))
-        .pipe(gulp.dest(DEPLOY_DIR + "/static/")
-    )
-)
-
-gulp.task("deploy-theme_default", () ->
-    return gulp.src("static/theme_default*css")
-        .pipe(rename("theme_default.css"))
-        .pipe(gulp.dest(DEPLOY_DIR + "/static/")
-    )
-)
-
-gulp.task("copy-themes", gulp.parallel("deploy-theme_init", "deploy-theme_default"))
 
 gulp.task("fix-main-import-path", (cb) ->
     # fix relative import path in main.html
@@ -611,13 +620,13 @@ gulp.task("reload-main", (cb) ->
 
 if options.addons
     gulp.task("modify-app-js", gulp.series("create-all-urls", "inject-urls-to-app", "inject-addons-to-app"))
-    gulp.task("deploy-all", gulp.parallel("deploy-css", "deploy-js", "deploy-html", "deploy-addons"))
+    gulp.task("deploy-all", gulp.series("deploy-css", "deploy-js", "deploy-html", "deploy-addons"))
     gulp.task("setup-main", gulp.series("modify-app-js", "transform-main", "fix-main-import-path", "import_css"))
     gulp.task("deploy-and-transform-all", gulp.series("deploy-all", "setup-main", "inject-addons-to-main", "copy-main"))
     gulp.task("rebuild-after-watch", gulp.series("deploy-all", "transform-main", "fix-main-import-path", "inject-addons-to-main", "copy-main", "reload-main"))
 else
     gulp.task("modify-app-js", gulp.series("create-all-urls", "inject-urls-to-app"))
-    gulp.task("deploy-all", gulp.parallel("deploy-css", "deploy-js", "deploy-html"))
+    gulp.task("deploy-all", gulp.series("deploy-css", "deploy-js", "deploy-html"))
     gulp.task("setup-main", gulp.series("modify-app-js", "transform-main", "fix-main-import-path", "import_css"))
     gulp.task("deploy-and-transform-all", gulp.series("deploy-all", "setup-main", "copy-main"))
     gulp.task("rebuild-after-watch", gulp.series("deploy-all", "transform-main", "fix-main-import-path", "copy-main", "reload-main"))
@@ -699,8 +708,7 @@ gulp.task(
             "staticbuild",
         ),
         "dynamicbuild",
-        "deploy-and-transform-all",
-        "copy-themes"
+        "deploy-and-transform-all"
     )
 )
 

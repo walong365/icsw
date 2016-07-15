@@ -188,6 +188,11 @@ USE_X_FORWARDED_HOST = True
 # Example: "http://media.lawrence.com/static/"
 STATIC_URL = "{}/static/".format(SITE_ROOT)
 
+THEMES = [("default",  "Default"),
+          ("cora",  "Cora"),
+          ("sirocco",  "Sirocco")]
+THEME_DEFAULT = "default"
+
 # Session settings
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 SESSION_COOKIE_HTTPONLY = True

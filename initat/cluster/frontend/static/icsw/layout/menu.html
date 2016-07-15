@@ -1,6 +1,6 @@
 <script type="text/ng-template" id="icsw.layout.menubar">
     <nav
-        class="navbar navbar-default navbar-fixed-top"
+        class="navbar navbar-default navbar-fixed-top {{ struct.current_user ? '' : 'ng-cloak' }}"
         role="navigation"
         icsw-element-size="size"
         ng-controller="icswMenuBaseCtrl"
@@ -24,7 +24,7 @@
 
         <icsw-menu-directive></icsw-menu-directive>
 
-        <ul class="nav navbar-nav navbar-right">
+        <ul class="nav navbar-nav navbar-right" ng-if="struct.current_user">
             <li>
                 <a class="dropdown-toggle" data-toggle="dropdown">
                     <span ng-if="struct.current_user">
@@ -72,6 +72,11 @@
                             Background Job Info
                         </a>
                     </li>
+                    <!--<li>
+                        <a n g-cli ck="swi tch_theme()" target="_blank">
+                            <span class="fa fa-tint fa_icsw"></span>Toggle Theme
+                        </a>
+                    </li>-->
                 </ul>
             </li>
         </ul>

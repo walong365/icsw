@@ -44,7 +44,7 @@ user_module = angular.module(
     "icsw.user",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular",
-        "noVNC", "ui.select", "icsw.tools", "icsw.user.password",
+        "noVNC", "ui.select", "icsw.tools", "icsw.user.password", "icsw.layout.theme",
     ]
 ).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
     $stateProvider.state(
@@ -233,10 +233,10 @@ user_module = angular.module(
 ]).service("icswUserService",
 [
     "$q", "ICSW_URLS", "icswSimpleAjaxCall", "$rootScope", "ICSW_SIGNALS",
-    "Restangular", "icswUser", "icswTreeBase",
+    "Restangular", "icswUser", "icswTreeBase", "setCurrentTheme",
 (
     $q, ICSW_URLS, icswSimpleAjaxCall, $rootScope, ICSW_SIGNALS,
-    Restangular, icswUser, icswTreeBase,
+    Restangular, icswUser, icswTreeBase, setCurrentTheme
 ) ->
     class icswUserService extends icswTreeBase
         get: () =>
@@ -265,7 +265,9 @@ user_module = angular.module(
             return @logout()
 
         update: () =>
-            return @get_result().update_user()
+            result = @get_result()
+            setCurrentTheme(result.user.ui_theme_selection)
+            return result.update_user()
 
     return new icswUserService(
         "User"
@@ -1115,12 +1117,12 @@ user_module = angular.module(
     "$scope", "$compile", "$filter", "$templateCache", "Restangular",
     "$q", "$timeout", "$uibModal", "ICSW_URLS", "icswUserService",
     "icswUserGroupSettingsTreeService", "icswUserGroupPermissionTreeService",
-    "icswUserGetPassword", "blockUI",
+    "icswUserGetPassword", "blockUI", "themes",
 (
     $scope, $compile, $filter, $templateCache, Restangular,
     $q, $timeout, $uibModal, ICSW_URLS, icswUserService,
     icswUserGroupSettingsTreeService, icswUserGroupPermissionTreeService,
-    icswUserGetPassword, blockUI,
+    icswUserGetPassword, blockUI, themes
 ) ->
     $scope.struct = {
         data_valid: false
@@ -1149,6 +1151,8 @@ user_module = angular.module(
             (data) ->
                 $scope.struct.data_valid = true
                 $scope.struct.user = data[0].user
+                $scope.struct.user.ui_theme_selection = $scope.struct.user.ui_theme_selection.toString()
+                $scope.themes = themes
                 $scope.struct.settings_tree = data[1]
                 $scope.perm_tree = data[2]
                 # hack, to be improved, FIXME, ToDo
@@ -1180,7 +1184,7 @@ user_module = angular.module(
 [
     "$templateCache",
 (
-    $templateCache,
+    $templateCache
 ) ->
     return {
         restrict: "EA"

@@ -145,7 +145,7 @@
 
 <script type="text/ng-template" id="icsw.asset.scheduled.runs.table">
     <table
-        class="table table-condensed table-hover table-striped"
+        class="table table-condensed table-striped simple-border"
         style="width:auto;"
         ng-show="struct.schedule_items.length > 0"
         st-table="scheduleitems_shown"
@@ -205,76 +205,77 @@
     </h3>
 
     <table
-        class="table table-condensed table-hover table-striped"
-        style="width:auto;"
+        class="table table-condensed table-striped"
         ng-show="asset_run_list.length > 0"
         st-table="assetruns_shown"
         st-safe-src="asset_run_list"
         st-set-filter="assetRunFilter"
     >
         <thead>
-            <tr>
-                <th st-sort="$$run_type">Asset Type</th>
-                <th st-sort="asset_batch">Batch ID</th>
-                <th st-sort="$$run_start_day">start Day</th>
-                <th st-sort="$$run_start_hour">Start Hour</th>
-                <th st-sort="$$run_end_day">End Day</th>
-                <th st-sort="$$run_end_hour">End Hour</th>
-                <th st-sort="run_duration">Run Time</th>
-                <th st-sort="device.$$full_name">Device</th>
-                <th st-sort="$$run_status">Status</th>
-                <th st-sort="$$run_result">Result</th>
-                <th>Error</th>
-                <th>#Assets</th>
-                <th colspan="2">Action</th>
-                <th><icsw-tools-button  type="modify" value="Download CSV" ng-click="downloadCsv()" size="xs">Export to CSV</icsw-tools-button></th>
-                <th><icsw-tools-button  type="modify" value="Download .xlsx" ng-click="downloadXlsx()" size="xs">Export to XLSX</icsw-tools-button></th>
-                <th><icsw-tools-button  type="modify" value="Download .pdf" ng-click="downloadPdf()" size="xs">Export to PDF</icsw-tools-button></th>
+        <tr>
+                <td colspan="99">
+                    <icsw-tools-button  type="modify" value="Download CSV" ng-click="downloadCsv()" size="xs" class="pull-xs-left">Export to CSV</icsw-tools-button>
+                    <icsw-tools-button  type="modify" value="Download .xlsx" ng-click="downloadXlsx()" size="xs" class="pull-xs-left">Export to CSV</icsw-tools-button>
+                    <icsw-tools-button  type="modify" value="Download .pdf" ng-click="downloadPdf()" size="xs" class="pull-xs-left">Export to PDF</icsw-tools-button>
+                    <span
+                        icsw-tools-pagination
+                        st-items-by-page="20"
+                        st-displayed-pages="11"
+                        possible-items-by-page="10,20,50,100"
+                        class="pull-xs-left"
+                    ></span>
+                </td>
             </tr>
             <tr>
-                <th colspan="1">
-                    <input st-search="$$run_type" placeholder="filter by run type" class="input-sm form-control" type="search"/>
+                <th st-sort="$$run_type">Asset Type</th>
+                <th st-sort="asset_batch" class="text-center">Batch ID</th>
+                <th st-sort="$$run_start_day" class="text-right">start Day</th>
+                <th st-sort="$$run_start_hour" class="text-right">Start Hour</th>
+                <th st-sort="$$run_end_day" class="text-right">End Day</th>
+                <th st-sort="$$run_end_hour" class="text-right">End Hour</th>
+                <th st-sort="run_duration" class="text-right">Run Time</th>
+                <th st-sort="device.$$full_name">Device</th>
+                <th st-sort="$$run_status" class="text-center">Status</th>
+                <th st-sort="$$run_result" class="text-center">Result</th>
+                <th class="text-right">Error</th>
+                <th class="text-right">#Assets</th>
+                <th colspan="2">Actions</th>
+            </tr>
+            <tr>
+                <th>
+                    <input st-search="$$run_type" placeholder="filter by asset type" class="input-sm form-control" type="search"/>
                 </th>
                 <th></th>
-                <th colspan="1">
-                    <input st-search="$$run_start_day" placeholder="start day" class="input-sm form-control icsw-input-100px" type="search"/>
+                <th class="text-right">
+                    <input st-search="$$run_start_day" placeholder="start day" class="input-sm form-control icsw-input-100px" type="search" style="display:inline-block;"/>
                 </th>
-                <th colspan="1">
-                    <input st-search="$$run_start_hour" placeholder="start time" class="input-sm form-control icsw-input-100px" type="search"/>
+                <th class="text-right">
+                    <input st-search="$$run_start_hour" placeholder="start time" class="input-sm form-control icsw-input-100px" type="search" style="display:inline-block;"/>
                 </th>
-                <th colspan="1">
-                    <input st-search="$$run_end_day" placeholder="end day" class="input-sm form-control icsw-input-100px" type="search"/>
+                <th class="text-right">
+                    <input st-search="$$run_end_day" placeholder="end day" class="input-sm form-control icsw-input-100px" type="search" style="display:inline-block;"/>
                 </th>
-                <th colspan="1">
-                    <input st-search="$$run_end_hour" placeholder="end time" class="input-sm form-control icsw-input-100px" type="search"/>
+                <th class="text-right">
+                    <input st-search="$$run_end_hour" placeholder="end time" class="input-sm form-control icsw-input-100px" type="search" style="display:inline-block;"/>
                 </th>
-                <th colspan="1">
-                    <input st-search="run_duration" placeholder="duration" class="input-sm form-control icsw-input-50px" type="search"/>
+                <th class="text-right">
+                    <input st-search="run_duration" placeholder="duration" class="input-sm form-control icsw-input-50px" type="search" style="display:inline-block;"/>
                 </th>
-                <th colspan="1">
+                <th class="text-right">
                     <input st-search="$$device.full_name" placeholder="filter by device_name" class="input-sm form-control" type="search"/>
                 </th>
-                <th colspan="1">
+                <th>
                     <input st-search="$$run_status" placeholder="filter by run status" class="input-sm form-control" type="search"/>
                 </th>
-                <th colspan="1">
+                <th>
                     <input st-search="$$run_result" placeholder="filter by run result" class="input-sm form-control" type="search"/>
                 </th>
                 <th>
                     &nbsp;
                 </th>
-                <th colspan="4">&nbsp;</th>
+                <th colspan="2">&nbsp;</th>
             </tr>
-            <tr>
-                <td colspan="99">
-                    <div
-                        icsw-tools-pagination
-                        st-items-by-page="20"
-                        st-displayed-pages="11"
-                        possible-items-by-page="10,20,50,100"
-                    ></div>
-                </td>
-            </tr>
+
         </thead>
         <tbody>
             <tr ng-class="{'success': assetrun.$$selected}" ng-repeat-start="assetrun in assetruns_shown track by $index">
@@ -282,18 +283,18 @@
                 <td class="text-center">
                     <span class="label label-success">{{ assetrun.asset_batch }}</span>
                 </td>
-                <td class="text-center">{{ assetrun.$$run_start_day }}</td>
-                <td class="text-center">{{ assetrun.$$run_start_hour }}</td>
-                <td class="text-center">{{ assetrun.$$run_end_day }}</td>
-                <td class="text-center">{{ assetrun.$$run_end_hour }}</td>
+                <td class="text-right">{{ assetrun.$$run_start_day }}</td>
+                <td class="text-right">{{ assetrun.$$run_start_hour }}</td>
+                <td class="text-right">{{ assetrun.$$run_end_day }}</td>
+                <td class="text-right">{{ assetrun.$$run_end_hour }}</td>
                 <td class="text-right">{{ assetrun.run_duration }}</td>
-                <td class="text-center">{{ assetrun.$$device.full_name }}</td>
+                <td class="text-left">{{ assetrun.$$device.full_name }}</td>
                 <td class="text-center" ng-class="assetrun.$$run_status_class">{{ assetrun.$$run_status }}</td>
                 <td class="text-center" ng-class="assetrun.$$run_result_class">{{ assetrun.$$run_result }}</td>
                 <td ng-class="assetrun.$$error_class">{{ assetrun.$$error_class }}{{ assetrun.error_string }} {{ assetrun.interpret_error_string }}</td>
                 <td class="text-right">{{ assetrun.$$num_results }}</td>
                 <td>
-                    <icsw-tools-button ng-if="assetrun.$$num_results" size="xs" type="show" is-show="assetrun.$$expanded" ng-click="expand_assetrun($event, assetrun)"></icsw-tools-button>
+                    <icsw-tools-button ng-if="assetrun.$$num_results" size="xs" type="show" is-show="!assetrun.$$expanded" ng-click="expand_assetrun($event, assetrun)"></icsw-tools-button>
                 </td>
                 <td>
                     <icsw-tools-button type="modify" size="xs" value="select" ng-click="select_assetrun($event, assetrun)"></icsw-tools-button>
@@ -316,7 +317,7 @@
     </h3>
 
     <table
-        class="table table-condensed table-hover table-striped"
+        class="table table-condensed table-striped"
         style="width:auto;"
         ng-if="package_tree.list.length > 0"
         st-table="packages_shown"
@@ -324,22 +325,6 @@
         st-set-filter="packageFilter"
     >
         <thead>
-            <tr>
-                <th st-sort="name">Name</th>
-                <th st-sort="$$package_type">Package Type</th>
-                <th st-sort="$$num_versions">#Versions</th>
-                <th st-sort="$$created">Created</th>
-                <th><icsw-tools-button  type="modify" value="Download CSV" ng-click="downloadCsv()" size="xs">Export to CSV</icsw-tools-button></th>
-            </tr>
-            <tr>
-                <th colspan="1">
-                    <input st-search="name" placeholder="filter by name" class="input-sm form-control" type="search"/>
-                </th>
-                <th colspan="1">
-                    <input st-search="$$package_type" placeholder="filter by package type" class="input-sm form-control" type="search"/>
-                </th>
-                <th colspan="2"></th>
-            </tr>
             <tr>
                 <td colspan="99">
                     <div
@@ -350,6 +335,23 @@
                     ></div>
                 </td>
             </tr>
+            <tr>
+                <th st-sort="name">Name</th>
+                <th st-sort="$$package_type">Package Type</th>
+                <th st-sort="$$num_versions" class="text-right">#Versions</th>
+                <th st-sort="$$created" class="text-right">Created</th>
+                <th><icsw-tools-button  type="modify" value="Download CSV" ng-click="downloadCsv()" size="xs">Export to CSV</icsw-tools-button></th>
+            </tr>
+            <tr>
+                <th colspan="1">
+                    <input st-search="name" placeholder="filter by name" class="input-sm form-control" type="search"/>
+                </th>
+                <th colspan="1">
+                    <input st-search="$$package_type" placeholder="filter by package type" class="input-sm form-control" type="search"/>
+                </th>
+                <th colspan="3">&nbsp;</th>
+            </tr>
+
         </thead>
         <tbody>
             <tr ng-repeat-start="package in packages_shown">
@@ -358,15 +360,14 @@
                 <td class="text-center">{{ package.$$num_versions }}</td>
                 <td>{{ package.$$created }}</td>
                 <td>
-                    <icsw-tools-button size="xs" type="show" is-show="package.$$expanded" ng-click="expand_package($event, package)"></icsw-tools-button>
+                    <icsw-tools-button size="xs" type="show" is-show="!package.$$expanded" ng-click="expand_package($event, package)"></icsw-tools-button>
                 </td>
             </tr>
 
             <tr ng-repeat-end ng-if="package.$$expanded">
                 <td colspan="99">
                     <table
-                        class="table table-condensed table-hover table-bordered"
-                        style="width:auto;"
+                        class="table table-condensed table-striped simple-border "
                         st-safe-src="package.assetpackageversion_set"
                         st-table="package.$$versions_shown"
                     >
@@ -384,8 +385,8 @@
                             <th>Version</th>
                             <th>Release</th>
                             <th>Comment</th>
-                            <th>Size</th>
-                            <th>Created</th>
+                            <th class="text-right">Size</th>
+                            <th class="text-right">Created</th>
                             <th></th>
                         </tr>
                         <tr ng-repeat="obj in package.$$versions_shown">
@@ -393,7 +394,7 @@
                             <td>{{ obj.release }}</td>
                             <td>{{ obj.info }}</td>
                             <td class="text-right">{{ obj.$$size }}</td>
-                            <td class="text-center">{{ obj.$$created }}</td>
+                            <td class="text-right">{{ obj.$$created }}</td>
                             <td>
                                 <icsw-tools-button ng-if="false" type="reload" size="xs" ng-click="select_devices($event, obj)" value="Select Devices"/>
                             </td>
@@ -411,7 +412,7 @@
 
 <script type="text/ng-template" id="icsw.asset.details.package">
     <table
-        class="table table-condensed table-hover table-striped"
+        class="table table-condensed table-striped simple-border"
         style="width:auto;"
         st-safe-src="asset_run.$$assets"
         st-table="assets_shown"
@@ -451,7 +452,7 @@
 
 <script type="text/ng-template" id="icsw.asset.details.hardware">
     <table
-        class="table table-condensed table-hover table-striped"
+        class="table table-condensed table-striped simple-border"
         style="width:auto;"
         st-safe-src="asset_run.$$assets"
         st-table="assets_shown"
@@ -487,7 +488,7 @@
 
 <script type="text/ng-template" id="icsw.asset.details.process">
     <table
-        class="table table-condensed table-hover table-striped"
+        class="table table-condensed table-striped simple-border"
         style="width:auto;"
         st-safe-src="asset_run.$$assets"
         st-table="assets_shown"
@@ -519,7 +520,7 @@
 
 <script type="text/ng-template" id="icsw.asset.details.licenses">
     <table
-        class="table table-condensed table-hover table-striped"
+        class="table table-condensed table-striped simple-border"
         style="width:auto;"
         st-safe-src="asset_run.$$assets"
         st-table="assets_shown"
@@ -551,7 +552,7 @@
 
 <script type="text/ng-template" id="icsw.asset.details.installed.updates">
     <table
-        class="table table-condensed table-hover table-striped"
+        class="table table-condensed table-striped simple-border"
         style="width:auto;"
         st-safe-src="asset_run.$$assets"
         st-table="assets_shown"
@@ -585,7 +586,7 @@
 
 <script type="text/ng-template" id="icsw.asset.details.pending.updates">
     <table
-        class="table table-condensed table-hover table-striped"
+        class="table table-condensed table-striped simple-border"
         style="width:auto;"
         st-safe-src="asset_run.$$assets"
         st-table="assets_shown"
@@ -619,7 +620,7 @@
 
 <script type="text/ng-template" id="icsw.asset.details.pcientries">
     <table
-        class="table table-condensed table-hover table-striped"
+        class="table table-condensed table-striped simple-border"
         style="width:auto;"
         st-safe-src="asset_run.$$assets"
         st-table="assets_shown"
@@ -669,7 +670,7 @@
     </h3>
     <table
         ng-if="asset_run.$$assets"
-        class="table table-condensed table-hover table-striped"
+        class="table table-condensed table-striped simple-border"
         style="width:auto;"
         st-safe-src="asset_run.$$assets.assetdmihandle_set"
         st-table="assets_shown"
@@ -686,10 +687,10 @@
                 </td>
             </tr>
             <tr>
-                <th st-sort="handle">handle</th>
-                <th st-sort="dmi_type">Type</th>
+                <th class="text-right" st-sort="handle">handle</th>
+                <th class="text-right" st-sort="dmi_type">Type</th>
                 <th>Header</th>
-                <th>#Values</th>
+                <th class="text-right">#Values</th>
             </tr>
         </thead>
         <tbody>
@@ -708,7 +709,7 @@
         Installed Memory Module(s)
     </h3>
     <table
-        class="table table-condensed table-hover table-striped"
+        class="table table-condensed table-striped simple-border"
         style="width:auto;"
         st-safe-src="asset_run.$$memory_entries"
         st-table="assets_shown_memory_entries"
@@ -747,7 +748,7 @@
         Installed Cpu(s)
     </h3>
     <table
-        class="table table-condensed table-hover table-striped"
+        class="table table-condensed table-striped simple-border"
         style="width:auto;"
         st-safe-src="asset_run.$$cpu_entries"
         st-table="assets_shown_cpu_entries"
@@ -780,7 +781,7 @@
         Installed GPU(s)
     </h3>
     <table
-        class="table table-condensed table-hover table-striped"
+        class="table table-condensed table-striped simple-border"
         style="width:auto;"
         st-safe-src="asset_run.$$gpu_entries"
         st-table="assets_shown_gpu_entries"
@@ -813,7 +814,7 @@
         Installed Harddrive(s)
     </h3>
     <table
-        class="table table-condensed table-hover table-striped"
+        class="table table-condensed table-striped simple-border"
         style="width:auto;"
         st-safe-src="asset_run.$$hdd_entries"
         st-table="assets_shown_hdd_entries"
@@ -848,7 +849,7 @@
         Partition Overview
     </h3>
     <table
-        class="table table-condensed table-hover table-striped"
+        class="table table-condensed table-striped simple-border"
         style="width:auto;"
         st-safe-src="asset_run.$$partition_entries"
         st-table="assets_shown_partition_entries"
@@ -885,7 +886,7 @@
         Installed Display(s)
     </h3>
     <table
-        class="table table-condensed table-hover table-striped"
+        class="table table-condensed table-striped simple-border"
         style="width:auto;"
         st-safe-src="asset_run.$$display_entries"
         st-table="assets_shown_display_entries"
