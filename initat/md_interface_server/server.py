@@ -60,6 +60,8 @@ class server_process(
         self._check_md_version()
         self._check_relay_version()
         self._init_network_sockets()
+        _srv_com = server_command.srv_command(command="status")
+        self.send_to_remote_server_ip("127.0.0.1", "cluster-server", unicode(_srv_com))
 
     def _check_for_pc_control(self):
         if self._icinga_pc is None:
