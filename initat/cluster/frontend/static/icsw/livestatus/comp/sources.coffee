@@ -234,7 +234,7 @@ angular.module(
             4: "danger"
         }[entry.state]
         entry.$$icswStateClass = _r_str
-        entry.$$icswStateLabelClass = "label-#{_r_str}"
+        # entry.$$icswStateLabelClass = "label-#{_r_str}"
         entry.$$icswStateTextClass = "text-#{_r_str}"
         entry.$$icswStateString = {
             0: "OK"
@@ -261,7 +261,8 @@ angular.module(
             4: "svg_unknown"
         }[entry.state]
         entry.$$burst_fill_color = _service_lut[entry.state].color
-        entry.$$icswStateLabelClass = "label-#{_r_str}"
+        entry.$$icswStateClass = _r_str
+        # entry.$$icswStateLabelClass = "label-#{_r_str}"
         entry.$$icswStateTextClass = "text-#{_r_str}"
         entry.$$icswStateString = {
             0: "OK"

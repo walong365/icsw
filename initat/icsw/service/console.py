@@ -79,6 +79,8 @@ class SrvController(object):
             ),
         ])
 
+        self._updating = False
+
         @manager.registry.add_binding(Keys.ControlC, eager=True)
         @manager.registry.add_binding("q", eager=True)
         def _handler_data(event):
@@ -108,11 +110,20 @@ class SrvController(object):
 
     def get_title_line(self, cli):
         return [
-            (Token.String.ICSW.Header, "Service overview ({})".format(time.ctime(time.time()))),
+            (
+                Token.String.ICSW.Header,
+                "Service overview ({}) {}".format(
+                    time.ctime(time.time()),
+                    " updating" if self._updating else "",
+                )
+            ),
         ]
 
     def get_icsw_output(self, cli):
+        self._updating = True
+        cli.request_redraw()
         self.srv_text.update()
+        self._updating = False
         _r_list = []
         for _line in self.srv_text.get_text():
             _r_list.extend(

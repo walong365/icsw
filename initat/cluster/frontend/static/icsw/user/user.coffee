@@ -762,6 +762,7 @@ user_module = angular.module(
 (
     icswReactTreeConfig
 ) ->
+    {span} = React.DOM
     class icswUserGroupDisplayTree extends icswReactTreeConfig
         constructor: (@scope, args) ->
             super(args)
@@ -783,30 +784,40 @@ user_module = angular.module(
                 _if.push("inactive")
             return "#{_name} (" + _if.join(", ") + ")"
 
-        add_extra_span: (entry) ->
-            return angular.element("<span><span/><span/><span style='width:8px;'>&nbsp;</span></span>")
+        get_pre_view_element: (entry) ->
+            _get_icon_class = (entry) ->
+                if entry._node_type == "u"
+                    if entry.obj.is_superuser
+                        return "fa fa-user-plus"
+                    else
+                        return "fa fa-user"
+                else
+                    return "fa fa-group"
 
-        update_extra_span: (entry, div) ->
-            if entry._node_type == "u"
-                span = div.find("span:nth-child(1)")
-                span.removeClass()
-                if entry.obj.only_webfrontend
-                    span.addClass("fa fa-genderless fa-fw")
+            _span_list = [
+                span(
+                    key: "utype"
+                    className: _get_icon_class(entry)
+                )
+                " "
+            ]
+            if entry.obj.only_webfrontend
+                _span_list.push(
+                    span(
+                        {
+                            key: "pre"
+                            className: "fa fa-genderless fa-bw"
+                        }
+                    )
+                )
+            _span_list.push(" ")
+            return _span_list
 
         handle_click: (event, entry) =>
             @clear_active()
             entry.set_active(true)
             @scope.add_edit_object_from_tree(entry)
             @scope.$digest()
-
-        get_icon_class: (entry) ->
-            if entry._node_type == "u"
-                if entry.obj.is_superuser
-                    return "fa fa-user-plus"
-                else
-                    return "fa fa-user"
-            else
-                return "fa fa-group"
 
 ]).service("icswDiskUsageTree",
 [
@@ -864,10 +875,8 @@ user_module = angular.module(
             $scope
             {
                 show_selection_buttons: false
-                show_icons: true
                 show_select: false
                 show_descendants: true
-                show_childs: false
             }
         )
         # filter string
@@ -1151,7 +1160,6 @@ user_module = angular.module(
             (data) ->
                 $scope.struct.data_valid = true
                 $scope.struct.user = data[0].user
-                $scope.struct.user.ui_theme_selection = $scope.struct.user.ui_theme_selection.toString()
                 $scope.themes = themes
                 $scope.struct.settings_tree = data[1]
                 $scope.perm_tree = data[2]

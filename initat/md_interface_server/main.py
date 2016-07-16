@@ -21,12 +21,10 @@
 """ main process for md-interface-server """
 
 import os
-#from initat.md_config_server.constants import SERVER_COM_PORT, IDOMOD_PROCESS_TIMED_EVENT_DATA, \
-#    IDOMOD_PROCESS_SERVICE_CHECK_DATA, IDOMOD_PROCESS_HOST_CHECK_DATA, BROKER_TIMED_EVENTS, \
-#    BROKER_SERVICE_CHECKS, BROKER_HOST_CHECKS, CACHE_MODES
+
+from initat.md_interface_server.config import global_config
 from initat.server_version import VERSION_STRING
 from initat.tools import configfile
-from initat.md_interface_server.config import global_config
 
 
 def run_code():

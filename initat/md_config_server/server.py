@@ -40,7 +40,7 @@ from initat.md_config_server.kpi import KpiProcess
 from initat.md_config_server.mixins import version_check_mixin
 from initat.md_config_server.status import StatusProcess, LiveSocket
 from initat.md_config_server.syncer import SyncerProcess, RemoteSlave
-from initat.tools import configfile, logging_tools, process_tools, server_command, \
+from initat.tools import logging_tools, process_tools, server_command, \
     threading_tools, server_mixins
 from initat.tools.server_mixins import RemoteCall
 
@@ -459,7 +459,7 @@ class server_process(
     def _init_network_sockets(self):
         self.network_bind(
             need_all_binds=False,
-            bind_port=global_config["COM_PORT"],
+            bind_port=global_config["COMMAND_PORT"],
             bind_to_localhost=True,
             server_type="md-config",
             simple_server_bind=True,

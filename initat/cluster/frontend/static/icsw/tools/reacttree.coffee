@@ -18,8 +18,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-# tree component
-# should be rewritten in ReactJS
+# tree component using ReactJS
 
 angular.module(
     "icsw.tools.reacttree",
@@ -151,96 +150,96 @@ angular.module(
                         )
                     )
                 )
-                if _tn._depth == 0 and _tn.children.length and _tc.show_tree_expand_buttons
-                    # add full selectin buttons
-                    _top_spans = [
-                        input(
-                            {
-                                key: "selbie"
-                                type: "button"
-                                className: "btn btn-success"
-                                value: "e"
-                                title: "expand tree"
-                                onClick: () =>
-                                    # expand tree
-                                    @props.tree_config.expand_all()
-                            }
-                        )
-                    ]
-                    if _tn.show_select
-                        _top_spans.push(
-                            input(
-                                {
-                                    key: "selbis"
-                                    type: "button"
-                                    className: "btn btn-primary"
-                                    value: "s"
-                                    title: "expand selected"
-                                    onClick: () =>
-                                        # show only selected
-                                        @props.tree_config.show_selected(false)
-                                }
-                            )
-                        )
+            if _tn._depth == 0 and _tn.children.length and _tc.show_tree_expand_buttons
+                # add full selectin buttons
+                _top_spans = [
+                    input(
+                        {
+                            key: "selbie"
+                            type: "button"
+                            className: "btn btn-success"
+                            value: "e"
+                            title: "expand tree"
+                            onClick: () =>
+                                # expand tree
+                                @props.tree_config.expand_all()
+                        }
+                    )
+                ]
+                if _tn.show_select
                     _top_spans.push(
                         input(
                             {
-                                key: "selbic"
+                                key: "selbis"
                                 type: "button"
-                                className: "btn btn-warning"
-                                value: "c"
-                                title: "collapse tree"
+                                className: "btn btn-primary"
+                                value: "s"
+                                title: "expand selected"
                                 onClick: () =>
-                                    # collapse tree
-                                    @props.tree_config.collapse_all()
+                                    # show only selected
+                                    @props.tree_config.show_selected(false)
                             }
                         )
                     )
+                _top_spans.push(
+                    input(
+                        {
+                            key: "selbic"
+                            type: "button"
+                            className: "btn btn-warning"
+                            value: "c"
+                            title: "collapse tree"
+                            onClick: () =>
+                                # collapse tree
+                                @props.tree_config.collapse_all()
+                        }
+                    )
+                )
 
-                    _main_spans.push(
-                        div(
-                            {
-                                key: "selb0"
-                                className: "btn-group btn-group-xs"
-                            }
-                            _top_spans
-                        )
+                _main_spans.push(
+                    div(
+                        {
+                            key: "selb0"
+                            className: "btn-group btn-group-xs"
+                        }
+                        _top_spans
                     )
-                    if _tc.search_field
-                        if not _tc.$$search_focus?
-                            _tc.$$search_focus = false
-                            _tc.$$search_string = ""
-                        _input_to = undefined
-                        _main_spans.push(
-                            input(
-                                {
-                                    type: "text"
-                                    key: "sfield"
-                                    defaultValue: _tc.$$search_string
-                                    autoFocus: if _tc.$$search_focus then "1" else null
-                                    onChange: (event) =>
-                                        if _input_to?
-                                            $timeout.cancel(_input_to)
-                                        cur_val = event.target.value
-                                        # store search string
-                                        _tc.$$search_string = cur_val
-                                        _input_to = $timeout(
-                                            () =>
-                                                console.log "search", cur_val
-                                                _tc.do_search(cur_val)
-                                            10
-                                        )
-                                    onFocus: (event) =>
-                                        _tc.$$search_focus = true
-                                        # focus event
-                                        # console.log "F"
-                                    onBlur: (event) =>
-                                        _tc.$$search_focus = false
-                                        # blur (unfocus) event
-                                        # console.log "B"
-                                }
-                            )
-                        )
+                )
+            if _tn._depth == 0 and _tc.search_field
+                if not _tc.$$search_focus?
+                    _tc.$$search_focus = false
+                    _tc.$$search_string = ""
+                _input_to = undefined
+                _main_spans.push(
+                    input(
+                        {
+                            type: "text"
+                            key: "sfield"
+                            defaultValue: _tc.$$search_string
+                            autoFocus: if _tc.$$search_focus then "1" else null
+                            onChange: (event) =>
+                                if _input_to?
+                                    $timeout.cancel(_input_to)
+                                cur_val = event.target.value
+                                # store search string
+                                _tc.$$search_string = cur_val
+                                _input_to = $timeout(
+                                    () =>
+                                        console.log "search", cur_val
+                                        _tc.do_search(cur_val)
+                                    10
+                                )
+                            onFocus: (event) =>
+                                _tc.$$search_focus = true
+                                # focus event
+                                # console.log "F"
+                            onBlur: (event) =>
+                                _tc.$$search_focus = false
+                                # blur (unfocus) event
+                                # console.log "B"
+                        }
+                    )
+                )
             _name_span_list = [
                 _tc.get_pre_view_element(_tn)
                 span(

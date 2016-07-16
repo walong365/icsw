@@ -26,7 +26,9 @@ import time
 import zmq
 
 from initat.host_monitoring.hm_classes import mvect_entry
+from initat.md_interface_server.mixins import version_check_mixin
 from initat.md_interface_server.config import global_config
+from initat.md_interface_server.process import ProcessControl
 from initat.tools import configfile, logging_tools, process_tools, server_command, \
     threading_tools, server_mixins
 from initat.tools.server_mixins import RemoteCall
@@ -37,6 +39,7 @@ class server_process(
     server_mixins.ICSWBasePool,
     server_mixins.RemoteCallMixin,
     server_mixins.SendToRemoteServerMixin,
+    version_check_mixin,
 ):
     def __init__(self):
         threading_tools.process_pool.__init__(self, "main", zmq=True)
@@ -46,18 +49,39 @@ class server_process(
         self.__pid_name = global_config["PID_NAME"]
         self.__verbose = global_config["VERBOSE"]
         self._init_msi_block()
-        # re-insert config
         # log config
         self.CC.log_config()
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.register_exception("hup_error", self._hup_error)
-        # self._check_notification()
-        # self._check_special_commands()
         # from mixins
-        # self._check_md_version()
-        # self._check_relay_version()
+        self._icinga_pc = None
+        self.register_timer(self._check_for_pc_control, 10, instant=True)
+        self._check_md_version()
+        self._check_relay_version()
         self._init_network_sockets()
+
+    def _check_for_pc_control(self):
+        if self._icinga_pc is None:
+            # check
+            if "MD_TYPE" in global_config:
+                _lock_file_name = os.path.join(
+                    global_config["MD_BASEDIR"],
+                    "var",
+                    global_config["MD_LOCK_FILE"]
+                )
+                self._icinga_pc = ProcessControl(
+                    self,
+                    global_config["MD_TYPE"],
+                    _lock_file_name,
+                )
+            else:
+                self.log(
+                    "MD_TYPE not found in global_config, packages missing",
+                    logging_tools.LOG_LEVEL_WARN
+                )
+        else:
+            self._icinga_pc.check_state()
 
     def _check_for_redistribute(self):
         self.send_to_process("syncer", "check_for_redistribute")
@@ -271,6 +295,8 @@ class server_process(
         return self.server_status(srv_com, self.__msi_block, global_config)
 
     def loop_end(self):
+        if self._icinga_pc:
+            self._icinga_pc.stop()
         process_tools.delete_pid(self.__pid_name)
         self.__msi_block.remove_meta_block()
 

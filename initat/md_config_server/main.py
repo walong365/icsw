@@ -28,7 +28,7 @@ import django
 django.setup()
 
 from django.conf import settings
-from initat.md_config_server.constants import SERVER_COM_PORT, IDOMOD_PROCESS_TIMED_EVENT_DATA, \
+from initat.md_config_server.constants import IDOMOD_PROCESS_TIMED_EVENT_DATA, \
     IDOMOD_PROCESS_SERVICE_CHECK_DATA, IDOMOD_PROCESS_HOST_CHECK_DATA, BROKER_TIMED_EVENTS, \
     BROKER_SERVICE_CHECKS, BROKER_HOST_CHECKS, CACHE_MODES
 from initat.server_version import VERSION_STRING
@@ -73,7 +73,6 @@ def main():
         global_config,
         "monitor_server",
         [
-            ("COM_PORT", configfile.int_c_var(SERVER_COM_PORT)),
             ("NETSPEED_WARN_MULT", configfile.float_c_var(0.85)),
             ("NETSPEED_CRITICAL_MULT", configfile.float_c_var(0.95)),
             ("NETSPEED_DEFAULT_VALUE", configfile.int_c_var(10000000)),
