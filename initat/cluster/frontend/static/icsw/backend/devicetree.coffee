@@ -37,7 +37,7 @@ angular.module(
     ref_ctr = 0
     # helper service for global (== selection-wide) luts and lists
     class icswDeviceTreeHelper
-        constructor: (@tree, @devices) ->
+        constructor: (@tree, devices) ->
             # just for testing
             ref_ctr++
             @ref_ctr = ref_ctr
@@ -45,6 +45,21 @@ angular.module(
             @netdevice_lut = {}
             @net_ip_list = []
             @net_ip_lut = {}
+            @devices = []
+            @update(devices)
+            
+        update: (dev_list) =>
+            @devices.length = 0
+            for dev in dev_list
+                @devices.push(dev)
+            @build_luts()
+        
+        add_device: (dev) =>
+            @devices.push(dev)
+            @build_luts()
+            
+        build_luts: () =>
+            @device_lut = _.keyBy(@devices, "idx")
 
         # global post calls
 

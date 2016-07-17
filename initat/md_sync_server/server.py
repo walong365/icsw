@@ -17,7 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" server process for md-interface-server """
+""" server process for md-sync-server """
 
 import codecs
 import os
@@ -26,9 +26,9 @@ import time
 import zmq
 
 from initat.host_monitoring.hm_classes import mvect_entry
-from initat.md_interface_server.mixins import version_check_mixin
-from initat.md_interface_server.config import global_config
-from initat.md_interface_server.process import ProcessControl
+from initat.md_sync_server.mixins import version_check_mixin
+from initat.md_sync_server.config import global_config
+from initat.md_sync_server.process import ProcessControl
 from initat.tools import configfile, logging_tools, process_tools, server_command, \
     threading_tools, server_mixins
 from initat.tools.server_mixins import RemoteCall
@@ -43,7 +43,7 @@ class server_process(
 ):
     def __init__(self):
         threading_tools.process_pool.__init__(self, "main", zmq=True)
-        self.CC.init("md-interface-server", global_config)
+        self.CC.init("md-sync-server", global_config)
         self.CC.check_config(client=True)
         self.__enable_livestatus = True  # global_config["ENABLE_LIVESTATUS"]
         self.__pid_name = global_config["PID_NAME"]
@@ -116,7 +116,7 @@ class server_process(
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
         self.log("Initialising meta-server-info block")
-        msi_block = process_tools.meta_server_info("md-interface-server")
+        msi_block = process_tools.meta_server_info("md-sync-server")
         msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
         msi_block.kill_pids = True
         msi_block.save_block()
@@ -210,7 +210,7 @@ class server_process(
             need_all_binds=False,
             bind_port=global_config["COMMAND_PORT"],
             bind_to_localhost=True,
-            client_type="md-interface-server",
+            client_type="md-sync-server",
             simple_server_bind=True,
             pollin=self.remote_call,
         )

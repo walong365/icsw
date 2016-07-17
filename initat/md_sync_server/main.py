@@ -18,17 +18,17 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" main process for md-interface-server """
+""" main process for md-sync-server """
 
 import os
 
-from initat.md_interface_server.config import global_config
+from initat.md_sync_server.config import global_config
 from initat.server_version import VERSION_STRING
 from initat.tools import configfile
 
 
 def run_code():
-    from initat.md_interface_server.server import server_process
+    from initat.md_sync_server.server import server_process
     server_process().loop()
 
 

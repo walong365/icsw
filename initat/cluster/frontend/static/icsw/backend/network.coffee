@@ -412,7 +412,7 @@ angular.module(
                     new_peer = new_peer[0]
                     @list.push(new_peer)
                     @build_luts()
-                    defer.resolve(msg)
+                    defer.resolve(new_peer)
             )
 
 

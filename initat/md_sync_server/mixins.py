@@ -17,14 +17,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" mixins for md-interface-server """
+""" mixins for md-sync-server """
 
 import commands
 import os
 import re
 import time
 
-from initat.md_interface_server.config import global_config
+from initat.md_sync_server.config import global_config
 from initat.tools import configfile, logging_tools
 
 

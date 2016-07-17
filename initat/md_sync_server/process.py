@@ -17,14 +17,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" interface to control icinga daemon for md-interface-server """
+""" interface to control icinga daemon for md-sync-server """
 import os
 import time
 import subprocess
 import signal
 
 from initat.tools import logging_tools, process_tools
-from initat.md_interface_server.config import global_config
+from initat.md_sync_server.config import global_config
 import psutil
 
 
