@@ -23,7 +23,10 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.router",
     ]
-).service('icswLivestatusMonTabularDisplay',
+).config(["icswLivestatusPipeRegisterProvider", (icswLivestatusPipeRegsterProvider) ->
+    icswLivestatusPipeRegsterProvider.add("icswLivestatusMonTabularDisplay", true)
+    icswLivestatusPipeRegsterProvider.add("icswLivestatusDeviceTabularDisplay", true)
+]).service('icswLivestatusMonTabularDisplay',
 [
     "$q", "icswMonLivestatusPipeBase", "icswMonitoringResult",
 (

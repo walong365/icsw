@@ -26,9 +26,10 @@ def add_device_variable_scopes(apps, schema_editor):
         name="normal",
         prefix="",
     )
+    # set device_variable_fixtures
     device_variable_scope.objects.create(
         name="inventory",
-        prefix="__$$ICSW_INV$__",
+        prefix="__$$ICSW_INV$$__",
         forced_flags=json.dumps(
             {
                 "local_copy_ok": False,

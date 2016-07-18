@@ -32,7 +32,7 @@ from initat.cluster.backbone.models import netdevice_speed, LogLevel, \
     window_manager, snmp_network_type, snmp_scheme, snmp_scheme_vendor, snmp_scheme_tl_oid, \
     ComCapability, SensorAction, config_catalog, GraphSettingSize, GraphSettingTimeshift, \
     GraphSettingForecast, GraphTimeFrame, DispatcherSettingSchedule, DispatcherSetting, \
-    StaticAssetTemplate, StaticAssetTemplateField, dvs_allowed_names
+    StaticAssetTemplate, StaticAssetTemplateField, dvs_allowed_names, device_variable_scope
 
 
 class Device(factory.django.DjangoModelFactory):
@@ -568,7 +568,34 @@ class StaticAssetTemplateFieldFactory(factory.django.DjangoModelFactory):
         django_get_or_create = ("name", "static_asset_template")
 
 
+class device_variable_scope_factory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = device_variable_scope
+        django_get_or_create = ("name",)
+
+    @factory.post_generation
+    def prefix(self, create, extracted, **kwargs):
+        extracted = extracted or False
+        if self.prefix != extracted:
+            self.prefix = extracted
+            self.save()
+
+
 class DVSAllowedNamesFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = dvs_allowed_names
         django_get_or_create = ("name", "device_variable_scope",)
+
+    @factory.post_generation
+    def unique(self, create, extracted, **kwargs):
+        extracted = extracted or False
+        if self.unique != extracted:
+            self.unique = extracted
+            self.save()
+
+    @factory.post_generation
+    def unique_per_device(self, create, extracted, **kwargs):
+        extracted = extracted or False
+        if self.unique_per_device != extracted:
+            self.unique_per_device = extracted
+            self.save()

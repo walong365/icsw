@@ -21,13 +21,28 @@
 
 
 from initat.cluster.backbone import factories
+from initat.cluster.backbone.models import device_variable_scope
 
 
 def add_fixtures(**kwargs):
+    _fact_dict = {}
+    for _name, _prefix in [
+        ("normal", ""),
+        ("inventory", "__$$ICSW_INV$$__"),
+    ]:
+        _fact_dict[_name] = factories.device_variable_scope_factory(
+            name=_name,
+            prefix=_prefix,
+        )
+    # for _e in device_variable_scope.objects.all():
+    #     print _e.name, _e.prefix
+
     for _name, _descr in [
         ("serial", "Serial number"),
     ]:
         factories.DVSAllowedNamesFactory(
             name=_name,
             description=_descr,
+            unique_per_device=True,
+            device_variable_scope=_fact_dict["inventory"],
         )

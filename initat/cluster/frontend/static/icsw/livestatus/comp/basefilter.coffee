@@ -25,7 +25,9 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.router",
     ]
-).service("icswLivestatusFilterService",
+).config(["icswLivestatusPipeRegisterProvider", (icswLivestatusPipeRegsterProvider) ->
+    icswLivestatusPipeRegsterProvider.add("icswLivestatusFilterService", true)
+]).service("icswLivestatusFilterService",
 [
     "$q", "$rootScope", "icswMonLivestatusPipeBase", "icswMonitoringResult", "$timeout",
 (

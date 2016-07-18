@@ -29,4 +29,4 @@ def add_fixtures(**kwargs):
     graph_fixtures.add_fixtures(**kwargs)
     dispatch_fixtures.add_fixtures(**kwargs)
     static_asset_fixtures.add_fixtures(**kwargs)
-    device_variable_fixtures(**kwargs)
+    device_variable_fixtures.add_fixtures(**kwargs)
