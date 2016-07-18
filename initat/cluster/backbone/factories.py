@@ -32,7 +32,7 @@ from initat.cluster.backbone.models import netdevice_speed, LogLevel, \
     window_manager, snmp_network_type, snmp_scheme, snmp_scheme_vendor, snmp_scheme_tl_oid, \
     ComCapability, SensorAction, config_catalog, GraphSettingSize, GraphSettingTimeshift, \
     GraphSettingForecast, GraphTimeFrame, DispatcherSettingSchedule, DispatcherSetting, \
-    StaticAssetTemplate, StaticAssetTemplateField
+    StaticAssetTemplate, StaticAssetTemplateField, dvs_allowed_names
 
 
 class Device(factory.django.DjangoModelFactory):
@@ -566,3 +566,9 @@ class StaticAssetTemplateFieldFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = StaticAssetTemplateField
         django_get_or_create = ("name", "static_asset_template")
+
+
+class DVSAllowedNamesFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = dvs_allowed_names
+        django_get_or_create = ("name", "device_variable_scope",)

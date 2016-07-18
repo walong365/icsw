@@ -132,6 +132,12 @@ angular.module(
         pipeline_reject_called: (rejected) =>
             @error "reject called #{rejected} for #{@name}"
 
+        pipeline_settings_changed: (settings) =>
+            @__dp_connector.element_settings_changed(@, settings)
+
+        restore_settings: (settings) =>
+            @error "restore settings called (#{settings})"
+
         # display / hide / toggle functions
         set_display_flags: () =>
             if @show_content
@@ -148,10 +154,12 @@ angular.module(
             @$$show_header = @__dp_connector.global_display_state in [0, 1]
 
         # link with connector
-        link_with_connector: (connector, id, depth) =>
+        link_with_connector: (connector, id, depth, path_str) =>
             @__dp_connector = connector
             @__dp_element_id = id
             @__dp_depth = depth
+            # path encoded as json-string
+            @__dp_path_str = path_str
             @display_name = "#{@name} ##{@__dp_element_id}"
 
         remove_child: (child) ->
@@ -238,12 +246,15 @@ angular.module(
 ) ->
     # creates a DisplayPipeline
     class icswMonLivestatusPipeConnector
-        constructor: (name, spec) ->
+        constructor: (name, user, spec) ->
             @setup_ok = false
+            # name
             @name = name
+            # user
+            @user = user
             # connection specification as text
             @spec_src = spec
-            console.log "Connector #{@name} (spec: #{@spec_src})"
+            console.log "Connector #{@name} (spec #{@spec_src}, user #{@user.user.login})"
             @root_element = undefined
             # 0 ... show all
             # 1 ... no content
@@ -300,22 +311,34 @@ angular.module(
             @hidden_elements = []
             @num_hidden_elements = 0
             @num_total_elements = 0
+            # check for existing settings
+            @_settings_name = "$$icswDashboardSettings_#{@name}"
+            # settings dict
+            if @user.has_var(@_settings_name)
+                @settings = angular.fromJson(@user.get_var(@_settings_name).json_value)
+            else
+                @settings = {}
+            # console.log "settings=", @_settings_name, @settings
             # build dependencies
             el_idx = 0
-            _build_iter = (in_obj, depth=0) =>
+            _build_iter = (in_obj, depth, path) =>
                 for key, value of in_obj
                     el_idx++
+                    _path = _.concat(path, [[depth, el_idx, key]])
                     node = new elements[key]()
                     @num_total_elements++
-                    node.link_with_connector(@, el_idx, depth)
+                    _path_str =  angular.toJson(_path)
+                    node.link_with_connector(@, el_idx, depth, _path_str)
+                    if _path_str of @settings
+                        node.restore_settings(@settings[_path_str])
+                    @all_elements.push(node)
                     if node.__dp_has_template
-                        @all_elements.push(node)
                         @display_elements.push(node)
                     if depth == 0
                         @root_element = node
                         @root_element.check_for_emitter()
                     for _el in value
-                        node.add_child_node(_build_iter(_el, depth+1))
+                        node.add_child_node(_build_iter(_el, depth+1, _path))
                 return node
                     
             # interpret and resolve spec_src
@@ -323,7 +346,7 @@ angular.module(
             # resolve elements
             _resolve_iter(@spec_json)
             # build tree
-            _build_iter(@spec_json)
+            _build_iter(@spec_json, 0, [])
             for el in @display_elements
                 el.build_title()
             @num_display_elements = @display_elements.length
@@ -347,6 +370,10 @@ angular.module(
                 (del_it) =>
                     @_delete_element(element)
             )
+
+        element_settings_changed: (element, settings_str) =>
+            @settings[element.__dp_path_str] = settings_str
+            @user.set_json_var(@_settings_name, angular.toJson(@settings))
 
         _delete_element: (element) =>
             _.remove(@display_elements, (entry) -> return entry.__dp_element_id == element.__dp_element_id)
@@ -385,7 +412,7 @@ angular.module(
                 maxSizeY: null
                 resizable: {
                    enabled: true,
-                   handles: ['w', 'ne', 'se', 'sw', 'nw']
+                   handles: ['ne', 'se', 'sw', 'nw']
                    stop: (event, element, options) =>
                        @ps_changed()
                 }

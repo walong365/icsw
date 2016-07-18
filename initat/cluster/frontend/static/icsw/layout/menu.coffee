@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2015 init.at
+# Copyright (C) 2012-2016 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -164,17 +164,22 @@ menu_module = angular.module(
         restrict: "EA"
         template: $templateCache.get("icsw.layout.menubar")
     }
-]).service("icswMenuProgressService", ["ICSW_SIGNALS", "$rootScope", (ICSW_SIGNALS, $rootScope) ->
+]).service("icswMenuProgressService",
+[
+    "ICSW_SIGNALS", "$rootScope",
+(
+    ICSW_SIGNALS, $rootScope
+) ->
     _settings = {
         # progress bar counter
-        "rebuilding": 0
+        rebuilding: 0
     }
     return {
-        "set_rebuilding": (count) ->
+        set_rebuilding: (count) ->
             if count != _settings.rebuilding
                 _settings.rebuilding = count
                 $rootScope.$emit(ICSW_SIGNALS("ICSW_MENU_PROGRESS_BAR_CHANGED"), _settings)
-        "get_rebuilding": () ->
+        get_rebuilding: () ->
             return _settings.rebuilding
     }
 ]).directive("icswMenuProgressBars",

@@ -52,10 +52,11 @@ angular.module(
 
         maintheme_tag = angular.element.find("link[icsw-layout-main-theme]")[0]
         maintheme_tag.setAttribute("href", "static/theme_#{theme}.css")
-        $http.get("#{ICSW_URLS.STATIC_URL}/svgstyle_#{theme}.css").then((response) ->
-            svgstyle_tag = angular.element.find("style[icsw-layout-svg-style]")[0]
-            if svgstyle_tag?
-                svgstyle_tag.innerHTML = response
+        $http.get("#{ICSW_URLS.STATIC_URL}/svgstyle_#{theme}.css").then(
+            (response) ->
+                svgstyle_tag = angular.element.find("style[icsw-layout-svg-style]")[0]
+                if svgstyle_tag?
+                    svgstyle_tag.innerHTML = response.data
         )
 ]).service('setDefaultTheme',
 [

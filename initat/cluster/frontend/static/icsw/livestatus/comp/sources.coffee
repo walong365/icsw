@@ -236,6 +236,7 @@ angular.module(
         entry.$$icswStateClass = _r_str
         # entry.$$icswStateLabelClass = "label-#{_r_str}"
         entry.$$icswStateTextClass = "text-#{_r_str}"
+        entry.$$icswStateBtnClass = "btn-#{_r_str}"
         entry.$$icswStateString = {
             0: "OK"
             1: "Critical"
@@ -264,6 +265,7 @@ angular.module(
         entry.$$icswStateClass = _r_str
         # entry.$$icswStateLabelClass = "label-#{_r_str}"
         entry.$$icswStateTextClass = "text-#{_r_str}"
+        entry.$$icswStateBtnClass = "btn-#{_r_str}"
         entry.$$icswStateString = {
             0: "OK"
             1: "Warning"

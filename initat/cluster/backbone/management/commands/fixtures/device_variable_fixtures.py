@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -17,16 +17,17 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" creates all defined fixtures """
+""" creates fixtures for device variables """
 
 
-from . import srv_fixtures, graph_fixtures, dispatch_fixtures, \
-    static_asset_fixtures, device_variable_fixtures
+from initat.cluster.backbone import factories
 
 
 def add_fixtures(**kwargs):
-    srv_fixtures.add_fixtures(**kwargs)
-    graph_fixtures.add_fixtures(**kwargs)
-    dispatch_fixtures.add_fixtures(**kwargs)
-    static_asset_fixtures.add_fixtures(**kwargs)
-    device_variable_fixtures(**kwargs)
+    for _name, _descr in [
+        ("serial", "Serial number"),
+    ]:
+        factories.DVSAllowedNamesFactory(
+            name=_name,
+            description=_descr,
+        )

@@ -105,6 +105,7 @@ class dvs_allowed_names(models.Model):
         default="",
         unique=True,
     )
+    description = models.TextField(default="")
     date = models.DateTimeField(auto_now_add=True)
 
 
