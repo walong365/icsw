@@ -790,8 +790,7 @@ angular.module(
 
     send_selection_to_filter = (sel_cat) ->
         if $scope.$$previous_filter?
-            if $scope.$$previous_filter == sel_cat
-                console.log "same filter"
+            if angular.toJson($scope.$$previous_filter) == angular.toJson(sel_cat)
                 return
         $scope.$$previous_filter = sel_cat
         $scope.con_element.set_category_filter(sel_cat)
@@ -828,11 +827,22 @@ angular.module(
                     $scope.$$available_cats = (entry for entry in $scope.struct.mon_data[$scope.cat_name])
                     if _new_cats.length
                         # autoselect new categories and send to filter
-                        send_selection_to_filter(_.uniq(_.union($scope.$$previous_filter, _new_cats)))
+                        # send to filter list
+                        _stf_list = _.uniq(_.union($scope.$$previous_filter, _new_cats))
+                        if $scope.$$removed_by_stored_filter?
+                            _stf_list = _.difference(_stf_list, $scope.$$removed_by_stored_filter)
+                            $scope.$$removed_by_stored_filter = undefined
+                        send_selection_to_filter(_stf_list)
                 sel_cat = $scope.$$previous_filter
             else
                 if $scope.struct.mon_data?
+                    # not set, fetch filter data from con_element
                     sel_cat = $scope.struct.mon_data[$scope.cat_name].concat([0])
+                    _stored_filter = $scope.con_element.get_category_filter()
+                    if _stored_filter?
+                        # apply stored filter
+                        $scope.$$removed_by_stored_filter = _.difference(sel_cat, _stored_filter)
+                        sel_cat = _.intersection(_stored_filter, sel_cat)
                     # push category selection list
                     send_selection_to_filter(sel_cat)
                 else
@@ -878,7 +888,6 @@ angular.module(
             dummy_entry = undefined
             _obj_pks = (_obj.idx for _obj in $scope.struct.objects)
 
-        # console.log "pks=", _obj_pks
         for entry in _dct.mode_entries
             # number of element in related counter dict
             _num_el = 0
