@@ -25,19 +25,26 @@ angular.module(
     "default" : "Default",
     "cora" : "Cora",
     "sirocco" : "Sirocco"
-).service('icswSaveTheme',
-[
-    "Restangular", "ICSW_URLS", "$window",
-    (
-    Restangular, ICSW_URLS, $window
-    ) ->
-        setTheme = (theme) ->
+    # FIXME get values from setup.py
+).service('themeService',
+    ["$http", "ICSW_URLS", "themes", "$window", "Restangular", "themeSetup",
+    ($http, ICSW_URLS, themes, $window, Restangular, themeSetup) ->
+        setdefault : (default_theme) =>
+            $window.sessionStorage.setItem('default_theme', default_theme)
+            current_theme = $window.sessionStorage.getItem('current_theme')
+            theme = current_theme ? default_theme
+            themeSetup(theme)
+        setcurrent : (current_theme) =>
+            $window.sessionStorage.setItem('current_theme', current_theme)
+            default_theme = $window.sessionStorage.getItem('default_theme')
+            theme = current_theme ? default_theme
+            themeSetup(theme)
+        save : (theme) =>
             Restangular.all(ICSW_URLS.USER_SET_THEME.slice(1)).customGET("", {"theme":theme}).then(
                 (theme_data) ->
                     $window.sessionStorage.setItem('current_theme', theme)
             )
-            return theme
-]).service('setupTheme',
+]).service('themeSetup',
     ["$http", "ICSW_URLS", "themes", "$window",
     ($http, ICSW_URLS, themes, $window) ->
         setup = (theme) ->
@@ -51,27 +58,14 @@ angular.module(
             maintheme_tag.setAttribute("href", "static/theme_#{theme}.css")
             $http.get("#{ICSW_URLS.STATIC_URL}/svgstyle_#{theme}.css").then((response) ->
                 svgstyle_tag = angular.element.find("style[icsw-layout-svg-style]")[0]
-                svgstyle_tag.innerHTML = response
+                data = if response.data? then response.data else response
+                svgstyle_tag.innerHTML = data
             )
-]).service('setDefaultTheme',
-    ["$window", "setupTheme", ($window, setupTheme) ->
-        setdefault = (default_theme) ->
-            $window.sessionStorage.setItem('default_theme', default_theme)
-            current_theme = $window.sessionStorage.getItem('current_theme')
-            theme = current_theme ? default_theme
-            setupTheme(theme)
-]).service('setCurrentTheme',
-    ["$window", "setupTheme", ($window, setupTheme) ->
-        setcurrent = (current_theme) ->
-            $window.sessionStorage.setItem('current_theme', current_theme)
-            default_theme = $window.sessionStorage.getItem('default_theme')
-            theme = current_theme ? default_theme
-            setupTheme(theme)
 ]).directive('icswLayoutMainTheme',
-    ["$window", "setupTheme", ($window, setupTheme) ->
+    ["$window", "themeSetup", ($window, themeSetup) ->
         link: (scope, element, attributes) ->
             default_theme = $window.sessionStorage.getItem('default_theme')
             current_theme = $window.sessionStorage.getItem('current_theme')
             theme = current_theme ? default_theme
-            if theme then setupTheme(theme)
+            if theme then themeSetup(theme)
 ])

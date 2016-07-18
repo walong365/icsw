@@ -220,3 +220,6 @@ ul.fancytree-container {
 .input-group-addon-button {
     padding: 0 4px;
 }
+.cursorpointer {
+    cursor: pointer;
+}

@@ -4478,8 +4478,8 @@ select[multiple].input-group-sm > .input-group-btn > .btn {
   }
 }
 .navbar-default {
-  background-color: #404040;
-  border-color: #2f2f2f;
+  background-color: #181818;
+  border-color: #070707;
 }
 .navbar-default .navbar-brand {
   color: #ffffff;
@@ -4504,7 +4504,7 @@ select[multiple].input-group-sm > .input-group-btn > .btn {
 .navbar-default .navbar-nav > .active > a:hover,
 .navbar-default .navbar-nav > .active > a:focus {
   color: #92aa00;
-  background-color: #2f2f2f;
+  background-color: #070707;
 }
 .navbar-default .navbar-nav > .disabled > a,
 .navbar-default .navbar-nav > .disabled > a:hover,
@@ -4524,12 +4524,12 @@ select[multiple].input-group-sm > .input-group-btn > .btn {
 }
 .navbar-default .navbar-collapse,
 .navbar-default .navbar-form {
-  border-color: #2f2f2f;
+  border-color: #070707;
 }
 .navbar-default .navbar-nav > .open > a,
 .navbar-default .navbar-nav > .open > a:hover,
 .navbar-default .navbar-nav > .open > a:focus {
-  background-color: #2f2f2f;
+  background-color: #070707;
   color: #92aa00;
 }
 @media (max-width: 767px) {
@@ -4545,7 +4545,7 @@ select[multiple].input-group-sm > .input-group-btn > .btn {
   .navbar-default .navbar-nav .open .dropdown-menu > .active > a:hover,
   .navbar-default .navbar-nav .open .dropdown-menu > .active > a:focus {
     color: #92aa00;
-    background-color: #2f2f2f;
+    background-color: #070707;
   }
   .navbar-default .navbar-nav .open .dropdown-menu > .disabled > a,
   .navbar-default .navbar-nav .open .dropdown-menu > .disabled > a:hover,
@@ -4900,7 +4900,7 @@ a.label:focus {
   padding: 3px 7px;
   font-size: 12px;
   font-weight: bold;
-  color: #fff;
+  color: : #fff;
   line-height: 1;
   vertical-align: middle;
   white-space: nowrap;

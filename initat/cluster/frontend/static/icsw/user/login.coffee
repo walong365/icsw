@@ -29,11 +29,11 @@ angular.module(
 [
     "$scope", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswParseXMLResponseService", "blockUI",
     "initProduct", "icswSystemLicenseDataService", "$q", "$state", "icswCSRFService", "icswUserService",
-    "icswToolsSimpleModalService", "setDefaultTheme", "setCurrentTheme",
+    "icswToolsSimpleModalService", "themeService",
 (
     $scope, $window, ICSW_URLS, icswSimpleAjaxCall, icswParseXMLResponseService, blockUI,
     initProduct, icswSystemLicenseDataService, $q, $state, icswCSRFService, icswUserService,
-    icswToolsSimpleModalService, setDefaultTheme, setCurrentTheme
+    icswToolsSimpleModalService, themeService
 ) ->
     $scope.initProduct = initProduct
     $scope.license_tree = undefined
@@ -69,7 +69,7 @@ angular.module(
         ).then(
             (data) ->
                 xml = data[0]
-                setDefaultTheme($(xml).find("value[name='theme_default']").text())
+                themeService.setdefault($(xml).find("value[name='theme_default']").text())
                 $scope.login_hints = angular.fromJson($(xml).find("value[name='login_hints']").text())
                 $scope.django_version = $(xml).find("value[name='django_version']").text()
                 $scope.struct.disabled = false
@@ -134,7 +134,7 @@ angular.module(
                                 (data) ->
                                     csrf_token = data[0]
                                     _user = data[1].user
-                                    setCurrentTheme(_user.ui_theme_selection)
+                                    themeService.setcurrent(_user.ui_theme_selection)
                                     blockUI.stop()
                                     $state.go(_val)
                             )
