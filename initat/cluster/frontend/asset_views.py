@@ -461,43 +461,158 @@ class export_assetbatch_to_xlsx(View):
 
 class PDFReportGenerator(object):
     class Bookmark(object):
-        def __init__(self, name, pagenum, parent = None):
+        def __init__(self, name, pagenum):
             self.name = name
             self.pagenum = pagenum
-            self.parent = parent
-
 
     class Report(object):
-        def __init__(self):
+        def __init__(self, device):
+            self.bookmarks = []
             self.number_of_pages = 0
+            self.device = device
+            self.pdf_buffers = []
+
+        def generate_bookmark(self, name):
+            bookmark = PDFReportGenerator.Bookmark(name, self.number_of_pages)
+            self.bookmarks.append(bookmark)
+            return bookmark
+
+        def add_to_report(self, buffer):
+            self.pdf_buffers.append(buffer)
+
+        def increase_page_count(self, canvas, doc):
+            self.number_of_pages += 1
 
     def __init__(self):
-        from PyPDF2 import PdfFileWriter, PdfFileReader
+        self.reports = []
 
-        self.bookmarks = []
-        self.root_bookmark_cache = {}
+    def generate_overview_page(self, asset_batch, report):
+        from reportlab.lib import colors
+        from reportlab.lib.units import inch, mm
+        from reportlab.lib.pagesizes import A4, landscape, letter
+        from reportlab.platypus import SimpleDocTemplate, Spacer, Table, TableStyle, Paragraph, Image
+        from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.graphics.shapes import Drawing, Rect
 
-        self.number_of_pages = 0
-        self.final_output_pdf = PdfFileWriter()
+        _device = report.device
 
-    def __append_to_output_pdf(self, input):
-        from PyPDF2 import PdfFileWriter, PdfFileReader
+        report.generate_bookmark("Overview")
 
-        input_pdf = PdfFileReader(input)
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), rightMargin=25, leftMargin=25, topMargin=0,
+                                bottomMargin=25)
+        doc.pagesize = landscape(letter)
+        elements = []
 
-        [self.final_output_pdf.addPage(input_pdf.getPage(page_num)) for page_num in range(input_pdf.numPages)]
+        styleSheet = getSampleStyleSheet()
 
-    def generate_bookmark(self, name, parent = None):
-        bookmark = PDFReportGenerator.Bookmark(name, self.number_of_pages, parent = parent)
-        self.bookmarks.append(bookmark)
-        return bookmark
+
+        PH = Paragraph('<font face="times-bold" size="22">Overview for {}</font>'.format(
+            asset_batch.device.name), styleSheet["BodyText"])
+
+        logo = Image(open("/home/kaufmann/logo.png"))
+        logo.drawHeight = 42
+        logo.drawWidth = 103
+
+        data = [[PH, logo]]
+
+        t_head = Table(data, colWidths=(570, None), style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE')])
+
+        body_data = []
+
+        #####  Device Comment
+        data = []
+        data.append([_device.comment])
+
+        P = Paragraph('<b>Comment:</b>', styleSheet["BodyText"])
+        t = Table(data,
+                    colWidths=(200 * mm),
+                    style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
+                           ('BOX', (0, 0), (-1, -1), 2, colors.black),
+                           ])
+        body_data.append((P, t))
+
+
+        ##### Device Full Name
+        data = []
+        data.append([_device.full_name])
+
+        P = Paragraph('<b>Full Name:</b>', styleSheet["BodyText"])
+        t = Table(data,
+                    colWidths=(200 * mm),
+                    style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
+                           ('BOX', (0, 0), (-1, -1), 2, colors.black),
+                           ])
+
+        body_data.append((P, t))
+
+        ## Device Categories
+        data = []
+        for _category in _device.categories.all():
+            data.append([_category.name])
+
+        P = Paragraph('<b>Categories:</b>', styleSheet["BodyText"])
+        t = Table(data,
+                    colWidths=(200 * mm),
+                    style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
+                           ('BOX', (0, 0), (-1, -1), 2, colors.black),
+                           ])
+
+        body_data.append((P, t))
+
+        ## Device Groups
+        data = []
+        data.append([_device.device_group_name()])
+
+        P = Paragraph('<b>Group:</b>', styleSheet["BodyText"])
+        t = Table(data,
+                    colWidths=(200 * mm),
+                    style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
+                           ('BOX', (0, 0), (-1, -1), 2, colors.black),
+                           ])
+
+        body_data.append((P, t))
+
+        #### Device netdevices
+        data = [["Name", "IP(s)", "MAC"]]
+        for _netdevice in _device.netdevice_set.all():
+            ip_text = ""
+
+            for _ip in _netdevice.net_ip_set.all():
+                if ip_text:
+                    ip_text += ", "
+                ip_text += _ip.ip
+
+            P = Paragraph(ip_text, styleSheet["BodyText"])
+
+            data.append([_netdevice.devname, P, _netdevice.macaddr])
+
+        P = Paragraph('<b>Net device(s):</b>', styleSheet["BodyText"])
+        t = Table(data,
+                    colWidths=(66 * mm, 67 * mm, 67 * mm),
+                    style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
+                           ('BOX', (0, 0), (-1, -1), 2, colors.black),
+                           ])
+
+        body_data.append((P, t))
+
+        t_body = Table(body_data, colWidths=(100, None), style=
+        [('VALIGN', (0, 0), (0, -1), 'MIDDLE')])
+
+        elements.append(t_head)
+        elements.append(Spacer(1, 30))
+        elements.append(t_body)
+
+        doc.build(elements, onFirstPage=report.increase_page_count, onLaterPages=report.increase_page_count)
+        report.add_to_report(buffer)
 
     def generate_report_for_asset_batch(self, asset_batch):
         from reportlab.pdfgen.canvas import Canvas
         from PollyReports import *
 
-        if not asset_batch.device in self.root_bookmark_cache:
-            self.root_bookmark_cache[asset_batch.device] = self.generate_bookmark(asset_batch.device.name)
+
+        report = PDFReportGenerator.Report(asset_batch.device)
+        self.reports.append(report)
 
         buffer = BytesIO()
         canvas = Canvas(buffer, (72 * 11, 72 * 8.5))
@@ -508,15 +623,12 @@ class PDFReportGenerator(object):
         # Hardware report is generated last
         hardware_report_ar = None
 
+        self.generate_overview_page(asset_batch, report)
+
         for ar in assetruns:
             row_collector.reset()
             row_collector.current_asset_type = AssetType(ar.run_type)
             _generate_csv_entry_for_assetrun(ar, row_collector.collect)
-
-            _pagefooter = Band([Element((0, 0), ("Helvetica-Bold", 10), sysvar="pagenumber",
-                                               format=lambda x: "Page %d" % x),
-                                       Element((500, 0), ("Helvetica-Bold", 10),
-                                               text="Timestamp: {}".format(row_collector.row_info[2].split(".")[0]))])
 
             if AssetType(ar.run_type) == AssetType.UPDATE:
                 data = row_collector.rows_dict[1:]
@@ -524,7 +636,7 @@ class PDFReportGenerator(object):
                 if not data:
                     continue
 
-                self.generate_bookmark("Installed Updates", self.root_bookmark_cache[asset_batch.device])
+                report.generate_bookmark("Installed Updates")
 
                 rpt = Report(data)
 
@@ -546,18 +658,16 @@ class PDFReportGenerator(object):
                                           format=lambda x: "Updates with status: {}".format(x)), ],
                                           getvalue=lambda x: x["update_status"]), ]
 
-                rpt.pagefooter = _pagefooter
-
 
                 rpt.generate(canvas)
-                self.number_of_pages += rpt.pagenumber
+                report.number_of_pages += rpt.pagenumber
 
             elif AssetType(ar.run_type) == AssetType.LICENSE:
                 data = row_collector.rows[1:]
                 if not data:
                     continue
 
-                self.generate_bookmark("Available Licenses", self.root_bookmark_cache[asset_batch.device])
+                report.generate_bookmark("Available Licenses")
 
                 rpt = Report(data)
 
@@ -572,10 +682,8 @@ class PDFReportGenerator(object):
                      Element((500, 24), ("Helvetica", 12), text="License Key"),
                      Rule((0, 42), 7.5 * 90, thickness=2), ])
 
-                rpt.pagefooter = _pagefooter
-
                 rpt.generate(canvas)
-                self.number_of_pages += rpt.pagenumber
+                report.number_of_pages += rpt.pagenumber
 
             elif AssetType(ar.run_type) == AssetType.PACKAGE:
                 from initat.cluster.backbone.models import asset
@@ -587,7 +695,7 @@ class PDFReportGenerator(object):
                 if not packages:
                     continue
 
-                self.generate_bookmark("Installed Packages", self.root_bookmark_cache[asset_batch.device])
+                report.generate_bookmark("Installed Packages")
 
                 data = [package.get_as_row() for package in packages]
                 data = sorted(data, key=lambda k: k['package_name'])
@@ -616,10 +724,8 @@ class PDFReportGenerator(object):
                                                   format=lambda x: "Packages starting with: {}".format(x)), ],
                                          getvalue=lambda x: x["package_name"][0]), ]
 
-                rpt.pagefooter = _pagefooter
-
                 rpt.generate(canvas)
-                self.number_of_pages += rpt.pagenumber
+                report.number_of_pages += rpt.pagenumber
 
             elif AssetType(ar.run_type) == AssetType.PENDING_UPDATE:
                 data = row_collector.rows_dict[1:]
@@ -627,7 +733,7 @@ class PDFReportGenerator(object):
                 if not data:
                     continue
 
-                self.generate_bookmark("Available Updates", self.root_bookmark_cache[asset_batch.device])
+                report.generate_bookmark("Available Updates")
 
                 rpt = Report(data)
 
@@ -651,10 +757,8 @@ class PDFReportGenerator(object):
                                                   format=lambda x: "Updates starting with: {}".format(x)), ],
                                          getvalue=lambda x: x["update_name"][0].upper()), ]
 
-                rpt.pagefooter = _pagefooter
-
                 rpt.generate(canvas)
-                self.number_of_pages += rpt.pagenumber
+                report.number_of_pages += rpt.pagenumber
 
             elif ar.run_type == AssetType.PRETTYWINHW:
                 hardware_report_ar = ar
@@ -662,29 +766,27 @@ class PDFReportGenerator(object):
 
 
         canvas.save()
-        self.__append_to_output_pdf(buffer)
-        #append_pdf(PdfFileReader(buffer), self.final_output_pdf)
+        report.add_to_report(buffer)
 
-
-        # generate hardware report, append to output pdf
         if hardware_report_ar:
-            self.__append_to_output_pdf(self.generate_hardware_report(hardware_report_ar))
+            self.generate_hardware_report(hardware_report_ar, report)
 
-    def __increase_page_count(self, canvas, doc):
-        self.number_of_pages += 1
-
-    def generate_hardware_report(self, hardware_report_ar):
+    def generate_hardware_report(self, hardware_report_ar, report):
         from reportlab.lib import colors
         from reportlab.lib.units import inch, mm
         from reportlab.lib.pagesizes import A4, landscape, letter
-        from reportlab.platypus import SimpleDocTemplate, Spacer, Table, TableStyle, Paragraph
+        from reportlab.platypus import SimpleDocTemplate, Spacer, Table, TableStyle, Paragraph, Image
         from reportlab.lib.styles import getSampleStyleSheet
         from reportlab.graphics.shapes import Drawing, Rect
+        # from reportlab.pdfbase import pdfmetrics
+        # from reportlab.pdfbase.ttfonts import TTFont
+        #
+        # pdfmetrics.registerFont(TTFont('Forque', '/home/kaufmann/Forque.ttf'))
 
-        self.generate_bookmark("Hardware Report", self.root_bookmark_cache[hardware_report_ar.asset_batch.device])
+        report.generate_bookmark("Hardware Report")
 
         buffer = BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), rightMargin=25, leftMargin=25, topMargin=25,
+        doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), rightMargin=25, leftMargin=25, topMargin=00,
                                 bottomMargin=25)
         doc.pagesize = landscape(letter)
         elements = []
@@ -776,8 +878,6 @@ class PDFReportGenerator(object):
                            ('BOX', (0, 0), (-1, -1), 2, colors.black),
                            ])
 
-        PH = Paragraph('<font face="times-bold" size="22">Hardware Report for {}</font>'.format(
-            hardware_report_ar.device.name), styleSheet["BodyText"])
 
         data = [[P0_1, t_1],
                 [P0_2, t_2],
@@ -786,34 +886,114 @@ class PDFReportGenerator(object):
                 [P0_5, t_5]]
 
 
-
-        t = Table(data, colWidths=(100, None), style=
+        t_body = Table(data, colWidths=(100, None), style=
         [('VALIGN', (0, 0), (0, -1), 'MIDDLE')])
 
-        elements.append(PH)
+
+        PH = Paragraph('<font face="times-bold" size="22">Hardware Report for {}</font>'.format(
+            hardware_report_ar.device.name), styleSheet["BodyText"])
+
+        logo = Image(open("/home/kaufmann/logo.png"))
+        logo.drawHeight = 42
+        logo.drawWidth = 103
+
+        data = [[PH, logo]]
+
+        t_head = Table(data, colWidths=(570, None), style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE')])
+
+        elements.append(t_head)
         elements.append(Spacer(1, 30))
-        elements.append(t)
+        elements.append(t_body)
 
-        doc.build(elements, onFirstPage=self.__increase_page_count, onLaterPages=self.__increase_page_count)
+        doc.build(elements, onFirstPage=report.increase_page_count, onLaterPages=report.increase_page_count)
 
-        return buffer
+        report.add_to_report(buffer)
 
     def get_pdf_as_buffer(self):
-        buffer = BytesIO()
+        from PyPDF2 import PdfFileWriter, PdfFileReader
 
-        for bookmark in sorted(self.bookmarks, key=lambda k: k.pagenum):
-            if not bookmark.parent:
-                bookmark.pdf_parent = self.final_output_pdf.addBookmark(bookmark.name, bookmark.pagenum)
 
-        #parent = final_output_pdf.addBookmark("Device: {}".format(asset_batch.device.name), 0)
-        for bookmark in sorted(self.bookmarks, key=lambda k: k.pagenum):
-            if bookmark.parent:
-                self.final_output_pdf.addBookmark(bookmark.name, bookmark.pagenum,
-                                                  parent=bookmark.parent.pdf_parent)
+        output_buffer = BytesIO()
+        output_pdf = PdfFileWriter()
 
-        self.final_output_pdf.write(buffer)
+        # Sort reports by device group name
+        group_report_dict = {}
+        for _report in self.reports:
+            _group_name = _report.device.device_group_name()
+            if not _group_name in group_report_dict:
+                group_report_dict[_group_name] = []
 
-        return buffer
+            group_report_dict[_group_name].append(_report)
+
+
+        # Generate pdf, structure by group_name -> device -> report
+        for _group_name in group_report_dict:
+            _device_reports = {}
+            for _report in group_report_dict[_group_name]:
+                if not _report.device in _device_reports:
+                    _device_reports[_report.device] = []
+                _device_reports[_report.device].append(_report)
+
+            for _device in _device_reports:
+                for _report in _device_reports[_device]:
+                    for _buffer in _report.pdf_buffers:
+                        sub_pdf = PdfFileReader(_buffer)
+                        [output_pdf.addPage(sub_pdf.getPage(page_num)) for page_num in range(sub_pdf.numPages)]
+
+
+        # Add page numbers
+        output_pdf.write(output_buffer)
+        output_pdf = self.add_page_numbers(output_buffer)
+
+        # Second pass over data structure (-> generate bookmarks)
+        current_page_number = 0
+        for _group_name in group_report_dict:
+            group_bookmark = output_pdf.addBookmark(_group_name, current_page_number)
+
+            _device_reports = {}
+
+            for _report in group_report_dict[_group_name]:
+                if not _report.device in _device_reports:
+                    _device_reports[_report.device] = []
+                _device_reports[_report.device].append(_report)
+
+            for _device in _device_reports:
+                device_bookmark = output_pdf.addBookmark(_device.full_name, current_page_number, parent=group_bookmark)
+
+                for _report in _device_reports[_device]:
+                    for _bookmark in _report.bookmarks:
+                        output_pdf.addBookmark(_bookmark.name, current_page_number + _bookmark.pagenum, parent=device_bookmark)
+                    current_page_number += _report.number_of_pages
+
+        output_buffer = BytesIO()
+        output_pdf.write(output_buffer)
+
+        return output_buffer
+
+
+    def add_page_numbers(self, pdf_buffer):
+        from reportlab.pdfgen.canvas import Canvas
+        from reportlab.lib.pagesizes import A4, landscape, letter
+        from PyPDF2 import PdfFileWriter, PdfFileReader
+
+        output = PdfFileWriter()
+        existing_pdf = PdfFileReader(pdf_buffer)
+        num_pages = existing_pdf.getNumPages()
+
+
+        for page_number in range(num_pages):
+            page_num_buffer = BytesIO()
+            can = Canvas(page_num_buffer, pagesize=letter)
+            can.drawString(25, 25, "{}".format(page_number + 1))
+            can.save()
+            page_num_buffer.seek(0)
+            page_num_pdf = PdfFileReader(page_num_buffer)
+
+            page = existing_pdf.getPage(page_number)
+            page.mergePage(page_num_pdf.getPage(0))
+            output.addPage(page)
+
+        return output
 
 class export_assetbatch_to_pdf(View):
     @method_decorator(login_required)
