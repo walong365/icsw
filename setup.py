@@ -87,6 +87,7 @@ setup(
         "initat.md_config_server.special_commands",
         "initat.md_config_server.special_commands.instances",
         "initat.md_config_server.kpi",
+        "initat.md_sync_server",
         "initat.package_install",
         "initat.package_install.server",
         "initat.package_install.client",

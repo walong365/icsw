@@ -1274,7 +1274,7 @@ d3js_module = angular.module(
     s = $document[0].getElementsByTagName('body')[0]
     s.appendChild(script_tag)
     return {
-        "d3" : ()->
+        d3: ()->
             return d.promise
     }
 ])

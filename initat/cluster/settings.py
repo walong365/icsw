@@ -188,9 +188,11 @@ USE_X_FORWARDED_HOST = True
 # Example: "http://media.lawrence.com/static/"
 STATIC_URL = "{}/static/".format(SITE_ROOT)
 
-THEMES = [("default",  "Default"),
-          ("cora",  "Cora"),
-          ("sirocco",  "Sirocco")]
+THEMES = [
+    ("default", "Default"),
+    ("cora", "Cora"),
+    ("sirocco", "Sirocco"),
+]
 THEME_DEFAULT = "default"
 
 # Session settings

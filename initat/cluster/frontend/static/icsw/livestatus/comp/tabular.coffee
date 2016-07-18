@@ -55,7 +55,7 @@ angular.module(
         return {
             restrict: "EA"
             template: $templateCache.get("icsw.livestatus.mon.table.view")
-            controller: "icswLivestatusMonTableCtrl"
+            controller: "icswLivestatusDeviceMonTableCtrl"
             scope: {
                 # connect element for pipelining
                 con_element: "=icswConnectElement"
@@ -63,11 +63,11 @@ angular.module(
             link: (scope, element, attrs) ->
                 scope.link(scope.con_element.new_data_notifier)
         }
-]).controller("icswLivestatusMonTableCtrl",
+]).controller("icswLivestatusDeviceMonTableCtrl",
 [
-    "$scope",
+    "$scope", "DeviceOverviewSelection", "DeviceOverviewService",
 (
-    $scope,
+    $scope, DeviceOverviewSelection, DeviceOverviewService,
 ) ->
     $scope.struct = {
         # monitoring data
@@ -80,6 +80,11 @@ angular.module(
             (data) ->
                 $scope.struct.monitoring_data = data
         )
+    
+    $scope.show_device = ($event, dev_check) ->
+        DeviceOverviewSelection.set_selection([dev_check.$$icswDevice])
+        DeviceOverviewService($event)
+        
 ]).directive("icswLivestatusMonTableRow",
 [
     "$templateCache",
@@ -122,7 +127,7 @@ angular.module(
         return {
             restrict: "EA"
             template: $templateCache.get("icsw.livestatus.device.table.view")
-            controller: "icswLivestatusDeviceTableCtrl"
+            controller: "icswLivestatusDeviceMonTableCtrl"
             scope: {
                 # connect element for pipelining
                 con_element: "=icswConnectElement"
@@ -130,23 +135,6 @@ angular.module(
             link: (scope, element, attrs) ->
                 scope.link(scope.con_element.new_data_notifier)
         }
-]).controller("icswLivestatusDeviceTableCtrl",
-[
-    "$scope",
-(
-    $scope,
-) ->
-    $scope.struct = {
-        # monitoring data
-        monitoring_data: undefined
-    }
-    $scope.link = (notifier) ->
-        notifier.promise.then(
-            (resolve) ->
-            (rejected) ->
-            (data) ->
-                $scope.struct.monitoring_data = data
-        )
 ]).directive("icswLivestatusDeviceTableRow",
 [
     "$templateCache",

@@ -197,6 +197,10 @@ def _login(request, _user_object, login_credentials=None):
         request.session["login_name"] = _user_object.login
     _user_object.login_count += 1
     _user_object.save(update_fields=["login_count"])
+    _theme_shorts = [_short for _short, _long in settings.THEMES]
+    if _user_object.ui_theme_selection not in _theme_shorts:
+        _user_object.ui_theme_selection = _theme_shorts[0]
+        _user_object.save()
     _cs = config_store.ConfigStore(GEN_CS_NAME, quiet=True)
     _mult_ok = _cs.get("session.multiple.per.user.allowed", False)
     if _mult_ok:
