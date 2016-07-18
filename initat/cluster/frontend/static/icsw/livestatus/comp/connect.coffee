@@ -276,7 +276,7 @@ angular.module(
             # 0 ... show all
             # 1 ... no content
             # 2 ... no header
-            @global_display_state = 0
+            @global_display_state = 2
             # position dict
             @_pos_str = ""
             @build_structure()
@@ -298,7 +298,7 @@ angular.module(
             if @global_display_state > 2
                 @global_display_state =0
             (_element.set_display_flags() for _element in @all_elements)
-            
+
         get_panel_class: () =>
             if @running
                 return "panel panel-success"
@@ -381,6 +381,7 @@ angular.module(
                     el.build_title()
             @num_display_elements = @display_elements.length
             @num_hidden_elements = @hidden_elements.length
+            (_element.set_display_flags() for _element in @all_elements)
             # save positions
             @save_positions()
             @init_gridster()

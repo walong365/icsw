@@ -46,6 +46,10 @@ angular.module(
         pipeline_reject_called: (reject) ->
             @new_data_notifier.reject("end")
 
+        restore_settings: (settings) ->
+            # store settings
+            @_settings = settings
+
 ]).directive("icswLivestatusMonTableView",
 [
     "$templateCache",
@@ -61,7 +65,7 @@ angular.module(
                 con_element: "=icswConnectElement"
             }
             link: (scope, element, attrs) ->
-                scope.link(scope.con_element.new_data_notifier)
+                scope.link(scope.con_element, scope.con_element.new_data_notifier)
         }
 ]).controller("icswLivestatusDeviceMonTableCtrl",
 [
@@ -72,8 +76,22 @@ angular.module(
     $scope.struct = {
         # monitoring data
         monitoring_data: undefined
+        # connection element
+        con_element: undefined
+        # settings
+        settings: {
+            "pag": {}
+            "columns": {}
+        }
     }
-    $scope.link = (notifier) ->
+    $scope.link = (con_element, notifier) ->
+        $scope.struct.con_element = con_element
+        if $scope.struct.con_element._settings?
+            $scope.struct.settings = angular.fromJson($scope.struct.con_element._settings)
+            if "pag" of $scope.struct.settings
+                $scope.pagination_settings = $scope.struct.settings["pag"]
+            if "columns" of $scope.struct.settings
+                $scope.columns_from_settings = $scope.struct.settings["columns"]
         notifier.promise.then(
             (resolve) ->
             (rejected) ->
@@ -84,7 +102,18 @@ angular.module(
     $scope.show_device = ($event, dev_check) ->
         DeviceOverviewSelection.set_selection([dev_check.$$icswDevice])
         DeviceOverviewService($event)
-        
+
+    $scope.pagination_changed = (pag) ->
+        if not pag?
+            return $scope.struct.settings["pag"]
+        else
+            $scope.struct.settings["pag"] = pag
+            $scope.struct.con_element.pipeline_settings_changed(angular.toJson($scope.struct.settings))
+
+    $scope.columns_changed = (col_setup) ->
+        $scope.struct.settings["columns"] = col_setup
+        $scope.struct.con_element.pipeline_settings_changed(angular.toJson($scope.struct.settings))
+
 ]).directive("icswLivestatusMonTableRow",
 [
     "$templateCache",
@@ -118,6 +147,10 @@ angular.module(
         pipeline_reject_called: (reject) ->
             @new_data_notifier.reject("end")
 
+        restore_settings: (settings) ->
+            # store settings
+            @_settings = settings
+
 ]).directive("icswLivestatusDeviceTableView",
 [
     "$templateCache",
@@ -133,7 +166,7 @@ angular.module(
                 con_element: "=icswConnectElement"
             }
             link: (scope, element, attrs) ->
-                scope.link(scope.con_element.new_data_notifier)
+                scope.link(scope.con_element, scope.con_element.new_data_notifier)
         }
 ]).directive("icswLivestatusDeviceTableRow",
 [

@@ -30,33 +30,33 @@
                 </span>
 
                 <span ng-if="numPages < 6 && !noNumberOfElements">
-                    {{'showing entries' | translate}}
+                    {{ 'showing entries' | translate }}
                     <span ng-if="table_controller.getFilteredCollection().length == 0">0</span>
                     <span ng-if="table_controller.getFilteredCollection().length > 0">{{ ((currentPage-1)  * stItemsByPage) + 1 }}</span>
-                    {{'to'|translate}}
-                    {{ Math.min(currentPage  * stItemsByPage, table_controller.getFilteredCollection().length) }}
+                    {{ 'to' | translate }}
+                    {{ Math.min(currentPage * stItemsByPage, table_controller.getFilteredCollection().length) }}
                 </span>
             </span>
             <span ng-if="pages.length == 0">
-                {{'no entries to show' | translate}}
+                {{ 'no entries to show' | translate }}
             </span>
         </span>
 
         <span class="table-entry-block">
             <span> <!-- ng-show= pagSettings.conf.modify_epp -->
-                {{'show' | translate}}
+                {{ 'show' | translate }}
                 <div class="form-group">
                     <select class="form-control input-sm" ng-model="stItemsByPage" ng-options="value as value for value in possibleItemsByPage"></select>
-                </div> {{'per page' | translate}}
+                </div> {{ 'per page' | translate }}
             </span>
         </span>
 
         <span class="table-selected-block">
             <span ng-if="table_controller.getNumberOfSelectedEntries()">
-                {{ table_controller.getNumberOfSelectedEntries() }} {{'selected entries'|translate}}
+                {{ table_controller.getNumberOfSelectedEntries() }} {{ 'selected entries' | translate }}
             </span>
             <span ng-if="selected_elements">
-                {{ selected_elements }} {{'elements selected'|translate}}
+                {{ selected_elements }} {{ 'elements selected' | translate }}
             </span>
         </span>
     </span>
