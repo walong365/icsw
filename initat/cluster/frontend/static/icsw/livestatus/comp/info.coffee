@@ -79,7 +79,7 @@ angular.module(
                 React.createElement(
                     icswLivestatusCircleInfoReact
                     {
-                        size: 80
+                        size: 96
                         data: _md.service_circle_data_details
                         title: "#{_md.services.length} Services"
                         titleSize: 14
@@ -89,7 +89,7 @@ angular.module(
                 React.createElement(
                     icswLivestatusCircleInfoReact
                     {
-                        size: 80
+                        size: 96
                         data: _md.device_circle_data_details
                         title: "#{_md.hosts.length} Devices"
                         titleSize: 14

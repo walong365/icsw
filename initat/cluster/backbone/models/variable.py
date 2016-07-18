@@ -105,6 +105,11 @@ class dvs_allowed_names(models.Model):
         default="",
         unique=True,
     )
+    # globally unique
+    unique = models.BooleanField(default=False)
+    # unique per device
+    unique_per_device = models.BooleanField(default=False)
+    description = models.TextField(default="")
     date = models.DateTimeField(auto_now_add=True)
 
 

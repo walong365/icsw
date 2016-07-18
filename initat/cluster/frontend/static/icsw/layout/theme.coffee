@@ -53,14 +53,14 @@ angular.module(
             if not themes[theme]?
                 theme = default_theme
                 console.log("theme does not exist setting default theme:", theme)
-
             maintheme_tag = angular.element.find("link[icsw-layout-main-theme]")[0]
             maintheme_tag.setAttribute("href", "static/theme_#{theme}.css")
-            $http.get("#{ICSW_URLS.STATIC_URL}/svgstyle_#{theme}.css").then((response) ->
-                svgstyle_tag = angular.element.find("style[icsw-layout-svg-style]")[0]
-                data = if response.data? then response.data else response
-                svgstyle_tag.innerHTML = data
-            )
+            $http.get("#{ICSW_URLS.STATIC_URL}/svgstyle_#{theme}.css").then(
+                (response) ->
+                    svgstyle_tag = angular.element.find("style[icsw-layout-svg-style]")[0]
+                    data = if response.data? then response.data else response
+                    svgstyle_tag.innerHTML = data
+                )
 ]).directive('icswLayoutMainTheme',
     ["$window", "themeSetup", ($window, themeSetup) ->
         link: (scope, element, attributes) ->

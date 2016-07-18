@@ -411,11 +411,11 @@ angular.module(
         # create or edit
         if create_mode
             edit_obj = {
-                "penalty": 1
-                "auto_created": false
-                "info": "new peer"
-                "s_spec": ""
-                "d_spec": ""
+                penalty: 1
+                auto_created: false
+                info: "new peer"
+                s_spec: ""
+                d_spec: ""
             }
             if obj_type == "dev"
                 title = "Create new peer on device '#{cur_obj.full_name}'"
@@ -441,7 +441,7 @@ angular.module(
 
         # which template to use
         template_name = "icsw.peer.form"
-        sub_scope = $scope.$new(false)
+        sub_scope = $scope.$new(true)
         sub_scope.edit_obj = edit_obj
         sub_scope.source_helper = $scope.peer_list.build_peer_helper($scope.device_tree, edit_obj, $scope.local_helper_obj, $scope.remote_helper_obj, "s", helper_mode)
         sub_scope.dest_helper = $scope.peer_list.build_peer_helper($scope.device_tree, edit_obj, $scope.local_helper_obj, $scope.remote_helper_obj, "d", helper_mode)
@@ -464,10 +464,25 @@ angular.module(
                     else
                         if create_mode
                             $scope.peer_list.create_peer(sub_scope.edit_obj, $scope.device_tree).then(
-                                (ok) ->
-                                    d.resolve("netip created")
+                                (new_peer) ->
+                                    # check if we have to enrich the remote helper obj
+                                    if new_peer.s_device of $scope.local_helper_obj.device_lut
+                                        # source is local, check dest
+                                        _cd = new_peer.d_device
+                                    else
+                                        _cd = new_peer.s_device
+                                    if _cd not of $scope.remote_helper_obj.device_lut
+                                        # we have to add a device to the remote_helper_obj
+                                        $scope.remote_helper_obj.add_device($scope.device_tree.all_lut[_cd])
+                                        $scope.device_tree.enrich_devices($scope.remote_helper_obj, ["network_info"], true).then(
+                                            (done) ->
+                                                d.resolve("peer created")
+                                        )
+                                    else
+                                        # all devices present
+                                        d.resolve("peer created")
                                 (notok) ->
-                                    d.reject("netip not created")
+                                    d.reject("peer not created")
                             )
                         else
                             Restangular.restangularizeElement(null, sub_scope.edit_obj, ICSW_URLS.REST_PEER_INFORMATION_DETAIL.slice(1).slice(0, -2))

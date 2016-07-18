@@ -105,9 +105,9 @@ class device(models.Model):
     idx = models.AutoField(db_column="device_idx", primary_key=True)
     # no longer unique as of 20130531 (ALN)
     # no dots allowed (these parts are now in domain_tree_node)
-    name = models.CharField(max_length=192)
+    name = models.CharField(max_length=192, default="")
     # FIXME
-    device_group = models.ForeignKey("device_group", related_name="device_group")
+    device_group = models.ForeignKey("backbone.device_group", related_name="device_group")
     alias = models.CharField(max_length=384, blank=True, default="")
     comment = models.CharField(max_length=384, blank=True, default="")
     mon_device_templ = models.ForeignKey("backbone.mon_device_templ", null=True, blank=True)
@@ -458,12 +458,18 @@ class device_selection(object):
 
 @receiver(signals.post_save, sender=device)
 def device_post_save(sender, **kwargs):
+    def _strip_metadevice_name(name):
+        if name.startswith("METADEV_"):
+            return name[8:]
+        else:
+            return name
+
     if "instance" in kwargs:
         _cur_inst = kwargs["instance"]
         if _cur_inst.bootserver_id:
             BootsettingsChanged.send(sender=_cur_inst, device=_cur_inst, cause="device_changed")
         if _cur_inst.is_meta_device:
-            _stripped = strip_metadevice_name(_cur_inst.name)
+            _stripped = _strip_metadevice_name(_cur_inst.name)
             if _stripped != _cur_inst.device_group.name:
                 _cur_inst.device_group.name = _stripped
                 _cur_inst.device_group.save()
@@ -661,13 +667,6 @@ class device_group(models.Model):
             " ({})".format(self.description) if self.description else "",
             "[*]" if self.cluster_device_group else ""
         )
-
-
-def strip_metadevice_name(name):
-    if name.startswith("METADEV_"):
-        return name[8:]
-    else:
-        return name
 
 
 @receiver(signals.pre_save, sender=device_group)

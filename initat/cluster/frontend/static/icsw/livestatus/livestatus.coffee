@@ -43,12 +43,12 @@ angular.module(
     )
 ]).controller("icswDeviceLiveStatusCtrl",
 [
-    "$scope", "$compile", "$templateCache", "Restangular",
+    "$scope", "$compile", "$templateCache", "Restangular", "icswUserService",
     "$q", "$timeout", "icswTools", "ICSW_URLS", "icswSimpleAjaxCall",
     "icswDeviceLivestatusDataService", "icswCachingCall", "icswLivestatusFilterService",
     "icswDeviceTreeService", "icswMonLivestatusPipeConnector",
 (
-    $scope, $compile, $templateCache, Restangular,
+    $scope, $compile, $templateCache, Restangular, icswUserService,
     $q, $timeout, icswTools, ICSW_URLS, icswSimpleAjaxCall,
     icswDeviceLivestatusDataService, icswCachingCall, icswLivestatusFilterService,
     icswDeviceTreeService, icswMonLivestatusPipeConnector,
@@ -62,11 +62,14 @@ angular.module(
                     "icswLivestatusFilterService": [{
                         "icswLivestatusMonCategoryFilter": [{
                             "icswLivestatusDeviceCategoryFilter": [{
-                                "icswLivestatusTabularDisplay": []
+                                "icswLivestatusMonTabularDisplay": []
                             }
-                                {
-                                    "icswLivestatusInfoDisplay": []
-                                }]
+                            {
+                                "icswLivestatusDeviceTabularDisplay": []
+                            }
+                            {
+                                "icswLivestatusInfoDisplay": []
+                            }]
                         }]
                     }]
                 }]
@@ -85,17 +88,17 @@ angular.module(
                         }
                         {
                             "icswLivestatusFilterService": [{
-                                "icswLivestatusTabularDisplay": []
+                                "icswLivestatusMonTabularDisplay": []
                             }
                                 {
-                                    "icswLivestatusTabularDisplay": []
+                                    "icswLivestatusMonTabularDisplay": []
                                 }]
                         }]
                 }
                     {
                         "icswLivestatusFilterService": [{
                             "icswLivestatusFullBurst": [{
-                                "icswLivestatusTabularDisplay": []
+                                "icswLivestatusMonTabularDisplay": []
                             }
                                 {
                                     "icswLivestatusFullBurst": []
@@ -139,8 +142,11 @@ angular.module(
 
     $scope.set_connector = (c_name) ->
         $scope.unset_connector()
-        $scope.struct.connector = new icswMonLivestatusPipeConnector(c_name, angular.toJson(_cd[c_name]))
-        $scope.struct.connector_set = true
+        icswUserService.load($scope.$id).then(
+            (user) ->
+                $scope.struct.connector = new icswMonLivestatusPipeConnector(c_name, user, angular.toJson(_cd[c_name]))
+                $scope.struct.connector_set = true
+        )
 
     $scope.new_devsel = (_dev_sel) ->
         console.log "nds"
