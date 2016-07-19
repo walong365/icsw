@@ -1076,7 +1076,15 @@ device_asset_module = angular.module(
                 entry.$$num_fields = entry.staticassettemplatefield_set.length
                 entry.$$asset_type = icswStaticAssetFunctions.resolve("asset_type", entry.type)
                 entry.$$created = moment(entry.date).format("YYYY-MM-DD HH:mm:ss")
-                
+                for field in entry.staticassettemplatefield_set
+                    @salt_field(field)
+
+                    
+        salt_field: (field) =>
+            # salt static asset template field
+            field.$$field_type = icswStaticAssetFunctions.resolve("field_type", field.field_type)
+            icswStaticAssetFunctions.get_default_value(field)
+            
         copy_template: (src_obj, new_obj, create_user) =>
             defer = $q.defer()
             icswSimpleAjaxCall(

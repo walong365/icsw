@@ -382,6 +382,32 @@
             <legend>
                 Fields
             </legend>
+            <table class="table table-condensed table-hover table-striped" style="width:auto;">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Description</th>
+                        <th>Type</th>
+                        <th>Default</th>
+                        <th>Optional</th>
+                        <th>Consumable</th>
+                        <th>Bounds</th>
+                        <th>Monitor</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr ng-repeat="field in edit_obj.staticassettemplatefield_set">
+                        <td>{{ field.name }}</td>
+                        <td>{{ field.field_description }}</td>
+                        <td class="text-center">{{ field.$$field_type }}</td>
+                        <td>{{ field.$$default_value }}</td>
+                        <td class="text-center">{{ field.optional | yesno1 }}</td>
+                        <td class="text-center">{{ field.consumable | yesno1 }}</td>
+                        <td class="text-center">{{ field.has_bounds | yesno1 }}</td>
+                        <td class="text-center">{{ field.monitor | yesno1 }}</td>
+                    </tr>
+                </tbody>
+            </table>
             <div class="form-group row">
                 <div class="controls col-xs-12">
                     <icsw-tools-button type="create" size="xs" ng-click="create_new_field($event)"></icsw-tools-button>

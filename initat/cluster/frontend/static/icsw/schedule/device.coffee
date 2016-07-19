@@ -747,9 +747,25 @@ monitoring_device_module = angular.module(
             console.error "unknown name #{name} in resolve"
             return "????"
 
+    _get_default_value = (field) ->
+        # set $$default_value according to type
+        if field.field_type == 1
+            _def_val = field.default_value_int
+        else if field.field_type == 2
+            _def_val = field.default_value_str
+        else if field.field_type == 3
+            _def_val = field.default_value_date
+        else
+            _def_val = none
+        field.$$default_value = _def_val
+        return _def_val
+        
     return {
         resolve: (name, key) ->
             return _resolve(name, key, 0)
+            
+        get_default_value: (field) ->
+            return _get_default_value(field)
 
         get_class: (name, key) ->
             return _resolve(name, key, 1)
@@ -932,7 +948,7 @@ monitoring_device_module = angular.module(
                 blockUI.start("deleting...")
                 $scope.struct.template_tree.delete_template(obj).then(
                     (ok) ->
-                        console.log "schedule deleted"
+                        console.log "StaticAsset deleted"
                         blockUI.stop()
                     (notok) ->
                         blockUI.stop()
