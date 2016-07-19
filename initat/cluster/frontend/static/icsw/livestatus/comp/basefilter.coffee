@@ -25,7 +25,9 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.router",
     ]
-).service("icswLivestatusFilterService",
+).config(["icswLivestatusPipeRegisterProvider", (icswLivestatusPipeRegsterProvider) ->
+    icswLivestatusPipeRegsterProvider.add("icswLivestatusFilterService", true)
+]).service("icswLivestatusFilterService",
 [
     "$q", "$rootScope", "icswMonLivestatusPipeBase", "icswMonitoringResult", "$timeout",
 (
@@ -153,24 +155,51 @@ angular.module(
             # category filter settings
             @cat_filter_installed = false
 
+        restore_settings: (settings) =>
+            # restore settings
+            [_ss, _hs, _st, _ht, _linked] = settings.split(";")
+            @linked = if _linked == "l" then true else false
+            for [_field, _attr_prefix] in [
+                [_ss, "service_state"]
+                [_hs, "host_state"]
+                [_st, "service_type"]
+                [_ht, "host_type"]
+            ]
+                _dict = @["#{_attr_prefix}s"]
+                _lut = @["#{_attr_prefix}_lut"]
+                # clear all
+                for key, value of _dict
+                    _dict[key] = false
+                # set referenced
+                for key in _field.split(":")
+                    try
+                        _dict[_lut[key][0]] = true
+                    catch err
+                        console.error err
+
         toggle_link_state: () =>
             @linked = !@linked
+            @_settings_changed()
 
         toggle_service_state: (code) =>
             _srvc_idx = @service_state_lut[code][0]
             @service_states[_srvc_idx] = !@service_states[_srvc_idx]
+            @_settings_changed()
 
         toggle_host_state: (code) =>
             _host_idx = @host_state_lut[code][0]
             @host_states[_host_idx] = !@host_states[_host_idx]
+            @_settings_changed()
 
         toggle_service_type: (code) =>
             _type_idx = @service_type_lut[code][0]
             @service_types[_type_idx] = !@service_types[_type_idx]
+            @_settings_changed()
 
         toggle_host_type: (code) =>
             _type_idx = @host_type_lut[code][0]
             @host_types[_type_idx] = !@host_types[_type_idx]
+            @_settings_changed()
 
         # get state strings for ReactJS, a little hack ...
         _get_service_state_str: () =>
@@ -196,6 +225,9 @@ angular.module(
                 @_get_host_type_str()
                 @_get_linked_str()
             ].join(";")
+
+        _settings_changed: () ->
+            @pipeline_settings_changed(@get_filter_state_str())
 
         stop_notifying: () ->
             @change_notifier.reject("stop")

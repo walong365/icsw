@@ -67,3 +67,28 @@
         <div style="overflow:auto;" ng-show="con_element.$$show_content">
     <!-- we dont close the </div> here, this happens in the directive -->
 </script>
+
+<script type="text/ng-template" id="icsw.connect.create.element">
+    <form class="form-horizontal" name="form_data">
+        <fieldset>
+            <legend>New PipeElement</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-2">
+                    ElementName
+                </label>
+                <div class="controls col-sm-8">
+                    <ui-select ng-model="struct.new_element" style="max-width:400px; min-width:240px;">
+                        <ui-select-match class="ui-select-match" placeholder="Select Element">
+                            {{ $select.selected.name }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.name as value in allowed_elements">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+        </fieldset>
+        <div class="form-group" style="height:100px;"></div>
+    </form>
+</script>
+

@@ -56,20 +56,32 @@ angular.module(
                     $parse(attrs.icswToolsTableNumSelected).assign(scope, new_val)
             )
     }
-]).directive('icswToolsPagination', ["$templateCache", "$parse", ($templateCache, $parse) ->
+]).directive('icswToolsPagination',
+[
+    "$templateCache", "$parse",
+(
+    $templateCache, $parse
+) ->
     return {
         restrict: 'EA'
         require: '^stTable'
         scope: {
-            stItemsByPage: '=?'
             stDisplayedPages: '=?'
             noNumberOfElements: '=?'
+            icsw_callback: "=icswCallback"
         }
         template: $templateCache.get("icsw.tools.paginator")
         link: (scope, element, attrs, ctrl) ->
 
-            scope.stItemsByPage = scope.stItemsByPage or 10
             scope.stDisplayedPages = scope.stDisplayedPages or 5
+            if attrs.stItemsByPage
+                scope.stItemsByPage = parseInt(attrs.stItemsByPage)
+            else
+                scope.stItemsByPage = 10
+            if scope.icsw_callback?
+                _settings = scope.icsw_callback()
+                if "items_by_page" of _settings
+                    scope.stItemsByPage = _settings.items_by_page
             scope.noNumberOfElements = scope.noNumberOfElements or false
             scope.Math = Math
             # this is not nice but only needed for a minor thing (see template above)
@@ -83,6 +95,14 @@ angular.module(
 
             scope.currentPage = 1
             scope.pages = []
+
+            call_callback = () ->
+                if scope.icsw_callback?
+                    scope.icsw_callback(
+                        {
+                            items_by_page: scope.stItemsByPage
+                        }
+                    )
 
             redraw = () ->
                 paginationState = ctrl.tableState().pagination
@@ -101,6 +121,7 @@ angular.module(
 
                 for i in [start..(end-1)]
                     scope.pages.push(i)
+                call_callback()
 
             # table state --> view
             scope.$watch(
@@ -217,12 +238,17 @@ angular.module(
         template: """
 Show/Hide columns: <div class="btn-group btn-group-xs">
     <input type="button" ng-repeat="entry in columns" ng-attr-title="show/hide columns {{entry}}" ng-value="entry"
-        ng-class="show_column[entry] && 'btn btn-success' || 'btn btn-default'" ng-click="show_column[entry] = ! show_column[entry]"></input>
+        ng-class="show_column[entry] && 'btn btn-success' || 'btn btn-default'" ng-click="toggle_column(entry)"></input>
 </div>
 """
         scope: false
         link: (scope, element, attrs) ->
             scope.a = attrs
+            if scope.a.icswCallback?
+                _callback = scope.$eval(scope.a.icswCallback)
+            else
+                _callback = undefined
+
             if attrs.createShowColumn
                 # NOTE: this object can easily end up in the wrong scope
                 #       set this attribute if you know what you are doing, or else create the object yourself in your scope
@@ -230,13 +256,24 @@ Show/Hide columns: <div class="btn-group btn-group-xs">
 
 
             set_new_columns = (new_columns) ->
-                for k in Object.keys(scope.show_column)
+                for k in _.keys(scope.show_column)
                     if k not in new_columns
                         delete scope.show_column[k]
 
                 scope.columns = new_columns
                 for col in scope.columns
                     scope.show_column[col] = true
+                if _callback
+                    if scope.columns_from_settings?
+                        for key, value of scope.columns_from_settings
+                            if key of scope.show_column
+                                scope.show_column[key] = value
+                    _callback(scope.show_column)
+
+            scope.toggle_column = (key) ->
+                scope.show_column[key] = !scope.show_column[key]
+                if _callback
+                    _callback(scope.show_column)
 
             scope.$watch(
                 () -> attrs.columnsList

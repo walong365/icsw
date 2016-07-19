@@ -25,6 +25,20 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.router",
     ]
+).provider("icswLivestatusPipeRegister", () ->
+    _elements = []
+    return {
+        add: (name, dynamic_add) ->
+            _elements.push(
+                {
+                    name: name
+                    dynamic_add: dynamic_add
+                }
+            )
+
+        $get: () ->
+            return _elements
+    }
 ).service("icswMonLivestatusPipeBase",
 [
     "$q", "$rootScope",
@@ -103,8 +117,11 @@ angular.module(
             @set_display_flags()
 
         delete_element: ($event) ->
-            @__dp_connector.delete_element(@)
-            
+            @__dp_connector.delete_element(@, $event)
+
+        create_element: ($event) ->
+            @__dp_connector.create_element(@, $event)
+
         # santify checks
         check_for_emitter: () =>
             if not @is_emitter or @is_receiver
@@ -132,6 +149,28 @@ angular.module(
         pipeline_reject_called: (rejected) =>
             @error "reject called #{rejected} for #{@name}"
 
+        pipeline_settings_changed: (settings) =>
+            @__dp_connector.element_settings_changed(@, settings)
+
+        restore_settings: (settings) =>
+            @error "restore settings called (#{settings})"
+
+        get_position_dict: () =>
+            return {
+                row: @row
+                col: @col
+                sizeX: @sizeX
+                sizeY: @sizeY
+                open: @__dp_shown
+            }
+
+        restore_position: (el) =>
+            @row = el.row
+            @col = el.col
+            @sizeX = el.sizeX
+            @sizeY = el.sizeY
+            @__dp_shown = el.open
+
         # display / hide / toggle functions
         set_display_flags: () =>
             if @show_content
@@ -148,18 +187,20 @@ angular.module(
             @$$show_header = @__dp_connector.global_display_state in [0, 1]
 
         # link with connector
-        link_with_connector: (connector, id, depth) =>
+        link_with_connector: (connector, id, depth, path_str) =>
             @__dp_connector = connector
             @__dp_element_id = id
             @__dp_depth = depth
+            # path encoded as json-string
+            @__dp_path_str = path_str
+            @__dp_shown = true
             @display_name = "#{@name} ##{@__dp_element_id}"
 
         remove_child: (child) ->
             @close_child(child)
+            _.remove(@__dp_childs, (entry) -> return entry.__dp_element_id == child.__dp_element_id)
             if not @__dp_childs.length
                 @__dp_is_leaf_node = true
-            console.log "rc", child.__dp_element_id
-            _.remove(@__dp_childs, (entry) -> return entry.__dp_element_id == child.__dp_element_id)
             @build_title()
 
         close_child: (child) ->
@@ -232,23 +273,30 @@ angular.module(
 
 ]).service("icswMonLivestatusPipeConnector",
 [
-    "$q", "$rootScope", "$injector", "icswToolsSimpleModalService", "$window",
+    "$q", "$rootScope", "$injector", "icswToolsSimpleModalService", "$window", "icswComplexModalService",
+    "$templateCache", "$compile", "icswLivestatusPipeRegister",
 (
-    $q, $rootScope, $injector, icswToolsSimpleModalService, $window,
+    $q, $rootScope, $injector, icswToolsSimpleModalService, $window, icswComplexModalService,
+    $templateCache, $compile, icswLivestatusPipeRegister,
 ) ->
     # creates a DisplayPipeline
     class icswMonLivestatusPipeConnector
-        constructor: (name, spec) ->
+        constructor: (name, user, spec) ->
             @setup_ok = false
+            # name
             @name = name
+            # user
+            @user = user
             # connection specification as text
             @spec_src = spec
-            console.log "Connector #{@name} (spec: #{@spec_src})"
+            console.log "Connector #{@name} (spec #{@spec_src}, user #{@user.user.login})"
             @root_element = undefined
             # 0 ... show all
             # 1 ... no content
             # 2 ... no header
-            @global_display_state = 0
+            @global_display_state = 2
+            # position dict
+            @_pos_str = ""
             @build_structure()
 
         close: () =>
@@ -268,16 +316,44 @@ angular.module(
             if @global_display_state > 2
                 @global_display_state =0
             (_element.set_display_flags() for _element in @all_elements)
-            
+
         get_panel_class: () =>
             if @running
                 return "panel panel-success"
             else
                 return "panel panel-warning"
 
+        _resolve_element_name: (name) =>
+            if name not of @element_dict
+                @element_dict[name] = $injector.get(name)
+
+        _create_and_add_element: (parent_el, name) =>
+            @num_total_elements++
+            if parent_el is null
+                path = []
+                depth = 0
+            else
+                path = angular.fromJson(parent_el.__dp_path_str)
+                depth = parent_el.__dp_depth + 1
+            _path = _.concat(path, [[depth, @num_total_elements, name]])
+            _path_str =  angular.toJson(_path)
+            node = new @element_dict[name]()
+            node.link_with_connector(@, @num_total_elements, depth, _path_str)
+            if _path_str of @settings
+                node.restore_settings(@settings[_path_str])
+            if _path_str of @positions
+                node.restore_position(@positions[_path_str])
+            @all_elements.push(node)
+            if node.__dp_has_template
+                if node.__dp_shown
+                    @display_elements.push(node)
+                else
+                    @hidden_elements.push(node)
+            return node
+
         build_structure: () =>
             # dict element name -> service
-            elements = {}
+            @element_dict = {}
 
             # simple iteratee for resolving
 
@@ -287,9 +363,7 @@ angular.module(
                 else if _.keys(in_obj).length != 1
                     throw new Error("Only one element allowed at any level")
                 for key, value of in_obj
-                    if key not of elements
-                        # console.log key, depth
-                        elements[key] = $injector.get(key)
+                    @_resolve_element_name(key)
                     for _el in value
                         _resolve_iter(_el, depth+1)
 
@@ -298,55 +372,111 @@ angular.module(
             @display_elements = []
             # list of hidden elements
             @hidden_elements = []
-            @num_hidden_elements = 0
             @num_total_elements = 0
+            # check for existing settings
+            @_settings_name = "$$icswDashboardSettings_#{@name}"
+            @_positions_name = "$$icswDashboardPositions_#{@name}"
+            # settings dict
+            if @user.has_var(@_settings_name)
+                @settings = angular.fromJson(@user.get_var(@_settings_name).json_value)
+            else
+                @settings = {}
+            # position dict
+            if @user.has_var(@_positions_name)
+                @positions = angular.fromJson(@user.get_var(@_positions_name).json_value)
+            else
+                @positions = {}
+            # console.log "settings=", @_settings_name, @settings
             # build dependencies
-            el_idx = 0
-            _build_iter = (in_obj, depth=0) =>
+            _build_iter = (in_obj, parent) =>
                 for key, value of in_obj
-                    el_idx++
-                    node = new elements[key]()
-                    @num_total_elements++
-                    node.link_with_connector(@, el_idx, depth)
-                    if node.__dp_has_template
-                        @all_elements.push(node)
-                        @display_elements.push(node)
-                    if depth == 0
+                    node = @_create_and_add_element(parent, key)
+                    if node.depth == 0
                         @root_element = node
                         @root_element.check_for_emitter()
                     for _el in value
-                        node.add_child_node(_build_iter(_el, depth+1))
+                        node.add_child_node(_build_iter(_el, node))
                 return node
-                    
+
             # interpret and resolve spec_src
             @spec_json = angular.fromJson(@spec_src)
             # resolve elements
             _resolve_iter(@spec_json)
             # build tree
-            _build_iter(@spec_json)
-            for el in @display_elements
-                el.build_title()
+            _build_iter(@spec_json, null)
+            for el in @all_elements
+                if el.__dp_has_template
+                    el.build_title()
             @num_display_elements = @display_elements.length
+            @num_hidden_elements = @hidden_elements.length
+            (_element.set_display_flags() for _element in @all_elements)
+            # save positions
+            @save_positions()
             @init_gridster()
             @running = true
             @setup_ok = true
 
         hide_element: (hide_el) =>
             @hidden_elements.push(hide_el)
+            hide_el.__dp_shown = false
             _.remove(@display_elements, (entry) -> return entry.__dp_element_id == hide_el.__dp_element_id)
             @num_hidden_elements++
+            @layout_changed()
 
-        unhide_element: ($item) ->
-            @display_elements.push($item)
-            _.remove(@hidden_elements, (entry) -> return entry.__dp_element_id == $item.__dp_element_id)
+        unhide_element: (show_el) ->
+            @display_elements.push(show_el)
+            show_el.__dp_shown = true
+            _.remove(@hidden_elements, (entry) -> return entry.__dp_element_id == show_el.__dp_element_id)
             @num_hidden_elements--
+            @layout_changed()
 
-        delete_element: (element) =>
+        delete_element: (element, $event) =>
             # delete element permanently
             icswToolsSimpleModalService("Really delete DPE #{element.__dp_raw_title} ?").then(
                 (del_it) =>
                     @_delete_element(element)
             )
+            
+        create_element: (element, $event) =>
+            # add an element to the current element
+            sub_scope = $rootScope.$new(true)
+            sub_scope.allowed_elements = (
+                {
+                    name: el.name
+                } for el in icswLivestatusPipeRegister when el.dynamic_add
+            )
+            sub_scope.struct = {
+                new_element: sub_scope.allowed_elements[0].name
+            }
+            icswComplexModalService(
+                {
+                    message: $compile($templateCache.get("icsw.connect.create.element"))(sub_scope)
+                    title: "Add DisplayPipe Element"
+                    # css_class: "modal-wide"
+                    ok_label: "Add"
+                    closable: true
+                    ok_callback: (modal) =>
+                        d = $q.defer()
+                        _name = sub_scope.struct.new_element
+                        # resolve element name to object
+                        @_resolve_element_name(_name)
+                        node = @_create_and_add_element(element, _name)
+                        element.add_child_node(node)
+                        d.resolve("created")
+                        return d.promise
+                    cancel_callback: (modal) ->
+                        d = $q.defer()
+                        d.resolve("cancel")
+                        return d.promise
+                }
+            ).then(
+                (fin) ->
+                    sub_scope.$destroy()
+            )
+
+        element_settings_changed: (element, settings_str) =>
+            @settings[element.__dp_path_str] = settings_str
+            @user.set_json_var(@_settings_name, angular.toJson(@settings))
 
         _delete_element: (element) =>
             _.remove(@display_elements, (entry) -> return entry.__dp_element_id == element.__dp_element_id)
@@ -385,21 +515,38 @@ angular.module(
                 maxSizeY: null
                 resizable: {
                    enabled: true,
-                   handles: ['w', 'ne', 'se', 'sw', 'nw']
+                   handles: ['ne', 'se', 'sw', 'nw']
                    stop: (event, element, options) =>
-                       @ps_changed()
+                       @layout_changed()
                 }
                 draggable: {
                    enabled: true
                    handle: '.icsw-draggable'
                    stop: (event, element, options) =>
-                       @ps_changed()
+                       @layout_changed()
                 }
             }
 
-        ps_changed: () =>
-            # console.log "psc"
-            
+        _get_positions: () =>
+            p_dict = {}
+            for el in @all_elements
+                if el.__dp_has_template
+                    p_dict[el.__dp_path_str] = el.get_position_dict()
+            return p_dict
+
+        layout_changed: () =>
+            @save_positions()
+
+        save_positions: () =>
+            cur_pos = @_get_positions()
+            _cur_str = angular.toJson(cur_pos)
+            if _cur_str != @_pos_str
+                @_pos_str = _cur_str
+                @user.set_json_var(
+                    @_positions_name
+                    @_pos_str
+                )
+
         new_devsel: (devs) =>
             # start loop
             @root_element.new_devsel(devs)

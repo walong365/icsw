@@ -46,8 +46,15 @@ angular.module(
 
         set_category_filter: (sel_cat) ->
             @_cat_filter = sel_cat
+            @pipeline_settings_changed(@_cat_filter)
             if @_latest_data?
                 @emit_data_downstream(@new_data_received(@_latest_data))
+
+        get_category_filter: () ->
+            return @_cat_filter
+
+        restore_settings: (f_list) ->
+            @_cat_filter = f_list
 
         new_data_received: (data) ->
             @_latest_data = data
@@ -79,8 +86,15 @@ angular.module(
 
         set_category_filter: (sel_cat) ->
             @_cat_filter = sel_cat
+            @pipeline_settings_changed(@_cat_filter)
             if @_latest_data?
                 @emit_data_downstream(@new_data_received(@_latest_data))
+
+        get_category_filter: () ->
+            return @_cat_filter
+
+        restore_settings: (f_list) ->
+            @_cat_filter = f_list
 
         new_data_received: (data) ->
             @_latest_data = data

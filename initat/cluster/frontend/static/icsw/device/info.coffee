@@ -196,11 +196,13 @@ angular.module(
     "$rootScope", "ICSW_SIGNALS", "icswDomainTreeService", "icswDeviceTreeService", "icswMonitoringBasicTreeService",
     "icswAcessLevelService", "icswActiveSelectionService", "icswDeviceBackup", "icswDeviceGroupBackup",
     "icswDeviceTreeHelperService", "icswComplexModalService", "toaster", "$compile", "$templateCache",
+    "icswDeviceVariableScopeTreeService",
 (
     $scope, Restangular, $q, ICSW_URLS,
     $rootScope, ICSW_SIGNALS, icswDomainTreeService, icswDeviceTreeService, icswMonitoringBasicTreeService,
     icswAcessLevelService, icswActiveSelectionService, icswDeviceBackup, icswDeviceGroupBackup,
     icswDeviceTreeHelperService, icswComplexModalService, toaster, $compile, $templateCache,
+    icswDeviceVariableScopeTreeService,
 ) ->
     icswAcessLevelService.install($scope)
     $scope.data_valid = false
@@ -213,6 +215,12 @@ angular.module(
     $scope.show_uuid = false
     $scope.image_url = ""
 
+    $scope.struct = {
+        # devvarscope_tree
+        dvs_tree: undefined
+        # list of inventory vars, [var_def, dev_var or null]
+        inventory_vars: []
+    }
     # create info fields
     create_info_fields = () ->
         obj = $scope.edit_obj
@@ -253,12 +261,20 @@ angular.module(
                     $scope.dev_tree = tree
                     edit_obj = in_list[0]
                     console.log "start enrichment"
-                    dt_hs = icswDeviceTreeHelperService.create($scope.dev_tree, [edit_obj])
+                    trace_devices =  $scope.dev_tree.get_device_trace([edit_obj])
+                    dt_hs = icswDeviceTreeHelperService.create($scope.dev_tree, trace_devices)
                     $q.all(
                         [
                             icswDomainTreeService.load($scope.$id)
                             icswMonitoringBasicTreeService.load($scope.$id)
-                            $scope.dev_tree.enrich_devices(dt_hs, ["network_info", "monitoring_hint_info", "disk_info", "com_info", "snmp_info", "snmp_schemes_info", "scan_lock_info"])
+                            $scope.dev_tree.enrich_devices(
+                                dt_hs
+                                [
+                                    "network_info", "monitoring_hint_info", "disk_info", "com_info",
+                                    "snmp_info", "snmp_schemes_info", "scan_lock_info", "variable_info",
+                                ]
+                            )
+                            icswDeviceVariableScopeTreeService.load($scope.$id)
                         ]
                     ).then(
                         (data) ->
@@ -266,6 +282,7 @@ angular.module(
                             $scope.domain_tree = data[0]
                             $scope.monitoring_tree = data[1]
                             edit_obj = data[2][0]
+                            $scope.struct.dvs_tree = data[3]
                             if edit_obj.is_meta_device
                                 edit_obj = $scope.dev_tree.get_group(edit_obj)
                                 $scope.is_devicegroup = true
@@ -276,6 +293,20 @@ angular.module(
                             $scope.edit_obj = edit_obj
                             # create backup
                             $scope.template_name = template_name
+                            # inventory vars
+                            $scope.struct.inventory_vars = []
+                            # device local vars
+                            _inv_var_lut = {}
+                            for _var in edit_obj.device_variable_set
+                                if _var.device_variable_scope == $scope.struct.dvs_tree.lut_by_name["inventory"].idx
+                                    _inv_var_lut[_var.name] = _var
+                            for entry in ($scope.struct.dvs_tree.get_inventory_var(_name) for _name in $scope.struct.dvs_tree.get_inventory_var_names())
+                                # get dev var
+                                if entry.name of _inv_var_lut
+                                    _var = _inv_var_lut[entry.name]
+                                else
+                                    _var = null
+                                $scope.struct.inventory_vars.push([entry, _var])
                             create_info_fields()
                     )
             )

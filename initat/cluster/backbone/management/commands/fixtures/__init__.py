@@ -21,7 +21,7 @@
 
 
 from . import srv_fixtures, graph_fixtures, dispatch_fixtures, \
-    static_asset_fixtures
+    static_asset_fixtures, device_variable_fixtures
 
 
 def add_fixtures(**kwargs):
@@ -29,3 +29,4 @@ def add_fixtures(**kwargs):
     graph_fixtures.add_fixtures(**kwargs)
     dispatch_fixtures.add_fixtures(**kwargs)
     static_asset_fixtures.add_fixtures(**kwargs)
+    device_variable_fixtures.add_fixtures(**kwargs)

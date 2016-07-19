@@ -200,7 +200,7 @@ device_variable_module = angular.module(
                     var_type: "s"
                     _mon_var: null
                     inherit: true
-                    device_variable_scope: _dvst.list[0].idx
+                    device_variable_scope: _dvst.lut_by_name["normal"].idx
                 }
             else
                 single_create = false
@@ -210,7 +210,7 @@ device_variable_module = angular.module(
                     var_type: "s"
                     _mon_var: null
                     inherit: true
-                    device_variable_scope: _dvst.list[0].idx
+                    device_variable_scope: _dvst.lut_by_name["normal"].idx
                 }
         else
             single_create = false
@@ -231,6 +231,7 @@ device_variable_module = angular.module(
                 dataType: "json"
             ).then(
                 (json) ->
+                    # add selections delayed
                     for entry in json
                         sub_scope.mon_vars.push(entry)
             )
@@ -241,18 +242,31 @@ device_variable_module = angular.module(
                     _mon_var = sub_scope.edit_obj._mon_var
                     sub_scope.edit_obj.var_type = _mon_var.type
                     sub_scope.edit_obj.name = _mon_var.name
+                    sub_scope.edit_obj.device_variable_scope = _dvst.lut_by_name["normal"].idx
                     sub_scope.edit_obj.inherit = false
                     if _mon_var.type == "i"
                         sub_scope.edit_obj.val_int = parseInt(_mon_var.value)
                     else
                         sub_scope.edit_obj.val_str = _mon_var.value
-
+        # functions
+        sub_scope.change_scope = () ->
+            cur_scope = _dvst.lut[sub_scope.edit_obj.device_variable_scope]
+            if cur_scope.dvs_allowed_names_set.length
+                sub_scope.$$discrete_names = true
+                sub_scope.$$possible_names = (entry.name for entry in cur_scope.dvs_allowed_names_set)
+                sub_scope.edit_obj.name = sub_scope.$$possible_names[0]
+            else 
+                sub_scope.$$discrete_names = false
+                sub_scope.$$possible_names = []
+            
         sub_scope.edit_obj = obj_or_parent
 
         sub_scope.valid_var_types = [
             {"short" : "i", "long" : "integer"},
             {"short" : "s", "long" : "string"},
         ]
+        # init fields
+        sub_scope.change_scope()
 
         icswComplexModalService(
             {
