@@ -389,7 +389,8 @@ gulp.task("inject-addons-to-app", (cb) ->
 gulp.task("deploy-css", () ->
     _is_prod = options.production
     return gulp.src(
-        ["#{COMPILE_DIR}/*.css"],
+        ["#{COMPILE_DIR}/*.css",
+         "!#{COMPILE_DIR}/theme_*.css"],
     # ).pipe(
     #     gzip()
     ).pipe(
@@ -499,6 +500,11 @@ gulp.task("deploy-svgcss-sirocco", () ->
         .pipe(rename("svgstyle_sirocco.css"))
         .pipe(gulp.dest(DEPLOY_DIR + "/static/")
     )
+)
+
+gulp.task("deploy-themes", () ->
+    gulp.src("#{COMPILE_DIR}/theme_*.css")
+        .pipe(gulp.dest(DEPLOY_DIR + "/static/"))
 )
 
 gulp.task("deploy-media", gulp.parallel("deploy-fonts", "deploy-images", "deploy-d3",
@@ -620,13 +626,13 @@ gulp.task("reload-main", (cb) ->
 
 if options.addons
     gulp.task("modify-app-js", gulp.series("create-all-urls", "inject-urls-to-app", "inject-addons-to-app"))
-    gulp.task("deploy-all", gulp.series("deploy-css", "deploy-js", "deploy-html", "deploy-addons"))
+    gulp.task("deploy-all", gulp.series("deploy-css", "deploy-js", "deploy-html", "deploy-addons", "deploy-themes"))
     gulp.task("setup-main", gulp.series("modify-app-js", "transform-main", "fix-main-import-path", "import_css"))
     gulp.task("deploy-and-transform-all", gulp.series("deploy-all", "setup-main", "inject-addons-to-main", "copy-main"))
     gulp.task("rebuild-after-watch", gulp.series("deploy-all", "transform-main", "fix-main-import-path", "inject-addons-to-main", "copy-main", "reload-main"))
 else
     gulp.task("modify-app-js", gulp.series("create-all-urls", "inject-urls-to-app"))
-    gulp.task("deploy-all", gulp.series("deploy-css", "deploy-js", "deploy-html"))
+    gulp.task("deploy-all", gulp.series("deploy-css", "deploy-js", "deploy-html", "deploy-themes"))
     gulp.task("setup-main", gulp.series("modify-app-js", "transform-main", "fix-main-import-path", "import_css"))
     gulp.task("deploy-and-transform-all", gulp.series("deploy-all", "setup-main", "copy-main"))
     gulp.task("rebuild-after-watch", gulp.series("deploy-all", "transform-main", "fix-main-import-path", "copy-main", "reload-main"))
