@@ -592,6 +592,10 @@ device_variable_module = angular.module(
                 _value = ""
             if _struct.def.forced_type == "i"
                 _vt = "number"
+            else if _struct.def.forced_type == "D"
+                _vt = "date"
+                if _struct.set
+                    _value = moment(_struct.var.val_date).toDate()
             else
                 _vt = "text"
             _struct.$$vt = _vt
@@ -621,22 +625,29 @@ device_variable_module = angular.module(
                                 else
                                     _type = "s"
                                 # create new var
+                                _new_var = {
+                                    device: $scope.device.idx
+                                    name: entry.def.name
+                                    var_type: _type
+                                    device_variable_scope: $scope.struct.dvs_tree.lut_by_name["inventory"].idx
+                                }
+                                if _type == "s"
+                                    _new_var.val_str = entry.$$value
+                                else if _type == "i"
+                                    _new_var.val_int = entry.$$value
+                                else if _type == "D"
+                                    _new_var.val_date = entry.$$value
                                 c_list.push(
                                     $scope.struct.device_tree.create_device_variable(
-                                        {
-                                            device: $scope.device.idx
-                                            name: entry.def.name
-                                            var_type: _type
-                                            val_str: entry.$$value
-                                            val_int: entry.$$value
-                                            device_variable_scope: $scope.struct.dvs_tree.lut_by_name["inventory"].idx
-                                        }
+                                        _new_var
                                         $scope.struct.helper
                                     )
                                 )
                         else
                             if entry.var.var_type == "i"
                                 entry.var.val_int = parseInt(entry.$$value)
+                            else if entry.var.var_type == "D"
+                                entry.var.val_date = entry.$$value
                             else
                                 entry.var.val_str = entry.$$value
                             c_list.push(

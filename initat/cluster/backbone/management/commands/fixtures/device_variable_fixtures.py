@@ -38,6 +38,7 @@ def add_fixtures(**kwargs):
     for _name, _descr, _group, _forced_type in [
         ("serial", "Serial number", "admin", "s"),
         ("id", "Numeric ID", "admin", "i"),
+        ("time_of_purchase", "Date of purchase", "admin", "D"),
     ]:
         factories.DVSAllowedNamesFactory(
             name=_name,

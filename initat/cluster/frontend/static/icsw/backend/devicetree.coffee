@@ -170,6 +170,9 @@ angular.module(
                     else if d_var.var_type == "d"
                         d_var.$var_type = "datetime"
                         d_var.$var_value = moment(d_var.val_date).format("dd, D. MMM YYYY HH:mm:ss")
+                    else if d_var.var_type == "D"
+                        d_var.$var_type = "date"
+                        d_var.$var_value = moment(d_var.val_date).format("dd, D. MMM YYYY")
                     else
                         d_var.$var_type = "VarType #{d_var.var_type}"
                         d_var.$var_value = "unknown type #{d_var.var_type}"

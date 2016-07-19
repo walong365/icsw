@@ -120,10 +120,9 @@ class dvs_allowed_names(models.Model):
             ("i", "integer"),
             ("s", "string"),
             ("d", "datetime"),
+            ("D", "date"),
             ("t", "time"),
             ("b", "blob"),
-            # only for posting a new dv
-            ("?", "guess")
         ],
         default="",
     )
@@ -162,6 +161,7 @@ class device_variable(models.Model):
             ("i", "integer"),
             ("s", "string"),
             ("d", "datetime"),
+            ("D", "date"),
             ("t", "time"),
             ("b", "blob"),
             # only for posting a new dv
@@ -199,14 +199,14 @@ class device_variable(models.Model):
 
     def _clear(self):
         # clear all values which are not used
-        for _short, _long in [
-            ("i", "int"),
-            ("s", "str"),
-            ("b", "blob"),
-            ("d", "date"),
-            ("t", "time")
+        for _short_list, _long in [
+            (["i"], "int"),
+            (["s"], "str"),
+            (["b"], "blob"),
+            (["d", "D"], "date"),
+            (["t"], "time")
         ]:
-            if self.var_type != _short:
+            if self.var_type not in _short_list:
                 setattr(self, "val_{}".format(_long), None)
     value = property(get_value, set_value)
 
