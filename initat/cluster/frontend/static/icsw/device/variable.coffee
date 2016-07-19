@@ -200,7 +200,7 @@ device_variable_module = angular.module(
                     var_type: "s"
                     _mon_var: null
                     inherit: true
-                    device_variable_scope: _dvst.list[0].idx
+                    device_variable_scope: _dvst.lut_by_name["normal"].idx
                 }
             else
                 single_create = false
@@ -210,7 +210,7 @@ device_variable_module = angular.module(
                     var_type: "s"
                     _mon_var: null
                     inherit: true
-                    device_variable_scope: _dvst.list[0].idx
+                    device_variable_scope: _dvst.lut_by_name["normal"].idx
                 }
         else
             single_create = false
@@ -231,6 +231,7 @@ device_variable_module = angular.module(
                 dataType: "json"
             ).then(
                 (json) ->
+                    # add selections delayed
                     for entry in json
                         sub_scope.mon_vars.push(entry)
             )
@@ -241,18 +242,31 @@ device_variable_module = angular.module(
                     _mon_var = sub_scope.edit_obj._mon_var
                     sub_scope.edit_obj.var_type = _mon_var.type
                     sub_scope.edit_obj.name = _mon_var.name
+                    sub_scope.edit_obj.device_variable_scope = _dvst.lut_by_name["normal"].idx
                     sub_scope.edit_obj.inherit = false
                     if _mon_var.type == "i"
                         sub_scope.edit_obj.val_int = parseInt(_mon_var.value)
                     else
                         sub_scope.edit_obj.val_str = _mon_var.value
-
+        # functions
+        sub_scope.change_scope = () ->
+            cur_scope = _dvst.lut[sub_scope.edit_obj.device_variable_scope]
+            if cur_scope.dvs_allowed_names_set.length
+                sub_scope.$$discrete_names = true
+                sub_scope.$$possible_names = (entry.name for entry in cur_scope.dvs_allowed_names_set)
+                sub_scope.edit_obj.name = sub_scope.$$possible_names[0]
+            else 
+                sub_scope.$$discrete_names = false
+                sub_scope.$$possible_names = []
+            
         sub_scope.edit_obj = obj_or_parent
 
         sub_scope.valid_var_types = [
             {"short" : "i", "long" : "integer"},
             {"short" : "s", "long" : "string"},
         ]
+        # init fields
+        sub_scope.change_scope()
 
         icswComplexModalService(
             {
@@ -272,7 +286,6 @@ device_variable_module = angular.module(
                                 # single creation
                                 scope.device_tree.create_device_variable(sub_scope.edit_obj).then(
                                     (new_conf) ->
-                                        scope.helper.filter_device_variables()
                                         d.resolve("created")
                                     (notok) ->
                                         d.reject("not created")
@@ -291,15 +304,8 @@ device_variable_module = angular.module(
                                         d.resolve("created")
                                 )
                         else
-                            Restangular.restangularizeElement(
-                                null
-                                sub_scope.edit_obj
-                                ICSW_URLS.DEVICE_DEVICE_VARIABLE_DETAIL.slice(1).slice(0, -2)
-                            )
-                            sub_scope.edit_obj.put().then(
+                            scope.device_tree.update_device_variable(sub_scope.edit_obj, scope.helper).then(
                                 (new_var) ->
-                                    scope.helper.replace_device_variable(new_var)
-                                    scope.helper.filter_device_variables()
                                     d.resolve("updated")
                                 (not_ok) ->
                                     d.reject("not updated")
@@ -499,4 +505,172 @@ device_variable_module = angular.module(
         restrict: "EA"
         template: $templateCache.get("icsw.device.variable.row")
     }
+]).directive("icswDeviceInventoryVarsOverview",
+[
+    "$templateCache",
+(
+    $templateCache, 
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.device.inventory.vars.overview")
+        controller: "icswDeviceInventoryVarsOverviewCtrl"
+        scope: {
+            device: "=icswDevice"
+        }
+    }
+]).controller("icswDeviceInventoryVarsOverviewCtrl",
+[
+    "$scope", "icswDeviceVariableScopeTreeService", "icswDeviceTreeService", "$q",
+    "icswDeviceTreeHelperService", "icswComplexModalService", "$compile", "$templateCache",
+(
+    $scope, icswDeviceVariableScopeTreeService, icswDeviceTreeService, $q,
+    icswDeviceTreeHelperService, icswComplexModalService, $compile, $templateCache,
+) ->
+    $scope.struct = {
+        # device tree
+        device_tree: undefined
+        # helper object
+        helper: undefined
+        # devvarscope_tree
+        dvs_tree: undefined
+        # list of inventory vars, [var_def, dev_var or null]
+        inventory_vars: []
+    }
+    _build_struct = (device) ->
+        # create inventory_vars struct
+        _ivs = []
+        # device local vars
+        _inv_var_lut = {}
+        for _var in device.device_variable_set
+            if _var.device_variable_scope == $scope.struct.dvs_tree.lut_by_name["inventory"].idx
+                _inv_var_lut[_var.name] = _var
+        for entry in ($scope.struct.dvs_tree.get_inventory_var(_name) for _name in $scope.struct.dvs_tree.get_inventory_var_names())
+            # get dev var
+            _struct = {
+                def: entry
+            }
+            if entry.name of _inv_var_lut
+                _struct.set = true
+                _struct.var = _inv_var_lut[entry.name]
+            else
+                _struct.set = false
+                _struct.var = null
+            _ivs.push(_struct)
+        $scope.struct.inventory_vars = _ivs
+
+    icswDeviceTreeService.load($scope.id).then(
+        (data) ->
+            $scope.struct.device_tree = data
+            trace_devices =  $scope.struct.device_tree.get_device_trace([$scope.device])
+            $scope.struct.helper = icswDeviceTreeHelperService.create($scope.struct.device_tree, trace_devices)
+            $q.all(
+                [
+                    icswDeviceVariableScopeTreeService.load($scope.$id)
+                    $scope.struct.device_tree.enrich_devices(
+                        $scope.struct.helper
+                        [
+                            "variable_info",
+                        ]
+                    )
+                ]
+            ).then(
+                (data) ->
+                    $scope.struct.dvs_tree = data[0]
+                    _build_struct($scope.device)
+            )
+    )
+
+    $scope.modify_inventory = ($event) ->
+        sub_scope = $scope.$new(true)
+        # salt structure
+        _slist = []
+        for _struct in $scope.struct.inventory_vars
+            if _struct.set
+                _value = _struct.var.$var_value
+            else
+                _value = ""
+            if _struct.def.forced_type == "i"
+                _vt = "number"
+            else if _struct.def.forced_type == "D"
+                _vt = "date"
+                if _struct.set
+                    _value = moment(_struct.var.val_date).toDate()
+            else
+                _vt = "text"
+            _struct.$$vt = _vt
+            _struct.$$value = _value
+            _struct.$$prev_value = _value
+            _slist.push(_struct)
+        sub_scope.var_struct = _slist
+
+        icswComplexModalService(
+            {
+                message: $compile($templateCache.get("icsw.device.inventory.modify"))(sub_scope)
+                title: "Modify Inventory vars"
+                # css_class: "modal-wide"
+                ok_label: "Modify"
+                closable: true
+                ok_callback: (modal) ->
+                    d = $q.defer()
+                    c_list = []
+                    for entry in sub_scope.var_struct
+                        if not entry.set
+                            if !entry.$$prev_value and !entry.$$value
+                                # not set, ignore
+                                true
+                            else
+                                if entry.def.forced_type
+                                    _type = entry.def.forced_type
+                                else
+                                    _type = "s"
+                                # create new var
+                                _new_var = {
+                                    device: $scope.device.idx
+                                    name: entry.def.name
+                                    var_type: _type
+                                    device_variable_scope: $scope.struct.dvs_tree.lut_by_name["inventory"].idx
+                                }
+                                if _type == "s"
+                                    _new_var.val_str = entry.$$value
+                                else if _type == "i"
+                                    _new_var.val_int = entry.$$value
+                                else if _type == "D"
+                                    _new_var.val_date = entry.$$value
+                                c_list.push(
+                                    $scope.struct.device_tree.create_device_variable(
+                                        _new_var
+                                        $scope.struct.helper
+                                    )
+                                )
+                        else
+                            if entry.var.var_type == "i"
+                                entry.var.val_int = parseInt(entry.$$value)
+                            else if entry.var.var_type == "D"
+                                entry.var.val_date = entry.$$value
+                            else
+                                entry.var.val_str = entry.$$value
+                            c_list.push(
+                                $scope.struct.device_tree.update_device_variable(entry.var, $scope.struct.helper)
+                            )
+                    $q.allSettled(c_list).then(
+                        (result) ->
+                            if _.some(result, (entry) -> return entry.state == "rejected")
+                                d.reject("not updated")
+                            else
+                                d.resolve("updated")
+                    )
+                    return d.promise
+                cancel_callback: (modal) ->
+                    # dbu.restore_backup($scope.edit_obj)
+                    d = $q.defer()
+                    d.resolve("cancel")
+                    return d.promise
+            }
+        ).then(
+            (fin) ->
+                sub_scope.$destroy()
+                # recreate structure
+                _build_struct($scope.device)
+        )
 ])

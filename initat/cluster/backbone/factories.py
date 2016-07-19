@@ -594,8 +594,15 @@ class DVSAllowedNamesFactory(factory.django.DjangoModelFactory):
             self.save()
 
     @factory.post_generation
-    def unique_per_device(self, create, extracted, **kwargs):
-        extracted = extracted or False
-        if self.unique_per_device != extracted:
-            self.unique_per_device = extracted
+    def forced_type(self, create, extracted, **kwargs):
+        extracted = extracted or ""
+        if self.forced_type != extracted:
+            self.forced_type = extracted
+            self.save()
+
+    @factory.post_generation
+    def group(self, create, extracted, **kwargs):
+        extracted = extracted or ""
+        if self.group != extracted:
+            self.group = extracted
             self.save()

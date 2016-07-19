@@ -44,13 +44,22 @@ angular.module(
             @update(list)
             
         update: (list) =>
-            @list.length = 0
+            @list.length = 0 
             for entry in list
                 @list.push(entry)
             @build_luts()
             
         build_luts: () =>
             @lut = _.keyBy(@list, "idx")
+            @lut_by_name= _.keyBy(@list, "name")
+            @_inv_lut = _.keyBy(@lut_by_name["inventory"].dvs_allowed_names_set, "name")
+            
+        get_inventory_var_names: () =>
+            return _.orderBy(entry.name for entry in @lut_by_name["inventory"].dvs_allowed_names_set)
+            
+        get_inventory_var: (name) =>
+            return @_inv_lut[name]
+            
 ]).service("icswDeviceVariableScopeTreeService",
 [
     "$q", "Restangular", "ICSW_URLS", "icswCachingCall", "icswTreeBase",

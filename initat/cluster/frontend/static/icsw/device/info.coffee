@@ -196,11 +196,13 @@ angular.module(
     "$rootScope", "ICSW_SIGNALS", "icswDomainTreeService", "icswDeviceTreeService", "icswMonitoringBasicTreeService",
     "icswAcessLevelService", "icswActiveSelectionService", "icswDeviceBackup", "icswDeviceGroupBackup",
     "icswDeviceTreeHelperService", "icswComplexModalService", "toaster", "$compile", "$templateCache",
+    "icswDeviceVariableScopeTreeService",
 (
     $scope, Restangular, $q, ICSW_URLS,
     $rootScope, ICSW_SIGNALS, icswDomainTreeService, icswDeviceTreeService, icswMonitoringBasicTreeService,
     icswAcessLevelService, icswActiveSelectionService, icswDeviceBackup, icswDeviceGroupBackup,
     icswDeviceTreeHelperService, icswComplexModalService, toaster, $compile, $templateCache,
+    icswDeviceVariableScopeTreeService,
 ) ->
     icswAcessLevelService.install($scope)
     $scope.data_valid = false
@@ -213,6 +215,8 @@ angular.module(
     $scope.show_uuid = false
     $scope.image_url = ""
 
+    $scope.struct = {
+    }
     # create info fields
     create_info_fields = () ->
         obj = $scope.edit_obj
@@ -252,13 +256,19 @@ angular.module(
                 (tree) ->
                     $scope.dev_tree = tree
                     edit_obj = in_list[0]
-                    console.log "start enrichment"
-                    dt_hs = icswDeviceTreeHelperService.create($scope.dev_tree, [edit_obj])
+                    trace_devices =  $scope.dev_tree.get_device_trace([edit_obj])
+                    dt_hs = icswDeviceTreeHelperService.create($scope.dev_tree, trace_devices)
                     $q.all(
                         [
                             icswDomainTreeService.load($scope.$id)
                             icswMonitoringBasicTreeService.load($scope.$id)
-                            $scope.dev_tree.enrich_devices(dt_hs, ["network_info", "monitoring_hint_info", "disk_info", "com_info", "snmp_info", "snmp_schemes_info", "scan_lock_info"])
+                            $scope.dev_tree.enrich_devices(
+                                dt_hs
+                                [
+                                    "network_info", "monitoring_hint_info", "disk_info", "com_info",
+                                    "snmp_info", "snmp_schemes_info", "scan_lock_info",
+                                ]
+                            )
                         ]
                     ).then(
                         (data) ->
@@ -276,6 +286,7 @@ angular.module(
                             $scope.edit_obj = edit_obj
                             # create backup
                             $scope.template_name = template_name
+                            # inventory vars
                             create_info_fields()
                     )
             )

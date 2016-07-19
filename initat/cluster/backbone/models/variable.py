@@ -96,6 +96,11 @@ class device_variable_scope(models.Model):
     default_scope = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
 
+    def __unicode__(self):
+        return u"device_variable_scope '{}'".format(
+            self.name,
+        )
+
 
 class dvs_allowed_names(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -107,10 +112,32 @@ class dvs_allowed_names(models.Model):
     )
     # globally unique
     unique = models.BooleanField(default=False)
-    # unique per device
-    unique_per_device = models.BooleanField(default=False)
+    # forced type
+    forced_type = models.CharField(
+        max_length=3,
+        choices=[
+            ("", "ignore"),
+            ("i", "integer"),
+            ("s", "string"),
+            ("d", "datetime"),
+            ("D", "date"),
+            ("t", "time"),
+            ("b", "blob"),
+        ],
+        default="",
+    )
+    # group, for grouping :-)
+    group = models.CharField(max_length=127, default="")
     description = models.TextField(default="")
     date = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return u"Allowed for scope {}: '{}', forced_type='{}', group='{}'".format(
+            self.device_variable_scope.name,
+            self.name,
+            self.forced_type,
+            self.group,
+        )
 
 
 class device_variable(models.Model):
@@ -134,6 +161,7 @@ class device_variable(models.Model):
             ("i", "integer"),
             ("s", "string"),
             ("d", "datetime"),
+            ("D", "date"),
             ("t", "time"),
             ("b", "blob"),
             # only for posting a new dv
@@ -171,14 +199,14 @@ class device_variable(models.Model):
 
     def _clear(self):
         # clear all values which are not used
-        for _short, _long in [
-            ("i", "int"),
-            ("s", "str"),
-            ("b", "blob"),
-            ("d", "date"),
-            ("t", "time")
+        for _short_list, _long in [
+            (["i"], "int"),
+            (["s"], "str"),
+            (["b"], "blob"),
+            (["d", "D"], "date"),
+            (["t"], "time")
         ]:
-            if self.var_type != _short:
+            if self.var_type not in _short_list:
                 setattr(self, "val_{}".format(_long), None)
     value = property(get_value, set_value)
 
@@ -226,7 +254,7 @@ def device_variable_pre_save(sender, **kwargs):
                 # set flags
                 for _f_name, _f_value in json.loads(_dvs.forced_flags).iteritems():
                     setattr(cur_inst, _f_name, _f_value)
-            check_empty_string(cur_inst, "name")
+            # check values
             if cur_inst.var_type == "?":
                 # guess type
                 _val = cur_inst.val_str
@@ -242,6 +270,27 @@ def device_variable_pre_save(sender, **kwargs):
             if cur_inst.var_type == "i":
                 check_integer(cur_inst, "val_int")
             check_empty_string(cur_inst, "var_type")
+            if _dvs.dvs_allowed_names_set.all().count():
+                _allowed = _dvs.dvs_allowed_names_set.all()
+                if cur_inst.name not in [entry.name for entry in _allowed]:
+                    raise ValidationError(
+                        "Name '{}' not allowed in scope '{}'".format(
+                            cur_inst.name,
+                            _dvs.name,
+                        )
+                    )
+                _allowed_struct = [entry for entry in _allowed if entry.name == cur_inst.name][0]
+                if _allowed_struct.unique:
+                    _found = device_variable.objects.exclude(
+                        Q(pk=cur_inst.idx)
+                    ).filter(
+                        Q(name=cur_inst.name) & Q(device_variable_scope=_dvs)
+                    ).count()
+                    print "Fg", _found
+                if _allowed_struct.forced_type:
+                    if cur_inst.var_type != _allowed_struct.forced_type:
+                        raise ValidationError("Type is not allowed")
+            check_empty_string(cur_inst, "name")
             all_var_names = device_variable.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(device=cur_inst.device)).values_list("name", flat=True)
             if cur_inst.name in all_var_names:
                 raise ValidationError(
