@@ -113,15 +113,7 @@
         </div>
     </fieldset>
     <fieldset>
-        <legend>
-            Inventory fields ({{ struct.inventory_vars.length }})
-            <icsw-tools-button size="sm" type="modify"></icsw-tools-button>
-        </legend>
-        <ul class="list-group">
-            <li class="list-group-item" ng-repeat="ivar in struct.inventory_vars">
-                <code>{{ ivar[0].name }}</code>: {{ ivar[1].$var_value }}
-            </li>
-        </ul>
+        <icsw-device-inventory-vars-overview icsw-device="edit_obj"></icsw-device-inventory-vars-overview>
     </fieldset>
     <fieldset>
         <legend>Monitor settings</legend>

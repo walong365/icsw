@@ -701,7 +701,18 @@ class DeviceVariableViewSet(viewsets.ViewSet):
         if new_obj.is_valid():
             new_obj.save()
         else:
-            raise ValidationError("New Variable not valid")
+            raise ValidationError(
+                "New Variable not valid: {}".format(
+                    ", ".join(
+                        [
+                            "{}: {}".format(
+                                _key,
+                                ", ".join(_value),
+                            ) for _key, _value in new_obj.errors.iteritems()
+                        ]
+                    )
+                )
+            )
         return Response(new_obj.data)
 
     @method_decorator(login_required)

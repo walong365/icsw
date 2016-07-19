@@ -599,3 +599,10 @@ class DVSAllowedNamesFactory(factory.django.DjangoModelFactory):
         if self.forced_type != extracted:
             self.forced_type = extracted
             self.save()
+
+    @factory.post_generation
+    def group(self, create, extracted, **kwargs):
+        extracted = extracted or ""
+        if self.group != extracted:
+            self.group = extracted
+            self.save()

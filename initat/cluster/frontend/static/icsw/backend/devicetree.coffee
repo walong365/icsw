@@ -170,6 +170,9 @@ angular.module(
                     else if d_var.var_type == "d"
                         d_var.$var_type = "datetime"
                         d_var.$var_value = moment(d_var.val_date).format("dd, D. MMM YYYY HH:mm:ss")
+                    else if d_var.var_type == "D"
+                        d_var.$var_type = "date"
+                        d_var.$var_value = moment(d_var.val_date).format("dd, D. MMM YYYY")
                     else
                         d_var.$var_type = "VarType #{d_var.var_type}"
                         d_var.$var_value = "unknown type #{d_var.var_type}"
@@ -729,12 +732,29 @@ angular.module(
 
         # for device Variables
         
-        create_device_variable: (new_var) =>
+        update_device_variable: (cur_var, helper) =>
+            defer = $q.defer()
+            Restangular.restangularizeElement(
+                null
+                cur_var
+                ICSW_URLS.DEVICE_DEVICE_VARIABLE_DETAIL.slice(1).slice(0, -2)
+            )
+            cur_var.put().then(
+                (mod_var) =>
+                    helper.replace_device_variable(mod_var)
+                    helper.filter_device_variables()
+                    defer.resolve("updated")
+                (not_ok) =>
+                    defer.reject("not ok")
+            )
+            return defer.promise
+            
+        create_device_variable: (new_var, helper) =>
             # create new netIP
             defer = $q.defer()
             Restangular.all(ICSW_URLS.DEVICE_DEVICE_VARIABLE_LIST.slice(1)).post(new_var).then(
                 (new_obj) =>
-                    @_fetch_device_variable(new_obj.idx, defer, "created variable")
+                    @_fetch_device_variable(new_obj.idx, defer, "created variable", helper)
                 (not_ok) ->
                     defer.reject("variable not created")
             )
@@ -756,11 +776,12 @@ angular.module(
             )
             return defer.promise
 
-        _fetch_device_variable: (pk, defer, msg) =>
+        _fetch_device_variable: (pk, defer, msg, helper) =>
             Restangular.one(ICSW_URLS.DEVICE_DEVICE_VARIABLE_LIST.slice(1)).get({pk: pk}).then(
                 (new_var) =>
                     dev = @all_lut[new_var.device]
                     dev.device_variable_set.push(new_var)
+                    helper.filter_device_variables()
                     defer.resolve(msg)
             )
 
