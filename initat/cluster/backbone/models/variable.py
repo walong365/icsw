@@ -127,14 +127,17 @@ class dvs_allowed_names(models.Model):
         ],
         default="",
     )
+    # group, for grouping :-)
+    group = models.CharField(max_length=127, default="")
     description = models.TextField(default="")
     date = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return u"Allowed for scope {}: '{}', forced_type='{}'".format(
+        return u"Allowed for scope {}: '{}', forced_type='{}', group='{}'".format(
             self.device_variable_scope.name,
             self.name,
             self.forced_type,
+            self.group,
         )
 
 

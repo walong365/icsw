@@ -263,3 +263,41 @@
         <icsw-react-tree icsw-tree-config="devvar_tree"></icsw-react-tree>
     </div>
 </script>
+
+<script type="text/ng-template" id="icsw.device.inventory.vars.overview">
+    <legend>
+        Inventory fields ({{ struct.inventory_vars.length }})
+        <icsw-tools-button size="sm" type="modify" ng-click="modify_inventory($event)"></icsw-tools-button>
+    </legend>
+    <ul class="list-group">
+        <li class="list-group-item" ng-repeat="ivar in struct.inventory_vars">
+            <code>{{ ivar.def.name }}</code>
+            ({{ ivar.def.description }}):
+            <span ng-show="ivar.set">{{ ivar.var.$var_value }}</span>
+            <span ng-show="!ivar.set">N/A</span>
+        </li>
+    </ul>
+</script>
+
+<script type="text/ng-template" id="icsw.device.inventory.modify">
+    <table class="table table-condensed table-hover table-striped" style="width:auto;">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Value</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="ivar in var_struct">
+                <td>{{ ivar.def.name }}</td>
+                <td>{{ ivar.def.description }}</td>
+                <td>
+                    <input ng-if="ivar.$$vt == 'number'" type="number" class="form-control" ng-model="ivar.$$value" max_length="64"></input>
+                    <input ng-if="ivar.$$vt == 'text'" type="text" class="form-control" ng-model="ivar.$$value" max_length="64"></input>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</script>
+

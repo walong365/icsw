@@ -22,6 +22,7 @@
 
 from initat.cluster.backbone import factories
 from initat.cluster.backbone.models import device_variable_scope, dvs_allowed_names
+from initat.tools import process_tools
 
 
 def add_fixtures(**kwargs):
@@ -34,18 +35,19 @@ def add_fixtures(**kwargs):
             name=_name,
             prefix=_prefix,
         )
-    for _name, _descr, _forced_type in [
-        ("serial", "Serial number", "s"),
+    for _name, _descr, _group, _forced_type in [
+        ("serial", "Serial number", "admin", "s"),
+        ("id", "Numeric ID", "admin", "i"),
     ]:
         factories.DVSAllowedNamesFactory(
             name=_name,
             description=_descr,
-            unique_per_device=True,
             device_variable_scope=_fact_dict["inventory"],
             forced_type=_forced_type,
+            group=_group,
         )
 
-    if False:
+    if False or process_tools.get_machine_name() in ["eddie"]:
         # debug output
         for _e in device_variable_scope.objects.all():
             print unicode(_e)
