@@ -925,9 +925,15 @@ class PDFReportGenerator(object):
 
             group_report_dict[_group_name].append(_report)
 
+        current_page_number = 0
+        page_num_headings = {}
 
-        # Generate pdf, structure by group_name -> device -> report
+        # 1. Pass: Generate table of contents and bookmark Headings to page number mapping
         for _group_name in group_report_dict:
+            if not current_page_number in page_num_headings:
+                page_num_headings[current_page_number] = []
+            page_num_headings[current_page_number].append((_group_name, 0))
+
             _device_reports = {}
             for _report in group_report_dict[_group_name]:
                 if not _report.device in _device_reports:
@@ -935,18 +941,63 @@ class PDFReportGenerator(object):
                 _device_reports[_report.device].append(_report)
 
             for _device in _device_reports:
+                if not current_page_number in page_num_headings:
+                    page_num_headings[current_page_number] = []
+                page_num_headings[current_page_number].append((_device.full_name, 1))
+                for _report in _device_reports[_device]:
+                    for _bookmark in _report.bookmarks:
+                        if not (current_page_number + _bookmark.pagenum) in page_num_headings:
+                            page_num_headings[(current_page_number + _bookmark.pagenum)] = []
+                        page_num_headings[(current_page_number + _bookmark.pagenum)].append((_bookmark.name, 2))
+
+                    current_page_number += _report.number_of_pages
+
+        toc_buffer = self.get_toc_pages(page_num_headings)
+        toc_pdf = PdfFileReader(toc_buffer)
+
+
+        # 2. Pass: Generate pdf, structure is group_name -> device -> report
+        for _group_name in group_report_dict:
+            if not current_page_number in page_num_headings:
+                page_num_headings[current_page_number] = []
+            page_num_headings[current_page_number].append((_group_name, 0))
+
+            _device_reports = {}
+            for _report in group_report_dict[_group_name]:
+                if not _report.device in _device_reports:
+                    _device_reports[_report.device] = []
+                _device_reports[_report.device].append(_report)
+
+            for _device in _device_reports:
+                if not current_page_number in page_num_headings:
+                    page_num_headings[current_page_number] = []
+                page_num_headings[current_page_number].append((_device.full_name, 1))
                 for _report in _device_reports[_device]:
                     for _buffer in _report.pdf_buffers:
                         sub_pdf = PdfFileReader(_buffer)
                         [output_pdf.addPage(sub_pdf.getPage(page_num)) for page_num in range(sub_pdf.numPages)]
 
+                    for _bookmark in _report.bookmarks:
+                        if not (current_page_number + _bookmark.pagenum) in page_num_headings:
+                            page_num_headings[(current_page_number + _bookmark.pagenum)] = []
+                        page_num_headings[(current_page_number + _bookmark.pagenum)].append((_bookmark.name, 2))
 
-        # Add page numbers
+                    current_page_number += _report.number_of_pages
+
+        toc_buffer = self.get_toc_pages(page_num_headings)
+        toc_pdf = PdfFileReader(toc_buffer)
+        toc_pdf_page_num = toc_pdf.getNumPages()
+
+        for i in reversed(range(toc_pdf.getNumPages())):
+            output_pdf.insertPage(toc_pdf.getPage(i))
+
+
+        # 3. Pass: Add page numbers
         output_pdf.write(output_buffer)
-        output_pdf = self.add_page_numbers(output_buffer)
+        output_pdf = self.add_page_numbers(output_buffer, toc_pdf_page_num)
 
-        # Second pass over data structure (-> generate bookmarks)
-        current_page_number = 0
+        # 4. Pass: Generate Bookmarks
+        current_page_number = toc_pdf_page_num
         for _group_name in group_report_dict:
             group_bookmark = output_pdf.addBookmark(_group_name, current_page_number)
 
@@ -970,8 +1021,62 @@ class PDFReportGenerator(object):
 
         return output_buffer
 
+    def get_toc_pages(self, page_num_headings):
+        from reportlab.pdfgen.canvas import Canvas
+        from reportlab.lib.pagesizes import A4, landscape, letter
 
-    def add_page_numbers(self, pdf_buffer):
+        buffer = BytesIO()
+        can = Canvas(buffer, pagesize=landscape(letter))
+
+        width, heigth = landscape(letter)
+
+
+        vertical_x_limit = 35
+        vertical_x = 1
+        num_pages = 1
+
+        for page_num in sorted(page_num_headings.keys()):
+            for heading, indent in page_num_headings[page_num]:
+                vertical_x += 1
+                if vertical_x > vertical_x_limit:
+                    vertical_x = 1
+                    num_pages += 1
+
+
+        vertical_x = 1
+        prefix_0 = 1
+        prefix_1 = 1
+        prefix_2 = 1
+
+        for page_num in sorted(page_num_headings.keys()):
+            for heading, indent in page_num_headings[page_num]:
+                if indent == 0:
+                    prefix_1 = 1
+                    prefix_2 = 1
+
+                    prefix = "{}.".format(prefix_0)
+                    prefix_0 += 1
+                elif indent == 1:
+                    prefix_2 = 1
+                    prefix = "{}.{}".format(prefix_0 - 1, prefix_1)
+                    prefix_1 += 1
+                else:
+                    prefix = "{}.{}.{}".format(prefix_0 - 1 , prefix_1 - 1, prefix_2)
+                    prefix_2 += 1
+
+                can.drawString(25 + (25 * indent), heigth - (25 + (15 * vertical_x)), "{} {}".format(prefix, heading))
+                can.drawString(width - 75, heigth - (25 + (15 * vertical_x)), "{}".format(page_num + num_pages + 1))
+                vertical_x += 1
+                if vertical_x > vertical_x_limit:
+                    vertical_x = 1
+                    can.showPage()
+
+        can.save()
+        return buffer
+
+
+
+    def add_page_numbers(self, pdf_buffer, toc_offset_num):
         from reportlab.pdfgen.canvas import Canvas
         from reportlab.lib.pagesizes import A4, landscape, letter
         from PyPDF2 import PdfFileWriter, PdfFileReader
@@ -980,17 +1085,18 @@ class PDFReportGenerator(object):
         existing_pdf = PdfFileReader(pdf_buffer)
         num_pages = existing_pdf.getNumPages()
 
-
         for page_number in range(num_pages):
-            page_num_buffer = BytesIO()
-            can = Canvas(page_num_buffer, pagesize=letter)
-            can.drawString(25, 25, "{}".format(page_number + 1))
-            can.save()
-            page_num_buffer.seek(0)
-            page_num_pdf = PdfFileReader(page_num_buffer)
-
             page = existing_pdf.getPage(page_number)
-            page.mergePage(page_num_pdf.getPage(0))
+
+            if page_number >= toc_offset_num:
+                page_num_buffer = BytesIO()
+                can = Canvas(page_num_buffer, pagesize=landscape(letter))
+                can.drawString(25, 25, "{}".format(page_number + 1))
+                can.save()
+                page_num_buffer.seek(0)
+                page_num_pdf = PdfFileReader(page_num_buffer)
+                page.mergePage(page_num_pdf.getPage(0))
+
             output.addPage(page)
 
         return output
