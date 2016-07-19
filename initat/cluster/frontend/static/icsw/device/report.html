@@ -11,13 +11,111 @@
                     <uib-tab-heading>
                         <span>Settings</span>
                     </uib-tab-heading>
+
+
                 </uib-tab>
+
                 <uib-tab>
                     <uib-tab-heading>
                         <span>Selection</span>
                     </uib-tab-heading>
+                    <div class="panel panel-default">
+                        <div class="panel-body" style="padding: 6px 15px">
+                            <table
+                                st-table="entries_displayed"
+                                st-safe-src="struct.devices"
+                                class="table table-hover table-condensed table-striped"
+                                style="width:auto;"
+                            >
+                                <thead>
+                                    <tr>
+                                        <td colspan="99">
+                                            <div icsw-tools-pagination st-items-by-page="20" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th st-sort='st_attrs.name'>Name</th>
+                                        <th>Sel</th>
+                                        <th st-sort='st_attrs.description'>Description</th>
+                                        <th st-sort='st_attrs.enabled'>Enabled</th>
+                                        <th st-sort='st_attrs.type'>#devs</th>
+                                        <th colspan="2" class="text-center">Action</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody>
+                                    <tr icsw-device-tree-report-row device="obj" ng-repeat="obj in entries_displayed" ng-class="get_tr_class(obj)"></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </uib-tab>
+                <uib-tab>
+                    <uib-tab-heading>
+                        <span>Generate</span>
+                    </uib-tab-heading>
+                    <div class="dropdown">
+                        <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">
+                            Generate Report
+                            <span class="caret"></span>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a href="" ng-click='downloadCsv()'>as CSV</a></li>
+                            <li><a href="" ng-click='downloadXlsx()'>as XLSX</a></li>
+                            <li><a href="" ng-click='downloadPdf()'>as PDF</a></li>
+                        </ul>
+                    </div>
                 </uib-tab>
             </uib-tabset>
         </div>
     </div>
+</script>
+
+<script type="text/ng-template" id="icsw.device.tree.report.row">
+    <td>{{ obj.name }}</td>
+    <td>
+        <input type="button" ng-class="get_dev_sel_class()" ng-click="toggle_dev_sel()" value="sel"/>
+    </td>
+    <td>{{ obj.comment }}</td>
+    <td>
+        <span ng-show="obj.device_group_obj.enabled">{{ obj.enabled | yesno1 }}</span>
+        <span ng-show="!obj.device_group_obj.enabled"><em>{{ obj.enabled | yesno1 }}</em></span>
+    </td>
+    <td></td>
+    <td></td>
+    <td></td>
+</script>
+
+<script type="text/ng-template" id="icsw.device.tree.cdg.report.row">
+    <td colspan="2">
+        <strong><em>{{ obj.device_group_obj.name }}</em></strong>
+    </td>
+    <td>{{ group.description }}</td>
+    <td colspan="2"></td>
+    <td ng-show="hide_lut['tln']">{{ struct.domain_tree.show_dtn(group.domain_tree_node) }}</td>
+    <td ng-show="num_shown(['tln'])" colspan="{{ num_shown(['tln']) }}"></td>
+    <td>
+    </td>
+    <td></td>
+</script>
+
+<script type="text/ng-template" id="icsw.device.tree.meta.report.row">
+    <td colspan="2"><strong>{{ group.name }}</strong>
+        <div class="btn-group btn-group-xs pull-right" ng-show="group.num_devices">
+            <input type="button" class="btn btn-success" ng-click="change_dg_sel(1)" value="S"/>
+            <input type="button" class="btn btn-primary" ng-click="change_dg_sel(0)" value="T"/>
+            <input type="button" class="btn btn-warning" ng-click="change_dg_sel(-1)" value="C"/>
+        </div>
+    </td>
+    <td>{{ group.description }}</td>
+    <td>{{ group.enabled | yesno1 }}</td>
+    <td>
+        <b ng-show="group.num_devices">{{ group.num_devices }}</b>
+        <b ng-show="!group.num_devices">---</b>
+    </td>
+    <td ng-show="hide_lut['tln']">{{ struct.domain_tree.show_dtn(obj) }}</td>
+    <td ng-show="num_shown(['tln'])" colspan="{{ num_shown(['tln']) }}"></td>
+    <td colspan="2">
+        o
+    </td>
 </script>

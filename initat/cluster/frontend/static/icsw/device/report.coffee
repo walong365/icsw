@@ -59,12 +59,12 @@ device_report_module = angular.module(
     "$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "blockUI",
     "icswTools", "icswSimpleAjaxCall", "ICSW_URLS",
     "icswDeviceTreeService", "icswDeviceTreeHelperService", "$timeout",
-    "icswDispatcherSettingTreeService", "Restangular"
+    "icswDispatcherSettingTreeService", "Restangular", "icswActiveSelectionService"
 (
     $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI,
     icswTools, icswSimpleAjaxCall, ICSW_URLS,
     icswDeviceTreeService, icswDeviceTreeHelperService, $timeout,
-    icswDispatcherSettingTreeService, Restangular
+    icswDispatcherSettingTreeService, Restangular, icswActiveSelectionService
 ) ->
     # struct to hand over to VarCtrl
     $scope.struct = {
@@ -106,12 +106,77 @@ device_report_module = angular.module(
                 $scope.struct.device_tree = data[0]
                 $scope.struct.devices.length = 0
                 for dev in devs
-                    console.log "Device=", dev
-                    # filter out metadevices
-                    if not dev.is_meta_device
-                        if not dev.assetrun_set?
-                            dev.assetrun_set = []
-                        $scope.struct.devices.push(dev)
+                    $scope.struct.devices.push(dev)
 
         )
+        
+    $scope.get_tr_class = (obj) ->
+        return if obj.is_meta_device then "success" else ""
+
+    $scope.downloadPdf = ->
+        sel = icswActiveSelectionService.current()
+
+        console.log(sel)
+
+        icswSimpleAjaxCall({
+            url: ICSW_URLS.ASSET_EXPORT_ASSETBATCH_TO_PDF
+            data:
+                pks: icswActiveSelectionService.current().dev_sel
+            dataType: 'json'
+        }
+        ).then(
+            (result) ->
+                uri = 'data:application/pdf;base64,' + result.pdf
+                downloadLink = document.createElement("a")
+                downloadLink.href = uri
+                downloadLink.download = "report.pdf"
+
+                document.body.appendChild(downloadLink)
+                downloadLink.click()
+                document.body.removeChild(downloadLink)
+            (not_ok) ->
+                console.log not_ok
+        )
+
+]).directive("icswDeviceTreeReportRow",
+[
+    "$templateCache", "$compile", "icswActiveSelectionService", "icswDeviceTreeService",
+(
+    $templateCache, $compile, icswActiveSelectionService, icswDeviceTreeService
+) ->
+    return {
+        restrict: "EA"
+        link: (scope, element, attrs) ->
+            tree = icswDeviceTreeService.current()
+            device = scope.$eval(attrs.device)
+            group = tree.get_group(device)
+            scope.device = device
+            scope.group = group
+            sel = icswActiveSelectionService.current()
+            if device.is_meta_device
+                if scope.struct.device_tree.get_group(device).cluster_device_group
+                    new_el = $compile($templateCache.get("icsw.device.tree.cdg.report.row"))
+                else
+                    new_el = $compile($templateCache.get("icsw.device.tree.meta.report.row"))
+            else
+                new_el = $compile($templateCache.get("icsw.device.tree.report.row"))
+            scope.get_dev_sel_class = () ->
+                if sel.device_is_selected(device)
+                    return "btn btn-xs btn-success"
+                else
+                    return "btn btn-xs btn-default"
+            scope.toggle_dev_sel = () ->
+                sel.toggle_selection(device)
+            scope.change_dg_sel = (flag) ->
+                tree = icswDeviceTreeService.current()
+                for entry in tree.all_list
+                    if entry.device_group == device.device_group
+                        if flag == 1
+                            sel.add_selection(entry)
+                        else if flag == -1
+                            sel.remove_selection(entry)
+                        else
+                            sel.toggle_selection(entry)
+            element.append(new_el(scope))
+    }
 ])

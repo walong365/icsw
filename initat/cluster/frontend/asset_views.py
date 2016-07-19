@@ -486,7 +486,19 @@ class PDFReportGenerator(object):
     def __init__(self):
         self.reports = []
 
-    def generate_overview_page(self, asset_batch, report):
+    def generate_report(self, _device):
+        report = PDFReportGenerator.Report(_device)
+        self.reports.append(report)
+
+        # create generic overview page
+        self.generate_overview_page(report)
+
+        # search latest assetbatch and generate
+        if _device.assetbatch_set.all():
+            asset_batch = sorted(_device.assetbatch_set.all(), key=lambda ab: ab.idx)[-1]
+            self.generate_report_for_asset_batch(asset_batch, report)
+
+    def generate_overview_page(self, report):
         from reportlab.lib import colors
         from reportlab.lib.units import inch, mm
         from reportlab.lib.pagesizes import A4, landscape, letter
@@ -508,7 +520,7 @@ class PDFReportGenerator(object):
 
 
         PH = Paragraph('<font face="times-bold" size="22">Overview for {}</font>'.format(
-            asset_batch.device.name), styleSheet["BodyText"])
+            _device.name), styleSheet["BodyText"])
 
         logo = Image(open("/home/kaufmann/logo.png"))
         logo.drawHeight = 42
@@ -551,14 +563,15 @@ class PDFReportGenerator(object):
         for _category in _device.categories.all():
             data.append([_category.name])
 
-        P = Paragraph('<b>Categories:</b>', styleSheet["BodyText"])
-        t = Table(data,
-                    colWidths=(200 * mm),
-                    style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
-                           ('BOX', (0, 0), (-1, -1), 2, colors.black),
-                           ])
+        if data:
+            P = Paragraph('<b>Categories:</b>', styleSheet["BodyText"])
+            t = Table(data,
+                        colWidths=(200 * mm),
+                        style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
+                               ('BOX', (0, 0), (-1, -1), 2, colors.black),
+                               ])
 
-        body_data.append((P, t))
+            body_data.append((P, t))
 
         ## Device Groups
         data = []
@@ -606,13 +619,10 @@ class PDFReportGenerator(object):
         doc.build(elements, onFirstPage=report.increase_page_count, onLaterPages=report.increase_page_count)
         report.add_to_report(buffer)
 
-    def generate_report_for_asset_batch(self, asset_batch):
+    def generate_report_for_asset_batch(self, asset_batch, report):
         from reportlab.pdfgen.canvas import Canvas
         from PollyReports import *
 
-
-        report = PDFReportGenerator.Report(asset_batch.device)
-        self.reports.append(report)
 
         buffer = BytesIO()
         canvas = Canvas(buffer, (72 * 11, 72 * 8.5))
@@ -623,9 +633,7 @@ class PDFReportGenerator(object):
         # Hardware report is generated last
         hardware_report_ar = None
 
-        self.generate_overview_page(asset_batch, report)
-
-        for ar in assetruns:
+        for ar in sorted(assetruns, key=lambda ar: ar.run_type):
             row_collector.reset()
             row_collector.current_asset_type = AssetType(ar.run_type)
             _generate_csv_entry_for_assetrun(ar, row_collector.collect)
@@ -928,31 +936,7 @@ class PDFReportGenerator(object):
         current_page_number = 0
         page_num_headings = {}
 
-        # 1. Pass: Generate table of contents and bookmark Headings to page number mapping
-        for _group_name in group_report_dict:
-            if not current_page_number in page_num_headings:
-                page_num_headings[current_page_number] = []
-            page_num_headings[current_page_number].append((_group_name, 0))
-
-            _device_reports = {}
-            for _report in group_report_dict[_group_name]:
-                if not _report.device in _device_reports:
-                    _device_reports[_report.device] = []
-                _device_reports[_report.device].append(_report)
-
-            for _device in _device_reports:
-                if not current_page_number in page_num_headings:
-                    page_num_headings[current_page_number] = []
-                page_num_headings[current_page_number].append((_device.full_name, 1))
-                for _report in _device_reports[_device]:
-                    for _bookmark in _report.bookmarks:
-                        if not (current_page_number + _bookmark.pagenum) in page_num_headings:
-                            page_num_headings[(current_page_number + _bookmark.pagenum)] = []
-                        page_num_headings[(current_page_number + _bookmark.pagenum)].append((_bookmark.name, 2))
-
-                    current_page_number += _report.number_of_pages
-
-        # 2. Pass: Generate pdf, structure is group_name -> device -> report
+        # 1. Pass: Generate pdf, structure is group_name -> device -> report, generate table of contents and bookmark Headings to page number mapping
         for _group_name in group_report_dict:
             if not current_page_number in page_num_headings:
                 page_num_headings[current_page_number] = []
@@ -988,11 +972,11 @@ class PDFReportGenerator(object):
             output_pdf.insertPage(toc_pdf.getPage(i))
 
 
-        # 3. Pass: Add page numbers
+        # 2. Pass: Add page numbers
         output_pdf.write(output_buffer)
         output_pdf = self.add_page_numbers(output_buffer, toc_pdf_page_num)
 
-        # 4. Pass: Generate Bookmarks
+        # 3. Pass: Generate Bookmarks
         current_page_number = toc_pdf_page_num
         for _group_name in group_report_dict:
             group_bookmark = output_pdf.addBookmark(_group_name, current_page_number)
@@ -1137,28 +1121,51 @@ class PDFReportGenerator(object):
 class export_assetbatch_to_pdf(View):
     @method_decorator(login_required)
     def post(self, request):
-        #ab = AssetBatch.objects.get(idx=int(request.POST["pk"]))
+        # #ab = AssetBatch.objects.get(idx=int(request.POST["pk"]))
+        #
+        # post_dict = dict(request.POST.iterlists())
+        # pks = post_dict["pks[]"]
+        #
+        # _devices = device.objects.filter(idx__in = [int(pk) for pk in pks])
+        # _devices_filtered = []
+        # for _device in _devices:
+        #     if not _device.is_meta_device:
+        #         _devices_filtered.append(_device)
+        #
+        # asset_batches = AssetBatch.objects.all()
+        # pdf_report_generator = PDFReportGenerator()
+        #
+        # asset_batch_per_device = {}
+        #
+        # for asset_batch in asset_batches:
+        #     if asset_batch.device in asset_batch_per_device:
+        #         if asset_batch_per_device[asset_batch.device].idx < asset_batch.idx:
+        #             asset_batch_per_device[asset_batch.device] = asset_batch
+        #     else:
+        #         asset_batch_per_device[asset_batch.device] = asset_batch
+        #
+        #
+        # for _device in asset_batch_per_device:
+        #     pdf_report_generator.generate_report_for_asset_batch(asset_batch_per_device[_device])
+        #
+        # buffer = pdf_report_generator.get_pdf_as_buffer()
+        # pdf_b64 = base64.b64encode(buffer.getvalue())
 
+        post_dict = dict(request.POST.iterlists())
+        pks = post_dict["pks[]"]
 
+        _devices = []
+        for _device in device.objects.filter(idx__in = [int(pk) for pk in pks]):
+            if not _device.is_meta_device:
+                _devices.append(_device)
 
-        asset_batches = AssetBatch.objects.all()
         pdf_report_generator = PDFReportGenerator()
 
-        asset_batch_per_device = {}
+        for _device in _devices:
+            pdf_report_generator.generate_report(_device)
 
-        for asset_batch in asset_batches:
-            if asset_batch.device in asset_batch_per_device:
-                if asset_batch_per_device[asset_batch.device].idx < asset_batch.idx:
-                    asset_batch_per_device[asset_batch.device] = asset_batch
-            else:
-                asset_batch_per_device[asset_batch.device] = asset_batch
-
-
-        for device in asset_batch_per_device:
-            pdf_report_generator.generate_report_for_asset_batch(asset_batch_per_device[device])
 
         buffer = pdf_report_generator.get_pdf_as_buffer()
-
         pdf_b64 = base64.b64encode(buffer.getvalue())
 
         return HttpResponse(
