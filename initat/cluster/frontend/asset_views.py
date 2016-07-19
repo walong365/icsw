@@ -952,10 +952,6 @@ class PDFReportGenerator(object):
 
                     current_page_number += _report.number_of_pages
 
-        toc_buffer = self.get_toc_pages(page_num_headings)
-        toc_pdf = PdfFileReader(toc_buffer)
-
-
         # 2. Pass: Generate pdf, structure is group_name -> device -> report
         for _group_name in group_report_dict:
             if not current_page_number in page_num_headings:
@@ -1023,12 +1019,33 @@ class PDFReportGenerator(object):
 
     def get_toc_pages(self, page_num_headings):
         from reportlab.pdfgen.canvas import Canvas
+        from reportlab.pdfbase.pdfmetrics import stringWidth
         from reportlab.lib.pagesizes import A4, landscape, letter
+        from reportlab.platypus import SimpleDocTemplate, Spacer, Table, TableStyle, Paragraph, Image
+        from reportlab.lib.styles import getSampleStyleSheet
+
+        styleSheet = getSampleStyleSheet()
+
+        PH = Paragraph('<font face="times-bold" size="22">Contents</font>', styleSheet["BodyText"])
+
+        logo = Image(open("/home/kaufmann/logo.png"))
+        logo.drawHeight = 42
+        logo.drawWidth = 103
+
+        data = [[PH, logo]]
+
+        t_head = Table(data, colWidths=(570, None), style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE')])
+
 
         buffer = BytesIO()
         can = Canvas(buffer, pagesize=landscape(letter))
 
+        can.setFont("Helvetica", 14)
+
         width, heigth = landscape(letter)
+
+        t_head.wrapOn(can, 0, 0)
+        t_head.drawOn(can, 25, heigth - 50)
 
 
         vertical_x_limit = 35
@@ -1048,6 +1065,8 @@ class PDFReportGenerator(object):
         prefix_1 = 1
         prefix_2 = 1
 
+        top_margin = 50
+
         for page_num in sorted(page_num_headings.keys()):
             for heading, indent in page_num_headings[page_num]:
                 if indent == 0:
@@ -1064,12 +1083,26 @@ class PDFReportGenerator(object):
                     prefix = "{}.{}.{}".format(prefix_0 - 1 , prefix_1 - 1, prefix_2)
                     prefix_2 += 1
 
-                can.drawString(25 + (25 * indent), heigth - (25 + (15 * vertical_x)), "{} {}".format(prefix, heading))
-                can.drawString(width - 75, heigth - (25 + (15 * vertical_x)), "{}".format(page_num + num_pages + 1))
+                heading_str =  "{} {}".format(prefix, heading)
+
+                can.drawString(25 + (25 * indent), heigth - (top_margin + (15 * vertical_x)), heading_str)
+
+                heading_str_width = stringWidth(heading_str, "Helvetica", 14)
+
+                dots = "."
+                while (25 * indent) + heading_str_width + stringWidth(dots, "Helvetica", 14) < (width - 150):
+                    dots += "."
+
+                can.drawString(35 + (25 * indent) + heading_str_width, heigth - (top_margin + (15 * vertical_x)), dots)
+
+                can.drawString(width - 75, heigth - (top_margin + (15 * vertical_x)), "{}".format(page_num + num_pages + 1))
                 vertical_x += 1
                 if vertical_x > vertical_x_limit:
                     vertical_x = 1
                     can.showPage()
+                    can.setFont("Helvetica", 14)
+                    t_head.wrapOn(can, 0, 0)
+                    t_head.drawOn(can, 25, heigth - 50)
 
         can.save()
         return buffer
