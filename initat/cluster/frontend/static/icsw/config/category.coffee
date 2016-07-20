@@ -113,6 +113,7 @@ angular.module(
             scope.dn_tree = scope.icsw_config_object.dn_tree
             scope.mode = scope.icsw_config_object.mode
             scope.mode_is_location = scope.mode == "location"
+            scope.mode_is_device = scope.mode == "device"
             # links, a little hacky...
             scope.dn_tree.config_object = scope.icsw_config_object
             scope.dn_tree.config_service = @
@@ -175,6 +176,11 @@ angular.module(
                 # called from formular code
                 # full_name.match leads to infinite digest cycles
                 return (obj.depth > 1) and top_level == "location"
+
+            sub_scope.is_device = (obj) ->
+                # called from formular code
+                # full_name.match leads to infinite digest cycles
+                return (obj.depth > 1) and top_level == "device"
 
             ok_label = if create then "Create" else "Modify"
             icswComplexModalService(
@@ -278,6 +284,11 @@ angular.module(
         # called from formular code
         # full_name.match leads to infinite digest cycles
         return $scope.mode == "location"
+
+    $scope.is_device = (obj) ->
+        # called from formular code
+        # full_name.match leads to infinite digest cycles
+        return $scope.mode == "device"
 
     $scope.get_tr_class = (obj) ->
         if $scope.dn_tree.lut[obj.idx].active

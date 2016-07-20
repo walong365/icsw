@@ -35,6 +35,7 @@ angular.module(
             @list = []
             @gfx_list = []
             @dml_list = []
+            @asset_list = []
             @update(cat_list, ref_list, gfx_list, dml_list)
 
         update: (new_list, ref_list, gfx_list, dml_list) ->
@@ -58,6 +59,11 @@ angular.module(
             # should be improved, FIXME, TODO
             for ref in ref_list
                 @lut[ref[1]].reference_dict[ref[0]].push(ref[2])
+            # asset list
+            @asset_list.length = 0
+            for entry in @list
+                if entry.asset
+                    @asset_list.push(entry)
             @build_luts()
 
         build_luts: () =>
@@ -67,6 +73,8 @@ angular.module(
             @gfx_lut = _.keyBy(@gfx_list, "idx")
             # dml lut
             @dml_lut = _.keyBy(@dml_list, "idx")
+            # asset lut
+            @asset_lut = _.keyBy(@asset_list, "idx")
             @reorder()
 
         reorder: () =>

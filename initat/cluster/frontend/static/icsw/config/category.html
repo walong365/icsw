@@ -11,7 +11,7 @@
         <span ng-show="obj.depth > 1">{{ obj.num_refs || '---' }}</span>
     </td>
     <td class="text-center">
-        {{ obj.useable | yesno1 }}
+        <span ng-bind-html="obj.useable | yesno3"></span>
     </td>
     <td ng-if="is_location(obj) && obj.useable" class="text-right">{{ obj.latitude | number:3 }}</td>
     <td ng-if="is_location(obj) && !obj.useable"></td>
@@ -20,6 +20,7 @@
     <td ng-if="is_location(obj)" class="text-center">{{ obj.locked && 'locked' || 'unlocked' }}</td>
     <td ng-if="is_location(obj)" class="text-center">{{ obj.physical && 'physical' || 'structural' }}</td>
     <td ng-if="is_location(obj)" class="text-center">{{ obj.$gfx_list.length }}</td>
+    <td ng-if="is_device(obj)" class="text-center"><span ng-bind-html="obj.asset | yesno3 "></span></td>
     <td>
         <icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)" ng-show="obj.depth > 1"></icsw-tools-button>
     </td>
@@ -77,6 +78,7 @@
                                     <th ng-if="mode_is_location">lockstate</th>
                                     <th ng-if="mode_is_location">type</th>
                                     <th ng-if="mode_is_location">#gfx</th>
+                                    <th ng-if="mode_is_device">Asset</th>
                                     <th colspan="2">Action</th>
                                 </tr>
                             </thead>
@@ -216,6 +218,17 @@
                 </div>
                 <div class="controls col-sm-7">
                     <icsw-tools-yes-no flag="edit_obj.physical"></icsw-tools-yes-no>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset ng-if="is_device(edit_obj)">
+            <legend>Asset flags</legend>
+            <div class="form-group  ng-class:form_error('latitude')">
+                <label class="control-label col-sm-3 requiredField">
+                    For AssetManagement
+                </label>
+                <div class="controls col-sm-7">
+                    <icsw-tools-yes-no flag="edit_obj.asset"></icsw-tools-yes-no>
                 </div>
             </div>
         </fieldset>
