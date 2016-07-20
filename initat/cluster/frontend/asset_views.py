@@ -43,6 +43,7 @@ from initat.cluster.backbone.models import device, AssetPackage, AssetRun, \
 from initat.cluster.backbone.models.dispatch import ScheduleItem
 from initat.cluster.backbone.serializers import AssetRunDetailSerializer, ScheduleItemSerializer, \
     AssetPackageSerializer, AssetRunOverviewSerializer, StaticAssetTemplateSerializer
+from initat.cluster.backbone.models import location_gfx
 
 
 try:
@@ -484,6 +485,11 @@ class PDFReportGenerator(object):
             self.number_of_pages += 1
 
     def __init__(self):
+
+        #self.logo_buffer = location_gfx.objects.filter(name="__REPORT__LOGO")
+        #if self.logo_buffer:
+        #    self.logo_buffer = BytesIO(self.logo_buffer[0].get_image())
+
         self.reports = []
 
     def generate_report(self, _device):
@@ -522,9 +528,11 @@ class PDFReportGenerator(object):
         PH = Paragraph('<font face="times-bold" size="22">Overview for {}</font>'.format(
             _device.name), styleSheet["BodyText"])
 
-        logo = Image(open("/home/kaufmann/logo.png"))
-        logo.drawHeight = 42
-        logo.drawWidth = 103
+        #logo = Image(self.logo_buffer)
+        #logo.drawHeight = 42
+        #logo.drawWidth = 103
+
+        logo = Paragraph('<font face="times-bold" size="22">_LOGO_</font>', styleSheet["BodyText"])
 
         data = [[PH, logo]]
 
@@ -653,7 +661,8 @@ class PDFReportGenerator(object):
                                        Element((600, 0), ("Helvetica", 6), key='update_status'),
                                        Rule((0, 0), 7.5 * 90, thickness=0.1)])
 
-                rpt.pageheader = Band([Image(pos=(570, -25), width=103, height=42, text="/home/kaufmann/logo.png"),
+                rpt.pageheader = Band([#Image(pos=(570, -25), width=103, height=42, text="/home/kaufmann/logo.png"),
+                                       Element((570, 0), ("Times-Bold", 20), text="_LOGO_"),
                                        Element((0, 0), ("Times-Bold", 20), text="Installed Updates for {}".format(row_collector.row_info[5])),
                                        Element((0, 24), ("Helvetica", 12), text="Update Name"),
                                        Element((400, 24), ("Helvetica", 12), text="Install Date"),
@@ -684,7 +693,7 @@ class PDFReportGenerator(object):
                                        Rule((0, 0), 7.5 * 90, thickness=0.1)])
 
                 rpt.pageheader = Band(
-                    [Image(pos=(570, -25), width=103, height=42, text="/home/kaufmann/logo.png"),
+                    [#Image(pos=(570, -25), width=103, height=42, text="/home/kaufmann/logo.png"),
                      Element((0, 0), ("Times-Bold", 20), text="Available Licenses for {}".format(row_collector.row_info[5])),
                      Element((0, 24), ("Helvetica", 12), text="License Name"),
                      Element((500, 24), ("Helvetica", 12), text="License Key"),
@@ -718,7 +727,8 @@ class PDFReportGenerator(object):
                                        Rule((0, 0), 7.5 * 90, thickness=0.1)])
 
                 rpt.pageheader = Band(
-                    [Image(pos=(570, -25), width=103, height=42, text="/home/kaufmann/logo.png"),
+                    [#Image(pos=(570, -25), width=103, height=42, text="/home/kaufmann/logo.png"),
+                    Element((570, 0), ("Times-Bold", 20), text="_LOGO_"),
                     Element((0, 0), ("Times-Bold", 20), text="Installed Packages for {}".format(row_collector.row_info[5])),
                     Element((0, 24), ("Helvetica", 12), text="Name"),
                     Element((400, 24), ("Helvetica", 12), text="Version"),
@@ -753,7 +763,8 @@ class PDFReportGenerator(object):
                                        Rule((0, 0), 7.5 * 90, thickness=0.1)])
 
                 rpt.pageheader = Band(
-                    [Image(pos=(570, -25), width=103, height=42, text="/home/kaufmann/logo.png"),
+                    [#Image(pos=(570, -25), width=103, height=42, text="/home/kaufmann/logo.png"),
+                    Element((570, 0), ("Times-Bold", 20), text="_LOGO_"),
                     Element((0, 0), ("Times-Bold", 20), text="Available Updates for {}".format(row_collector.row_info[5])),
                     Element((0, 24), ("Helvetica", 12), text="Update Name"),
                     Element((400, 24), ("Helvetica", 12), text="Version"),
@@ -901,9 +912,10 @@ class PDFReportGenerator(object):
         PH = Paragraph('<font face="times-bold" size="22">Hardware Report for {}</font>'.format(
             hardware_report_ar.device.name), styleSheet["BodyText"])
 
-        logo = Image(open("/home/kaufmann/logo.png"))
-        logo.drawHeight = 42
-        logo.drawWidth = 103
+        #logo = Image(open("/home/kaufmann/logo.png"))
+        #logo.drawHeight = 42
+        #logo.drawWidth = 103
+        logo = Paragraph('<font face="times-bold" size="22">_LOGO_</font>', styleSheet["BodyText"])
 
         data = [[PH, logo]]
 
@@ -1012,9 +1024,11 @@ class PDFReportGenerator(object):
 
         PH = Paragraph('<font face="times-bold" size="22">Contents</font>', styleSheet["BodyText"])
 
-        logo = Image(open("/home/kaufmann/logo.png"))
-        logo.drawHeight = 42
-        logo.drawWidth = 103
+        #logo = Image(open("/home/kaufmann/logo.png"))
+        #logo.drawHeight = 42
+        #logo.drawWidth = 103
+
+        logo = Paragraph('<font face="times-bold" size="22">_LOGO_</font>', styleSheet["BodyText"])
 
         data = [[PH, logo]]
 
@@ -1049,7 +1063,7 @@ class PDFReportGenerator(object):
         prefix_1 = 1
         prefix_2 = 1
 
-        top_margin = 50
+        top_margin = 75
 
         for page_num in sorted(page_num_headings.keys()):
             for heading, indent in page_num_headings[page_num]:
