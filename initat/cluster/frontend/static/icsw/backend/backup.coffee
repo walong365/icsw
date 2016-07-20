@@ -705,5 +705,16 @@ angular.module(
             @simple_attributes = [
                 "type", "name", "description", "system_template", "parent_template", "user",
             ]
+]).service("icswStaticAssetTemplateFieldBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswStaticAssetTemplateFieldBackupDefinition extends icswBackupDefinition
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "name", "field_description", "field_type", "optional", "consumable",
+                "default_value_str", "default_value_int", "default_value_date",
+                "has_bounds", "value_int_lower_bound", "value_int_upper_bound",
+                "monitor", "static_asset_template",
+            ]
 ])
 

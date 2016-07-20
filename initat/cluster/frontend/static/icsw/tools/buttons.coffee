@@ -159,6 +159,7 @@ angular.module(
 """
         scope:
             flag: "="
+            callback: "=icswCallback"
         link: (scope, element, attrs) ->
             _yes_value = if attrs.icswYes? then attrs.icswYes else "yes"
             _no_value = if attrs.icswNo? then attrs.icswNo else "no"
@@ -166,9 +167,12 @@ angular.module(
                 _disabled = true
             else
                 _disabled = false
+
             scope.change_value = ($event) ->
                 if not _disabled
                     scope.flag = !scope.flag
+                if attrs.icswCallback?
+                    scope.callback($event)
                 $event.preventDefault()
 
             scope.get_value = () ->
