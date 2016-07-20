@@ -57,14 +57,16 @@ device_report_module = angular.module(
 ]).controller("icswDeviceReportCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "blockUI",
-    "icswTools", "icswSimpleAjaxCall", "ICSW_URLS",
+    "icswTools", "icswSimpleAjaxCall", "ICSW_URLS", "FileUploader", "icswCSRFService"
     "icswDeviceTreeService", "icswDeviceTreeHelperService", "$timeout",
-    "icswDispatcherSettingTreeService", "Restangular", "icswActiveSelectionService"
+    "icswDispatcherSettingTreeService", "Restangular", "icswActiveSelectionService",
+    "icswComplexModalService"
 (
     $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI,
-    icswTools, icswSimpleAjaxCall, ICSW_URLS,
+    icswTools, icswSimpleAjaxCall, ICSW_URLS, FileUploader, icswCSRFService
     icswDeviceTreeService, icswDeviceTreeHelperService, $timeout,
-    icswDispatcherSettingTreeService, Restangular, icswActiveSelectionService
+    icswDispatcherSettingTreeService, Restangular, icswActiveSelectionService,
+    icswComplexModalService
 ) ->
     # struct to hand over to VarCtrl
     $scope.struct = {
@@ -94,7 +96,19 @@ device_report_module = angular.module(
         reload_timer: undefined
         # reload flag
         reloading: false
+        gfx_b64_data: undefined
+
     }
+
+    icswSimpleAjaxCall({
+                url: ICSW_URLS.REPORT_GET_REPORT_GFX
+                dataType: 'json'
+            }).then(
+                (result) ->
+                    $scope.struct.gfx_b64_data = result.gfx
+                (not_ok) ->
+                    console.log not_ok
+            )
 
     $scope.new_devsel = (devs) ->
         $q.all(
@@ -136,6 +150,64 @@ device_report_module = angular.module(
                 document.body.removeChild(downloadLink)
             (not_ok) ->
                 console.log not_ok
+        )
+
+    $scope.create_or_edit = ($event, create_mode, parent, obj) ->
+        if create_mode
+            edit_obj = {
+                name: "New gfx"
+                location: 0
+            }
+        sub_scope = $scope.$new(false)
+        # location references
+        sub_scope.loc = parent
+        sub_scope.edit_obj = edit_obj
+        # copy flag
+        sub_scope.create_mode = create_mode
+
+        # init uploaded
+        sub_scope.uploader = new FileUploader(
+            url: ICSW_URLS.REPORT_UPLOAD_REPORT_GFX
+            scope: $scope
+            queueLimit: 1
+            alias: "gfx"
+            removeAfterUpload: true
+            autoUpload: true
+        )
+
+        icswCSRFService.get_token().then(
+            (token) ->
+                sub_scope.uploader.formData.push({"csrfmiddlewaretoken": token})
+        )
+
+        icswComplexModalService(
+            {
+                title: "Upload Logo"
+                message: $compile($templateCache.get("icsw.device.report.upload.form"))(sub_scope)
+                ok_label: if create_mode then "Create" else "Modify"
+                ok_callback: (modal) ->
+                    d = $q.defer()
+                    d.resolve("created gfx")
+
+                    icswSimpleAjaxCall({
+                        url: ICSW_URLS.REPORT_GET_REPORT_GFX
+                        dataType: 'json'
+                    }).then(
+                        (result) ->
+                            $scope.struct.gfx_b64_data = result.gfx
+                        (not_ok) ->
+                            console.log not_ok
+                    )
+
+                    return d.promise
+                cancel_callback: (modal) ->
+                    d = $q.defer()
+                    d.resolve("cancel")
+                    return d.promise
+            }
+        ).then(
+            (fin) ->
+                sub_scope.$destroy()
         )
 
 ]).directive("icswDeviceTreeReportRow",

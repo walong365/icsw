@@ -11,14 +11,22 @@
                     <uib-tab-heading>
                         <span>Settings</span>
                     </uib-tab-heading>
+                    <div class="input-group">
+                        <br/><label class="control-label">Current Report Logo</label><br/>
+                        <img data-ng-src="data:image/png;base64,{{struct.gfx_b64_data}}"/>
+                    </div>
 
-
+                    <div class="input-group">
+                        <br/><label class="control-label">Change Report Logo</label><br/>
+                        <icsw-tools-button type="create" size="xs" value="Upload Report Logo" ng-click="create_or_edit($event, true, loc.location)"></icsw-tools-button>
+                    </div>
                 </uib-tab>
 
                 <uib-tab>
                     <uib-tab-heading>
                         <span>Selection</span>
                     </uib-tab-heading>
+                    <br/>
                     <div class="panel panel-default">
                         <div class="panel-body" style="padding: 6px 15px">
                             <table
@@ -54,14 +62,17 @@
                     <uib-tab-heading>
                         <span>Generate</span>
                     </uib-tab-heading>
-                    <div class="dropdown">
-                        <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">
-                            Generate Report
-                            <span class="caret"></span>
-                        </button>
-                        <ul class="dropdown-menu">
-                            <li><a href="" ng-click='downloadPdf()'>as PDF</a></li>
-                        </ul>
+                    <div class="input-group">
+                        <br/><label class="control-label">Generate Report</label><br/>
+                        <div class="dropdown">
+                            <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">
+                                Generate Report
+                                <span class="caret"></span>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a href="" ng-click='downloadPdf()'>as PDF</a></li>
+                            </ul>
+                        </div>
                     </div>
                 </uib-tab>
             </uib-tabset>
@@ -116,4 +127,22 @@
     <td colspan="2">
         o
     </td>
+</script>
+
+<script type="text/ng-template" id="icsw.device.report.upload.form">
+    <form class="form-horizontal" name="form_data">
+        <div>
+            <fieldset>
+                <legend>Select File</legend>
+                <div class="form-group">
+                    <label class="control-label col-sm-3">
+                        File
+                    </label>
+                    <div class="col-sm-6">
+                        <input type="file" nv-file-select class="form-control" uploader="uploader"/>
+                    </div>
+                </div>
+            </fieldset>
+        </div>
+    </form>
 </script>

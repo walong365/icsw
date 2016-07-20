@@ -29,9 +29,13 @@ from django.conf.urls.static import static
 from initat.cluster.frontend import rest_views, device_views, main_views, network_views, \
     monitoring_views, user_views, package_views, config_views, boot_views, session_views, rrd_views, \
     base_views, setup_views, doc_views, license_views, model_history_views, discovery_views, rms_views, \
-    lic_views, auth_views, asset_views
+    lic_views, auth_views, asset_views, report_views
 
 # handler404 = main_views.index.as_view()
+report_patterns = [
+    url("^upload_report_gfx$", report_views.upload_report_gfx.as_view(), name="upload_report_gfx"),
+    url("^get_report_gfx$", report_views.get_report_gfx.as_view(), name="get_report_gfx"),
+]
 
 asset_patterns = [
     url("^export_assetbatch_to_xlsx$", asset_views.export_assetbatch_to_xlsx.as_view(), name="export_assetbatch_to_xlsx"),
@@ -372,6 +376,7 @@ my_url_patterns = [
     url(r"^system/", include(system_patterns, namespace="system")),
     url(r"^discovery/", include(discovery_patterns, namespace="discovery")),
     url(r"^asset/", include(asset_patterns, namespace="asset")),
+    url(r"^report/", include(report_patterns, namespace="report")),
 ]
 
 urlpatterns = [

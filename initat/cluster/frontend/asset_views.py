@@ -516,6 +516,7 @@ class export_assetbatch_to_xlsx(View):
                 }
             )
         )
+import base64
 
 class PDFReportGenerator(object):
     class Bookmark(object):
@@ -542,12 +543,34 @@ class PDFReportGenerator(object):
             self.number_of_pages += 1
 
     def __init__(self):
+        system_device = device.objects.filter(name="METADEV_system")[0]
+        report_logo = system_device.device_variable_set.filter(name="__REPORT_LOGO__")
 
-        #self.logo_buffer = location_gfx.objects.filter(name="__REPORT__LOGO")
-        #if self.logo_buffer:
-        #    self.logo_buffer = BytesIO(self.logo_buffer[0].get_image())
+        self.logo_buffer = BytesIO()
+        if report_logo:
+            report_logo = report_logo[0]
+            data = base64.b64decode(report_logo.val_blob)
+            self.logo_buffer.write(data)
+        else:
+            # generate a simple placeholder image
+            from PIL import Image as PILImage
+
+            logo = PILImage.new('RGB', (255, 255), "black")  # create a new black image
+            logo.save(self.logo_buffer, format="BMP")
 
         self.reports = []
+
+    def __get_logo_helper(self, value):
+        import tempfile
+        from reportlab.lib.utils import ImageReader
+
+        _tmp_file = tempfile.NamedTemporaryFile()
+        self.logo_buffer.seek(0)
+        _tmp_file.write(self.logo_buffer.read())
+        logo = ImageReader(_tmp_file.name)
+        _tmp_file.close()
+
+        return logo
 
     def generate_report(self, _device):
         report = PDFReportGenerator.Report(_device)
@@ -585,11 +608,9 @@ class PDFReportGenerator(object):
         PH = Paragraph('<font face="times-bold" size="22">Overview for {}</font>'.format(
             _device.name), styleSheet["BodyText"])
 
-        #logo = Image(self.logo_buffer)
-        #logo.drawHeight = 42
-        #logo.drawWidth = 103
-
-        logo = Paragraph('<font face="times-bold" size="22">_LOGO_</font>', styleSheet["BodyText"])
+        logo = Image(self.logo_buffer)
+        logo.drawHeight = 42
+        logo.drawWidth = 103
 
         data = [[PH, logo]]
 
@@ -718,8 +739,7 @@ class PDFReportGenerator(object):
                                        Element((600, 0), ("Helvetica", 6), key='update_status'),
                                        Rule((0, 0), 7.5 * 90, thickness=0.1)])
 
-                rpt.pageheader = Band([#Image(pos=(570, -25), width=103, height=42, text="/home/kaufmann/logo.png"),
-                                       Element((570, 0), ("Times-Bold", 20), text="_LOGO_"),
+                rpt.pageheader = Band([Image(pos=(570, -25), width=103, height=42, getvalue=self.__get_logo_helper),
                                        Element((0, 0), ("Times-Bold", 20), text="Installed Updates for {}".format(row_collector.row_info[5])),
                                        Element((0, 24), ("Helvetica", 12), text="Update Name"),
                                        Element((400, 24), ("Helvetica", 12), text="Install Date"),
@@ -750,7 +770,7 @@ class PDFReportGenerator(object):
                                        Rule((0, 0), 7.5 * 90, thickness=0.1)])
 
                 rpt.pageheader = Band(
-                    [#Image(pos=(570, -25), width=103, height=42, text="/home/kaufmann/logo.png"),
+                    [Image(pos=(570, -25), width=103, height=42, getvalue=self.__get_logo_helper),
                      Element((0, 0), ("Times-Bold", 20), text="Available Licenses for {}".format(row_collector.row_info[5])),
                      Element((0, 24), ("Helvetica", 12), text="License Name"),
                      Element((500, 24), ("Helvetica", 12), text="License Key"),
@@ -784,8 +804,7 @@ class PDFReportGenerator(object):
                                        Rule((0, 0), 7.5 * 90, thickness=0.1)])
 
                 rpt.pageheader = Band(
-                    [#Image(pos=(570, -25), width=103, height=42, text="/home/kaufmann/logo.png"),
-                    Element((570, 0), ("Times-Bold", 20), text="_LOGO_"),
+                    [Image(pos=(570, -25), width=103, height=42, getvalue=self.__get_logo_helper),
                     Element((0, 0), ("Times-Bold", 20), text="Installed Packages for {}".format(row_collector.row_info[5])),
                     Element((0, 24), ("Helvetica", 12), text="Name"),
                     Element((400, 24), ("Helvetica", 12), text="Version"),
@@ -820,8 +839,7 @@ class PDFReportGenerator(object):
                                        Rule((0, 0), 7.5 * 90, thickness=0.1)])
 
                 rpt.pageheader = Band(
-                    [#Image(pos=(570, -25), width=103, height=42, text="/home/kaufmann/logo.png"),
-                    Element((570, 0), ("Times-Bold", 20), text="_LOGO_"),
+                    [Image(pos=(570, -25), width=103, height=42, getvalue=self.__get_logo_helper),
                     Element((0, 0), ("Times-Bold", 20), text="Available Updates for {}".format(row_collector.row_info[5])),
                     Element((0, 24), ("Helvetica", 12), text="Update Name"),
                     Element((400, 24), ("Helvetica", 12), text="Version"),
@@ -969,10 +987,9 @@ class PDFReportGenerator(object):
         PH = Paragraph('<font face="times-bold" size="22">Hardware Report for {}</font>'.format(
             hardware_report_ar.device.name), styleSheet["BodyText"])
 
-        #logo = Image(open("/home/kaufmann/logo.png"))
-        #logo.drawHeight = 42
-        #logo.drawWidth = 103
-        logo = Paragraph('<font face="times-bold" size="22">_LOGO_</font>', styleSheet["BodyText"])
+        logo = Image(self.logo_buffer)
+        logo.drawHeight = 42
+        logo.drawWidth = 103
 
         data = [[PH, logo]]
 
@@ -1081,11 +1098,9 @@ class PDFReportGenerator(object):
 
         PH = Paragraph('<font face="times-bold" size="22">Contents</font>', styleSheet["BodyText"])
 
-        #logo = Image(open("/home/kaufmann/logo.png"))
-        #logo.drawHeight = 42
-        #logo.drawWidth = 103
-
-        logo = Paragraph('<font face="times-bold" size="22">_LOGO_</font>', styleSheet["BodyText"])
+        logo = Image(self.logo_buffer)
+        logo.drawHeight = 42
+        logo.drawWidth = 103
 
         data = [[PH, logo]]
 
