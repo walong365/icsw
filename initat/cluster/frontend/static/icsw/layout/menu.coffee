@@ -27,11 +27,13 @@ menu_module = angular.module(
 [
     "$scope", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswAcessLevelService",
     "initProduct", "icswLayoutSelectionDialogService", "icswActiveSelectionService",
-    "$q", "icswUserService", "blockUI", "$state", "icswSystemLicenseDataService", "$rootScope"
+    "$q", "icswUserService", "blockUI", "$state", "icswSystemLicenseDataService", "$rootScope",
+    "icswRouteHelper",
 (
     $scope, $window, ICSW_URLS, icswSimpleAjaxCall, icswAcessLevelService,
     initProduct, icswLayoutSelectionDialogService, icswActiveSelectionService,
-    $q, icswUserService, blockUI, $state, icswSystemLicenseDataService, $rootScope
+    $q, icswUserService, blockUI, $state, icswSystemLicenseDataService, $rootScope,
+    icswRouterHelper,
 ) ->
     # init service types
     $scope.ICSW_URLS = ICSW_URLS
@@ -48,11 +50,11 @@ menu_module = angular.module(
         [
             icswSimpleAjaxCall(
                 {
-                    url: ICSW_URLS.MAIN_GET_DOCU_INFO,
+                    url: ICSW_URLS.MAIN_GET_DOCU_INFO
                     dataType: "json"
                 }
-            ),
-            icswUserService.load($scope.$id),
+            )
+            icswUserService.load($scope.$id)
         ]
     ).then(
         (data) ->
@@ -102,7 +104,9 @@ menu_module = angular.module(
         from_main = if from_state.name.match(/^main/) then true else false
         console.log "$stateChangeStart from '#{from_state.name}' (#{from_main}) to '#{to_state.name}' (#{to_main})"
         if to_main and not from_main
-            true
+            if to_state.icswData? and not to_state.icswData.$$allowed and $scope.struct.current_user?
+                console.error "target state not allowed", to_state.icswData.$$allowed, $scope.struct.current_user
+                event.preventDefault()
         else if to_state.name == "login"
             # logout if logged in
             if icswUserService.user_present()
@@ -125,6 +129,14 @@ menu_module = angular.module(
             )
         else if not from_main and to_main
             $scope.struct.current_user = icswUserService.get().user
+            _helper = icswRouterHelper.get_struct()
+            # todo, unify rights checking
+            # console.log _helper.valid
+            # if $scope.struct.current_user? and $state.current.icswData?
+            #    if not $state.current.icswData.$$allowed
+            #        _to_state = "main.dashboard"
+            #        console.error "target state #{to_state.name} not allowed, going to #{_to_state}"
+            #        $state.go(_to_state)
             # console.log to_params, $scope
         else
             # we allow one gentle transfer

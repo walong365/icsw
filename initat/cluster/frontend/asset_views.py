@@ -459,9 +459,11 @@ class export_scheduled_runs_to_csv(View):
 
         schedule_items = ScheduleItem.objects.select_related("device", "dispatch_setting").all()
 
-        base_header = ['Device Name',
-                       'Planned Time',
-                       'Dispatch Setting Name']
+        base_header = [
+            'Device Name',
+            'Planned Time',
+            'Dispatch Setting Name'
+        ]
 
         writer.writerow(base_header)
 
@@ -599,9 +601,6 @@ class export_assetbatch_to_pdf(View):
 
         else:
             self.rows.append([str(item) for item in _row])
-
-
-
 
     @method_decorator(login_required)
     def post(self, request):

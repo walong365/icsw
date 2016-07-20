@@ -54,11 +54,13 @@ menu_module = angular.module(
             icswData: icswRouteExtensionProvider.create
                 pageTitle: "ICSW Main page"
             resolve:
-                user: ["$q", "icswUserService", ($q, icswUserService) ->
+                user: ["$q", "icswUserService", "icswRouteHelper", ($q, icswUserService, icswRouteHelper) ->
                     _defer = $q.defer()
                     icswUserService.load("router").then(
                         (user) ->
                             if user.user.idx
+                                # check rights, acls might still be missing, TODO, Fixme ...
+                                icswRouteHelper.check_rights(user)
                                 _defer.resolve(user)
                             else
                                 _defer.reject(user)

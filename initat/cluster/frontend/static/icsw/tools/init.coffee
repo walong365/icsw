@@ -437,6 +437,10 @@ angular.module(
             if not _init
                 init_struct()
             return _struct
+            
+        check_rights: (user) ->
+            _user = user
+            _check_rights()
     }
 ]).directive("icswSelMan",
 [

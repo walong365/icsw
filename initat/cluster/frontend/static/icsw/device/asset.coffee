@@ -33,6 +33,7 @@ device_asset_module = angular.module(
             icswData: icswRouteExtensionProvider.create
                 pageTitle: "Device Assets"
                 rights: ["device.assets"]
+                service_types: ["discovery-server"]
                 menuEntry:
                     menukey: "dev"
                     icon: "fa-code"
