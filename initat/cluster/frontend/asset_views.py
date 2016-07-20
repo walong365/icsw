@@ -24,33 +24,38 @@ import base64
 import csv
 import datetime
 import json
+import logging
 import tempfile
 
 import pytz
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
+from initat.cluster.backbone.models.functions import can_delete_obj, get_change_reset_list
 from django.db.models import Q, Count, Case, When, IntegerField, Sum
 from django.http import HttpResponse
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from rest_framework import viewsets
+from rest_framework import viewsets, status
 from rest_framework.response import Response
 from io import BytesIO
 
 from initat.cluster.backbone.models import device, AssetPackage, AssetRun, \
-    AssetPackageVersion, AssetType, StaticAssetTemplate, user, RunStatus, RunResult, PackageTypeEnum, AssetBatch
+    AssetPackageVersion, AssetType, StaticAssetTemplate, user, RunStatus, RunResult, PackageTypeEnum, \
+    AssetBatch, StaticAssetTemplateField
 from initat.cluster.backbone.models.dispatch import ScheduleItem
 from initat.cluster.backbone.serializers import AssetRunDetailSerializer, ScheduleItemSerializer, \
-    AssetPackageSerializer, AssetRunOverviewSerializer, StaticAssetTemplateSerializer
-from initat.cluster.backbone.models import location_gfx
-
+    AssetPackageSerializer, AssetRunOverviewSerializer, StaticAssetTemplateSerializer, \
+    StaticAssetTemplateFieldSerializer
 
 try:
     from openpyxl import Workbook
     from openpyxl.writer.excel import save_virtual_workbook
 except ImportError:
     Workbook = None
+
+
+logger = logging.getLogger(__name__)
 
 
 class run_assetrun_for_device_now(View):
@@ -315,8 +320,58 @@ class StaticAssetTemplateViewSet(viewsets.ViewSet):
         if new_obj.is_valid():
             new_obj.save()
         else:
-            raise ValidationError("New Template is not valid")
+            raise ValidationError("New Template is not valid: {}".format(new_obj.errors))
         return Response(new_obj.data)
+
+    @method_decorator(login_required)
+    def create_field(self, request):
+        new_obj = StaticAssetTemplateFieldSerializer(data=request.data)
+        if new_obj.is_valid():
+            new_obj.save()
+        else:
+            raise ValidationError("New TemplateField is not valid: {}".format(new_obj.errors))
+        return Response(new_obj.data)
+
+    @method_decorator(login_required())
+    def delete_field(self, request, **kwargs):
+        cur_obj = StaticAssetTemplateField.objects.get(Q(pk=kwargs["pk"]))
+        can_delete_answer = can_delete_obj(cur_obj)
+        if can_delete_answer:
+            cur_obj.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+            # it makes no sense to return something meaningful because the DestroyModelMixin returns
+            # a 204 status on successful deletion
+            # print "****", "del"
+            # print unicode(cur_obj), resp.data
+            # if not resp.data:
+            #    resp.data = {}
+            # resp.data["_messages"] = [u"deleted '%s'" % (unicode(cur_obj))]
+            # return resp
+        else:
+            raise ValueError(can_delete_answer.msg)
+
+    @method_decorator(login_required())
+    def store_field(self, request, **kwargs):
+        _prev_field = StaticAssetTemplateField.objects.get(Q(pk=kwargs["pk"]))
+        # print _prev_var
+        _cur_ser = StaticAssetTemplateFieldSerializer(
+            StaticAssetTemplateField.objects.get(Q(pk=kwargs["pk"])),
+            data=request.data
+        )
+        # print "*" * 20
+        # print _cur_ser.device_variable_type
+        if _cur_ser.is_valid():
+            _new_field = _cur_ser.save()
+        else:
+            # todo, fixme
+            print dir(_cur_ser), _cur_ser.errors, _cur_ser
+        resp = _cur_ser.data
+        c_list, r_list = get_change_reset_list(_prev_field, _new_field, request.data)
+        resp = Response(resp)
+        # print c_list, r_list
+        resp.data["_change_list"] = c_list
+        resp.data["_reset_list"] = r_list
+        return resp
 
 
 class copy_static_template(View):
@@ -405,9 +460,11 @@ class export_scheduled_runs_to_csv(View):
 
         schedule_items = ScheduleItem.objects.select_related("device", "dispatch_setting").all()
 
-        base_header = ['Device Name',
-                       'Planned Time',
-                       'Dispatch Setting Name']
+        base_header = [
+            'Device Name',
+            'Planned Time',
+            'Dispatch Setting Name'
+        ]
 
         writer.writerow(base_header)
 
@@ -1313,6 +1370,7 @@ def sizeof_fmt(num, suffix='B'):
             return "%3.1f%s%s" % (num, unit, suffix)
         num /= 1024.0
     return "%.1f%s%s" % (num, 'Yi', suffix)
+
 
 def _generate_csv_entry_for_assetrun(ar, row_writer_func):
     base_header = [

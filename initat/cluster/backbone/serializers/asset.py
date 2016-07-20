@@ -41,6 +41,7 @@ __all__ = [
     "AssetHardwareEntrySerializer",
     "AssetProcessEntrySerializer",
     "StaticAssetTemplateSerializer",
+    "StaticAssetTemplateFieldSerializer",
     "AssetLicenseEntrySerializer",
     "AssetUpdateEntrySerializer",
     "AssetPCIEntrySerializer",

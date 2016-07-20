@@ -1438,7 +1438,7 @@ class StaticAssetTemplateField(models.Model):
     # name
     name = models.CharField(max_length=64, default="")
     # description
-    field_description = models.TextField(default="")
+    field_description = models.TextField(default="", blank=True)
     field_type = models.IntegerField(choices=[(_type.value, _type.name) for _type in StaticAssetTemplateFieldType])
     # is optional
     optional = models.BooleanField(default=True)

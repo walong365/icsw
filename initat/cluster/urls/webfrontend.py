@@ -54,6 +54,16 @@ asset_patterns = [
         asset_views.StaticAssetTemplateViewSet.as_view({"post": "create_template"}),
         name="create_static_asset_template"
     ),
+    url(
+        "^static_asset_field/(?P<pk>[0-9]+)$",
+        asset_views.StaticAssetTemplateViewSet.as_view({"delete": "delete_field", "put": "store_field"}),
+        name="static_asset_template_field_detail",
+    ),
+    url(
+        "^static_asset_field/$",
+        asset_views.StaticAssetTemplateViewSet.as_view({"post": "create_field"}),
+        name="static_asset_template_field_call",
+    ),
 ]
 
 session_patterns = [

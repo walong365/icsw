@@ -393,6 +393,7 @@
                         <th>Consumable</th>
                         <th>Bounds</th>
                         <th>Monitor</th>
+                        <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -405,12 +406,137 @@
                         <td class="text-center">{{ field.consumable | yesno1 }}</td>
                         <td class="text-center">{{ field.has_bounds | yesno1 }}</td>
                         <td class="text-center">{{ field.monitor | yesno1 }}</td>
+                        <td>
+                            <icsw-tools-button type="modify" size="xs" ng-click="modify_or_create_field($event, edit_obj, field, false)"></icsw-tools-button>
+                            <icsw-tools-button type="delete" size="xs" ng-click="delete_field($event, edit_obj, field)"></icsw-tools-button>
+                        </td>
                     </tr>
                 </tbody>
             </table>
             <div class="form-group row">
                 <div class="controls col-xs-12">
-                    <icsw-tools-button type="create" size="xs" ng-click="create_new_field($event)"></icsw-tools-button>
+                    <icsw-tools-button type="create" size="xs" ng-click="modify_or_create_field($event, edit_obj, null, true)"></icsw-tools-button>
+                </div>
+            </div>
+        </fieldset>
+    </form>
+</script>
+
+<script type="text/ng-template" id="icsw.static.asset.field.form">
+    <form class="form-horizontal" name="form_data">
+        <fieldset>
+            <legend>Base settings</legend>
+            <div class="form-group">
+                <label class="control-label col-xs-3 requiredField">
+                    Name<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-xs-7">
+                    <input class="form-control" ng-model="edit_obj.name"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-xs-3 requiredField">
+                    Description
+                </label>
+                <div class="controls col-xs-7">
+                    <input class="form-control" ng-model="edit_obj.field_description"/>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Type</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Type<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <ui-select ng-model="edit_obj.field_type" style="max-width:400px; min-width:240px;" ng-change="field_changed()">
+                        <ui-select-match class="ui-select-match" placeholder="please select a FieldType">
+                            {{ $select.selected.name }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in field_type_list">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Default value</legend>
+            <div class="form-group" ng-show="edit_obj.field_type == 1">
+                <label class="control-label col-xs-3">
+                    DefaultInteger
+                </label>
+                <div class="controls col-xs-7">
+                    <input class="form-control" type="number" ng-model="edit_obj.default_value_int"/>
+                </div>
+            </div>
+            <div class="form-group" ng-show="edit_obj.field_type == 2">
+                <label class="control-label col-xs-3">
+                    DefaultString
+                </label>
+                <div class="controls col-xs-7">
+                    <input class="form-control" type="text" ng-model="edit_obj.default_value_str"/>
+                </div>
+            </div>
+            <div class="form-group" ng-show="edit_obj.field_type == 3">
+                <label class="control-label col-xs-3">
+                    DefaultDate
+                </label>
+                <div class="controls col-xs-7">
+                    <input class="form-control" type="date" ng-model="edit_obj.$$default_date"/>
+                </div>
+            </div>
+        </fieldset>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Field is optional">
+                        Optional
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.optional" icsw-callback="field_changed"></icsw-tools-yes-no>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Create monitoring entry">
+                        Monitor
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.monitor" icsw-callback="field_changed"></icsw-tools-yes-no>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group" ng-show="edit_obj.field_type == 1">
+                    <label class="col-sm-7 control-label" title="Field is consumable">
+                        consumable
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.consumable" icsw-callback="field_changed"></icsw-tools-yes-no>
+                    </div>
+                </div>
+                <div class="form-group" ng-show="edit_obj.field_type == 1">
+                    <label class="col-sm-7 control-label" title="Field has bounds">
+                        Bounds
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.bounds" icsw-callback="field_changed"></icsw-tools-yes-no>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <fieldset ng-show="edit_obj.field_type == 1 && edit_obj.bounds">
+            <legend>Bounds</legend>
+            <div class="form-group">
+                <label class="control-label col-xs-3">
+                    Bounds
+                </label>
+                <div class="controls col-xs-4">
+                    <input class="form-control" type="number" ng-model="edit_obj.value_int_lower_bound"/>
+                </div>
+                <div class="controls col-xs-4">
+                    <input class="form-control" type="number" ng-model="edit_obj.value_int_upper_bound"/>
                 </div>
             </div>
         </fieldset>
