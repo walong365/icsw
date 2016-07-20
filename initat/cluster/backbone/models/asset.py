@@ -1291,13 +1291,15 @@ class StaticAssetTemplate(models.Model):
     # name of Template
     name = models.CharField(max_length=128, unique=True)
     # description
-    description = models.TextField(default="")
+    description = models.TextField(default="", blank=True)
     # system template (not deleteable)
     system_template = models.BooleanField(default=False)
     # parent template (for copy operations)
     parent_template = models.ForeignKey("backbone.StaticAssetTemplate", null=True)
     # link to creation user
     user = models.ForeignKey("backbone.user", null=True)
+    # enabled
+    enabled = models.BooleanField(default=True)
     # created
     date = models.DateTimeField(auto_now_add=True)
 
@@ -1309,6 +1311,7 @@ class StaticAssetTemplate(models.Model):
             system_template=False,
             parent_template=self,
             user=create_user,
+            enabled=self.enabled,
         )
         nt.save()
         for _field in self.staticassettemplatefield_set.all():
@@ -1335,6 +1338,8 @@ class StaticAssetTemplateField(models.Model):
     optional = models.BooleanField(default=True)
     # is consumable (for integer fields)
     consumable = models.BooleanField(default=False)
+    # field is fixed (cannot be altered)
+    fixed = models.BooleanField(default=False)
     # default value
     default_value_str = models.CharField(default="", blank=True, max_length=255)
     default_value_int = models.IntegerField(default=0)
@@ -1363,6 +1368,7 @@ class StaticAssetTemplateField(models.Model):
             value_int_lower_bound=self.value_int_lower_bound,
             value_int_upper_bound=self.value_int_upper_bound,
             monitor=self.monitor,
+            fixed=self.fixed,
         )
         nf.save()
         return nf

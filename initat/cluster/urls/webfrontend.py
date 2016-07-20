@@ -55,6 +55,11 @@ asset_patterns = [
         name="create_static_asset_template"
     ),
     url(
+        "^static_template/(?P<pk>[0-9]+$)",
+        asset_views.StaticAssetTemplateViewSet.as_view({"delete": "delete_template"}),
+        name="static_asset_template_detail"
+    ),
+    url(
         "^static_asset_field/(?P<pk>[0-9]+)$",
         asset_views.StaticAssetTemplateViewSet.as_view({"delete": "delete_field", "put": "store_field"}),
         name="static_asset_template_field_detail",

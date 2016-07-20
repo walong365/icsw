@@ -1128,7 +1128,7 @@ device_asset_module = angular.module(
 
         delete_template: (del_obj) =>
             d = $q.defer()
-            Restangular.restangularizeElement(null, del_obj, ICSW_URLS.REST_STATIC_ASSET_TEMPLATE_DETAIL.slice(1).slice(0, -2))
+            Restangular.restangularizeElement(null, del_obj, ICSW_URLS.ASSET_STATIC_ASSET_TEMPLATE_DETAIL.slice(1).slice(0, -2))
             del_obj.remove().then(
                 (removed) =>
                     _.remove(@list, (entry) -> return entry.idx == del_obj.idx)
