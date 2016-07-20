@@ -762,6 +762,7 @@ class AssetType(IntEnum):
     PCI = 9
     PRETTYWINHW = 10
 
+
 class ScanType(IntEnum):
     HM = 1
     NRPE = 2
@@ -846,6 +847,7 @@ memory_entry_memory_types = {
 # (Django Database) Classes
 ########################################################################################################################
 
+
 class AssetHWMemoryEntry(models.Model):
     idx = models.AutoField(primary_key=True)
 
@@ -893,6 +895,7 @@ class AssetHWMemoryEntry(models.Model):
 
         return "Unknown"
 
+
 class AssetHWCPUEntry(models.Model):
     idx = models.AutoField(primary_key=True)
 
@@ -905,6 +908,7 @@ class AssetHWCPUEntry(models.Model):
     def __unicode__(self):
         return "CPUEntry[CPUname:{}|Numberofcores:{}]".format(self.cpuname, self.numberofcores)
 
+
 class AssetHWGPUEntry(models.Model):
     idx = models.AutoField(primary_key=True)
 
@@ -916,6 +920,7 @@ class AssetHWGPUEntry(models.Model):
 
     def __unicode__(self):
         return "GPUEntry[GPUname:{}|Driverversion:{}]".format(self.gpuname, self.driverversion)
+
 
 class AssetHWHDDEntry(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -930,6 +935,7 @@ class AssetHWHDDEntry(models.Model):
 
     def __unicode__(self):
         return "HDDEntry[Name:{}|Serialnumber:{}|Size:{}]".format(self.name, self.serialnumber, self.size)
+
 
 class AssetHWLogicalEntry(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -967,6 +973,7 @@ class AssetHWDisplayEntry(models.Model):
             self.ypixels,
             self.manufacturer
         )
+
 
 class AssetPackage(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -1413,6 +1420,9 @@ class StaticAssetTemplate(models.Model):
             user=create_user,
         )
         nt.save()
+        for _field in self.staticassettemplatefield_set.all():
+            nt.staticassettemplatefield_set.add(_field.copy(nt, create_user))
+            print _field
         return nt
 
     class CSW_Meta:
@@ -1446,6 +1456,25 @@ class StaticAssetTemplateField(models.Model):
     monitor = models.BooleanField(default=False)
     # created
     date = models.DateTimeField(auto_now_add=True)
+
+    def copy(self, new_template, create_user):
+        nf = StaticAssetTemplateField(
+            static_asset_template=new_template,
+            name=self.name,
+            field_description=self.field_description,
+            field_type=self.field_type,
+            optional=self.optional,
+            consumable=self.consumable,
+            default_value_str=self.default_value_str,
+            default_value_int=self.default_value_int,
+            default_value_date=self.default_value_date,
+            has_bounds=self.has_bounds,
+            value_int_lower_bound=self.value_int_lower_bound,
+            value_int_upper_bound=self.value_int_upper_bound,
+            monitor=self.monitor,
+        )
+        nf.save()
+        return nf
 
     class Meta:
         unique_together = [

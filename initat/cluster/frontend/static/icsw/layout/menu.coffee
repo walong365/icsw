@@ -149,11 +149,6 @@ menu_module = angular.module(
     #     icswLayoutSelectionDialogService.show_dialog()
 
     # apply selected theme if theme is set in session
-    ###
-    current_theme = $window.sessionStorage.getItem('current_theme')
-    if current_theme != null
-        $rootScope.switch_theme(current_theme)
-    ###
 ]).directive("icswLayoutMenubar",
 [
     "$templateCache",
@@ -521,4 +516,18 @@ menu_module = angular.module(
             )
 
     }
+]).controller("icswMenuSubCtrl",
+[
+    "$scope", "icswLayoutSelectionDialogService", "icswActiveSelectionService",
+    "icswUserService", "$state",
+(
+    $scope, icswLayoutSelectionDialogService, icswActiveSelectionService,
+    icswUserService, $state
+) ->
+    $scope.device_quickselection = (onoff) ->
+        icswLayoutSelectionDialogService.quick_dialog(onoff)
+    $scope.show_submenu = false
+    $scope.sel_devices = 3
+    $scope.breadcrumb = "Devices > Device configuration"
+
 ])

@@ -233,10 +233,10 @@ user_module = angular.module(
 ]).service("icswUserService",
 [
     "$q", "ICSW_URLS", "icswSimpleAjaxCall", "$rootScope", "ICSW_SIGNALS",
-    "Restangular", "icswUser", "icswTreeBase", "setCurrentTheme",
+    "Restangular", "icswUser", "icswTreeBase", "themeService",
 (
     $q, ICSW_URLS, icswSimpleAjaxCall, $rootScope, ICSW_SIGNALS,
-    Restangular, icswUser, icswTreeBase, setCurrentTheme
+    Restangular, icswUser, icswTreeBase, themeService
 ) ->
     class icswUserService extends icswTreeBase
         get: () =>
@@ -266,7 +266,7 @@ user_module = angular.module(
 
         update: () =>
             result = @get_result()
-            setCurrentTheme(result.user.ui_theme_selection)
+            themeService.setcurrent(result.user.ui_theme_selection)
             return result.update_user()
 
     return new icswUserService(

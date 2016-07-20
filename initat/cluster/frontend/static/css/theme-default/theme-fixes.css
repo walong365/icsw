@@ -38,3 +38,23 @@ icsw-tools-button{
 .table-pager .pagination {
     margin: 0;
 }
+.submenu-bar {
+    display:block;
+    padding-left:10px;
+    background-color:#dddddd;
+    margin-bottom: 17px;
+    min-height: 30px;
+    vertical-align:10;
+}
+.submenu-bar .sub-breadcrumb {
+    font-size:12px;
+    font-weight:600;
+    color:#333333;
+    margin-top: 7px;
+}
+.submenu-bar .quickselect {
+    font-size:14px;
+    font-weight:600;
+    color:#333333;
+    margin: 7px 10px 0 0;
+}
