@@ -610,7 +610,7 @@ angular.module(
         get_post_view_element: (t_entry) ->
             obj = t_entry.obj
             _r_obj = []
-            if obj.depth > 0
+            if @mode == "obj" and obj.depth > 0
                 num_sel = t_entry.$match_pks.length
                 if num_sel
                     _r_obj.push(
