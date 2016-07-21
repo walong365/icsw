@@ -1,12 +1,5 @@
 <script type="text/ng-template" id="icsw.device.variable.head">
     <tr>
-        <th>Info</th>
-        <th>Name</th>
-        <th>Group</th>
-        <th>Comment</th>
-        <th colspan="1">Action</th>
-    </tr>
-    <tr>
         <td colspan="99">
             <div
                 icsw-tools-pagination
@@ -15,6 +8,13 @@
                 possible-items-by-page="15,30,100,200"
             ></div>
         </td>
+    </tr>
+    <tr>
+        <th>Info</th>
+        <th>Name</th>
+        <th>Group</th>
+        <th>Comment</th>
+        <th colspan="1">Action</th>
     </tr>
 </script>
 
@@ -37,7 +37,7 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.variable.table">
-    <table ng-show="device.$vars_expanded || device.num_filtered" class="table table-condensed table-hover table-striped" style="width:auto;">
+    <table ng-show="device.$vars_expanded || device.num_filtered" class="table table-condensed table-striped simple-border" style="width:auto;">
         <thead>
             <tr>
                 <th>Name</th>
@@ -47,7 +47,7 @@
                 <th>Value</th>
                 <th>Public</th>
                 <th>Inherit</th>
-                <th>source</th>
+                <th>Source</th>
                 <th colspan="1">Action</th>
             </tr>
         </thead>
@@ -81,7 +81,7 @@
         <div class="row">
             <div class="col-sm-5 form-inline">
                 <div class="form-group">
-                    NameFilter: <input class="form-control" ng-model="vars.name_filter" ng-change="new_filter_set()" placeholder="filter"/>
+                    Name Filter: <input class="form-control" ng-model="vars.name_filter" ng-change="new_filter_set()" placeholder="filter"/>
                 </div>
             </div>
         </div>
@@ -90,7 +90,7 @@
             <h4 ng-if="struct.devices.length > 1">
                 <icsw-tools-button type="create" value="create for all" title="create a new variable for all shown devices" ng-click="special_fn($event, 'create_for_all')" size="xs"></icsw-tools-button>
             </h4>
-            <table st-table="var_devices_displayed" st-safe-src="var_devices" class="table table-condensed table-hover" style="width:auto;">
+            <table st-table="var_devices_displayed" st-safe-src="var_devices" class="table table-condensed" style="width:auto;">
                 <thead icsw-device-variable-head></thead>
                 <tbody>
                     <tr icsw-device-variable-row ng-repeat-start="obj in var_devices_displayed" ng-class="get_tr_class(obj)">

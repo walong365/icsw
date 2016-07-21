@@ -279,31 +279,31 @@ angular.module(
             _filter_changed = () =>
                 @props.livestatus_filter.filter_changed()
 
-            _active_color = "#9999ff"
-            _inact_color = "#eeeeee"
+            _active_class = "svg_active"
+            _inact_class = "svg_inactive"
             # console.log "r", @props.livestatus_filter
             _lf = @props.livestatus_filter
             if _lf.f_hosts != _lf.n_hosts
                 _host_text = "#{_lf.f_hosts} / #{_lf.n_hosts}"
                 _host_data = [
-                    [_lf.f_hosts, _active_color, null]
-                    [_lf.n_hosts - _lf.f_hosts, _inact_color, null]
+                    [_lf.f_hosts, _active_class, null]
+                    [_lf.n_hosts - _lf.f_hosts, _inact_class, null]
                 ]
             else
                 _host_text = "#{_lf.n_hosts}"
                 _host_data = [
-                    [_lf.n_hosts, _active_color, null]
+                    [_lf.n_hosts, _active_class, null]
                 ] 
             if _lf.f_services != _lf.n_services
                 _service_text = "#{_lf.f_services} / #{_lf.n_services}"
                 _service_data = [
-                    [_lf.f_services, _active_color, null]
-                    [_lf.n_services - _lf.f_services, _inact_color, null]
+                    [_lf.f_services, _active_class, null]
+                    [_lf.n_services - _lf.f_services, _inact_class, null]
                 ]
             else
                 _service_text = "#{_lf.n_services}"
                 _service_data = [
-                    [_lf.n_services, _active_color, null]
+                    [_lf.n_services, _active_class, null]
                 ]
             _service_buttons = []
             for entry in _lf.service_state_list
@@ -383,7 +383,7 @@ angular.module(
             return div(
                 {key: "top"}
                 table(
-                    {key: "mt", className: "table table-condensed table-hover table-striped", style: {"width": "auto"}}
+                    {key: "mt", className: "table table-condensed", style: {"width": "auto"}}
                     tbody(
                         {key: "body"}
                         tr(

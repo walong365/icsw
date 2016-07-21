@@ -35,7 +35,7 @@ angular.module(
     return React.createClass(
         propTypes: {
             size: React.PropTypes.number
-            # list of (size, color, info) tuples
+            # list of (size, className, info) tuples
             data: React.PropTypes.array
             # title, optional
             title: React.PropTypes.string
@@ -82,7 +82,7 @@ angular.module(
                 _outer = _w / 2.0 * 0.80
                 _outer_detail = _w / 2.0 * 0.95
             _inner = _w / 2.0 * 0.5
-            for [d_size, color, _info, _detail] in _d
+            for [d_size, className, _info, _detail] in _d
                 _idx++
                 if d_size
                     _cur_size += d_size
@@ -106,8 +106,7 @@ angular.module(
                             {
                                 key: "sge.#{_idx}"
                                 d: _call(_inner, _outer, _start_arc, _end_arc)
-                                fill: color
-                                style: {stroke: "#000000", strokeWidth: "0.5px"}
+                                className: "sb_lines #{className}"
                                 onMouseEnter: (event) =>
                                     if _fm != "none"
                                         @handle_mouse_enter(event, _fm)
@@ -131,8 +130,7 @@ angular.module(
                                         {
                                             key: "sge.#{_idx}.#{_sub_idx}"
                                             d: _call(_outer, _outer_detail, _sub_start_arc, _sub_end_arc)
-                                            fill: "#eeeeee"
-                                            style: {stroke: "#000000", strokeWidth: "0.5px"}
+                                            className : "sb_lines svg_inactive"
                                         }
                                     )
                                 )
@@ -143,8 +141,7 @@ angular.module(
                                     {
                                         key: "sge.#{_idx}.none"
                                         d: _call(_outer, _outer_detail, _start_arc, _end_arc)
-                                        fill: "#ffffff"
-                                        style: {stroke: "#000000", strokeWidth: "0.5px"}
+                                        className: "sb_lines svg_white"
                                     }
                                 )
                             )
@@ -158,7 +155,7 @@ angular.module(
                         key: "svg.title"
                         textAnchor: "middle"
                         fontSize: "#{_text_height}px"
-                        fill: "#000000"
+                        className: "svg_txt_color"
                         alignmentBaseline: "middle"
 
                     }
@@ -174,10 +171,9 @@ angular.module(
                         y: 0
                         key: "svg.text"
                         textAnchor: "middle"
-                        fontSize: "12px"
-                        style: {stroke: "#ffffff", strokeWidth: "1px", fill: "#000000"}
                         alignmentBaseline: "middle"
                         paintOrder: "stroke"
+                        className: "svg_stroke default_text"
                     }
                     @props.text
                 )

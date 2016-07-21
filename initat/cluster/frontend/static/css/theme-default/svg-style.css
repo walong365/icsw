@@ -1,18 +1,30 @@
-.sb_lines { stroke: black; stroke-width: 0.5; }
-.pieSegment { stroke-width: 1; stroke-miterlimit: 2; stroke: #fff; }
+/* device colors */
+.svg_dev_up { fill: #66dd66; }
+.svg_dev_down { fill: #ff7777; }
+.svg_dev_unreach { fill: #ff0000; }
+.svg_dev_unknown { fill: #dddddd; }
+.svg_dev_notmonitored { fill: #888888; }
+
+/* service colors */
+.svg_srv_ok { fill: #66dd66; }
+.svg_srv_warn { fill: #dddd88; }
+.svg_srv_crit { fill: #ff7777; }
+.svg_srv_unknown { fill: #ff0000; }
+.svg_srv_notmonitored { fill: #888888; }
+
+/* others */
+.svg_plandown { fill: #5bc0de; }
+.svg_active { fill: #9999ff; }
+.svg_inactive { fill: #eeeeee; }
+.svg_white { fill: #ffffff; }
+.svg_danger { fill: #ff0000; } /* prepare removal */
+
+.svg_txt_color { fill: black; }
 .default_text { fill: black; font-size: 10px; }
 
-.svg_ok { fill: #66dd66; }  /* sources.coffee */
-.svg_up { fill: #66dd66; }  /* status_history_utils.coffee */
-.svg_down { fill: #ff7777; }  /* ff0000 status_history_utils.coffee?? */
-.svg_warn { fill: #dddd88; }  /* sources.coffee *//* f0ad4e status_history_utils.coffee??*/
-.svg_crit { fill: #ff7777; } /* sources.coffee */
-.svg_danger { fill: #ff0000; } /* sources.coffee */
-.svg_unknown { fill: #dddddd; } /* sources.coffee */
-.svg_plandown { fill: #5bc0de; }   /* status_history_utils.coffee */
-.svg_unknown { fill: #c7c7c7; }  /* status_history_utils.coffee */
-.svg_undetermined { fill: #c7c7c7; }  /* status_history_utils.coffee */
-.svg_unreach { fill: #f0ad4e; }  /* status_history_utils.coffee */
+.sb_lines { stroke: #ffffff; stroke-width: 0.3; }
+.svg_stroke { stroke: #ffffff; stroke-width: 0.5; }
+.pieSegment { stroke-width: 1; stroke-miterlimit: 2; stroke: #ffffff; }
 .svg_sel { opacity: 0.7; }
 .svg_clicked { stroke-width: 2px !important; }
 

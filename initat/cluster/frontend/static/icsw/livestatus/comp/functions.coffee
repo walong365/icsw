@@ -325,13 +325,8 @@ angular.module(
                     _el = {
                         key: "path.#{key_prefix}.#{_idx}"
                         d: _path
-                        # fill: #srvc.$$burst_fill_color
                         #classes : srvc.className #not needed any more?
                         className: "sb_lines #{srvc.className}"
-                        #stroke: "black"
-                        # hm, stroke-width seems to be ignored
-                        #strokeWidth: "0.5"
-                        # link to segment
                         $$segment: node
                         # link to check (node or device or devicegroup or system)
                         $$service: srvc
@@ -349,9 +344,7 @@ angular.module(
                             key: "path.#{key_prefix}.omit"
                             d: ring_path(inner, outer)
                             $$service: _dummy
-                            fill: _dummy.$$burst_fill_color
-                            stroke: "black"
-                            strokeWidth: "0.3"
+                            className: "sb_lines"
                         }
                     )
         else
@@ -362,9 +355,7 @@ angular.module(
                     key: "path.#{key_prefix}.empty"
                     d: ring_path(inner, outer)
                     $$service: _dummy
-                    fill: _dummy.$$burst_fill_color
-                    stroke: "black"
-                    strokeWidth: "0.3"
+                    className: "sb_lines"
                 }
             )
         return _result
