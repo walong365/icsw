@@ -220,7 +220,7 @@ angular.module(
         }
         5: {
             color: "#888888"
-            info: "not pending"
+            info: "pending"
         }
     }
     _struct = {

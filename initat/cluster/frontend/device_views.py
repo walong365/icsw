@@ -42,7 +42,7 @@ from initat.cluster.backbone.models import device_group, device, \
     partition_table, monitoring_hint, DeviceSNMPInfo, snmp_scheme, \
     domain_name_tree, net_ip, peer_information, mon_ext_host, device_variable, \
     SensorThreshold, package_device_connection, DeviceDispatcherLink, AssetRun, \
-    AssetBatch, DeviceScanLock, device_variable_scope
+    AssetBatch, DeviceScanLock, device_variable_scope, StaticAsset
 from initat.cluster.backbone.models import get_change_reset_list
 from initat.cluster.backbone.models.functions import can_delete_obj
 from initat.cluster.backbone.render import permission_required_mixin
@@ -51,7 +51,7 @@ from initat.cluster.backbone.serializers import netdevice_serializer, ComCapabil
     snmp_scheme_serializer, device_variable_serializer, cd_connection_serializer, \
     SensorThresholdSerializer, package_device_connection_serializer, DeviceDispatcherLinkSerializer, \
     AssetRunSimpleSerializer, ShallowPastAssetBatchSerializer, DeviceScanLockSerializer, \
-    device_variable_scope_serializer
+    device_variable_scope_serializer, StaticAssetSerializer
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from initat.tools import logging_tools, server_command, process_tools
 
@@ -429,6 +429,18 @@ class DiskEnrichment(object):
         return _data
 
 
+class StaticAssetEnrichment(object):
+    def fetch(self, pk_list):
+        # get reference list
+        _ref_list = StaticAsset.objects.filter(
+            Q(device__in=pk_list)
+        ).prefetch_related(
+            "StaticAssetValueField_set"
+        )
+        _data = StaticAssetSerializer(_ref_list, many=True).data
+        return _data
+
+
 class AssetEnrichment(object):
     def fetch(self, pk_list):
         # get reference list
@@ -528,6 +540,7 @@ class EnrichmentHelper(object):
         self._all["dispatcher_info"] = EnrichmentObject(DeviceDispatcherLink, DeviceDispatcherLinkSerializer)
         self._all["asset_info"] = AssetEnrichment()
         self._all["past_assetrun_info"] = PastAssetrunEnrichment()
+        self._all["static_asset_info"] = StaticAssetEnrichment()
 
     def create(self, key, pk_list):
         if key not in self._all:

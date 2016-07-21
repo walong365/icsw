@@ -1350,6 +1350,8 @@ class StaticAssetTemplateField(models.Model):
     value_int_upper_bound = models.IntegerField(default=0)
     # monitor flag, only for datefiles
     monitor = models.BooleanField(default=False)
+    # hidden, used for linking
+    hidden = models.BooleanField(default=False)
     # created
     date = models.DateTimeField(auto_now_add=True)
 
@@ -1369,6 +1371,7 @@ class StaticAssetTemplateField(models.Model):
             value_int_upper_bound=self.value_int_upper_bound,
             monitor=self.monitor,
             fixed=self.fixed,
+            hidden=self.hidden,
         )
         nf.save()
         return nf
@@ -1380,6 +1383,7 @@ class StaticAssetTemplateField(models.Model):
 
 
 class StaticAsset(models.Model):
+    # used for linking
     idx = models.AutoField(primary_key=True)
     # template
     static_asset_template = models.ForeignKey("backbone.StaticAssetTemplate")

@@ -26,7 +26,6 @@
             <uib-tab-heading>
                 Category{{ addon_text_nmd }}
             </uib-tab-heading>
-
             <icsw-device-category-overview icsw-sel-man="{{ popupmode }}" icsw-device-list="dev_list['category']">
             </icsw-device-category-overview>
         </uib-tab>
@@ -34,7 +33,6 @@
             <uib-tab-heading>
                 Location{{ addon_text_nmd }}
             </uib-tab-heading>
-
             <icsw-device-location-overview icsw-sel-man="{{ popupmode }}" icsw-device-list="dev_list['location']">
             </icsw-device-location-overview>
         </uib-tab>
@@ -63,7 +61,6 @@
             </uib-tab-heading>
             <icsw-device-info-device icsw-struct="entry"></icsw-device-info-device>
         </uib-tab>
-
     </uib-tabset>
 </script>
 
@@ -147,6 +144,7 @@
     </fieldset>
     <fieldset>
         <icsw-device-inventory-vars-overview icsw-device="edit_obj"></icsw-device-inventory-vars-overview>
+        <icsw-device-static-asset-overview icsw-device="edit_obj"></icsw-device-static-asset-overview>
     </fieldset>
     <fieldset>
         <legend>Monitor settings</legend>
