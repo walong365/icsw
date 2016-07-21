@@ -11,14 +11,19 @@
                     <uib-tab-heading>
                         <span>Settings</span>
                     </uib-tab-heading>
-                    <div class="input-group">
-                        <br/><label class="control-label">Current Report Logo</label><br/>
-                        <img data-ng-src="data:image/png;base64,{{struct.gfx_b64_data}}"/>
-                    </div>
+                    <br/>
+                    <div class="panel panel-default">
+                        <div class="panel-body" style="padding: 6px 15px">
+                            <div class="input-group">
+                                <br/><label class="control-label">Current Report Logo</label><br/>
+                                <img data-ng-src="data:image/png;base64,{{struct.gfx_b64_data}}"/>
+                            </div>
 
-                    <div class="input-group">
-                        <br/><label class="control-label">Change Report Logo</label><br/>
-                        <icsw-tools-button type="create" size="xs" value="Upload Report Logo" ng-click="create_or_edit($event, true, loc.location)"></icsw-tools-button>
+                            <div class="input-group">
+                                <br/><label class="control-label">Change Report Logo</label><br/>
+                                <icsw-tools-button type="create" size="xs" value="Upload Report Logo" ng-click="create_or_edit($event, true, loc.location)"></icsw-tools-button>
+                            </div>
+                        </div>
                     </div>
                 </uib-tab>
 
@@ -47,7 +52,11 @@
                                         <th st-sort='st_attrs.description'>Description</th>
                                         <th st-sort='st_attrs.enabled'>Enabled</th>
                                         <th st-sort='st_attrs.type'>#devs</th>
-                                        <th colspan="2" class="text-center">Action</th>
+                                        <th class="text-center">Installed Packages</th>
+                                        <th class="text-center">Available Licenses</th>
+                                        <th class="text-center">Installed Updates</th>
+                                        <th class="text-center">Available Updates</th>
+                                        <th class="text-center">Hardware Report</th>
                                     </tr>
                                 </thead>
 
@@ -62,16 +71,21 @@
                     <uib-tab-heading>
                         <span>Generate</span>
                     </uib-tab-heading>
-                    <div class="input-group">
-                        <br/><label class="control-label">Generate Report</label><br/>
-                        <div class="dropdown">
-                            <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">
-                                Generate Report
-                                <span class="caret"></span>
-                            </button>
-                            <ul class="dropdown-menu">
-                                <li><a href="" ng-click='downloadPdf()'>as PDF</a></li>
-                            </ul>
+                    <br/>
+                    <div class="panel panel-default">
+                        <div class="panel-body" style="padding: 6px 15px">
+                            <div class="input-group">
+                                <br/><label class="control-label">Generate Report</label><br/>
+                                <div class="dropdown">
+                                    <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">
+                                        Generate Report
+                                        <span class="caret"></span>
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li><a href="" ng-click='downloadPdf()'>as PDF</a></li>
+                                    </ul>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </uib-tab>
@@ -91,8 +105,31 @@
         <span ng-show="!obj.device_group_obj.enabled"><em>{{ obj.enabled | yesno1 }}</em></span>
     </td>
     <td></td>
-    <td></td>
-    <td></td>
+    <td>
+        <div class="text-center">
+            <input type="button" ng-class="obj.$packages_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 0)"/>
+         </div>
+    </td>
+    <td>
+        <div class="text-center">
+            <input type="button" ng-class="obj.$licenses_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 1)"/>
+        </div>
+    </td>
+    <td>
+        <div class="text-center">
+            <input type="button" ng-class="obj.$installed_updates_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 2)"/>
+         </div>
+    </td>
+    <td>
+        <div class="text-center">
+            <input type="button" ng-class="obj.$avail_updates_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 3)"/>
+        </div>
+    </td>
+    <td>
+        <div class="text-center">
+            <input type="button" ng-class="obj.$hardware_report_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 4)"/>
+        </div>
+    </td>
 </script>
 
 <script type="text/ng-template" id="icsw.device.tree.cdg.report.row">
@@ -104,8 +141,30 @@
     <td ng-show="hide_lut['tln']">{{ struct.domain_tree.show_dtn(group.domain_tree_node) }}</td>
     <td ng-show="num_shown(['tln'])" colspan="{{ num_shown(['tln']) }}"></td>
     <td>
+        <div class="text-center">
+            <input type="button" ng-class="obj.$packages_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 0)"/>
+         </div>
     </td>
-    <td></td>
+    <td>
+        <div class="text-center">
+            <input type="button" ng-class="obj.$licenses_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 1)"/>
+        </div>
+    </td>
+    <td>
+        <div class="text-center">
+            <input type="button" ng-class="obj.$installed_updates_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 2)"/>
+         </div>
+    </td>
+    <td>
+        <div class="text-center">
+            <input type="button" ng-class="obj.$avail_updates_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 3)"/>
+        </div>
+    </td>
+    <td>
+        <div class="text-center">
+            <input type="button" ng-class="obj.$hardware_report_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 4)"/>
+        </div>
+    </td>
 </script>
 
 <script type="text/ng-template" id="icsw.device.tree.meta.report.row">
@@ -124,8 +183,30 @@
     </td>
     <td ng-show="hide_lut['tln']">{{ struct.domain_tree.show_dtn(obj) }}</td>
     <td ng-show="num_shown(['tln'])" colspan="{{ num_shown(['tln']) }}"></td>
-    <td colspan="2">
-        o
+    <td>
+        <div class="text-center">
+            <input type="button" ng-class="obj.$packages_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 0)"/>
+         </div>
+    </td>
+    <td>
+        <div class="text-center">
+            <input type="button" ng-class="obj.$licenses_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 1)"/>
+        </div>
+    </td>
+    <td>
+        <div class="text-center">
+            <input type="button" ng-class="obj.$installed_updates_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 2)"/>
+         </div>
+    </td>
+    <td>
+        <div class="text-center">
+            <input type="button" ng-class="obj.$avail_updates_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 3)"/>
+        </div>
+    </td>
+    <td>
+        <div class="text-center">
+            <input type="button" ng-class="obj.$hardware_report_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 4)"/>
+        </div>
     </td>
 </script>
 

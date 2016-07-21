@@ -525,11 +525,12 @@ class PDFReportGenerator(object):
             self.pagenum = pagenum
 
     class Report(object):
-        def __init__(self, device):
+        def __init__(self, device, report_settings):
             self.bookmarks = []
             self.number_of_pages = 0
             self.device = device
             self.pdf_buffers = []
+            self.report_settings = report_settings
 
         def generate_bookmark(self, name):
             bookmark = PDFReportGenerator.Bookmark(name, self.number_of_pages)
@@ -572,8 +573,8 @@ class PDFReportGenerator(object):
 
         return logo
 
-    def generate_report(self, _device):
-        report = PDFReportGenerator.Report(_device)
+    def generate_report(self, _device, report_settings):
+        report = PDFReportGenerator.Report(_device, report_settings)
         self.reports.append(report)
 
         # create generic overview page
@@ -711,6 +712,8 @@ class PDFReportGenerator(object):
 
 
         buffer = BytesIO()
+
+        ## (72 * 11, 72 * 8.5) --> letter size
         canvas = Canvas(buffer, (72 * 11, 72 * 8.5))
 
         assetruns = asset_batch.assetrun_set.all()
@@ -725,6 +728,9 @@ class PDFReportGenerator(object):
             _generate_csv_entry_for_assetrun(ar, row_collector.collect)
 
             if AssetType(ar.run_type) == AssetType.UPDATE:
+                if not report.report_settings['installed_updates_selected']:
+                    continue
+
                 data = row_collector.rows_dict[1:]
                 data = sorted(data, key=lambda k: k['update_status'])
                 if not data:
@@ -757,6 +763,9 @@ class PDFReportGenerator(object):
                 report.number_of_pages += rpt.pagenumber
 
             elif AssetType(ar.run_type) == AssetType.LICENSE:
+                if not report.report_settings['licenses_selected']:
+                    continue
+
                 data = row_collector.rows[1:]
                 if not data:
                     continue
@@ -780,6 +789,9 @@ class PDFReportGenerator(object):
                 report.number_of_pages += rpt.pagenumber
 
             elif AssetType(ar.run_type) == AssetType.PACKAGE:
+                if not report.report_settings['packages_selected']:
+                    continue
+
                 from initat.cluster.backbone.models import asset
 
                 packages = asset.get_packages_for_ar(ar)
@@ -822,6 +834,9 @@ class PDFReportGenerator(object):
                 report.number_of_pages += rpt.pagenumber
 
             elif AssetType(ar.run_type) == AssetType.PENDING_UPDATE:
+                if not report.report_settings['avail_updates_selected']:
+                    continue
+
                 data = row_collector.rows_dict[1:]
                 data = sorted(data, key=lambda k: k['update_name'])
                 if not data:
@@ -855,6 +870,9 @@ class PDFReportGenerator(object):
                 report.number_of_pages += rpt.pagenumber
 
             elif ar.run_type == AssetType.PRETTYWINHW:
+                if not report.report_settings['hardware_report_selected']:
+                    continue
+
                 hardware_report_ar = ar
                 continue
 
@@ -1207,48 +1225,42 @@ class PDFReportGenerator(object):
 class export_assetbatch_to_pdf(View):
     @method_decorator(login_required)
     def post(self, request):
-        # #ab = AssetBatch.objects.get(idx=int(request.POST["pk"]))
-        #
-        # post_dict = dict(request.POST.iterlists())
-        # pks = post_dict["pks[]"]
-        #
-        # _devices = device.objects.filter(idx__in = [int(pk) for pk in pks])
-        # _devices_filtered = []
-        # for _device in _devices:
-        #     if not _device.is_meta_device:
-        #         _devices_filtered.append(_device)
-        #
-        # asset_batches = AssetBatch.objects.all()
-        # pdf_report_generator = PDFReportGenerator()
-        #
-        # asset_batch_per_device = {}
-        #
-        # for asset_batch in asset_batches:
-        #     if asset_batch.device in asset_batch_per_device:
-        #         if asset_batch_per_device[asset_batch.device].idx < asset_batch.idx:
-        #             asset_batch_per_device[asset_batch.device] = asset_batch
-        #     else:
-        #         asset_batch_per_device[asset_batch.device] = asset_batch
-        #
-        #
-        # for _device in asset_batch_per_device:
-        #     pdf_report_generator.generate_report_for_asset_batch(asset_batch_per_device[_device])
-        #
-        # buffer = pdf_report_generator.get_pdf_as_buffer()
-        # pdf_b64 = base64.b64encode(buffer.getvalue())
+        settings_dict = {}
 
-        post_dict = dict(request.POST.iterlists())
-        pks = post_dict["pks[]"]
+        for key in request.POST.iterkeys():
+            valuelist = request.POST.getlist(key)
+            # look for pk in key
+
+            index = key.split("[")[1][:-1]
+            if index not in settings_dict:
+                settings_dict[index] = {}
+
+            if key[::-1][:4] == ']kp[':
+                settings_dict[index]["pk"] = int(valuelist[0])
+            else:
+                value = True if valuelist[0] == "true" else False
+
+                settings_dict[index][key.split("[")[-1][:-1]] = value
+
+        pk_settings = {}
+
+        for setting_index in settings_dict:
+            pk = settings_dict[setting_index]['pk']
+            pk_settings[pk] = {}
+
+            for key in settings_dict[setting_index]:
+                if key != 'pk':
+                    pk_settings[pk][key] = settings_dict[setting_index][key]
 
         _devices = []
-        for _device in device.objects.filter(idx__in = [int(pk) for pk in pks]):
+        for _device in device.objects.filter(idx__in = [int(pk) for pk in pk_settings.keys()]):
             if not _device.is_meta_device:
                 _devices.append(_device)
 
         pdf_report_generator = PDFReportGenerator()
 
         for _device in _devices:
-            pdf_report_generator.generate_report(_device)
+            pdf_report_generator.generate_report(_device, pk_settings[_device.idx])
 
 
         buffer = pdf_report_generator.get_pdf_as_buffer()

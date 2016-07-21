@@ -68,7 +68,6 @@ device_report_module = angular.module(
     icswDispatcherSettingTreeService, Restangular, icswActiveSelectionService,
     icswComplexModalService
 ) ->
-    # struct to hand over to VarCtrl
     $scope.struct = {
         # list of devices
         devices: []
@@ -100,6 +99,43 @@ device_report_module = angular.module(
 
     }
 
+    $scope.select = (obj, selection_type) ->
+        if selection_type == 0
+            obj.$packages_selected = !obj.$packages_selected
+            if obj.is_meta_device
+                for device in $scope.struct.devices
+                    if device.device_group == obj.device_group
+                        device.$packages_selected = obj.$packages_selected
+
+        else if selection_type == 1
+            obj.$licenses_selected = !obj.$licenses_selected
+            if obj.is_meta_device
+                for device in $scope.struct.devices
+                    if device.device_group == obj.device_group
+                        device.$licenses_selected = obj.$licenses_selected
+
+        else if selection_type == 2
+            obj.$installed_updates_selected = !obj.$installed_updates_selected
+            if obj.is_meta_device
+                for device in $scope.struct.devices
+                    if device.device_group == obj.device_group
+                        device.$installed_updates_selected = obj.$installed_updates_selected
+
+        else if selection_type == 3
+            obj.$avail_updates_selected = !obj.$avail_updates_selected
+            if obj.is_meta_device
+                for device in $scope.struct.devices
+                    if device.device_group == obj.device_group
+                        device.$avail_updates_selected = obj.$avail_updates_selected
+
+        else if selection_type == 4
+            obj.$hardware_report_selected = !obj.$hardware_report_selected
+            if obj.is_meta_device
+                for device in $scope.struct.devices
+                    if device.device_group == obj.device_group
+                        device.$hardware_report_selected = obj.$hardware_report_selected
+        
+
     icswSimpleAjaxCall({
                 url: ICSW_URLS.REPORT_GET_REPORT_GFX
                 dataType: 'json'
@@ -120,6 +156,11 @@ device_report_module = angular.module(
                 $scope.struct.device_tree = data[0]
                 $scope.struct.devices.length = 0
                 for dev in devs
+                    dev.$packages_selected = true
+                    dev.$licenses_selected = true
+                    dev.$installed_updates_selected = true
+                    dev.$avail_updates_selected = true
+                    dev.$hardware_report_selected = true
                     $scope.struct.devices.push(dev)
 
         )
@@ -128,14 +169,30 @@ device_report_module = angular.module(
         return if obj.is_meta_device then "success" else ""
 
     $scope.downloadPdf = ->
-        sel = icswActiveSelectionService.current()
+        selected_devices = icswActiveSelectionService.current().dev_sel
 
-        console.log(sel)
+        console.log(selected_devices)
+
+
+        settings = []
+
+        for device in $scope.struct.devices
+            for pk in selected_devices
+                if !device.is_meta_device && device.idx == pk
+                    setting = {
+                        pk: device.idx
+                        packages_selected: device.$packages_selected
+                        licenses_selected: device.$licenses_selected
+                        installed_updates_selected: device.$installed_updates_selected
+                        avail_updates_selected: device.$avail_updates_selected
+                        hardware_report_selected: device.$hardware_report_selected
+                    }
+                    settings.push(setting)
 
         icswSimpleAjaxCall({
             url: ICSW_URLS.ASSET_EXPORT_ASSETBATCH_TO_PDF
             data:
-                pks: icswActiveSelectionService.current().dev_sel
+                pks: settings
             dataType: 'json'
         }
         ).then(
