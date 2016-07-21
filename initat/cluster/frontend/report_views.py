@@ -48,7 +48,11 @@ from initat.cluster.backbone.serializers import AssetRunDetailSerializer, Schedu
     AssetPackageSerializer, AssetRunOverviewSerializer, StaticAssetTemplateSerializer, \
     StaticAssetTemplateFieldSerializer
 
+from initat.cluster.frontend.asset_views import PDFReportGenerator
+
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
+
+
 
 try:
     from openpyxl import Workbook
@@ -94,6 +98,63 @@ class get_report_gfx(View):
             json.dumps(
                 {
                     'gfx': val_blob
+                }
+            )
+        )
+
+class generate_report_pdf(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        settings_dict = {}
+
+        for key in request.POST.iterkeys():
+            valuelist = request.POST.getlist(key)
+            # look for pk in key
+
+            index = key.split("[")[1][:-1]
+            if index not in settings_dict:
+                settings_dict[index] = {}
+
+            if key[::-1][:4] == ']kp[':
+                settings_dict[index]["pk"] = int(valuelist[0])
+            else:
+                value = True if valuelist[0] == "true" else False
+
+                settings_dict[index][key.split("[")[-1][:-1]] = value
+
+        pk_settings = {}
+
+        for setting_index in settings_dict:
+            pk = settings_dict[setting_index]['pk']
+            pk_settings[pk] = {}
+
+            for key in settings_dict[setting_index]:
+                if key != 'pk':
+                    pk_settings[pk][key] = settings_dict[setting_index][key]
+
+        _devices = []
+        for _device in device.objects.filter(idx__in = [int(pk) for pk in pk_settings.keys()]):
+            if not _device.is_meta_device:
+                _devices.append(_device)
+
+        pdf_report_generator = PDFReportGenerator()
+
+        for _device in _devices:
+            pdf_report_generator.generate_report(_device, pk_settings[_device.idx])
+
+        buffer = pdf_report_generator.get_pdf_as_buffer()
+
+        buffer.seek(0)
+        tmp_file = tempfile.NamedTemporaryFile(delete=False)
+        tmp_file.write(buffer.read())
+        tmp_file.close()
+
+        pdf_b64 = base64.b64encode(buffer.getvalue())
+
+        return HttpResponse(
+            json.dumps(
+                {
+                    'pdf': pdf_b64
                 }
             )
         )

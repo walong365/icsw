@@ -25,7 +25,10 @@ device_report_module = angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "ngCsv"
     ]
-).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
+).config(["$stateProvider", "icswRouteExtensionProvider", "$compileProvider", ($stateProvider, icswRouteExtensionProvider, $compileProvider) ->
+
+    $compileProvider.aHrefSanitizationWhitelist(/^\s*(https?|ftp|mailto|tel|file|blob):/)
+
     $stateProvider.state(
         "main.report", {
             url: "/report"
@@ -96,8 +99,48 @@ device_report_module = angular.module(
         # reload flag
         reloading: false
         gfx_b64_data: undefined
-
+        report_generating: false
+        report_download_url: undefined
+        report_download_name: undefined
     }
+
+    $scope.uploading = false
+    $scope.percentage = 0
+    $scope.getPercentage = () ->
+        return $scope.percentage
+
+    $scope.uploader = new FileUploader(
+            url: ICSW_URLS.REPORT_UPLOAD_REPORT_GFX
+            scope: $scope
+            queueLimit: 1
+            alias: "gfx"
+            removeAfterUpload: true
+            autoUpload: true
+        )
+
+    $scope.uploader.onCompleteAll = () ->
+        icswSimpleAjaxCall({
+                    url: ICSW_URLS.REPORT_GET_REPORT_GFX
+                    dataType: 'json'
+                }).then(
+                    (result) ->
+                        $scope.struct.gfx_b64_data = result.gfx
+                    (not_ok) ->
+                        console.log not_ok
+                )
+
+        angular.element("input[type='file']").val(null);
+        $scope.percentage = 0
+        $scope.uploading = false
+
+    $scope.uploader.onProgressAll = (progress) ->
+        $scope.uploading = true
+        $scope.percentage = progress
+
+    icswCSRFService.get_token().then(
+            (token) ->
+                $scope.uploader.formData.push({"csrfmiddlewaretoken": token})
+        )
 
     $scope.select = (obj, selection_type) ->
         if selection_type == 0
@@ -169,10 +212,10 @@ device_report_module = angular.module(
         return if obj.is_meta_device then "success" else ""
 
     $scope.downloadPdf = ->
+        $scope.struct.report_download_url = undefined
+        $scope.struct.report_generating = true
+
         selected_devices = icswActiveSelectionService.current().dev_sel
-
-        console.log(selected_devices)
-
 
         settings = []
 
@@ -190,21 +233,17 @@ device_report_module = angular.module(
                     settings.push(setting)
 
         icswSimpleAjaxCall({
-            url: ICSW_URLS.ASSET_EXPORT_ASSETBATCH_TO_PDF
+            url: ICSW_URLS.REPORT_GENERATE_REPORT_PDF
             data:
                 pks: settings
             dataType: 'json'
         }
         ).then(
             (result) ->
-                uri = 'data:application/pdf;base64,' + result.pdf
-                downloadLink = document.createElement("a")
-                downloadLink.href = uri
-                downloadLink.download = "report.pdf"
-
-                document.body.appendChild(downloadLink)
-                downloadLink.click()
-                document.body.removeChild(downloadLink)
+                $scope.struct.report_download_name = "Report.pdf"
+                blob = new Blob([ atob(result.pdf) ], { type : 'application/pdf' })
+                $scope.struct.report_download_url = (window.URL || window.webkitURL).createObjectURL(blob)
+                $scope.struct.report_generating = false
             (not_ok) ->
                 console.log not_ok
         )

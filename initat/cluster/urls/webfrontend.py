@@ -35,6 +35,7 @@ from initat.cluster.frontend import rest_views, device_views, main_views, networ
 report_patterns = [
     url("^upload_report_gfx$", report_views.upload_report_gfx.as_view(), name="upload_report_gfx"),
     url("^get_report_gfx$", report_views.get_report_gfx.as_view(), name="get_report_gfx"),
+    url("^generate_report_pdf$", report_views.generate_report_pdf.as_view(), name="generate_report_pdf"),
 ]
 
 asset_patterns = [

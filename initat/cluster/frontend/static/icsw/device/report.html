@@ -16,12 +16,18 @@
                         <div class="panel-body" style="padding: 6px 15px">
                             <div class="input-group">
                                 <br/><label class="control-label">Current Report Logo</label><br/>
-                                <img data-ng-src="data:image/png;base64,{{struct.gfx_b64_data}}"/>
+                                <img ng-if="struct.gfx_b64_data.length > 0" data-ng-src="data:image/png;base64,{{struct.gfx_b64_data}}"/>
+                                <label ng-if="struct.gfx_b64_data.length == 0" style="padding: 0px 15px" class="control-label"><i>No Report Logo uploaded yet</i></label>
                             </div>
 
                             <div class="input-group">
                                 <br/><label class="control-label">Change Report Logo</label><br/>
-                                <icsw-tools-button type="create" size="xs" value="Upload Report Logo" ng-click="create_or_edit($event, true, loc.location)"></icsw-tools-button>
+                                <input type="file" class="btn btn-sm btn-primary form-control-inline" nv-file-select uploader="uploader"/><br/><br/>
+                                <!-- <icsw-tools-button type="create" size="xs" value="Upload Report Logo" ng-click="create_or_edit($event, true, loc.location)"></icsw-tools-button> -->
+                                <div ng-if="uploading" class="progress">
+                                  <div class="progress-bar progress-bar-striped active" role="progressbar" aria-valuemin="0" aria-valuemax="100" ng-style="{width : ( getPercentage() + '%' ) }">
+                                  </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -76,7 +82,8 @@
                         <div class="panel-body" style="padding: 6px 15px">
                             <div class="input-group">
                                 <br/><label class="control-label">Generate Report</label><br/>
-                                <div class="dropdown">
+                                <button class="btn btn-primary dropdown-toggle" ng-click="downloadPdf()" type="button" data-toggle="dropdown">Generate</button>
+                                <!-- <div class="dropdown">
                                     <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">
                                         Generate Report
                                         <span class="caret"></span>
@@ -84,7 +91,24 @@
                                     <ul class="dropdown-menu">
                                         <li><a href="" ng-click='downloadPdf()'>as PDF</a></li>
                                     </ul>
+                                </div> -->
+                                <br/>
+
+                                <br/><label class="control-label">Download Report</label><br/>
+                                <div ng-if="struct.report_download_url != undefined">
+                                    <a download="{{ struct.report_download_name }}" style="padding: 0px 15px" ng-href="{{ struct.report_download_url }}">download</a>
                                 </div>
+                                <div ng-if="struct.report_generating == true">
+                                    <div ng-if="struct.report_download_url == undefined">
+                                        <label style="padding: 0px 15px">Report is generating, please wait...</label>
+                                    </div>
+                                </div>
+                                <div ng-if="struct.report_generating == false">
+                                    <div ng-if="struct.report_download_url == undefined">
+                                        <label style="padding: 0px 15px">Not available</label>
+                                    </div>
+                                </div>
+                                <br/>
                             </div>
                         </div>
                     </div>
