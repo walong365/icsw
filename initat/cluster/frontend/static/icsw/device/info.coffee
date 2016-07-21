@@ -37,6 +37,10 @@ angular.module(
                     icon: "fa-bars"
                     ordering: 10
                     postSpacer: true
+                dashboardEntry:
+                    size_x: 4
+                    size_y: 3
+                    allow_state: true
         }
     )
 ]).service("DeviceOverviewSelection",
@@ -186,23 +190,6 @@ angular.module(
         template: $templateCache.get("icsw.device.info.overview")
         scope: true
     }
-]).directive("icswDeviceInfoDeviceGroup",
-[
-    "$templateCache", "$compile",
-(
-    $templateCache, $compile
-) ->
-    return {
-        restrict: "EA"
-        controller: "icswSimpleDeviceInfoCtrl"
-        template: $templateCache.get("icsw.devicegroup.info.form")
-        scope: {
-            edit_obj: "=icswDeviceGroup"
-        }
-        link: (scope, element, attrs) ->
-            scope.set_type(true)
-
-    }
 ]).directive("icswDeviceInfoDevice",
 [
     "$templateCache", "$compile",
@@ -212,13 +199,18 @@ angular.module(
     return {
         restrict: "EA"
         controller: "icswSimpleDeviceInfoCtrl"
-        template: $templateCache.get("icsw.device.info.form")
         scope: {
-            edit_obj: "=icswDevice"
+            icsw_struct: "=icswStruct"
         }
         link: (scope, element, attrs) ->
-            scope.set_type(false)
-
+            scope.do_init().then(
+                (done) ->
+                    if scope.icsw_struct.is_devicegroup
+                        _t_name = "icsw.devicegroup.info.form"
+                    else
+                        _t_name = "icsw.device.info.form"
+                    element.append($compile($templateCache.get(_t_name))(scope))
+            )
     }
 ]).controller("icswSimpleDeviceInfoCtrl",
 [
@@ -226,11 +218,13 @@ angular.module(
     "$rootScope", "ICSW_SIGNALS", "icswDomainTreeService", "icswDeviceTreeService", "icswMonitoringBasicTreeService",
     "icswAcessLevelService", "icswActiveSelectionService", "icswDeviceBackup", "icswDeviceGroupBackup",
     "icswDeviceTreeHelperService", "icswComplexModalService", "toaster", "$compile", "$templateCache",
+    "icswCategoryTreeService",
 (
     $scope, Restangular, $q, ICSW_URLS,
     $rootScope, ICSW_SIGNALS, icswDomainTreeService, icswDeviceTreeService, icswMonitoringBasicTreeService,
     icswAcessLevelService, icswActiveSelectionService, icswDeviceBackup, icswDeviceGroupBackup,
     icswDeviceTreeHelperService, icswComplexModalService, toaster, $compile, $templateCache,
+    icswCategoryTreeService,
 ) ->
     $scope.struct = {
         # data is valid
@@ -241,6 +235,8 @@ angular.module(
         monitoring_tree: undefined
         # domain tree
         domain_tree: undefined
+        # category tree
+        category_tree: undefined
         # device group
         is_devicegroup: false
     }
@@ -253,6 +249,7 @@ angular.module(
             obj.$$snmp_info = "N/A"
             obj.$$ip_info = "N/A"
             hints = "---"
+            cats = "---"
         else
             obj.$$full_device_name = obj.full_name
             _sc = obj.snmp_schemes
@@ -275,6 +272,22 @@ angular.module(
                 hints = "#{mhs.length} (#{(entry for entry in mhs when entry.check_created).length} used for service checks)"
             else
                 hints = "---"
+
+            # categories
+            _cats = $scope.struct.category_tree.get_device_categories(obj)
+            _asset_cats = (entry for entry in _cats when entry.asset)
+            if _cats.length
+                _cats_info = (entry.name for entry in _cats).join(", ")
+            else
+                _cats_info = "---"
+            obj.$$category_info = _cats_info 
+            if _asset_cats.length
+                _asset_cats_info = (entry.name for entry in _asset_cats).join(", ")
+            else
+                _asset_cats_info = "---"
+            obj.$$asset_category_info = _asset_cats_info 
+
+        # monitoring image
         img_url = ""
         if obj.mon_ext_host
             for entry in $scope.struct.monitoring_tree.mon_ext_host_list
@@ -285,27 +298,36 @@ angular.module(
 
     icswAcessLevelService.install($scope)
 
-    $scope.set_type = (is_devg) ->
-        $scope.struct.data_valid = true
-        $scope.struct.is_devicegroup = is_devg
+
+    $scope.do_init = () ->
+        defer = $q.defer()
+        $scope.struct.data_valid = false
+        $scope.struct.is_devicegroup = $scope.icsw_struct.is_devicegroup
         $q.all(
             [
                 icswDeviceTreeService.load($scope.$id)
                 icswMonitoringBasicTreeService.load($scope.$id)
                 icswDomainTreeService.load($scope.$id)
+                icswCategoryTreeService.load($scope.$id)
             ]
         ).then(
             (data) ->
                 $scope.struct.device_tree = data[0]
                 $scope.struct.monitoring_tree = data[1]
                 $scope.struct.domain_tree = data[2]
+                $scope.struct.category_tree = data[3]
+                if $scope.icsw_struct.is_devicegroup
+                    $scope.edit_obj = $scope.struct.device_tree.get_group($scope.icsw_struct.edit_obj)
+                else
+                    $scope.edit_obj = $scope.icsw_struct.edit_obj
                 create_info_fields($scope.edit_obj)
                 $scope.struct.data_valid = true
+                defer.resolve("done")
         )
+        return defer.promise
 
     $scope.modify = () ->
-        console.log $scope.edit_obj
-        if $scope.is_devicegroup
+        if $scope.struct.is_devicegroup
             dbu = new icswDeviceGroupBackup()
             template_name = "icsw.devicegroup.info.edit.form"
             title = "Modify Devicegroup settings"
@@ -353,6 +375,40 @@ angular.module(
                 create_info_fields($scope.edit_obj)
         )
 
+    $scope.modify_categories = (for_asset) ->
+        dbu = new icswDeviceBackup()
+        template_name = "icsw.device.category.edit"
+        title = "Modify DeviceCategories"
+        dbu.create_backup($scope.edit_obj)
+        sub_scope = $scope.$new(false)
+        sub_scope.edit_obj = $scope.edit_obj
+        sub_scope.asset_filter = for_asset
+
+        # for fields, tree can be the basic or the cluster tree
+
+        icswComplexModalService(
+            {
+                message: $compile($templateCache.get(template_name))(sub_scope)
+                title: title
+                ok_label: "Modify"
+                closable: true
+                ok_callback: (modal) ->
+                    d = $q.defer()
+                    d.resolve("updated")
+                    return d.promise
+                cancel_callback: (modal) ->
+                    dbu.restore_backup($scope.edit_obj)
+                    d = $q.defer()
+                    d.resolve("cancel")
+                    return d.promise
+            }
+        ).then(
+            (fin) ->
+                sub_scope.$destroy()
+                # recreate info fields
+                create_info_fields($scope.edit_obj)
+        )
+
 ]).controller("icswSimpleDeviceInfoOverviewCtrl",
 [
     "$scope", "Restangular", "$q", "ICSW_URLS",
@@ -381,8 +437,9 @@ angular.module(
         slist: []
     }
     # create info fields
-    create_info_fields = (struct) ->
+    create_small_info_fields = (struct) ->
         obj = struct.edit_obj
+        group = $scope.struct.device_tree.get_group(obj)
         if struct.is_devicegroup
             obj.$$full_device_name = obj.name.substr(8)
             # not really needed
@@ -390,7 +447,7 @@ angular.module(
             obj.$$snmp_info = "N/A"
             obj.$$ip_info = "N/A"
         else
-            obj.$$full_device_name = obj.full_name
+            obj.$$full_device_name = group.full_name
 
     $scope.new_devsel = (in_list) ->
         $scope.struct.data_valid = false
@@ -418,21 +475,18 @@ angular.module(
                             $scope.struct.domain_tree = data[0]
                             for dev in in_list
                                 $scope.struct.devices.push(dev)
-
                                 if dev.is_meta_device
-                                    edit_obj = $scope.struct.device_tree.get_group(dev)
                                     new_struct = {
-                                        edit_obj: edit_obj
+                                        edit_obj: dev
                                         is_devicegroup: true
                                     }
                                 else
-                                    edit_obj = dev
                                     new_struct = {
-                                        edit_obj: edit_obj
+                                        edit_obj: dev
                                         is_devicegroup: false
                                     }
                                 $scope.struct.slist.push(new_struct)
-                                create_info_fields(new_struct)
+                                create_small_info_fields(new_struct)
                             $scope.struct.data_valid = true
                     )
             )

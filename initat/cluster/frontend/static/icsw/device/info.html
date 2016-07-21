@@ -61,8 +61,7 @@
                 {{ entry.edit_obj.$$full_device_name }}
                 <img ng-if="entry.edit_obj.mon_ext_host" ng-src="{{ entry.edit_obj.$$image_source }}" width="16"></img>
             </uib-tab-heading>
-            <icsw-device-info-device-group ng-if="entry.is_devicegroup" icsw-device-group="entry.edit_obj"></icsw-device-info-device-group>
-            <icsw-device-info-device ng-if="!entry.is_devicegroup" icsw-device="entry.edit_obj"></icsw-device-info-device>
+            <icsw-device-info-device icsw-struct="entry"></icsw-device-info-device>
         </uib-tab>
 
     </uib-tabset>
@@ -126,6 +125,24 @@
             <div class="col-xs-9 form-control-static">
                 {{ edit_obj.$$snmp_info }}
             </div>
+            <label class="control-label col-xs-2">
+                Categories
+            </label>
+            <div class="col-xs-1">
+                <icsw-tools-button type="modify" size="xs" class="pull-right" ng-click="modify_categories(false)"></icsw-tools-button>
+            </div>
+            <div class="col-xs-9 form-control-static">
+                {{ edit_obj.$$category_info }}
+            </div>
+            <label class="control-label col-xs-2">
+                Asset Categories
+            </label>
+            <div class="col-xs-1">
+                <icsw-tools-button type="modify" size="xs" class="pull-right" ng-click="modify_categories(true)"></icsw-tools-button>
+            </div>
+            <div class="col-xs-9 form-control-static">
+                {{ edit_obj.$$asset_category_info }}
+            </div>
         </div>
     </fieldset>
     <fieldset>
@@ -154,7 +171,7 @@
                         <label>Monitoringchecks enabled</label>
                     </div>
                     <div class="col-xs-3 form-control-static">
-                        {{ edit_obj.monitor_checks | yesno2 }}
+                        <span ng-bind-html="edit_obj.monitor_checks | yesno4"></span>
                     </div>
                 </div>
                 <div class="form-group">
@@ -162,7 +179,7 @@
                         <label>Enable perfdata, check IPMI and SNMP</label>
                     </div>
                     <div class="col-xs-3 form-control-static">
-                        {{ edit_obj.enable_perfdata | yesno2 }}
+                        <span ng-bind-html="edit_obj.enable_perfdata | yesno4"></span>
                     </div>
                 </div>
             </div>
@@ -172,7 +189,7 @@
                         <label>Flap detection enabled</label>
                     </div>
                     <div class="col-xs-3 form-control-static">
-                        {{ edit_obj.flap_detection_enabled | yesno2 }}
+                        <span ng-bind-html="edit_obj.flap_detection_enabled | yesno4"></span>
                     </div>
                 </div>
                 <div class="form-group">
@@ -180,7 +197,7 @@
                         <label>Resolve to IP for monitoring</label>
                     </div>
                     <div class="col-xs-3 form-control-static">
-                        {{ edit_obj.mon_resolve_name | yesno2 }}
+                        <span ng-bind-html="edit_obj.mon_resolve_name | yesno4"></span>
                     </div>
                 </div>
             </div>
@@ -195,7 +212,7 @@
                         <label>Store RRD data</label>
                     </div>
                     <div class="col-xs-3 form-control-static">
-                        {{ edit_obj.store_rrd_data | yesno2 }}
+                        <span ng-bind-html="edit_obj.store_rrd_data | yesno4"></span>
                     </div>
                 </div>
             </div>

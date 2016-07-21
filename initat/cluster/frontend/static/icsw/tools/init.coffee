@@ -1344,6 +1344,14 @@ angular.module(
             else
                 _r_str = "---"
             return $sce.trustAsHtml(_r_str)
+]).filter(
+    "yesno4", ["$sce", ($sce) ->
+        return (in_value) ->
+            if in_value
+                _r_str = "<span class='label label-success'>yes</span>"
+            else
+                _r_str = "<span class='label label-warning'>no</span>"
+            return $sce.trustAsHtml(_r_str)
 ]).filter("limit_text", () ->
     return (text, max_len, show_info) ->
         if text.length > max_len

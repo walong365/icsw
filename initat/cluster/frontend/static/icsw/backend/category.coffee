@@ -160,6 +160,18 @@ angular.module(
 
         is_location: (entry, min_depth=0) =>
             return entry.depth >= min_depth and entry.full_name.split("/")[1] == "location"
+            
+        is_device: (entry, min_depth=0) =>
+            return entry.depth >= min_depth and entry.full_name.split("/")[1] == "device"
+        
+        # resolve categories of device to easier manageable list
+        get_device_categories: (dev) =>
+            _r_list = []
+            for _pk in dev.categories
+                _entry = @lut[_pk]
+                if @is_device(_entry)
+                    _r_list.push(_entry)
+            return _r_list        
                 
         clear_references: (name) =>
             for entry in @list
