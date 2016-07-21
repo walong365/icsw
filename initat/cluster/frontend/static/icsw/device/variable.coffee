@@ -762,4 +762,40 @@ device_variable_module = angular.module(
                     $scope.struct.asset_struct = _asset_struct
             )
     )
+
+    $scope.add_assets = ($event, asset_type) ->
+        sub_scope = $scope.$new(true)
+        sub_scope.asset_tree = $scope.struct.asset_tree
+        unset_list = []
+        for key, value of $scope.struct.asset_struct
+            if key == asset_type
+                if value.unused.length
+                    unset_list.push([key, value.unused])
+                    for _us in value.unused
+                        # helper field
+                        _us.$$create = false
+        sub_scope.unset_list = unset_list
+        icswComplexModalService(
+            {
+                message: $compile($templateCache.get("icsw.device.static.asset.add"))(sub_scope)
+                title: "Add static templates"
+                ok_label: "Create"
+                closable: true
+                ok_callback: (modal) ->
+                    d = $q.defer()
+                    d.resolve("done")
+                    return d.promise
+                cancel_callback: (modal) ->
+                    # dbu.restore_backup($scope.edit_obj)
+                    d = $q.defer()
+                    d.resolve("cancel")
+                    return d.promise
+            }
+        ).then(
+            (fin) ->
+                sub_scope.$destroy()
+                # recreate structure
+                # _build_struct($scope.device)
+        )
+
 ])
