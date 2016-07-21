@@ -33,6 +33,7 @@ device_asset_module = angular.module(
             icswData: icswRouteExtensionProvider.create
                 pageTitle: "Device Assets"
                 rights: ["device.assets"]
+                service_types: ["discovery-server"]
                 menuEntry:
                     menukey: "dev"
                     icon: "fa-code"
@@ -993,10 +994,11 @@ device_asset_module = angular.module(
         pack.$$expanded = !pack.$$expanded
 
     $scope.downloadCsv = ->
-        icswSimpleAjaxCall({
-            url: ICSW_URLS.ASSET_EXPORT_PACKAGES_TO_CSV
-            dataType: 'json'
-        }
+        icswSimpleAjaxCall(
+            {
+                url: ICSW_URLS.ASSET_EXPORT_PACKAGES_TO_CSV
+                dataType: 'json'
+            }
         ).then(
             (result) ->
                     uri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(result.csv)
@@ -1073,16 +1075,21 @@ device_asset_module = angular.module(
             # _cf = ["year", "month", "week", "day", "hour", "minute", "second"]
             # create fields for schedule_setting form handling
             for entry in @list
-                entry.$$num_fields = entry.staticassettemplatefield_set.length
-                entry.$$asset_type = icswStaticAssetFunctions.resolve("asset_type", entry.type)
-                entry.$$created = moment(entry.date).format("YYYY-MM-DD HH:mm:ss")
-                for field in entry.staticassettemplatefield_set
-                    @salt_field(field)
+                @salt_template(entry)
 
-                    
+        salt_template: (entry) =>
+            entry.$$num_fields = entry.staticassettemplatefield_set.length
+            entry.$$asset_type = icswStaticAssetFunctions.resolve("asset_type", entry.type)
+            entry.$$created = moment(entry.date).format("YYYY-MM-DD HH:mm:ss")
+            for field in entry.staticassettemplatefield_set
+                @salt_field(field)
+
         salt_field: (field) =>
             # salt static asset template field
             field.$$field_type = icswStaticAssetFunctions.resolve("field_type", field.field_type)
+            if field.field_type == 3
+                # date
+                field.$$
             icswStaticAssetFunctions.get_default_value(field)
             
         copy_template: (src_obj, new_obj, create_user) =>
@@ -1121,7 +1128,7 @@ device_asset_module = angular.module(
 
         delete_template: (del_obj) =>
             d = $q.defer()
-            Restangular.restangularizeElement(null, del_obj, ICSW_URLS.REST_STATIC_ASSET_TEMPLATE_DETAIL.slice(1).slice(0, -2))
+            Restangular.restangularizeElement(null, del_obj, ICSW_URLS.ASSET_STATIC_ASSET_TEMPLATE_DETAIL.slice(1).slice(0, -2))
             del_obj.remove().then(
                 (removed) =>
                     _.remove(@list, (entry) -> return entry.idx == del_obj.idx)
@@ -1129,6 +1136,45 @@ device_asset_module = angular.module(
                     d.resolve("deleted")
                 (not_removed) ->
                     d.resolve("not deleted")
+            )
+            return d.promise
+            
+        delete_field: (template, field) =>
+            d = $q.defer()
+            Restangular.restangularizeElement(null, field, ICSW_URLS.ASSET_STATIC_ASSET_TEMPLATE_FIELD_DETAIL.slice(1).slice(0, -2))
+            field.remove(null, {"Content-Type": "application/json"}).then(
+                (ok) =>
+                    _.remove(template.staticassettemplatefield_set, (entry) -> return entry.idx == field.idx)
+                    @salt_template(template)
+                    d.resolve("ok")
+                (notok) ->
+                    d.reject("not ok")
+            )
+            return d.promise
+
+        update_field: (template, field) =>
+            d = $q.defer()
+            Restangular.restangularizeElement(null, field, ICSW_URLS.ASSET_STATIC_ASSET_TEMPLATE_FIELD_DETAIL.slice(1).slice(0, -2))
+            field.put(null, {"Content-Type": "application/json"}).then(
+                (new_field) =>
+                    _.remove(template.staticassettemplatefield_set, (entry) -> return entry.idx == field.idx)
+                    template.staticassettemplatefield_set.push(new_field)
+                    @salt_template(template)
+                    d.resolve("ok")
+                (notok) ->
+                    d.reject("not ok")
+            )
+            return d.promise
+
+        create_field: (template, field) =>
+            d = $q.defer()
+            Restangular.all(ICSW_URLS.ASSET_STATIC_ASSET_TEMPLATE_FIELD_CALL.slice(1)).post(field).then(
+                (new_field) =>
+                    template.staticassettemplatefield_set.push(new_field)
+                    @salt_template(template)
+                    d.resolve("ok")
+                (notok) ->
+                    d.reject("not ok")
             )
             return d.promise
 

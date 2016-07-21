@@ -41,7 +41,7 @@ MAX_IGNORE_LIST = {"lo"}
 # devices to check
 NET_DEVICES = {"eth", "lo", "myr", "ib", "xenbr", "vmnet", "tun", "tap", TOTAL_DEVICE_NAME, MAX_DEVICE_NAME}
 # devices for detailed statistics
-DETAIL_DEVICES = {"eth", "tun", "tap"}
+DETAIL_DEVICES = {"eth", "tun", "tap", "wlan", "en"}
 # devices for ethtool
 ETHTOOL_DEVICES = {"eth", "peth", "tun", "tap", "en"}
 # devices for ibv_devinfo

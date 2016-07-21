@@ -34,10 +34,7 @@ from django.http import HttpResponse
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from rest_framework import status
-
-from rest_framework import serializers
-from rest_framework import viewsets
+from rest_framework import viewsets, status
 from rest_framework.response import Response
 
 from initat.cluster.backbone.models import device_group, device, \
@@ -46,6 +43,7 @@ from initat.cluster.backbone.models import device_group, device, \
     domain_name_tree, net_ip, peer_information, mon_ext_host, device_variable, \
     SensorThreshold, package_device_connection, DeviceDispatcherLink, AssetRun, \
     AssetBatch, DeviceScanLock, device_variable_scope
+from initat.cluster.backbone.models import get_change_reset_list
 from initat.cluster.backbone.models.functions import can_delete_obj
 from initat.cluster.backbone.render import permission_required_mixin
 from initat.cluster.backbone.serializers import netdevice_serializer, ComCapabilitySerializer, \
@@ -56,7 +54,6 @@ from initat.cluster.backbone.serializers import netdevice_serializer, ComCapabil
     device_variable_scope_serializer
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from initat.tools import logging_tools, server_command, process_tools
-from initat.cluster.backbone.models import get_change_reset_list
 
 logger = logging.getLogger("cluster.device")
 

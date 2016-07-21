@@ -51,7 +51,7 @@ angular.module(
         clear_tree: () =>
             @lut = {}
 
-        get_name : (t_entry) ->
+        get_name: (t_entry) ->
             cat = t_entry.obj
             is_loc = @location_re.test(cat.full_name)
             if cat.depth > 1
@@ -113,6 +113,7 @@ angular.module(
             scope.dn_tree = scope.icsw_config_object.dn_tree
             scope.mode = scope.icsw_config_object.mode
             scope.mode_is_location = scope.mode == "location"
+            scope.mode_is_device = scope.mode == "device"
             # links, a little hacky...
             scope.dn_tree.config_object = scope.icsw_config_object
             scope.dn_tree.config_service = @
@@ -175,6 +176,11 @@ angular.module(
                 # called from formular code
                 # full_name.match leads to infinite digest cycles
                 return (obj.depth > 1) and top_level == "location"
+
+            sub_scope.is_device = (obj) ->
+                # called from formular code
+                # full_name.match leads to infinite digest cycles
+                return (obj.depth > 1) and top_level == "device"
 
             ok_label = if create then "Create" else "Modify"
             icswComplexModalService(
@@ -278,6 +284,11 @@ angular.module(
         # called from formular code
         # full_name.match leads to infinite digest cycles
         return $scope.mode == "location"
+
+    $scope.is_device = (obj) ->
+        # called from formular code
+        # full_name.match leads to infinite digest cycles
+        return $scope.mode == "device"
 
     $scope.get_tr_class = (obj) ->
         if $scope.dn_tree.lut[obj.idx].active
@@ -537,12 +548,14 @@ angular.module(
             super(args)
             # valid entries for the selected subtree
             @mode_entries = []
+            @subtree = ""
             @clear_tree()
 
         clear_tree: () =>
             @lut = {}
 
         create_mode_entries: (mode, cat_tree) =>
+            @subtree = mode
             @mode_entries.length = []
             for entry in cat_tree.list
                 if entry.depth < 1 or entry.full_name.split("/")[1] == mode
@@ -576,8 +589,8 @@ angular.module(
                     # console.log num_sel, @num_objects
                     if num_sel and @num_objects > 1
                         r_info = "#{r_info}, #{num_sel} of #{@num_objects}"
-                    if obj.num_refs
-                        r_info = "#{r_info}, total references=#{obj.num_refs}"
+                    # if obj.num_refs
+                    #    r_info = "#{r_info}, total references=#{obj.num_refs}"
             else
                 r_info = "TOP"
             return r_info
@@ -594,18 +607,59 @@ angular.module(
                         return []
             )
 
+        get_post_view_element: (t_entry) ->
+            obj = t_entry.obj
+            _r_obj = []
+            if @mode == "obj" and obj.depth > 0
+                num_sel = t_entry.$match_pks.length
+                if num_sel
+                    _r_obj.push(
+                        span(
+                            {
+                                key: "num.refs"
+                                className: "label label-success"
+                            }
+                            "#{num_sel} refs"
+                        )
+                    )
+                if obj.num_refs
+                    _r_obj.push(
+                        span(
+                            {
+                                key: "num.refst"
+                                className: "label label-danger"
+                            }
+                            "#{obj.num_refs} total"
+                        )
+                    )
+            return _r_obj
+
         get_pre_view_element: (entry) =>
-            if entry._element_count
-                return span(
-                    {
-                        key: "_pve"
-                        className: "label label-default"
-                        title: "Devices selected"
-                    }
-                    "#{entry._element_count}"
+            _r_list = []
+            if @subtree == "device" and entry.obj.asset
+                _r_list.push(
+                    span(
+                        {
+                            key: "is_asset"
+                            className: "label label-info"
+                            title: "Is an Asset category"
+                        }
+                        "Asset"
+                    )
                 )
-            else
-                return null
+                _r_list.push(" ")
+            if entry._element_count
+                _r_list.push(
+                    span(
+                        {
+                            key: "_pve"
+                            className: "label label-default"
+                            title: "Devices selected"
+                        }
+                        "#{entry._element_count}"
+                    )
+                )
+            return _r_list
 
         selection_changed: (entry) =>
             # console.log "SC"
@@ -643,9 +697,15 @@ angular.module(
             selected_cat: "&icswSelectedCategory"
             # mode
             mode: "@icswMode"
+            # optional assetfilter
+            icsw_asset_filter: "=icswAssetFilter"
         controller: "icswConfigCategoryTreeSelectCtrl"
         link : (scope, el, attrs) ->
-            scope.set_mode_and_tree(scope.mode, scope.sub_tree)
+            if attrs.icswAssetFilter?
+                _as_filter = scope.icsw_asset_filter
+            else
+                _as_filter = false
+            scope.set_mode_and_tree_and_filter(scope.mode, scope.sub_tree, _as_filter)
     }
 ]).controller("icswConfigCategoryTreeSelectCtrl",
 [
@@ -664,6 +724,8 @@ angular.module(
         # obj ...... set categories for one or more objects
         # filter ... work as filter for livestatus
         mode: undefined
+        # asset filter, allow only asset device categories
+        asset_filter: false
         # categore tree (display)
         disp_cat_tree: undefined
         # tree is ready
@@ -687,10 +749,11 @@ angular.module(
             $scope.selected_cat({entry: entry}) #  = entry
         )
 
-    $scope.set_mode_and_tree = (mode, sub_tree) ->
+    $scope.set_mode_and_tree_and_filter = (mode, sub_tree, asset_filter) ->
         # set modes and init structure
         $scope.struct.mode = mode
         $scope.struct.sub_tree = sub_tree
+        $scope.struct.asset_filter = asset_filter
         console.assert(
             $scope.struct.sub_tree in [
                 "mon", "config", "device", "location"
@@ -904,12 +967,16 @@ angular.module(
                     _sel = false
                 _match_pks = (_val for _val in entry.reference_dict.device when _val in _obj_pks)
                 _match_pks.sort()
+            # show selection button ?
+            _show_select = entry.idx in _useable_idxs and entry.depth > 1
+            if $scope.struct.asset_filter and $scope.struct.mode == "obj" and $scope.struct.sub_tree == "device" and not entry.asset
+                _show_select = false
             t_entry = _dct.create_node(
                 folder: false
                 obj: entry
                 expand: entry.idx in _to_expand
                 selected: _sel
-                show_select: entry.idx in _useable_idxs and entry.depth > 1
+                show_select: _show_select
                 _element_count: _num_el
             )
             # copy matching pks to tree entry (NOT entry because entry is global)
