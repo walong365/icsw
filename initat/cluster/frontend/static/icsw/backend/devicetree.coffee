@@ -88,6 +88,10 @@ angular.module(
                 ["asc", "asc", "asc"],
             )
 
+        post_g_static_asset_info: () ->
+
+            console.log "static_asset_info"
+
         post_g_device_connection_info: () ->
             dev_pks = (dev.idx for dev in @devices)
             dev_lut = _.keyBy(@devices, "idx")
@@ -108,7 +112,6 @@ angular.module(
                             dev_lut[cd.child].$$master_list.push(cd)
             
         post_g_variable_info: () ->
-
             if not @var_name_filter?
                 @var_name_filter = ""
             for dev in @devices
@@ -295,6 +298,7 @@ angular.module(
                 dispatcher_info: "dispatcher_set"
                 # shallow version for info
                 past_assetrun_info: "past_assetrun_set"
+                static_asset_info: "staticasset_set"
             }
             if req of _lut
                 return _lut[req]

@@ -91,6 +91,8 @@ angular.module(
     _sanitize_entry = (entry) ->
         entry.$$dummy = false
         entry.state = parseInt(entry.state)
+        if entry.last_check in ["0"] and entry.state != 4
+            entry.state = 5
         if entry.state_type in ["0", "1"]
             entry.state_type = parseInt(entry.state_type)
         else
@@ -133,6 +135,8 @@ angular.module(
             display_name: display_name
             $$ct: ct
             $$dummy: false
+            last_check: "0"
+            last_state_change: "0"
         }
         return entry
 
@@ -187,6 +191,10 @@ angular.module(
             color: "#888888"
             info: "not monitored"
         }
+        5: {
+            color: "#888888"
+            info: "pending"
+        }
     }
 
     _service_lut = {
@@ -210,12 +218,16 @@ angular.module(
             color: "#888888"
             info: "not monitored"
         }
+        5: {
+            color: "#888888"
+            info: "pending"
+        }
     }
     _struct = {
         device_lut: _device_lut
         service_lut: _service_lut
-        device_states: [0, 1, 2, 3, 4]
-        service_states: [0, 1, 2, 3, 4]
+        device_states: [0, 1, 2, 3, 4, 5]
+        service_states: [0, 1, 2, 3, 4, 5]
     }
     salt_device_state = (entry) ->
         entry.$$burst_fill_color = _device_lut[entry.state].color
@@ -225,13 +237,15 @@ angular.module(
             2: "svg_crit"
             3: "svg_unknown"
             4: "svg_unknown"
+            5: "svg_unknown"
         }[entry.state]
         _r_str = {
             0: "success"
             1: "danger"
             2: "danger"
             3: "warning"
-            4: "danger"
+            4: "default"
+            5: "default"
         }[entry.state]
         entry.$$icswStateClass = _r_str
         # entry.$$icswStateLabelClass = "label-#{_r_str}"
@@ -243,6 +257,7 @@ angular.module(
             2: "Unreachable"
             3: "Not set"
             4: "Not monitored"
+            5: "pending"
         }[entry.state]
 
     salt_service_state = (entry) ->
@@ -252,7 +267,9 @@ angular.module(
             2: "danger"
             3: "danger"
             # special state: unmonitored
-            4: "danger"
+            4: "default"
+            # special state: pending
+            5: "default"
         }[entry.state]
         entry.className = {
             0: "svg_ok"
@@ -260,6 +277,7 @@ angular.module(
             2: "svg_crit"
             3: "svg_danger"
             4: "svg_unknown"
+            5: "svg_unknown"
         }[entry.state]
         entry.$$burst_fill_color = _service_lut[entry.state].color
         entry.$$icswStateClass = _r_str
@@ -272,6 +290,7 @@ angular.module(
             2: "Critical"
             3: "Unknown"
             4: "unmon"
+            5: "pending"
         }[entry.state]
 
     salt_host = (entry, device_tree, cat_tree, device_cat_pks) ->

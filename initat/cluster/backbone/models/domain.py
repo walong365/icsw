@@ -501,6 +501,8 @@ class category(models.Model):
     longitude = models.FloatField(default=16.3)
     # locked field, only valid (right now) for locations
     locked = models.BooleanField(default=False)
+    # used for asset categorisation
+    asset = models.BooleanField(default=False)
     # comment
     comment = models.CharField(max_length=256, default="", blank=True)
 
@@ -644,6 +646,10 @@ def category_pre_save(sender, **kwargs):
             if new_full_name != cur_inst.full_name:
                 cur_inst.full_name = new_full_name
                 cur_inst.full_name_changed = True
+            # get top level cat
+            top_level_cat = cur_inst.full_name.split("/")[1]
+            if cur_inst.asset and top_level_cat != TOP_DEVICE_CATEGORY:
+                raise ValidationError("Asset flag only allowed for devicecategory '{}'".format(cur_inst.full_name))
             # check for used named
             used_names = category.objects.exclude(
                 Q(pk=cur_inst.pk)

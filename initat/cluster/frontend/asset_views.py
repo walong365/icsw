@@ -324,6 +324,16 @@ class StaticAssetTemplateViewSet(viewsets.ViewSet):
         return Response(new_obj.data)
 
     @method_decorator(login_required)
+    def delete_template(self, request, *args, **kwargs):
+        cur_obj = StaticAssetTemplate.objects.get(Q(pk=kwargs["pk"]))
+        can_delete_answer = can_delete_obj(cur_obj)
+        if can_delete_answer:
+            cur_obj.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        else:
+            raise ValueError(can_delete_answer.msg)
+
+    @method_decorator(login_required)
     def create_field(self, request):
         new_obj = StaticAssetTemplateFieldSerializer(data=request.data)
         if new_obj.is_valid():

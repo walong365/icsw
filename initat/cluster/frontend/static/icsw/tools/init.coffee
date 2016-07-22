@@ -233,7 +233,7 @@ angular.module(
             if xml != null
                 toaster.pop("error", "A critical error occured", "error parsing response", 0)
         return success
-]).provider("icswRouteExtension", () ->
+]).provider("icswRouteExtension", [() ->
     _key_idx = 0
     class icswRouteExtension
         constructor: (args) ->
@@ -316,7 +316,7 @@ angular.module(
             _struct.entries.push(_ext)
             return _ext
     }
-).service("icswRouteHelper",
+]).service("icswRouteHelper",
 [
     "icswRouteExtension", "$state", "$rootScope", "ICSW_SIGNALS", "icswAcessLevelService",
 (
@@ -463,7 +463,7 @@ angular.module(
                 pre: (scope, el, attrs) ->
                     # console.log "pre selman"
                     # console.log "link selman to scope", scope
-                    # is an active selection (listen to icswDeviceList) ß
+                    # is an active selection (listen to icswDeviceList)
                     _active_selection = if parseInt(attrs.icswSelMan) then true else false
                     # store selection list
                     scope.$icsw_selman_list  = []
@@ -1336,7 +1336,23 @@ angular.module(
     "yesno2", () ->
         return (in_value) ->
             return if in_value then "yes" else "no"
-).filter("limit_text", () ->
+).filter(
+    "yesno3", ["$sce", ($sce) ->
+        return (in_value) ->
+            if in_value
+                _r_str = "<span class='label label-success'>yes</span>"
+            else
+                _r_str = "---"
+            return $sce.trustAsHtml(_r_str)
+]).filter(
+    "yesno4", ["$sce", ($sce) ->
+        return (in_value) ->
+            if in_value
+                _r_str = "<span class='label label-success'>yes</span>"
+            else
+                _r_str = "<span class='label label-warning'>no</span>"
+            return $sce.trustAsHtml(_r_str)
+]).filter("limit_text", () ->
     return (text, max_len, show_info) ->
         if text.length > max_len
             if show_info
