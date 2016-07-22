@@ -63,46 +63,29 @@ device_report_module = angular.module(
     "icswTools", "icswSimpleAjaxCall", "ICSW_URLS", "FileUploader", "icswCSRFService"
     "icswDeviceTreeService", "icswDeviceTreeHelperService", "$timeout",
     "icswDispatcherSettingTreeService", "Restangular", "icswActiveSelectionService",
-    "icswComplexModalService"
+    "icswComplexModalService", "$interval"
 (
     $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI,
     icswTools, icswSimpleAjaxCall, ICSW_URLS, FileUploader, icswCSRFService
     icswDeviceTreeService, icswDeviceTreeHelperService, $timeout,
     icswDispatcherSettingTreeService, Restangular, icswActiveSelectionService,
-    icswComplexModalService
+    icswComplexModalService, $interval
 ) ->
     $scope.struct = {
         # list of devices
         devices: []
         # device tree
         device_tree: undefined
-        # data loaded
-        data_loaded: false
-        # dispatcher setting tree
-        disp_setting_tree: undefined
-        # package tree
-        package_tree: undefined
-        # num_selected
-        num_selected: 0
 
-        # AssetRun tab properties
-        num_selected_ar: 0
-        asset_runs: []
-        show_changeset: false
-        added_changeset: []
-        removed_changeset: []
-
-        # Scheduled Runs tab properties
-        schedule_items: []
-        # reload timer
-        reload_timer: undefined
-        # reload flag
-        reloading: false
         gfx_b64_data: undefined
+
         report_generating: false
         report_download_url: undefined
         report_download_name: undefined
+
         generate_button_disabled: false
+        generate_interval: undefined
+        generate_progress: 0
     }
 
     $scope.uploading = false
@@ -242,13 +225,52 @@ device_report_module = angular.module(
         }
         ).then(
             (result) ->
-                $scope.struct.report_download_name = "Report.pdf"
-                blob = new Blob([ atob(result.pdf) ], { type : 'application/pdf' })
-                $scope.struct.report_download_url = (window.URL || window.webkitURL).createObjectURL(blob)
+                $scope.struct.generate_interval = $interval(
+                    () ->
+                        icswSimpleAjaxCall({
+                            url: ICSW_URLS.REPORT_GET_PROGRESS
+                            data:
+                                id: result.id
+                            dataType: 'json'
+                        }).then(
+                            (data) ->
+                                console.log(data)
+                                if $scope.struct.report_generating
+                                    if data.progress > $scope.struct.generate_progress
+                                        $scope.struct.generate_progress = data.progress
+
+                                    if data.progress == 100
+                                        icswSimpleAjaxCall({
+                                            url: ICSW_URLS.REPORT_GET_REPORT_PDF
+                                            data:
+                                                id: result.id
+                                            dataType: 'json'
+                                        }).then(
+                                            (result) ->
+                                                $scope.struct.report_download_name = "Report.pdf"
+                                                blob = new Blob([ atob(result.pdf) ], { type : 'application/pdf' })
+                                                $scope.struct.report_download_url = (window.URL || window.webkitURL).createObjectURL(blob)
+
+                                                $scope.struct.report_generating = false
+                                                $scope.struct.generate_button_disabled = false
+                                                $interval.cancel($scope.struct.generate_interval)
+                                                $scope.struct.generate_progress = 0
+                                            (not_ok) ->
+                                                console.log not_ok
+
+                                                $scope.struct.report_generating = false
+                                                $scope.struct.generate_button_disabled = false
+                                                $interval.cancel($scope.struct.generate_interval)
+                                                $scope.struct.generate_progress = 0
+
+                                        )
+                            )
+                    , 1000)
+            (not_ok) ->
                 $scope.struct.report_generating = false
                 $scope.struct.generate_button_disabled = false
-            (not_ok) ->
-                $scope.struct.generate_button_disabled = false
+                $interval.cancel($scope.struct.generate_interval)
+                $scope.struct.generate_progress = 0
                 console.log not_ok
         )
 

@@ -96,6 +96,7 @@
                                         <li><a href="" ng-click='downloadPdf()'>as PDF</a></li>
                                     </ul>
                                 </div> -->
+
                                 <br/>
 
                                 <br/><label class="control-label">Download Report</label><br/>
@@ -105,6 +106,10 @@
                                 <div ng-if="struct.report_generating == true">
                                     <div ng-if="struct.report_download_url == undefined">
                                         <label style="padding: 0px 15px">Report is generating, please wait...</label>
+                                    <div class="progress">
+                                        <div class="progress-bar progress-bar-striped active" role="progressbar" aria-valuemin="0" aria-valuemax="100" ng-style="{width : ( struct.generate_progress + '%' ) }">
+                                    </div>
+                                </div>
                                     </div>
                                 </div>
                                 <div ng-if="struct.report_generating == false">

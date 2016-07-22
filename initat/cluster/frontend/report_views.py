@@ -21,44 +21,22 @@
 """ report views """
 
 import base64
-import csv
-import datetime
 import json
 import logging
-import tempfile
+import datetime
 
-import pytz
 from django.contrib.auth.decorators import login_required
-from django.core.exceptions import ValidationError
-from initat.cluster.backbone.models.functions import can_delete_obj, get_change_reset_list
-from django.db.models import Q, Count, Case, When, IntegerField, Sum
 from django.http import HttpResponse
-from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from rest_framework import viewsets, status
-from rest_framework.response import Response
-from io import BytesIO
+from threading import Thread
 
-from initat.cluster.backbone.models import device, AssetPackage, AssetRun, \
-    AssetPackageVersion, AssetType, StaticAssetTemplate, user, RunStatus, RunResult, PackageTypeEnum, \
-    AssetBatch, StaticAssetTemplateField, device_variable
-from initat.cluster.backbone.models.dispatch import ScheduleItem
-from initat.cluster.backbone.serializers import AssetRunDetailSerializer, ScheduleItemSerializer, \
-    AssetPackageSerializer, AssetRunOverviewSerializer, StaticAssetTemplateSerializer, \
-    StaticAssetTemplateFieldSerializer
+
+from initat.cluster.backbone.models import device, device_variable
 
 from initat.cluster.frontend.asset_views import PDFReportGenerator
 
-from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
-
-
-
-try:
-    from openpyxl import Workbook
-    from openpyxl.writer.excel import save_virtual_workbook
-except ImportError:
-    Workbook = None
+from initat.cluster.frontend.helper_functions import xml_wrapper
 
 
 logger = logging.getLogger(__name__)
@@ -86,7 +64,6 @@ class upload_report_gfx(View):
 class get_report_gfx(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
-        print request
         system_device = device.objects.filter(name="METADEV_system")[0]
         report_logo_tmp = system_device.device_variable_set.filter(name="__REPORT_LOGO__")
 
@@ -102,9 +79,57 @@ class get_report_gfx(View):
             )
         )
 
+REPORT_GENERATORS = {}
+REPORT_TIMEOUT_SECONDS = 1800
+
+class get_progress(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        report_generator_id = int(request.POST["id"])
+
+        progress = 0
+        if report_generator_id in REPORT_GENERATORS:
+            progress = REPORT_GENERATORS[report_generator_id].progress
+
+        return HttpResponse(
+            json.dumps(
+                {
+                    'progress': progress
+                }
+            )
+        )
+
+
+class get_report_pdf(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        report_generator_id = int(request.POST["id"])
+
+        data = ""
+
+        if report_generator_id in REPORT_GENERATORS:
+            data = REPORT_GENERATORS[report_generator_id].buffer.getvalue()
+            del REPORT_GENERATORS[report_generator_id]
+
+        pdf_b64 = base64.b64encode(data)
+
+        return HttpResponse(
+            json.dumps(
+                {
+                    'pdf': pdf_b64
+                }
+            )
+        )
+
 class generate_report_pdf(View):
     @method_decorator(login_required)
     def post(self, request):
+        current_time = datetime.datetime.now()
+        ## remove references of old report generators
+        for report_generator_id in REPORT_GENERATORS.keys():
+            if (current_time - REPORT_GENERATORS[report_generator_id].timestamp).seconds > REPORT_TIMEOUT_SECONDS:
+                del REPORT_GENERATORS[report_generator_id]
+
         settings_dict = {}
 
         for key in request.POST.iterkeys():
@@ -138,23 +163,22 @@ class generate_report_pdf(View):
                 _devices.append(_device)
 
         pdf_report_generator = PDFReportGenerator()
+        pdf_report_generator.timestamp = current_time
+        REPORT_GENERATORS[id(pdf_report_generator)] = pdf_report_generator
 
-        for _device in _devices:
-            pdf_report_generator.generate_report(_device, pk_settings[_device.idx])
-
-        buffer = pdf_report_generator.get_pdf_as_buffer()
-
-        buffer.seek(0)
-        tmp_file = tempfile.NamedTemporaryFile(delete=False)
-        tmp_file.write(buffer.read())
-        tmp_file.close()
-
-        pdf_b64 = base64.b64encode(buffer.getvalue())
+        Thread(target=generate_pdf, args=(_devices, pk_settings, pdf_report_generator)).start()
 
         return HttpResponse(
             json.dumps(
                 {
-                    'pdf': pdf_b64
+                    'id': id(pdf_report_generator)
                 }
             )
         )
+
+def generate_pdf(_devices, pk_settings, pdf_report_generator):
+    for _device in _devices:
+        pdf_report_generator.generate_report(_device, pk_settings[_device.idx])
+
+    buffer = pdf_report_generator.get_pdf_as_buffer()
+    pdf_report_generator.buffer = buffer

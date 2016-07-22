@@ -570,6 +570,8 @@ class PDFReportGenerator(object):
             logo.save(self.logo_buffer, format="BMP")
 
         self.reports = []
+        self.progress = 0
+        self.buffer = None
 
     def __get_logo_helper(self, value):
         import tempfile
@@ -1112,6 +1114,7 @@ class PDFReportGenerator(object):
 
         output_buffer = BytesIO()
         output_pdf.write(output_buffer)
+        self.progress = 100
 
         return output_buffer
 
@@ -1217,6 +1220,9 @@ class PDFReportGenerator(object):
         num_pages = existing_pdf.getNumPages()
 
         for page_number in range(num_pages):
+            self.progress = int((page_number / float(num_pages)) * 100)
+            print self.progress
+
             page = existing_pdf.getPage(page_number)
 
             if page_number >= toc_offset_num:
