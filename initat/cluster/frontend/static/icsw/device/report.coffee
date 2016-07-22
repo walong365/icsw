@@ -102,6 +102,7 @@ device_report_module = angular.module(
         report_generating: false
         report_download_url: undefined
         report_download_name: undefined
+        generate_button_disabled: false
     }
 
     $scope.uploading = false
@@ -212,6 +213,7 @@ device_report_module = angular.module(
         return if obj.is_meta_device then "success" else ""
 
     $scope.downloadPdf = ->
+        $scope.struct.generate_button_disabled = true
         $scope.struct.report_download_url = undefined
         $scope.struct.report_generating = true
 
@@ -244,7 +246,9 @@ device_report_module = angular.module(
                 blob = new Blob([ atob(result.pdf) ], { type : 'application/pdf' })
                 $scope.struct.report_download_url = (window.URL || window.webkitURL).createObjectURL(blob)
                 $scope.struct.report_generating = false
+                $scope.struct.generate_button_disabled = false
             (not_ok) ->
+                $scope.struct.generate_button_disabled = false
                 console.log not_ok
         )
 

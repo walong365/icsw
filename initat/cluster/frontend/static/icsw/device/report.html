@@ -53,6 +53,10 @@
                                         </td>
                                     </tr>
                                     <tr>
+                                        <th class="text-center" colspan=5>Devic Information</th>
+                                        <th class="text-center" colspan=5>Asset Management Modules</th>
+                                    </tr>
+                                    <tr>
                                         <th st-sort='st_attrs.name'>Name</th>
                                         <th>Sel</th>
                                         <th st-sort='st_attrs.description'>Description</th>
@@ -82,7 +86,7 @@
                         <div class="panel-body" style="padding: 6px 15px">
                             <div class="input-group">
                                 <br/><label class="control-label">Generate Report</label><br/>
-                                <button class="btn btn-primary dropdown-toggle" ng-click="downloadPdf()" type="button" data-toggle="dropdown">Generate</button>
+                                <button class="btn btn-primary dropdown-toggle" ng-click="downloadPdf()" type="button" ng-disabled="struct.generate_button_disabled">Generate</button>
                                 <!-- <div class="dropdown">
                                     <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">
                                         Generate Report
