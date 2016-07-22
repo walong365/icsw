@@ -39,6 +39,7 @@ from django.views.generic import View
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from io import BytesIO
+from PIL import Image as PILImage
 
 from initat.cluster.backbone.models import device, AssetPackage, AssetRun, \
     AssetPackageVersion, AssetType, StaticAssetTemplate, user, RunStatus, RunResult, PackageTypeEnum, \
@@ -557,15 +558,42 @@ class PDFReportGenerator(object):
         system_device = device.objects.filter(name="METADEV_system")[0]
         report_logo = system_device.device_variable_set.filter(name="__REPORT_LOGO__")
 
+        self.logo_width = None
+        self.logo_height = None
         self.logo_buffer = BytesIO()
         if report_logo:
             report_logo = report_logo[0]
             data = base64.b64decode(report_logo.val_blob)
             self.logo_buffer.write(data)
+            im = PILImage.open(self.logo_buffer)
+            self.logo_width = im.size[0]
+            self.logo_height = im.size[1]
+
+            drawheight_max = 45
+            drawwidth_max = 105
+
+            ratio = float(self.logo_width) / float(self.logo_height)
+
+
+            print "****"
+            print self.logo_width
+            print self.logo_height
+            print "****"
+
+            while self.logo_width > drawwidth_max or self.logo_height > drawheight_max:
+                self.logo_width -= ratio * 1
+                self.logo_height -= 1
+
+            print "****"
+            print self.logo_width
+            print self.logo_height
+            print "****"
+
+
         else:
             # generate a simple placeholder image
-            from PIL import Image as PILImage
-
+            self.logo_height = 42
+            self.logo_width = 103
             logo = PILImage.new('RGB', (255, 255), "black")  # create a new black image
             logo.save(self.logo_buffer, format="BMP")
 
@@ -622,8 +650,8 @@ class PDFReportGenerator(object):
             _device.name), styleSheet["BodyText"])
 
         logo = Image(self.logo_buffer)
-        logo.drawHeight = 42
-        logo.drawWidth = 103
+        logo.drawHeight = self.logo_height
+        logo.drawWidth = self.logo_width
 
         data = [[PH, logo]]
 
@@ -745,31 +773,34 @@ class PDFReportGenerator(object):
 
                 data = row_collector.rows_dict[1:]
                 data = sorted(data, key=lambda k: k['update_status'])
-                if not data:
-                    continue
 
                 report.generate_bookmark("Installed Updates")
 
                 rpt = Report(data)
+
+                if data:
+                    rpt.groupheaders = [Band([Element((0, 4), ("Helvetica-Bold", 10),
+                                                      getvalue=lambda x: x['update_status'],
+                                                      format=lambda x: "Updates with status: {}".format(x)), ],
+                                             getvalue=lambda x: x["update_status"]), ]
+                else:
+                    mock_object = {}
+                    mock_object["update_name"] = ""
+                    mock_object["install_date"] = ""
+                    mock_object["update_status"] = ""
+                    data.append(mock_object)
 
                 rpt.detailband = Band([Element((0, 0), ("Helvetica", 6), key='update_name'),
                                        Element((400, 0), ("Helvetica", 6), key='install_date'),
                                        Element((600, 0), ("Helvetica", 6), key='update_status'),
                                        Rule((0, 0), 7.5 * 90, thickness=0.1)])
 
-                rpt.pageheader = Band([Image(pos=(570, -25), width=103, height=42, getvalue=self.__get_logo_helper),
-                                       Element((0, 0), ("Times-Bold", 20), text="Installed Updates for {}".format(row_collector.row_info[5])),
+                rpt.pageheader = Band([Image(pos=(570, -25), width=self.logo_width, height=self.logo_height, getvalue=self.__get_logo_helper),
+                                       Element((0, 0), ("Times-Bold", 20), text="Installed Updates for {}".format(report.device.full_name)),
                                        Element((0, 24), ("Helvetica", 12), text="Update Name"),
                                        Element((400, 24), ("Helvetica", 12), text="Install Date"),
                                        Element((600, 24), ("Helvetica", 12), text="Install Status"),
                                        Rule((0, 42), 7.5 * 90, thickness=2), ])
-
-
-                rpt.groupheaders = [Band([Element((0, 4), ("Helvetica-Bold", 10),
-                                          getvalue=lambda x: x['update_status'],
-                                          format=lambda x: "Updates with status: {}".format(x)), ],
-                                          getvalue=lambda x: x["update_status"]), ]
-
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -778,21 +809,25 @@ class PDFReportGenerator(object):
                 if not report.report_settings['licenses_selected']:
                     continue
 
-                data = row_collector.rows[1:]
-                if not data:
-                    continue
+                data = row_collector.rows_dict[1:]
 
                 report.generate_bookmark("Available Licenses")
 
                 rpt = Report(data)
 
-                rpt.detailband = Band([Element((0, 0), ("Helvetica", 6), key=0),
-                                       Element((500, 0), ("Helvetica", 6), key=1),
+                if not data:
+                    mock_object = {}
+                    mock_object["license_name"] = ""
+                    mock_object["license_key"] = ""
+                    data.append(mock_object)
+
+                rpt.detailband = Band([Element((0, 0), ("Helvetica", 6), key="license_name"),
+                                       Element((500, 0), ("Helvetica", 6), key="license_key"),
                                        Rule((0, 0), 7.5 * 90, thickness=0.1)])
 
                 rpt.pageheader = Band(
-                    [Image(pos=(570, -25), width=103, height=42, getvalue=self.__get_logo_helper),
-                     Element((0, 0), ("Times-Bold", 20), text="Available Licenses for {}".format(row_collector.row_info[5])),
+                    [Image(pos=(570, -25), width=self.logo_width, height=self.logo_height, getvalue=self.__get_logo_helper),
+                     Element((0, 0), ("Times-Bold", 20), text="Available Licenses for {}".format(report.device.full_name)),
                      Element((0, 24), ("Helvetica", 12), text="License Name"),
                      Element((500, 24), ("Helvetica", 12), text="License Key"),
                      Rule((0, 42), 7.5 * 90, thickness=2), ])
@@ -810,8 +845,6 @@ class PDFReportGenerator(object):
 
                 #data = row_collector.rows_dict[1:]
                 #data = sorted(data, key=lambda k: k['package_name'])
-                if not packages:
-                    continue
 
                 report.generate_bookmark("Installed Packages")
 
@@ -819,6 +852,20 @@ class PDFReportGenerator(object):
                 data = sorted(data, key=lambda k: k['package_name'])
 
                 rpt = Report(data)
+
+                if data:
+                    rpt.groupheaders = [Band([Element((0, 4), ("Helvetica-Bold", 10),
+                                                      getvalue=lambda x: x['package_name'][0],
+                                                      format=lambda x: "Packages starting with: {}".format(x)), ],
+                                             getvalue=lambda x: x["package_name"][0]), ]
+                else:
+                    mock_object = {}
+                    mock_object["package_name"] = ""
+                    mock_object["package_version"] = ""
+                    mock_object["package_release"] = ""
+                    mock_object["package_size"] = ""
+                    mock_object["package_install_date"] = ""
+                    data.append(mock_object)
 
                 rpt.detailband = Band([Element((0, 0), ("Helvetica", 6), key='package_name'),
                                        Element((400, 0), ("Helvetica", 6), key='package_version'),
@@ -828,19 +875,14 @@ class PDFReportGenerator(object):
                                        Rule((0, 0), 7.5 * 90, thickness=0.1)])
 
                 rpt.pageheader = Band(
-                    [Image(pos=(570, -25), width=103, height=42, getvalue=self.__get_logo_helper),
-                    Element((0, 0), ("Times-Bold", 20), text="Installed Packages for {}".format(row_collector.row_info[5])),
+                    [Image(pos=(570, -25), width=self.logo_width, height=self.logo_height, getvalue=self.__get_logo_helper),
+                    Element((0, 0), ("Times-Bold", 20), text="Installed Packages for {}".format(report.device.full_name)),
                     Element((0, 24), ("Helvetica", 12), text="Name"),
                     Element((400, 24), ("Helvetica", 12), text="Version"),
                     Element((500, 24), ("Helvetica", 12), text="Release"),
                     Element((550, 24), ("Helvetica", 12), text="Size"),
                     Element((600, 24), ("Helvetica", 12), text="Install Date"),
                     Rule((0, 42), 7.5 * 90, thickness=2), ])
-
-                rpt.groupheaders = [Band([Element((0, 4), ("Helvetica-Bold", 10),
-                                                  getvalue=lambda x: x['package_name'][0],
-                                                  format=lambda x: "Packages starting with: {}".format(x)), ],
-                                         getvalue=lambda x: x["package_name"][0]), ]
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -851,12 +893,22 @@ class PDFReportGenerator(object):
 
                 data = row_collector.rows_dict[1:]
                 data = sorted(data, key=lambda k: k['update_name'])
-                if not data:
-                    continue
 
                 report.generate_bookmark("Available Updates")
 
                 rpt = Report(data)
+
+                if data:
+                    rpt.groupheaders = [Band([Element((0, 4), ("Helvetica-Bold", 10),
+                                                      getvalue=lambda x: x['update_name'][0].upper(),
+                                                      format=lambda x: "Updates starting with: {}".format(x)), ],
+                                             getvalue=lambda x: x["update_name"][0].upper()), ]
+                else:
+                    mock_object = {}
+                    mock_object["update_name"] = ""
+                    mock_object["update_version"] = ""
+                    mock_object["update_optional"] = ""
+                    data.append(mock_object)
 
                 rpt.detailband = Band([Element((0, 0), ("Helvetica", 6), key='update_name'),
                                        Rule((0, 0), 7.5 * 90, thickness=0.1),
@@ -866,17 +918,12 @@ class PDFReportGenerator(object):
                                        Rule((0, 0), 7.5 * 90, thickness=0.1)])
 
                 rpt.pageheader = Band(
-                    [Image(pos=(570, -25), width=103, height=42, getvalue=self.__get_logo_helper),
-                    Element((0, 0), ("Times-Bold", 20), text="Available Updates for {}".format(row_collector.row_info[5])),
+                    [Image(pos=(570, -25), width=self.logo_width, height=self.logo_height, getvalue=self.__get_logo_helper),
+                    Element((0, 0), ("Times-Bold", 20), text="Available Updates for {}".format(report.device.full_name)),
                     Element((0, 24), ("Helvetica", 12), text="Update Name"),
                     Element((400, 24), ("Helvetica", 12), text="Version"),
                     Element((600, 24), ("Helvetica", 12), text="Optional"),
                     Rule((0, 42), 7.5 * 90, thickness=2), ])
-
-                rpt.groupheaders = [Band([Element((0, 4), ("Helvetica-Bold", 10),
-                                                  getvalue=lambda x: x['update_name'][0].upper(),
-                                                  format=lambda x: "Updates starting with: {}".format(x)), ],
-                                         getvalue=lambda x: x["update_name"][0].upper()), ]
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -1018,8 +1065,8 @@ class PDFReportGenerator(object):
             hardware_report_ar.device.name), styleSheet["BodyText"])
 
         logo = Image(self.logo_buffer)
-        logo.drawHeight = 42
-        logo.drawWidth = 103
+        logo.drawHeight = self.logo_height
+        logo.drawWidth = self.logo_width
 
         data = [[PH, logo]]
 
@@ -1130,8 +1177,8 @@ class PDFReportGenerator(object):
         PH = Paragraph('<font face="times-bold" size="22">Contents</font>', styleSheet["BodyText"])
 
         logo = Image(self.logo_buffer)
-        logo.drawHeight = 42
-        logo.drawWidth = 103
+        logo.drawHeight = self.logo_height #42
+        logo.drawWidth = self.logo_width #103
 
         data = [[PH, logo]]
 
