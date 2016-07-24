@@ -141,7 +141,7 @@ sources = {
         "partb.js"
         [
             # angular
-            "frontend/static/js/angular-1.5.7.js",
+            "frontend/static/js/angular-1.5.8.js",
             "frontend/static/js/lodash.js",
             # no longer needed ... ?
             # "frontend/static/js/bluebird.js",
@@ -188,8 +188,6 @@ sources = {
             "frontend/static/js/angular-ui-router.js",
             "frontend/static/js/datetime-picker.js",
             "frontend/static/js/datetime-picker.tpls.js",
-            # "frontend/static/js/angular-strap.min.js",
-            # "frontend/static/js/angular-strap.tpl.min.js",
             "frontend/static/js/angular-noVNC.js",
             "frontend/static/js/FileSaver.js",
             "frontend/static/js/mousewheel.js",
