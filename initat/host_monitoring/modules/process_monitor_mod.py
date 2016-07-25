@@ -250,36 +250,40 @@ class AffinityStruct(object):
             )
             for key, targ_cpu in zip(resched, core_list):
                 cur_s = self.dict[key]
-                _process = psutil.Process(cur_s.pid)
-                _env = _process.environ()
-                if "JOB_ID" in _env:
-                    _job_id = _env["JOB_ID"]
-                    if "SGE_TASK_ID" in _env:
-                        _task_id = _env["SGE_TASK_ID"]
+                try:
+                    _process = psutil.Process(cur_s.pid)
+                    _env = _process.environ()
+                except psutil.NoSuchProcess:
+                    pass
+                else:
+                    if "JOB_ID" in _env:
+                        _job_id = _env["JOB_ID"]
+                        if "SGE_TASK_ID" in _env:
+                            _task_id = _env["SGE_TASK_ID"]
+                        else:
+                            _task_id = None
+                        cur_s.set_job_info(_job_id, _task_id)
                     else:
-                        _task_id = None
-                    cur_s.set_job_info(_job_id, _task_id)
-                else:
-                    _job_id, _task_id = (None, None)
-                # get optimal CPU (i.e. with lowest load)
-                self.log(
-                    u"pinning process {} (JobID={}) to core {:d}".format(
-                        unicode(cur_s),
-                        str(_job_id),
-                        targ_cpu,
-                    )
-                )
-                if _job_id:
-                    self._register_affinity(_job_id, _task_id, cur_s.pid, targ_cpu)
-                if not cur_s.migrate(targ_cpu):
-                    cur_s.read_mask()
-                    if cur_s.single_cpu_set:
-                        cpu_c.add_proc(cur_s)
-                else:
+                        _job_id, _task_id = (None, None)
+                    # get optimal CPU (i.e. with lowest load)
                     self.log(
-                        "some problem occured while pinning",
-                        logging_tools.LOG_LEVEL_WARN
+                        u"pinning process {} (JobID={}) to core {:d}".format(
+                            unicode(cur_s),
+                            str(_job_id),
+                            targ_cpu,
+                        )
                     )
+                    if _job_id:
+                        self._register_affinity(_job_id, _task_id, cur_s.pid, targ_cpu)
+                    if not cur_s.migrate(targ_cpu):
+                        cur_s.read_mask()
+                        if cur_s.single_cpu_set:
+                            cpu_c.add_proc(cur_s)
+                    else:
+                        self.log(
+                            "some problem occured while pinning",
+                            logging_tools.LOG_LEVEL_WARN
+                        )
             # log final usage pattern
             self.log("usage pattern: {}".format(cpu_c.get_usage_str()))
         if self.__counter % 50 == 0:

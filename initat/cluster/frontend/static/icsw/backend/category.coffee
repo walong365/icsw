@@ -465,4 +465,81 @@ angular.module(
         "current": () ->
             return _result
     }
+]).service("icswBaseCategoryTree",
+[
+    "icswTools", "ICSW_URLS", "$q", "Restangular", "$rootScope",
+(
+    icswTools, ICSW_URLS, $q, Restangular, $rootScope
+) ->
+    class icswBaseCategoryTree
+        constructor: (index_field_name, parent_field_name) ->
+            @lut = {}
+            @root_nodes = []
+            @index_field_name = index_field_name
+            @parent_field_name = parent_field_name
+
+        feed: (struct, flag_obj) =>
+            _idx = struct[@index_field_name]
+            _parent = struct[@parent_field_name]
+            _meta_struct = @get_meta_struct(struct, flag_obj)
+            @lut[_idx] = _meta_struct
+            if  _parent of @lut
+                _parent_obj = @lut[_parent]
+                @add_to_parent(_parent_obj, _meta_struct)
+            else
+                @root_nodes.push(_meta_struct)
+                _meta_struct.root_node = true
+            return _meta_struct
+
+        get_meta_struct: (struct, flag_obj) =>
+            return {
+                depth: 0
+                struct: struct
+                childs: []
+                # may be a dict or something else
+                flags: flag_obj
+                root_node: false
+                parent: null
+            }
+
+        add_to_parent: (parent_struct, meta_struct) =>
+            parent_struct.childs.push(meta_struct)
+            meta_struct.parent = parent_struct
+            meta_struct.depth = parent_struct.depth + 1
+
+        # private function
+        _resolve_nodes: (s_node, result_nodes, sel_func) =>
+            if sel_func?
+                if sel_func(s_node)
+                    result_nodes.push(s_node)
+            else
+                result_nodes.push(s_node)
+            (@_resolve_nodes(child, result_nodes, sel_func) for child in s_node.childs)
+
+        get_nodes: () =>
+            # return list of nodes which can be added to a TreeStructure, starting with the root nodes
+            _nodes = []
+            (@_resolve_nodes(_node, _nodes) for _node in @root_nodes)
+            return _nodes
+
+        remove_nodes: (remove_func) =>
+            # step 1: gather a list of all nodes to be removed
+            _to_remove = []
+            (@_resolve_nodes(_node, _to_remove, remove_func) for _node in @root_nodes)
+            _changed = true
+            while _changed
+                _changed = false
+                _new_to_remove = []
+                for entry in _to_remove
+                    if not entry.childs.length
+                        if entry.parent
+                            _.remove(entry.parent.childs, (_entry) -> return _entry.struct.idx == entry.struct.idx)
+                        else
+                            # root node
+                            _.remove(@root_nodes, (_entry) -> return _entry.struct.idx == entry.struct.idx)
+                        _changed = true
+                        # remove entry
+                    else
+                        _new_to_remove.push(entry)
+                _to_remove = _new_to_remove
 ])

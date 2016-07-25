@@ -711,11 +711,11 @@ angular.module(
 [
     "$scope", "$templateCache", "icswCatSelectionTreeService", "icswConfigTreeService", "$q",
     "icswCategoryTreeService", "icswAcessLevelService", "blockUI", "icswSimpleAjaxCall",
-    "ICSW_URLS", "icswDeviceTreeService", "$rootScope", "ICSW_SIGNALS",
+    "ICSW_URLS", "icswDeviceTreeService", "$rootScope", "ICSW_SIGNALS", "icswBaseCategoryTree",
 (
     $scope, $templateCache, icswCatSelectionTreeService, icswConfigTreeService, $q,
     icswCategoryTreeService, icswAcessLevelService, blockUI, icswSimpleAjaxCall,
-    ICSW_URLS, icswDeviceTreeService, $rootScope, ICSW_SIGNALS,
+    ICSW_URLS, icswDeviceTreeService, $rootScope, ICSW_SIGNALS, icswBaseCategoryTree,
 ) ->
     $scope.struct = {
         # object list
@@ -931,31 +931,42 @@ angular.module(
         _dct.clear_tree()
         if $scope.struct.mode == "filter"
             # add uncategorized entry
-            dummy_entry = _dct.create_node(
-                folder: false
-                obj: {
-                    idx: 0
-                    depth: 1
-                    comment: "entries without category"
-                    name: "N/A"
-                    full_name: "N/A"
-                }
-                selected: 0 in sel_cat
-                show_select: true
-                _element_count: 0
-            )
-            _dct.lut[dummy_entry.obj.idx] = dummy_entry
+            if false
+                dummy_entry = _dct.create_node(
+                    folder: false
+                    obj: {
+                        idx: 0
+                        depth: 1
+                        comment: "entries without category"
+                        name: "N/A"
+                        full_name: "N/A"
+                    }
+                    selected: 0 in sel_cat
+                    show_select: true
+                    _element_count: 0
+                )
+            dummy_entry = {
+                idx: 0
+                depth: 1
+                comment: "entries without category"
+                name: "N/A"
+                full_name: "N/A"
+            }
+            # _dct.lut[dummy_entry.obj.idx] = dummy_entry
             # init
             _obj_pks = []
         else
             dummy_entry = undefined
             _obj_pks = (_obj.idx for _obj in $scope.struct.objects)
 
+        # step 1: build list of tree
+        helper_tree = new icswBaseCategoryTree("idx", "parent")
         for entry in _dct.mode_entries
             # number of element in related counter dict
             _num_el = 0
             if $scope.struct.mode == "filter"
                 _sel = entry.idx in sel_cat
+                # list of matching device pks, empty for filter mode
                 _match_pks = []
                 if $scope.struct.mon_data? and entry.idx of $scope.struct.mon_data[$scope.count_dict_name]
                     _num_el = $scope.struct.mon_data[$scope.count_dict_name][entry.idx]
@@ -965,33 +976,68 @@ angular.module(
                     _sel = sel_cat[entry.idx].length == $scope.struct.objects.length
                 else
                     _sel = false
+                # list of matching device pks, not empty for obj (object) mode
                 _match_pks = (_val for _val in entry.reference_dict.device when _val in _obj_pks)
                 _match_pks.sort()
             # show selection button ?
             _show_select = entry.idx in _useable_idxs and entry.depth > 1
             if $scope.struct.asset_filter and $scope.struct.mode == "obj" and $scope.struct.sub_tree == "device" and not entry.asset
                 _show_select = false
+
+            #t_entry = _dct.create_node(
+            #    folder: false
+            #    obj: entry
+            #    expand: entry.idx in _to_expand
+            #    selected: _sel
+            #    show_select: _show_select
+            #    _element_count: _num_el
+            #)
+            # copy matching pks to tree entry (NOT entry because entry is global)
+            # t_entry.$match_pks = (_v for _v in _match_pks)
+            ms = helper_tree.feed(
+                entry
+                {
+                    expand: entry.idx in _to_expand
+                    selected: _sel
+                    show_select: _show_select
+                    _element_count: _num_el
+                    $match_pks: (_v for _v in _match_pks)
+                }
+            )
+            if ms.root_node
+                ms.flags.show_select = false
+                if dummy_entry?
+                    helper_tree.add_to_parent(ms, helper_tree.get_meta_struct(dummy_entry, {selected: 0 in sel_cat, show_select: true, _element_count: 0, $match_pks: []}))
+            #_dct.lut[entry.idx] = t_entry
+            #if entry.parent and entry.parent of _dct.lut
+            #    _dct.lut[entry.parent].add_child(t_entry)
+            #else
+            #    # hide selection from root nodes
+            #    t_entry.show_select = false
+            #    _dct.add_root_node(t_entry)
+            #    if dummy_entry?
+            #        # add dummy at first (if defined)
+            #        _dct.lut[entry.idx].add_child(dummy_entry)
+        if $scope.struct.mode == "obj" and $scope.struct.sub_tree == "device" and $scope.struct.asset_filter
+            helper_tree.remove_nodes(
+                (entry) ->
+                    return not entry.struct.asset
+            )
+        for _node in helper_tree.get_nodes()
             t_entry = _dct.create_node(
                 folder: false
-                obj: entry
-                expand: entry.idx in _to_expand
-                selected: _sel
-                show_select: _show_select
-                _element_count: _num_el
+                obj: _node.struct
+                expand: _node.struct.idx in _to_expand
+                selected: _node.flags.selected
+                show_select: _node.flags.show_select
+                _element_count: _node.flags._element_count
+                $match_pks: _node.flags.$match_pks
             )
-            # copy matching pks to tree entry (NOT entry because entry is global)
-            t_entry.$match_pks = (_v for _v in _match_pks)
-            _dct.lut[entry.idx] = t_entry
-            if entry.parent and entry.parent of _dct.lut
-                _dct.lut[entry.parent].add_child(t_entry)
-            else
-                # hide selection from root nodes
-                t_entry.show_select = false
+            _dct.lut[_node.struct.idx] = t_entry
+            if _node.root_node
                 _dct.add_root_node(t_entry)
-                if dummy_entry?
-                    # add dummy at first (if defined)
-                    _dct.lut[entry.idx].add_child(dummy_entry)
-
+            else
+                _dct.lut[_node.parent.struct.idx].add_child(t_entry)
         _dct.show_selected(true)
 
     $scope.new_selection = (t_entry, new_sel) ->
