@@ -433,7 +433,7 @@
                 <th st-sort="version">Version</th>
                 <th st-sort="release">Release</th>
                 <th st-sort="size">Size</th>
-                <th st-sort="$$created">Install Date</th>
+                <th st-sort="$$package.install_time">Installation Time</th>
                 <th st-sort="$$package.$$package_type">Package Type</th>
             </tr>
         </thead>
@@ -443,7 +443,7 @@
                 <td class="text-right">{{ vers.version }}</td>
                 <td>{{ vers.release }}</td>
                 <td class="text-right">{{ vers.$$size }}</td>
-                <td>{{ vers.$$created }}</td>
+                <td>{{ vers.$$install_time }}</td>
                 <td class="text-right">{{ vers.$$package.$$package_type }}</td>
             </tr>
         </tbody>

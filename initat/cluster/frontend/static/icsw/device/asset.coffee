@@ -843,12 +843,27 @@ device_asset_module = angular.module(
                     _run.$$selected = false
 
     # resolve functions
-    resolve_package_assets = (tree, vers_list) ->
+    resolve_package_assets = (tree, vers_list, package_install_times) ->
         _res = _.orderBy(
             (tree.version_lut[idx] for idx in vers_list)
             ["$$package.name"]
             ["asc"]
         )
+
+        # do some more salting of package objectss
+        for vers in _res
+            if vers.release == ""
+                vers.release = "N/A"
+            vers.$$install_time = "N/A"
+
+            if vers.$$package.$$package_type == "Windows"
+                vers.$$size = Number((vers.size / 1024).toFixed(2)) + " MByte"
+
+            for package_install_time in package_install_times
+                if vers.idx == package_install_time.package_version
+                    vers.$$install_time = moment(package_install_time.install_time).format("YYYY-MM-DD HH:mm:ss")
+                    break
+
         return _res
 
     resolve_hardware_assets = (in_list) ->
@@ -937,7 +952,7 @@ device_asset_module = angular.module(
                     if assetrun.run_type == 1
                         icswAssetPackageTreeService.load($scope.$id).then(
                             (tree) ->
-                                _done.resolve(resolve_package_assets(tree, data[0].packages))
+                                _done.resolve(resolve_package_assets(tree, data[0].packages, data[0].packages_install_times))
 
                         )
                     else if assetrun.run_type == 2

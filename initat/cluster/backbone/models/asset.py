@@ -22,11 +22,8 @@ import base64
 import bz2
 import datetime
 import json
-import pickle
-import uuid
 
 from django.utils import timezone, dateparse
-import django.utils.timezone
 from django.db import models
 from django.db.models import Q
 from enum import IntEnum
@@ -131,12 +128,16 @@ def get_base_assets_from_raw_result(asset_run,):
                 else:
                     for package_name in package_dict:
                         for versions_dict in package_dict[package_name]:
+                            installtimestamp = None
+                            if 'installtimestamp' in versions_dict:
+                                installtimestamp = versions_dict['installtimestamp']
                             assets.append(
                                 BaseAssetPackage(
                                     package_name,
                                     version=versions_dict['version'],
                                     size=versions_dict['size'],
                                     release=versions_dict['release'],
+                                    install_date=installtimestamp,
                                     package_type=PackageTypeEnum.LINUX
                                 )
                             )
@@ -178,6 +179,20 @@ def get_base_assets_from_raw_result(asset_run,):
                     apv = AssetPackageVersion(asset_package=ap, version=version, release=release, size=size)
                     apv.save()
                 asset_run.packages.add(apv)
+
+                install_time = ba.get_install_time_as_datetime()
+                print install_time
+                print ba.install_date
+                if install_time:
+                    apv_install_times = AssetPackageVersionInstallTime.objects.filter(package_version=apv, install_time=install_time)
+                    if not apv_install_times:
+                        apv_install_time = AssetPackageVersionInstallTime(package_version=apv, install_time=install_time)
+                        apv_install_time.save()
+                    else:
+                        assert (len(apv_install_times) < 2)
+                        apv_install_time = apv_install_times[0]
+
+                    asset_run.packages_install_times.add(apv_install_time)
 
         elif runtype == AssetType.HARDWARE:
             if scantype == ScanType.NRPE:
@@ -663,6 +678,25 @@ class BaseAssetPackage(object):
         self.install_date = install_date
         self.package_type = package_type
 
+    def get_install_time_as_datetime(self):
+        if self.package_type == PackageTypeEnum.LINUX:
+            try:
+                return datetime.datetime.fromtimestamp(int(self.install_date))
+            except:
+                pass
+
+            return None
+        else:
+            try:
+                year = self.install_date[0:4]
+                month = self.install_date[4:6]
+                day = self.install_date[6:8]
+
+                return datetime.datetime(year=int(year), month=int(month), day=int(day), hour=12)
+            except:
+                pass
+
+            return None
     def get_as_row(self):
         _name = self.name
         _version = self.version if self.version else "N/A"
@@ -974,6 +1008,10 @@ class AssetHWDisplayEntry(models.Model):
             self.manufacturer
         )
 
+class AssetPackageVersionInstallTime(models.Model):
+    idx = models.AutoField(primary_key=True)
+    package_version = models.ForeignKey("backbone.AssetPackageVersion")
+    install_time = models.DateTimeField(null=True)
 
 class AssetPackage(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -1247,6 +1285,7 @@ class AssetRun(models.Model):
 
     # link to packageversions
     packages = models.ManyToManyField(AssetPackageVersion)
+    packages_install_times = models.ManyToManyField(AssetPackageVersionInstallTime)
     created = models.DateTimeField(auto_now_add=True)
 
     memory_modules = models.ManyToManyField(AssetHWMemoryEntry)
