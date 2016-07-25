@@ -42,7 +42,7 @@ from initat.cluster.backbone.models import device_group, device, \
     partition_table, monitoring_hint, DeviceSNMPInfo, snmp_scheme, \
     domain_name_tree, net_ip, peer_information, mon_ext_host, device_variable, \
     SensorThreshold, package_device_connection, DeviceDispatcherLink, AssetRun, \
-    AssetBatch, DeviceScanLock, device_variable_scope, StaticAsset
+    AssetBatch, DeviceScanLock, device_variable_scope, StaticAsset, DeviceClass
 from initat.cluster.backbone.models import get_change_reset_list
 from initat.cluster.backbone.models.functions import can_delete_obj
 from initat.cluster.backbone.render import permission_required_mixin
@@ -51,7 +51,7 @@ from initat.cluster.backbone.serializers import netdevice_serializer, ComCapabil
     snmp_scheme_serializer, device_variable_serializer, cd_connection_serializer, \
     SensorThresholdSerializer, package_device_connection_serializer, DeviceDispatcherLinkSerializer, \
     AssetRunSimpleSerializer, ShallowPastAssetBatchSerializer, DeviceScanLockSerializer, \
-    device_variable_scope_serializer, StaticAssetSerializer
+    device_variable_scope_serializer, StaticAssetSerializer, DeviceClassSerializer
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from initat.tools import logging_tools, server_command, process_tools
 
@@ -96,6 +96,7 @@ class change_devices(View):
             res_c_dict = {
                 key: {
                     "device_group": device_group,
+                    "device_class": DeviceClass,
                     "domain_tree_node": domain_tree_node,
                     "bootserver": device,
                     "monitor_server": device,
@@ -765,6 +766,17 @@ class DeviceVariableScopeViewSet(viewsets.ViewSet):
         return Response(
             device_variable_scope_serializer(
                 device_variable_scope.objects.all().prefetch_related("dvs_allowed_names_set"),
+                many=True,
+            ).data
+        )
+
+
+class DeviceClassViewSet(viewsets.ViewSet):
+    @method_decorator(login_required)
+    def list(self, request):
+        return Response(
+            DeviceClassSerializer(
+                DeviceClass.objects.all(),
                 many=True,
             ).data
         )

@@ -34,7 +34,7 @@ from lxml import etree
 
 from initat.constants import GEN_CS_NAME, DB_ACCESS_CS_NAME, VERSION_CS_NAME, CLUSTER_DIR, SITE_PACKAGES_BASE
 from initat.icsw.service.instance import InstanceXML
-from initat.tools import logging_tools, config_store
+from initat.tools import logging_tools, config_store, process_tools
 
 # set unified name
 logging_tools.UNIFIED_NAME = "cluster.http"
@@ -97,6 +97,8 @@ ICSW_VERSION_DICT = {
 ICSW_DATABASE_VERSION = _vers["database"]
 ICSW_SOFTWARE_VERSION = _vers["software"]
 ICSW_MODELS_VERSION = _vers["models"]
+
+ICSW_DEBUG = process_tools.get_machine_name() in ["eddie", "lemmy"]
 
 # validate settings
 if _cs["password.hash.function"] not in ["SHA1", "CRYPT"]:
