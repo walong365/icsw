@@ -454,7 +454,7 @@ def device_pre_save(sender, **kwargs):
         if not cur_inst.uuid:
             cur_inst.uuid = str(uuid.uuid4())
         if not cur_inst.device_class:
-            cur_inst.device_class = DeviceClass.objects.get(Q(default_system_class_=True))
+            cur_inst.device_class = DeviceClass.objects.get(Q(default_system_class=True))
         # check for uniqueness of UUID
         try:
             present_dev = device.objects.get(Q(uuid=cur_inst.uuid))
