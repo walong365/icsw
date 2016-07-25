@@ -181,8 +181,7 @@ def get_base_assets_from_raw_result(asset_run,):
                 asset_run.packages.add(apv)
 
                 install_time = ba.get_install_time_as_datetime()
-                print install_time
-                print ba.install_date
+
                 if install_time:
                     apv_install_times = AssetPackageVersionInstallTime.objects.filter(package_version=apv, install_time=install_time)
                     if not apv_install_times:
@@ -697,6 +696,7 @@ class BaseAssetPackage(object):
                 pass
 
             return None
+
     def get_as_row(self):
         _name = self.name
         _version = self.version if self.version else "N/A"
