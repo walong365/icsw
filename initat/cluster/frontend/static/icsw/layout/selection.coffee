@@ -465,10 +465,26 @@ angular.module(
     DeviceOverviewSelection, hotkeys, icswComplexModalService, $templateCache, $compile,
 ) ->
     hotkeys.bindTo($scope).add(
-        combo: "g"
-        description: "Group selection"
-        callback: () ->
-            console.log "g pressed"
+        combo: "ctrl+d"
+        description: "Active device tab"
+        allowIn: ["INPUT"]
+        callback: (event) ->
+            $scope.activate_tab("d")
+            event.preventDefault()
+    ).add(
+        combo: "ctrl+g"
+        description: "Active group tab"
+        allowIn: ["INPUT"]
+        callback: (event) ->
+            $scope.activate_tab("g")
+            event.preventDefault()
+    ).add(
+        combo: "ctrl+c"
+        description: "Active category tab"
+        allowIn: ["INPUT"]
+        callback: (event) ->
+            $scope.activate_tab("c")
+            event.preventDefault()
     )
     $scope.show_selection = false
     $scope.saved_selections = []
@@ -488,6 +504,8 @@ angular.module(
         selection: undefined
         # selection valid
         selection_valid: false
+        # class filter name
+        class_filter_name: "N/A"
         # selection dict
         selection_dict: {
             d: 0
@@ -578,6 +596,9 @@ angular.module(
         )
     )
 
+    _set_class_filter_name = () ->
+        $scope.struct.class_filter_name = $scope.struct.device_tree.device_class_tree.get_filter_name()
+
     _install_tree = (user_obj) ->
         icswDeviceTreeService.load($scope.$id).then(
             (new_tree) ->
@@ -591,6 +612,7 @@ angular.module(
         $scope.struct.device_tree = tree
         $scope.struct.selection = selection
         $scope.struct.selection_valid = true
+        _set_class_filter_name()
         _build_tree()
 
     _build_tree = () ->
@@ -838,6 +860,7 @@ angular.module(
             (fin) ->
                 sub_scope.$destroy()
                 new_fp = $scope.struct.device_tree.device_class_tree.get_fingerprint()
+                _set_class_filter_name()
                 if cur_fp != new_fp
                     # fingerprint changed
                     _build_tree()

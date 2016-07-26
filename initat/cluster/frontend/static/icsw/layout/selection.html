@@ -47,7 +47,7 @@
                     ></icsw-tools-button>
                     <icsw-tools-button type="display" size="xs" value="show selection" ng-show="struct.selection.any_selected()" ng-click="toggle_show_selection()"></icsw-tools-button>
                     <icsw-tools-button type="modify" size="xs" value="resolve lazy selection" ng-show="struct.selection.any_lazy_selected()" ng-click="resolve_lazy_selection()"></icsw-tools-button>
-                    <icsw-tools-button type="modify" size="xs" value="ClassFilter" ng-click="show_class_filter($event)"></icsw-tools-button>
+                    <icsw-tools-button type="modify" size="xs" icsw-value="struct.class_filter_name" ng-click="show_class_filter($event)"></icsw-tools-button>
                 </span>
                 <small>
                     <ul class="list-group" ng-show="show_selection && struct.selection.any_selected()">

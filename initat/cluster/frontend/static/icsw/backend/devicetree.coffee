@@ -103,6 +103,16 @@ angular.module(
                 _changed = true
             return _changed
 
+        get_filter_name: () =>
+            _fv = (entry.$$enabled for entry in @list)
+            if _.every(_fv)
+                return "all"
+            else if not _.some(_fv)
+                return "none"
+            else
+                _enabled = (1 for entry in @list when entry.$$enabled).length
+                return "#{_enabled} / #{_fv.length}"
+
 ]).service("icswDeviceClassTreeService",
 [
     "$q", "icswDeviceClassTree", "icswTreeBase", "ICSW_URLS",
