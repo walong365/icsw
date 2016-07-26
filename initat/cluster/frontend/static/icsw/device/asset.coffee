@@ -850,21 +850,33 @@ device_asset_module = angular.module(
             ["asc"]
         )
 
+        result_new = []
+
         # do some more salting of package objectss
         for vers in _res
+            new_obj = {}
+
             if vers.release == ""
-                vers.release = "N/A"
-            vers.$$install_time = "N/A"
+                new_obj.release = "N/A"
+            else
+                new_obj.release = vers.release
+
+            new_obj.$$install_time = "N/A"
+            new_obj.$$package = vers.$$package
+            new_obj.version = vers.version
+            new_obj.size = vers.size
 
             if vers.$$package.$$package_type == "Windows"
-                vers.$$size = Number((vers.size / 1024).toFixed(2)) + " MByte"
+                new_obj.$$size = Number((vers.size / 1024).toFixed(2)) + " MByte"
 
             for package_install_time in package_install_times
                 if vers.idx == package_install_time.package_version
-                    vers.$$install_time = moment(package_install_time.install_time).format("YYYY-MM-DD HH:mm:ss")
+                    new_obj.$$install_time = moment(package_install_time.install_time).format("YYYY-MM-DD HH:mm:ss")
                     break
 
-        return _res
+            result_new.push(new_obj)
+
+        return result_new
 
     resolve_hardware_assets = (in_list) ->
         # todo: create structured tree
