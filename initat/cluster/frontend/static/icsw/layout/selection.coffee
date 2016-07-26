@@ -602,10 +602,11 @@ angular.module(
         # tree category lut
         # id -> category entry from tree (with devices)
         t_cat_lut = {}
-        # store tree
+        # device tree
+        _tree = $scope.struct.device_tree
         # flag if we should call devsel after search
         $scope.call_devsel_after_search = false
-        for entry in $scope.struct.device_tree.cat_tree.list
+        for entry in _tree.cat_tree.list
             t_entry = $scope.tc_categories.create_node(
                 {
                     folder: true
@@ -623,31 +624,33 @@ angular.module(
                 $scope.tc_categories.add_root_node(t_entry)
         # build device group tree and top level of device tree
         dg_lut = {}
-        for entry in $scope.struct.device_tree.enabled_list
+        for entry in _tree.enabled_list
             if entry.is_meta_device
-                g_entry = $scope.tc_groups.create_node(
-                    {
-                        obj: entry.device_group
-                        folder: true
-                        _node_type: "g"
-                        selected: $scope.struct.selection.device_group_selected(entry.device_group)
-                    }
-                )
-                $scope.tc_groups.add_root_node(g_entry)
-                d_entry = $scope.tc_devices.create_node(
-                    {
-                        obj: entry.idx
-                        folder: true
-                        selected: $scope.struct.selection.device_selected(entry.idx)
-                        _node_type: "d"
-                    }
-                )
-                $scope.tc_devices.add_root_node(d_entry)
-                dg_lut[entry.device_group] = d_entry
+                _group = _tree.get_group(entry)
+                if _.some(_tree.device_class_is_enabled(_tree.all_lut[idx]) for idx in _group.devices)
+                    g_entry = $scope.tc_groups.create_node(
+                        {
+                            obj: entry.device_group
+                            folder: true
+                            _node_type: "g"
+                            selected: $scope.struct.selection.device_group_selected(entry.device_group)
+                        }
+                    )
+                    $scope.tc_groups.add_root_node(g_entry)
+                    d_entry = $scope.tc_devices.create_node(
+                        {
+                            obj: entry.idx
+                            folder: true
+                            selected: $scope.struct.selection.device_selected(entry.idx)
+                            _node_type: "d"
+                        }
+                    )
+                    $scope.tc_devices.add_root_node(d_entry)
+                    dg_lut[entry.device_group] = d_entry
         # build devices tree
-        for entry in $scope.struct.device_tree.enabled_list
+        for entry in _tree.enabled_list
             if !entry.is_meta_device
-                if $scope.struct.device_tree.device_class_is_enabled(entry)
+                if _tree.device_class_is_enabled(entry)
                     # copy selection state to device selection (the selection state of the meta devices is keeped in sync with the selection states of the devicegroups )
                     d_entry = $scope.tc_devices.create_node(
                         {

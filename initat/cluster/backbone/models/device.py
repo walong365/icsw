@@ -678,7 +678,7 @@ class device_group(models.Model):
     cluster_device_group = models.BooleanField(default=False)
     # enabled flag, ident to the enabled flag of the corresponding meta-device
     enabled = models.BooleanField(default=True)
-    # domain tree node, see enabled flag
+    # domain tree node, used as default value for new devices
     domain_tree_node = models.ForeignKey("domain_tree_node", null=True, default=None)
     date = models.DateTimeField(auto_now_add=True)
 
