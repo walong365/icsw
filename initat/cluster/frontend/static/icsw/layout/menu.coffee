@@ -102,7 +102,6 @@ menu_module = angular.module(
         return false
 
     $scope.device_quickselection = (onoff) ->
-        console.log "***"
         icswLayoutSelectionDialogService.quick_dialog(onoff)
 
     $scope.handbook_url = "/"

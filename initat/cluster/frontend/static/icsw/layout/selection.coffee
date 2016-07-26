@@ -485,11 +485,19 @@ angular.module(
         callback: (event) ->
             $scope.activate_tab("c")
             event.preventDefault()
+    ).add(
+        combo: "ctrl+l"
+        description: "Show DeviceClass selector"
+        allowIn: ["INPUT"]
+        callback: (event) ->
+            $scope.show_class_filter(event)
+            event.preventDefault()
     )
-    $scope.show_selection = false
     $scope.saved_selections = []
     $scope.devsel_receivers = icswActiveSelectionService.num_receivers()
     $scope.struct = {
+        # show selection
+        show_selection: false
         # device tree
         device_tree: undefined
         # search settings
@@ -669,7 +677,7 @@ angular.module(
                     )
                     $scope.tc_devices.add_root_node(d_entry)
                     dg_lut[entry.device_group] = d_entry
-        # build devices tree
+        # build device tree
         for entry in _tree.enabled_list
             if !entry.is_meta_device
                 if _tree.device_class_is_enabled(entry)
@@ -690,7 +698,7 @@ angular.module(
         $scope.selection_changed()
 
     $scope.toggle_show_selection = () ->
-        $scope.show_selection = !$scope.show_selection
+        $scope.struct.show_selection = !$scope.struct.show_selection
 
     $scope.activate_tab = (t_type) ->
         $scope.struct.active_tab = t_type
@@ -1097,6 +1105,7 @@ angular.module(
     DeviceOverviewService, icswReactTreeConfig, icswDeviceTreeService,
     DeviceOverviewSelection
 ) ->
+    {span} = React.DOM
     class icswLayoutSelectionTree extends icswReactTreeConfig
         constructor: (@scope, @notifier, args) ->
             # args.debug_mode = true
@@ -1130,9 +1139,6 @@ angular.module(
             else if t_entry._node_type == "c"
                 if entry.depth
                     _res = entry.name
-                    cat = @current.cat_tree.lut[t_entry.obj]
-                    if cat.reference_dict.device.length
-                        _res = "#{_res} (#{cat.reference_dict.device.length} devices)"
                 else
                     _res = "[TOP]"
                 return _res
@@ -1164,6 +1170,22 @@ angular.module(
                     return ""
             else
                 return "dynatree-icon"
+
+        get_post_view_element: (t_entry) ->
+            if t_entry._node_type == "c"
+                cat = @current.cat_tree.lut[t_entry.obj]
+                if cat.depth > 1 and cat.reference_dict.device.length
+                    return span(
+                        {
+                            key: "info"
+                            className: "label label-primary"
+                        }
+                        "#{cat.reference_dict.device.length} devs"
+                    )
+                else
+                    return null
+            else
+                return null
 
         get_dev_entry: (t_entry) =>
             if t_entry._node_type == "g"

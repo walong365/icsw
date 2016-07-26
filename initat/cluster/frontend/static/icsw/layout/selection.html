@@ -50,7 +50,7 @@
                     <icsw-tools-button type="modify" size="xs" icsw-value="struct.class_filter_name" ng-click="show_class_filter($event)"></icsw-tools-button>
                 </span>
                 <small>
-                    <ul class="list-group" ng-show="show_selection && struct.selection.any_selected()">
+                    <ul class="list-group" ng-show="struct.show_selection && struct.selection.any_selected()">
                         <li class="list-group-item" ng-show="struct.selection.devg_sel.length">
                             <strong>{{ struct.selection.devg_sel.length }} lazy Device Groups:</strong> {{ resolve_device_groups(struct.selection) }}
                         </li>
