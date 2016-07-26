@@ -47,6 +47,10 @@ angular.module(
 
         build_luts: () =>
             @lut = _.keyBy(@list, "idx")
+
+        get_default_system_class: () =>
+            return (entry for entry in @list when entry.default_system_class)[0]
+
 ]).service("icswDeviceClassTreeService",
 [
     "$q", "icswDeviceClassTree", "icswTreeBase", "ICSW_URLS",

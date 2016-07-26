@@ -29,9 +29,9 @@
                         </button>
                     </span>
                 </form>
-                <span class="input-group">
+                <span>
                     <button
-                        class="btn btn-primary"
+                        class="btn btn-primary btn-xs"
                         ng-disabled="!selection.any_selected()"
                         ng-click="show_current_selection_in_overlay()"
                     >
@@ -41,11 +41,13 @@
                     <icsw-tools-button
                         type="select_parent"
                         value="select parents"
+                        size="xs"
                         disabled="!selection.any_selected()"
                         ng-click="select_parents()"
                     ></icsw-tools-button>
-                    <icsw-tools-button type="display" size="" value="show selection" ng-show="selection.any_selected()" ng-click="toggle_show_selection()"></icsw-tools-button>
-                    <icsw-tools-button type="modify" size="" value="resolve lazy selection" ng-show="selection.any_lazy_selected()" ng-click="resolve_lazy_selection()"></icsw-tools-button>
+                    <icsw-tools-button type="display" size="xs" value="show selection" ng-show="selection.any_selected()" ng-click="toggle_show_selection()"></icsw-tools-button>
+                    <icsw-tools-button type="modify" size="xs" value="resolve lazy selection" ng-show="selection.any_lazy_selected()" ng-click="resolve_lazy_selection()"></icsw-tools-button>
+                    <icsw-tools-button type="modify" size="xs" value="ClassFilter" ng-click="show_class_filter($event)"></icsw-tools-button>
                 </span>
                 <small>
                     <ul class="list-group" ng-show="show_selection && selection.any_selected()">
@@ -168,4 +170,23 @@
             </uib-tab>
         </uib-tabset>
     </div>
+</script>
+
+<script type="text/ng-template" id="icsw.layout.class.filter">
+    <ng-form class="form-horizontal" name="form_data">
+        <fieldset>
+            <legend>Defined DeviceClasses ({{ device_class_tree.list.length }})</legend>
+            <div class="form-group"  ng-repeat="entry in device_class_tree.list">
+                <label class="control-label col-sm-3">
+                    {{ entry.name }}
+                </label>
+                <div class="controls col-sm-2">
+                    <icsw-tools-yes-no flag="entry.$$enabled" icsw-callback="selection_changed"></icsw-tools-yes-no>
+                </div>
+                <label class="col-sm-7">
+                    {{ entry.description }}
+                </label>
+            </div>
+        </fieldset>
+    </ng-form>
 </script>

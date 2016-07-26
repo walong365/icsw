@@ -107,6 +107,7 @@ user_module = angular.module(
         constructor: (user) ->
             @user = undefined
             @update(user)
+            @init_vars()
 
         update: (user) =>
             # user is in fact a list with only one element
@@ -129,6 +130,68 @@ user_module = angular.module(
             else
                 _defer.reject("no user")
             return _defer.promise
+
+        init_vars: () =>
+            @dc_var_name = @expand_var("$$device_class_filter")
+            if @has_var(@dc_var_name)
+                try
+                    @__dc_filter = angular.fromJson(@get_var(@dc_var_name).json_value)
+                catch error
+                    @__dc_filter = {}
+            else
+                @__dc_filter = {}
+                @_store_dc_filter()
+            console.log @__dc_filter
+
+        read_device_class_filter: (dcf) =>
+            # copies dc_filter settings to device_class_tree
+            # dcf ... device_class_filter object
+            _store = false
+            if _.keys(@__dc_filter).length == 0
+                # empty filter, set new
+                for entry in dcf.list
+                    @__dc_filter[entry.idx] =false
+                @_validate_device_class_filter(dcf)
+                _store = true
+
+            for entry in dcf.list
+                if entry.idx not of @__dc_filter
+                    @__dc_filter[entry].idx = false
+                    _store = true
+                entry.$$enabled = @__dc_filter[entry.idx]
+            if @_validate_device_class_filter(dcf)
+                _store = true
+            if _store
+                # somehting changed, store filter
+                @_store_dc_filter()
+
+        _validate_device_class_filter: (dcf) =>
+            _changed = false
+            if not _.some(_.values(@__dc_filter))
+                _dsc = dcf.get_default_system_class()
+                @__dc_filter[_dsc.idx] = true
+                _dsc.$$enabled = @__dc_filter[_dsc.idx]
+                _changed = true
+            return _changed
+
+        write_device_class_filter: (dcf) =>
+            # syncs device var with device_class_tree $$enabled
+            _store = false
+            for entry in dcf.list
+                console.log entry.name, entry.$$enabled
+                if entry.idx not of @__dc_filter
+                    @__dc_filter[entry.idx] = false
+                    _store = true
+                if entry.$$enabled != @__dc_filter[entry.idx]
+                    @__dc_filter[entry.idx] = entry.$$enabled
+                    _store = true
+            if @_validate_device_class_filter(dcf)
+                _store = true
+            if _store
+                @_store_dc_filter()
+
+        _store_dc_filter: () =>
+            @set_json_var(@dc_var_name, angular.toJson(@__dc_filter))
 
         build_luts: () =>
             # create luts (for vars)
@@ -243,7 +306,6 @@ user_module = angular.module(
             return @get_result()
 
         user_present: () =>
-            console.log "UP called"
             return @is_valid()
 
         logout: () =>

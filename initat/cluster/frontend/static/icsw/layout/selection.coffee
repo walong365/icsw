@@ -457,14 +457,13 @@ angular.module(
     "$scope", "icswLayoutSelectionTreeService", "$timeout", "icswDeviceTreeService", "ICSW_SIGNALS",
     "icswSelection", "icswActiveSelectionService", "$q", "icswSavedSelectionService", "icswToolsSimpleModalService",
     "DeviceOverviewService", "ICSW_URLS", 'icswSimpleAjaxCall', "blockUI", "$rootScope", "icswUserService",
-    "DeviceOverviewSelection", "hotkeys",
+    "DeviceOverviewSelection", "hotkeys", "icswComplexModalService", "$templateCache", "$compile",
 (
     $scope, icswLayoutSelectionTreeService, $timeout, icswDeviceTreeService, ICSW_SIGNALS,
     icswSelection, icswActiveSelectionService, $q, icswSavedSelectionService, icswToolsSimpleModalService,
     DeviceOverviewService, ICSW_URLS, icswSimpleAjaxCall, blockUI, $rootScope, icswUserService,
-    DeviceOverviewSelection, hotkeys,
+    DeviceOverviewSelection, hotkeys, icswComplexModalService, $templateCache, $compile,
 ) ->
-    console.log "keys"
     hotkeys.bindTo($scope).add(
         combo: "g"
         description: "Group selection"
@@ -480,6 +479,10 @@ angular.module(
     $scope.devsel_receivers = icswActiveSelectionService.num_receivers()
     $scope.selection_valid = false
     $scope.synced = false
+    $scope.struct = {
+        # user
+        user: undefined
+    }
     # for saved selections
     $scope.vars = {
         search_str: ""
@@ -523,25 +526,19 @@ angular.module(
     )
     stop_listen.push(
         $rootScope.$on(ICSW_SIGNALS("ICSW_USER_CHANGED"), (event, new_user) ->
-            console.log "new user", new_user
+            # console.log "new user", new_user
             if new_user and new_user.idx
-                icswDeviceTreeService.load($scope.$id).then(
-                    (new_tree) ->
-                        $scope.got_rest_data(new_tree, icswActiveSelectionService.get_selection())
-                )
+                _install_tree(user)
         )
     )
     stop_listen.push(
         $rootScope.$on(ICSW_SIGNALS("ICSW_SELECTOR_SHOW"), (event, cur_state) ->
             # call when the requester is shown
-            console.log "show_devsel", event, cur_state, $scope
             if icswUserService.user_present()
-                icswDeviceTreeService.load($scope.$id).then(
-                    (new_tree) ->
-                        $scope.got_rest_data(new_tree, icswActiveSelectionService.get_selection())
-                )
+                #console.log "show_devsel", event, cur_state, $scope, user
+                _install_tree(icswUserService.get())
             else
-                console.log "No user user"
+                console.error "No user"
         )
     )
     stop_listen.push(
@@ -551,8 +548,17 @@ angular.module(
             (stop_func() for stop_func in stop_listen)
         )
     )
+
+    _install_tree = (user_obj) ->
+        icswDeviceTreeService.load($scope.$id).then(
+            (new_tree) ->
+                $scope.struct.user = user_obj
+                user_obj.read_device_class_filter(new_tree.device_class_tree)
+                _got_rest_data(new_tree, icswActiveSelectionService.get_selection())
+        )
+
     # get current devsel_receivers
-    $scope.got_rest_data = (tree, selection) ->
+    _got_rest_data = (tree, selection) ->
         $scope.tc_devices.clear_root_nodes()
         $scope.tc_groups.clear_root_nodes()
         $scope.tc_categories.clear_root_nodes()
@@ -763,6 +769,34 @@ angular.module(
         $scope.tc_devices.show_selected(false)
         $scope.selection_changed()
         $scope.activate_tab("d")
+
+    $scope.show_class_filter = ($event) ->
+        sub_scope = $scope.$new(true)
+        sub_scope.device_class_tree = $scope.tree.device_class_tree
+        sub_scope.selection_changed = () ->
+            # need a timeout here because angular syncs the flags during the next digest-cycle
+            $timeout(
+                () ->
+                    $scope.struct.user.write_device_class_filter(sub_scope.device_class_tree)
+                0
+            )
+
+        icswComplexModalService(
+            {
+                message: $compile($templateCache.get("icsw.layout.class.filter"))(sub_scope)
+                title: "Select DeviceClasses"
+                ok_label: "select"
+                ok_callback: (modal) ->
+                    d = $q.defer()
+                    d.resolve("resolved")
+                    return d.promise
+            }
+        ).then(
+            (fin) ->
+                sub_scope.$destroy()
+                # trigger refiltering of list
+                # $rootScope.$emit(ICSW_SIGNALS("ICSW_FORCE_TREE_FILTER"))
+        )
 
     $scope.selection_changed = () ->
         dev_sel_nodes = $scope.tc_devices.get_selected(
