@@ -141,53 +141,25 @@ user_module = angular.module(
             else
                 @__dc_filter = {}
                 @_store_dc_filter()
-            console.log @__dc_filter
+
+        get_device_class_filter: () =>
+            return angular.toJson(@__dc_filter)
+
+        restore_device_class_filter: (in_json, dcf) =>
+            @__dc_filter = angular.fromJson(in_json)
+            if dcf.read_device_class_filter(@__dc_filter)
+                @_store_dc_filter()
 
         read_device_class_filter: (dcf) =>
             # copies dc_filter settings to device_class_tree
             # dcf ... device_class_filter object
-            _store = false
-            if _.keys(@__dc_filter).length == 0
-                # empty filter, set new
-                for entry in dcf.list
-                    @__dc_filter[entry.idx] =false
-                @_validate_device_class_filter(dcf)
-                _store = true
-
-            for entry in dcf.list
-                if entry.idx not of @__dc_filter
-                    @__dc_filter[entry].idx = false
-                    _store = true
-                entry.$$enabled = @__dc_filter[entry.idx]
-            if @_validate_device_class_filter(dcf)
-                _store = true
-            if _store
+            if dcf.validate_device_class_filter(@__dc_filter)
                 # somehting changed, store filter
                 @_store_dc_filter()
 
-        _validate_device_class_filter: (dcf) =>
-            _changed = false
-            if not _.some(_.values(@__dc_filter))
-                _dsc = dcf.get_default_system_class()
-                @__dc_filter[_dsc.idx] = true
-                _dsc.$$enabled = @__dc_filter[_dsc.idx]
-                _changed = true
-            return _changed
-
         write_device_class_filter: (dcf) =>
             # syncs device var with device_class_tree $$enabled
-            _store = false
-            for entry in dcf.list
-                console.log entry.name, entry.$$enabled
-                if entry.idx not of @__dc_filter
-                    @__dc_filter[entry.idx] = false
-                    _store = true
-                if entry.$$enabled != @__dc_filter[entry.idx]
-                    @__dc_filter[entry.idx] = entry.$$enabled
-                    _store = true
-            if @_validate_device_class_filter(dcf)
-                _store = true
-            if _store
+            if dcf.write_device_class_filter(@__dc_filter)
                 @_store_dc_filter()
 
         _store_dc_filter: () =>
