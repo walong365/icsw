@@ -58,13 +58,11 @@ logger = logging.getLogger(__name__)
 
 class RowCollector(object):
     def __init__(self):
-        self.rows = []
         self.rows_dict = []
         self.row_info = []
         self.current_asset_type = None
 
     def reset(self):
-        self.rows = []
         self.rows_dict = []
         self.row_info = []
         self.current_asset_type = None
@@ -84,7 +82,6 @@ class RowCollector(object):
             }
 
             self.rows_dict.append(o)
-            self.rows.append([update_name, install_date, update_status])
 
         elif self.current_asset_type == AssetType.LICENSE:
             license_name = str(_row[8])
@@ -96,17 +93,16 @@ class RowCollector(object):
             }
 
             self.rows_dict.append(o)
-            self.rows.append((license_name, license_key))
 
         elif self.current_asset_type == AssetType.PENDING_UPDATE:
             update_name = str(_row[8])
-            update_version = str(_row[9])
-            update_release = str(_row[10])
-            update_kb_idx = str(_row[11])
-            update_install_date = str(_row[12])
-            update_status = str(_row[13])
+            # update_version = str(_row[9])
+            # update_release = str(_row[10])
+            # update_kb_idx = str(_row[11])
+            # update_install_date = str(_row[12])
+            # update_status = str(_row[13])
             update_optional = str(_row[14])
-            update_installed = str(_row[15])
+            # update_installed = str(_row[15])
             update_new_version = str(_row[16])
 
             o = {
@@ -116,19 +112,34 @@ class RowCollector(object):
             }
 
             self.rows_dict.append(o)
-            self.rows.append((update_name, update_version, update_release, update_kb_idx, update_install_date,
-                              update_status, update_optional, update_installed))
 
         elif self.current_asset_type == AssetType.PROCESS:
             process_name = str(_row[8])
             process_id = str(_row[9])
-            self.rows.append((process_name, process_id))
+
+            o = {
+                'process_name': process_name,
+                'process_id': process_id
+            }
+
+            self.rows_dict.append(o)
 
         elif self.current_asset_type == AssetType.HARDWARE:
             hardware_node_type = str(_row[8])
             hardware_depth = str(_row[9])
             hardware_attributes = str(_row[10])
-            self.rows.append((hardware_node_type, hardware_depth, hardware_attributes))
+
+            if len(hardware_attributes) > 200:
+                hardware_attributes = hardware_attributes[:200]
+                hardware_attributes += "..."
+
+            o = {
+                'hardware_node_type': hardware_node_type,
+                'hardware_depth': hardware_depth,
+                'hardware_attributes': hardware_attributes,
+            }
+
+            self.rows_dict.append(o)
 
         elif self.current_asset_type == AssetType.PACKAGE:
             package_name = _row[8]
@@ -157,12 +168,9 @@ class RowCollector(object):
             }
 
             self.rows_dict.append(o)
-            self.rows.append((package_name, package_version, package_release, package_size,
-                              package_install_date, package_type))
 
         elif self.current_asset_type == AssetType.PRETTYWINHW:
-            _entry = str(_row[8])
-            self.rows.append([_entry])
+            pass
 
         elif self.current_asset_type == AssetType.DMI:
             handle = str(_row[8])
@@ -170,10 +178,47 @@ class RowCollector(object):
             header = str(_row[10])
             key = str(_row[11])
             value = str(_row[12])
-            self.rows.append((handle, dmi_type, header, key, value))
 
-        else:
-            self.rows.append([str(item) for item in _row])
+            idx = 0
+            while True:
+                truncated_value = value[idx:idx + 100]
+                if truncated_value:
+                    o = {
+                        "handle": handle,
+                        "dmi_type": dmi_type,
+                        "header": header,
+                        "key": key,
+                        "value": truncated_value
+                    }
+                    self.rows_dict.append(o)
+                    idx += 100
+                else:
+                    break
+
+        elif self.current_asset_type == AssetType.PCI:
+            domain = _row[8]
+            bus = _row[9]
+            slot = _row[10]
+            func = _row[11]
+            position = _row[12]
+            subclass = _row[13]
+            vendor = _row[14]
+            _device = _row[15]
+            revision = _row[16]
+
+            o = {
+                'domain': domain,
+                'bus': bus,
+                'slot': slot,
+                'func': func,
+                'position': position,
+                'subclass': subclass,
+                'vendor': vendor,
+                'device': _device,
+                'revision': revision
+            }
+
+            self.rows_dict.append(o)
 
 
 class PDFReportGenerator(object):
@@ -557,6 +602,176 @@ class PDFReportGenerator(object):
                                        Element((0, 24), ("Helvetica", 12), text="Update Name"),
                                        Element((400, 24), ("Helvetica", 12), text="Version"),
                                        Element((600, 24), ("Helvetica", 12), text="Optional"),
+                                       Rule((0, 42), 7.5 * 90, thickness=2)])
+
+                rpt.generate(canvas)
+                report.number_of_pages += rpt.pagenumber
+
+            elif AssetType(ar.run_type) == AssetType.HARDWARE:
+                data = row_collector.rows_dict[1:]
+                data = sorted(data, key=lambda k: k['hardware_depth'])
+
+                report.generate_bookmark("Lstopo Information")
+
+                rpt = Report(data)
+
+                if not data:
+                    mock_object = {
+                        "hardware_node_type": "",
+                        "hardware_depth": "",
+                        "hardware_attributes": "",
+                    }
+                    data.append(mock_object)
+
+                rpt.detailband = Band([Element((0, 0), ("Helvetica", 6), key='hardware_node_type'),
+                                       Rule((0, 0), 7.5 * 90, thickness=0.1),
+                                       Element((65, 0), ("Helvetica", 6), key='hardware_depth'),
+                                       Rule((0, 0), 7.5 * 90, thickness=0.1),
+                                       Element((110, 0), ("Helvetica", 6), key='hardware_attributes'),
+                                       Rule((0, 0), 7.5 * 90, thickness=0.1)])
+
+                rpt.pageheader = Band([PollyReportsImage(pos=(570, -25),
+                                                         width=self.logo_width,
+                                                         height=self.logo_height,
+                                                         getvalue=self.__get_logo_helper),
+                                       Element((0, 0), ("Times-Bold", 20),
+                                               text="Lstopo Information for {}".format(report.device.full_name)),
+                                       Element((0, 24), ("Helvetica", 12), text="Node Type"),
+                                       Element((65, 24), ("Helvetica", 12), text="Depth"),
+                                       Element((110, 24), ("Helvetica", 12), text="Attributes"),
+                                       Rule((0, 42), 7.5 * 90, thickness=2)])
+
+                rpt.generate(canvas)
+                report.number_of_pages += rpt.pagenumber
+
+            elif AssetType(ar.run_type) == AssetType.PROCESS:
+                data = row_collector.rows_dict[1:]
+                data = sorted(data, key=lambda k: k['process_name'])
+
+                report.generate_bookmark("Process Information")
+
+                rpt = Report(data)
+
+                if data:
+                    rpt.groupheaders = [Band([Element((0, 4), ("Helvetica-Bold", 10),
+                                                      getvalue=lambda x: x['process_name'][0],
+                                                      format=lambda x: "Updates starting with: {}".format(x)), ],
+                                             getvalue=lambda x: x["process_name"][0]), ]
+                else:
+                    mock_object = {
+                        "process_name": "",
+                        "process_id": "",
+                    }
+                    data.append(mock_object)
+
+                rpt.detailband = Band([Element((0, 0), ("Helvetica", 6), key='process_name'),
+                                       Rule((0, 0), 7.5 * 90, thickness=0.1),
+                                       Element((400, 0), ("Helvetica", 6), key='process_id'),
+                                       Rule((0, 0), 7.5 * 90, thickness=0.1)])
+
+                rpt.pageheader = Band([PollyReportsImage(pos=(570, -25),
+                                                         width=self.logo_width,
+                                                         height=self.logo_height,
+                                                         getvalue=self.__get_logo_helper),
+                                       Element((0, 0), ("Times-Bold", 20),
+                                               text="Process Information for {}".format(report.device.full_name)),
+                                       Element((0, 24), ("Helvetica", 12), text="Process Name"),
+                                       Element((400, 24), ("Helvetica", 12), text="PID"),
+                                       Rule((0, 42), 7.5 * 90, thickness=2)])
+
+                rpt.generate(canvas)
+                report.number_of_pages += rpt.pagenumber
+
+            elif AssetType(ar.run_type) == AssetType.DMI:
+                data = row_collector.rows_dict[1:]
+
+                report.generate_bookmark("DMI Information")
+
+                rpt = Report(data)
+
+                if not data:
+                    mock_object = {
+                        "handle": "",
+                        "dmi_type": "",
+                        "header": "",
+                        "key": "",
+                        "value": ""
+                    }
+                    data.append(mock_object)
+
+                rpt.detailband = Band([Element((0, 0), ("Helvetica", 6), key='handle'),
+                                       Rule((0, 0), 7.5 * 90, thickness=0.1),
+                                       Element((50, 0), ("Helvetica", 6), key='dmi_type'),
+                                       Rule((0, 0), 7.5 * 90, thickness=0.1),
+                                       Element((100, 0), ("Helvetica", 6), key='header'),
+                                       Rule((0, 0), 7.5 * 90, thickness=0.1),
+                                       Element((210, 0), ("Helvetica", 6), key='key'),
+                                       Rule((0, 0), 7.5 * 90, thickness=0.1),
+                                       Element((320, 0), ("Helvetica", 6), key='value'),
+                                       Rule((0, 0), 7.5 * 90, thickness=0.1)])
+
+                rpt.pageheader = Band([PollyReportsImage(pos=(570, -25),
+                                                         width=self.logo_width,
+                                                         height=self.logo_height,
+                                                         getvalue=self.__get_logo_helper),
+                                       Element((0, 0), ("Times-Bold", 20),
+                                               text="DMI Information for {}".format(report.device.full_name)),
+                                       Element((0, 24), ("Helvetica", 12), text="Handle"),
+                                       Element((50, 24), ("Helvetica", 12), text="Type"),
+                                       Element((100, 24), ("Helvetica", 12), text="Header"),
+                                       Element((210, 24), ("Helvetica", 12), text="Key"),
+                                       Element((320, 24), ("Helvetica", 12), text="Value"),
+                                       Rule((0, 42), 7.5 * 90, thickness=2)])
+
+                rpt.generate(canvas)
+                report.number_of_pages += rpt.pagenumber
+
+            elif AssetType(ar.run_type) == AssetType.PCI:
+                data = row_collector.rows_dict[1:]
+
+                report.generate_bookmark("PCI Information")
+
+                rpt = Report(data)
+
+                if not data:
+                    mock_object = {
+                        'domain': "",
+                        'bus': "",
+                        'slot': "",
+                        'func': "",
+                        'position': "",
+                        'subclass': "",
+                        'vendor': "",
+                        'device': "",
+                        'revision': ""
+                    }
+
+                    data.append(mock_object)
+
+                rpt.detailband = Band([Element((0, 0), ("Helvetica", 6), key='domain'),
+                                       Element((45, 0), ("Helvetica", 6), key='bus'),
+                                       Element((75, 0), ("Helvetica", 6), key='slot'),
+                                       Element((105, 0), ("Helvetica", 6), key='func'),
+                                       Element((135, 0), ("Helvetica", 6), key='position'),
+                                       Element((180, 0), ("Helvetica", 6), key='subclass'),
+                                       Element((260, 0), ("Helvetica", 6), key='vendor'),
+                                       Element((360, 0), ("Helvetica", 6), key='device'),
+                                       Rule((0, 0), 7.5 * 90, thickness=0.1)])
+
+                rpt.pageheader = Band([PollyReportsImage(pos=(570, -25),
+                                                         width=self.logo_width,
+                                                         height=self.logo_height,
+                                                         getvalue=self.__get_logo_helper),
+                                       Element((0, 0), ("Times-Bold", 20),
+                                               text="PCI Information for {}".format(report.device.full_name)),
+                                       Element((0, 24), ("Helvetica", 12), text="Domain"),
+                                       Element((45, 24), ("Helvetica", 12), text="Bus"),
+                                       Element((75, 24), ("Helvetica", 12), text="Slot"),
+                                       Element((105, 24), ("Helvetica", 12), text="Func"),
+                                       Element((135, 24), ("Helvetica", 12), text="Position"),
+                                       Element((180, 24), ("Helvetica", 12), text="Subclass"),
+                                       Element((260, 24), ("Helvetica", 12), text="Vendor"),
+                                       Element((360, 24), ("Helvetica", 12), text="Device"),
                                        Rule((0, 42), 7.5 * 90, thickness=2)])
 
                 rpt.generate(canvas)
@@ -1099,7 +1314,8 @@ def generate_csv_entry_for_assetrun(ar, row_writer_func):
         base_header.extend([
             'hardware_node_type',
             'hardware_depth',
-            'hardware_attributes', ])
+            'hardware_attributes',
+            'hardware_info'])
 
         row_writer_func(base_header)
 
@@ -1109,6 +1325,7 @@ def generate_csv_entry_for_assetrun(ar, row_writer_func):
             row.append(hardware_item.type)
             row.append(hardware_item.depth)
             row.append(hardware_item.attributes)
+            row.append(hardware_item.info_list)
 
             row_writer_func(row)
 
@@ -1206,7 +1423,15 @@ def generate_csv_entry_for_assetrun(ar, row_writer_func):
 
     elif ar.run_type == AssetType.PCI:
         base_header.extend([
-            'pci_info'
+            'domain',
+            'bus',
+            'slot',
+            'func',
+            'position',
+            'subclass',
+            'vendor',
+            'device',
+            'revision'
         ])
 
         row_writer_func(base_header)
@@ -1214,7 +1439,17 @@ def generate_csv_entry_for_assetrun(ar, row_writer_func):
         for pci_entry in ar.assetpcientry_set.all():
             row = base_row[:]
 
-            row.append(str(pci_entry))
+            #row.append(str(pci_entry))
+            row.append(str(pci_entry.domain))
+            row.append(str(pci_entry.bus))
+            row.append(str(pci_entry.slot))
+            row.append(str(pci_entry.func))
+            row.append("{:04x}:{:02x}:{:02x}.{:x}".format(pci_entry.domain, pci_entry.bus,
+                                                          pci_entry.slot, pci_entry.func))
+            row.append(str(pci_entry.subclassname))
+            row.append(str(pci_entry.vendorname))
+            row.append(str(pci_entry.devicename))
+            row.append(str(pci_entry.revision))
 
             row_writer_func(row)
 
