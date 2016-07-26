@@ -636,7 +636,7 @@ class PDFReportGenerator(object):
             r.fillColor = colors.red
             d.add(r)
 
-            if partition.size is not None and partition.free is None:
+            if partition.size is not None and partition.free is not None:
                 free_length = int((float(partition.free) / float(partition.size)) * 130)
                 free_start = 130 - free_length
 

@@ -530,46 +530,20 @@ class export_assetbatch_to_xlsx(View):
 class export_assetbatch_to_pdf(View):
     @method_decorator(login_required)
     def post(self, request):
-        settings_dict = {}
+        ab = AssetBatch.objects.get(idx=int(request.POST["pk"]))
 
-        for key in request.POST.iterkeys():
-            valuelist = request.POST.getlist(key)
-            # look for pk in key
-
-            index = key.split("[")[1][:-1]
-            if index not in settings_dict:
-                settings_dict[index] = {}
-
-            if key[::-1][:4] == ']kp[':
-                settings_dict[index]["pk"] = int(valuelist[0])
-            else:
-                value = True if valuelist[0] == "true" else False
-
-                settings_dict[index][key.split("[")[-1][:-1]] = value
-
-        pk_settings = {}
-
-        for setting_index in settings_dict:
-            pk = settings_dict[setting_index]['pk']
-            pk_settings[pk] = {}
-
-            for key in settings_dict[setting_index]:
-                if key != 'pk':
-                    pk_settings[pk][key] = settings_dict[setting_index][key]
-
-        _devices = []
-        for _device in device.objects.filter(idx__in = [int(pk) for pk in pk_settings.keys()]):
-            if not _device.is_meta_device:
-                _devices.append(_device)
+        settings_dict = {
+            "packages_selected": True,
+            "licenses_selected": True,
+            "installed_updates_selected": True,
+            "avail_updates_selected": True,
+            "hardware_report_selected": True
+        }
 
         pdf_report_generator = PDFReportGenerator()
-
-        for _device in _devices:
-            pdf_report_generator.generate_report(_device, pk_settings[_device.idx])
-
-
-        buffer = pdf_report_generator.get_pdf_as_buffer()
-        pdf_b64 = base64.b64encode(buffer.getvalue())
+        pdf_report_generator.generate_report(ab.device, settings_dict)
+        _buffer = pdf_report_generator.get_pdf_as_buffer()
+        pdf_b64 = base64.b64encode(_buffer.getvalue())
 
         return HttpResponse(
             json.dumps(
