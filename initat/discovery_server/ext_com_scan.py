@@ -742,6 +742,14 @@ class PlannedRunsForDevice(object):
             # no more running, delete
             self.to_delete = True
 
+class NRPEScanTracker(object):
+    def __init__(self, ip, _now):
+        self.ip = ip
+        self.connections = 1
+        self.scan_start_time = _now
+
+    def __repr__(self):
+        return "ip:{} connections:{} scan_start_time:{}".format(self.ip, self.connections, self.scan_start_time)
 
 class Dispatcher(object):
     def __init__(self, discovery_process):
@@ -946,14 +954,19 @@ class Dispatcher(object):
                                 )
                             else:
                                 if prfd.ip in self.num_ext_coms_per_ip:
-                                    if self.num_ext_coms_per_ip[prfd.ip] == 0:
+                                    scan_tracker = self.num_ext_coms_per_ip[prfd.ip]
+                                    if scan_tracker.connections == 0:
                                         prs.start()
                                         prs.ext_com.run()
-                                        self.num_ext_coms_per_ip[prfd.ip] += 1
+                                        scan_tracker.connections = 1
+                                        scan_tracker.scan_start_time = _now
+                                    else:
+                                        if (_now - scan_tracker.scan_start_time).seconds > 240:
+                                            scan_tracker.connections = 0
                                 else:
                                     prs.start()
                                     prs.ext_com.run()
-                                    self.num_ext_coms_per_ip[prfd.ip] = 1
+                                    self.num_ext_coms_per_ip[prfd.ip] = NRPEScanTracker(prfd.ip, _now)
                 else:
                     prfd.cancel("no IP")
 
@@ -993,7 +1006,7 @@ class Dispatcher(object):
                     if prd.ext_com.finished() is 0:
                         _output = prd.ext_com.communicate()
                         prd.store_nrpe_result(_output)
-                        self.num_ext_coms_per_ip[prfd.ip] -= 1
+                        self.num_ext_coms_per_ip[prfd.ip].connections = 0
                     else:
                         diff_time = abs((cur_time - prd.run_db_obj.run_start_time).seconds)
                         if diff_time > prd.timeout:
@@ -1004,7 +1017,7 @@ class Dispatcher(object):
                             else:
                                 self.log("external command terminated due to timeout")
                             prd.cancel("timeout")
-                            self.num_ext_coms_per_ip[prfd.ip] -= 1
+                            self.num_ext_coms_per_ip[prfd.ip].connections = 0
             # if num_ext_coms:
             #     time.sleep(2)
             #  print "RES=", zmq_res

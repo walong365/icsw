@@ -25,7 +25,7 @@
 from rest_framework import serializers
 
 from initat.cluster.backbone.models import device, device_selection, device_config, device_group, \
-    cd_connection, DeviceSNMPInfo, DeviceScanLock
+    cd_connection, DeviceSNMPInfo, DeviceScanLock, DeviceClass
 
 
 __all__ = [
@@ -38,6 +38,7 @@ __all__ = [
     "device_serializer",
     "device_serializer_boot",
     "DeviceSNMPInfoSerializer",
+    "DeviceClassSerializer",
 ]
 
 
@@ -121,8 +122,8 @@ class device_serializer(serializers.ModelSerializer):
             "new_state", "prod_link", "dhcp_mac", "dhcp_write",
             # for categories
             "categories",
-            # monitor type
-            # "monitor_type",
+            # class
+            "device_class",
             # uuid
             "uuid",
         )
@@ -248,3 +249,8 @@ class device_serializer_boot(device_serializer):
             # connections
             "master_connections", "slave_connections",
         )
+
+
+class DeviceClassSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DeviceClass

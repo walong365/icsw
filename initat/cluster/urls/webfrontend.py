@@ -188,6 +188,11 @@ device_patterns = [
         device_views.DeviceVariableScopeViewSet.as_view({"get": "list"}),
         name="device_variable_scope_list",
     ),
+    url(
+        "^device_class_call$",
+        device_views.DeviceClassViewSet.as_view({"get": "list"}),
+        name="device_class_list",
+    ),
 ]
 
 

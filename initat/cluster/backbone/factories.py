@@ -32,7 +32,8 @@ from initat.cluster.backbone.models import netdevice_speed, LogLevel, \
     window_manager, snmp_network_type, snmp_scheme, snmp_scheme_vendor, snmp_scheme_tl_oid, \
     ComCapability, SensorAction, config_catalog, GraphSettingSize, GraphSettingTimeshift, \
     GraphSettingForecast, GraphTimeFrame, DispatcherSettingSchedule, DispatcherSetting, \
-    StaticAssetTemplate, StaticAssetTemplateField, dvs_allowed_names, device_variable_scope
+    StaticAssetTemplate, StaticAssetTemplateField, dvs_allowed_names, device_variable_scope, \
+    DeviceClass
 
 
 class Device(factory.django.DjangoModelFactory):
@@ -605,4 +606,31 @@ class DVSAllowedNamesFactory(factory.django.DjangoModelFactory):
         extracted = extracted or ""
         if self.group != extracted:
             self.group = extracted
+            self.save()
+
+
+class DeviceClassFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = DeviceClass
+        django_get_or_create = ("name",)
+
+    @factory.post_generation
+    def description(self, create, extracted, **kwargs):
+        extracted = extracted or ""
+        if self.description != extracted:
+            self.description = extracted
+            self.save()
+
+    @factory.post_generation
+    def limitations(self, create, extracted, **kwargs):
+        extracted = extracted or None
+        if self.limitations != extracted:
+            self.limitations = extracted
+            self.save()
+
+    @factory.post_generation
+    def system_class(self, create, extracted, **kwargs):
+        extracted = extracted or False
+        if self.system_class != extracted:
+            self.system_class = extracted
             self.save()

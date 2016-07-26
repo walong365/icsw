@@ -67,6 +67,7 @@
     <td colspan="2">
         <strong><em>{{ obj.device_group_obj.name }}</em></strong>
     </td>
+    <td>{{ struct.device_tree.device_class_tree.lut[obj.device_class].name }}</td>
     <td>{{ group.description }}</td>
     <td colspan="2"></td>
     <td ng-show="hide_lut['tln']">{{ struct.domain_tree.show_dtn(group.domain_tree_node) }}</td>
@@ -85,6 +86,7 @@
             <input type="button" class="btn btn-warning" ng-click="change_dg_sel(-1)" value="C"/>
         </div>
     </td>
+    <td>{{ struct.device_tree.device_class_tree.lut[obj.device_class].name }}</td>
     <td>{{ group.description }}</td>
     <td>{{ group.enabled | yesno1 }}</td>
     <td>
@@ -107,6 +109,7 @@
     <td>
         <input type="button" ng-class="get_dev_sel_class()" ng-click="toggle_dev_sel()" value="sel"/>
     </td>
+    <td>{{ struct.device_tree.device_class_tree.lut[obj.device_class].name }}</td>
     <td>{{ obj.comment }}</td>
     <td>
         <span ng-show="obj.device_group_obj.enabled">{{ obj.enabled | yesno1 }}</span>
@@ -183,6 +186,7 @@
                     <tr>
                         <th st-sort='st_attrs.name'>Name</th>
                         <th>Sel</th>
+                        <th st-sort='st_attrs.class'>Class</th>
                         <th st-sort='st_attrs.description'>Description</th>
                         <th st-sort='st_attrs.enabled'>Enabled</th>
                         <th st-sort='st_attrs.type'>#devs</th>
@@ -229,6 +233,37 @@
                                     {{ $select.selected.name }}
                                 </ui-select-match>
                                 <ui-select-choices class="ui-select-choices" repeat="value.idx as value in struct.device_tree.group_list | filter:ignore_cdg | props_filter:{name:$select.search}">
+                                    <div ng-bind-html="value.name | highlight: $select.search"></div>
+                                </ui-select-choices>
+                            </ui-select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-2">
+                    <div class="form-group">
+                        <div class="checkbox">
+                            <div class="controls col-lg-offset-0 col-sm-8">
+                                <label>
+                                    <input class="checkboxinput checkbox" ng-model="edit_obj.change_device_class" type="checkbox"/>
+                                    DeviceClass
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-10">
+                    <div class="form-group" ng_show="edit_obj.change_device_class">
+                        <label class="control-label col-sm-3 requiredField">
+                            Device class<span class="asteriskField">*</span>
+                        </label>
+                        <div class="controls col-sm-7">
+                            <ui-select ng-model="edit_obj.device_class" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                                <ui-select-match class="ui-select-match" placeholder="Select the DeviceClass">
+                                    {{ $select.selected.name }}
+                                </ui-select-match>
+                                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in struct.device_tree.device_class_tree.list | props_filter:{name:$select.search}">
                                     <div ng-bind-html="value.name | highlight: $select.search"></div>
                                 </ui-select-choices>
                             </ui-select>
@@ -579,6 +614,21 @@
                             {{ $select.selected.name }}
                         </ui-select-match>
                         <ui-select-choices class="ui-select-choices" repeat="value.idx as value in struct.device_tree.group_list | filter:ignore_cdg | props_filter:{name:$select.search}">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    DeviceClass<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <ui-select ng-model="edit_obj.device_class" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                        <ui-select-match class="ui-select-match" placeholder="Select the DeviceClass">
+                            {{ $select.selected.name }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in struct.device_tree.device_class_tree.list | props_filter:{name:$select.search}">
                             <div ng-bind-html="value.name | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
