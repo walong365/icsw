@@ -56,6 +56,7 @@
     <uib-tabset ng-if="struct.data_valid">
         <uib-tab ng-repeat="entry in struct.slist">
             <uib-tab-heading>
+                <span ng-show="entry.edit_obj.is_meta_device" class="glyphicon glyphicon-list"></span>
                 {{ entry.edit_obj.$$full_device_name }}
                 <img ng-if="entry.edit_obj.mon_ext_host" ng-src="{{ entry.edit_obj.$$image_source }}" width="16"></img>
             </uib-tab-heading>
