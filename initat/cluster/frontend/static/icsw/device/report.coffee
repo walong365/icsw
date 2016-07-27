@@ -86,6 +86,8 @@ device_report_module = angular.module(
         generate_button_disabled: false
         generate_interval: undefined
         generate_progress: 0
+
+        selected: true
     }
 
     $scope.uploading = false
@@ -156,11 +158,39 @@ device_report_module = angular.module(
                         device.$avail_updates_selected = obj.$avail_updates_selected
 
         else if selection_type == 4
+            obj.$process_report_selected = !obj.$process_report_selected
+            if obj.is_meta_device
+                for device in $scope.struct.devices
+                    if device.device_group == obj.device_group
+                        device.$process_report_selected = obj.$process_report_selected
+
+        else if selection_type == 5
             obj.$hardware_report_selected = !obj.$hardware_report_selected
             if obj.is_meta_device
                 for device in $scope.struct.devices
                     if device.device_group == obj.device_group
                         device.$hardware_report_selected = obj.$hardware_report_selected
+
+        else if selection_type == 6
+            obj.$dmi_report_selected = !obj.$dmi_report_selected
+            if obj.is_meta_device
+                for device in $scope.struct.devices
+                    if device.device_group == obj.device_group
+                        device.$dmi_report_selected = obj.$dmi_report_selected
+
+        else if selection_type == 7
+            obj.$pci_report_selected = !obj.$pci_report_selected
+            if obj.is_meta_device
+                for device in $scope.struct.devices
+                    if device.device_group == obj.device_group
+                        device.$pci_report_selected = obj.$pci_report_selected
+
+        else if selection_type == 8
+            obj.$lstopo_report_selected = !obj.$lstopo_report_selected
+            if obj.is_meta_device
+                for device in $scope.struct.devices
+                    if device.device_group == obj.device_group
+                        device.$lstopo_report_selected = obj.$lstopo_report_selected
         
 
     icswSimpleAjaxCall({
@@ -188,8 +218,11 @@ device_report_module = angular.module(
                     dev.$installed_updates_selected = true
                     dev.$avail_updates_selected = true
                     dev.$hardware_report_selected = true
+                    dev.$process_report_selected = true
+                    dev.$dmi_report_selected = true
+                    dev.$pci_report_selected = true
+                    dev.$lstopo_report_selected = true
                     $scope.struct.devices.push(dev)
-
         )
         
     $scope.get_tr_class = (obj) ->
@@ -214,6 +247,10 @@ device_report_module = angular.module(
                         installed_updates_selected: device.$installed_updates_selected
                         avail_updates_selected: device.$avail_updates_selected
                         hardware_report_selected: device.$hardware_report_selected
+                        process_report_selected: device.$process_report_selected
+                        dmi_report_selected: device.$dmi_report_selected
+                        pci_report_selected: device.$pci_report_selected
+                        lstopo_report_selected: device.$lstopo_report_selected
                     }
                     settings.push(setting)
 
@@ -331,6 +368,64 @@ device_report_module = angular.module(
             (fin) ->
                 sub_scope.$destroy()
         )
+
+
+    $scope.column_selected = (column_id) ->
+        for device in $scope.struct.devices
+            if column_id == 0
+                if device.$packages_selected == true
+                    return true
+            else if column_id == 1
+                if device.$licenses_selected == true
+                    return true
+            else if column_id == 2
+                if device.$installed_updates_selected == true
+                    return true
+            else if column_id == 3
+                if device.$avail_updates_selected == true
+                    return true
+            else if column_id == 4
+                if device.$process_report_selected == true
+                    return true
+            else if column_id == 5
+                if device.$hardware_report_selected == true
+                    return true
+            else if column_id == 6
+                if device.$dmi_report_selected == true
+                    return true
+            else if column_id == 7
+                if device.$pci_report_selected == true
+                    return true
+            else if column_id == 8
+                if device.$lstopo_report_selected == true
+                    return true
+
+        return false
+
+    $scope.select_column = (column_id) ->
+        this_column_selected = $scope.column_selected(column_id)
+
+        for device in $scope.struct.devices
+            if column_id == 0
+                device.$packages_selected = !this_column_selected
+            else if column_id == 1
+                device.$licenses_selected = !this_column_selected
+            else if column_id == 2
+                device.$installed_updates_selected = !this_column_selected
+            else if column_id == 3
+                device.$avail_updates_selected = !this_column_selected
+            else if column_id == 4
+                device.$process_report_selected = !this_column_selected
+            else if column_id == 5
+                device.$hardware_report_selected = !this_column_selected
+            else if column_id == 6
+                device.$dmi_report_selected = !this_column_selected
+            else if column_id == 7
+                device.$pci_report_selected = !this_column_selected
+            else if column_id == 8
+                device.$lstopo_report_selected = !this_column_selected
+
+
 
 ]).directive("icswDeviceTreeReportRow",
 [

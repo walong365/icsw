@@ -233,7 +233,23 @@ class PDFReportGenerator(object):
             self.number_of_pages = 0
             self.device = _device
             self.pdf_buffers = []
-            self.report_settings = report_settings
+
+            # default settings
+            self.report_settings =  {
+                "packages_selected": True,
+                "licenses_selected": True,
+                "installed_updates_selected": True,
+                "avail_updates_selected": True,
+                "hardware_report_selected": True,
+                "lstopo_report_selected": True,
+                "process_report_selected": True,
+                "dmi_report_selected": True,
+                "pci_report_selected": True
+            }
+
+            # update default settings with new settings
+            for setting in report_settings:
+                self.report_settings[setting] = report_settings[setting]
 
         def generate_bookmark(self, name):
             bookmark = PDFReportGenerator.Bookmark(name, self.number_of_pages)
@@ -608,6 +624,9 @@ class PDFReportGenerator(object):
                 report.number_of_pages += rpt.pagenumber
 
             elif AssetType(ar.run_type) == AssetType.HARDWARE:
+                if not report.report_settings['lstopo_report_selected']:
+                    continue
+
                 data = row_collector.rows_dict[1:]
                 data = sorted(data, key=lambda k: k['hardware_depth'])
 
@@ -645,6 +664,9 @@ class PDFReportGenerator(object):
                 report.number_of_pages += rpt.pagenumber
 
             elif AssetType(ar.run_type) == AssetType.PROCESS:
+                if not report.report_settings['process_report_selected']:
+                    continue
+
                 data = row_collector.rows_dict[1:]
                 data = sorted(data, key=lambda k: k['process_name'])
 
@@ -683,6 +705,9 @@ class PDFReportGenerator(object):
                 report.number_of_pages += rpt.pagenumber
 
             elif AssetType(ar.run_type) == AssetType.DMI:
+                if not report.report_settings['dmi_report_selected']:
+                    continue
+
                 data = row_collector.rows_dict[1:]
 
                 report.generate_bookmark("DMI Information")
@@ -727,6 +752,9 @@ class PDFReportGenerator(object):
                 report.number_of_pages += rpt.pagenumber
 
             elif AssetType(ar.run_type) == AssetType.PCI:
+                if not report.report_settings['pci_report_selected']:
+                    continue
+
                 data = row_collector.rows_dict[1:]
 
                 report.generate_bookmark("PCI Information")
