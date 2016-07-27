@@ -151,7 +151,7 @@ angular.module(
                 _title_el = text(
                     {
                         x: "#{_w/2}px"
-                        y: "#{_text_height/2}px"
+                        y: "#{_text_height/2 + 4}px"
                         key: "svg.title"
                         textAnchor: "middle"
                         fontSize: "#{_text_height}px"
@@ -168,7 +168,7 @@ angular.module(
                 _text_el = text(
                     {
                         x: 0
-                        y: 0
+                        y: 4
                         key: "svg.text"
                         textAnchor: "middle"
                         alignmentBaseline: "middle"

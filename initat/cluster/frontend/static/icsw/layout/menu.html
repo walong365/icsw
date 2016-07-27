@@ -1,9 +1,10 @@
 <script type="text/ng-template" id="icsw.layout.menubar">
     <nav
-        class="navbar navbar-default navbar-fixed-top {{ struct.current_user ? '' : 'ng-cloak' }}"
+        class="navbar navbar-default navbar-fixed-top {{ struct.current_user ? '' : 'hidden' }}"
         role="navigation"
         icsw-element-size="size"
         ng-controller="icswMenuBaseCtrl"
+        ng-class="show_menu"
         ng-cloak
     >
         <icsw-menu-progress-bars user="struct.current_user"></icsw-menu-progress-bars>
@@ -15,16 +16,11 @@
                     </span>
                 </a>
             </li>
-            <li>
-                <a ui-sref="main.dashboard">
-                    <span class="fa fa-home fa-lg" title="Dashboard"></span>
-                </a>
-            </li>
         </ul>
 
         <icsw-menu-directive></icsw-menu-directive>
 
-        <ul class="nav navbar-nav navbar-right" ng-if="struct.current_user" style="margin-right:0px;">
+        <ul class="nav navbar-nav navbar-right" ng-show="struct.current_user" style="margin-right:0px;">
             <li>
                 <a class="dropdown-toggle cursorpointer" data-toggle="dropdown" style="padding-bottom:15px;">
                     <span ng-if="struct.current_user">
@@ -76,12 +72,13 @@
             </li>
         </ul>
     </nav>
-    <div class="submenu-bar" ng-controller="icswMenuSubCtrl" ng-show="show_submenu">
-        <span class="sub-breadcrumb pull-left">{{ breadcrumb }}</span>
-        <span class="pull-right cursorpointer quickselect" ng-click="device_quickselection()">{{ sel_devices }} devices selected</span>
+</script>
+<script type="text/ng-template" id="icsw.layout.submenubar">
+    <div class="submenu-bar" icsw-menu-sub-directive="" icsw-sel-man="0">
+        <span class="sub-breadcrumb pull-left"><div class="breadcrumb-menu" ng-bind-html="breadcrumb"></div></span>
+        <span class="pull-right cursorpointer quickselect" ng-click="device_quickselection()">{{ select_txt }}</span>
     </div>
 </script>
-
 
 <script type="text/ng-template" id="icsw.layout.menubar.progress">
     <ul class="nav navbar-nav">
@@ -90,8 +87,8 @@
                 <uib-progressbar animate="true" value="obj.value" type="success"><span>{{ obj.value }} %</span></uib-progressbar>
             </div>
         </li>
-        <li class="active" ng-if="num_gauges == 0">
-            <img height="42px" ng-attr-src="{{ initProduct.menu_gfx_url }}" ng-click="redirect_to_init()" style="cursor: pointer" title="{{ initProduct.name }}" alt="{{ initProduct.name }}"/>
+        <li class="active" ng-if="num_gauges == 0"><!--redirect_to_init()-->
+            <img height="42px" ng-attr-src="{{ initProduct.menu_gfx_url }}" ng-click="sglclick()" style="cursor: pointer" title="{{ initProduct.name }}" alt="{{ initProduct.name }}"/>
         </li>
     </ul>
 </script>

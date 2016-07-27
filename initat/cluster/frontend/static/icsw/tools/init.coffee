@@ -553,6 +553,8 @@ angular.module(
 
         ICSW_ACLS_CHANGED: "icsw.acls.changed"
         ICSW_USER_CHANGED: "icsw.user.changed"
+        ICSW_USER_NOUSER: "icsw.user.nouser"
+        ICSW_USER_LOGGEDIN: "icsw.user.loggedin"
         ICSW_DSR_REGISTERED: "icsw.dsr.registered"
         ICSW_DSR_UNREGISTERED: "icsw.dsr.unregistered"
         ICSW_SELECTOR_SHOW: "icsw.selector.show"
