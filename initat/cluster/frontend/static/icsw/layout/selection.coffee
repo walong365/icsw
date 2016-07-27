@@ -443,13 +443,16 @@ angular.module(
         return defer.promise
 
     return {
-        "load_selections": () ->
+        load_selections: () ->
             return load_selections()
-        "save_selection": (user, sel) ->
+
+        save_selection: (user, sel) ->
             return save_selection(user, sel)
-        "delete_selection": (sel) ->
+
+        delete_selection: (sel) ->
             return delete_selection(sel)
-        "enrich_selection": (obj) ->
+
+        enrich_selection: (obj) ->
             enrich_selection(obj)
     }
 ]).controller("icswLayoutSelectionController",
@@ -627,7 +630,6 @@ angular.module(
         $scope.tc_devices.clear_root_nodes()
         $scope.tc_groups.clear_root_nodes()
         $scope.tc_categories.clear_root_nodes()
-        console.log "got_rest_data (selection)"
         # build category tree
         # tree category lut
         # id -> category entry from tree (with devices)
@@ -1044,16 +1046,20 @@ angular.module(
 ]).service("icswLayoutSelectionDialogService",
 [
     "$q", "$compile", "$templateCache", "$state", "icswToolsSimpleModalService",
-    "$rootScope", "ICSW_SIGNALS",
+    "$rootScope", "ICSW_SIGNALS", "$uibPosition",
 (
     $q, $compile, $templateCache, $state, icswToolsSimpleModalService,
-    $rootScope, ICSW_SIGNALS
+    $rootScope, ICSW_SIGNALS, $uibPosition,
 ) ->
     # dialog_div =
     prev_left = undefined
     prev_top = undefined
     _active = false
-    quick_dialog = () ->
+    quick_dialog = ($event) ->
+        if $event?
+            _event_pos = $uibPosition.position($event.currentTarget)
+        else
+            _event_pos = undefined
         if !_active
             _active = true
             state_name = $state.current.name
@@ -1070,13 +1076,22 @@ angular.module(
                 closable: true
                 onshown: (ref) ->
                     # hack to position to the left
+                    # _tw is the full viewport width
                     _tw = ref.getModal().width()
                     _diag = ref.getModalDialog()
-                    if prev_left?
-                        $(_diag[0]).css("left", prev_left)
-                        $(_diag[0]).css("top", prev_top)
+                    if _event_pos?
+                        # hm, to be improved
+                        _left = _event_pos.left - (_tw - 600) / 2 - 600 / 2
+                        _top = _event_pos.top
                     else
-                        $(_diag[0]).css("left", - (_tw - 600)/2)
+                        if prev_left?
+                            _left = prev_left
+                            _top = prev_top
+                        else
+                            _left = -(_tw - 600) / 2
+                            _top = 0
+                    $(_diag[0]).css("left", _left)
+                    $(_diag[0]).css("top", _top)
                     sel_scope.modal = ref
                 onhidden: (ref) ->
                     _diag = ref.getModalDialog()
@@ -1094,8 +1109,8 @@ angular.module(
                     }
                 ]
     return {
-        quick_dialog: () ->
-            return quick_dialog()
+        quick_dialog: ($event) ->
+            return quick_dialog($event)
     }
 ]).service("icswLayoutSelectionTreeService",
 [
