@@ -42,11 +42,77 @@ angular.module(
         update: (list) =>
             @list.length = 0
             for entry in list
+                if entry.default_system_class
+                    @__dsc = entry
+                if not entry.$$enabled?
+                    entry.$$enabled = false
                 @list.push(entry)
+            @enabled_idx_list = []
+            @enabled_fp = ""
             @build_luts()
 
         build_luts: () =>
             @lut = _.keyBy(@list, "idx")
+
+        get_fingerprint: () =>
+            return @enabled_fp
+
+        validate_device_class_filter: (dcf) =>
+            # dcf ... dict with class.idx => class.$$enabled
+            _changed = false
+
+            # check for new values
+            for entry in @list
+                if entry.idx not of dcf
+                    dcf[entry.idx] = entry.$$enabled
+                    _changed = true
+                else
+                    entry.$$enabled = dcf[entry.idx]
+
+            # validate
+            if not _.some(_.values(dcf))
+                @__dsc.$$enabled = true
+                dcf[@__dsc.idx] = @__dsc.$$enabled
+                _changed = true
+            # build enabled_idx_list
+            @enabled_idx_list = (entry.idx for entry in @list when entry.$$enabled)
+            @enabled_fp = ("#{_val}" for _val in @enabled_idx_list).join("::")
+            return _changed
+
+        read_device_class_filter: (dcf) =>
+            # syncs entries from dcf
+            _changed = false
+            for entry in @list
+                if entry.$$enabled != dcf[entry.idx]
+                    entry.$$enabled = dcf[entry.idx]
+                    _changed = true
+            if @validate_device_class_filter(dcf)
+                _changed = true
+            return _changed
+
+        write_device_class_filter: (dcf) =>
+            # syncs dcf from entries
+            # dcf ... dict with class.idx => class.$$enabled
+            # step one: copy
+            _changed = false
+            for entry in @list
+                if entry.$$enabled != dcf[entry.idx]
+                    dcf[entry.idx] = entry.$$enabled
+                    _changed = true
+            if @validate_device_class_filter(dcf)
+                _changed = true
+            return _changed
+
+        get_filter_name: () =>
+            _fv = (entry.$$enabled for entry in @list)
+            if _.every(_fv)
+                return "all"
+            else if not _.some(_fv)
+                return "none"
+            else
+                _enabled = (1 for entry in @list when entry.$$enabled).length
+                return "#{_enabled} / #{_fv.length}"
+
 ]).service("icswDeviceClassTreeService",
 [
     "$q", "icswDeviceClassTree", "icswTreeBase", "ICSW_URLS",
@@ -598,6 +664,9 @@ angular.module(
                 group.num_devices = group.num_devices_with_meta - 1
             # create helper structures
             # console.log "link"
+
+        device_class_is_enabled: (dev) =>
+            return dev.device_class in @device_class_tree.enabled_idx_list
 
         get_meta_device: (dev) =>
             return @all_lut[@group_lut[dev.device_group].device]

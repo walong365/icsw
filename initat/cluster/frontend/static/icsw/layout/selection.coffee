@@ -457,31 +457,74 @@ angular.module(
     "$scope", "icswLayoutSelectionTreeService", "$timeout", "icswDeviceTreeService", "ICSW_SIGNALS",
     "icswSelection", "icswActiveSelectionService", "$q", "icswSavedSelectionService", "icswToolsSimpleModalService",
     "DeviceOverviewService", "ICSW_URLS", 'icswSimpleAjaxCall', "blockUI", "$rootScope", "icswUserService",
-    "DeviceOverviewSelection", "hotkeys",
+    "DeviceOverviewSelection", "hotkeys", "icswComplexModalService", "$templateCache", "$compile",
 (
     $scope, icswLayoutSelectionTreeService, $timeout, icswDeviceTreeService, ICSW_SIGNALS,
     icswSelection, icswActiveSelectionService, $q, icswSavedSelectionService, icswToolsSimpleModalService,
     DeviceOverviewService, ICSW_URLS, icswSimpleAjaxCall, blockUI, $rootScope, icswUserService,
-    DeviceOverviewSelection, hotkeys,
+    DeviceOverviewSelection, hotkeys, icswComplexModalService, $templateCache, $compile,
 ) ->
-    console.log "keys"
     hotkeys.bindTo($scope).add(
-        combo: "g"
-        description: "Group selection"
-        callback: () ->
-            console.log "g pressed"
+        combo: "ctrl+d"
+        description: "Active device tab"
+        allowIn: ["INPUT"]
+        callback: (event) ->
+            $scope.activate_tab("d")
+            event.preventDefault()
+    ).add(
+        combo: "ctrl+g"
+        description: "Active group tab"
+        allowIn: ["INPUT"]
+        callback: (event) ->
+            $scope.activate_tab("g")
+            event.preventDefault()
+    ).add(
+        combo: "ctrl+c"
+        description: "Active category tab"
+        allowIn: ["INPUT"]
+        callback: (event) ->
+            $scope.activate_tab("c")
+            event.preventDefault()
+    ).add(
+        combo: "ctrl+l"
+        description: "Show DeviceClass selector"
+        allowIn: ["INPUT"]
+        callback: (event) ->
+            $scope.show_class_filter(event)
+            event.preventDefault()
     )
-    # search settings
-    $scope.search_ok = true
-    $scope.is_loading = true
-    $scope.active_tab = "d"
-    $scope.show_selection = false
     $scope.saved_selections = []
     $scope.devsel_receivers = icswActiveSelectionService.num_receivers()
-    $scope.selection_valid = false
-    $scope.synced = false
-    # for saved selections
-    $scope.vars = {
+    $scope.struct = {
+        # show selection
+        show_selection: false
+        # device tree
+        device_tree: undefined
+        # search settings
+        search_ok: true
+        # is loading
+        is_loading: true
+        # in sync with a saved selection
+        synced: false
+        # user
+        user: undefined
+        # selection
+        selection: undefined
+        # selection valid
+        selection_valid: false
+        # class filter name
+        class_filter_name: "N/A"
+        # selection dict
+        selection_dict: {
+            d: 0
+            g: 0
+            c: 0
+        }
+        # active tab
+        active_tab: "d"
+        # active tab index
+        active_tab_idx: 0
+        # for saved selections
         search_str: ""
         selection_for_dropdown: undefined
     }
@@ -495,17 +538,32 @@ angular.module(
             # console.log "info"
     )
     # treeconfig for devices
-    $scope.tc_devices = new icswLayoutSelectionTreeService($scope, notifier_queue, {show_tree_expand_buttons: false, show_descendants: true})
+    $scope.tc_devices = new icswLayoutSelectionTreeService(
+        $scope
+        notifier_queue
+        {
+            show_tree_expand_buttons: false
+            show_descendants: true
+        }
+    )
     # treeconfig for groups
-    $scope.tc_groups = new icswLayoutSelectionTreeService($scope, notifier_queue, {show_tree_expand_buttons: false, show_descendants: true})
+    $scope.tc_groups = new icswLayoutSelectionTreeService(
+        $scope
+        notifier_queue
+        {
+            show_tree_expand_buttons: false
+            show_descendants: true
+        }
+    )
     # treeconfig for categories
-    $scope.tc_categories = new icswLayoutSelectionTreeService($scope, notifier_queue, {show_selection_buttons: true, show_descendants: true})
-    $scope.selection_dict = {
-        d: 0
-        g: 0
-        c: 0
-    }
-    $scope.tree = undefined
+    $scope.tc_categories = new icswLayoutSelectionTreeService(
+        $scope
+        notifier_queue
+        {
+            show_selection_buttons: true
+            show_descendants: true
+        }
+    )
     # console.log "start"
     # list of receivers
     stop_listen = []
@@ -523,25 +581,19 @@ angular.module(
     )
     stop_listen.push(
         $rootScope.$on(ICSW_SIGNALS("ICSW_USER_CHANGED"), (event, new_user) ->
-            console.log "new user", new_user
+            # console.log "new user", new_user
             if new_user and new_user.idx
-                icswDeviceTreeService.load($scope.$id).then(
-                    (new_tree) ->
-                        $scope.got_rest_data(new_tree, icswActiveSelectionService.get_selection())
-                )
+                _install_tree(user)
         )
     )
     stop_listen.push(
         $rootScope.$on(ICSW_SIGNALS("ICSW_SELECTOR_SHOW"), (event, cur_state) ->
             # call when the requester is shown
-            console.log "show_devsel", event, cur_state, $scope
             if icswUserService.user_present()
-                icswDeviceTreeService.load($scope.$id).then(
-                    (new_tree) ->
-                        $scope.got_rest_data(new_tree, icswActiveSelectionService.get_selection())
-                )
+                #console.log "show_devsel", event, cur_state, $scope, user
+                _install_tree(icswUserService.get())
             else
-                console.log "No user user"
+                console.error "No user"
         )
     )
     stop_listen.push(
@@ -551,24 +603,40 @@ angular.module(
             (stop_func() for stop_func in stop_listen)
         )
     )
+
+    _set_class_filter_name = () ->
+        $scope.struct.class_filter_name = $scope.struct.device_tree.device_class_tree.get_filter_name()
+
+    _install_tree = (user_obj) ->
+        icswDeviceTreeService.load($scope.$id).then(
+            (new_tree) ->
+                $scope.struct.user = user_obj
+                user_obj.read_device_class_filter(new_tree.device_class_tree)
+                _got_rest_data(new_tree, icswActiveSelectionService.get_selection())
+        )
+
     # get current devsel_receivers
-    $scope.got_rest_data = (tree, selection) ->
+    _got_rest_data = (tree, selection) ->
+        $scope.struct.device_tree = tree
+        $scope.struct.selection = selection
+        $scope.struct.selection_valid = true
+        _set_class_filter_name()
+        _build_tree()
+
+    _build_tree = () ->
         $scope.tc_devices.clear_root_nodes()
         $scope.tc_groups.clear_root_nodes()
         $scope.tc_categories.clear_root_nodes()
-        $scope.selection = selection
-        $scope.selection_valid = true
         console.log "got_rest_data (selection)"
         # build category tree
         # tree category lut
         # id -> category entry from tree (with devices)
         t_cat_lut = {}
-        # store tree
-        $scope.tree = tree
+        # device tree
+        _tree = $scope.struct.device_tree
         # flag if we should call devsel after search
         $scope.call_devsel_after_search = false
-        console.log tree
-        for entry in tree.cat_tree.list
+        for entry in _tree.cat_tree.list
             t_entry = $scope.tc_categories.create_node(
                 {
                     folder: true
@@ -576,7 +644,7 @@ angular.module(
                     show_select: entry.depth > 1
                     _node_type: "c"
                     expand: entry.depth == 0
-                    selected: $scope.selection.category_selected(entry.idx)
+                    selected: $scope.struct.selection.category_selected(entry.idx)
                 }
             )
             t_cat_lut[entry.idx] = t_entry
@@ -586,72 +654,76 @@ angular.module(
                 $scope.tc_categories.add_root_node(t_entry)
         # build device group tree and top level of device tree
         dg_lut = {}
-        for entry in tree.enabled_list
+        for entry in _tree.enabled_list
             if entry.is_meta_device
-                g_entry = $scope.tc_groups.create_node(
-                    {
-                        obj: entry.device_group
-                        folder: true
-                        _node_type: "g"
-                        selected: $scope.selection.device_group_selected(entry.device_group)
-                    }
-                )
-                $scope.tc_groups.add_root_node(g_entry)
-                d_entry = $scope.tc_devices.create_node(
-                    {
-                        obj: entry.idx
-                        folder: true
-                        selected: $scope.selection.device_selected(entry.idx)
-                        _node_type: "d"
-                    }
-                )
-                $scope.tc_devices.add_root_node(d_entry)
-                dg_lut[entry.device_group] = d_entry
-        # build devices tree
-        for entry in tree.enabled_list
-            if ! entry.is_meta_device
-                # copy selection state to device selection (the selection state of the meta devices is keeped in sync with the selection states of the devicegroups )
-                d_entry = $scope.tc_devices.create_node(
-                    {
-                        obj: entry.idx
-                        folder: false
-                        selected: $scope.selection.device_selected(entry.idx)
-                        _node_type: "d"
-                    }
-                )
-                dg_lut[entry.device_group].add_child(d_entry)
+                _group = _tree.get_group(entry)
+                if _.some(_tree.device_class_is_enabled(_tree.all_lut[idx]) for idx in _group.devices)
+                    g_entry = $scope.tc_groups.create_node(
+                        {
+                            obj: entry.device_group
+                            folder: true
+                            _node_type: "g"
+                            selected: $scope.struct.selection.device_group_selected(entry.device_group)
+                        }
+                    )
+                    $scope.tc_groups.add_root_node(g_entry)
+                    d_entry = $scope.tc_devices.create_node(
+                        {
+                            obj: entry.idx
+                            folder: true
+                            selected: $scope.struct.selection.device_selected(entry.idx)
+                            _node_type: "d"
+                        }
+                    )
+                    $scope.tc_devices.add_root_node(d_entry)
+                    dg_lut[entry.device_group] = d_entry
+        # build device tree
+        for entry in _tree.enabled_list
+            if !entry.is_meta_device
+                if _tree.device_class_is_enabled(entry)
+                    # copy selection state to device selection (the selection state of the meta devices is keeped in sync with the selection states of the devicegroups )
+                    d_entry = $scope.tc_devices.create_node(
+                        {
+                            obj: entry.idx
+                            folder: false
+                            selected: $scope.struct.selection.device_selected(entry.idx)
+                            _node_type: "d"
+                        }
+                    )
+                    dg_lut[entry.device_group].add_child(d_entry)
         for cur_tc in [$scope.tc_devices, $scope.tc_groups, $scope.tc_categories]
             cur_tc.recalc()
             cur_tc.show_selected()
-        $scope.is_loading = false
+        $scope.struct.is_loading = false
         $scope.selection_changed()
 
     $scope.toggle_show_selection = () ->
-        $scope.show_selection = !$scope.show_selection
+        $scope.struct.show_selection = !$scope.struct.show_selection
 
     $scope.activate_tab = (t_type) ->
-        $scope.active_tab = t_type
-        for tab_key in ["d", "g", "c"]
-            $scope.tabs[tab_key] = tab_key == $scope.active_tab
+        $scope.struct.active_tab = t_type
+        $scope.struct.active_tab_idx = ["d", "g", "c"].indexOf($scope.struct.active_tab)
 
-    $scope.tabs = {}
-
-    $scope.activate_tab($scope.active_tab)
+    $scope.activate_tab($scope.struct.active_tab)
 
     $scope.get_tc = (short) ->
-        return {"d" : $scope.tc_devices, "g": $scope.tc_groups, "c" : $scope.tc_categories}[short]
+        return {
+            d: $scope.tc_devices
+            g: $scope.tc_groups
+            c: $scope.tc_categories
+        }[short]
 
     $scope.clear_selection = (tab_name) ->
         _tree = $scope.get_tc(tab_name)
         _tree.clear_selected()
-        $scope.search_ok = true
+        $scope.struct.search_ok = true
         $scope.selection_changed()
 
     $scope.clear_search = () ->
         if $scope.cur_search_to
             $timeout.cancel($scope.cur_search_to)
-        $scope.vars.search_str = ""
-        $scope.search_ok = true
+        $scope.struct.search_str = ""
+        $scope.struct.search_ok = true
 
     $scope.update_search = () ->
         if $scope.cur_search_to
@@ -660,7 +732,7 @@ angular.module(
 
     $scope.set_search_filter = () ->
         $scope.cur_search_to = undefined
-        if $scope.vars.search_str == ""
+        if $scope.struct.search_str == ""
             return
 
         looks_like_ip_or_mac_start = (in_str) ->
@@ -672,26 +744,26 @@ angular.module(
                 $scope.call_devsel_after_search = false
                 $scope.call_devsel_func()
 
-        if looks_like_ip_or_mac_start($scope.vars.search_str)
+        if looks_like_ip_or_mac_start($scope.struct.search_str)
             icswSimpleAjaxCall(
                 url: ICSW_URLS.DEVICE_GET_MATCHING_DEVICES
                 dataType: "json"
                 data:
-                    search_str: $scope.vars.search_str
+                    search_str: $scope.struct.search_str
             ).then(
                 (matching_device_pks) ->
-                    cur_tree = $scope.get_tc($scope.active_tab)
+                    cur_tree = $scope.get_tc($scope.struct.active_tab)
                     cur_tree.toggle_tree_state(undefined, -1, false)
                     num_found = 0
                     cur_tree.iter(
                         (entry) ->
                             if entry._node_type == "d"
-                                _sel = $scope.tree.all_lut[entry.obj].idx in matching_device_pks
+                                _sel = $scope.struct.device_tree.all_lut[entry.obj].idx in matching_device_pks
                                 entry.set_selected(_sel)
                                 if _sel
                                     num_found++
                     )
-                    $scope.search_ok = num_found > 0
+                    $scope.struct.search_ok = num_found > 0
                     cur_tree.show_selected(false)
                     $scope.selection_changed()
                     check_for_post_devsel_call()
@@ -700,38 +772,37 @@ angular.module(
         else  # regular search
             _with_slash = false
             try
-                cur_re = new RegExp($scope.vars.search_str, "gi")
-                if $scope.vars.search_str.match(/\//)
+                cur_re = new RegExp($scope.struct.search_str, "gi")
+                if $scope.struct.search_str.match(/\//)
                     _with_slash = true
             catch exc
                 cur_re = new RegExp("^$", "gi")
-            cur_tree = $scope.get_tc($scope.active_tab)
+            cur_tree = $scope.get_tc($scope.struct.active_tab)
             cur_tree.toggle_tree_state(undefined, -1, false)
             num_found = 0
             cur_tree.iter(
                 (entry, cur_re) ->
                     if entry._node_type == "d"
-                        _sel = if $scope.tree.all_lut[entry.obj].full_name.match(cur_re) then true else false
+                        _sel = if $scope.struct.device_tree.all_lut[entry.obj].full_name.match(cur_re) then true else false
                         entry.set_selected(_sel)
                         if _sel
                             num_found++
                     else if entry._node_type == "g"
-                        _sel = if $scope.tree.group_lut[entry.obj].full_name.match(cur_re) then true else false
+                        _sel = if $scope.struct.device_tree.group_lut[entry.obj].full_name.match(cur_re) then true else false
                         entry.set_selected(_sel)
                         if _sel
                             num_found++
                     else if entry._node_type == "c"
-                        # console.log $scope.tree.cat_tree.lut[entry.obj]
                         if _with_slash
-                            _sel = if $scope.tree.cat_tree.lut[entry.obj].full_name.match(cur_re) then true else false
+                            _sel = if $scope.struct.device_tree.cat_tree.lut[entry.obj].full_name.match(cur_re) then true else false
                         else
-                            _sel = if $scope.tree.cat_tree.lut[entry.obj].name.match(cur_re) then true else false
+                            _sel = if $scope.struct.device_tree.cat_tree.lut[entry.obj].name.match(cur_re) then true else false
                         entry.set_selected(_sel)
                         if _sel
                             num_found++
                 cur_re
             )
-            $scope.search_ok = if num_found > 0 then true else false
+            $scope.struct.search_ok = if num_found > 0 then true else false
             cur_tree.show_selected(false)
             $scope.selection_changed()
             check_for_post_devsel_call()
@@ -749,13 +820,13 @@ angular.module(
         return sel.resolve_categories()
 
     $scope.resolve_lazy_selection = () ->
-        $scope.selection.resolve_lazy_selection()
+        $scope.struct.selection.resolve_lazy_selection()
         $scope.tc_groups.clear_selected()
         $scope.tc_categories.clear_selected()
         # select devices
         $scope.tc_devices.iter(
             (node, data) ->
-                node.selected = node.obj in $scope.selection.tot_dev_sel
+                node.selected = node.obj in $scope.struct.selection.tot_dev_sel
         )
         $scope.tc_devices.recalc()
         $scope.tc_groups.show_selected(false)
@@ -763,6 +834,47 @@ angular.module(
         $scope.tc_devices.show_selected(false)
         $scope.selection_changed()
         $scope.activate_tab("d")
+
+    $scope.show_class_filter = ($event) ->
+        sub_scope = $scope.$new(true)
+        sub_scope.device_class_tree = $scope.struct.device_tree.device_class_tree
+        cur_selection = $scope.struct.user.get_device_class_filter()
+        cur_fp = $scope.struct.device_tree.device_class_tree.get_fingerprint()
+        sub_scope.selection_changed = () ->
+            # need a timeout here because angular syncs the flags during the next digest-cycle
+            $timeout(
+                () ->
+                    $scope.struct.user.write_device_class_filter(sub_scope.device_class_tree)
+                0
+            )
+
+        icswComplexModalService(
+            {
+                message: $compile($templateCache.get("icsw.layout.class.filter"))(sub_scope)
+                title: "Select DeviceClasses"
+                closeable: true
+                ok_label: "select"
+                ok_callback: (modal) ->
+                    d = $q.defer()
+                    d.resolve("resolved")
+                    return d.promise
+                cancel_callback: (modal) ->
+                    $scope.struct.user.restore_device_class_filter(cur_selection, sub_scope.device_class_tree)
+                    d = $q.defer()
+                    d.resolve("resolved")
+                    return d.promise
+            }
+        ).then(
+            (fin) ->
+                sub_scope.$destroy()
+                new_fp = $scope.struct.device_tree.device_class_tree.get_fingerprint()
+                _set_class_filter_name()
+                if cur_fp != new_fp
+                    # fingerprint changed
+                    _build_tree()
+                # trigger refiltering of list
+                # $rootScope.$emit(ICSW_SIGNALS("ICSW_FORCE_TREE_FILTER"))
+        )
 
     $scope.selection_changed = () ->
         dev_sel_nodes = $scope.tc_devices.get_selected(
@@ -786,7 +898,7 @@ angular.module(
                 else
                     return []
         )
-        $scope.selection_dict = {
+        $scope.struct.selection_dict = {
             "d": dev_sel_nodes.length
             "g": group_sel_nodes.length
             "c": cat_sel_nodes.length
@@ -802,27 +914,27 @@ angular.module(
             tot_dev_sel.push(_ds)
         for _gs in group_sel_nodes
             devg_sel.push(_gs)
-            for _group_dev in $scope.tree.group_lut[_gs].devices
+            for _group_dev in $scope.struct.device_tree.group_lut[_gs].devices
                 tot_dev_sel.push(_group_dev)
         for _cs in cat_sel_nodes
-            for _cat_dev in $scope.tree.get_category(_cs).reference_dict.device
+            for _cat_dev in $scope.struct.device_tree.get_category(_cs).reference_dict.device
                 tot_dev_sel.push(_cat_dev)
-        $scope.selection.update(cat_sel_nodes, devg_sel, dev_sel, _.uniq(tot_dev_sel))
-        if $scope.selection.is_synced()
+        $scope.struct.selection.update(cat_sel_nodes, devg_sel, dev_sel, _.uniq(tot_dev_sel))
+        if $scope.struct.selection.is_synced()
             # current selection is in sync with a saved one
-            $scope.synced = true
-            console.log "sync"
-            $scope.selection.compare_with_db()
+            $scope.struct.synced = true
+            # console.log "sync"
+            $scope.struct.selection.compare_with_db()
         else
-            console.log "unsync"
-            $scope.synced = false
+            # console.log "unsync"
+            $scope.struct.synced = false
 
     $scope.call_devsel_func = () ->
         if $scope.cur_search_to?
             # set flag: call devsel after search is done
             $scope.call_devsel_after_search = true
         else
-            icswActiveSelectionService.send_selection($scope.selection)
+            icswActiveSelectionService.send_selection($scope.struct.selection)
             $scope.modal.close()
 
     $scope.enable_saved_selections = () ->
@@ -833,59 +945,59 @@ angular.module(
             )
 
     $scope.update_selection = () ->
-        $scope.selection.save_db_obj()
+        $scope.struct.selection.save_db_obj()
 
     $scope.create_selection = () ->
         _names = (sel.name for sel in $scope.saved_selections)
         # make name unique
-        if $scope.selection.name in _names
-            if $scope.selection.name.match(/.* \d+$/)
-                _parts = $scope.selection.name.split(" ")
+        if $scope.struct.selection.name in _names
+            if $scope.struct.selection.name.match(/.* \d+$/)
+                _parts = $scope.struct.selection.name.split(" ")
                 _idx = parseInt(_parts.pop())
-                $scope.selection.name = _parts.join(" ")
+                $scope.struct.selection.name = _parts.join(" ")
             else
                 _idx = 1
             while true
-                _name = $scope.selection.name + " #{_idx}"
+                _name = $scope.struct.selection.name + " #{_idx}"
                 if _name not in _names
                     break
                 else
                     _idx++
-            $scope.selection.name = _name
+            $scope.struct.selection.name = _name
         icswSavedSelectionService.save_selection(
             icswUserService.get()
-            $scope.selection
+            $scope.struct.selection
         ).then(
             (new_sel) ->
-                $scope.vars.selection_for_dropdown = $scope.selection.db_obj
-                $scope.synced = true
+                $scope.struct.selection_for_dropdown = $scope.struct.selection.db_obj
+                $scope.struct.synced = true
         )
 
     $scope.unselect = () ->
-        console.log "unselect"
-        $scope.synced = false
+        # console.log "unselect"
+        $scope.struct.synced = false
         icswActiveSelectionService.unsync_selection()
-        $scope.vars.selection_for_dropdown = undefined
+        $scope.struct.selection_for_dropdown = undefined
 
     $scope.use_selection = (new_sel, b) ->
         console.log "use_selection"
-        $scope.vars.selection_for_dropdown = new_sel
+        $scope.struct.selection_for_dropdown = new_sel
         icswActiveSelectionService.sync_selection(new_sel)
         (cur_tc.clear_selected() for cur_tc in [$scope.tc_devices, $scope.tc_groups, $scope.tc_categories])
         $scope.tc_devices.iter(
             (entry, bla) ->
                 if entry._node_type == "d"
-                    entry.set_selected($scope.selection.device_selected(entry.obj))
+                    entry.set_selected($scope.struct.selection.device_selected(entry.obj))
         )
         $scope.tc_groups.iter(
             (entry, bla) ->
                 if entry._node_type == "g"
-                    entry.set_selected($scope.selection.device_group_selected(entry.obj))
+                    entry.set_selected($scope.struct.selection.device_group_selected(entry.obj))
         )
         $scope.tc_categories.iter(
             (entry, bla) ->
                 if entry._node_type == "c"
-                    entry.set_selected($scope.selection.category_selected(entry.obj))
+                    entry.set_selected($scope.struct.selection.category_selected(entry.obj))
         )
         # apply new selection
         for cur_tc in [$scope.tc_devices, $scope.tc_groups, $scope.tc_categories]
@@ -894,32 +1006,32 @@ angular.module(
         $scope.selection_changed()
 
     $scope.delete_selection = () ->
-        if $scope.synced
-            icswToolsSimpleModalService("Delete Selection #{$scope.selection.name} ?").then(
+        if $scope.struct.synced
+            icswToolsSimpleModalService("Delete Selection #{$scope.struct.selection.name} ?").then(
                 () ->
-                    icswSavedSelectionService.delete_selection($scope.selection).then(
+                    icswSavedSelectionService.delete_selection($scope.struct.selection).then(
                         (new_list) ->
-                            $scope.vars.selection_for_dropdown = undefined
-                            $scope.synced = false
+                            $scope.struct.selection_for_dropdown = undefined
+                            $scope.struct.synced = false
                             icswActiveSelectionService.unsync_selection()
                             $scope.saved_selections = new_list
                     )
             )
 
     $scope.show_current_selection_in_overlay = () ->
-        devsel_list = $scope.selection.get_devsel_list()
-        selected_devices = ($scope.tree.all_lut[_pk] for _pk in devsel_list[0])
+        devsel_list = $scope.struct.selection.get_devsel_list()
+        selected_devices = ($scope.struct.device_tree.all_lut[_pk] for _pk in devsel_list[0])
         DeviceOverviewSelection.set_selection(selected_devices)
         DeviceOverviewService(event, selected_devices)
         console.log "show_current_selection"
 
     $scope.select_parents = () ->
         blockUI.start("Selecting parents...")
-        $scope.selection.select_parent().then(
+        $scope.struct.selection.select_parent().then(
             () ->
                 $scope.tc_devices.iter(
                     (node, data) ->
-                        node.selected = node.obj in $scope.selection.tot_dev_sel
+                        node.selected = node.obj in $scope.struct.selection.tot_dev_sel
                 )
                 $scope.tc_devices.recalc()
                 $scope.tc_groups.show_selected(false)
@@ -993,6 +1105,7 @@ angular.module(
     DeviceOverviewService, icswReactTreeConfig, icswDeviceTreeService,
     DeviceOverviewSelection
 ) ->
+    {span} = React.DOM
     class icswLayoutSelectionTree extends icswReactTreeConfig
         constructor: (@scope, @notifier, args) ->
             # args.debug_mode = true
@@ -1026,9 +1139,6 @@ angular.module(
             else if t_entry._node_type == "c"
                 if entry.depth
                     _res = entry.name
-                    cat = @current.cat_tree.lut[t_entry.obj]
-                    if cat.reference_dict.device.length
-                        _res = "#{_res} (#{cat.reference_dict.device.length} devices)"
                 else
                     _res = "[TOP]"
                 return _res
@@ -1061,13 +1171,29 @@ angular.module(
             else
                 return "dynatree-icon"
 
+        get_post_view_element: (t_entry) ->
+            if t_entry._node_type == "c"
+                cat = @current.cat_tree.lut[t_entry.obj]
+                if cat.depth > 1 and cat.reference_dict.device.length
+                    return span(
+                        {
+                            key: "info"
+                            className: "label label-primary"
+                        }
+                        "#{cat.reference_dict.device.length} devs"
+                    )
+                else
+                    return null
+            else
+                return null
+
         get_dev_entry: (t_entry) =>
             if t_entry._node_type == "g"
-                return @scope.tree.group_lut[t_entry.obj]
+                return @scope.struct.device_tree.group_lut[t_entry.obj]
             else if t_entry._node_type == "c"
-                return @scope.tree.cat_tree.lut[t_entry.obj]
+                return @scope.struct.device_tree.cat_tree.lut[t_entry.obj]
             else
-                return @scope.tree.all_lut[t_entry.obj]
+                return @scope.struct.device_tree.all_lut[t_entry.obj]
 
         selection_changed: () =>
             @scope.selection_changed()
