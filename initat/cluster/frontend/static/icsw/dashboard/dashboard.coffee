@@ -278,7 +278,7 @@ dashboard_module = angular.module(
         maxSizeY: null
         resizable: {
            enabled: true,
-           handles: ["n", 'w', 'ne', 'se', 'sw', 'nw']
+           handles: ['ne', 'se', 'sw', 'nw']
            stop: (event, element, options) ->
                options.ps_changed()
         }

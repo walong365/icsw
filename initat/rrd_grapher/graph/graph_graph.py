@@ -301,7 +301,7 @@ class RRDGraph(object):
             _iterate_line, _line_iteration = (True, 0)
             while _iterate_line:
                 for _graph_target in _graph_line:
-                    abs_file_loc = os.path.join(self.para_dict["graph_root"], _graph_target.graph_name)
+                    abs_file_loc = str(os.path.join(self.para_dict["graph_root"], _graph_target.graph_name))
                     # clear list of defs, reset result
                     _graph_target.reset()
                     # reset colorizer for current graph
@@ -411,10 +411,13 @@ class RRDGraph(object):
                             try:
                                 draw_result = rrdtool.graphv(*rrd_args)
                             except:
+                                # in case of strange 'argument 0 has to be a string or a list of strings' 
                                 self.log("error creating graph: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                                for _line in process_tools.exception_info().log_lines:
+                                    self.log(u"    {}".format(_line), logging_tools.LOG_LEVEL_ERROR)
                                 if global_config["DEBUG"]:
                                     for _idx, _entry in enumerate(rrd_args, 1):
-                                        self.log("  {:4d} {}".format(_idx, _entry))
+                                        self.log(u"  {:4d} {}".format(_idx, _entry))
                                 draw_result = None
                                 draw_it = False
                             else:

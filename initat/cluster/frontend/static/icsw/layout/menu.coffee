@@ -95,14 +95,14 @@ menu_module = angular.module(
     )
 
     $scope.get_progress_style = (obj) ->
-        return {"width" : "#{obj.value}%"}
+        return {width: "#{obj.value}%"}
 
     $scope.redirect_to_init = () ->
         window.location = "http://www.initat.org"
         return false
 
-    $scope.device_quickselection = (onoff) ->
-        icswLayoutSelectionDialogService.quick_dialog(onoff)
+    $scope.device_selection = ($event) ->
+        icswLayoutSelectionDialogService.quick_dialog($event)
 
     $scope.handbook_url = "/"
     $scope.handbook_url_valid = false
