@@ -684,11 +684,13 @@ menu_module = angular.module(
                     scope.select_txt = "#{ret_text} selected"
             )
 ]).factory('icswBreadcrumbs',
-["$state", "icswRouteHelper", "$sce",
-($state, icswRouteHelper, $sce) ->
+[
+    "$state", "icswRouteHelper",
+(
+    $state, icswRouteHelper,
+) ->
     list = []
     title = undefined
-    html = undefined
     header_lut = {}
 
     setup_luts = () ->

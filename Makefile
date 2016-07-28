@@ -162,6 +162,7 @@ install: install_webcontent
 	${LN} -s ${PYTHON_SITE}/initat/cluster/manage.py ${DESTDIR}/${ICSW_SBIN}/clustermanage.py
  	# menu.xml
 	${INSTALL} ${INSTALL_OPTS} initat/cluster/menu/menu.xml ${DESTDIR}/${PYTHON_SITE}/initat/cluster/menu/menu.xml
+	${INSTALL} ${INSTALL_OPTS} initat/cluster/menu/menu_relax.xml ${DESTDIR}/${PYTHON_SITE}/initat/cluster/menu/menu_relax.xml
 	# ICSW_BIN
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_BIN}
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${INIT}
