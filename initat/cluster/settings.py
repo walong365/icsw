@@ -102,7 +102,11 @@ ICSW_DEBUG = process_tools.get_machine_name() in ["eddie", "lemmy"]
 
 # validate settings
 if _cs["password.hash.function"] not in ["SHA1", "CRYPT"]:
-    raise ImproperlyConfigured("password hash function '{}' not known".format(_cs["password.hash.function"]))
+    raise ImproperlyConfigured(
+        "password hash function '{}' not known".format(
+            _cs["password.hash.function"]
+        )
+    )
 
 SECRET_KEY = _cs["django.secret.key"]
 # create a somehow shorter key
@@ -284,6 +288,7 @@ ADDITIONAL_ANGULAR_APPS = []
 # ADDITIONAL_URLS = []
 ICSW_ADDITIONAL_JS = []
 ICSW_ADDITIONAL_HTML = []
+ICSW_ADDITIONAL_MENU = []
 
 # my authentication backend
 AUTHENTICATION_BACKENDS = (
@@ -310,6 +315,7 @@ for sub_dir in os.listdir(dir_name):
                         raise
                     else:
                         ICSW_ADDON_APPS.append(sub_dir)
+                        ICSW_ADDITIONAL_MENU.append(os.path.join(sub_dir, "menu", "menu.xml"))
                         ADDITIONAL_ANGULAR_APPS.extend(
                             [_el.attrib["name"] for _el in _tree.findall(".//app")]
                         )

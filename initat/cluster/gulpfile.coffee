@@ -370,14 +370,14 @@ gulp.task("inject-urls-to-app", (cb) ->
     )
 )
 
-gulp.task("inject-addons-to-app", (cb) ->
-    # modify app.js with additional modules
+gulp.task("inject-stuff-to-app", (cb) ->
+    # add menus and addon related code to app.js
     return gulp.src(
         "#{DEPLOY_DIR}/app.js",
         {read: false}
     ).pipe(
         run(
-            "./manage.py inject_addons --srcfile=#{DEPLOY_DIR}/app.js --modify",
+            "./manage.py inject_addons --srcfile=#{DEPLOY_DIR}/app.js --modify --with-addons=#{options.addons}",
             {verbosity: 0}
         )
     )
@@ -623,13 +623,13 @@ gulp.task("reload-main", (cb) ->
 
 
 if options.addons
-    gulp.task("modify-app-js", gulp.series("create-all-urls", "inject-urls-to-app", "inject-addons-to-app"))
+    gulp.task("modify-app-js", gulp.series("create-all-urls", "inject-urls-to-app", "inject-stuff-to-app"))
     gulp.task("deploy-all", gulp.series("deploy-css", "deploy-js", "deploy-html", "deploy-addons", "deploy-themes"))
     gulp.task("setup-main", gulp.series("modify-app-js", "transform-main", "fix-main-import-path", "import_css"))
     gulp.task("deploy-and-transform-all", gulp.series("deploy-all", "setup-main", "inject-addons-to-main", "copy-main"))
     gulp.task("rebuild-after-watch", gulp.series("deploy-all", "transform-main", "fix-main-import-path", "inject-addons-to-main", "copy-main", "reload-main"))
 else
-    gulp.task("modify-app-js", gulp.series("create-all-urls", "inject-urls-to-app"))
+    gulp.task("modify-app-js", gulp.series("create-all-urls", "inject-urls-to-app", "inject-stuff-to-app"))
     gulp.task("deploy-all", gulp.series("deploy-css", "deploy-js", "deploy-html", "deploy-themes"))
     gulp.task("setup-main", gulp.series("modify-app-js", "transform-main", "fix-main-import-path", "import_css"))
     gulp.task("deploy-and-transform-all", gulp.series("deploy-all", "setup-main", "copy-main"))

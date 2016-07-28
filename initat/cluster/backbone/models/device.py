@@ -584,8 +584,8 @@ class DeviceClass(models.Model):
     name = models.CharField(max_length=64, default="", unique=True)
     # description
     description = models.CharField(default="", max_length=128)
-    # optional limitations
-    limitations = JSONField(null=True, default=None)
+    # optional limitations, should be some kind of json-encoded dict
+    limitations = models.TextField(default="")
     # system class (not deletable)
     system_class = models.BooleanField(default=False)
     # default system class, for devices without valid system_class

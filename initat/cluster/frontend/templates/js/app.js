@@ -43,9 +43,19 @@
 // - name of templates start with the name of the module with underscores, ending is ".html"
 // - no root. bindings
 
+angular.module(
+    "icsw.menu", []
+).constant(
+    "ICSW_MENU_JSON", {
+    // <!-- ICSWAPPS:MENU:START -->
+    // <!-- ICSWAPPS:MENU:END -->
+    }
+);
+
 icsw_app = angular.module(
     "icsw.app",
     [
+        "icsw.menu",
         "ngResource",
         "ngCookies",
         "ngSanitize",
@@ -139,4 +149,4 @@ icsw_app = angular.module(
         "DIMPLE_MIN_JS": "/icsw/static/dimple.v2.1.6.min.js",
         "STATIC_URL": "/icsw/static"
     }
-)
+);

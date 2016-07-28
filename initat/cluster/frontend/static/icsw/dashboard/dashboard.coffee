@@ -314,7 +314,7 @@ dashboard_module = angular.module(
             # dashboardEntry
             _e = @state.icswData.dashboardEntry
             @dbe = _e
-            @cls = _e.header_class
+            @cls = _e.headerClass
             @title = @state.icswData.pageTitle
             # camelcase is important here
             @$$panel_class = "panel-#{@cls}"
@@ -330,10 +330,10 @@ dashboard_module = angular.module(
                     @[_attr_name] = _pd[_attr_name]
                 @$$open = _pd["open"]
             else
-                @sizeX = @dbe.size_x
-                @sizeY = @dbe.size_y
+                @sizeX = @dbe.sizeX
+                @sizeY = @dbe.sizeY
                 # default settings
-                @$$open = @dbe.default_enabled
+                @$$open = @dbe.defaultEnabled
 
         close: ($event) ->
             @container.close_element(@)
