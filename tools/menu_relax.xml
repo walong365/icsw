@@ -1,0 +1,199 @@
+<element name="routes" xmlns="http://relaxng.org/ns/structure/1.0">
+    <optional>
+        <attribute name="overlay">
+            <choice>
+                <value>0</value>
+            </choice>
+        </attribute>
+    </optional>
+    <oneOrMore>
+        <element name="route">
+            <attribute name="name"/>
+            <optional>
+                <attribute name="runs_on">
+                    <choice>
+                        <value>server</value>
+                        <value>client</value>
+                        <value>system</value>
+                    </choice>
+                </attribute>
+            </optional>
+            <element name="stateData">
+                <attribute name="type">
+                    <choice>
+                        <value>dict</value>
+                    </choice>
+                </attribute>
+                <optional>
+                    <attribute name="url_str"/>
+                </optional>
+                <optional>
+                    <attribute name="template_str"/>
+                </optional>
+                <optional>
+                    <attribute name="templateUrl_str"/>
+                </optional>
+                <optional>
+                    <attribute name="resolve_bool">
+                        <choice>
+                            <value>yes</value>
+                            <value>no</value>
+                        </choice>
+                    </attribute>
+                </optional>
+            </element>
+            <element name="icswData">
+                <attribute name="type">
+                    <choice>
+                        <value>dict</value>
+                    </choice>
+                </attribute>
+                <optional>
+                    <attribute name="pageTitle_str"></attribute>
+                </optional>
+                <optional>
+                    <attribute name="valid_for_quicklink_bool">
+                        <choice>
+                            <value>yes</value>
+                            <value>no</value>
+                        </choice>
+                    </attribute>
+                </optional>
+                <optional>
+                    <attribute name="redirect_to_from_on_error_bool">
+                        <choice>
+                            <value>yes</value>
+                            <value>no</value>
+                        </choice>
+                    </attribute>
+                </optional>
+                <interleave>
+                    <optional>
+                        <element name="licenses">
+                            <attribute name="type">
+                                <choice>
+                                    <value>list</value>
+                                </choice>
+                            </attribute>
+                            <oneOrMore>
+                                <element name="value">
+                                    <text/>
+                                </element>
+                            </oneOrMore>
+                        </element>
+                    </optional>
+                    <optional>
+                        <element name="service_types">
+                            <attribute name="type">
+                                <choice>
+                                    <value>list</value>
+                                </choice>
+                            </attribute>
+                            <oneOrMore>
+                                <element name="value">
+                                    <text/>
+                                </element>
+                            </oneOrMore>
+                        </element>
+                    </optional>
+                    <optional>
+                        <element name="rights">
+                            <attribute name="type">
+                                <choice>
+                                    <value>list</value>
+                                </choice>
+                            </attribute>
+                            <oneOrMore>
+                                <element name="value">
+                                    <text/>
+                                </element>
+                            </oneOrMore>
+                        </element>
+                    </optional>
+                    <optional>
+                        <element name="menuHeader">
+                            <attribute name="type">
+                                <choice>
+                                    <value>dict</value>
+                                </choice>
+                            </attribute>
+                            <optional>
+                                <attribute name="ordering_int"></attribute>
+                            </optional>
+                            <optional>
+                                <attribute name="name_str"></attribute>
+                            </optional>
+                            <optional>
+                                <attribute name="key_str"></attribute>
+                            </optional>
+                            <optional>
+                                <attribute name="icon_str"></attribute>
+                            </optional>
+                        </element>
+                    </optional>
+                    <optional>
+                        <element name="menuEntry">
+                            <attribute name="type">
+                                <choice>
+                                    <value>dict</value>
+                                </choice>
+                            </attribute>
+                            <attribute name="ordering_int"></attribute>
+                            <attribute name="menukey_str"></attribute>
+                            <attribute name="icon_str"></attribute>
+                            <optional>
+                                <attribute name="name_str"></attribute>
+                            </optional>
+                            <optional>
+                                <attribute name="labelClass_str"></attribute>
+                            </optional>
+                            <optional>
+                                <attribute name="preSpacer_bool">
+                                    <choice>
+                                        <value>yes</value>
+                                        <value>no</value>
+                                    </choice>
+                                </attribute>
+                            </optional>
+                            <optional>
+                                <attribute name="postSpacer_bool">
+                                    <choice>
+                                        <value>yes</value>
+                                        <value>no</value>
+                                    </choice>
+                                </attribute>
+                            </optional>
+                        </element>
+                    </optional>
+                    <optional>
+                        <element name="dashboardEntry">
+                            <attribute name="type">
+                                <choice>
+                                    <value>dict</value>
+                                </choice>
+                            </attribute>
+                            <attribute name="size_x_int"></attribute>
+                            <attribute name="size_y_int"></attribute>
+                            <optional>
+                                <attribute name="allow_state_bool">
+                                    <choice>
+                                        <value>yes</value>
+                                        <value>no</value>
+                                    </choice>
+                                </attribute>
+                            </optional>
+                            <optional>
+                                <attribute name="default_enabled_bool">
+                                    <choice>
+                                        <value>yes</value>
+                                        <value>no</value>
+                                    </choice>
+                                </attribute>
+                            </optional>
+                        </element>
+                    </optional>
+                </interleave>
+            </element>
+        </element>
+    </oneOrMore>
+</element>

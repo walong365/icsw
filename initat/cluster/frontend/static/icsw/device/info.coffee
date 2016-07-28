@@ -23,31 +23,13 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "noVNC", "ui.select", "icsw.tools", "icsw.device.variables"
     ]
-).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
-    $stateProvider.state(
-        "main.deviceinfo", {
-            url: "/deviceinfo"
-            template: '<icsw-simple-device-info icsw-sel-man="0"></icsw-simple-device-info>'
-            icswData: icswRouteExtensionProvider.create
-                pageTitle: "Device info"
-                rights: ["user.modify_tree"]
-                menuEntry:
-                    preSpacer: true
-                    menukey: "dev"
-                    icon: "fa-bars"
-                    ordering: 10
-                    postSpacer: true
-                dashboardEntry:
-                    size_x: 4
-                    size_y: 3
-                    allow_state: true
-        }
-    )
+).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    icswRouteExtensionProvider.add_route("main.deviceinfo")
 ]).service("DeviceOverviewSelection",
 [
     "$rootScope", "ICSW_SIGNALS",
 (
-    $rootScope, ICSW_SIGNALS
+    $rootScope, ICSW_SIGNALS,
 ) ->
     _selection = []
     set_selection = (sel) ->

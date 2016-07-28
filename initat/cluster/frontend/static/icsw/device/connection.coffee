@@ -22,22 +22,8 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
-).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
-    $stateProvider.state(
-        "main.deviceconnection"
-            {
-                url: "/deviceconnection"
-                templateUrl: "icsw/main/device/connection.html"
-                icswData: icswRouteExtensionProvider.create
-                    pageTitle: "Device Connections"
-                    rights: ["device.change_connection"]
-                    menuEntry:
-                        menukey: "dev"
-                        name: "Device connections"
-                        icon: "fa-plug"
-                        ordering: 25
-            }
-    )
+).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    icswRouteExtensionProvider.add_route("main.deviceconnection")
 ]).controller("icswDeviceConnectionCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular",

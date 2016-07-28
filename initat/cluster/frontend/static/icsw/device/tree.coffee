@@ -24,23 +24,8 @@ angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "smart-table",
         "icsw.tools.table", "icsw.tools", "icsw.tools.button", "icsw.tools.dialog",
     ]
-).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
-    $stateProvider.state(
-        "main.devtree", {
-            url: "/devtree"
-            templateUrl: "icsw/main/device/tree.html"
-            icswData: icswRouteExtensionProvider.create
-                pageTitle: "Device tree"
-                rights: ["user.modify_tree"]
-                menuEntry:
-                    menukey: "dev"
-                    icon: "fa-list"
-                    ordering: 15
-                dashboardEntry:
-                    size_x: 2
-                    size_y: 5
-        }
-    )
+).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    icswRouteExtensionProvider.add_route("main.devtree")
 ]).directive("icswDeviceTreeOverview",
 [
     "$templateCache",

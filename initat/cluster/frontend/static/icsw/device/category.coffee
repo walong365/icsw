@@ -23,22 +23,8 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "icsw.d3", "icsw.tools.button"
     ]
-).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
-    $stateProvider.state(
-        "main.categorytree",
-            {
-                url: "/categorytree"
-                templateUrl: "icsw/main/category/tree.html"
-                icswData: icswRouteExtensionProvider.create
-                    pageTitle: "Category tree"
-                    rights: ["user.modify_category_tree"]
-                    menuEntry:
-                        menukey: "dev"
-                        name: "Device category"
-                        icon: "fa-table"
-                        ordering: 14
-            }
-    )
+).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    icswRouteExtensionProvider.add_route("main.categorytree")
 ]).directive("icswDeviceCategoryOverview",
 [
     "$templateCache",

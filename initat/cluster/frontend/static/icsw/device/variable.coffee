@@ -25,20 +25,8 @@ device_variable_module = angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select"
     ]
-).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
-    $stateProvider.state(
-        "main.devvars", {
-            url: "/variables"
-            template: '<icsw-device-variable-overview icsw-sel-man="0"></icsw-device-variable-overview>'
-            icswData: icswRouteExtensionProvider.create
-                pageTitle: "Device variables"
-                rights: ["device.change_variables"]
-                menuEntry:
-                    menukey: "dev"
-                    icon: "fa-code"
-                    ordering: 30
-        }
-    )
+).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    icswRouteExtensionProvider.add_route("main.devvars")
 ]).controller("icswConfigVarsCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q",

@@ -27,25 +27,8 @@ angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters",
         "restangular", "icsw.rrd.graphsetting",
     ]
-).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
-    $stateProvider.state(
-        "main.graph", {
-            url: "/graph"
-            templateUrl: "icsw.rrd.graph"
-            icswData: icswRouteExtensionProvider.create
-                pageTitle: "Graph"
-                licenses: ["graphing"]
-                rights: ["backbone.device.show_graphs"]
-                menuEntry:
-                    menukey: "stat"
-                    icon: "fa-line-chart"
-                    ordering: 40
-                dashboardEntry:
-                    size_x: 3
-                    size_y: 3
-                    allow_state: true
-        }
-    )
+).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    icswRouteExtensionProvider.add_route("main.graph")
 ]).service("icswRRDSensor", [()->
 
     class icswRRDSensor

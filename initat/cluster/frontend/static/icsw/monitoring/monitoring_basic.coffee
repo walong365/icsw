@@ -35,153 +35,49 @@ monitoring_basic_module = angular.module(
         template: $templateCache.get("icsw.monitoring.basic")
         controller: "icswMonitoringBasicCtrl"
     }
-]).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
-    $stateProvider.state(
-        "main.monitorbasics", {
-            url: "/monitorbasics"
-            template: "<icsw-monitoring-basic></icsw-monitoring-basic>"
-            icswData: icswRouteExtensionProvider.create
-                pageTitle: "Monitoring Basic setup"
-                menuHeader:
-                    key: "mon"
-                    name: "Monitoring"
-                    icon: "fa-gears"
-                    ordering: 70
-                rights: ["mon_check_command.setup_monitoring"]
-                menuEntry:
-                    menukey: "mon"
-                    name: "Basic setup"
-                    icon: "fa-bars"
-                    ordering: 0
+]).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    resolve_map = (mode) ->
+        return {
+            redirect: ["icswSimpleAjaxCall", "ICSW_URLS", "$q", "blockUI", (icswSimpleAjaxCall, ICSW_URLS, $q, blockUI) ->
+                console.log "mode=", mode
+                _defer = $q.defer()
+                blockUI.start()
+                icswSimpleAjaxCall(
+                    url: ICSW_URLS.MON_CREATE_CONFIG
+                    data:
+                        cache_mode: mode
+                    title: "create config"
+                ).then(
+                    (xml) ->
+                        blockUI.stop()
+                        _defer.reject("nono")
+                    (xml) ->
+                        blockUI.stop()
+                        _defer.reject("nono")
+                )
+                return _defer.promise
+            ]
         }
-    ).state(
-        "main.monitorredirect", {
-            url: "/monitorredirect"
-            template: "<h2>Redirecting...</h2>"
-            icswData: icswRouteExtensionProvider.create
-                    redirect_to_from_on_error: true
-                    menuEntry:
-                        menukey: "mon"
-                        name: "Icinga"
-                        icon: "fa-share-alt"
-                        ordering: 120
-                    rights: ["mon_check_command.redirect_to_icinga"]
-            resolve:
-                redirect: ["$window", "icswSimpleAjaxCall", "ICSW_URLS", "$q", ($window, icswSimpleAjaxCall, ICSW_URLS, $q) ->
-                    _defer = $q.defer()
-                    icswSimpleAjaxCall(
-                        url: ICSW_URLS.MON_CALL_ICINGA
-                        dataType: "json"
-                    ).then(
-                        (json) ->
-                            url = json["url"]
-                            $window.open(url, "_blank")
-                            _defer.reject("nono")
-                    )
-                    return _defer.promise
-                ]
-        }
-    ).state(
-        "main.monitorb0", {
-            url: "/monitorb0"
-            icswData: icswRouteExtensionProvider.create
-                redirect_to_from_on_error: true
-                menuEntry:
-                    menukey: "mon"
-                    name: "rebuild config cached"
-                    icon: "fa-share-alt"
-                    labelClass: "label-success"
-                    ordering: 101
-                    preSpacer: true
-                rights: ["mon_check_command.create_config"]
-            resolve:
-                redirect: ["icswSimpleAjaxCall", "ICSW_URLS", "$q", "blockUI", (icswSimpleAjaxCall, ICSW_URLS, $q, blockUI) ->
-                    console.log "REDIR"
-                    # todo: add icswMenuProgressService
-                    _defer = $q.defer()
-                    blockUI.start()
-                    icswSimpleAjaxCall(
-                        url: ICSW_URLS.MON_CREATE_CONFIG
-                        data:
-                            cache_mode: "ALWAYS"
-                        title: "create config"
-                    ).then(
-                        (xml) ->
-                            blockUI.stop()
-                            _defer.reject("nono")
-                        (xml) ->
-                            blockUI.stop()
-                            _defer.reject("nono")
-                    )
-                    return _defer.promise
-                ]
-        }
-    ).state(
-        "main.monitorb1", {
-            url: "/monitorb1"
-            icswData: icswRouteExtensionProvider.create
-                redirect_to_from_on_error: true
-                menuEntry:
-                    menukey: "mon"
-                    name: "rebuild config dynamic"
-                    icon: "fa-share-alt"
-                    labelClass: "label-warning"
-                    ordering: 102
-                rights: ["mon_check_command.create_config"]
-            resolve:
-                redirect: ["icswSimpleAjaxCall", "ICSW_URLS", "$q", "blockUI", (icswSimpleAjaxCall, ICSW_URLS, $q, blockUI) ->
-                    _defer = $q.defer()
-                    blockUI.start()
-                    icswSimpleAjaxCall(
-                        url: ICSW_URLS.MON_CREATE_CONFIG
-                        data:
-                            cache_mode: "DYNAMIC"
-                        title: "create config"
-                    ).then(
-                        (xml) ->
-                            blockUI.stop()
-                            _defer.reject("nono")
-                        (xml) ->
-                            blockUI.stop()
-                            _defer.reject("nono")
-                    )
-                    return _defer.promise
-                ]
-        }
-    ).state(
-        "main.monitorb2", {
-            url: "/monitorb2"
-            icswData: icswRouteExtensionProvider.create
-                redirect_to_from_on_error: true
-                menuEntry:
-                    menukey: "mon"
-                    name: "rebuild config refresh"
-                    icon: "fa-share-alt"
-                    labelClass: "label-danger"
-                    ordering: 103
-                    postSpacer: true
-                rights: ["mon_check_command.create_config"]
-            resolve:
-                redirect: ["icswSimpleAjaxCall", "ICSW_URLS", "$q", "blockUI", (icswSimpleAjaxCall, ICSW_URLS, $q, blockUI) ->
-                    _defer = $q.defer()
-                    blockUI.start()
-                    icswSimpleAjaxCall(
-                        url: ICSW_URLS.MON_CREATE_CONFIG
-                        data:
-                            cache_mode: "REFRESH"
-                        title: "create config"
-                    ).then(
-                        (xml) ->
-                            blockUI.stop()
-                            _defer.reject("nono")
-                        (xml) ->
-                            blockUI.stop()
-                            _defer.reject("nono")
-                    )
-                    return _defer.promise
-                ]
-        }
-    )
+    redirect_map = {
+        redirect: ["$window", "icswSimpleAjaxCall", "ICSW_URLS", "$q", ($window, icswSimpleAjaxCall, ICSW_URLS, $q) ->
+            _defer = $q.defer()
+            icswSimpleAjaxCall(
+                url: ICSW_URLS.MON_CALL_ICINGA
+                dataType: "json"
+            ).then(
+                (json) ->
+                    url = json["url"]
+                    $window.open(url, "_blank")
+                    _defer.reject("nono")
+            )
+            return _defer.promise
+        ]
+    }
+    icswRouteExtensionProvider.add_route("main.monitorbasics")
+    icswRouteExtensionProvider.add_route("main.monitorredirect", redirect_map)
+    icswRouteExtensionProvider.add_route("main.monitorb0", resolve_map("CACHED"))
+    icswRouteExtensionProvider.add_route("main.monitorb1", resolve_map("DYNAMIC"))
+    icswRouteExtensionProvider.add_route("main.monitorb2", resolve_map("ALWAYS"))
 ]).service("icswMonitoringBasicTree",
 [
     "$q", "Restangular", "ICSW_URLS", "ICSW_SIGNALS", "icswTools",

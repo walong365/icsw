@@ -24,26 +24,8 @@ angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "angularFileUpload", "gettext",
         "icsw.backend.system.license",
     ]
-).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
-    $stateProvider.state(
-        "main.syslicenseoverview", {
-            url: "/syslicenseoverview"
-            templateUrl: "icsw/main/license/overview.html"
-            icswData: icswRouteExtensionProvider.create
-                pageTitle: "License information"
-                valid_for_quicklink: true
-                rights: (user, acls) ->
-                    if user.is_superuser
-                        return true
-                    else
-                        return false
-                menuEntry:
-                    menukey: "sys"
-                    name: "License"
-                    icon: "fa-key"
-                    ordering: 20
-        }
-    )
+).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    icswRouteExtensionProvider.add_route("main.syslicenseoverview")
 ]).controller("icswSystemLicenseCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$timeout", "$uibModal",

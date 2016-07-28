@@ -22,39 +22,9 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "init.csw.filters", "ui.bootstrap", "restangular"
     ]
-).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
-    $stateProvider.state(
-        "main.serverinfo",
-        {
-            url: "/serverinfo",
-            templateUrl: "icsw/main/serverinfo.html"
-            icswData: icswRouteExtensionProvider.create
-                pageTitle: "Server info"
-                rights: (user, acls) ->
-                    if user.is_superuser
-                        return true
-                    else
-                        return false
-        }
-    ).state(
-        "main.statelist", {
-            url: "/statelist"
-            template: '<icsw-internal-state-list></icsw-internal-state-list>'
-            icswData: icswRouteExtensionProvider.create
-                pageTitle: "Internal State list"
-                rights: (user, acls) ->
-                    if user.is_superuser
-                        return true
-                    else
-                        return false
-                menuEntry:
-                    preSpacer: true
-                    menukey: "sys"
-                    icon: "fa-bars"
-                    ordering: 30
-                    postSpacer: true
-        }
-    )
+).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    icswRouteExtensionProvider.add_route("main.serverinfo")
+    icswRouteExtensionProvider.add_route("main.statelist")
 ]).controller("icswServerInfoOverviewCtrl",
 [
     "$scope", "$timeout", "icswAcessLevelService", "blockUI", "$window", "ICSW_URLS",
