@@ -718,6 +718,7 @@ menu_module = angular.module(
         if index < list.length - 1 then breadcrumb.title + ' » ' else breadcrumb.title
 
     generateOutput = ->
+        # OMG
         title = ''
         angular.forEach list, (breadcrumb, index) ->
             title += appendTitle(breadcrumb, index)
