@@ -27,7 +27,7 @@ from initat.cluster.backbone.models import AssetRun, AssetPackage, \
     AssetPackageVersion, AssetBatch, AssetHardwareEntry, AssetProcessEntry, \
     StaticAssetTemplate, StaticAssetTemplateField, AssetLicenseEntry, AssetUpdateEntry, \
     AssetPCIEntry, AssetDMIHead, AssetDMIHandle, AssetDMIValue, AssetHWMemoryEntry, AssetHWCPUEntry, AssetHWGPUEntry, \
-    AssetHWHDDEntry, AssetHWLogicalEntry, AssetHWDisplayEntry
+    AssetHWHDDEntry, AssetHWLogicalEntry, AssetHWDisplayEntry, StaticAsset, StaticAssetFieldValue
 
 __all__ = [
     "AssetRunSimpleSerializer",
@@ -48,6 +48,8 @@ __all__ = [
     "AssetDMIHeadSerializer",
     "AssetDMIHandleSerializer",
     "AssetDMIValueSerializer",
+    "StaticAssetSerializer",
+    "StaticAssetFieldValueSerializer",
 ]
 
 
@@ -175,6 +177,7 @@ class AssetDMIHeadSerializer(serializers.ModelSerializer):
     class Meta:
         model = AssetDMIHead
 
+
 class AssetHWMemoryEntrySerializer(serializers.ModelSerializer):
     formfactorname = serializers.SerializerMethodField()
     memorytypename = serializers.SerializerMethodField()
@@ -192,6 +195,7 @@ class AssetHWMemoryEntrySerializer(serializers.ModelSerializer):
             "manufacturer", "capacity", "formfactorname", "memorytypename"
         )
 
+
 class AssetHWCPUEntrySerializer(serializers.ModelSerializer):
 
     class Meta:
@@ -199,6 +203,7 @@ class AssetHWCPUEntrySerializer(serializers.ModelSerializer):
         fields = (
             "idx", "numberofcores", "cpuname"
         )
+
 
 class AssetHWGPUEntrySerializer(serializers.ModelSerializer):
 
@@ -208,6 +213,7 @@ class AssetHWGPUEntrySerializer(serializers.ModelSerializer):
             "idx", "gpuname", "driverversion"
         )
 
+
 class AssetHWHDDEntrySerializer(serializers.ModelSerializer):
 
     class Meta:
@@ -215,6 +221,7 @@ class AssetHWHDDEntrySerializer(serializers.ModelSerializer):
         fields = (
             "idx", "name", "serialnumber", "size"
         )
+
 
 class AssetHWLogicalEntrySerializer(serializers.ModelSerializer):
 
@@ -224,6 +231,7 @@ class AssetHWLogicalEntrySerializer(serializers.ModelSerializer):
             "idx", "name", "size", "free"
         )
 
+
 class AssetHWDisplayEntrySerializer(serializers.ModelSerializer):
 
     class Meta:
@@ -231,6 +239,7 @@ class AssetHWDisplayEntrySerializer(serializers.ModelSerializer):
         fields = (
             "idx", "name", "type", "manufacturer"
         )
+
 
 class AssetRunDetailSerializer(serializers.ModelSerializer):
     assethardwareentry_set = AssetHardwareEntrySerializer(many=True)
@@ -268,3 +277,15 @@ class StaticAssetTemplateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = StaticAssetTemplate
+
+
+class StaticAssetFieldValueSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StaticAssetFieldValue
+
+
+class StaticAssetSerializer(serializers.ModelSerializer):
+    staticassetfieldvalue_set = StaticAssetFieldValueSerializer(many=True)
+
+    class Meta:
+        model = StaticAsset

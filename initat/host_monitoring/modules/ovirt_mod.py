@@ -312,7 +312,15 @@ class OvirtAPI(object):
     @property
     def objects(self):
         if self._xml is None:
-            self.response = self.client.get(self.api_object.Meta.root)
+            try:
+                self.response = self.client.get(self.api_object.Meta.root)
+            except requests.exceptions.HTTPError:
+                if self.api_object.Meta.root.startswith("/api"):
+                    # try new path
+                    self.api_object.Meta.root = "/ovirt-engine{}".format(self.api_object.Meta.root)
+                    self.response = self.client.get(self.api_object.Meta.root)
+                else:
+                    raise
             self._xml = etree.fromstring(self.response.content)
         result = FilterList()
         for obj in self._xml.xpath(self.api_object.Meta.obj_xpath):

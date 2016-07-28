@@ -93,6 +93,7 @@ angular.module(
                 [1, "W", true, "show warning states", "btn-warning"]
                 [2, "C", true, "show critical states", "btn-danger"]
                 [3, "U", true, "show unknown states", "btn-danger"]
+                [5, "p", true, "show pending states", "btn-primary"]
             ]
             @service_state_lut = {}
 
@@ -109,6 +110,7 @@ angular.module(
                 [1, "D", true, "show Down states", "btn-warning"]
                 [2, "?", true, "show unreachable states", "btn-danger"]
                 [4, "M", true, "show unmonitored devs", "btn-primary"]
+                [5, "p", true, "show pending devs", "btn-primary"]
             ]
             @host_state_lut = {}
 

@@ -302,3 +302,40 @@
     </table>
 </script>
 
+<script type="text/ng-template" id="icsw.device.static.asset.overview">
+    <legend>
+        Static Assets ({{ struct.asset_tree.static_assets.length }})
+    </legend>
+    <fieldset ng-repeat="key_list in struct.asset_tree.static_assets">
+        <legend>
+            {{ key_list[0] }}
+            <icsw-tools-button
+                type="create"
+                size="xs"
+                ng-show="struct.asset_struct[key_list[0]].unused.length"
+                ng-click="add_assets($event, key_list[0])"
+            ></icsw-tools-button>
+        </legend>
+        <div ng-repeat="asset in struct.asset_struct[key_list[0]].used">
+            {{ asset.name }}
+        </div>
+    </fieldset>
+</script>
+
+<script type="text/ng-template" id="icsw.device.static.asset.add">
+    <h3>Please select a new template</h3>
+    <fieldset ng-repeat="key_list in unset_list">
+        <legend>
+            {{ key_list[0] }}
+        </legend>
+        <div ng-repeat="asset in key_list[1]" class="form-group row">
+            <label class="control-label col-sm-6">
+                {{ asset.name }}
+            </label>
+            <div class="controls col-sm-6">
+                <icsw-tools-yes-no flag="asset.$$create"/>
+            </div>
+        </div>
+    </fieldset>
+</script>
+

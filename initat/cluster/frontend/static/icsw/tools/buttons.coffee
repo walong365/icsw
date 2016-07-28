@@ -121,6 +121,10 @@ angular.module(
             ret_obj.css_class = "btn-success"
             ret_obj.button_value = "save"
             ret_obj.icon_class = "fa fa-save"
+        else if type == "goto"
+            ret_obj.css_class = "btn-success"
+            ret_obj.button_value = "go"
+            ret_obj.icon_class = "fa fa-angle-double-right"
         else if type == "select_devices"
             ret_obj.css_class = "btn-primary"
             ret_obj.button_value = "select devices"
@@ -229,6 +233,7 @@ visible-md visible-lg
             disabled: '&'
             isEnable: '&'
             isLock: '&'
+            icsw_value: "=icswValue"
         link: (scope, element, attrs) ->
 
             # attrs:
@@ -243,7 +248,13 @@ visible-md visible-lg
             b_type = attrs.type
             angular.extend(scope, icswToolsButtonsConfigService.get_config_for_button_type(b_type))
 
-            if attrs.value?
+            if attrs.icswValue?
+                scope.$watch(
+                    "icsw_value"
+                    (new_val) ->
+                        scope.button_value = new_val
+                )
+            else if attrs.value?
                 scope.button_value = attrs.value
 
             if attrs.buttonType?

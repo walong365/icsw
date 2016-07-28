@@ -83,6 +83,13 @@ menu_module = angular.module(
         description: "Show device selection"
         callback: () ->
             icswLayoutSelectionDialogService.quick_dialog()
+    ).add(
+        combo: "ctrl+h"
+        description: "Show help"
+        allowIn: ["INPUT", "SELECT", "TEXTAREA"]
+        callback: (event) ->
+            hotkeys.toggleCheatSheet()
+            event.preventDefault()
     )
 ]).directive('icswUpdateTitle',
 [

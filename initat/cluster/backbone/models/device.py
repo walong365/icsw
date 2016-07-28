@@ -33,7 +33,7 @@ from django.utils.crypto import get_random_string
 from django.utils.lru_cache import lru_cache
 from enum import Enum
 from lxml.builder import E
-
+from django.contrib.postgres.fields import JSONField
 from initat.cluster.backbone.models.asset import *
 from initat.cluster.backbone.models.variable import device_variable
 from initat.cluster.backbone.models.capability import ComCapability
@@ -52,6 +52,7 @@ __all__ = [
     "device_selection",
     "cd_connection",
     "DeviceSNMPInfo",
+    "DeviceClass",
     "DeviceScanLock",
     "DeviceLogEntry",
     "ActiveDeviceScanEnum",
@@ -183,7 +184,7 @@ class device(models.Model):
             (2, "never use cache"),
             (3, "once (until successfull)"),
         ],
-        default=1
+        default=1,
     )
     # system name
     domain_tree_node = models.ForeignKey("backbone.domain_tree_node", null=True, default=None)
@@ -204,6 +205,8 @@ class device(models.Model):
     is_meta_device = models.BooleanField(default=False, blank=True)
     # active snmp scheme
     snmp_schemes = models.ManyToManyField("backbone.snmp_scheme")
+    # device class
+    device_class = models.ForeignKey("backbone.DeviceClass", null=True)
 
     @classmethod
     def get_com_caps_for_lock(cls, lock_type):
@@ -406,107 +409,6 @@ class device(models.Model):
         verbose_name = u'Device'
 
 
-class DeviceScanLock(models.Model):
-    """
-    Improved device locking
-    """
-    # add locks
-    idx = models.AutoField(primary_key=True)
-    # link to device
-    device = models.ForeignKey("device")
-    # uniqe id
-    uuid = models.TextField(default="", max_length=64)
-    # description
-    description = models.CharField(default="", max_length=255)
-    # calling server and config
-    server = models.ForeignKey("backbone.device", on_delete=CASCADE, related_name="device_lock")
-    config = models.ForeignKey("backbone.config", on_delete=CASCADE, related_name="config_lock")
-    # active, will be set to False after lock removal
-    active = models.BooleanField(default=True)
-    # run_time in milliseconds
-    run_time = models.IntegerField(default=0)
-    # creation date
-    date = models.DateTimeField(auto_now_add=True)
-
-    def close(self):
-        _run_time = cluster_timezone.localize(datetime.datetime.now()) - cluster_timezone.normalize(self.date)
-        _run_time = _run_time.microseconds / 1000 + 1000 * _run_time.seconds
-        self.active = False
-        self.run_time = _run_time
-        self.save()
-        # close current lock and return a list of (what, level) lines
-        return [("closed {}".format(unicode(self)), logging_tools.LOG_LEVEL_OK)]
-
-    def __unicode__(self):
-        return u"DSL {}".format(self.uuid)
-
-
-class DeviceBootHistory(models.Model):
-    # new kernel and / or image changes are connected to the device via this structure
-    # might be empty if we only boot
-    idx = models.AutoField(primary_key=True)
-    device = models.ForeignKey("device")
-    date = models.DateTimeField(auto_now_add=True)
-
-
-class device_selection(object):
-    def __init__(self, sel_str):
-        parts = sel_str.split("__")
-        self.idx = int(parts[1])
-        self.sel_type = {"dev": "d", "devg": "g"}[parts[0]]
-
-
-@receiver(signals.post_save, sender=device)
-def device_post_save(sender, **kwargs):
-    def _strip_metadevice_name(name):
-        if name.startswith("METADEV_"):
-            return name[8:]
-        else:
-            return name
-
-    if "instance" in kwargs:
-        _cur_inst = kwargs["instance"]
-        if _cur_inst.bootserver_id:
-            BootsettingsChanged.send(sender=_cur_inst, device=_cur_inst, cause="device_changed")
-        if _cur_inst.is_meta_device:
-            _stripped = _strip_metadevice_name(_cur_inst.name)
-            if _stripped != _cur_inst.device_group.name:
-                _cur_inst.device_group.name = _stripped
-                _cur_inst.device_group.save()
-            if _cur_inst.device_group.cluster_device_group:
-                # check for device ID
-                _var_dict = {_v.name: _v for _v in _cur_inst.device_variable_set.all()}
-                # if "CLUSTER_NAME" not in _var_dict:
-                #    device_variable.objects.create(
-                #        device=_cur_inst,
-                #        name="CLUSTER_NAME",
-                #        val_str="new Cluster",
-                #        var_type="s",
-                #        inherit=False,
-                #    )
-                if "CLUSTER_ID" not in _var_dict:
-                    device_variable.objects.create(
-                        device=_cur_inst,
-                        name="CLUSTER_ID",
-                        is_public=False,
-                        val_str="{}-{}".format(  # NOTE: license admin gui checks for this pattern
-                            get_random_string(6, "ABCDEFGHKLPRSTUWXYZ123456789"),
-                            get_random_string(4, "ABCDEFGHKLPRSTUWXYZ123456789"),
-                        ),
-                        var_type="s",
-                        inherit=False,
-                        protected=True,
-                    )
-
-
-def _get_top_level_dtn():
-    try:
-        top_level_dn = domain_tree_node.objects.get(Q(depth=0))
-    except domain_tree_node.DoesNotExist:
-        top_level_dn = None
-    return top_level_dn
-
-
 @receiver(signals.pre_save, sender=device)
 def device_pre_save(sender, **kwargs):
     if "instance" in kwargs:
@@ -551,6 +453,8 @@ def device_pre_save(sender, **kwargs):
         check_integer(cur_inst, "md_cache_mode", min_val=1, max_val=3)
         if not cur_inst.uuid:
             cur_inst.uuid = str(uuid.uuid4())
+        if not cur_inst.device_class:
+            cur_inst.device_class = DeviceClass.objects.get(Q(default_system_class=True))
         # check for uniqueness of UUID
         try:
             present_dev = device.objects.get(Q(uuid=cur_inst.uuid))
@@ -570,11 +474,160 @@ def device_pre_save(sender, **kwargs):
             raise ValidationError("no devices allowed in cluster_device_group")
 
 
+@receiver(signals.post_save, sender=device)
+def device_post_save(sender, **kwargs):
+    def _strip_metadevice_name(name):
+        if name.startswith("METADEV_"):
+            return name[8:]
+        else:
+            return name
+
+    if "instance" in kwargs:
+        _cur_inst = kwargs["instance"]
+        if _cur_inst.bootserver_id:
+            BootsettingsChanged.send(sender=_cur_inst, device=_cur_inst, cause="device_changed")
+        if _cur_inst.is_meta_device:
+            _stripped = _strip_metadevice_name(_cur_inst.name)
+            if _stripped != _cur_inst.device_group.name:
+                _cur_inst.device_group.name = _stripped
+                _cur_inst.device_group.save()
+            if _cur_inst.device_group.cluster_device_group:
+                # check for device ID
+                _var_dict = {_v.name: _v for _v in _cur_inst.device_variable_set.all()}
+                # if "CLUSTER_NAME" not in _var_dict:
+                #    device_variable.objects.create(
+                #        device=_cur_inst,
+                #        name="CLUSTER_NAME",
+                #        val_str="new Cluster",
+                #        var_type="s",
+                #        inherit=False,
+                #    )
+                if "CLUSTER_ID" not in _var_dict:
+                    device_variable.objects.create(
+                        device=_cur_inst,
+                        name="CLUSTER_ID",
+                        is_public=False,
+                        val_str="{}-{}".format(  # NOTE: license admin gui checks for this pattern
+                            get_random_string(6, "ABCDEFGHKLPRSTUWXYZ123456789"),
+                            get_random_string(4, "ABCDEFGHKLPRSTUWXYZ123456789"),
+                        ),
+                        var_type="s",
+                        inherit=False,
+                        protected=True,
+                    )
+        # check for change in meta_device class
+        if not _cur_inst.is_meta_device:
+            _dcs = device.objects.filter(
+                Q(device_group=_cur_inst.device_group) &
+                Q(is_meta_device=False)
+            ).values("device_class", "pk")
+            _count_dict = {}
+            for _dc in _dcs:
+                _count_dict.setdefault(_dc["device_class"], []).append(_dc["pk"])
+            if _count_dict:
+                # get device_classes with highest count
+                _max_count = max([len(_value) for _value in _count_dict.itervalues()])
+                _possible_classes = [_key for _key, _value in _count_dict.iteritems() if len(_value) == _max_count]
+                # get metadevice
+                _md = _cur_inst.device_group.device
+                if _md.device_class_id not in _possible_classes:
+                    _md.device_class = DeviceClass.objects.get(Q(pk=_possible_classes[0]))
+                    _md.save(update_fields=["device_class"])
+
+
+class DeviceScanLock(models.Model):
+    """
+    Improved device locking
+    """
+    # add locks
+    idx = models.AutoField(primary_key=True)
+    # link to device
+    device = models.ForeignKey("device")
+    # uniqe id
+    uuid = models.TextField(default="", max_length=64)
+    # description
+    description = models.CharField(default="", max_length=255)
+    # calling server and config
+    server = models.ForeignKey("backbone.device", on_delete=CASCADE, related_name="device_lock")
+    config = models.ForeignKey("backbone.config", on_delete=CASCADE, related_name="config_lock")
+    # active, will be set to False after lock removal
+    active = models.BooleanField(default=True)
+    # run_time in milliseconds
+    run_time = models.IntegerField(default=0)
+    # creation date
+    date = models.DateTimeField(auto_now_add=True)
+
+    def close(self):
+        _run_time = cluster_timezone.localize(datetime.datetime.now()) - cluster_timezone.normalize(self.date)
+        _run_time = _run_time.microseconds / 1000 + 1000 * _run_time.seconds
+        self.active = False
+        self.run_time = _run_time
+        self.save()
+        # close current lock and return a list of (what, level) lines
+        return [("closed {}".format(unicode(self)), logging_tools.LOG_LEVEL_OK)]
+
+    def __unicode__(self):
+        return u"DSL {}".format(self.uuid)
+
+
+class DeviceBootHistory(models.Model):
+    # new kernel and / or image changes are connected to the device via this structure
+    # might be empty if we only boot
+    idx = models.AutoField(primary_key=True)
+    device = models.ForeignKey("device")
+    date = models.DateTimeField(auto_now_add=True)
+
+
+class DeviceClass(models.Model):
+    idx = models.AutoField(primary_key=True)
+    # matchcode
+    name = models.CharField(max_length=64, default="", unique=True)
+    # description
+    description = models.CharField(default="", max_length=128)
+    # optional limitations
+    limitations = JSONField(null=True, default=None)
+    # system class (not deletable)
+    system_class = models.BooleanField(default=False)
+    # default system class, for devices without valid system_class
+    default_system_class = models.BooleanField(default=False)
+    # create user (None for system classes)
+    create_user = models.ForeignKey("backbone.user", null=True)
+    date = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        if self.system_class:
+            if self.default_system_class:
+                _ci = "*SYS"
+            else:
+                _ci = "SYS"
+        else:
+            _ci = unicode(self.create_user)
+        return u"DeviceClass '{}' ({})".format(
+            self.name,
+            _ci,
+        )
+
+
+class device_selection(object):
+    def __init__(self, sel_str):
+        parts = sel_str.split("__")
+        self.idx = int(parts[1])
+        self.sel_type = {"dev": "d", "devg": "g"}[parts[0]]
+
+
+def _get_top_level_dtn():
+    try:
+        top_level_dn = domain_tree_node.objects.get(Q(depth=0))
+    except domain_tree_node.DoesNotExist:
+        top_level_dn = None
+    return top_level_dn
+
+
 class cd_connection(models.Model):
     # controlling_device connection
     idx = models.AutoField(primary_key=True)
-    parent = models.ForeignKey("device", related_name="parent_device")
-    child = models.ForeignKey("device", related_name="child_device")
+    parent = models.ForeignKey("backbone.device", related_name="parent_device")
+    child = models.ForeignKey("backbone.device", related_name="child_device")
     created_by = models.ForeignKey("user", null=True)
     connection_info = models.CharField(max_length=256, default="not set")
     parameter_i1 = models.IntegerField(default=0)
@@ -625,7 +678,7 @@ class device_group(models.Model):
     cluster_device_group = models.BooleanField(default=False)
     # enabled flag, ident to the enabled flag of the corresponding meta-device
     enabled = models.BooleanField(default=True)
-    # domain tree node, see enabled flag
+    # domain tree node, used as default value for new devices
     domain_tree_node = models.ForeignKey("domain_tree_node", null=True, default=None)
     date = models.DateTimeField(auto_now_add=True)
 

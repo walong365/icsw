@@ -509,7 +509,7 @@ device_variable_module = angular.module(
 [
     "$templateCache",
 (
-    $templateCache, 
+    $templateCache,
 ) ->
     return {
         restrict: "EA"
@@ -673,4 +673,129 @@ device_variable_module = angular.module(
                 # recreate structure
                 _build_struct($scope.device)
         )
+]).directive("icswDeviceStaticAssetOverview",
+[
+    "$templateCache",
+(
+    $templateCache,
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.device.static.asset.overview")
+        controller: "icswDeviceStaticAssetOverviewCtrl"
+        scope: {
+            device: "=icswDevice"
+        }
+    }
+]).service("icswStaticAssetObject",
+[
+    "$q",
+(
+    $q,
+) ->
+    class icswStaticAssetObject
+        constructor: (device) ->
+            @device = device
+            console.log "d", @device
+]).controller("icswDeviceStaticAssetOverviewCtrl",
+[
+    "$scope", "icswDeviceVariableScopeTreeService", "icswDeviceTreeService", "$q",
+    "icswDeviceTreeHelperService", "icswComplexModalService", "$compile", "$templateCache",
+    "icswStaticAssetTemplateTreeService",
+(
+    $scope, icswDeviceVariableScopeTreeService, icswDeviceTreeService, $q,
+    icswDeviceTreeHelperService, icswComplexModalService, $compile, $templateCache,
+    icswStaticAssetTemplateTreeService,
+) ->
+    $scope.struct = {
+        # device tree
+        device_tree: undefined
+        # helper object
+        helper: undefined
+        # asset tree
+        asset_tree: undefined
+        # devvarscope_tree
+        dvs_tree: undefined
+        # device to work on
+        device: undefined
+        # device local asset struct tree
+        asset_struct: undefined
+    }
+    $q.all(
+        [
+            icswDeviceTreeService.load($scope.id)
+            icswStaticAssetTemplateTreeService.load($scope.$id)
+        ]
+    ).then(
+        (data) ->
+            $scope.struct.device = $scope.device
+            $scope.struct.device_tree = data[0]
+            $scope.struct.asset_tree = data[1]
+            $scope.struct.helper = icswDeviceTreeHelperService.create($scope.struct.device_tree, [$scope.struct.device])
+            $q.all(
+                [
+                    icswDeviceVariableScopeTreeService.load($scope.$id)
+                    $scope.struct.device_tree.enrich_devices(
+                        $scope.struct.helper
+                        [
+                            "variable_info",
+                            "static_asset_info",
+                        ]
+                    )
+                ]
+            ).then(
+                (data) ->
+                    $scope.struct.dvs_tree = data[0]
+                    _asset_struct = {}
+                    for key_list in $scope.struct.asset_tree.static_assets
+                        _cs = {
+                            used: []
+                            unused: []
+                        }
+                        _asset_struct[key_list[0]] = _cs
+                        _asset_pks = (_as.static_asset_template for _as in $scope.struct.device.staticasset_set)
+                        for _asset in key_list[1]
+                            if _asset.idx in _asset_pks
+                                _csused.push(_asset)
+                            else
+                                _cs.unused.push(_asset)
+                    $scope.struct.asset_struct = _asset_struct
+            )
+    )
+
+    $scope.add_assets = ($event, asset_type) ->
+        sub_scope = $scope.$new(true)
+        sub_scope.asset_tree = $scope.struct.asset_tree
+        unset_list = []
+        for key, value of $scope.struct.asset_struct
+            if key == asset_type
+                if value.unused.length
+                    unset_list.push([key, value.unused])
+                    for _us in value.unused
+                        # helper field
+                        _us.$$create = false
+        sub_scope.unset_list = unset_list
+        icswComplexModalService(
+            {
+                message: $compile($templateCache.get("icsw.device.static.asset.add"))(sub_scope)
+                title: "Add static templates"
+                ok_label: "Create"
+                closable: true
+                ok_callback: (modal) ->
+                    d = $q.defer()
+                    d.resolve("done")
+                    return d.promise
+                cancel_callback: (modal) ->
+                    # dbu.restore_backup($scope.edit_obj)
+                    d = $q.defer()
+                    d.resolve("cancel")
+                    return d.promise
+            }
+        ).then(
+            (fin) ->
+                sub_scope.$destroy()
+                # recreate structure
+                # _build_struct($scope.device)
+        )
+
 ])

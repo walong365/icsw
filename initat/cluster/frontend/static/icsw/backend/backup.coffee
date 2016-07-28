@@ -117,7 +117,8 @@ angular.module(
             @simple_attributes = [
                 "name", "comment", "device_group", "domain_tree_node", "enabled",
                 "alias", "mon_device_templ", "monitor_checks", "enable_perfdata",
-                "flap_detection_enabled", "mon_resolve_name", "store_rrd_data"
+                "flap_detection_enabled", "mon_resolve_name", "store_rrd_data",
+                "device_class",
             ]
 
 ]).service("icswDeviceBootBackup", ["icswBackupDefinition", (icswBackupDefinition) ->

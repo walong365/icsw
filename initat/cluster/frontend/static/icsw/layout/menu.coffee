@@ -28,12 +28,12 @@ menu_module = angular.module(
     "$scope", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswAcessLevelService",
     "initProduct", "icswLayoutSelectionDialogService", "icswActiveSelectionService",
     "$q", "icswUserService", "blockUI", "$state", "icswSystemLicenseDataService", "$rootScope",
-    "icswRouteHelper", "ICSW_SIGNALS",
+    "icswRouteHelper", "ICSW_SIGNALS", "$timeout",
 (
     $scope, $window, ICSW_URLS, icswSimpleAjaxCall, icswAcessLevelService,
     initProduct, icswLayoutSelectionDialogService, icswActiveSelectionService,
     $q, icswUserService, blockUI, $state, icswSystemLicenseDataService, $rootScope,
-    icswRouterHelper, ICSW_SIGNALS
+    icswRouterHelper, ICSW_SIGNALS, $timeout,
 ) ->
     # init service types
     $scope.ICSW_URLS = ICSW_URLS
@@ -41,6 +41,8 @@ menu_module = angular.module(
     $scope.struct = {
         # current user
         current_user: undefined
+        # selection string
+        selection_string: "N/A"
     }
     $scope.HANDBOOK_PDF_PRESENT = false
     $scope.HANDBOOK_CHUNKS_PRESENT = false
@@ -61,13 +63,46 @@ menu_module = angular.module(
             $scope.HANDBOOK_PDF_PRESENT = data[0].HANDBOOK_PDF_PRESENT
             $scope.HANDBOOK_CHUNKS_PRESENT = data[0].HANDBOOK_CHUNKS_PRESENT
     )
+    $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"), (event) ->
+        _cur_sel = icswActiveSelectionService.current()
+
+        _cur_check_to = undefined
+        _install_to = () ->
+            if _cur_check_to
+                $timeout.cancel(_cur_check_to)
+            # check future selection every 2 seconds
+            _cur_check_to = $timeout(
+                () ->
+                    _future_tot = _cur_sel.tot_dev_sel.length
+                    _show_string(_current_tot, _future_tot)
+                    _install_to()
+                2000
+            )
+
+        _show_string = (cur, future) ->
+            if cur == future
+                if cur
+                    $scope.struct.selection_string = "#{cur}"
+                else
+                    $scope.struct.selection_string = "none"
+            else
+                $scope.struct.selection_string = "#{cur} / #{future}"
+
+        _install_to()
+        _current_tot = _cur_sel.tot_dev_sel.length
+        _future_tot = _current_tot
+        _show_string(_current_tot, _future_tot)
+    )
 
     $scope.get_progress_style = (obj) ->
-        return {"width" : "#{obj.value}%"}
+        return {width: "#{obj.value}%"}
 
-    $scope.device_quickselection = (onoff) ->
-        console.log "***"
-        icswLayoutSelectionDialogService.quick_dialog(onoff)
+    $scope.redirect_to_init = () ->
+        window.location = "http://www.initat.org"
+        return false
+
+    $scope.device_selection = ($event) ->
+        icswLayoutSelectionDialogService.quick_dialog($event)
 
     $scope.handbook_url = "/"
     $scope.handbook_url_valid = false
@@ -214,11 +249,11 @@ menu_module = angular.module(
 
             clickcounter = 0
             logo_timer = undefined
-            scope.sglclick = ()->
+            scope.sglclick = ($event)->
                 if clickcounter > 0
                     $timeout.cancel(logo_timer)
                     clickcounter = 0
-                    icswLayoutSelectionDialogService.quick_dialog(true)
+                    icswLayoutSelectionDialogService.quick_dialog($event)
 
                 else if clickcounter == 0
                     clickcounter += 1
@@ -598,8 +633,8 @@ menu_module = angular.module(
              breadcrumb.generate()
              scope.breadcrumb = breadcrumb.title()
         scope.select_txt = "No devices selected"
-        scope.device_quickselection = (onoff) ->
-            icswLayoutSelectionDialogService.quick_dialog(onoff)
+        scope.device_selection = ($event) ->
+            icswLayoutSelectionDialogService.quick_dialog($event)
         scope.new_devsel = (devs) ->
             $q.all(
                 [

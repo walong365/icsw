@@ -1068,6 +1068,16 @@ device_asset_module = angular.module(
 
         build_luts: () =>
             @lut = _.keyBy(@list, "idx")
+            @static_asset_type_lut = {}
+            for _struct in icswStaticAssetFunctions.get_form_dict("asset_type")
+                _found = (entry for entry in @list when entry.type == _struct.idx)
+                if _found.length
+                    @static_asset_type_lut[_struct.name] = _found
+            @static_asset_type_keys = _.keys(@static_asset_type_lut)
+            @static_asset_type_keys.sort()
+            @static_assets = []
+            for _key in @static_asset_type_keys
+                @static_assets.push([_key, @static_asset_type_lut[_key]])
             @link()
 
         link: () =>
@@ -1229,14 +1239,14 @@ device_asset_module = angular.module(
         return _fetch_dict[client]
 
     return {
-        "load": (client) ->
+        load: (client) ->
             # loads from server
             if load_called
                 # fetch when data is present (after sidebar)
                 return fetch_data(client).promise
             else
                 return load_data(client).promise
-        "reload": (client) ->
+        reload: (client) ->
             return load_data(client).promise
     }
 ])

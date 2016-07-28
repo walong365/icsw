@@ -28,7 +28,107 @@ angular.module(
         "init.csw.filters", "restangular", "noVNC", "ui.select", "icsw.tools",
         "icsw.device.info", "icsw.user", "icsw.backend.variable",
     ]
-).service("icswDeviceTreeHelper",
+).service("icswDeviceClassTree",
+[
+    "$q",
+(
+    $q,
+) ->
+    class icswDeviceClassTree
+        constructor: (list) ->
+            @list =[]
+            @update(list)
+
+        update: (list) =>
+            @list.length = 0
+            for entry in list
+                if entry.default_system_class
+                    @__dsc = entry
+                if not entry.$$enabled?
+                    entry.$$enabled = false
+                @list.push(entry)
+            @enabled_idx_list = []
+            @enabled_fp = ""
+            @build_luts()
+
+        build_luts: () =>
+            @lut = _.keyBy(@list, "idx")
+
+        get_fingerprint: () =>
+            return @enabled_fp
+
+        validate_device_class_filter: (dcf) =>
+            # dcf ... dict with class.idx => class.$$enabled
+            _changed = false
+
+            # check for new values
+            for entry in @list
+                if entry.idx not of dcf
+                    dcf[entry.idx] = entry.$$enabled
+                    _changed = true
+                else
+                    entry.$$enabled = dcf[entry.idx]
+
+            # validate
+            if not _.some(_.values(dcf))
+                @__dsc.$$enabled = true
+                dcf[@__dsc.idx] = @__dsc.$$enabled
+                _changed = true
+            # build enabled_idx_list
+            @enabled_idx_list = (entry.idx for entry in @list when entry.$$enabled)
+            @enabled_fp = ("#{_val}" for _val in @enabled_idx_list).join("::")
+            return _changed
+
+        read_device_class_filter: (dcf) =>
+            # syncs entries from dcf
+            _changed = false
+            for entry in @list
+                if entry.$$enabled != dcf[entry.idx]
+                    entry.$$enabled = dcf[entry.idx]
+                    _changed = true
+            if @validate_device_class_filter(dcf)
+                _changed = true
+            return _changed
+
+        write_device_class_filter: (dcf) =>
+            # syncs dcf from entries
+            # dcf ... dict with class.idx => class.$$enabled
+            # step one: copy
+            _changed = false
+            for entry in @list
+                if entry.$$enabled != dcf[entry.idx]
+                    dcf[entry.idx] = entry.$$enabled
+                    _changed = true
+            if @validate_device_class_filter(dcf)
+                _changed = true
+            return _changed
+
+        get_filter_name: () =>
+            _fv = (entry.$$enabled for entry in @list)
+            if _.every(_fv)
+                return "all"
+            else if not _.some(_fv)
+                return "none"
+            else
+                _enabled = (1 for entry in @list when entry.$$enabled).length
+                return "#{_enabled} / #{_fv.length}"
+
+]).service("icswDeviceClassTreeService",
+[
+    "$q", "icswDeviceClassTree", "icswTreeBase", "ICSW_URLS",
+(
+    $q, icswDeviceClassTree, icswTreeBase, ICSW_URLS,
+) ->
+    rest_map = [
+        ICSW_URLS.DEVICE_DEVICE_CLASS_LIST
+    ]
+    return new icswTreeBase(
+        "DeviceClassTree"
+        icswDeviceClassTree
+        rest_map
+        ""
+    )
+]).service("icswDeviceTreeHelper",
 [
     "icswTools",
 (
@@ -88,6 +188,10 @@ angular.module(
                 ["asc", "asc", "asc"],
             )
 
+        post_g_static_asset_info: () ->
+
+            console.log "static_asset_info"
+
         post_g_device_connection_info: () ->
             dev_pks = (dev.idx for dev in @devices)
             dev_lut = _.keyBy(@devices, "idx")
@@ -108,7 +212,6 @@ angular.module(
                             dev_lut[cd.child].$$master_list.push(cd)
             
         post_g_variable_info: () ->
-
             if not @var_name_filter?
                 @var_name_filter = ""
             for dev in @devices
@@ -295,6 +398,7 @@ angular.module(
                 dispatcher_info: "dispatcher_set"
                 # shallow version for info
                 past_assetrun_info: "past_assetrun_set"
+                static_asset_info: "staticasset_set"
             }
             if req of _lut
                 return _lut[req]
@@ -458,7 +562,7 @@ angular.module(
     ICSW_SIGNALS, icswDeviceTreeHelper, icswNetworkTreeService
 ) ->
     class icswDeviceTree
-        constructor: (full_list, group_list, domain_tree, cat_tree, device_variable_scope_tree) ->
+        constructor: (full_list, group_list, domain_tree, cat_tree, device_variable_scope_tree, device_class_tree) ->
             @group_list = group_list
             @all_list = []
             @enabled_list = []
@@ -470,6 +574,7 @@ angular.module(
             @domain_tree = domain_tree
             @cat_tree = cat_tree
             @device_variable_scope_tree = device_variable_scope_tree
+            @device_class_tree = device_class_tree
             @enricher = new icswEnrichmentInfo(@)
             @build_luts(full_list)
 
@@ -560,6 +665,9 @@ angular.module(
             # create helper structures
             # console.log "link"
 
+        device_class_is_enabled: (dev) =>
+            return dev.device_class in @device_class_tree.enabled_idx_list
+
         get_meta_device: (dev) =>
             return @all_lut[@group_lut[dev.device_group].device]
 
@@ -606,6 +714,35 @@ angular.module(
 
         # for device
 
+        update_device: (upd_dev) =>
+            defer = $q.defer()
+            Restangular.restangularizeElement(null, upd_dev, ICSW_URLS.REST_DEVICE_TREE_DETAIL.slice(1).slice(0, -2))
+            upd_dev.put().then(
+                (data) =>
+                    # replace device
+                    _.remove(@all_list, (entry) -> return entry.idx == upd_dev.idx)
+                    @all_list.push(data)
+                    # root password magic
+                    if upd_dev.root_passwd
+                        upd_dev.root_passwd_set = true
+                    s1_defer = $q.defer()
+                    if not data.is_meta_device
+                        # reload meta device
+                        _group = @group_lut[data.device_group]
+                        _meta = _group.device
+                        @_fetch_device(_group.device, s1_defer, "updated device")
+                    else
+                        s1_defer.resolve("not needed")
+                    s1_defer.promise.then(
+                        (done) =>
+                            @reorder()
+                            defer.resolve(data)
+                    )
+                (notok) ->
+                    defer.reject("not saved")
+            )
+            return defer.promise
+
         create_device: (new_dev) =>
             # create new device
             defer = $q.defer()
@@ -633,6 +770,7 @@ angular.module(
             ).then(
                 (dev_list) =>
                     dev = dev_list[0]
+                    _.remove(@all_list, (entry) -> return entry.idx == dev.idx)
                     @all_list.push(dev)
                     if dev.device_group of @group_lut
                         @reorder()
@@ -1072,11 +1210,11 @@ angular.module(
 
 ]).service("icswDeviceTreeService",
 [
-    "$q", "Restangular", "ICSW_URLS", "icswCachingCall",
+    "$q", "Restangular", "ICSW_URLS", "icswCachingCall", "icswDeviceClassTreeService",
     "icswTools", "icswDeviceTree", "$rootScope", "ICSW_SIGNALS",
     "icswDomainTreeService", "icswCategoryTreeService", "icswDeviceVariableScopeTreeService",
 (
-    $q, Restangular, ICSW_URLS, icswCachingCall,
+    $q, Restangular, ICSW_URLS, icswCachingCall, icswDeviceClassTreeService,
     icswTools, icswDeviceTree, $rootScope, ICSW_SIGNALS,
     icswDomainTreeService, icswCategoryTreeService, icswDeviceVariableScopeTreeService,
 ) ->
@@ -1107,11 +1245,12 @@ angular.module(
         _wait_list.push(icswDomainTreeService.load(client))
         _wait_list.push(icswCategoryTreeService.load(client))
         _wait_list.push(icswDeviceVariableScopeTreeService.load(client))
+        _wait_list.push(icswDeviceClassTreeService.load(client))
         _defer = $q.defer()
         $q.all(_wait_list).then(
             (data) ->
                 console.log "*** device tree loaded ***"
-                _result = new icswDeviceTree(data[0], data[1], data[2], data[3], data[4])
+                _result = new icswDeviceTree(data[0], data[1], data[2], data[3], data[4], data[5])
                 _defer.resolve(_result)
                 for client of _fetch_dict
                     # resolve clients

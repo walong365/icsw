@@ -433,7 +433,7 @@ angular.module(
             for key, value of args
                 if key of @
                     @[key] = value
-                else if key.substring(0, 1) == "_"
+                else if key.substring(0, 1) in ["_", "$"]
                     @[key] = value
                 else if key in @_config.extra_args
                     @[key] = value

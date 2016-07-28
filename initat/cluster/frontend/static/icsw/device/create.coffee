@@ -107,8 +107,8 @@ angular.module(
             $scope.device_data.ip = ""
             $scope.resolve_pending = true
             icswSimpleAjaxCall(
-                url  : ICSW_URLS.MON_RESOLVE_NAME
-                data : {
+                url: ICSW_URLS.MON_RESOLVE_NAME
+                data: {
                     fqdn: $scope.device_data.full_name
                 }
             ).then(
@@ -123,7 +123,7 @@ angular.module(
         icswSimpleAjaxCall(
             url: ICSW_URLS.DEVICE_CREATE_DEVICE
             data: {
-                "device_data" : angular.toJson(d_dict)
+                device_data: angular.toJson(d_dict)
             }
         ).then(
             (xml) =>
