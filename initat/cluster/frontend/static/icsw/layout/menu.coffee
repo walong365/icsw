@@ -627,62 +627,54 @@ menu_module = angular.module(
     icswDispatcherSettingTreeService, icswAssetPackageTreeService,
     icswActiveSelectionService
 ) ->
-    restrict: "A"
-    link: (scope, el, attrs) ->
-        breadcrumb = icswBreadcrumbs
-        $rootScope.$on ICSW_SIGNALS("ICSW_ROUTE_RIGHTS_VALID"), (event) ->
-            breadcrumb.setup()
-            breadcrumb.generate()
-            scope.breadcrumb = breadcrumb.title()
-        $rootScope.$on "$stateChangeSuccess", (event, to_state, to_params, from_state, from_params) ->
-             breadcrumb.generate()
-             scope.breadcrumb = breadcrumb.title()
-        scope.select_txt = "No devices selected"
-        scope.device_selection = ($event) ->
-            icswLayoutSelectionDialogService.quick_dialog("right")
-        $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"), (event) ->
-            _cur_sel = icswActiveSelectionService.current()
-            #sel_groups = _cur_sel.get_devsel_list()[3].length
-            sel_groups = 0
-            sel_devices = _cur_sel.get_devsel_list()[1].length
-            group_plural = if sel_groups == 1 then "group" else "groups"
-            device_plural = if sel_devices == 1 then "device" else "devices"
-            if sel_groups==0 and sel_devices==0
-                ret_text = "No devices"
-            else if sel_devices > 0 and sel_groups == 0
-                ret_text = "#{sel_devices} #{device_plural}"
-            else if sel_groups > 0 and sel_devices == 0
-                ret_text = "#{sel_groups} #{group_plural}"
-            else
-                ret_text = "#{sel_groups} #{group_plural}, #{sel_devices} #{device_plural}"
-            scope.select_txt = "#{ret_text} selected"
-        )
-        scope.new_devsel = (devs) ->
-            $q.all(
-                [
-                    icswDeviceTreeService.load(scope.$id)
-                    icswDispatcherSettingTreeService.load(scope.$id)
-                    icswAssetPackageTreeService.load(scope.$id)
-                ]
-            ).then(
-                (data) ->
-                    sel_groups = 0
-                    sel_devices = 0
-                    for dev in devs
-                        if !dev.is_meta_device then sel_devices+=1
-                        #else sel_groups+=1
-                    group_plural = if sel_groups == 1 then "group" else "groups"
-                    device_plural = if sel_devices == 1 then "device" else "devices"
-                    if sel_groups==0 and sel_devices==0
-                        ret_text = "No devices"
-                    else if sel_devices > 0 and sel_groups == 0
-                        ret_text = "#{sel_devices} #{device_plural}"
-                    else if sel_groups > 0 and sel_devices == 0
-                        ret_text = "#{sel_groups} #{group_plural}"
-                    else
-                        ret_text = "#{sel_groups} #{group_plural}, #{sel_devices} #{device_plural}"
-                    scope.select_txt = "#{ret_text} selected"
+    return {
+        restrict: "A"
+        link: (scope, el, attrs) ->
+            breadcrumb = icswBreadcrumbs
+            $rootScope.$on ICSW_SIGNALS("ICSW_ROUTE_RIGHTS_VALID"), (event) ->
+                breadcrumb.setup()
+                breadcrumb.generate()
+                scope.breadcrumb = breadcrumb.title()
+            $rootScope.$on "$stateChangeSuccess", (event, to_state, to_params, from_state, from_params) ->
+                 breadcrumb.generate()
+                 scope.breadcrumb = breadcrumb.title()
+
+            scope.select_txt = "No devices selected"
+
+            scope.device_selection = ($event) ->
+                icswLayoutSelectionDialogService.quick_dialog("right")
+
+            $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"), (event) ->
+                _cur_sel = icswActiveSelectionService.current()
+                #sel_groups = _cur_sel.get_devsel_list()[3].length
+                sel_groups = 0
+                sel_devices = _cur_sel.get_devsel_list()[1].length
+                group_plural = if sel_groups == 1 then "group" else "groups"
+                device_plural = if sel_devices == 1 then "device" else "devices"
+                group_plural = if sel_groups == 1 then "group" else "groups"
+                device_plural = if sel_devices == 1 then "device" else "devices"
+                _list = []
+                if sel_devices
+                    _list.push("#{sel_devices} #{device_plural}")
+                if sel_groups
+                    _list.push("#{sel_groups} #{group_plural}")
+                if not _list
+                    _list.push("No devices")
+                scope.select_txt = _list.join(", ") + " selected"
             )
+            
+            scope.new_devsel = (devs) ->
+                # never called....
+                console.log "*", devs
+                console.log icswActiveSelectionService.current()
+                sel_groups = 0
+                sel_devices = 0
+                for dev in devs
+                    if dev.is_meta_device
+                        sel_devices++
+                    else
+                        sel_groups++
+    }
 ]).factory('icswBreadcrumbs',
 [
     "$state", "icswRouteHelper",
@@ -708,10 +700,10 @@ menu_module = angular.module(
         return
 
     generateBreadcrumbs = (state) ->
-        if angular.isDefined(state.parent) and state.parent.name!=""
+        if state.parent? and state.parent.name != ""
             generateBreadcrumbs state.parent
-        if angular.isDefined(state.icswData) and (state.icswData.$$menuHeader or state.icswData.$$menuEntry)
-            if angular.isDefined(state.icswData.menuEntry)
+        if state.icswData? and (state.icswData.$$menuHeader or state.icswData.$$menuEntry)
+            if state.icswData.menuEntry?
                 addBreadcrumb header_lut[state.icswData.menuEntry.menukey]
                 addBreadcrumb(
                     state.icswData.menuEntry.name
