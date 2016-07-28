@@ -1046,20 +1046,17 @@ angular.module(
 ]).service("icswLayoutSelectionDialogService",
 [
     "$q", "$compile", "$templateCache", "$state", "icswToolsSimpleModalService",
-    "$rootScope", "ICSW_SIGNALS", "$uibPosition",
+    "$rootScope", "ICSW_SIGNALS", "$uibPosition", "$window",
 (
     $q, $compile, $templateCache, $state, icswToolsSimpleModalService,
-    $rootScope, ICSW_SIGNALS, $uibPosition,
+    $rootScope, ICSW_SIGNALS, $uibPosition, $window
 ) ->
     # dialog_div =
     prev_left = undefined
     prev_top = undefined
     _active = false
-    quick_dialog = ($event) ->
-        if $event?
-            _event_pos = $uibPosition.position($event.currentTarget)
-        else
-            _event_pos = undefined
+    quick_dialog = (position) ->
+        # position? left : right
         if !_active
             _active = true
             state_name = $state.current.name
@@ -1079,17 +1076,13 @@ angular.module(
                     # _tw is the full viewport width
                     _tw = ref.getModal().width()
                     _diag = ref.getModalDialog()
-                    if _event_pos?
+                    if position? and position == "right"
                         # hm, to be improved
-                        _left = _event_pos.left - (_tw - 600) / 2 - 600 / 2
-                        _top = _event_pos.top
-                    else
-                        if prev_left?
-                            _left = prev_left
-                            _top = prev_top
-                        else
-                            _left = -(_tw - 600) / 2
-                            _top = 0
+                        _left = (_tw / 2) - ($(_diag[0]).width() / 2) - 15
+                        _top = 40
+                    else  # left
+                        _left = (_tw / 2 * -1) + ($(_diag[0]).width() / 2)
+                        _top = 20
                     $(_diag[0]).css("left", _left)
                     $(_diag[0]).css("top", _top)
                     sel_scope.modal = ref
@@ -1109,8 +1102,8 @@ angular.module(
                     }
                 ]
     return {
-        quick_dialog: ($event) ->
-            return quick_dialog($event)
+        quick_dialog: (position) ->
+            return quick_dialog(position)
     }
 ]).service("icswLayoutSelectionTreeService",
 [

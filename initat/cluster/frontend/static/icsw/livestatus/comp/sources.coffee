@@ -131,7 +131,6 @@ angular.module(
 
     _get_dummy_entry = (display_name, ct) ->
         entry = {
-            $$burst_fill_color: "#dddddd"
             display_name: display_name
             $$ct: ct
             $$dummy: false
@@ -172,23 +171,23 @@ angular.module(
 
     _device_lut = {
         0: {
-            color: "#66dd66"
+            className: "svg_dev_up"
             info: "Up"
         }
         1: {
-            color: "#ff7777"
+            className:  "svg_dev_down"
             info: "Down"
         }
         2: {
-            color: "#ff0000"
+            className: "svg_dev_unreach"
             info: "Unreachable"
         }
         3: {
-            color: "#dddddd"
+            className: "svg_dev_unknown"
             info: "Unknown"
         }
         4: {
-            color: "#888888"
+            className: "svg_dev_notmonitored"
             info: "not monitored"
         }
         5: {
@@ -199,23 +198,23 @@ angular.module(
 
     _service_lut = {
         0: {
-            color: "#66dd66"
+            className: "svg_srv_ok"
             info: "OK"
         }
         1: {
-            color: "#dddd88"
+            className: "svg_srv_warn"
             info: "Warning"
         }
         2: {
-            color: "#ff7777"
+            className: "svg_srv_crit"
             info: "Critical"
         }
         3: {
-            color: "#ff0000"
+            className: "svg_srv_unknown"
             info: "Unknown"
         }
         4: {
-            color: "#888888"
+            className: "svg_srv_notmonitored"
             info: "not monitored"
         }
         5: {
@@ -230,14 +229,13 @@ angular.module(
         service_states: [0, 1, 2, 3, 4, 5]
     }
     salt_device_state = (entry) ->
-        entry.$$burst_fill_color = _device_lut[entry.state].color
         entry.className = {
-            0: "svg_ok"
-            1: "svg_warn"
-            2: "svg_crit"
-            3: "svg_unknown"
-            4: "svg_unknown"
-            5: "svg_unknown"
+            0: "svg_dev_up"
+            1: "svg_srv_warn"
+            2: "svg_srv_crit"
+            3: "svg_dev_unknown"
+            4: "svg_dev_unknown"
+            5: "svg_dev_unknown"
         }[entry.state]
         _r_str = {
             0: "success"
@@ -272,14 +270,13 @@ angular.module(
             5: "default"
         }[entry.state]
         entry.className = {
-            0: "svg_ok"
-            1: "svg_warn"
-            2: "svg_crit"
+            0: "svg_srv_ok"
+            1: "svg_srv_warn"
+            2: "svg_srv_crit"
             3: "svg_danger"
-            4: "svg_unknown"
-            5: "svg_unknown"
+            4: "svg_srv_unknown"
+            5: "svg_srv_unknown"
         }[entry.state]
-        entry.$$burst_fill_color = _service_lut[entry.state].color
         entry.$$icswStateClass = _r_str
         # entry.$$icswStateLabelClass = "label-#{_r_str}"
         entry.$$icswStateTextClass = "text-#{_r_str}"
@@ -347,7 +344,7 @@ angular.module(
                 if detail_dict?
                     _sub_keys = _.keys(detail_dict[_state])
                     _info_str = "#{_info_str}, #{_sub_keys.length} subelements"
-                _info = [_count, _lut[_state].color, _info_str]
+                _info = [_count, _lut[_state].className, _info_str]
                 if detail_dict?
                     _info.push(detail_dict[_state])
                 _r_list.push(_info)

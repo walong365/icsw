@@ -271,6 +271,7 @@ user_module = angular.module(
 
         force_logout: () =>
             @cancel_pending_load()
+            $rootScope.$emit(ICSW_SIGNALS("ICSW_USER_NOUSER"))
             return @logout()
 
         update: () =>
