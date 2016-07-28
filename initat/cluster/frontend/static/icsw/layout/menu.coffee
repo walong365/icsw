@@ -63,9 +63,10 @@ menu_module = angular.module(
             $scope.HANDBOOK_PDF_PRESENT = data[0].HANDBOOK_PDF_PRESENT
             $scope.HANDBOOK_CHUNKS_PRESENT = data[0].HANDBOOK_CHUNKS_PRESENT
     )
+
+    ### TF
     $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"), (event) ->
         _cur_sel = icswActiveSelectionService.current()
-
         _cur_check_to = undefined
         _install_to = () ->
             if _cur_check_to
@@ -93,6 +94,8 @@ menu_module = angular.module(
         _future_tot = _current_tot
         _show_string(_current_tot, _future_tot)
     )
+    ###
+
 
     $scope.get_progress_style = (obj) ->
         return {width: "#{obj.value}%"}
@@ -102,7 +105,7 @@ menu_module = angular.module(
         return false
 
     $scope.device_selection = ($event) ->
-        icswLayoutSelectionDialogService.quick_dialog($event)
+        icswLayoutSelectionDialogService.quick_dialog("right")
 
     $scope.handbook_url = "/"
     $scope.handbook_url_valid = false
@@ -253,7 +256,7 @@ menu_module = angular.module(
                 if clickcounter > 0
                     $timeout.cancel(logo_timer)
                     clickcounter = 0
-                    icswLayoutSelectionDialogService.quick_dialog($event)
+                    icswLayoutSelectionDialogService.quick_dialog()
 
                 else if clickcounter == 0
                     clickcounter += 1
@@ -617,10 +620,12 @@ menu_module = angular.module(
     "icswLayoutSelectionDialogService", "$rootScope", "icswBreadcrumbs",
     "icswUserService", "$state", "$q", "icswDeviceTreeService", "ICSW_SIGNALS",
     "icswDispatcherSettingTreeService", "icswAssetPackageTreeService",
+    "icswActiveSelectionService",
 (
     icswLayoutSelectionDialogService, $rootScope, icswBreadcrumbs,
     icswUserService, $state, $q, icswDeviceTreeService, ICSW_SIGNALS
-    icswDispatcherSettingTreeService, icswAssetPackageTreeService
+    icswDispatcherSettingTreeService, icswAssetPackageTreeService,
+    icswActiveSelectionService
 ) ->
     restrict: "A"
     link: (scope, el, attrs) ->
@@ -634,7 +639,24 @@ menu_module = angular.module(
              scope.breadcrumb = breadcrumb.title()
         scope.select_txt = "No devices selected"
         scope.device_selection = ($event) ->
-            icswLayoutSelectionDialogService.quick_dialog($event)
+            icswLayoutSelectionDialogService.quick_dialog("right")
+        $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"), (event) ->
+            _cur_sel = icswActiveSelectionService.current()
+            #sel_groups = _cur_sel.get_devsel_list()[3].length
+            sel_groups = 0
+            sel_devices = _cur_sel.get_devsel_list()[1].length
+            group_plural = if sel_groups == 1 then "group" else "groups"
+            device_plural = if sel_devices == 1 then "device" else "devices"
+            if sel_groups==0 and sel_devices==0
+                ret_text = "No devices"
+            else if sel_devices > 0 and sel_groups == 0
+                ret_text = "#{sel_devices} #{device_plural}"
+            else if sel_groups > 0 and sel_devices == 0
+                ret_text = "#{sel_groups} #{group_plural}"
+            else
+                ret_text = "#{sel_groups} #{group_plural}, #{sel_devices} #{device_plural}"
+            scope.select_txt = "#{ret_text} selected"
+        )
         scope.new_devsel = (devs) ->
             $q.all(
                 [
