@@ -658,11 +658,11 @@ menu_module = angular.module(
                     _list.push("#{sel_devices} #{device_plural}")
                 if sel_groups
                     _list.push("#{sel_groups} #{group_plural}")
-                if not _list
+                if not _list.length
                     _list.push("No devices")
                 scope.select_txt = _list.join(", ") + " selected"
             )
-            
+
             scope.new_devsel = (devs) ->
                 # never called....
                 console.log "*", devs
