@@ -307,12 +307,22 @@ class csw_permission(models.Model):
         ordering = ("content_type__app_label", "content_type__model", "name",)
         verbose_name = "Global permission"
 
+    @property
+    def perm_name(self):
+        return "{}.{}.{}".format(
+            self.content_type.app_label,
+            self.content_type.model,
+            self.codename,
+        )
+
     @staticmethod
     def get_permission(in_object, code_name):
         ct = ContentType.objects.get_for_model(in_object)
         cur_pk = in_object.pk
         return csw_object_permission.objects.create(
-            csw_permission=csw_permission.objects.get(Q(content_type=ct) & Q(codename=code_name)),
+            csw_permission=csw_permission.objects.get(
+                Q(content_type=ct) & Q(codename=code_name)
+            ),
             object_pk=cur_pk,
         )
 

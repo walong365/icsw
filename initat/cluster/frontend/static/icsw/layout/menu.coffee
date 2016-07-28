@@ -184,7 +184,7 @@ menu_module = angular.module(
         console.error "error moving to state #{to_state.name} (#{to_state}), error is #{error}"
         _to_login = true
         if to_state.icswData?
-            if to_state.icswData.redirect_to_from_on_error
+            if to_state.icswData.redirectToFromOnError
                 _to_login = false
         if _to_login
             $state.go("login")

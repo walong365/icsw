@@ -23,7 +23,8 @@ angular.module(
     [
         "toaster"
         "uiGmapgoogle-maps"
-    ],
+        "icsw.menu"
+    ]
 ).service("icswBaseMixinClass", [() ->
     # hm, not really needed ... ?
     module_keywords = ["extended", "included"]
@@ -236,11 +237,10 @@ angular.module(
         return success
 ]).provider("icswRouteExtension",
 [
-    "ICSW_MENU_JSON", "$stateProvider",
+    "$stateProvider", "ICSW_MENU_JSON",
 (
-    ICSW_MENU_JSON, $stateProvider,
+    $stateProvider, ICSW_MENU_JSON,
 ) ->
-    console.log "*****", ICSW_MENU_JSON
     _key_idx = 0
     class icswRouteExtension
         constructor: (args) ->
@@ -252,7 +252,7 @@ angular.module(
             # list of needed licenses
             @licenses = []
             # list of needed service_types (== routes)
-            @service_types = []
+            @serviceTypes = []
             # pageTitle:
             @pageTitle = ""
             # menuHeader
@@ -262,9 +262,9 @@ angular.module(
             # dashboardEntry
             @dashboardEntry = {}
             # redirect to originating when error
-            @redirect_to_from_on_error = false
+            @redirectToFromOnError = false
             # flag: valid for quicklink
-            @valid_for_quicklink = false
+            @validForQuicklink = false
             for key, value of args
                 if not @[key]?
                     console.error "unknown icswRouteExtension #{key}=#{value}", @
@@ -277,7 +277,7 @@ angular.module(
                 else
                     @[_attr] = false
             # feed states
-            for _attr_name in ["rights", "licenses", "service_types"]
+            for _attr_name in ["rights", "licenses", "serviceTypes"]
                 _src = @[_attr_name]
                 _dest = "$$#{_attr_name}_info"
                 if angular.isFunction(_src)
@@ -299,12 +299,12 @@ angular.module(
             if @$$dashboardEntry
                 # set defaults for dashboard
                 for [_name, _default, _log] in [
-                    ["header_class", "default", false]
-                    ["size_x", 2, true]
-                    ["size_y", 2, true]
-                    ["allow_show", true, false]
-                    ["allow_state", false, false]
-                    ["default_enabled", false, false]
+                    ["headerClass", "default", false]
+                    ["sizeX", 2, true]
+                    ["sizeY", 2, true]
+                    ["allowShow", true, false]
+                    ["allowState", false, false]
+                    ["defaultEnabled", false, false]
                 ]
                     if not @dashboardEntry[_name]?
                         @dashboardEntry[_name] = _default
@@ -404,10 +404,10 @@ angular.module(
                             _add = icswAcessLevelService.has_all_valid_licenses(data.licenses)
                             if not _add
                                 console.warn "license(s) #{data.licenses} missing"
-                        if data.service_types? and _add
-                            _add = icswAcessLevelService.has_all_service_types(data.service_types)
+                        if data.serviceTypes? and _add
+                            _add = icswAcessLevelService.has_all_service_types(data.serviceTypes)
                             if not _add
-                                console.warn "service_type(s) #{data.service_types} missing"
+                                console.warn "service_type(s) #{data.serviceTypes} missing"
                     else
                         _add = false
                 data.$$allowed = _add
@@ -415,7 +415,7 @@ angular.module(
                     _struct.allowed_states.push(state)
                     if data.$$menuEntry
                         _struct.menu_states.push(state)
-                    if data.valid_for_quicklink
+                    if data.validForQuicklink
                         _struct.quicklink_states.push(state)
                     if data.$$dashboardEntry
                         _struct.dashboard_states.push(state)
@@ -1662,708 +1662,4 @@ angular.module(
     return (input, all) ->
         if (!!input)
             return input.replace(/([^\W_]+[^\s-]*) */g, (txt) -> return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase())
-]).constant(
-    "ICSW_MENU_JSON", {
-        "main.graph": {
-            stateData:
-                url: "/graph"
-                templateUrl: "icsw.rrd.graph"
-            icswData:
-                pageTitle: "Graph"
-                licenses: ["graphing"]
-                rights: ["backbone.device.show_graphs"]
-                menuEntry:
-                    menukey: "stat"
-                    icon: "fa-line-chart"
-                    ordering: 40
-                dashboardEntry:
-                    size_x: 3
-                    size_y: 3
-                    allow_state: true
-        }
-        "main.deployboot": {
-            stateData:
-                url: "/deployboot"
-                templateUrl: "icsw/main/deploy/boot.html"
-            icswData:
-                pageTitle: "Boot nodes"
-                rights: ["device.change_boot"]
-                service_types: ["mother"]
-                licenses: ["netboot"]
-                menuHeader:
-                    key: "cluster"
-                    name: "Cluster"
-                    icon: "fa-cubes"
-                    ordering: 80
-                menuEntry:
-                    menukey: "cluster"
-                    icon: "fa-rocket"
-                    ordering: 10
-        }
-        "main.serverinfo": {
-            stateData:
-                url: "/serverinfo",
-                templateUrl: "icsw/main/serverinfo.html"
-            icswData:
-                pageTitle: "Server info"
-                rights: ["$$CHECK_FOR_SUPERUSER"]
-        }
-        "main.statelist": {
-            stateData:
-                url: "/statelist"
-                template: '<icsw-internal-state-list></icsw-internal-state-list>'
-            icswData:
-                pageTitle: "Internal State list"
-                rights: ["$$CHECK_FOR_SUPERUSER"]
-                menuEntry:
-                    preSpacer: true
-                    menukey: "sys"
-                    icon: "fa-bars"
-                    ordering: 30
-                    postSpacer: true
-        }
-        "main.rmsoverview": {
-            stateData:
-                url: "/rmsoverview"
-                templateUrl: "icsw/main/rms/overview.html"
-            icswData:
-                pageTitle: "RMS Overview"
-                licenses: ["rms"]
-                service_types: ["rms-server"]
-                rights: ["user.rms_show"]
-                menuHeader:
-                    key: "rms"
-                    name: "RMS"
-                    icon: "fa-list-ol"
-                    ordering: 90
-                menuEntry:
-                    menukey: "rms"
-                    name: "RMS Overview"
-                    icon: "fa-table"
-                    ordering: 0
-                dashboardEntry:
-                    size_x: 4
-                    size_y: 6
-        }
-        "main.history": {
-            stateData:
-                url: "/history"
-                template: "<icsw-history-overview></icsw-history-overview>"
-            icswData:
-                pageTitle: "Database history"
-                rights: ["user.snapshots"]
-                menuEntry:
-                    menukey: "sys"
-                    name: "History"
-                    icon: "fa-history"
-                    ordering: 10
-        }
-        "main.domaintree": {
-            stateData:
-                url: "/domaintree"
-                templateUrl: "icsw/main/device/domaintree.html"
-            icswData:
-                pageTitle: "Domain name tree"
-                rights: ["user.modify_domain_name_tree"]
-                menuEntry:
-                    menukey: "dev"
-                    icon: "fa-list-alt"
-                    ordering: 45
-        }
-        "main.kpi": {
-            stateData:
-                url: "/kpi"
-                template: "<icsw-config-kpi></icsw-config-kpi>"
-            icswData:
-                pageTitle: "Key performance indicators"
-                licenses: ["kpi"]
-                rights: ["kpi.kpi"]
-                menuEntry:
-                    menukey: "stat"
-                    icon: "fa-code-fork"
-                    ordering: 60
-        }
-        "main.partition": {
-            stateData:
-                url: "/partition"
-                templateUrl: "icsw/main/partition.html"
-            icswData:
-                pageTitle: "Partition overview"
-                rights: ["partition_fs.modify_partitions"]
-                licenses: ["netboot"]
-                menuEntry:
-                    menukey: "cluster"
-                    icon: "fa-database"
-                    ordering: 35
-        }
-        "main.monitordisk": {
-            stateData:
-                url: "/monitordisk"
-                template: '<icsw-device-partition-overview icsw-sel-man="0"></icsw-device-partition-overview>'
-            icswData:
-                pageTitle: "Disk"
-                rights: ["mon_check_command.setup_monitoring"]
-                menuEntry:
-                    menukey: "mon"
-                    icon: "fa-hdd-o"
-                    ordering: 50
-        }
-        "main.scheddevice": {
-            stateData:
-                url: "/sched/device"
-                template: "<icsw-schedule-device icsw-sel-man='0'></icsw-schedule-device>"
-            icswData:
-                pageTitle: "Set Device Schedules"
-                # rights: ["mon_check_command.setup_monitoring", "device.change_monitoring"]
-                menuHeader:
-                    key: "sched"
-                    name: "Scheduling"
-                    icon: "fa-gears"
-                    ordering: 70
-                menuEntry:
-                    menukey: "sched"
-                    name: "Device settings"
-                    icon: "fa-laptop"
-                    ordering: 20
-                rights: ["device.dispatch_settings"]
-        }
-        "main.schedoverview": {
-            stateData:
-                url: "/sched/overview"
-                template: "<icsw-schedule-overview></icsw-schedule-overview>"
-            icswData:
-                pageTitle: "Schedule settings"
-                # rights: ["mon_check_command.setup_monitoring", "device.change_monitoring"]
-                menuEntry:
-                    menukey: "sched"
-                    name: "Settings"
-                    icon: "fa-gears"
-                    ordering: 10
-                rights: ["dispatchersetting.setup"]
-        }
-        "main.statictemplates": {
-            stateData:
-                url: "/sched/stattemp"
-                template: "<icsw-static-asset-template-overview></icsw-static-asset-template-overview>"
-            icswData:
-                pageTitle: "Static Asset templates"
-                # rights: ["mon_check_command.setup_monitoring", "device.change_monitoring"]
-                menuEntry:
-                    menukey: "sched"
-                    name: "Static Asset templates"
-                    icon: "fa-reorder"
-                    ordering: 30
-                rights: ["staticassettemplate.setup"]
-        }
-        "main.statushistory": {
-            stateData:
-                url: "/statushistory"
-                templateUrl: "icsw/main/status_history.html"
-            icswData:
-                pageTitle: "Status History"
-                licenses: ["reporting"]
-                rights: ["backbone.device.show_status_history"]
-                menuEntry:
-                    menukey: "stat"
-                    icon: "fa-pie-chart"
-                    ordering: 60
-        }
-        "main.monitorbasics": {
-            stateData:
-                url: "/monitorbasics"
-                template: "<icsw-monitoring-basic></icsw-monitoring-basic>"
-            icswData:
-                pageTitle: "Monitoring Basic setup"
-                menuHeader:
-                    key: "mon"
-                    name: "Monitoring"
-                    icon: "fa-gears"
-                    ordering: 70
-                rights: ["mon_check_command.setup_monitoring"]
-                menuEntry:
-                    menukey: "mon"
-                    name: "Basic setup"
-                    icon: "fa-bars"
-                    ordering: 0
-        }
-        "main.monitorredirect": {
-            stateData:
-                url: "/monitorredirect"
-                resolve: true
-            icswData:
-                redirect_to_from_on_error: true
-                menuEntry:
-                    menukey: "mon"
-                    name: "Icinga"
-                    icon: "fa-share-alt"
-                    ordering: 120
-                rights: ["mon_check_command.redirect_to_icinga"]
-        }
-        "main.monitorb0": {
-            stateData:
-                url: "/monitorb0"
-                resolve: true
-            icswData:
-                redirect_to_from_on_error: true
-                menuEntry:
-                    menukey: "mon"
-                    name: "rebuild config cached"
-                    icon: "fa-share-alt"
-                    labelClass: "label-success"
-                    ordering: 101
-                    preSpacer: true
-                rights: ["mon_check_command.create_config"]
-        }
-        "main.monitorb1": {
-            stateData:
-                url: "/monitorb1"
-                resolve: true
-            icswData:
-                redirect_to_from_on_error: true
-                menuEntry:
-                    menukey: "mon"
-                    name: "rebuild config dynamic"
-                    icon: "fa-share-alt"
-                    labelClass: "label-warning"
-                    ordering: 102
-                rights: ["mon_check_command.create_config"]
-        }
-        "main.monitorb2": {
-            stateData:
-                url: "/monitorb2"
-                resolve: true
-            icswData:
-                redirect_to_from_on_error: true
-                menuEntry:
-                    menukey: "mon"
-                    name: "rebuild config refresh"
-                    icon: "fa-share-alt"
-                    labelClass: "label-danger"
-                    ordering: 103
-                    postSpacer: true
-                rights: ["mon_check_command.create_config"]
-        }
-        "main.devicenetwork": {
-            stateData:
-                url: "/network"
-                template: '<icsw-device-network-total></icsw-device-network-total>'
-            icswData:
-                pageTitle: "Network"
-                rights: ["device.change_network"]
-                menuEntry:
-                    menukey: "dev"
-                    icon: "fa-sitemap"
-                    ordering: 30
-        }
-        "main.useraccount": {
-            stateData:
-                url: "/useraccount"
-                templateUrl: "icsw/main/user/account.html"
-            icswData:
-                pageTitle: "Account info"
-        }
-        "main.usertree": {
-            stateData:
-                url: "/usertree"
-                templateUrl: "icsw/main/user/tree.html"
-            icswData:
-                pageTitle: "User and Group tree"
-                menuHeader:
-                    key: "sys"
-                    name: "System"
-                    icon: "fa-cog"
-                    ordering: 100
-                rights: ["group.group_admin"]
-                menuEntry:
-                    menukey: "sys"
-                    name: "User"
-                    icon: "fa-user"
-                    ordering: 0
-        }
-        "main.devtree": {
-            stateData:
-                url: "/devtree"
-                templateUrl: "icsw/main/device/tree.html"
-            icswData:
-                pageTitle: "Device tree"
-                rights: ["user.modify_tree"]
-                menuEntry:
-                    menukey: "dev"
-                    icon: "fa-list"
-                    ordering: 15
-                dashboardEntry:
-                    size_x: 2
-                    size_y: 5
-        }
-        "main.licoverview": {
-            stateData:
-                url: "/licoverview"
-                templateUrl: "icsw/main/rms/licoverview.html"
-            icswData:
-                pageTitle: "License Liveview"
-                licenses: ["ext_license"]
-                service_types: ["rms-server"]
-                rights: ["user.license_liveview"]
-                menuEntry:
-                    menukey: "rms"
-                    name: "License liveview"
-                    icon: "fa-line-chart"
-                    ordering: 30
-                dashboardEntry:
-                    size_x: 2
-                    size_y: 6
-        }
-        "main.dashboard": {
-            stateData:
-                url: "/dashboard"
-                templateUrl: "icsw/main/dashboard.html"
-            icswData:
-                pageTitle: "Dashboard"
-        }
-        "main.userjobinfo": {
-            stateData:
-                url: "/userjobinfo"
-                templateUrl: 'icsw.dashboard.jobinfo'
-            icswData:
-                pageTitle: "RMS Information"
-                licenses: ["rms"]
-                service_types: ["rms-server"]
-                rights: ["user.rms_show"]
-                dashboardEntry:
-                    size_x: 3
-                    size_y: 2
-        }
-        "main.userquotainfo": {
-            stateData:
-                url: "/userquotainfo"
-                templateUrl: 'icsw.dashboard.diskquota'
-            icswData:
-                pageTitle: "User Disk and Quota info"
-                dashboardEntry:
-                    size_x: 3
-                    size_y: 2
-        }
-        "main.virtualdesktopinfo": {
-            stateData:
-                url: "/vduinfo"
-                templateUrl: "icsw.dashboard.virtualdesktops"
-            icswData:
-                pageTitle: "Virtual Desktops"
-                dashboardEntry:
-                    size_x: 3
-                    size_y: 2
-        }
-        "main.quicklinks": {
-            stateData:
-                url: "/quicklinks"
-                templateUrl: 'icsw.dashboard.quicklinks'
-            icswData:
-                pageTitle: "Quicklinks"
-                dashboardEntry:
-                    size_x: 2
-                    size_y: 1
-                    default_enabled: true
-        }
-        "main.externallinks": {
-            stateData:
-                url: "/externallinks"
-                templateUrl: 'icsw.dashboard.externallinks'
-            icswData:
-                pageTitle: "External links"
-                dashboardEntry:
-                    size_x: 2
-                    size_y: 1
-        }
-        "main.backgroundinfo": {
-            stateData:
-                url: "/sysbackgroundinfo"
-                templateUrl: "icsw/main/sysbackgroundinfo.html"
-            icswData:
-                pageTitle: "Background Job Information"
-        }
-        "main.deviceconnection": {
-            stateData:
-                url: "/deviceconnection"
-                templateUrl: "icsw/main/device/connection.html"
-            icswData:
-                pageTitle: "Device Connections"
-                rights: ["device.change_connection"]
-                menuEntry:
-                    menukey: "dev"
-                    name: "Device connections"
-                    icon: "fa-plug"
-                    ordering: 25
-        }
-        "main.devvars": {
-            stateData:
-                url: "/variables"
-                template: '<icsw-device-variable-overview icsw-sel-man="0"></icsw-device-variable-overview>'
-            icswData:
-                pageTitle: "Device variables"
-                rights: ["device.change_variables"]
-                menuEntry:
-                    menukey: "dev"
-                    icon: "fa-code"
-                    ordering: 30
-        }
-        "main.monitorhint": {
-            stateData:
-                url: "/monitorhint"
-                template: '<icsw-device-mon-config icsw-sel-man="0"></icsw-device-mon-config>'
-            icswData:
-                pageTitle: "Monitoring hints"
-                rights: ["mon_check_command.setup_monitoring"]
-                menuEntry:
-                    menukey: "mon"
-                    icon: "fa-info"
-                    ordering: 40
-        }
-        "main.deviceinfo": {
-            stateData:
-                url: "/deviceinfo"
-                template: '<icsw-simple-device-info icsw-sel-man="0"></icsw-simple-device-info>'
-            icswData:
-                pageTitle: "Device info"
-                rights: ["user.modify_tree"]
-                menuEntry:
-                    preSpacer: true
-                    menukey: "dev"
-                    icon: "fa-bars"
-                    ordering: 10
-                    postSpacer: true
-                dashboardEntry:
-                    size_x: 4
-                    size_y: 3
-                    allow_state: true
-        }
-        "main.eventlog": {
-            stateData:
-                url: "/eventlog"
-                template: '<icsw-discovery-event-log icsw-sel-man="0"></icsw-discovery-event-log>'
-            icswData:
-                pageTitle: "Syslog, WMI- und IPMI-Event logs"
-                licenses: ["discovery_server"]
-                rights: ["device.discovery_server"]
-                menuHeader:
-                    key: "stat"
-                    name: "Status"
-                    icon: "fa-line-chart"
-                    ordering: 50
-                menuEntry:
-                    menukey: "stat"
-                    name: "Syslog, WMI- and IPMI-Event logs"
-                    icon: "fa-list-alt"
-                    ordering: 100
-        }
-        "main.devicecreate": {
-            stateData:
-                url: "/devicecreate"
-                templateUrl: "icsw/main/device/create.html"
-            icswData:
-                valid_for_quicklink: true
-                pageTitle: "Create new Device"
-                menuHeader:
-                    key: "dev"
-                    name: "Device"
-                    icon: "fa-hdd-o"
-                    ordering: 0
-                rights: ["user.modify_tree"]
-                menuEntry:
-                    menukey: "dev"
-                    name: "Create new device"
-                    icon: "fa-plus-circle"
-                    ordering: 5
-        }
-        "main.configoverview": {
-            stateData:
-                url: "/configoverview"
-                # templateUrl: "icsw/main/device/config.html"
-                templateUrl: "icsw/main/config/overview.html"
-            icswData:
-                pageTitle: "Configuration Overview"
-                rights: ["device.change_config"]
-                menuEntry:
-                    menukey: "dev"
-                    name: "Configurations"
-                    icon: "fa-check-square-o"
-                    ordering: 10
-                    preSpacer: true
-        }
-        "main.devasset": {
-            stateData:
-                url: "/asset"
-                templateUrl: 'icsw/device/asset/overview'
-            icswData:
-                pageTitle: "Device Assets"
-                rights: ["device.assets"]
-                service_types: ["discovery-server"]
-                menuEntry:
-                    menukey: "dev"
-                    icon: "fa-code"
-                    ordering: 30
-                dashboardEntry:
-                    size_x: 3
-                    size_y: 3
-                    allow_state: true
-        }
-        "main.devlocation": {
-            stateData:
-                url: "/devlocation"
-                templateUrl: "icsw/main/device/location.html"
-            icswData:
-                pageTitle: "Device location"
-                rights: ["user.modify_category_tree"]
-                menuEntry:
-                    menukey: "dev"
-                    icon: "fa-map-marker"
-                    ordering: 40
-        }
-        "main.deviceconfig": {
-            stateData:
-                url: "/deviceconfig"
-                templateUrl: "icsw/main/device/config.html"
-            icswData:
-                pageTitle: "Configure Device"
-                rights: ["device.change_config"]
-                menuEntry:
-                    menukey: "dev"
-                    name: "Device Configurations"
-                    icon: "fa-check-square"
-                    ordering: 10
-        }
-        "main.imagekernel": {
-            stateData:
-                url: "/imagekernel"
-                templateUrl: "icsw/main/imagekernel.html"
-            icswData:
-                pageTitle: "Images and Kernels"
-                rights: ["image.modify_images", "kernel.modify_kernels"]
-                licenses: ["netboot"]
-                menuEntry:
-                    menukey: "cluster"
-                    icon: "fa-linux"
-                    ordering: 25
-        }
-        "main.livestatus": {
-            stateData:
-                url: "/livestatus/all"
-                template: '<icsw-device-livestatus icsw-livestatus-view="\'test\'"></icsw-device-livestatus>'
-            icswData:
-                pageTitle: "Monitoring dashboard"
-                licenses: ["monitoring_dashboard"]
-                rights: ["mon_check_command.show_monitoring_dashboard"]
-                menuEntry:
-                    menukey: "stat"
-                    icon: "fa-dot-circle-o"
-                    ordering: 20
-                dashboardEntry:
-                    size_x: 4
-                    size_y: 4
-        }
-        "main.categorytree": {
-            stateData:
-                url: "/categorytree"
-                templateUrl: "icsw/main/category/tree.html"
-            icswData:
-                pageTitle: "Category tree"
-                rights: ["user.modify_category_tree"]
-                menuEntry:
-                    menukey: "dev"
-                    name: "Device category"
-                    icon: "fa-table"
-                    ordering: 14
-        }
-        "main.syslicenseoverview": {
-            stateData:
-                url: "/syslicenseoverview"
-                templateUrl: "icsw/main/license/overview.html"
-            icswData:
-                pageTitle: "License information"
-                valid_for_quicklink: true
-                rights: ["$$CHECK_FOR_SUPERUSER"]
-                menuEntry:
-                    menukey: "sys"
-                    name: "License"
-                    icon: "fa-key"
-                    ordering: 20
-        }
-        "main.monitordevice": {
-            stateData:
-                url: "/monitordevice"
-                template: "<icsw-monitoring-device icsw-sel-man='0'></icsw-monitoring-device>"
-            icswData:
-                pageTitle: "Monitoring Device settings"
-                rights: ["mon_check_command.setup_monitoring", "device.change_monitoring"]
-                menuEntry:
-                    menukey: "mon"
-                    name: "Device settings"
-                    icon: "fa-laptop"
-                    ordering: 10
-        }
-        "main.monitorov": {
-            stateData:
-                url: "/monitorov"
-                template: "<icsw-monitoring-list-overview icsw-sel-man='0'></icsw-monitoring-list-overview>"
-            icswData:
-                pageTitle: "Monitoring List"
-                rights: ["mon_check_command.setup_monitoring"]
-                menuEntry:
-                    menukey: "mon"
-                    name: "Monitoring list"
-                    icon: "fa-list"
-                    ordering: 0
-        }
-        "main.monitorbuildinfo": {
-            stateData:
-                url: "/monitorbuildinfo"
-                template: "<icsw-monitoring-build-info></icsw-monitoring-build-info>"
-            icswData:
-                pageTitle: "Monitoring build info"
-                rights: ["mon_check_command.setup_monitoring"]
-                menuEntry:
-                    menukey: "mon"
-                    name: "Build info"
-                    icon: "fa-info-circle"
-                    ordering: 60
-        }
-        "main.packageinstall": {
-            stateData:
-                url: "/packageinstall"
-                template: "<icsw-package-install-overview ng-cloak/>"
-            icswData:
-                pageTitle: "Package install"
-                rights: ["package.package_install"]
-                licenses: ["package_install"]
-                menuEntry:
-                    menukey: "cluster"
-                    icon: "fa-download"
-                    ordering: 50
-        }
-        "main.monitorcluster": {
-            stateData:
-                url: "/monitorcluster"
-                template: "<icsw-monitoring-cluster></icsw-monitoring-cluster>"
-            icswData:
-                pageTitle: "Monitoring Cluster / Dependency setup"
-                rights: ["mon_check_command.setup_monitoring"]
-                menuEntry:
-                    menukey: "mon"
-                    name: "Cluster / Dependency setup"
-                    icon: "fa-chain"
-                    ordering: 20
-        }
-        "main.monitoresc": {
-            stateData:
-                url: "/monitoresc"
-                template: "<icsw-monitoring-escalation></icsw-monitoring-escalation>"
-            icswData:
-                pageTitle: "Monitoring Escalation setup"
-                rights: ["mon_check_command.setup_monitoring"]
-                menuEntry:
-                    menukey: "mon"
-                    name: "Escalation setup"
-                    icon: "fa-bolt"
-                    ordering: 30
-        }
-    }
-)
+])

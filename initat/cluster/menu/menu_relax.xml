@@ -9,15 +9,6 @@
     <oneOrMore>
         <element name="route">
             <attribute name="name"/>
-            <optional>
-                <attribute name="runs_on">
-                    <choice>
-                        <value>server</value>
-                        <value>client</value>
-                        <value>system</value>
-                    </choice>
-                </attribute>
-            </optional>
             <element name="stateData">
                 <attribute name="type">
                     <choice>
@@ -52,7 +43,7 @@
                     <attribute name="pageTitle_str"></attribute>
                 </optional>
                 <optional>
-                    <attribute name="valid_for_quicklink_bool">
+                    <attribute name="validForQuicklink_bool">
                         <choice>
                             <value>yes</value>
                             <value>no</value>
@@ -60,7 +51,7 @@
                     </attribute>
                 </optional>
                 <optional>
-                    <attribute name="redirect_to_from_on_error_bool">
+                    <attribute name="redirectToFromOnError_bool">
                         <choice>
                             <value>yes</value>
                             <value>no</value>
@@ -83,7 +74,7 @@
                         </element>
                     </optional>
                     <optional>
-                        <element name="service_types">
+                        <element name="serviceTypes">
                             <attribute name="type">
                                 <choice>
                                     <value>list</value>
@@ -91,7 +82,7 @@
                             </attribute>
                             <oneOrMore>
                                 <element name="value">
-                                    <text/>
+                                    <choice><value>SERVICETYPESLIST</value></choice>
                                 </element>
                             </oneOrMore>
                         </element>
@@ -105,7 +96,7 @@
                             </attribute>
                             <oneOrMore>
                                 <element name="value">
-                                    <text/>
+                                    <choice><value>RIGHTSLIST</value></choice>
                                 </element>
                             </oneOrMore>
                         </element>
@@ -172,10 +163,10 @@
                                     <value>dict</value>
                                 </choice>
                             </attribute>
-                            <attribute name="size_x_int"></attribute>
-                            <attribute name="size_y_int"></attribute>
+                            <attribute name="sizeX_int"></attribute>
+                            <attribute name="sizeY_int"></attribute>
                             <optional>
-                                <attribute name="allow_state_bool">
+                                <attribute name="allowState_bool">
                                     <choice>
                                         <value>yes</value>
                                         <value>no</value>
@@ -183,7 +174,7 @@
                                 </attribute>
                             </optional>
                             <optional>
-                                <attribute name="default_enabled_bool">
+                                <attribute name="defaultEnabled_bool">
                                     <choice>
                                         <value>yes</value>
                                         <value>no</value>

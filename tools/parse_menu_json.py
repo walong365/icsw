@@ -1,27 +1,22 @@
 #!/usr/bin/python-init -Otu
 
+import sys
+sys.path.append(".")
+import os
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
+
+import django
+django.setup()
+
+from initat.cluster.backbone.models import device, csw_permission
 from lxml import etree
 from lxml.builder import E
 import pprint
+import inflection
 
-f_path = "../initat/cluster/frontend/static/icsw/tools/init.coffee"
-
-
-class MenuRelax(object):
-    def __init__(self):
-        self.ng = etree.RelaxNG(
-            etree.fromstring(
-                file(
-                    "menu_relax.xml",
-                    "r",
-                ).read()
-            )
-        )
-
-    def validate(self, in_xml):
-        _valid = self.ng.validate(in_xml)
-        if not _valid:
-            print self.ng.error_log
+# f_path = "/usr/local/share/home/local/development/git/icsw/initat/cluster/frontend/static/icsw/tools/init.coffee"
+# f_path = "/usr/local/share/home/local/development/git/liebherr/initat/cluster/liebherr/static/icsw/liebherr/cransys.coffee"
 
 
 class Route(object):
@@ -60,12 +55,16 @@ class Route(object):
     def _list_to_xml(self, l_name, l_values):
         _xml = getattr(E, l_name)(type="list")
         for _value in l_values:
+            if l_name == "rights":
+                if not _value.startswith("$$") and not _value.startswith("backbone"):
+                    _value = "backbone.{}".format(_value)
             _xml.append(E.value(_value))
         return _xml
 
     def _dict_to_xml(self, s_dict, d_name):
+
         _allowed_keys = {
-            "stateData": ["url", "template", "templateUrl", "resolve"],
+            "stateData": ["url", "template", "templateUrl", "resolve", "abstract"],
             "icswData": [
                 "pageTitle", "licenses", "menuEntry",
                 "dashboardEntry", "rights", "menuHeader",
@@ -88,7 +87,7 @@ class Route(object):
         _dict_keys = ["menuEntry", "dashboardEntry", "menuHeader"]
         _bool_keys = [
             "allow_state", "redirect_to_from_on_error", "resolve", "valid_for_quicklink",
-            "preSpacer", "postSpacer", "default_enabled",
+            "preSpacer", "postSpacer", "default_enabled", "abstract",
         ]
         _allowed_keys = _allowed_keys[d_name]
         _xml = getattr(E, d_name)(type="dict")
@@ -102,26 +101,28 @@ class Route(object):
                         d_name,
                     )
                 )
+            _t_key = inflection.camelize(_key, uppercase_first_letter=False)
             if _key in _list_keys:
-                _xml.append(self._list_to_xml(_key, _dict[_key]))
+                _xml.append(self._list_to_xml(_t_key, _dict[_key]))
             elif _key in _dict_keys:
                 _xml.append(self._dict_to_xml(_dict, _key))
             elif _key in _bool_keys:
-                _xml.attrib["{}_bool".format(_key)] = "yes" if _dict[_key] else "no"
+                _xml.attrib["{}_bool".format(_t_key)] = "yes" if _dict[_key] else "no"
             else:
                 _val = _dict[_key]
                 if type(_val) in [int, long]:
-                    _xml.attrib["{}_int".format(_key)] = "{:d}".format(_val)
+                    _xml.attrib["{}_int".format(_t_key)] = "{:d}".format(_val)
                 else:
-                    _xml.attrib["{}_str".format(_key)] = _val
+                    _xml.attrib["{}_str".format(_t_key)] = _val
         return _xml
 
     def to_xml(self):
-        return E.route(
-            self._dict_to_xml(self.dicts, "stateData"),
-            self._dict_to_xml(self.dicts, "icswData"),
+        _r = E.route(
             name=self.name
         )
+        for _sn in ["stateData", "icswData"]:
+            _r.append(self._dict_to_xml(self.dicts, _sn))
+        return _r
 
 
 def main():
@@ -163,8 +164,8 @@ def main():
     xml_routes = E.routes()
     for _r in routes:
         xml_routes.append(_r.to_xml())
-    print etree.tostring(xml_routes, pretty_print=True)
     _my_relax = MenuRelax()
+    print etree.tostring(xml_routes, pretty_print=True)
     _my_relax.validate(xml_routes)
 
 

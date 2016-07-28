@@ -222,7 +222,7 @@
                 <td class="text-center">{{ obj.icswData.$$allowed | yesno1 }}</td>
                 <td class="text-center">{{ obj.icswData.$$menuHeader | yesno1 }}</td>
                 <td class="text-center">{{ obj.icswData.$$menuEntry | yesno1 }}</td>
-                <td class="text-center">{{ obj.icswData.valid_for_quicklink | yesno1 }}</td>
+                <td class="text-center">{{ obj.icswData.validForQuicklink | yesno1 }}</td>
                 <td class="text-center">{{ obj.icswData.$$dashboardEntry | yesno1 }}</td>
                 <td>{{ obj.icswData.pageTitle }}</td>
                 <td>
@@ -256,7 +256,7 @@
                     {{ obj.icswData.$$licenses_info }}
                 </td>
                 <td class="text-center">
-                    {{ obj.icswData.$$service_types_info }}
+                    {{ obj.icswData.$$serviceTypes_info }}
                 </td>
                 <td class="text-center">
                     <icsw-tools-button type="create" value="go" size="xs" ng-click="go($event, obj)"></icsw-tools-button>
