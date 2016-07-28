@@ -577,7 +577,7 @@ gulp.task("fix-main-import-path", (cb) ->
         {read: false}
     ).pipe(
         run(
-            "./manage.py inject_addons --srcfile=#{COMPILE_DIR}/main.html --cleanup-path --modify",
+            "./manage.py inject_addons --srcfile=#{COMPILE_DIR}/main.html --cleanup-path --modify --with-addons=#{options.addons}",
             {verbosity: 0}
         )
     )
@@ -590,7 +590,7 @@ gulp.task("inject-addons-to-main", (cb) ->
         {read: false}
     ).pipe(
         run(
-            "./manage.py inject_addons --srcfile=#{COMPILE_DIR}/main.html --modify",
+            "./manage.py inject_addons --srcfile=#{COMPILE_DIR}/main.html --modify --with-addons=#{options.addons}",
             {verbosity: 0}
         )
     )
