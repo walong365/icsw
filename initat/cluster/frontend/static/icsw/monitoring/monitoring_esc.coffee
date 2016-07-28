@@ -30,21 +30,8 @@ monitoring_cluster_module = angular.module(
         templateUrl: "icsw.monitoring.escalation"
         controller: "icswMonitoringEscalationCtrl",
     }
-).config(["$stateProvider",  "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
-    $stateProvider.state(
-        "main.monitoresc", {
-            url: "/monitoresc"
-            template: "<icsw-monitoring-escalation></icsw-monitoring-escalation>"
-            icswData: icswRouteExtensionProvider.create
-                pageTitle: "Monitoring Escalation setup"
-                rights: ["mon_check_command.setup_monitoring"]
-                menuEntry:
-                    menukey: "mon"
-                    name: "Escalation setup"
-                    icon: "fa-bolt"
-                    ordering: 30
-        }
-    )
+).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    icswRouteExtensionProvider.add_route("main.monitoresc")
 ]).service("icswMonitoringEscalationTree",
 [
     "$q", "Restangular", "ICSW_URLS", "ICSW_SIGNALS", "icswTools",

@@ -20,21 +20,8 @@
 angular.module(
     "icsw.history",
     []
-).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
-    $stateProvider.state(
-        "main.history", {
-            url: "/history"
-            template: "<icsw-history-overview></icsw-history-overview>"
-            icswData: icswRouteExtensionProvider.create
-                pageTitle: "Database history"
-                rights: ["user.snapshots"]
-                menuEntry:
-                    menukey: "sys"
-                    name: "History"
-                    icon: "fa-history"
-                    ordering: 10
-        }
-    )
+).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    icswRouteExtensionProvider.add_route("main.history")
 ]).directive("icswHistoryOverview",
 [
     'icswHistoryDataService',

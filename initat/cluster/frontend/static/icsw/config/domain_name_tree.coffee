@@ -24,20 +24,8 @@ angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "ui.select",
         "restangular", "icsw.backend.domain_name_tree",
     ]
-).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
-    $stateProvider.state(
-        "main.domaintree", {
-            url: "/domaintree"
-            templateUrl: "icsw/main/device/domaintree.html"
-            icswData: icswRouteExtensionProvider.create
-                pageTitle: "Domain name tree"
-                rights: ["user.modify_domain_name_tree"]
-                menuEntry:
-                    menukey: "dev"
-                    icon: "fa-list-alt"
-                    ordering: 45
-        }
-    )
+).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    icswRouteExtensionProvider.add_route("main.domaintree")
 ]).service("icswConfigDomainNameTreeService",
 [
     "icswReactTreeConfig",

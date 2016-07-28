@@ -23,16 +23,8 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
-).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
-    $stateProvider.state(
-        "main.backgroundinfo",
-          {
-              url: "/sysbackgroundinfo"
-              templateUrl: "icsw/main/sysbackgroundinfo.html"
-              icswData: icswRouteExtensionProvider.create
-                  pageTitle: "Background Job Information"
-          }
-    )
+).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    icswRouteExtensionProvider.add_route("main.backgroundinfo")
 ]).service("icswSystemBackgroundInfoRestService",
 [
     "$q", "Restangular", "icswCachingCall", "ICSW_URLS",
