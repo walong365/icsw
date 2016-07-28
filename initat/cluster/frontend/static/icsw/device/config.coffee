@@ -23,22 +23,8 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "icsw.d3", "icsw.tools.button"
     ]
-).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
-    $stateProvider.state(
-        "main.deviceconfig"
-            {
-                url: "/deviceconfig"
-                templateUrl: "icsw/main/device/config.html"
-                icswData: icswRouteExtensionProvider.create
-                    pageTitle: "Configure Device"
-                    rights: ["device.change_config"]
-                    menuEntry:
-                        menukey: "dev"
-                        name: "Device Configurations"
-                        icon: "fa-check-square"
-                        ordering: 10
-            }
-    )
+).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    icswRouteExtensionProvider.add_route("main.deviceconfig")
 ]).service("icswDeviceConfigHelper",
 [
     "$q", "$rootScope", "ICSW_SIGNALS", "icswSimpleAjaxCall", "ICSW_URLS",

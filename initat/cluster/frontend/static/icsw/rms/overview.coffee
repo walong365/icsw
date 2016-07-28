@@ -23,31 +23,8 @@ rms_module = angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.bootstrap.datetimepicker", "angular-ladda"
     ]
-).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
-    $stateProvider.state(
-        "main.rmsoverview", {
-            url: "/rmsoverview"
-            templateUrl: "icsw/main/rms/overview.html"
-            icswData: icswRouteExtensionProvider.create
-                pageTitle: "RMS Overview"
-                licenses: ["rms"]
-                service_types: ["rms-server"]
-                rights: ["user.rms_show"]
-                menuHeader:
-                    key: "rms"
-                    name: "RMS"
-                    icon: "fa-list-ol"
-                    ordering: 90
-                menuEntry:
-                    menukey: "rms"
-                    name: "RMS Overview"
-                    icon: "fa-table"
-                    ordering: 0
-                dashboardEntry:
-                    size_x: 4
-                    size_y: 6
-        }
-    )
+).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    icswRouteExtensionProvider.add_route("main.rmsoverview")
 ]).directive("icswRmsOverview",
 [
     "$templateCache",

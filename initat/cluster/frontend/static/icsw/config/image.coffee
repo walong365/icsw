@@ -23,21 +23,8 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
-).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
-    $stateProvider.state(
-        "main.imagekernel", {
-            url: "/imagekernel"
-            templateUrl: "icsw/main/imagekernel.html"
-            icswData: icswRouteExtensionProvider.create
-                pageTitle: "Images and Kernels"
-                rights: ["image.modify_images", "kernel.modify_kernels"]
-                licenses: ["netboot"]
-                menuEntry:
-                    menukey: "cluster"
-                    icon: "fa-linux"
-                    ordering: 25
-        }
-    )
+).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    icswRouteExtensionProvider.add_route("main.imagekernel")
 ]).service("icswImageTree",
 [
     "ICSW_URLS", "$q", "$rootScope",

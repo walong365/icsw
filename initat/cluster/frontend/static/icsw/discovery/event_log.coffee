@@ -22,27 +22,8 @@ angular.module(
     "icsw.discovery.event_log",
     [
     ]
-).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
-    $stateProvider.state(
-        "main.eventlog", {
-            url: "/eventlog"
-            template: '<icsw-discovery-event-log icsw-sel-man="0"></icsw-discovery-event-log>'
-            icswData: icswRouteExtensionProvider.create
-                pageTitle: "Syslog, WMI- und IPMI-Event logs"
-                licenses: ["discovery_server"]
-                rights: ["device.discovery_server"]
-                menuHeader:
-                    key: "stat"
-                    name: "Status"
-                    icon: "fa-line-chart"
-                    ordering: 50
-                menuEntry:
-                    menukey: "stat"
-                    name: "Syslog, WMI- and IPMI-Event logs"
-                    icon: "fa-list-alt"
-                    ordering: 100
-        }
-    )
+).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    icswRouteExtensionProvider.add_route("main.eventlog")
 ]).controller("icswDiscoveryEventCtrl",
 [
     "$scope", 'Restangular', 'ICSW_URLS', '$timeout', '$q', 'icswSimpleAjaxCall', 'toaster',

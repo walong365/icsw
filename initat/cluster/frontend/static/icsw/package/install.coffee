@@ -24,21 +24,8 @@ package_module = angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap",
         "init.csw.filters", "restangular", "ui.select", "icsw.tools.table",
     ]
-).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
-    $stateProvider.state(
-        "main.packageinstall", {
-            url: "/packageinstall"
-            template: "<icsw-package-install-overview ng-cloak/>"
-            icswData: icswRouteExtensionProvider.create
-                pageTitle: "Package install"
-                rights: ["package.package_install"]
-                licenses: ["package_install"]
-                menuEntry:
-                    menukey: "cluster"
-                    icon: "fa-download"
-                    ordering: 50
-        }
-    )
+).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    icswRouteExtensionProvider.add_route("main.packageinstall")
 ]).service("icswPackageInstallRepositoryTree",
 [
     "Restangular", "ICSW_URLS", "$q",

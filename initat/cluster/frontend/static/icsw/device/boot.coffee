@@ -24,27 +24,8 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "restangular", "ui.select"
     ]
-).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
-    $stateProvider.state(
-        "main.deployboot", {
-            url: "/deployboot"
-            templateUrl: "icsw/main/deploy/boot.html"
-            icswData: icswRouteExtensionProvider.create
-                pageTitle: "Boot nodes"
-                rights: ["device.change_boot"]
-                service_types: ["mother"]
-                licenses: ["netboot"]
-                menuHeader:
-                    key: "cluster"
-                    name: "Cluster"
-                    icon: "fa-cubes"
-                    ordering: 80
-                menuEntry:
-                    menukey: "cluster"
-                    icon: "fa-rocket"
-                    ordering: 10
-        }
-    )
+).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    icswRouteExtensionProvider.add_route("main.deployboot")
 ]).service("icswLogTree",
 [
     "$q",

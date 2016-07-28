@@ -26,58 +26,13 @@ monitoring_device_module = angular.module(
         "icsw.device.asset",
     ]
 ).config([
-    "$stateProvider", "icswRouteExtensionProvider",
+    "icswRouteExtensionProvider",
 (
-    $stateProvider, icswRouteExtensionProvider,
+    icswRouteExtensionProvider,
 ) ->
-    $stateProvider.state(
-        "main.scheddevice", {
-            url: "/sched/device"
-            template: "<icsw-schedule-device icsw-sel-man='0'></icsw-schedule-device>"
-            icswData: icswRouteExtensionProvider.create
-                pageTitle: "Set Device Schedules"
-                # rights: ["mon_check_command.setup_monitoring", "device.change_monitoring"]
-                menuHeader:
-                    key: "sched"
-                    name: "Scheduling"
-                    icon: "fa-gears"
-                    ordering: 70
-                menuEntry:
-                    menukey: "sched"
-                    name: "Device settings"
-                    icon: "fa-laptop"
-                    ordering: 20
-                rights: ["device.dispatch_settings"]
-        }
-    ).state(
-        "main.schedoverview", {
-            url: "/sched/overview"
-            template: "<icsw-schedule-overview></icsw-schedule-overview>"
-            icswData: icswRouteExtensionProvider.create
-                pageTitle: "Schedule settings"
-                # rights: ["mon_check_command.setup_monitoring", "device.change_monitoring"]
-                menuEntry:
-                    menukey: "sched"
-                    name: "Settings"
-                    icon: "fa-gears"
-                    ordering: 10
-                rights: ["dispatchersetting.setup"]
-        }
-    ).state(
-        "main.statictemplates", {
-            url: "/sched/stattemp"
-            template: "<icsw-static-asset-template-overview></icsw-static-asset-template-overview>"
-            icswData: icswRouteExtensionProvider.create
-                pageTitle: "Static Asset templates"
-                # rights: ["mon_check_command.setup_monitoring", "device.change_monitoring"]
-                menuEntry:
-                    menukey: "sched"
-                    name: "Static Asset templates"
-                    icon: "fa-reorder"
-                    ordering: 30
-                rights: ["staticassettemplate.setup"]
-        }
-    )
+    icswRouteExtensionProvider.add_route("main.scheddevice")
+    icswRouteExtensionProvider.add_route("main.schedoverview")
+    icswRouteExtensionProvider.add_route("main.statictemplates")
 ]).service("icswDispatcherSettingTree",
 [
     "$q", "Restangular", "ICSW_URLS", "icswAssetHelperFunctions",
