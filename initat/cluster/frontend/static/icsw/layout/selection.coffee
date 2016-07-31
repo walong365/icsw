@@ -314,7 +314,7 @@ angular.module(
                     else
                         dev_pk_nmd_list.push(_pk)
                 else
-                    console.log "device with pk #{_pk} is not resolvable"
+                    console.warn "device with pk #{_pk} is not resolvable"
             return [dev_pk_list, dev_pk_nmd_list, devg_pk_list, dev_pk_md_list]
 
         category_selected: (cat_idx) ->

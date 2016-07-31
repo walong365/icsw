@@ -128,7 +128,7 @@ sources = {
         [
             # no longer needed ... ?
             # "frontend/static/js/modernizr-2.8.1.min.js",
-            "frontend/static/js/jquery-2.2.4.min.js",
+            "frontend/static/js/jquery-3.1.0.min.js",
             # ace editor
             "frontend/static/js/ace-noconflict.js",
             "frontend/static/js/mode-python.js",
@@ -159,10 +159,10 @@ sources = {
             "frontend/static/js/webfrontend_translation.js",
             "frontend/static/js/angular-gridster.js",
             "frontend/static/js/angular-promise-extras.js",
-            "frontend/static/js/react-15.2.1.js",
-            "frontend/static/js/react-dom-15.2.1.js",
+            "frontend/static/js/react-15.3.0.js",
+            "frontend/static/js/react-dom-15.3.0.js",
             # not needed ?
-            "frontend/static/js/react-draggable.js",
+            # "frontend/static/js/react-draggable.js",
             "frontend/static/js/hotkeys.js",
             # ace editor
             "frontend/static/js/ui-ace.js",
