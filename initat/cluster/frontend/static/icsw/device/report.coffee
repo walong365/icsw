@@ -29,22 +29,8 @@ device_report_module = angular.module(
 
     $compileProvider.aHrefSanitizationWhitelist(/^\s*(https?|ftp|mailto|tel|file|blob):/)
 
-    $stateProvider.state(
-        "main.report", {
-            url: "/report"
-            templateUrl: 'icsw/device/report/overview'
-            icswData: icswRouteExtensionProvider.create
-                pageTitle: "Device Reporting"
-                menuEntry:
-                    menukey: "dev"
-                    icon: "fa-book"
-                    ordering: 100
-                dashboardEntry:
-                    size_x: 3
-                    size_y: 3
-                    allow_state: true
-        }
-    )
+    icswRouteExtensionProvider.add_route("main.report")
+
 ]).directive("icswDeviceReportOverview",
 [
     "$templateCache",
@@ -284,9 +270,10 @@ device_report_module = angular.module(
                                             dataType: 'json'
                                         }).then(
                                             (result) ->
-                                                $scope.struct.report_download_name = "Report.pdf"
-                                                blob = new Blob([ atob(result.pdf) ], { type : 'application/pdf' })
-                                                $scope.struct.report_download_url = (window.URL || window.webkitURL).createObjectURL(blob)
+                                                if result.pdf
+                                                    $scope.struct.report_download_name = "Report.pdf"
+                                                    blob = new Blob([ atob(result.pdf) ], { type : 'application/pdf' })
+                                                    $scope.struct.report_download_url = (window.URL || window.webkitURL).createObjectURL(blob)
 
                                                 $scope.struct.report_generating = false
                                                 $scope.struct.generate_button_disabled = false
