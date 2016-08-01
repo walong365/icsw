@@ -34,21 +34,8 @@ monitoring_cluster_module = angular.module(
         template: $templateCache.get("icsw.monitoring.cluster")
         controller: "icswMonitoringClusterCtrl"
     }
-]).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
-    $stateProvider.state(
-        "main.monitorcluster", {
-            url: "/monitorcluster"
-            template: "<icsw-monitoring-cluster></icsw-monitoring-cluster>"
-            icswData: icswRouteExtensionProvider.create
-                pageTitle: "Monitoring Cluster / Dependency setup"
-                rights: ["mon_check_command.setup_monitoring"]
-                menuEntry:
-                    menukey: "mon"
-                    name: "Cluster / Dependency setup"
-                    icon: "fa-chain"
-                    ordering: 20
-        }
-    )
+]).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    icswRouteExtensionProvider.add_route("main.monitorcluster")
 ]).service("icswMonitoringClusterTree",
 [
     "$q", "Restangular", "ICSW_URLS", "ICSW_SIGNALS", "icswTools",

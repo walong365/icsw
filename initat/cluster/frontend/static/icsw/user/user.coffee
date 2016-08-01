@@ -46,34 +46,9 @@ user_module = angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular",
         "noVNC", "ui.select", "icsw.tools", "icsw.user.password", "icsw.layout.theme",
     ]
-).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
-    $stateProvider.state(
-        "main.useraccount", {
-            url: "/useraccount"
-            templateUrl: "icsw/main/user/account.html"
-            icswData: icswRouteExtensionProvider.create
-                pageTitle: "Account info"
-        }
-    )
-    $stateProvider.state(
-        "main.usertree", {
-            url: "/usertree"
-            templateUrl: "icsw/main/user/tree.html"
-            icswData: icswRouteExtensionProvider.create
-                pageTitle: "User and Group tree"
-                menuHeader:
-                    key: "sys"
-                    name: "System"
-                    icon: "fa-cog"
-                    ordering: 100
-                rights: ["group.group_admin"]
-                menuEntry:
-                    menukey: "sys"
-                    name: "User"
-                    icon: "fa-user"
-                    ordering: 0
-        }
-    )
+).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    icswRouteExtensionProvider.add_route("main.useraccount")
+    icswRouteExtensionProvider.add_route("main.usertree")
 ]).service("icswUserGroupTools", [() ->
     return {
 
@@ -296,6 +271,7 @@ user_module = angular.module(
 
         force_logout: () =>
             @cancel_pending_load()
+            $rootScope.$emit(ICSW_SIGNALS("ICSW_USER_NOUSER"))
             return @logout()
 
         update: () =>

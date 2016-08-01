@@ -27,25 +27,8 @@ angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters",
         "restangular", "icsw.rrd.graphsetting",
     ]
-).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
-    $stateProvider.state(
-        "main.graph", {
-            url: "/graph"
-            templateUrl: "icsw.rrd.graph"
-            icswData: icswRouteExtensionProvider.create
-                pageTitle: "Graph"
-                licenses: ["graphing"]
-                rights: ["backbone.device.show_graphs"]
-                menuEntry:
-                    menukey: "stat"
-                    icon: "fa-line-chart"
-                    ordering: 40
-                dashboardEntry:
-                    size_x: 3
-                    size_y: 3
-                    allow_state: true
-        }
-    )
+).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    icswRouteExtensionProvider.add_route("main.graph")
 ]).service("icswRRDSensor", [()->
 
     class icswRRDSensor
@@ -1079,6 +1062,14 @@ angular.module(
         th_scope = scope.$new()
         th_scope.sensor = sensor
         th_scope.threshold = threshold
+
+        if !create
+            th_scope.threshold.notify_users_obj = threshold.notify_users
+
+            for device_selection in sensor.graph.selection_list
+                if threshold.device_selection == device_selection.idx
+                    th_scope.threshold.device_selection_obj = device_selection
+
         console.log "args:", create, sensor, threshold
         if create
             title = "Create new Threshold"
@@ -1104,13 +1095,23 @@ angular.module(
                 ok_label: if create then "Create" else "Modify"
                 ok_callback: (modal) ->
                     d = $q.defer()
-                    if create
-                        user_settings.create_threshold_entry(sensor, th_scope.threshold).then(
-                            (created) ->
+                    th_scope.threshold.notify_users = threshold.notify_users_obj
+                    th_scope.threshold.device_selection = threshold.device_selection_obj.idx
+                    user_settings.create_threshold_entry(sensor, th_scope.threshold).then(
+                        (created) ->
+                            if !create
+                                user_settings.remove_threshold_entry(sensor, th_scope.threshold).then(
+                                    (ok) ->
+                                        d.resolve("done")
+                                    (not_ok) ->
+                                        d.reject("no")
+                                )
+
+                            else
                                 d.resolve("done")
-                            (error) ->
-                                d.reject("no")
-                        )
+                        (error) ->
+                            d.reject("no")
+                    )
                     return d.promise
                 cancel_callback: (modal) ->
                     d = $q.defer()

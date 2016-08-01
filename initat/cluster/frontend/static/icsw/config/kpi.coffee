@@ -23,21 +23,8 @@ angular.module(
     [
         "icsw.tools.utils", "icsw.d3", "icsw.config.kpi_visualisation", "angular-ladda",
     ]
-).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
-    $stateProvider.state(
-        "main.kpi", {
-            url: "/kpi"
-            template: "<icsw-config-kpi></icsw-config-kpi>"
-            icswData: icswRouteExtensionProvider.create
-                pageTitle: "Key performance indicators"
-                licenses: ["kpi"]
-                rights: ["kpi.kpi"]
-                menuEntry:
-                    menukey: "stat"
-                    icon: "fa-code-fork"
-                    ordering: 60
-        }
-    )
+).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    icswRouteExtensionProvider.add_route("main.kpi")
 ]).controller("icswConfigKpiCtrl",
 [
     "$scope", "ICSW_URLS", "icswConfigKpiDataService", "$timeout", "icswAcessLevelService"

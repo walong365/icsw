@@ -128,7 +128,7 @@ sources = {
         [
             # no longer needed ... ?
             # "frontend/static/js/modernizr-2.8.1.min.js",
-            "frontend/static/js/jquery-2.2.4.min.js",
+            "frontend/static/js/jquery-3.1.0.min.js",
             # ace editor
             "frontend/static/js/ace-noconflict.js",
             "frontend/static/js/mode-python.js",
@@ -159,10 +159,10 @@ sources = {
             "frontend/static/js/webfrontend_translation.js",
             "frontend/static/js/angular-gridster.js",
             "frontend/static/js/angular-promise-extras.js",
-            "frontend/static/js/react-15.2.1.js",
-            "frontend/static/js/react-dom-15.2.1.js",
+            "frontend/static/js/react-15.3.0.js",
+            "frontend/static/js/react-dom-15.3.0.js",
             # not needed ?
-            "frontend/static/js/react-draggable.js",
+            # "frontend/static/js/react-draggable.js",
             "frontend/static/js/hotkeys.js",
             # ace editor
             "frontend/static/js/ui-ace.js",
@@ -370,14 +370,14 @@ gulp.task("inject-urls-to-app", (cb) ->
     )
 )
 
-gulp.task("inject-addons-to-app", (cb) ->
-    # modify app.js with additional modules
+gulp.task("inject-menu-and-js-to-app", (cb) ->
+    # add menus and addon related code to app.js
     return gulp.src(
         "#{DEPLOY_DIR}/app.js",
         {read: false}
     ).pipe(
         run(
-            "./manage.py inject_addons --srcfile=#{DEPLOY_DIR}/app.js --modify",
+            "./manage.py inject_addons --srcfile=#{DEPLOY_DIR}/app.js --modify --with-addons=#{options.addons}",
             {verbosity: 0}
         )
     )
@@ -577,7 +577,7 @@ gulp.task("fix-main-import-path", (cb) ->
         {read: false}
     ).pipe(
         run(
-            "./manage.py inject_addons --srcfile=#{COMPILE_DIR}/main.html --cleanup-path --modify",
+            "./manage.py inject_addons --srcfile=#{COMPILE_DIR}/main.html --cleanup-path --modify --with-addons=#{options.addons}",
             {verbosity: 0}
         )
     )
@@ -590,7 +590,7 @@ gulp.task("inject-addons-to-main", (cb) ->
         {read: false}
     ).pipe(
         run(
-            "./manage.py inject_addons --srcfile=#{COMPILE_DIR}/main.html --modify",
+            "./manage.py inject_addons --srcfile=#{COMPILE_DIR}/main.html --modify --with-addons=#{options.addons}",
             {verbosity: 0}
         )
     )
@@ -623,13 +623,13 @@ gulp.task("reload-main", (cb) ->
 
 
 if options.addons
-    gulp.task("modify-app-js", gulp.series("create-all-urls", "inject-urls-to-app", "inject-addons-to-app"))
+    gulp.task("modify-app-js", gulp.series("create-all-urls", "inject-urls-to-app", "inject-menu-and-js-to-app"))
     gulp.task("deploy-all", gulp.series("deploy-css", "deploy-js", "deploy-html", "deploy-addons", "deploy-themes"))
     gulp.task("setup-main", gulp.series("modify-app-js", "transform-main", "fix-main-import-path", "import_css"))
     gulp.task("deploy-and-transform-all", gulp.series("deploy-all", "setup-main", "inject-addons-to-main", "copy-main"))
     gulp.task("rebuild-after-watch", gulp.series("deploy-all", "transform-main", "fix-main-import-path", "inject-addons-to-main", "copy-main", "reload-main"))
 else
-    gulp.task("modify-app-js", gulp.series("create-all-urls", "inject-urls-to-app"))
+    gulp.task("modify-app-js", gulp.series("create-all-urls", "inject-urls-to-app", "inject-menu-and-js-to-app"))
     gulp.task("deploy-all", gulp.series("deploy-css", "deploy-js", "deploy-html", "deploy-themes"))
     gulp.task("setup-main", gulp.series("modify-app-js", "transform-main", "fix-main-import-path", "import_css"))
     gulp.task("deploy-and-transform-all", gulp.series("deploy-all", "setup-main", "copy-main"))

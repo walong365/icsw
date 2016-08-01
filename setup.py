@@ -268,36 +268,7 @@ setup(
         ),
 
     ],
-    scripts=[
-    ],
     package_data={
-        "initat.cluster.frontend": [
-            # "static/css/*",
-            # "static/fonts/*",
-            # "static/icons/*",
-            # "static/icsw/*/*.coffee",
-            # "static/icsw/*/*.html",
-            # "static/icsw/*/*/*.coffee",
-            # "static/icsw/*/*/*.html",
-            # "static/images/*",
-            # "static/images/*/*",
-            # "static/images/*/*/*",
-            # "static/css/*",
-            # "static/css/*/*",
-            # "static/js/*",
-            # "static/js/*/*",
-            # "static/js/*/*/*",
-            # "static/js/*/*/*/*",
-            # "static/js/*/*/*/*/*",
-            # "templates/*.html",
-            # "templates/js/*.js",
-        ],
-        "initat.cluster": [
-            # "runserver.sh",
-        ],
-        "initat.cluster.rms": [
-            # "templates/*.html",
-        ],
         "initat.cluster.backbone": [
             "fixtures_deprecated/*.xml",
         ],

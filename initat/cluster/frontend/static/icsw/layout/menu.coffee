@@ -63,9 +63,10 @@ menu_module = angular.module(
             $scope.HANDBOOK_PDF_PRESENT = data[0].HANDBOOK_PDF_PRESENT
             $scope.HANDBOOK_CHUNKS_PRESENT = data[0].HANDBOOK_CHUNKS_PRESENT
     )
+
+    ### TF
     $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"), (event) ->
         _cur_sel = icswActiveSelectionService.current()
-
         _cur_check_to = undefined
         _install_to = () ->
             if _cur_check_to
@@ -93,6 +94,8 @@ menu_module = angular.module(
         _future_tot = _current_tot
         _show_string(_current_tot, _future_tot)
     )
+    ###
+
 
     $scope.get_progress_style = (obj) ->
         return {width: "#{obj.value}%"}
@@ -102,7 +105,7 @@ menu_module = angular.module(
         return false
 
     $scope.device_selection = ($event) ->
-        icswLayoutSelectionDialogService.quick_dialog($event)
+        icswLayoutSelectionDialogService.quick_dialog("right")
 
     $scope.handbook_url = "/"
     $scope.handbook_url_valid = false
@@ -143,6 +146,7 @@ menu_module = angular.module(
             if icswUserService.user_present()
                 icswUserService.logout()
             icswUserService.force_logout()
+            $rootScope.$broadcast ICSW_SIGNALS("ICSW_USER_NOUSER")
             $scope.struct.current_user = undefined
     )
 
@@ -156,10 +160,13 @@ menu_module = angular.module(
             icswUserService.logout().then(
                 (json) ->
                     blockUI.stop()
+                    $rootScope.$broadcast ICSW_SIGNALS("ICSW_USER_NOUSER")
                     $scope.struct.current_user = undefined
             )
         else if not from_main and to_main
             $scope.struct.current_user = icswUserService.get().user
+            if $scope.struct.current_user?
+                $rootScope.$broadcast ICSW_SIGNALS("ICSW_USER_LOGGEDIN")
             _helper = icswRouterHelper.get_struct()
             # todo, unify rights checking
             # console.log _helper.valid
@@ -180,7 +187,7 @@ menu_module = angular.module(
         console.error "error moving to state #{to_state.name} (#{to_state}), error is #{error}"
         _to_login = true
         if to_state.icswData?
-            if to_state.icswData.redirect_to_from_on_error
+            if to_state.icswData.redirectToFromOnError
                 _to_login = false
         if _to_login
             $state.go("login")
@@ -224,11 +231,11 @@ menu_module = angular.module(
 [
     "$templateCache", "ICSW_URLS", "$timeout", "icswSimpleAjaxCall", "initProduct",
     "icswMenuProgressService", "icswLayoutSelectionDialogService", "ICSW_SIGNALS",
-    "$rootScope",
+    "$rootScope", "$state",
 (
     $templateCache, ICSW_URLS, $timeout, icswSimpleAjaxCall, initProduct,
     icswMenuProgressService, icswLayoutSelectionDialogService, ICSW_SIGNALS,
-    $rootScope,
+    $rootScope, $state
 ) ->
     return {
         restrict: "EA"
@@ -242,6 +249,25 @@ menu_module = angular.module(
             $rootScope.$on(ICSW_SIGNALS("ICSW_MENU_PROGRESS_BAR_CHANGED"), (event, settings) ->
                 scope.update_progress_bar()
             )
+
+            clickcounter = 0
+            logo_timer = undefined
+            scope.sglclick = ($event)->
+                if clickcounter > 0
+                    $timeout.cancel(logo_timer)
+                    clickcounter = 0
+                    icswLayoutSelectionDialogService.quick_dialog()
+
+                else if clickcounter == 0
+                    clickcounter += 1
+                    logo_timer = $timeout(
+                        ()->
+                            $state.go("main.dashboard")
+                            clickcounter = 0
+                            return
+                        250
+                        )
+
             scope.update_progress_bar = () ->
                 icswSimpleAjaxCall(
                     {
@@ -276,9 +302,12 @@ menu_module = angular.module(
 ]).directive("icswBackgroundJobInfo",
 [
     "$templateCache", "ICSW_URLS", "icswSimpleAjaxCall", "$timeout", "$state",
+    "$rootScope", "ICSW_SIGNALS",
 (
-    $templateCache, ICSW_URLS, icswSimpleAjaxCall, $timeout, $state
+    $templateCache, ICSW_URLS, icswSimpleAjaxCall, $timeout, $state,
+    $rootScope, ICSW_SIGNALS
 ) ->
+    @backg_timer = null
     return {
         restrict: "EA"
         template: '<button type="button" ng-click="redirect_to_bgj_info()" title="number of background jobs"></button>'
@@ -315,8 +344,13 @@ menu_module = angular.module(
                             el.hide()
                 )
                 # reload every 30 seconds
-                $timeout(reload, 30000)
+                @backg_timer = $timeout(reload, 30000)
             reload()
+            $rootScope.$on ICSW_SIGNALS("ICSW_USER_NOUSER"),
+                (event, toState, toParams, fromState, fromParams, options) ->
+                    if @backg_timer?
+                        $timeout.cancel @backg_timer
+                        return
     }
 ]).factory("icswReactMenuFactory",
 [
@@ -557,20 +591,150 @@ menu_module = angular.module(
                 console.log "mps", settings
                 # _render()
             )
-
     }
-]).controller("icswMenuSubCtrl",
+]).directive("icswLayoutSubMenubar",
 [
-    "$scope", "icswLayoutSelectionDialogService", "icswActiveSelectionService",
-    "icswUserService", "$state",
+    "$templateCache", "icswUserService", "$rootScope", "$compile", "ICSW_SIGNALS",
+    "$state", "icswBreadcrumbs",
 (
-    $scope, icswLayoutSelectionDialogService, icswActiveSelectionService,
-    icswUserService, $state
+    $templateCache, icswUserService, $rootScope, $compile, ICSW_SIGNALS,
+    $state
 ) ->
-    $scope.device_quickselection = (onoff) ->
-        icswLayoutSelectionDialogService.quick_dialog(onoff)
-    $scope.show_submenu = false
-    $scope.sel_devices = 3
-    $scope.breadcrumb = "Devices > Device configuration"
+    restrict: "E"
+    link: (scope, el, attrs) ->
+        $rootScope.$on ICSW_SIGNALS("ICSW_USER_LOGGEDIN"),
+            (event, toState, toParams, fromState, fromParams, options) ->
+                if not attrs.$attr.loaded?
+                    attrs.$set("loaded")
+                    template = $compile(
+                        $templateCache.get("icsw.layout.submenubar"))(scope)
+                    el.html(template)
+        $rootScope.$on ICSW_SIGNALS("ICSW_USER_NOUSER"),
+            (event, toState, toParams, fromState, fromParams, options) ->
+                if attrs.$attr.loaded?
+                    delete attrs.$attr.loaded
+                    scope.$$childHead.$destroy()
+                    el.html("")
+]).directive("icswMenuSubDirective",
+[
+    "icswLayoutSelectionDialogService", "$rootScope", "icswBreadcrumbs",
+    "icswUserService", "$state", "$q", "icswDeviceTreeService", "ICSW_SIGNALS",
+    "icswDispatcherSettingTreeService", "icswAssetPackageTreeService",
+    "icswActiveSelectionService",
+(
+    icswLayoutSelectionDialogService, $rootScope, icswBreadcrumbs,
+    icswUserService, $state, $q, icswDeviceTreeService, ICSW_SIGNALS
+    icswDispatcherSettingTreeService, icswAssetPackageTreeService,
+    icswActiveSelectionService
+) ->
+    return {
+        restrict: "A"
+        link: (scope, el, attrs) ->
+            breadcrumb = icswBreadcrumbs
+            $rootScope.$on ICSW_SIGNALS("ICSW_ROUTE_RIGHTS_VALID"), (event) ->
+                breadcrumb.setup()
+                breadcrumb.generate()
+                scope.breadcrumb = breadcrumb.title()
+            $rootScope.$on "$stateChangeSuccess", (event, to_state, to_params, from_state, from_params) ->
+                 breadcrumb.generate()
+                 scope.breadcrumb = breadcrumb.title()
 
+            scope.select_txt = "No devices selected"
+
+            scope.device_selection = ($event) ->
+                icswLayoutSelectionDialogService.quick_dialog("right")
+
+            $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"), (event) ->
+                _cur_sel = icswActiveSelectionService.current()
+                #sel_groups = _cur_sel.get_devsel_list()[3].length
+                sel_groups = 0
+                sel_devices = _cur_sel.get_devsel_list()[1].length
+                group_plural = if sel_groups == 1 then "group" else "groups"
+                device_plural = if sel_devices == 1 then "device" else "devices"
+                group_plural = if sel_groups == 1 then "group" else "groups"
+                device_plural = if sel_devices == 1 then "device" else "devices"
+                _list = []
+                if sel_devices
+                    _list.push("#{sel_devices} #{device_plural}")
+                if sel_groups
+                    _list.push("#{sel_groups} #{group_plural}")
+                if not _list.length
+                    _list.push("No devices")
+                scope.select_txt = _list.join(", ") + " selected"
+            )
+
+            scope.new_devsel = (devs) ->
+                # never called....
+                console.log "*", devs
+                console.log icswActiveSelectionService.current()
+                sel_groups = 0
+                sel_devices = 0
+                for dev in devs
+                    if dev.is_meta_device
+                        sel_devices++
+                    else
+                        sel_groups++
+    }
+]).factory('icswBreadcrumbs',
+[
+    "$state", "icswRouteHelper",
+(
+    $state, icswRouteHelper,
+) ->
+    list = []
+    title = undefined
+    header_lut = {}
+
+    setup_luts = () ->
+        menu_headers = icswRouteHelper.get_struct().menu_header_states
+        for header in menu_headers
+            icswheader = header.icswData.menuHeader
+            header_lut[icswheader.key] = icswheader.name
+        return
+
+    addBreadcrumb = (title, state, sref) ->
+        list.push
+            title: title
+            sref: sref
+            state: state
+        return
+
+    generateBreadcrumbs = (state) ->
+        if state.parent? and state.parent.name != ""
+            generateBreadcrumbs state.parent
+        if state.icswData? and (state.icswData.$$menuHeader or state.icswData.$$menuEntry)
+            if state.icswData.menuEntry?
+                addBreadcrumb header_lut[state.icswData.menuEntry.menukey]
+                addBreadcrumb(
+                    state.icswData.menuEntry.name
+                    state.name
+                    state.icswData.menuEntry.sref
+                )
+        else if state.name and state.name == "main"
+            addBreadcrumb "Home"
+        return
+
+    appendTitle = (breadcrumb, index) ->
+        if index < list.length - 1 then breadcrumb.title + ' » ' else breadcrumb.title
+
+    generateOutput = ->
+        # OMG
+        title = ''
+        angular.forEach list, (breadcrumb, index) ->
+            title += appendTitle(breadcrumb, index)
+        return
+
+    {
+        generate: ->
+            list = []
+            generateBreadcrumbs $state.$current
+            generateOutput()
+            return
+        title: ->
+            title
+        list: ->
+            list
+        setup: ->
+            setup_luts()
+    }
 ])

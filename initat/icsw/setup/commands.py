@@ -244,8 +244,8 @@ def init_webfrontend(opts):
                 )
                 file(_target, "w").write(_output)
     for _what, _command, _target in [
-        ("modify app.js", "inject_addons --srcfile /srv/www/init.at/icsw/app.js --modify", None),
-        ("modify main.html", "inject_addons --srcfile /srv/www/init.at/icsw/main.html --modify", None),
+        ("modify app.js", "inject_addons --srcfile /srv/www/init.at/icsw/app.js --modify --with-addons=yes", None),
+        ("modify main.html", "inject_addons --srcfile /srv/www/init.at/icsw/main.html --modify --with-addons=yes", None),
     ]:
         print(_what)
         _success, _output = call_manage(_command.split(), output=True)

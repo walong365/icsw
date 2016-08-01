@@ -82,26 +82,8 @@ lic_module = angular.module("icsw.license.overview",
         "ngResource", "ngCookies", "ngSanitize", "init.csw.filters", "ui.bootstrap", "icsw.d3", "icsw.dimple",
         "icsw.tools.angular-dimple-init", "ui.bootstrap.datetimepicker", "restangular", "icsw.tools"
     ]
-).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
-    $stateProvider.state(
-        "main.licoverview", {
-            url: "/licoverview"
-            templateUrl: "icsw/main/rms/licoverview.html"
-            icswData: icswRouteExtensionProvider.create
-                pageTitle: "License Liveview"
-                licenses: ["ext_license"]
-                service_types: ["rms-server"]
-                rights: ["user.license_liveview"]
-                menuEntry:
-                    menukey: "rms"
-                    name: "License liveview"
-                    icon: "fa-line-chart"
-                    ordering: 30
-                dashboardEntry:
-                    size_x: 2
-                    size_y: 6
-        }
-    )
+).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    icswRouteExtensionProvider.add_route("main.licoverview")
 ]).directive("icswLicenseLiveView", [
     "$templateCache",
 (

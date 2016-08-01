@@ -23,28 +23,8 @@ angular.module(
     [
         "ngSanitize", "ui.bootstrap", "restangular"
     ]
-).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
-    $stateProvider.state(
-        "main.devicecreate"
-        {
-            url: "/devicecreate"
-            templateUrl: "icsw/main/device/create.html"
-            icswData: icswRouteExtensionProvider.create
-                valid_for_quicklink: true
-                pageTitle: "Create new Device"
-                menuHeader:
-                    key: "dev"
-                    name: "Device"
-                    icon: "fa-hdd-o"
-                    ordering: 0
-                rights: ["user.modify_tree"]
-                menuEntry:
-                    menukey: "dev"
-                    name: "Create new device"
-                    icon: "fa-plus-circle"
-                    ordering: 5
-        }
-    )
+).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    icswRouteExtensionProvider.add_route("main.devicecreate")
 ]).controller("icswDeviceCreateCtrl",
 [
     "$scope", "$timeout", "$window", "$templateCache", "$q", "blockUI", "ICSW_URLS", "icswSimpleAjaxCall",

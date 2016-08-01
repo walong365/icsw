@@ -26,51 +26,13 @@ dashboard_module = angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular",
         "noVNC", "ui.select", "icsw.tools", "icsw.user.password", "icsw.user", "icsw.system.license",
     ]
-).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
-    $stateProvider.state(
-        "main.dashboard",
-          {
-              url: "/dashboard"
-              templateUrl: "icsw/main/dashboard.html"
-              icswData: icswRouteExtensionProvider.create
-                  pageTitle: "Dashboard"
-          }
-    )
-]).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
-    $stateProvider.state(
-        "main.userjobinfo", {
-            url: "/userjobinfo"
-            templateUrl: 'icsw.dashboard.jobinfo'
-            icswData: icswRouteExtensionProvider.create
-                pageTitle: "RMS Information"
-                licenses: ["rms"]
-                service_types: ["rms-server"]
-                rights: ["user.rms_show"]
-                dashboardEntry:
-                    size_x: 3
-                    size_y: 2
-        }
-    ).state(
-        "main.userquotainfo", {
-            url: "/userquotainfo"
-            templateUrl: 'icsw.dashboard.diskquota'
-            icswData: icswRouteExtensionProvider.create
-                pageTitle: "User Disk and Quota info"
-                dashboardEntry:
-                    size_x: 3
-                    size_y: 2
-        }
-    ).state(
-        "main.virtualdesktopinfo", {
-            url: "/vduinfo"
-            templateUrl: "icsw.dashboard.virtualdesktops"
-            icswData: icswRouteExtensionProvider.create
-                pageTitle: "Virtual Desktops"
-                dashboardEntry:
-                    size_x: 3
-                    size_y: 2
-        }
-    )
+).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    icswRouteExtensionProvider.add_route("main.dashboard")
+    icswRouteExtensionProvider.add_route("main.userjobinfo")
+    icswRouteExtensionProvider.add_route("main.userquotainfo")
+    icswRouteExtensionProvider.add_route("main.virtualdesktopinfo")
+    icswRouteExtensionProvider.add_route("main.quicklinks")
+    icswRouteExtensionProvider.add_route("main.externallinks")
 ]).directive("icswUserJobInfo",
 [
     "$templateCache",
@@ -352,7 +314,7 @@ dashboard_module = angular.module(
             # dashboardEntry
             _e = @state.icswData.dashboardEntry
             @dbe = _e
-            @cls = _e.header_class
+            @cls = _e.headerClass
             @title = @state.icswData.pageTitle
             # camelcase is important here
             @$$panel_class = "panel-#{@cls}"
@@ -368,10 +330,10 @@ dashboard_module = angular.module(
                     @[_attr_name] = _pd[_attr_name]
                 @$$open = _pd["open"]
             else
-                @sizeX = @dbe.size_x
-                @sizeY = @dbe.size_y
+                @sizeX = @dbe.sizeX
+                @sizeY = @dbe.sizeY
                 # default settings
-                @$$open = @dbe.default_enabled
+                @$$open = @dbe.defaultEnabled
 
         close: ($event) ->
             @container.close_element(@)
@@ -384,31 +346,6 @@ dashboard_module = angular.module(
             @container.save_positions()
             # console.log "psc", @sizeX, @sizeY, @col, @row
 
-]).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
-    $stateProvider.state(
-        "main.quicklinks", {
-            url: "/quicklinks"
-            templateUrl: 'icsw.dashboard.quicklinks'
-            icswData: icswRouteExtensionProvider.create
-                pageTitle: "Quicklinks"
-                dashboardEntry:
-                    size_x: 2
-                    size_y: 1
-                    default_enabled: true
-        }
-    )
-]).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
-    $stateProvider.state(
-        "main.externallinks", {
-            url: "/externallinks"
-            templateUrl: 'icsw.dashboard.externallinks'
-            icswData: icswRouteExtensionProvider.create
-                pageTitle: "External links"
-                dashboardEntry:
-                    size_x: 2
-                    size_y: 1
-        }
-    )
 ]).service("icswDashboardContainer", [
     "$q", "$rootScope", "ICSW_SIGNALS", "icswRouteHelper", "icswDashboardElement", "blockUI",
     "$compile", "$templateCache", "icswComplexModalService", "toaster", "icswToolsSimpleModalService",

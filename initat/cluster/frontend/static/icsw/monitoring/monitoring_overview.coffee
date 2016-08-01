@@ -24,21 +24,8 @@ monitoring_overview_module = angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "ui.bootstrap.datetimepicker", "smart-table",
         "icsw.tools.table", "icsw.tools.status_history_utils", "icsw.livestatus.livestatus"
     ]
-).config(["$stateProvider",  "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
-    $stateProvider.state(
-        "main.monitorov", {
-            url: "/monitorov"
-            template: "<icsw-monitoring-list-overview icsw-sel-man='0'></icsw-monitoring-list-overview>"
-            icswData: icswRouteExtensionProvider.create
-                pageTitle: "Monitoring List"
-                rights: ["mon_check_command.setup_monitoring"]
-                menuEntry:
-                    menukey: "mon"
-                    name: "Monitoring list"
-                    icon: "fa-list"
-                    ordering: 0
-        }
-    )
+).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    icswRouteExtensionProvider.add_route("main.monitorov")
 ]).directive("icswMonitoringListOverview",
 [
     "$templateCache",

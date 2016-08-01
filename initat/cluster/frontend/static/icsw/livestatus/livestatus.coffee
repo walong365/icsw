@@ -23,24 +23,8 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.router",
     ]
-).config(["$stateProvider", "icswRouteExtensionProvider", ($stateProvider, icswRouteExtensionProvider) ->
-    $stateProvider.state(
-        "main.livestatus", {
-            url: "/livestatus/all"
-            template: '<icsw-device-livestatus icsw-livestatus-view="\'test\'"></icsw-device-livestatus>'
-            icswData: icswRouteExtensionProvider.create
-                pageTitle: "Monitoring dashboard"
-                licenses: ["monitoring_dashboard"]
-                rights: ["mon_check_command.show_monitoring_dashboard"]
-                menuEntry:
-                    menukey: "stat"
-                    icon: "fa-dot-circle-o"
-                    ordering: 20
-                dashboardEntry:
-                    size_x: 4
-                    size_y: 4
-        }
-    )
+).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    icswRouteExtensionProvider.add_route("main.livestatus")
 ]).controller("icswDeviceLiveStatusCtrl",
 [
     "$scope", "$compile", "$templateCache", "Restangular", "icswUserService",

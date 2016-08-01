@@ -941,8 +941,7 @@ angular.module(
                 _fetch.resolve({})
             else
                 #console.log "*** enrichment:", en_list, "for", dth, "resulted in non-empty", en_req
-                console.log "*** enrichment_request: ", en_req
-
+                _start = new Date().getTime()
                 # non-empty request, fetch from server
                 icswSimpleAjaxCall(
                     url: ICSW_URLS.DEVICE_ENRICH_DEVICES
@@ -952,6 +951,10 @@ angular.module(
                     dataType: "json"
                 ).then(
                     (result) =>
+                        _end = new Date().getTime()
+                        # runtime in milliseconds
+                        _run_time = icswTools.get_diff_time_ms(_end - _start)
+                        console.log "*** enrichment_request for #{_.keys(en_req)} took #{_run_time}"
                         _fetch.resolve(result)
                 )
             _fetch.promise.then(

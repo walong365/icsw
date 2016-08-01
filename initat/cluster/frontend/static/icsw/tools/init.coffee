@@ -23,7 +23,8 @@ angular.module(
     [
         "toaster"
         "uiGmapgoogle-maps"
-    ],
+        "icsw.menu"
+    ]
 ).service("icswBaseMixinClass", [() ->
     # hm, not really needed ... ?
     module_keywords = ["extended", "included"]
@@ -234,7 +235,12 @@ angular.module(
             if xml != null
                 toaster.pop("error", "A critical error occured", "error parsing response", 0)
         return success
-]).provider("icswRouteExtension", [() ->
+]).provider("icswRouteExtension",
+[
+    "$stateProvider", "ICSW_MENU_JSON",
+(
+    $stateProvider, ICSW_MENU_JSON,
+) ->
     _key_idx = 0
     class icswRouteExtension
         constructor: (args) ->
@@ -246,7 +252,7 @@ angular.module(
             # list of needed licenses
             @licenses = []
             # list of needed service_types (== routes)
-            @service_types = []
+            @serviceTypes = []
             # pageTitle:
             @pageTitle = ""
             # menuHeader
@@ -256,9 +262,9 @@ angular.module(
             # dashboardEntry
             @dashboardEntry = {}
             # redirect to originating when error
-            @redirect_to_from_on_error = false
+            @redirectToFromOnError = false
             # flag: valid for quicklink
-            @valid_for_quicklink = false
+            @validForQuicklink = false
             for key, value of args
                 if not @[key]?
                     console.error "unknown icswRouteExtension #{key}=#{value}", @
@@ -271,7 +277,7 @@ angular.module(
                 else
                     @[_attr] = false
             # feed states
-            for _attr_name in ["rights", "licenses", "service_types"]
+            for _attr_name in ["rights", "licenses", "serviceTypes"]
                 _src = @[_attr_name]
                 _dest = "$$#{_attr_name}_info"
                 if angular.isFunction(_src)
@@ -293,17 +299,38 @@ angular.module(
             if @$$dashboardEntry
                 # set defaults for dashboard
                 for [_name, _default, _log] in [
-                    ["header_class", "default", false]
-                    ["size_x", 2, true]
-                    ["size_y", 2, true]
-                    ["allow_show", true, false]
-                    ["allow_state", false, false]
-                    ["default_enabled", false, false]
+                    ["headerClass", "default", false]
+                    ["sizeX", 2, true]
+                    ["sizeY", 2, true]
+                    ["allowShow", true, false]
+                    ["allowState", false, false]
+                    ["defaultEnabled", false, false]
                 ]
                     if not @dashboardEntry[_name]?
                         @dashboardEntry[_name] = _default
                         if _log
                             console.error "missing attribute #{_name} in dashboardEntry for", @
+
+    _add_route = (name, resolve_map) ->
+        # reads from ICSW_MENU_JSON and adds to $stateProvider
+        if name not of ICSW_MENU_JSON
+            throw new Error("stateName '#{name}' not found in ICSW_MENU_JSON")
+        _data = ICSW_MENU_JSON[name]
+        if not _data.icswData? or not _data.stateData?
+            throw new Error("icswData or stateData not found for stateName '#{name}'")
+        _ext = new icswRouteExtension(_data.icswData)
+        _struct.entries.push(_ext)
+        _state_data = angular.copy(_data.stateData)
+        if _data.stateData.resolve? and _data.stateData.resolve
+            # copy resolve map
+            if not resolve_map?
+                throw new Error("resolve request for '#{name}' but resolve_map is not defined")
+            _state_data.resolve = resolve_map
+        _state_data.icswData = _ext
+        $stateProvider.state(name, _state_data)
+        return _ext
+
+
     _struct = {
         entries: []
     }
@@ -316,6 +343,9 @@ angular.module(
             _ext = new icswRouteExtension(args)
             _struct.entries.push(_ext)
             return _ext
+
+        add_route: (name, resolve_map) ->
+            return _add_route(name, resolve_map)
     }
 ]).service("icswRouteHelper",
 [
@@ -357,9 +387,12 @@ angular.module(
                 _add = true
                 if data.rights?
                     if _user and _acls_valid
-                        if angular.isFunction(data.rights)
+                        if data.rights[0] == "$$CHECK_FOR_SUPERUSER"
                             if _user?
-                                _add = data.rights(_user.user, _acls)
+                                if _user.user.is_superuser
+                                    _add = true
+                                else
+                                    _add = false
                             else
                                 _add = false
                         else
@@ -371,10 +404,10 @@ angular.module(
                             _add = icswAcessLevelService.has_all_valid_licenses(data.licenses)
                             if not _add
                                 console.warn "license(s) #{data.licenses} missing"
-                        if data.service_types? and _add
-                            _add = icswAcessLevelService.has_all_service_types(data.service_types)
+                        if data.serviceTypes? and _add
+                            _add = icswAcessLevelService.has_all_service_types(data.serviceTypes)
                             if not _add
-                                console.warn "service_type(s) #{data.service_types} missing"
+                                console.warn "service_type(s) #{data.serviceTypes} missing"
                     else
                         _add = false
                 data.$$allowed = _add
@@ -382,7 +415,7 @@ angular.module(
                     _struct.allowed_states.push(state)
                     if data.$$menuEntry
                         _struct.menu_states.push(state)
-                    if data.valid_for_quicklink
+                    if data.validForQuicklink
                         _struct.quicklink_states.push(state)
                     if data.$$dashboardEntry
                         _struct.dashboard_states.push(state)
@@ -554,6 +587,8 @@ angular.module(
 
         ICSW_ACLS_CHANGED: "icsw.acls.changed"
         ICSW_USER_CHANGED: "icsw.user.changed"
+        ICSW_USER_NOUSER: "icsw.user.nouser"
+        ICSW_USER_LOGGEDIN: "icsw.user.loggedin"
         ICSW_DSR_REGISTERED: "icsw.dsr.registered"
         ICSW_DSR_UNREGISTERED: "icsw.dsr.unregistered"
         ICSW_SELECTOR_SHOW: "icsw.selector.show"
@@ -1623,8 +1658,8 @@ angular.module(
                 @_fetch_dict[client].resolve(@_result)
             return @_fetch_dict[client]
 
-]).filter('capitalize', () ->
+]).filter('capitalize', [() ->
     return (input, all) ->
         if (!!input)
             return input.replace(/([^\W_]+[^\s-]*) */g, (txt) -> return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase())
-)
+])

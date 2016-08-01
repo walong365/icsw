@@ -172,18 +172,21 @@ table.rotateheaders th {
     padding-left:10px;
     background-color:#222222;
     margin-bottom: 17px;
-    min-height: 30px;
+    min-height: 25px;
     vertical-align:10;
 }
 .submenu-bar .sub-breadcrumb {
     font-size:12px;
     font-weight:600;
     color:#aaaaaa;
-    margin-top: 7px;
+    margin-top: 4px;
 }
 .submenu-bar .quickselect {
     font-size:16px;
     font-weight:600;
     color:#aaaaaa;
-    margin: 5px 10px 0 0;
+    margin: 2px 10px 0 0;
+}
+.navbar-fixed-top {
+    border-width: 0;
 }
