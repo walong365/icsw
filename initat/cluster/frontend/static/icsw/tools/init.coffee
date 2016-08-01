@@ -1319,6 +1319,36 @@ d3js_module = angular.module(
     }
 ])
 
+d3js_v3_module = angular.module(
+    "icsw.d3_v3",
+    []
+).factory("d3_service",
+[
+    "$document", "$q", "$rootScope", "ICSW_URLS",
+(
+    $document, $q, $rootScope, ICSW_URLS
+) ->
+    d = $q.defer()
+    on_script_load = () ->
+        $rootScope.$apply(
+            () -> d.resolve(window.d3)
+        )
+    script_tag = $document[0].createElement('script')
+    script_tag.type = "text/javascript"
+    script_tag.async = true
+    script_tag.src = ICSW_URLS.D3_V3_MIN_JS
+    script_tag.onreadystatechange = () ->
+        if this.readyState == 'complete'
+            on_script_load()
+    script_tag.onload = on_script_load
+    s = $document[0].getElementsByTagName('body')[0]
+    s.appendChild(script_tag)
+    return {
+        d3: ()->
+            return d.promise
+    }
+])
+
 dimple_module = angular.module(
     "icsw.dimple", []
 ).factory("dimple_service",

@@ -21,7 +21,7 @@
 angular.module(
     "icsw.config.kpi",
     [
-        "icsw.tools.utils", "icsw.d3", "icsw.config.kpi_visualisation", "angular-ladda",
+        "icsw.tools.utils", "icsw.d3_v3", "icsw.config.kpi_visualisation", "angular-ladda",
     ]
 ).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
     icswRouteExtensionProvider.add_route("main.kpi")
