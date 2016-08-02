@@ -1270,6 +1270,76 @@ class GenerateReportPdf(View):
             )
         )
 
+# class ReportDataAvailable(View):
+#     @method_decorator(login_required)
+#     def post(self, request):
+#         device_pk = int(request.POST["pk"])
+#
+#         _device = device.objects.get(idx=device_pk)
+#
+#         disabled = True
+#         if _device.assetbatch_set.all():
+#             disabled = False
+#
+#         return HttpResponse(
+#             json.dumps(
+#                 {
+#                     'disabled': disabled,
+#                     'pk': device_pk
+#                 }
+#             )
+#         )
+
+class ReportDataAvailable(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        idx_list = None
+        for item in request.POST.iterlists():
+            key, list = item
+            if key == "idx_list[]":
+                idx_list = list
+                break
+
+        meta_devices = []
+
+        device_group_disabled = {}
+
+        pk_setting_dict = {}
+        if idx_list:
+            for pk in idx_list:
+                pk = int(pk)
+                _device = device.objects.get(idx=pk)
+
+                if _device.is_meta_device:
+                    meta_devices.append(_device)
+                    continue
+
+                disabled = True
+                if _device.assetbatch_set.all():
+                    disabled = False
+
+                pk_setting_dict[pk] = disabled
+
+                if _device.device_group in device_group_disabled:
+                    if device_group_disabled[_device.device_group] == True:
+                        device_group_disabled[_device.device_group] = disabled
+                else:
+                    device_group_disabled[_device.device_group] = disabled
+
+            for _device in meta_devices:
+                if _device.device_group in device_group_disabled:
+                    pk_setting_dict[_device.idx] = device_group_disabled[_device.device_group]
+                else:
+                    pk_setting_dict[_device.idx] = True
+
+        return HttpResponse(
+            json.dumps(
+                {
+                    'pk_setting_dict': pk_setting_dict,
+                }
+            )
+        )
+
 
 def generate_pdf(_devices, pk_settings, pdf_report_generator):
     for _device in _devices:

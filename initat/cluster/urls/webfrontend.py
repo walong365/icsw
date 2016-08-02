@@ -38,6 +38,7 @@ report_patterns = [
     url("^generate_report_pdf$", report_views.GenerateReportPdf.as_view(), name="generate_report_pdf"),
     url("^get_progress$", report_views.GetProgress.as_view(), name="get_progress"),
     url("^get_report_pdf$", report_views.GetReportPdf.as_view(), name="get_report_pdf"),
+    url("^report_data_available$", report_views.ReportDataAvailable.as_view(), name="report_data_available"),
 ]
 
 asset_patterns = [

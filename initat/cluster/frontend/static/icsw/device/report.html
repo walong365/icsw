@@ -41,96 +41,135 @@
                     <div class="panel panel-default">
                         <div class="panel-body" style="padding: 6px 15px">
                             <table
-                                st-table="entries_displayed"
-                                st-safe-src="struct.devices"
                                 class="table table-hover table-condensed table-striped"
                                 style="width:auto;"
                             >
-                                <thead>
-                                    <tr>
-                                        <td colspan="99">
-                                            <div icsw-tools-pagination st-items-by-page="20" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <th class="text-center" colspan=5>Devic Information</th>
-                                        <th class="text-center" colspan=5>Software Information</th>
-                                        <th class="text-center" colspan=4>Hardware Information</th>
-                                    </tr>
-                                    <tr>
-                                        <th st-sort='st_attrs.name'>Name</th>
-                                        <th>Sel</th>
-                                        <th st-sort='st_attrs.description'>Description</th>
-                                        <th st-sort='st_attrs.enabled'>Enabled</th>
-                                        <th st-sort='st_attrs.type'>#devs</th>
-                                        <th class="text-center">Installed Packages</th>
-                                        <th class="text-center">Available Licenses</th>
-                                        <th class="text-center">Installed Updates</th>
-                                        <th class="text-center">Available Updates</th>
-                                        <th class="text-center">Process Information</th>
-                                        <th class="text-center">Hardware Report</th>
-                                        <th class="text-center">DMI Information</th>
-                                        <th class="text-center">PCI Information</th>
-                                        <th class="text-center">LSTOPO Information</th>
-                                    </tr>
-                                    <tr>
-                                        <td></td>
-                                        <td></td>
-                                        <td></td>
-                                        <td></td>
-                                        <td></td>
-                                        <td>
-                                            <div class="text-center">
-                                                <input type="button" ng-class="column_selected(0) && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select_column(0)"/>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div class="text-center">
-                                                <input type="button" ng-class="column_selected(1) && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select_column(1)"/>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div class="text-center">
-                                                <input type="button" ng-class="column_selected(2) && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select_column(2)"/>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div class="text-center">
-                                                <input type="button" ng-class="column_selected(3) && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select_column(3)"/>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div class="text-center">
-                                                <input type="button" ng-class="column_selected(4) && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select_column(4)"/>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div class="text-center">
-                                                <input type="button" ng-class="column_selected(5) && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select_column(5)"/>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div class="text-center">
-                                                <input type="button" ng-class="column_selected(6) && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select_column(6)"/>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div class="text-center">
-                                                <input type="button" ng-class="column_selected(7) && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select_column(7)"/>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div class="text-center">
-                                                <input type="button" ng-class="column_selected(8) && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select_column(8)"/>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </thead>
+                            <thead>
+                            <tr>
+                            <td>
+                                <table
+                                    st-table="entries_displayed"
+                                    st-safe-src="struct.devices"
+                                    class="table table-hover table-condensed table-striped"
+                                    style="width:auto;"
+                                >
+                                    <thead>
+                                        <tr>
+                                            <th class="text-center" colspan=3>Device Information</th>
 
-                                <tbody>
-                                    <tr icsw-device-tree-report-row device="obj" ng-repeat="obj in entries_displayed" ng-class="get_tr_class(obj)"></tr>
-                                </tbody>
-                            </table>
+                                        </tr>
+                                        <tr>
+                                            <th st-sort='st_attrs.name'>Name</th>
+                                            <th>Selection</th>
+                                            <th st-sort='st_attrs.description'>Description</th>
+                                        </tr>
+                                    </thead>
+
+                                    <tbody>
+                                        <tr icsw-device-tree-report-row device="obj" ng-repeat="obj in entries_displayed" ng-class="get_tr_class(obj)"></tr>
+                                    </tbody>
+                                </table>
+                            </td>
+
+                            <td>
+                                <table
+                                    st-table="entries_displayed"
+                                    st-safe-src="struct.devices"
+                                    class="table table-hover table-condensed table-striped"
+                                    style="width:auto;"
+                                >
+                                    <thead>
+                                        <tr>
+                                            <th class="text-center" colspan=5 ng-click="select_software_information()">Software Information</th>
+                                        </tr>
+                                        <tr>
+                                            <th class="text-center" ng-click="select_column(0)">Installed Packages</th>
+                                            <th class="text-center" ng-click="select_column(1)">Available Licenses</th>
+                                            <th class="text-center" ng-click="select_column(2)">Installed Updates</th>
+                                            <th class="text-center" ng-click="select_column(3)">Available Updates</th>
+                                            <th class="text-center" ng-click="select_column(4)">Process Information</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr ng-repeat="obj in entries_displayed" ng-class="get_tr_class(obj)">
+                                            <td>
+                                                <div class="text-center">
+                                                    <input type="button" ng-disabled="obj.$selection_buttons_disabled" ng-class="obj.$packages_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 0)"/>
+                                                 </div>
+                                            </td>
+                                            <td>
+                                                <div class="text-center">
+                                                    <input type="button" ng-disabled="obj.$selection_buttons_disabled" ng-class="obj.$licenses_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 1)"/>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="text-center">
+                                                    <input type="button" ng-disabled="obj.$selection_buttons_disabled" ng-class="obj.$installed_updates_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 2)"/>
+                                                 </div>
+                                            </td>
+                                            <td>
+                                                <div class="text-center">
+                                                    <input type="button" ng-disabled="obj.$selection_buttons_disabled" ng-class="obj.$avail_updates_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 3)"/>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="text-center">
+                                                    <input type="button" ng-disabled="obj.$selection_buttons_disabled" ng-class="obj.$process_report_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 4)"/>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </td>
+
+                            <td>
+                                <table
+                                    st-table="entries_displayed"
+                                    st-safe-src="struct.devices"
+                                    class="table table-hover table-condensed table-striped"
+                                    style="width:auto;"
+                                >
+                                    <thead>
+                                        <tr>
+                                            <th class="text-center" ng-click="select_hardware_information()" colspan=4>Hardware Information</th>
+                                        </tr>
+                                        <tr>
+                                            <th class="text-center" ng-click="select_column(5)">Hardware Report</th>
+                                            <th class="text-center" ng-click="select_column(6)">DMI Information</th>
+                                            <th class="text-center" ng-click="select_column(7)">PCI Information</th>
+                                            <th class="text-center" ng-click="select_column(8)">LSTOPO Information</th>
+                                        </tr>
+                                    </thead>
+
+                                    <tbody>
+                                        <tr ng-repeat="obj in entries_displayed" ng-class="get_tr_class(obj)">
+                                            <td>
+                                                <div class="text-center">
+                                                    <input type="button" ng-disabled="obj.$selection_buttons_disabled" ng-class="obj.$hardware_report_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 5)"/>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="text-center">
+                                                    <input type="button" ng-disabled="obj.$selection_buttons_disabled" ng-class="obj.$dmi_report_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 6)"/>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="text-center">
+                                                    <input type="button" ng-disabled="obj.$selection_buttons_disabled" ng-class="obj.$pci_report_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 7)"/>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="text-center">
+                                                    <input type="button" ng-disabled="obj.$selection_buttons_disabled" ng-class="obj.$lstopo_report_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 8)"/>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </td>
+                        </tr>
+                        </thead>
+                        </table>
                         </div>
                     </div>
                 </uib-tab>
@@ -187,193 +226,17 @@
 <script type="text/ng-template" id="icsw.device.tree.report.row">
     <td>{{ obj.name }}</td>
     <td>
-        <input type="button" ng-class="get_dev_sel_class()" ng-click="toggle_dev_sel()" value="sel"/>
+        <input type="button" ng-class="get_dev_sel_class()" ng-click="toggle_dev_sel()" value="enabled"/>
     </td>
     <td>{{ obj.comment }}</td>
-    <td>
-        <span ng-show="obj.device_group_obj.enabled">{{ obj.enabled | yesno1 }}</span>
-        <span ng-show="!obj.device_group_obj.enabled"><em>{{ obj.enabled | yesno1 }}</em></span>
-    </td>
-    <td></td>
-    <td>
-        <div class="text-center">
-            <input type="button" ng-class="obj.$packages_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 0)"/>
-         </div>
-    </td>
-    <td>
-        <div class="text-center">
-            <input type="button" ng-class="obj.$licenses_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 1)"/>
-        </div>
-    </td>
-    <td>
-        <div class="text-center">
-            <input type="button" ng-class="obj.$installed_updates_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 2)"/>
-         </div>
-    </td>
-    <td>
-        <div class="text-center">
-            <input type="button" ng-class="obj.$avail_updates_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 3)"/>
-        </div>
-    </td>
-    <td>
-        <div class="text-center">
-            <input type="button" ng-class="obj.$process_report_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 4)"/>
-        </div>
-    </td>
-    <td>
-        <div class="text-center">
-            <input type="button" ng-class="obj.$hardware_report_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 5)"/>
-        </div>
-    </td>
-    <td>
-        <div class="text-center">
-            <input type="button" ng-class="obj.$dmi_report_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 6)"/>
-        </div>
-    </td>
-    <td>
-        <div class="text-center">
-            <input type="button" ng-class="obj.$pci_report_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 7)"/>
-        </div>
-    </td>
-    <td>
-        <div class="text-center">
-            <input type="button" ng-class="obj.$lstopo_report_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 8)"/>
-        </div>
-    </td>
-</script>
-
-<script type="text/ng-template" id="icsw.device.tree.cdg.report.row">
-    <td colspan="2">
-        <strong><em>{{ obj.device_group_obj.name }}</em></strong>
-    </td>
-    <td>{{ group.description }}</td>
-    <td colspan="2"></td>
-    <td ng-show="hide_lut['tln']">{{ struct.domain_tree.show_dtn(group.domain_tree_node) }}</td>
-    <td ng-show="num_shown(['tln'])" colspan="{{ num_shown(['tln']) }}"></td>
-    <td>
-        <div class="text-center">
-            <input type="button" ng-class="obj.$packages_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 0)"/>
-         </div>
-    </td>
-    <td>
-        <div class="text-center">
-            <input type="button" ng-class="obj.$licenses_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 1)"/>
-        </div>
-    </td>
-    <td>
-        <div class="text-center">
-            <input type="button" ng-class="obj.$installed_updates_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 2)"/>
-         </div>
-    </td>
-    <td>
-        <div class="text-center">
-            <input type="button" ng-class="obj.$avail_updates_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 3)"/>
-        </div>
-    </td>
-    <td>
-        <div class="text-center">
-            <input type="button" ng-class="obj.$process_report_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 4)"/>
-        </div>
-    </td>
-    <td>
-        <div class="text-center">
-            <input type="button" ng-class="obj.$hardware_report_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 5)"/>
-        </div>
-    </td>
-    <td>
-        <div class="text-center">
-            <input type="button" ng-class="obj.$dmi_report_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 6)"/>
-        </div>
-    </td>
-    <td>
-        <div class="text-center">
-            <input type="button" ng-class="obj.$pci_report_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 7)"/>
-        </div>
-    </td>
-    <td>
-        <div class="text-center">
-            <input type="button" ng-class="obj.$lstopo_report_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 8)"/>
-        </div>
-    </td>
 </script>
 
 <script type="text/ng-template" id="icsw.device.tree.meta.report.row">
-    <td colspan="2"><strong>{{ group.name }}</strong>
+    <td><strong>{{ group.name }}</strong></td>
+    <td>
         <div class="btn-group btn-group-xs pull-right" ng-show="group.num_devices">
-            <input type="button" class="btn btn-success" ng-click="change_dg_sel(1)" value="S"/>
-            <input type="button" class="btn btn-primary" ng-click="change_dg_sel(0)" value="T"/>
-            <input type="button" class="btn btn-warning" ng-click="change_dg_sel(-1)" value="C"/>
+            <input type="button" ng-class="get_dev_sel_class()" ng-click="change_dg_sel()" value="enabled"/>
         </div>
     </td>
     <td>{{ group.description }}</td>
-    <td>{{ group.enabled | yesno1 }}</td>
-    <td>
-        <b ng-show="group.num_devices">{{ group.num_devices }}</b>
-        <b ng-show="!group.num_devices">---</b>
-    </td>
-    <td ng-show="hide_lut['tln']">{{ struct.domain_tree.show_dtn(obj) }}</td>
-    <td ng-show="num_shown(['tln'])" colspan="{{ num_shown(['tln']) }}"></td>
-    <td>
-        <div class="text-center">
-            <input type="button" ng-class="obj.$packages_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 0)"/>
-         </div>
-    </td>
-    <td>
-        <div class="text-center">
-            <input type="button" ng-class="obj.$licenses_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 1)"/>
-        </div>
-    </td>
-    <td>
-        <div class="text-center">
-            <input type="button" ng-class="obj.$installed_updates_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 2)"/>
-         </div>
-    </td>
-    <td>
-        <div class="text-center">
-            <input type="button" ng-class="obj.$avail_updates_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 3)"/>
-        </div>
-    </td>
-    <td>
-        <div class="text-center">
-            <input type="button" ng-class="obj.$process_report_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 4)"/>
-        </div>
-    </td>
-    <td>
-        <div class="text-center">
-            <input type="button" ng-class="obj.$hardware_report_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 5)"/>
-        </div>
-    </td>
-    <td>
-        <div class="text-center">
-            <input type="button" ng-class="obj.$dmi_report_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 6)"/>
-        </div>
-    </td>
-    <td>
-        <div class="text-center">
-            <input type="button" ng-class="obj.$pci_report_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 7)"/>
-        </div>
-    </td>
-    <td>
-        <div class="text-center">
-            <input type="button" ng-class="obj.$lstopo_report_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 8)"/>
-        </div>
-    </td>
-</script>
-
-<script type="text/ng-template" id="icsw.device.report.upload.form">
-    <form class="form-horizontal" name="form_data">
-        <div>
-            <fieldset>
-                <legend>Select File</legend>
-                <div class="form-group">
-                    <label class="control-label col-sm-3">
-                        File
-                    </label>
-                    <div class="col-sm-6">
-                        <input type="file" nv-file-select class="form-control" uploader="uploader"/>
-                    </div>
-                </div>
-            </fieldset>
-        </div>
-    </form>
 </script>

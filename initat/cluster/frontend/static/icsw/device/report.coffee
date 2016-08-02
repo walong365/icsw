@@ -1,6 +1,6 @@
 # Copyright (C) 2016 init.at
 #
-# Send feedback to: <lang-nevyjel@init.at>
+# Send feedback to: <g.kaufmann@init.at>
 #
 # This file is part of webfrontend
 #
@@ -18,7 +18,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-# variable related module
+# device report module
 
 device_report_module = angular.module(
     "icsw.device.report",
@@ -114,70 +114,49 @@ device_report_module = angular.module(
                 $scope.uploader.formData.push({"csrfmiddlewaretoken": token})
         )
 
+    select_salt_obj = (obj, attribute) ->
+        obj[attribute] = !obj[attribute]
+        if obj.is_meta_device
+            for device in $scope.struct.devices
+                if device.device_group == obj.device_group && !device.$selection_buttons_disabled
+                    device[attribute] = obj[attribute]
+        else
+            selected = false
+            for device in $scope.struct.devices
+                if device.device_group == obj.device_group && !device.is_meta_device
+                    selected = selected || device[attribute]
+
+            for device in $scope.struct.devices
+                if device.device_group == obj.device_group && device.is_meta_device
+                    device[attribute] = selected
+
     $scope.select = (obj, selection_type) ->
         if selection_type == 0
-            obj.$packages_selected = !obj.$packages_selected
-            if obj.is_meta_device
-                for device in $scope.struct.devices
-                    if device.device_group == obj.device_group
-                        device.$packages_selected = obj.$packages_selected
+            select_salt_obj(obj, "$packages_selected")
 
         else if selection_type == 1
-            obj.$licenses_selected = !obj.$licenses_selected
-            if obj.is_meta_device
-                for device in $scope.struct.devices
-                    if device.device_group == obj.device_group
-                        device.$licenses_selected = obj.$licenses_selected
+            select_salt_obj(obj, "$licenses_selected")
 
         else if selection_type == 2
-            obj.$installed_updates_selected = !obj.$installed_updates_selected
-            if obj.is_meta_device
-                for device in $scope.struct.devices
-                    if device.device_group == obj.device_group
-                        device.$installed_updates_selected = obj.$installed_updates_selected
+            select_salt_obj(obj, "$installed_updates_selected")
 
         else if selection_type == 3
-            obj.$avail_updates_selected = !obj.$avail_updates_selected
-            if obj.is_meta_device
-                for device in $scope.struct.devices
-                    if device.device_group == obj.device_group
-                        device.$avail_updates_selected = obj.$avail_updates_selected
+            select_salt_obj(obj, "$avail_updates_selected")
 
         else if selection_type == 4
-            obj.$process_report_selected = !obj.$process_report_selected
-            if obj.is_meta_device
-                for device in $scope.struct.devices
-                    if device.device_group == obj.device_group
-                        device.$process_report_selected = obj.$process_report_selected
+            select_salt_obj(obj, "$process_report_selected")
 
         else if selection_type == 5
-            obj.$hardware_report_selected = !obj.$hardware_report_selected
-            if obj.is_meta_device
-                for device in $scope.struct.devices
-                    if device.device_group == obj.device_group
-                        device.$hardware_report_selected = obj.$hardware_report_selected
+            select_salt_obj(obj, "$hardware_report_selected")
 
         else if selection_type == 6
-            obj.$dmi_report_selected = !obj.$dmi_report_selected
-            if obj.is_meta_device
-                for device in $scope.struct.devices
-                    if device.device_group == obj.device_group
-                        device.$dmi_report_selected = obj.$dmi_report_selected
+            select_salt_obj(obj, "$dmi_report_selected")
 
         else if selection_type == 7
-            obj.$pci_report_selected = !obj.$pci_report_selected
-            if obj.is_meta_device
-                for device in $scope.struct.devices
-                    if device.device_group == obj.device_group
-                        device.$pci_report_selected = obj.$pci_report_selected
+            select_salt_obj(obj, "$pci_report_selected")
 
         else if selection_type == 8
-            obj.$lstopo_report_selected = !obj.$lstopo_report_selected
-            if obj.is_meta_device
-                for device in $scope.struct.devices
-                    if device.device_group == obj.device_group
-                        device.$lstopo_report_selected = obj.$lstopo_report_selected
-        
+            select_salt_obj(obj, "$lstopo_report_selected")
 
     icswSimpleAjaxCall({
                 url: ICSW_URLS.REPORT_GET_REPORT_GFX
@@ -198,17 +177,39 @@ device_report_module = angular.module(
             (data) ->
                 $scope.struct.device_tree = data[0]
                 $scope.struct.devices.length = 0
+
+                idx_list = []
+
                 for dev in devs
-                    dev.$packages_selected = true
-                    dev.$licenses_selected = true
-                    dev.$installed_updates_selected = true
-                    dev.$avail_updates_selected = true
-                    dev.$hardware_report_selected = true
-                    dev.$process_report_selected = true
-                    dev.$dmi_report_selected = true
-                    dev.$pci_report_selected = true
-                    dev.$lstopo_report_selected = true
-                    $scope.struct.devices.push(dev)
+                    if !dev.is_cluster_device_group
+                        dev.$selected_for_report = false
+                        dev.$selection_buttons_disabled = true
+                        dev.$packages_selected = false
+                        dev.$licenses_selected = false
+                        dev.$installed_updates_selected = false
+                        dev.$avail_updates_selected = false
+                        dev.$hardware_report_selected = false
+                        dev.$process_report_selected = false
+                        dev.$dmi_report_selected = false
+                        dev.$pci_report_selected = false
+                        dev.$lstopo_report_selected = false
+                        $scope.struct.devices.push(dev)
+                        idx_list.push(dev.idx)
+
+                icswSimpleAjaxCall({
+                    url: ICSW_URLS.REPORT_REPORT_DATA_AVAILABLE
+                    data:
+                        idx_list: idx_list
+                    dataType: 'json'
+                }).then(
+                    (result) ->
+                        for dev in $scope.struct.devices
+                            if result.pk_setting_dict.hasOwnProperty(dev.idx)
+                                dev.$selection_buttons_disabled = result.pk_setting_dict[dev.idx]
+                    (not_ok) ->
+                        console.log not_ok
+                )
+
         )
         
     $scope.get_tr_class = (obj) ->
@@ -219,26 +220,23 @@ device_report_module = angular.module(
         $scope.struct.report_download_url = undefined
         $scope.struct.report_generating = true
 
-        selected_devices = icswActiveSelectionService.current().dev_sel
-
         settings = []
 
         for device in $scope.struct.devices
-            for pk in selected_devices
-                if !device.is_meta_device && device.idx == pk
-                    setting = {
-                        pk: device.idx
-                        packages_selected: device.$packages_selected
-                        licenses_selected: device.$licenses_selected
-                        installed_updates_selected: device.$installed_updates_selected
-                        avail_updates_selected: device.$avail_updates_selected
-                        hardware_report_selected: device.$hardware_report_selected
-                        process_report_selected: device.$process_report_selected
-                        dmi_report_selected: device.$dmi_report_selected
-                        pci_report_selected: device.$pci_report_selected
-                        lstopo_report_selected: device.$lstopo_report_selected
-                    }
-                    settings.push(setting)
+            if !device.is_meta_device && device.$selected_for_report
+                setting = {
+                    pk: device.idx
+                    packages_selected: device.$packages_selected
+                    licenses_selected: device.$licenses_selected
+                    installed_updates_selected: device.$installed_updates_selected
+                    avail_updates_selected: device.$avail_updates_selected
+                    hardware_report_selected: device.$hardware_report_selected
+                    process_report_selected: device.$process_report_selected
+                    dmi_report_selected: device.$dmi_report_selected
+                    pci_report_selected: device.$pci_report_selected
+                    lstopo_report_selected: device.$lstopo_report_selected
+                }
+                settings.push(setting)
 
         icswSimpleAjaxCall({
             url: ICSW_URLS.REPORT_GENERATE_REPORT_PDF
@@ -394,25 +392,65 @@ device_report_module = angular.module(
 
         for device in $scope.struct.devices
             if column_id == 0
-                device.$packages_selected = !this_column_selected
+                if !device.$selection_buttons_disabled
+                    device.$packages_selected = !this_column_selected
             else if column_id == 1
-                device.$licenses_selected = !this_column_selected
+                if !device.$selection_buttons_disabled
+                    device.$licenses_selected = !this_column_selected
             else if column_id == 2
-                device.$installed_updates_selected = !this_column_selected
+                if !device.$selection_buttons_disabled
+                    device.$installed_updates_selected = !this_column_selected
             else if column_id == 3
-                device.$avail_updates_selected = !this_column_selected
+                if !device.$selection_buttons_disabled
+                    device.$avail_updates_selected = !this_column_selected
             else if column_id == 4
-                device.$process_report_selected = !this_column_selected
+                if !device.$selection_buttons_disabled
+                    device.$process_report_selected = !this_column_selected
             else if column_id == 5
-                device.$hardware_report_selected = !this_column_selected
+                if !device.$selection_buttons_disabled
+                    device.$hardware_report_selected = !this_column_selected
             else if column_id == 6
-                device.$dmi_report_selected = !this_column_selected
+                if !device.$selection_buttons_disabled
+                    device.$dmi_report_selected = !this_column_selected
             else if column_id == 7
-                device.$pci_report_selected = !this_column_selected
+                if !device.$selection_buttons_disabled
+                    device.$pci_report_selected = !this_column_selected
             else if column_id == 8
-                device.$lstopo_report_selected = !this_column_selected
+                if !device.$selection_buttons_disabled
+                    device.$lstopo_report_selected = !this_column_selected
+
+    $scope.select_software_information = () ->
+        selected = false
+        for device in $scope.struct.devices
+            selected = selected || device.$packages_selected
+            selected = selected || device.$licenses_selected
+            selected = selected || device.$installed_updates_selected
+            selected = selected || device.$avail_updates_selected
+            selected = selected || device.$process_report_selected
+
+        for device in $scope.struct.devices
+            if !device.$selection_buttons_disabled
+                device.$packages_selected = !selected
+                device.$licenses_selected = !selected
+                device.$installed_updates_selected = !selected
+                device.$avail_updates_selected = !selected
+                device.$process_report_selected = !selected
 
 
+    $scope.select_hardware_information = () ->
+        selected = false
+        for device in $scope.struct.devices
+            selected = selected || device.$hardware_report_selected
+            selected = selected || device.$dmi_report_selected
+            selected = selected || device.$pci_report_selected
+            selected = selected || device.$lstopo_report_selected
+
+        for device in $scope.struct.devices
+            if !device.$selection_buttons_disabled
+                device.$hardware_report_selected = !selected
+                device.$dmi_report_selected = !selected
+                device.$pci_report_selected = !selected
+                device.$lstopo_report_selected = !selected
 
 ]).directive("icswDeviceTreeReportRow",
 [
@@ -437,22 +475,23 @@ device_report_module = angular.module(
             else
                 new_el = $compile($templateCache.get("icsw.device.tree.report.row"))
             scope.get_dev_sel_class = () ->
-                if sel.device_is_selected(device)
+                if device.$selected_for_report
                     return "btn btn-xs btn-success"
                 else
                     return "btn btn-xs btn-default"
             scope.toggle_dev_sel = () ->
-                sel.toggle_selection(device)
-            scope.change_dg_sel = (flag) ->
+                device.$selected_for_report = !device.$selected_for_report
+            scope.change_dg_sel = () ->
                 tree = icswDeviceTreeService.current()
+                selected = false
                 for entry in tree.all_list
                     if entry.device_group == device.device_group
-                        if flag == 1
-                            sel.add_selection(entry)
-                        else if flag == -1
-                            sel.remove_selection(entry)
-                        else
-                            sel.toggle_selection(entry)
+                        selected = selected || entry.$selected_for_report
+
+                for entry in tree.all_list
+                    if entry.device_group == device.device_group
+                        entry.$selected_for_report = !selected
+
             element.append(new_el(scope))
     }
 ])
