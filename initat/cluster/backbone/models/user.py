@@ -749,7 +749,7 @@ class user(models.Model):
             value = None
         super(user, self).__setattr__(key, value)
 
-    @property
+    # @property
     def is_authenticated(self):
         return True
 

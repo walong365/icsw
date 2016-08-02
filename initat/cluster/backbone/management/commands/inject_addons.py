@@ -159,6 +159,8 @@ class FileModify(object):
         # check for validity
         _my_relax.validate(_xml)
         # move to json
+        import pprint
+        pprint.pprint(self.route_xml_to_json(_xml))
         return self.route_xml_to_json(_xml)
 
     def inject(self, options):

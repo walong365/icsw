@@ -42,7 +42,7 @@ def login_required_rest(default_value_generator=lambda: []):
     def dec(fun):
         # actual decorator
         def wrapped(request, *args, **kwargs):
-            if request.user.is_authenticated:
+            if request.user.is_authenticated():
                 return fun(request, *args, **kwargs)
             else:
                 return Response(default_value_generator())

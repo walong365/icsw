@@ -416,7 +416,7 @@
     </route>
     <route name="main.livestatus">
         <stateData type="dict" url_str="/livestatus/all"
-                   template_str="&lt;icsw-device-livestatus icsw-livestatus-view=&quot;\'test\'&quot;&gt;&lt;/icsw-device-livestatus&gt;"/>
+                   template_str="&lt;icsw-device-livestatus icsw-livestatus-view=&quot;'test'&quot;&gt;&lt;/icsw-device-livestatus&gt;"/>
         <icswData type="dict" pageTitle_str="Monitoring dashboard">
             <licenses type="list">
                 <value>monitoring_dashboard</value>
