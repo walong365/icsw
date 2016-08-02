@@ -531,7 +531,8 @@ def device_post_save(sender, **kwargs):
                 # get metadevice
                 _md = _cur_inst.device_group.device
                 if _md.device_class_id not in _possible_classes:
-                    _md.device_class = DeviceClass.objects.get(Q(pk=_possible_classes[0]))
+                    if _possible_classes[0] != None:
+                        _md.device_class = DeviceClass.objects.get(Q(pk=_possible_classes[0]))
                     _md.save(update_fields=["device_class"])
 
 
