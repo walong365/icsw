@@ -313,7 +313,7 @@ class csw_permission(models.Model):
             self.content_type.app_label,
             self.content_type.model,
             self.codename,
-        )
+            )
 
     @staticmethod
     def get_permission(in_object, code_name):
@@ -749,6 +749,7 @@ class user(models.Model):
             value = None
         super(user, self).__setattr__(key, value)
 
+    @property
     def is_authenticated(self):
         return True
 

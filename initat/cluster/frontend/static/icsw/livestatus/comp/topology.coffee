@@ -742,6 +742,7 @@ angular.module(
                 (json) =>
                     @setState(
                         {
+                            # fixme: the following leads to mutate warnings up from React 0.13.1
                             loading: false
                             data_present: true
                             graph_id: @state.graph_id + 1

@@ -238,35 +238,35 @@ class FileModify(object):
 
 
 class Command(BaseCommand):
-    option_list = BaseCommand.option_list + (
-        make_option(
+    help = "Inject module code in files."
+
+    def add_arguments(self, parser):
+        parser.add_argument(
             "--srcfile",
             action="append",
             dest="files",
             default=[],
             help="Name of the files to modify",
-        ),
-        make_option(
+
+        )
+        parser.add_argument(
             "--modify",
             action="store_true",
             default=False,
             help="rewrite file (and disable debug)",
-        ),
-        make_option(
+        )
+        parser.add_argument(
             "--with-addons",
             type=str,
             default="false",
             help="inject menu JSON",
-        ),
-        make_option(
+        )
+        parser.add_argument(
             "--cleanup-path",
             action="store_true",
             default=False,
             help="fix wrong relative imports",
         )
-    )
-    help = ("Inject module code in files.")
-    args = ''
 
     def handle(self, **options):
         if options["with_addons"].lower() in ["false"]:

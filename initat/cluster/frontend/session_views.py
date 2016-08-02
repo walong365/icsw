@@ -157,7 +157,7 @@ class SessionHelper(object):
 
 class session_logout(View):
     def post(self, request):
-        from_logout = request.user.is_authenticated()
+        from_logout = request.user.is_authenticated
         my_sh = SessionHelper()
         my_sh.remove(my_sh.get_full_key(request.session))
         logout(request)
