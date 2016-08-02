@@ -145,6 +145,7 @@ icsw_app = angular.module(
     "ICSW_URLS", {
         <!-- inject:urls:html -->
         <!-- endinject -->
+        "D3_V3_MIN_JS": "/icsw/static/d3.v3.min.js",
         "D3_MIN_JS": "/icsw/static/d3.min.js",
         "DIMPLE_MIN_JS": "/icsw/static/dimple.v2.1.6.min.js",
         "STATIC_URL": "/icsw/static"
