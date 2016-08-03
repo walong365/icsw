@@ -259,7 +259,7 @@ class AssetRunsViewSet(viewsets.ViewSet):
             )
         else:
             queryset = AssetRun.objects.all()
-        queryset = queryset.filter(Q(created__gt=timezone.now() - datetime.timedelta(days=2)))
+        queryset = queryset.filter(Q(created__gt=timezone.now() - datetime.timedelta(days=30)))
         queryset = queryset.order_by(
             # should be created, FIXME later
             "-idx",
@@ -541,9 +541,9 @@ class export_assetbatch_to_pdf(View):
         }
 
         pdf_report_generator = PDFReportGenerator()
-        pdf_report_generator.generate_report(ab.device, settings_dict)
-        _buffer = pdf_report_generator.get_pdf_as_buffer()
-        pdf_b64 = base64.b64encode(_buffer.getvalue())
+        pdf_report_generator.generate_device_report(ab.device, settings_dict)
+        pdf_report_generator.finalize_pdf()
+        pdf_b64 = base64.b64encode(pdf_report_generator.buffer.getvalue())
 
         return HttpResponse(
             json.dumps(

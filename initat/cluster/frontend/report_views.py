@@ -228,14 +228,32 @@ class PDFReportGenerator(object):
             self.pagenum = pagenum
 
     class Report(object):
-        def __init__(self, _device, report_settings):
+        def __init__(self):
             self.bookmarks = []
             self.number_of_pages = 0
-            self.device = _device
             self.pdf_buffers = []
 
+        def generate_bookmark(self, name):
+            bookmark = PDFReportGenerator.Bookmark(name, self.number_of_pages)
+            self.bookmarks.append(bookmark)
+            return bookmark
+
+        def add_to_report(self, _buffer):
+            self.pdf_buffers.append(_buffer)
+
+        def increase_page_count(self, canvas, doc):
+            id(canvas)
+            id(doc)
+            self.number_of_pages += 1
+
+    class DeviceReport(Report):
+        def __init__(self, _device, report_settings):
+            super(PDFReportGenerator.DeviceReport, self).__init__()
+
+            self.device = _device
+
             # default settings
-            self.report_settings =  {
+            self.report_settings = {
                 "packages_selected": True,
                 "licenses_selected": True,
                 "installed_updates_selected": True,
@@ -250,19 +268,6 @@ class PDFReportGenerator(object):
             # update default settings with new settings
             for setting in report_settings:
                 self.report_settings[setting] = report_settings[setting]
-
-        def generate_bookmark(self, name):
-            bookmark = PDFReportGenerator.Bookmark(name, self.number_of_pages)
-            self.bookmarks.append(bookmark)
-            return bookmark
-
-        def add_to_report(self, _buffer):
-            self.pdf_buffers.append(_buffer)
-
-        def increase_page_count(self, canvas, doc):
-            id(canvas)
-            id(doc)
-            self.number_of_pages += 1
 
     def __init__(self):
         system_device = device.objects.filter(name="METADEV_system")[0]
@@ -296,6 +301,7 @@ class PDFReportGenerator(object):
             logo.save(self.logo_buffer, format="BMP")
 
         self.reports = []
+        self.device_reports = []
         self.progress = 0
         self.buffer = None
 
@@ -309,9 +315,76 @@ class PDFReportGenerator(object):
 
         return logo
 
-    def generate_report(self, _device, report_settings):
-        report = PDFReportGenerator.Report(_device, report_settings)
-        self.reports.append(report)
+    def generate_network_report(self):
+        from initat.cluster.backbone.models import network
+
+        report = PDFReportGenerator.Report()
+
+        _buffer = BytesIO()
+        # (72 * 11, 72 * 8.5) --> letter size
+        canvas = Canvas(_buffer, (72 * 11, 72 * 8.5))
+
+        networks = network.objects.all()
+
+        data = []
+
+        for _network in networks:
+            o = {
+                'id': _network.identifier,
+                'network': _network.network,
+                'netmask': _network.netmask,
+                'broadcast': _network.broadcast,
+                'gateway': _network.gateway,
+                'gwprio': _network.gw_pri,
+                'num_ips': _network.num_ip(),
+                'network_type': _network.network_type.description
+            }
+
+            data.append(o)
+
+        if data:
+            report.generate_bookmark("Networks")
+
+            rpt = Report(data)
+
+            header_list = [PollyReportsImage(pos=(570, -25),
+                                             width=self.logo_width,
+                                             height=self.logo_height,
+                                             getvalue=self.__get_logo_helper),
+                           Element((0, 0), ("Times-Bold", 20), text="Network Overview")]
+
+            detail_list = []
+
+            header_names = [("Identifier", "id"),
+                            ("Network", "network"),
+                            ("Netmask", "netmask"),
+                            ("Broadcast", "broadcast"),
+                            ("Gateway", "gateway"),
+                            ('GW Priority', "gwprio"),
+                            ("#IPs", "num_ips"),
+                            ("Network Type", "network_type")]
+            position = 0
+            for header_name, key in header_names:
+                header_list.append(Element((position, 24), ("Helvetica", 12), text=header_name))
+                detail_list.append(Element((position, 0), ("Helvetica", 6), key=key))
+
+                position += stringWidth(header_name, "Helvetica", 12) + 5
+
+            header_list.append(Rule((0, 42), 7.5 * 90, thickness=2))
+            detail_list.append(Rule((0, 0), 7.5 * 90, thickness=0.1))
+
+            rpt.pageheader = Band(header_list)
+            rpt.detailband = Band(detail_list)
+
+            rpt.generate(canvas)
+            canvas.save()
+            report.number_of_pages += rpt.pagenumber
+            report.add_to_report(_buffer)
+            self.reports.append(report)
+
+    def generate_device_report(self, _device, report_settings):
+        report = PDFReportGenerator.DeviceReport(_device, report_settings)
+        self.device_reports.append(report)
 
         # create generic overview page
         self.generate_overview_page(report)
@@ -944,13 +1017,13 @@ class PDFReportGenerator(object):
 
         report.add_to_report(_buffer)
 
-    def get_pdf_as_buffer(self):
+    def finalize_pdf(self):
         output_buffer = BytesIO()
         output_pdf = PdfFileWriter()
 
         # Sort reports by device group name
         group_report_dict = {}
-        for _report in self.reports:
+        for _report in self.device_reports:
             _group_name = _report.device.device_group_name()
             if _group_name not in group_report_dict:
                 group_report_dict[_group_name] = []
@@ -962,32 +1035,52 @@ class PDFReportGenerator(object):
 
         # 1. Pass: Generate pdf, structure is group_name -> device -> report,
         # generate table of contents and bookmark Headings to page number mapping
-        for _group_name in group_report_dict:
-            if current_page_number not in page_num_headings:
-                page_num_headings[current_page_number] = []
-            page_num_headings[current_page_number].append((_group_name, 0))
 
-            _device_reports = {}
-            for _report in group_report_dict[_group_name]:
-                if _report.device not in _device_reports:
-                    _device_reports[_report.device] = []
-                _device_reports[_report.device].append(_report)
+        if self.reports:
+            page_num_headings[current_page_number] = []
+            page_num_headings[current_page_number].append(("General Reports", 0))
 
-            for _device in _device_reports:
+            for _report in self.reports:
+                for _bookmark in _report.bookmarks:
+                    if current_page_number +_bookmark.pagenum not in page_num_headings:
+                        page_num_headings[current_page_number + _bookmark.pagenum] = []
+                    page_num_headings[current_page_number + _bookmark.pagenum].append((_bookmark.name, 1))
+
+                for _buffer in _report.pdf_buffers:
+                    sub_pdf = PdfFileReader(_buffer)
+                    [output_pdf.addPage(sub_pdf.getPage(page_num)) for page_num in range(sub_pdf.numPages)]
+                current_page_number += _report.number_of_pages
+
+        if self.device_reports:
+            page_num_headings[current_page_number] = []
+            page_num_headings[current_page_number].append(("Device Reports", 0))
+
+            for _group_name in group_report_dict:
                 if current_page_number not in page_num_headings:
                     page_num_headings[current_page_number] = []
-                page_num_headings[current_page_number].append((_device.full_name, 1))
-                for _report in _device_reports[_device]:
-                    for _buffer in _report.pdf_buffers:
-                        sub_pdf = PdfFileReader(_buffer)
-                        [output_pdf.addPage(sub_pdf.getPage(page_num)) for page_num in range(sub_pdf.numPages)]
+                page_num_headings[current_page_number].append((_group_name, 1))
 
-                    for _bookmark in _report.bookmarks:
-                        if not (current_page_number + _bookmark.pagenum) in page_num_headings:
-                            page_num_headings[(current_page_number + _bookmark.pagenum)] = []
-                        page_num_headings[(current_page_number + _bookmark.pagenum)].append((_bookmark.name, 2))
+                _device_reports = {}
+                for _report in group_report_dict[_group_name]:
+                    if _report.device not in _device_reports:
+                        _device_reports[_report.device] = []
+                    _device_reports[_report.device].append(_report)
 
-                    current_page_number += _report.number_of_pages
+                for _device in _device_reports:
+                    if current_page_number not in page_num_headings:
+                        page_num_headings[current_page_number] = []
+                    page_num_headings[current_page_number].append((_device.full_name, 2))
+                    for _report in _device_reports[_device]:
+                        for _buffer in _report.pdf_buffers:
+                            sub_pdf = PdfFileReader(_buffer)
+                            [output_pdf.addPage(sub_pdf.getPage(page_num)) for page_num in range(sub_pdf.numPages)]
+
+                        for _bookmark in _report.bookmarks:
+                            if not (current_page_number + _bookmark.pagenum) in page_num_headings:
+                                page_num_headings[(current_page_number + _bookmark.pagenum)] = []
+                            page_num_headings[(current_page_number + _bookmark.pagenum)].append((_bookmark.name, 3))
+
+                        current_page_number += _report.number_of_pages
 
         toc_buffer = self.get_toc_pages(page_num_headings)
         toc_pdf = PdfFileReader(toc_buffer)
@@ -1002,30 +1095,41 @@ class PDFReportGenerator(object):
 
         # 3. Pass: Generate Bookmarks
         current_page_number = toc_pdf_page_num
-        for _group_name in group_report_dict:
-            group_bookmark = output_pdf.addBookmark(_group_name, current_page_number)
 
-            _device_reports = {}
+        if self.reports:
+            general_reports_bookmark = output_pdf.addBookmark("General Reports", current_page_number)
 
-            for _report in group_report_dict[_group_name]:
-                if _report.device not in _device_reports:
-                    _device_reports[_report.device] = []
-                _device_reports[_report.device].append(_report)
+            for _report in self.reports:
+                for _bookmark in _report.bookmarks:
+                    output_pdf.addBookmark(_bookmark.name, current_page_number + _bookmark.pagenum,
+                                           parent=general_reports_bookmark)
+                current_page_number += _report.number_of_pages
 
-            for _device in _device_reports:
-                device_bookmark = output_pdf.addBookmark(_device.full_name, current_page_number, parent=group_bookmark)
+        if self.device_reports:
+            device_reports_bookmark = output_pdf.addBookmark("Device Reports", current_page_number)
+            for _group_name in group_report_dict:
+                group_bookmark = output_pdf.addBookmark(_group_name, current_page_number, parent=device_reports_bookmark)
 
-                for _report in _device_reports[_device]:
-                    for _bookmark in _report.bookmarks:
-                        output_pdf.addBookmark(_bookmark.name, current_page_number + _bookmark.pagenum,
-                                               parent=device_bookmark)
-                    current_page_number += _report.number_of_pages
+                _device_reports = {}
+
+                for _report in group_report_dict[_group_name]:
+                    if _report.device not in _device_reports:
+                        _device_reports[_report.device] = []
+                    _device_reports[_report.device].append(_report)
+
+                for _device in _device_reports:
+                    device_bookmark = output_pdf.addBookmark(_device.full_name, current_page_number, parent=group_bookmark)
+
+                    for _report in _device_reports[_device]:
+                        for _bookmark in _report.bookmarks:
+                            output_pdf.addBookmark(_bookmark.name, current_page_number + _bookmark.pagenum,
+                                                   parent=device_bookmark)
+                        current_page_number += _report.number_of_pages
 
         output_buffer = BytesIO()
         output_pdf.write(output_buffer)
+        self.buffer = output_buffer
         self.progress = 100
-
-        return output_buffer
 
     def get_toc_pages(self, page_num_headings):
         style_sheet = getSampleStyleSheet()
@@ -1050,7 +1154,7 @@ class PDFReportGenerator(object):
         t_head.wrapOn(can, 0, 0)
         t_head.drawOn(can, 25, heigth - 50)
 
-        vertical_x_limit = 35
+        vertical_x_limit = 32
         vertical_x = 1
         num_pages = 1
 
@@ -1065,6 +1169,7 @@ class PDFReportGenerator(object):
         prefix_0 = 1
         prefix_1 = 1
         prefix_2 = 1
+        prefix_3 = 1
 
         top_margin = 75
 
@@ -1080,9 +1185,13 @@ class PDFReportGenerator(object):
                     prefix_2 = 1
                     prefix = "{}.{}".format(prefix_0 - 1, prefix_1)
                     prefix_1 += 1
-                else:
+                elif indent == 2:
+                    prefix_3 = 1
                     prefix = "{}.{}.{}".format(prefix_0 - 1, prefix_1 - 1, prefix_2)
                     prefix_2 += 1
+                else:
+                    prefix = "{}.{}.{}.{}".format(prefix_0 - 1, prefix_1 - 1, prefix_2 - 1, prefix_3)
+                    prefix_3 += 1
 
                 heading_str = "{} {}".format(prefix, heading)
 
@@ -1270,34 +1379,15 @@ class GenerateReportPdf(View):
             )
         )
 
-# class ReportDataAvailable(View):
-#     @method_decorator(login_required)
-#     def post(self, request):
-#         device_pk = int(request.POST["pk"])
-#
-#         _device = device.objects.get(idx=device_pk)
-#
-#         disabled = True
-#         if _device.assetbatch_set.all():
-#             disabled = False
-#
-#         return HttpResponse(
-#             json.dumps(
-#                 {
-#                     'disabled': disabled,
-#                     'pk': device_pk
-#                 }
-#             )
-#         )
 
 class ReportDataAvailable(View):
     @method_decorator(login_required)
     def post(self, request):
         idx_list = None
         for item in request.POST.iterlists():
-            key, list = item
+            key, _list = item
             if key == "idx_list[]":
-                idx_list = list
+                idx_list = _list
                 break
 
         meta_devices = []
@@ -1342,11 +1432,12 @@ class ReportDataAvailable(View):
 
 
 def generate_pdf(_devices, pk_settings, pdf_report_generator):
-    for _device in _devices:
-        pdf_report_generator.generate_report(_device, pk_settings[_device.idx])
+    pdf_report_generator.generate_network_report()
 
-    _buffer = pdf_report_generator.get_pdf_as_buffer()
-    pdf_report_generator.buffer = _buffer
+    for _device in _devices:
+        pdf_report_generator.generate_device_report(_device, pk_settings[_device.idx])
+
+    pdf_report_generator.finalize_pdf()
 
 
 def sizeof_fmt(num, suffix='B'):
